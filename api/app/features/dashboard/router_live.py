@@ -16,6 +16,7 @@ from app.core.db import SessionOpenerDep, get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
+from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
@@ -40,6 +41,21 @@ async def read_live_board(workspace: OrgStaff, session: Session, clock: ClockDep
     which were live.
     """
     return await service_live.build_live_board(session, workspace.org_id, now=clock.now())
+
+
+# Circuits this organisation has finished, most recently ended first.
+@router.get(
+    "/orgs/{org_slug}/live/history",
+    response_model=Page[schemas_live.LiveRunRead],
+    responses=error_responses(Forbidden),
+)
+async def list_live_history(
+    workspace: OrgStaff, session: Session, page: Annotated[CursorParams, Depends()]
+) -> Page[schemas_live.LiveRunRead]:
+    runs, next_cursor = await service_live.list_run_history(
+        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+    )
+    return Page(items=runs, next_cursor=next_cursor)
 
 
 @router.get(

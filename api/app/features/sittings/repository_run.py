@@ -16,7 +16,14 @@ from typing import Any
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.sittings.models import Circuit, CircuitIntervention, CircuitTrainee, Sitting, Slot
+from app.features.sittings.models import (
+    Circuit,
+    CircuitIntervention,
+    CircuitRunHistory,
+    CircuitTrainee,
+    Sitting,
+    Slot,
+)
 
 
 @dataclass(frozen=True)
@@ -198,3 +205,9 @@ async def interventions_for_circuit(
         .order_by(CircuitIntervention.at.desc())
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def record_run_history(session: AsyncSession, org_id: uuid.UUID, **values: Any) -> None:
+    """Write one finished run of a circuit. Never updated afterwards."""
+    session.add(CircuitRunHistory(org_id=org_id, **values))
+    await session.flush()

@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import service_reads as attempts
-from app.features.dashboard.schemas_live import LiveBoard, LiveCircuit, LivePerson, LiveStation
+from app.features.dashboard.schemas_live import LiveBoard, LiveCircuit, LivePerson, LiveRunRead, LiveStation
 from app.features.identity import service as identity
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
@@ -103,6 +104,46 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
             )
         )
     return LiveBoard(as_of=now, circuits=circuits)
+
+
+async def list_run_history(
+    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[LiveRunRead], str | None]:
+    """The board's past: circuits this organisation has finished, most recent first.
+
+    The live board only knows what is running; each row here was written by
+    `sittings` at the moment a circuit ended.
+    """
+    runs, next_cursor = await sittings.run_history(session, org_id, limit=limit, cursor=cursor)
+    supervisors = await identity.user_refs_by_ids(
+        session, list({run.supervisor_user_id for run in runs if run.supervisor_user_id})
+    )
+
+    def supervisor(user_id: uuid.UUID | None) -> LivePerson | None:
+        """The supervisor's name and email, from the batch fetched above."""
+        if user_id is None:
+            return None
+        ref = supervisors.get(user_id)
+        return LivePerson(user_id=user_id, name=ref.name if ref else None, email=ref.email if ref else None)
+
+    return [
+        LiveRunRead(
+            id=run.id,
+            circuit_id=run.circuit_id,
+            circuit_name=run.circuit_name,
+            sitting_id=run.sitting_id,
+            sitting_name=run.sitting_name,
+            mode=run.mode,
+            supervisor=supervisor(run.supervisor_user_id),
+            started_at=run.started_at,
+            ended_at=run.ended_at,
+            candidate_count=run.candidate_count,
+            stations_total=run.stations_total,
+            stations_completed=run.stations_completed,
+            status=run.status,
+        )
+        for run in runs
+    ], next_cursor
 
 
 def _candidates(detail: sittings.CircuitDetail) -> list[uuid.UUID]:

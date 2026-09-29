@@ -6153,6 +6153,111 @@
         "title": "LivePerson",
         "type": "object"
       },
+      "LiveRunRead": {
+        "description": "One circuit run that has finished, as the board last saw it.\n\nField names follow `LiveCircuit`. `status` is `completed` when every\nstation was sat and `ended_early` when any was skipped.",
+        "properties": {
+          "candidate_count": {
+            "title": "Candidate Count",
+            "type": "integer"
+          },
+          "circuit_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Circuit Id"
+          },
+          "circuit_name": {
+            "title": "Circuit Name",
+            "type": "string"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "sitting_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sitting Id"
+          },
+          "sitting_name": {
+            "title": "Sitting Name",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "stations_completed": {
+            "title": "Stations Completed",
+            "type": "integer"
+          },
+          "stations_total": {
+            "title": "Stations Total",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "supervisor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LivePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "circuit_id",
+          "circuit_name",
+          "sitting_id",
+          "sitting_name",
+          "mode",
+          "started_at",
+          "ended_at",
+          "candidate_count",
+          "stations_total",
+          "stations_completed",
+          "status"
+        ],
+        "title": "LiveRunRead",
+        "type": "object"
+      },
       "LiveStation": {
         "description": "The station a candidate is on now. Null when the circuit is on a break.",
         "properties": {
@@ -7865,6 +7970,33 @@
           "items"
         ],
         "title": "Page[LibraryStationRead]",
+        "type": "object"
+      },
+      "Page_LiveRunRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LiveRunRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[LiveRunRead]",
         "type": "object"
       },
       "Page_MembershipRead_": {
@@ -31681,6 +31813,99 @@
           }
         ],
         "summary": "Read Live Board",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/live/history": {
+      "get": {
+        "operationId": "dashboard_list_live_history",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_LiveRunRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Live History",
         "tags": [
           "dashboard"
         ]

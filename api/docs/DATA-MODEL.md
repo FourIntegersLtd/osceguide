@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-70 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+71 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -778,7 +778,7 @@ What a supervisor finalises for a whole circuit.
 
 # Institutions running exams
 
-## sittings — 6 tables
+## sittings — 7 tables
 
 Domain bounds: `EXAM_MAX_STATIONS = 12`, `DEFAULT_READING_MINUTES = 3`,
 `DEFAULT_SIMULATION_MINUTES = 10`, `READING_BOUNDS = (1, 30)`,
@@ -846,6 +846,29 @@ it and by whom, and before this the answer was nowhere.
 | `reason` | `text null` | free text, because the reasons are the ones nobody predicted |
 | `phase_seq_before` / `phase_seq_after` | `int not null` | places the intervention against the transition it displaced |
 | `at` | `timestamptz not null` | |
+
+### `circuit_run_history`
+One finished run of a circuit, as the exam-day board last saw it: written once by
+`service_steps.finish` in the transaction that ends the circuit, never edited. The
+board is built live from running circuits, so without this a circuit that ended
+left nothing to look back at. No `updated_at`. Read by
+`GET /orgs/{org_slug}/live/history`.
+
+| Field | Type | Notes |
+|---|---|---|
+| `org_id` | `uuid not null` → `organizations.id` CASCADE | index `(org_id, ended_at)` — the history's query |
+| `circuit_id` | `uuid null` → `circuits.id` SET NULL | SET NULL so a later delete keeps what happened on the day |
+| `sitting_id` | `uuid null` → `sittings.id` SET NULL | |
+| `circuit_name` / `sitting_name` | `varchar(200) not null` | copied, as they were when it ended |
+| `mode` | `varchar(32) not null` | the sitting's mode |
+| `supervisor_user_id` | `uuid null` → `users.id` SET NULL | |
+| `started_at` | `timestamptz null` | |
+| `ended_at` | `timestamptz not null` | |
+| `candidate_count` | `int not null` | distinct candidates across the slots |
+| `stations_total` / `stations_completed` | `int not null` | completed counts slots actually sat, not skipped ones |
+| `status` | `varchar(16) not null` | `completed` \| `ended_early` (`domain_run.run_status`) |
+
+UNIQUE `(circuit_id, ended_at)`: a rescued circuit that ends again is a second run.
 
 ### `circuit_stations`
 Replaces b2b's `station_refs jsonb`. A real row per station, so a station cannot be
