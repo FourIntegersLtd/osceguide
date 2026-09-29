@@ -163,10 +163,26 @@ async def exam_codes_by_id(session: AsyncSession, exam_ids: set[uuid.UUID]) -> d
 
 
 async def create_programme(
-    session: AsyncSession, org_id: uuid.UUID, *, exam_id: uuid.UUID, source: str = "custom"
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    exam_id: uuid.UUID,
+    source: str = "custom",
+    status: str | None = None,
+    import_ref: dict[str, Any] | None = None,
 ) -> Programme:
-    """Record that this organisation now runs the named exam."""
-    programme = Programme(org_id=org_id, exam_id=exam_id, source=source)
+    """Record that this organisation now runs the named exam.
+
+    `status` left `None` keeps the column's own default (`draft`); an import passes
+    `active` because the administrator asked for the exam in order to use it.
+    """
+    programme = Programme(
+        org_id=org_id,
+        exam_id=exam_id,
+        source=source,
+        import_ref=import_ref,
+        **({"status": status} if status is not None else {}),
+    )
     session.add(programme)
     await session.flush()
     await session.refresh(programme)

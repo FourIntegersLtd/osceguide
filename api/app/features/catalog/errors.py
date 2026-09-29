@@ -31,6 +31,14 @@ class ProgrammeExists(Conflict):
     default_message = "That exam is already on this organisation's programme"
 
 
+class ExamAlreadyImported(Conflict):
+    """This organisation already runs the platform exam it asked to import, whether it
+    imported it before or added it as a programme by code."""
+
+    code = "exam_already_imported"
+    default_message = "That exam is already in this organisation"
+
+
 class ProgrammeNotFound(NotFound):
     """No programme with that id in this organisation."""
 

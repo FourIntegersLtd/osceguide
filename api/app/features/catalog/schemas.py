@@ -72,3 +72,33 @@ class CreateProgramme(BaseModel):
 
 class UpdateProgramme(BaseModel):
     status: str = Field(pattern="^(draft|active|retired)$")
+
+
+class PlatformCatalogueExamRead(BaseModel):
+    """One published platform exam, as an institution choosing what to import sees it."""
+
+    exam_id: uuid.UUID
+    code: str
+    title: str
+    # Published library stations for this exam: what the institution gets to use.
+    station_count: int
+    # Whether this institution already runs it, by import or as a programme.
+    already_imported: bool
+
+
+class PlatformCatalogueRead(BaseModel):
+    """The published platform exams an institution may import. Small, so never paged."""
+
+    items: list[PlatformCatalogueExamRead]
+
+
+class ImportPlatformExam(BaseModel):
+    """Which published platform exam to bring into the institution."""
+
+    platform_exam_id: uuid.UUID
+
+
+class ImportedExamRead(BaseModel):
+    """The exam now in the institution, shaped as `GET /orgs/{org_slug}/exams` lists it."""
+
+    exam: ExamRead

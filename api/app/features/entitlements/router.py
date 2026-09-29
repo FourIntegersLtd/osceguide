@@ -14,7 +14,7 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin
-from app.features.entitlements import errors, schemas, service, service_org
+from app.features.entitlements import errors, schemas, service, service_org, service_practice_access
 
 router = APIRouter(tags=["entitlements"])
 
@@ -78,3 +78,73 @@ async def revoke_org_entitlement(
     entitlement_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.EntitlementRead:
     return await service_org.revoke_for_org(session, workspace.org_id, entitlement_id, now=clock.now())
+
+
+# Everyone this organisation has given practice access, invited and revoked included.
+@router.get(
+    "/orgs/{org_slug}/practice-access",
+    response_model=schemas.PracticeAccessList,
+    responses=error_responses(Forbidden),
+)
+async def list_practice_access(
+    workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.PracticeAccessList:
+    items = await service_practice_access.list_practice_access(session, workspace.org_id, now=clock.now())
+    return schemas.PracticeAccessList(items=items)
+
+
+@router.post(
+    "/orgs/{org_slug}/practice-access",
+    response_model=schemas.PracticeAccessItem,
+    status_code=201,
+    responses=error_responses(
+        Forbidden, errors.InvalidPracticeEmail, errors.UnknownExamError, errors.PracticeAccessExists
+    ),
+)
+async def grant_practice_access(
+    body: schemas.GrantPracticeAccess, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.PracticeAccessItem:
+    """Give one person practice access to an exam this organisation offers.
+
+    An address with no account is invited: the account is created without a password and
+    the grant is attached to it, usable once they choose a password from the email.
+    """
+    item = await service_practice_access.grant_practice_access(
+        session,
+        workspace.org_id,
+        email=body.email,
+        exam_id=body.exam_id,
+        actor=workspace.principal,
+        now=clock.now(),
+    )
+    return schemas.PracticeAccessItem(item=item)
+
+
+@router.post(
+    "/orgs/{org_slug}/practice-access/bulk",
+    response_model=schemas.BulkPracticeAccessResults,
+    responses=error_responses(Forbidden),
+)
+async def grant_practice_access_in_bulk(
+    body: schemas.BulkGrantPracticeAccess, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.BulkPracticeAccessResults:
+    """Up to 500 rows the client parsed from a CSV; each row reports its own outcome."""
+    results = await service_practice_access.grant_practice_access_in_bulk(
+        session, workspace.org_id, rows=body.rows, actor=workspace.principal, now=clock.now()
+    )
+    return schemas.BulkPracticeAccessResults(results=results)
+
+
+# Withdraw one practice-access grant; the row stays on record.
+@router.post(
+    "/orgs/{org_slug}/practice-access/{access_id}/revoke",
+    response_model=schemas.PracticeAccessItem,
+    responses=error_responses(Forbidden, errors.EntitlementNotFound),
+)
+async def revoke_practice_access(
+    access_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.PracticeAccessItem:
+    item = await service_practice_access.revoke_practice_access(
+        session, workspace.org_id, access_id, actor=workspace.principal, now=clock.now()
+    )
+    return schemas.PracticeAccessItem(item=item)

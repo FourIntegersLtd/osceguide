@@ -63,6 +63,46 @@ async def for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Entitlemen
     return list((await session.execute(stmt)).scalars())
 
 
+async def grants_by_source_for_org(
+    session: AsyncSession, org_id: uuid.UUID, *, source: str
+) -> list[Entitlement]:
+    """What an institution has granted from one source, newest first, revoked and lapsed
+    rows included. Org-scoped: `org_id` first."""
+    stmt = (
+        select(Entitlement)
+        .where(Entitlement.org_id == org_id, Entitlement.source == source)
+        .order_by(Entitlement.created_at.desc(), Entitlement.id)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def live_grant_from_org(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    user_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    source: str,
+    now: datetime,
+) -> Entitlement | None:
+    """A grant this organisation made that still gives this person this exam, if one does.
+
+    Live means the same here as everywhere (`_live`): started, not ended, not revoked.
+    """
+    stmt = (
+        select(Entitlement)
+        .where(
+            Entitlement.org_id == org_id,
+            Entitlement.user_id == user_id,
+            Entitlement.exam_id == exam_id,
+            Entitlement.source == source,
+            *_live(now),
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def for_org(session: AsyncSession, org_id: uuid.UUID) -> list[Entitlement]:
     """What an institution has granted. Org-scoped: `org_id` first."""
     stmt = select(Entitlement).where(Entitlement.org_id == org_id).order_by(Entitlement.created_at.desc())

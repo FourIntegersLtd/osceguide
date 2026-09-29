@@ -15,7 +15,7 @@ from app.core.memberships import MembershipLookup
 from app.core.settings import Settings
 from app.features.catalog import service as catalog
 from app.features.identity import repository, repository_platform
-from app.features.identity.domain import WeakPassword, may_call, validate_password
+from app.features.identity.domain import WeakPassword, may_call, normalize_email, validate_password
 from app.features.identity.errors import (
     EmailTaken,
     ExamAlreadyChosen,
@@ -48,6 +48,10 @@ class UserRef:
     # the dashboard turns it into the exam everything opens on, and it is the
     # only answer a trial account — which holds no entitlement — has.
     exam_code: str | None = None
+    # True while the account was created by an invitation and nobody has used it yet: no
+    # password chosen, never signed in, and not an SSO-only account (which has no password on
+    # purpose). A screen listing invited people shows them as "invited" until this clears.
+    invitation_pending: bool = False
 
 
 async def _announce_registration(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
@@ -270,6 +274,11 @@ def may_call_with_temporary_password(route: str) -> bool:
     return may_call(must_change_password=True, route=route)
 
 
+def normalized_email(raw: str) -> str:
+    """An address as accounts store it, so another slice compares the same value this one does."""
+    return normalize_email(raw)
+
+
 async def user_ref_by_email(session: AsyncSession, email: str) -> UserRef | None:
     """The little another slice needs to know about a person, by email."""
     user = await repository.user_by_email(session, email)
@@ -290,6 +299,9 @@ def _ref(user: User) -> UserRef:
         name=user.name,
         created_at=user.created_at,
         exam_code=user.exam_code,
+        invitation_pending=(
+            user.password_hash is None and not user.password_login_disabled and user.last_login_at is None
+        ),
     )
 
 

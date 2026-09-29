@@ -14,7 +14,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin
-from app.features.catalog import errors, schemas, service_authoring, service_programmes
+from app.features.catalog import errors, schemas, service_authoring, service_import, service_programmes
 
 router = APIRouter(tags=["catalog"])
 
@@ -132,6 +132,38 @@ async def list_org_exams(
     """
     exams = await service_authoring.list_exams(session, org_id=workspace.org_id, include_unpublished=drafts)
     return Page(items=exams, next_cursor=None)
+
+
+# The platform's published exams, each marked with whether this institution already runs it.
+@router.get(
+    "/orgs/{org_slug}/exams/catalog",
+    response_model=schemas.PlatformCatalogueRead,
+    responses=error_responses(Forbidden),
+)
+async def list_platform_catalogue(workspace: OrgAdmin, session: Session) -> schemas.PlatformCatalogueRead:
+    return schemas.PlatformCatalogueRead(
+        items=await service_import.platform_catalogue(session, workspace.org_id)
+    )
+
+
+@router.post(
+    "/orgs/{org_slug}/exams/import",
+    response_model=schemas.ImportedExamRead,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(Forbidden, errors.UnknownExamError, errors.ExamAlreadyImported),
+)
+async def import_platform_exam(
+    body: schemas.ImportPlatformExam, workspace: OrgAdmin, session: Session
+) -> schemas.ImportedExamRead:
+    """Take on a published platform exam by reference: nothing is copied, a programme names it.
+
+    `unknown_exam` (404) unless it is a published platform exam; `exam_already_imported`
+    (409) if this institution already runs it.
+    """
+    exam = await service_import.import_platform_exam(
+        session, workspace.org_id, platform_exam_id=body.platform_exam_id, actor=workspace.principal
+    )
+    return schemas.ImportedExamRead(exam=exam)
 
 
 @router.post(

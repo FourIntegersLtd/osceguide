@@ -115,3 +115,9 @@ async def read_library_station(
         version=version.version,
         published_at=version.published_at,
     )
+
+
+async def library_station_counts(session: AsyncSession, exam_ids: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """How many published library stations each exam has, for a catalogue an institution
+    picks from. An exam with no stations yet is absent; read it with a default of zero."""
+    return await repository_library.published_counts_by_exam(session, exam_ids)
