@@ -48,7 +48,9 @@ the patient.
 - The role is recorded when the pair is made, not when the session ends, so
   somebody who abandons a session still does not get the same part twice.
 - `never_doctor` is a column. b2c hardcodes three personal email addresses into
-  the matcher; it is a property of a person, so it lives on the person.
+  the matcher; it is a property of a person, so it lives on the person. Those
+  three accounts were flagged by migration `39cc97f742b6` (P-2); anyone else is
+  flagged by setting the column.
 - A stranger asking about a session gets 404, not 403.
 - **A recording is best-effort; a consultation is not.** An egress that cannot
   be started, or a bucket that is not configured, is logged and the session

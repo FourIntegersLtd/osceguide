@@ -192,3 +192,55 @@ async def test_every_payment_without_a_receipt_is_given_one(db_session: AsyncSes
         )
         == 0
     ), "a second run finds nothing left to mint"
+
+
+async def test_b2c_never_doctor_accounts_are_flagged_and_matched_as_patient(db_session: AsyncSession) -> None:
+    """P-2: the three addresses b2c hardcoded get `never_doctor`, whether or not
+    they have practised yet, and the matcher then never makes them doctor."""
+    from app.features.identity import repository as identity_repo
+    from app.features.peer_practice import service_lifecycle
+    from app.features.peer_practice.models import PracticeHistory
+
+    practised = await identity_repo.create_user(
+        session=db_session, email="Y.HKehinde@yahoo.com", name="Practised", password_hash=None
+    )
+    newcomer = await identity_repo.create_user(
+        session=db_session, email="sheinat03@gmail.com", name="Newcomer", password_hash=None
+    )
+    bystander = await identity_repo.create_user(
+        session=db_session, email="someone-else@example.com", name="Bystander", password_hash=None
+    )
+    db_session.add_all(
+        [
+            PracticeHistory(user_id=practised.id, last_role="patient", session_count=3),
+            PracticeHistory(user_id=bystander.id, last_role="patient", session_count=3),
+        ]
+    )
+    await db_session.flush()
+
+    await db_session.execute(text(migration("39cc97f742b6").BACKFILL_SQL))
+
+    stored = {
+        user_id: (last_role, session_count, never_doctor)
+        for user_id, last_role, session_count, never_doctor in (
+            await db_session.execute(
+                select(
+                    PracticeHistory.user_id,
+                    PracticeHistory.last_role,
+                    PracticeHistory.session_count,
+                    PracticeHistory.never_doctor,
+                ).where(PracticeHistory.user_id.in_([practised.id, newcomer.id, bystander.id]))
+            )
+        ).all()
+    }
+    assert stored[practised.id] == ("patient", 3, True), "an existing history keeps its role and count"
+    assert stored[newcomer.id] == (None, 0, True), "a newcomer is given a history carrying the flag"
+    assert stored[bystander.id] == ("patient", 3, False)
+
+    # What the matcher now decides, read through the service that pairs a
+    # booking: both last played patient, so without the flag the practised
+    # account, as the booking's owner, would be made doctor.
+    doctor, patient = await service_lifecycle.roles_for_peer_participants(
+        db_session, practised.id, bystander.id
+    )
+    assert (doctor, patient) == (bystander.id, practised.id)

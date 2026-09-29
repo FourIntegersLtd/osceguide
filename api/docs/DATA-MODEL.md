@@ -1232,7 +1232,7 @@ document is why the matcher reaches into four different collections to find it.
 | `user_id` | `uuid not null` → `users.id` CASCADE, UNIQUE | |
 | `last_role` | `varchar(16) null` | `doctor` \| `patient` |
 | `session_count` | `int not null default 0` | |
-| `never_doctor` | `bool not null default false` | replaces b2c's hardcoded list of three personal email addresses |
+| `never_doctor` | `bool not null default false` | replaces b2c's hardcoded list of three personal email addresses; those accounts were set by migration `39cc97f742b6` (P-2), which gave any of them without a history row one |
 
 ## assistant — 2 tables
 
