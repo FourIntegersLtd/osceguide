@@ -1,27 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { HiMiniSignal, HiOutlineExclamationTriangle } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Badge, EmptyState, b2bTokens } from "@/foundation/ui";
-import { useAsync, useEventStream } from "@/foundation/hooks";
+import { Alert, AsyncBoundary, Badge, Button, EmptyState, b2bTokens } from "@/foundation/ui";
+import { useAsync, useCursorPages, useEventStream } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { alertCopy } from "@/domains/assess/sessions/support";
 import {
   liveBoardStreamPath,
-  readCircuitsOnDay,
   readLiveBoard,
+  readLiveHistory,
   type LiveBoard as Board,
   type LiveCircuit,
+  type LiveRun,
 } from "@/domains/assess/dashboard/api";
 import {
   boardOrder,
   candidatesLabel,
   circuitStatus,
-  localDay,
   recordingMissing,
-  type PastCircuit,
+  runsByDay,
 } from "@/domains/assess/dashboard/support";
 
 /**
@@ -86,75 +85,87 @@ const timeOf = (iso: string) =>
   new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
 /**
- * What ran on a day: this morning by default, any day on request.
+ * What already ran, newest first: this morning, yesterday, and further back
+ * on request.
  *
  * The board above is now only, so once a circuit ended it vanished and "what
  * ran this morning" had no answer short of opening each sitting. Each row
- * opens the circuit's own console, where its record and feedback are.
+ * opens the circuit's own console, where its record and feedback are, unless
+ * the circuit has since been deleted.
  */
 function Earlier({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
-  const [day, setDay] = useState(() => localDay(new Date()));
-  const today = localDay(new Date());
-  const past = useAsync((signal) => readCircuitsOnDay(orgSlug, day, signal), [orgSlug, day]);
+  const history = useCursorPages(
+    (cursor, signal) => readLiveHistory(orgSlug, cursor, signal),
+    [orgSlug],
+  );
 
   return (
     <section className="space-y-3 border-t border-b2b-border pt-5" aria-labelledby="live-earlier">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 id="live-earlier" className={b2bTokens.b2bSectionTitle}>
-          {day === today ? "Earlier today" : "On this day"}
-        </h2>
-        <div className="flex items-center gap-2">
-          <label htmlFor="live-earlier-day" className="text-osce-caption text-b2b-mid">
-            Day
-          </label>
-          <input
-            id="live-earlier-day"
-            type="date"
-            value={day}
-            max={today}
-            onChange={(event) => {
-              if (event.target.value) setDay(event.target.value);
-            }}
-            className={b2bTokens.b2bInputBase}
-          />
-        </div>
-      </div>
+      <h2 id="live-earlier" className={b2bTokens.b2bSectionTitle}>
+        Earlier
+      </h2>
       <AsyncBoundary
-        state={past}
-        empty={{
-          title: day === today ? "Nothing has run yet today." : "Nothing ran that day.",
-        }}
+        state={history.state}
+        empty={{ title: "Nothing has finished yet.", description: "Circuits appear here when they end." }}
       >
-        {(rows: PastCircuit[]) => (
-          <ul className="divide-y divide-b2b-border rounded-lg border border-b2b-border bg-white">
-            {rows.map((row) => (
-              <li
-                key={row.circuitId}
-                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <Link
-                    href={hrefFor(`/circuits/${row.circuitId}`)}
-                    className="text-osce-body font-semibold text-b2b-headline hover:underline"
-                  >
-                    {row.circuitName}
-                  </Link>
-                  <p className="mt-0.5 text-osce-caption text-b2b-mid">
-                    {row.sittingName} · {row.mode} · {row.stations}{" "}
-                    {row.stations === 1 ? "station" : "stations"}
-                  </p>
-                </div>
-                <span className="shrink-0 font-mono text-osce-caption text-b2b-mid">
-                  {row.endedAt
-                    ? `${timeOf(row.startedAt)}–${timeOf(row.endedAt)}`
-                    : `since ${timeOf(row.startedAt)}`}
-                </span>
-              </li>
+        {(runs: LiveRun[]) => (
+          <div className="space-y-4">
+            {runsByDay(runs, new Date()).map((group) => (
+              <div key={group.label} className="space-y-2">
+                <h3 className={b2bTokens.b2bEyebrow}>{group.label}</h3>
+                <ul className="divide-y divide-b2b-border rounded-lg border border-b2b-border bg-white">
+                  {group.runs.map((run) => (
+                    <li
+                      key={run.id}
+                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        {run.circuit_id ? (
+                          <Link
+                            href={hrefFor(`/circuits/${run.circuit_id}`)}
+                            className="text-osce-body font-semibold text-b2b-headline hover:underline"
+                          >
+                            {run.circuit_name}
+                          </Link>
+                        ) : (
+                          <span className="text-osce-body font-semibold text-b2b-headline">
+                            {run.circuit_name}
+                          </span>
+                        )}
+                        <p className="mt-0.5 text-osce-caption text-b2b-mid">
+                          {run.sitting_name} · {run.mode} · {run.candidate_count}{" "}
+                          {run.candidate_count === 1 ? "candidate" : "candidates"} ·{" "}
+                          {run.stations_completed} of {run.stations_total} stations
+                          {run.status === "ended_early" ? " · ended early" : ""}
+                        </p>
+                      </div>
+                      <span className="shrink-0 font-mono text-osce-caption text-b2b-mid">
+                        {run.started_at ? `${timeOf(run.started_at)}–` : "ended "}
+                        {timeOf(run.ended_at)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </AsyncBoundary>
+      {history.moreError ? (
+        <Alert tone="danger">Could not load more: {history.moreError.message}</Alert>
+      ) : null}
+      {history.hasMore ? (
+        <Button
+          themeType="b2b"
+          variant="secondary"
+          size="sm"
+          disabled={history.loadingMore}
+          onClick={history.loadMore}
+        >
+          {history.loadingMore ? "Loading…" : "Show earlier"}
+        </Button>
+      ) : null}
     </section>
   );
 }

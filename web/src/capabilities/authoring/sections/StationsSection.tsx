@@ -13,7 +13,7 @@ import {
   AUTHORING_ALL_EXAMS,
   matchesExamFilter,
 } from "@/capabilities/authoring/parts/examCatalogFilter";
-import { useAsync } from "@/foundation/hooks";
+import { useAsync, useCursorPages } from "@/foundation/hooks";
 import {
   archiveStationVersion,
   listStations,
@@ -24,7 +24,6 @@ import {
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
-import { useCursorPages } from "@/capabilities/authoring/parts/useCursorPages";
 import { StationDetail } from "@/capabilities/authoring/sections/StationDetail";
 import { StationsTable } from "@/capabilities/authoring/sections/StationsTable";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { useAsync, type AsyncState } from "@/foundation/hooks";
+import { useAsync, type AsyncState } from "@/foundation/hooks/useAsync";
 
 export interface CursorPage<T> {
   items: T[];
@@ -22,9 +22,10 @@ export interface CursorPages<T> {
 /**
  * A list read one server page at a time, growing on request.
  *
- * Replaces walking every cursor up front: the catalogue used to load 25 pages
- * of 100 before drawing a row, and silently stopped at 2,500. Changing `deps`
- * (a search, a scope) starts again from the first page.
+ * The alternative to walking every cursor up front, which is how the station
+ * catalogue once loaded 25 pages of 100 before drawing a row and silently
+ * stopped at 2,500. Changing `deps` (a search, a scope) starts again from the
+ * first page.
  */
 export function useCursorPages<T>(
   load: (cursor: string | null, signal: AbortSignal) => Promise<CursorPage<T>>,

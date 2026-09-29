@@ -1,17 +1,5 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
-import {
-  collectPages,
-  orgPath,
-  pageQuery,
-  readSitting,
-  type Sitting,
-  type SittingPage,
-} from "@/domains/assess/api";
-import {
-  circuitsStartedOn,
-  sittingNearDay,
-  type PastCircuit,
-} from "@/domains/assess/dashboard/support";
+import { orgPath, pageQuery } from "@/domains/assess/api";
 
 export type OrgDashboard = components["schemas"]["OrgDashboard"];
 export type OrgSetup = components["schemas"]["OrgSetup"];
@@ -60,29 +48,22 @@ export function readSupervisorCircuits(
   return platformRequest<SupervisorCircuits>(`${orgPath(slug)}/supervisor/circuits`, { signal });
 }
 
+export type LiveRun = components["schemas"]["LiveRunRead"];
+export type LiveRunPage = components["schemas"]["Page_LiveRunRead_"];
+
 /**
- * What ran on one day, finished or not.
+ * Circuits that have finished, newest first, a page at a time.
  *
- * `/live` answers now only. There is no history route, but every circuit on a
- * sitting carries `started_at` and `ended_at`, so this reads the sittings
- * scheduled near the day and keeps the circuits that started on it. The
- * sitting list carries no circuits, hence one read per nearby sitting.
+ * The board is built from what is running, so a circuit that ended used to
+ * leave nothing behind; each end now writes a row the board can look back on.
  */
-export async function readCircuitsOnDay(
+export function readLiveHistory(
   slug: string,
-  day: string,
+  cursor: string | null,
   signal?: AbortSignal,
-): Promise<PastCircuit[]> {
-  const sittings = await collectPages((cursor) =>
-    platformRequest<SittingPage>(`${orgPath(slug)}/sittings`, {
-      signal,
-      query: pageQuery({ cursor }),
-    }),
-  );
-  const nearby: Sitting[] = await Promise.all(
-    sittings
-      .filter((sitting) => sittingNearDay(sitting, day))
-      .map((sitting) => readSitting(slug, sitting.id, signal)),
-  );
-  return circuitsStartedOn(nearby, day);
+): Promise<LiveRunPage> {
+  return platformRequest<LiveRunPage>(`${orgPath(slug)}/live/history`, {
+    signal,
+    query: pageQuery({ cursor, limit: 25 }),
+  });
 }

@@ -1,5 +1,4 @@
 import type { LiveCircuit, OrgDashboard, OrgSetup } from "@/domains/assess/dashboard/api";
-import type { Sitting } from "@/domains/assess/api";
 
 /**
  * What the institution's home screen works out from what it is given.
@@ -148,69 +147,36 @@ export function candidatesLabel(circuit: LiveCircuit): string {
 
 /* ---------- what ran earlier ---------- */
 
-/** One circuit that started on the day being looked at. */
-export interface PastCircuit {
-  circuitId: string;
-  circuitName: string;
-  sittingId: string;
-  sittingName: string;
-  mode: string;
-  startedAt: string;
-  /** `null` while it is still running. */
-  endedAt: string | null;
-  stations: number;
-}
-
-/** Midnight to midnight, in the browser's own time zone, for a `YYYY-MM-DD`. */
-export function dayBounds(day: string): { start: Date; end: Date } {
-  const [year = 1970, month = 1, date = 1] = day.split("-").map(Number);
-  const start = new Date(year, month - 1, date);
-  const end = new Date(year, month - 1, date + 1);
-  return { start, end };
-}
-
-/** Today as `YYYY-MM-DD`, local time: the value a date input takes. */
-export function localDay(now: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
-
 /**
- * Whether a sitting could hold circuits that ran on this day.
+ * Finished runs, newest first, under a heading per day.
  *
- * Only these are opened, so looking at a day costs one read per nearby
- * sitting rather than one per sitting ever held. A day either side covers a
- * sitting scheduled late the evening before or run past midnight; one run a
- * week off its scheduled day is the case this misses.
+ * `/live/history` answers a flat page newest first, and the board reads it as
+ * "this morning, yesterday, last Tuesday". Days are the browser's own, since
+ * that is the clock the course lead reads them by.
  */
-export function sittingNearDay(sitting: { scheduled_for?: string | null }, day: string): boolean {
-  if (!sitting.scheduled_for) return false;
-  const { start, end } = dayBounds(day);
-  const at = new Date(sitting.scheduled_for).getTime();
-  const slack = 24 * 60 * 60 * 1000;
-  return at >= start.getTime() - slack && at < end.getTime() + slack;
-}
-
-/** The circuits among these sittings that started on the day, earliest first. */
-export function circuitsStartedOn(sittings: readonly Sitting[], day: string): PastCircuit[] {
-  const { start, end } = dayBounds(day);
-  const rows: PastCircuit[] = [];
-  for (const sitting of sittings) {
-    for (const circuit of sitting.circuits ?? []) {
-      if (!circuit.started_at) continue;
-      const at = new Date(circuit.started_at).getTime();
-      if (at < start.getTime() || at >= end.getTime()) continue;
-      rows.push({
-        circuitId: circuit.id,
-        circuitName: circuit.name,
-        sittingId: sitting.id,
-        sittingName: sitting.name,
-        mode: sitting.mode,
-        startedAt: circuit.started_at,
-        endedAt: circuit.ended_at ?? null,
-        stations: circuit.slots?.length ?? 0,
-      });
+export function runsByDay<T extends { ended_at: string }>(
+  runs: readonly T[],
+  now: Date,
+): { label: string; runs: T[] }[] {
+  const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  const today = dayKey(now);
+  const yesterday = dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  const groups: { key: string; label: string; runs: T[] }[] = [];
+  for (const run of runs) {
+    const ended = new Date(run.ended_at);
+    const key = dayKey(ended);
+    let group = groups.find((item) => item.key === key);
+    if (!group) {
+      const label =
+        key === today
+          ? "Today"
+          : key === yesterday
+            ? "Yesterday"
+            : ended.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      group = { key, label, runs: [] };
+      groups.push(group);
     }
+    group.runs.push(run);
   }
-  return rows.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+  return groups.map(({ label, runs: items }) => ({ label, runs: items }));
 }

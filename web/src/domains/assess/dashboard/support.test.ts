@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { LiveCircuit, OrgDashboard, OrgSetup } from "@/domains/assess/dashboard/api";
-import type { Sitting } from "@/domains/assess/api";
 import {
-  circuitsStartedOn,
-  localDay,
-  sittingNearDay,
+  runsByDay,
   boardOrder,
   candidatesLabel,
   circuitStatus,
@@ -154,38 +151,24 @@ test("a training circuit names the first people and counts the rest", () => {
   );
 });
 
-test("what ran on a day is the circuits that started on it, earliest first", () => {
-  const circuit = (id: string, started_at: string | null, ended_at: string | null = null) =>
-    ({ id, name: id, started_at, ended_at, slots: [{}, {}] }) as unknown as NonNullable<
-      Sitting["circuits"]
-    >[number];
-  const sitting = {
-    id: "s1",
-    name: "Mock",
-    mode: "exam",
-    scheduled_for: "2026-09-29T08:00:00",
-    circuits: [
-      circuit("afternoon", "2026-09-29T14:00:00", "2026-09-29T15:00:00"),
-      circuit("morning", "2026-09-29T09:00:00", "2026-09-29T10:00:00"),
-      circuit("yesterday", "2026-09-28T09:00:00", "2026-09-28T10:00:00"),
-      circuit("never started", null),
+test("finished runs are headed by the day they ended, newest first", () => {
+  const now = new Date(2026, 8, 29, 15, 0);
+  const run = (id: string, ended: Date) => ({ id, ended_at: ended.toISOString() });
+  const groups = runsByDay(
+    [
+      run("afternoon", new Date(2026, 8, 29, 14, 0)),
+      run("morning", new Date(2026, 8, 29, 9, 0)),
+      run("yesterday", new Date(2026, 8, 28, 16, 0)),
+      run("last week", new Date(2026, 8, 22, 11, 0)),
     ],
-  } as unknown as Sitting;
-  const rows = circuitsStartedOn([sitting], "2026-09-29");
-  assert.deepEqual(
-    rows.map((row) => row.circuitId),
-    ["morning", "afternoon"],
+    now,
   );
-  assert.equal(rows[0]?.stations, 2);
-});
-
-test("only sittings scheduled near the day are opened", () => {
-  assert.equal(sittingNearDay({ scheduled_for: "2026-09-29T08:00:00" }, "2026-09-29"), true);
-  assert.equal(sittingNearDay({ scheduled_for: "2026-09-28T20:00:00" }, "2026-09-29"), true);
-  assert.equal(sittingNearDay({ scheduled_for: "2026-09-20T08:00:00" }, "2026-09-29"), false);
-  assert.equal(sittingNearDay({ scheduled_for: null }, "2026-09-29"), false);
-});
-
-test("the default day is the browser's own date", () => {
-  assert.equal(localDay(new Date(2026, 8, 9, 23, 30)), "2026-09-09");
+  assert.deepEqual(
+    groups.map((group) => [group.label, group.runs.map((item) => item.id)]),
+    [
+      ["Today", ["afternoon", "morning"]],
+      ["Yesterday", ["yesterday"]],
+      ["Tuesday 22 September", ["last week"]],
+    ],
+  );
 });
