@@ -155,6 +155,7 @@ function CreateStationTemplateWizardBody({
             title={title}
             onTitleChange={setTitle}
             flatChrome
+            allowCustomGenerationPrompt
           />
         )}
         {error ? (

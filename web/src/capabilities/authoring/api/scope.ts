@@ -83,6 +83,7 @@ export type StationTemplateVersion = S["StationTemplateVersionRead"];
 export type Rubric = S["RubricRead"];
 export type RubricVersion = S["RubricVersionRead"];
 export type Exam = S["ExamRead"];
+export type ExamSettings = S["ExamSettings"];
 export type Programme = S["ProgrammeRead"];
 
 export type Json = Record<string, unknown>;

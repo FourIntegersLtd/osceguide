@@ -82,7 +82,7 @@ export function StationTemplateEditScreen({
                 aria-label="Template title"
               />
             </label>
-            <StructureBuilder value={structure} onChange={setStructure} flatChrome />
+            <StructureBuilder value={structure} onChange={setStructure} flatChrome allowCustomGenerationPrompt />
             {error ? (
               <Alert tone="danger" className="mt-4">
                 {error}

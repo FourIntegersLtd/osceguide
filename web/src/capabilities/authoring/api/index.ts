@@ -20,6 +20,7 @@ export {
   type Rubric,
   type RubricVersion,
   type Exam,
+  type ExamSettings,
   type Programme,
 } from "@/capabilities/authoring/api/scope";
 

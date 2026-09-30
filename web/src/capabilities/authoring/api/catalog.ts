@@ -1,6 +1,6 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
 import type { AuthoringScope } from "@/capabilities/authoring/api/scope";
-import type { Exam, Programme } from "@/capabilities/authoring/api/scope";
+import type { Exam, ExamSettings, Programme } from "@/capabilities/authoring/api/scope";
 import { examListPath, pathId } from "@/capabilities/authoring/api/scope";
 
 type S = components["schemas"];
@@ -33,6 +33,7 @@ export function createExam(
     station_attempt_limit: number;
     partner_pilot: boolean;
     rubric_version_id?: string | null;
+    settings?: ExamSettings;
   },
 ): Promise<Exam> {
   return platformRequest(`${scope.base}/exams`, { method: "POST", body });
@@ -48,6 +49,8 @@ export function updateExam(
     station_attempt_limit: number;
     partner_pilot: boolean;
     rubric_version_id: string | null;
+    /** Replaces the whole object: send the exam's settings with the edits applied. */
+    settings: ExamSettings;
   }>,
 ): Promise<Exam> {
   return platformRequest(`${scope.base}/exams/${pathId(exam)}`, { method: "PATCH", body });

@@ -24,6 +24,8 @@ export type RescoreResult = S["RescoreResult"];
 export type PlatformEntitlement = S["PlatformEntitlementRead"];
 export type PlatformPayment = S["PlatformPaymentRead"];
 export type StripeEvent = S["StripeEventRead"];
+export type PlatformPlan = S["PlatformPlanRead"];
+export type CreatePlanInput = S["CreatePlan"];
 export type PlatformAuditEntry = S["PlatformAuditRead"];
 export type OrgAtRisk = S["OrgAtRisk"];
 export type Job = S["JobRead"];
@@ -209,6 +211,26 @@ export function listBillingEvents(
 }
 
 /** Apply a refused delivery again, once its cause is fixed. */
+/* ------------------------------------------------------------------ Plans */
+
+/** Every plan ever priced, on sale or retired, each with its referral price. */
+export function listPlatformPlans(signal?: AbortSignal): Promise<{ items: PlatformPlan[] }> {
+  return platformRequest(`${PLATFORM}/billing/plans`, { signal });
+}
+
+/** Price an exam: the backend creates both Stripe prices and the 10%-off referral twin. */
+export function createPlatformPlan(body: CreatePlanInput): Promise<PlatformPlan> {
+  return platformRequest<PlatformPlan>(`${PLATFORM}/billing/plans`, { method: "POST", body });
+}
+
+/** Put a plan (and its referral twin) on sale, or retire it. */
+export function setPlatformPlanActive(code: string, active: boolean): Promise<PlatformPlan> {
+  return platformRequest<PlatformPlan>(`${PLATFORM}/billing/plans/${encodeURIComponent(code)}`, {
+    method: "PATCH",
+    body: { active },
+  });
+}
+
 export function replayBillingEvent(eventId: string): Promise<{ status: string }> {
   return platformRequest<{ status: string }>(
     `${PLATFORM}/billing/events/${encodeURIComponent(eventId)}/replay`,

@@ -3,7 +3,11 @@
 import { useMemo } from "react";
 import { getInputClassName } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { listRubrics } from "@/capabilities/authoring/api";
+import { listRubrics, type ExamSettings } from "@/capabilities/authoring/api";
+import {
+  ExamSettingsFields,
+  Field,
+} from "@/capabilities/authoring/sections/ExamSettingsFields";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 
 export interface ExamDraft {
@@ -14,7 +18,23 @@ export interface ExamDraft {
   attempts: string;
   partnerPilot: boolean;
   rubricVersionId: string;
+  /**
+   * The whole settings object, sent back whole: the backend replaces it on
+   * save, so subtypes and prompt keys this form does not show survive by
+   * riding along untouched.
+   */
+  settings: ExamSettings;
 }
+
+/** The backend's `ExamSettings` defaults, which `{}` would mean anyway. */
+const defaultSettings: ExamSettings = {
+  date_label: "Exam date",
+  session_modes: ["debrief", "practice_as_patient"],
+  help_modes: ["navigate"],
+  show_tips_while_marking: false,
+  peer_waiting_email: false,
+  station_subtypes: [],
+};
 
 /** The backend's own defaults, so a blank form creates a working exam. */
 export const blankExam: ExamDraft = {
@@ -25,6 +45,7 @@ export const blankExam: ExamDraft = {
   attempts: "3",
   partnerPilot: false,
   rubricVersionId: "",
+  settings: defaultSettings,
 };
 
 /**
@@ -44,7 +65,10 @@ export function ExamFields({
   codeDisabled?: boolean;
 }) {
   const scope = useAuthoringScope();
-  const rubrics = useAsync((signal) => listRubrics(scope, {}, signal), [scope.base]);
+  const rubrics = useAsync(
+    (signal) => listRubrics(scope, {}, signal),
+    [scope.base],
+  );
 
   const versions = useMemo(
     () =>
@@ -57,6 +81,8 @@ export function ExamFields({
   );
 
   const set = (patch: Partial<ExamDraft>) => onChange({ ...value, ...patch });
+  const setSettings = (patch: Partial<ExamSettings>) =>
+    set({ settings: { ...value.settings, ...patch } });
 
   return (
     <>
@@ -117,6 +143,7 @@ export function ExamFields({
           </select>
         </Field>
       </div>
+      <ExamSettingsFields value={value.settings} onChange={setSettings} />
       {/*
        * The backend refuses this on the org-scoped route on purpose — "a
        * school cannot put its own private exam into the funnel by asking"
@@ -141,14 +168,5 @@ export function ExamFields({
         </p>
       )}
     </>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-osce-body font-semibold text-b2b-headline">{label}</label>
-      {children}
-    </div>
   );
 }

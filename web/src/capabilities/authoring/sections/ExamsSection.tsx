@@ -126,6 +126,7 @@ export function ExamsSection() {
                       attempts: String(exam.station_attempt_limit),
                       partnerPilot: exam.partner_pilot,
                       rubricVersionId: exam.rubric_version_id ?? "",
+                      settings: exam.settings ?? blankExam.settings,
                     });
                     setEditing(exam);
                   }}
@@ -196,6 +197,7 @@ export function ExamsSection() {
               station_attempt_limit: Number(form.attempts),
               partner_pilot: form.partnerPilot,
               rubric_version_id: form.rubricVersionId || null,
+              settings: form.settings,
             });
             setCreating(false);
           })
@@ -223,6 +225,7 @@ export function ExamsSection() {
               station_attempt_limit: Number(form.attempts),
               partner_pilot: form.partnerPilot,
               rubric_version_id: form.rubricVersionId || null,
+              settings: form.settings,
             });
             setEditing(null);
           })
