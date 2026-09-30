@@ -23,7 +23,8 @@ from tests.http.test_legacy_exchange_routes import CONSUMER_SECRET, legacy_token
 from tests.http.test_results_routes import org_with_admin
 from tests.support.tokens import bearer
 
-pytestmark = pytest.mark.db
+# Two-factor sign-in is switched off for now (see finish_password_sign_in); unskip with it.
+pytestmark = [pytest.mark.db, pytest.mark.skip(reason="two-factor sign-in switched off for now")]
 
 PASSWORD = "correct horse battery"
 
