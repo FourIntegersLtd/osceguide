@@ -48,17 +48,27 @@ Each kind is its own root, keyed to the slot or circuit it concerns.
 None.
 
 ## Scoring
-`scoring.py` is the arithmetic a cohort is ranked on, ported from b2b's
-`cohort_scoring.py` and pinned by `tests/unit/test_cohort_scoring_oracle.py`:
-R/A/G is worth 33/66/100, a domain takes the majority of its skills with ties
-resolving downward, a station is the mean of its domains, and a GP lead's
-skill-level rating is *overlaid and recomputed* while a domain-level rating
-replaces the domain outright. `dashboard` asks for it through this slice's
-service; the numbers decide who a reviewer looks at first, so they belong to
-the slice that owns what a rating means.
+`scoring.py` is the arithmetic a cohort is ranked on, first ported from b2b's
+`cohort_scoring.py` and pinned by `tests/unit/test_cohort_scoring_oracle.py`
+(still b2b's numbers on the seeded SCA rubric). It holds no rating values of
+its own: what a rating is worth, and how several combine, come from the
+sitting's rubric through `rubrics.service_scoring`. A domain's reviewer
+ratings combine by `combine_reviewers` (a scale: the most common, ties
+downward; a range: the mean; a boolean: the majority, a tie is not met); a
+domain scores that rating as a percent of the maximum (`rating_percent`); a
+station is the mean of its domains; and a GP lead's skill-level rating is
+*overlaid and recomputed* while a domain-level rating replaces the domain
+outright. Pass is the rubric's own pass line (`passed`), none when it sets
+none. A rating outside the rubric's rating is refused `invalid_rating` (422).
+The GP-lead verdict itself stays G/A/R: it is a decision, not a mark.
+`dashboard` asks for it through this slice's service; the numbers decide who a
+reviewer looks at first, so they belong to the slice that owns what a rating
+means.
 
 ## Cross-slice dependencies
 None outward. `sittings` calls `slot_has_review` to decide whether a circuit is
 still editable. A review cannot be completed until every scoring domain on the
 sitting's bound rubric version is scored: `service._required_domains` asks
-`sittings.rubric_version_for_slot`, then `rubrics.reviewable_domains_for_version`.
+`sittings.rubric_version_for_slot`, then the scoring domains of that version's
+rubric. The review reads carry that rubric's `rating` and `review_form` (every
+path a reviewer may set), so a screen draws the form without knowing the exam.

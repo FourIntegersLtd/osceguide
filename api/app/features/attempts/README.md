@@ -73,6 +73,17 @@ which owns the counter beside them.
 | GET | `/api/worker/attempts/{id}` | worker secret | `{attempt, scenario}`, no evaluation policy |
 | POST | `/api/worker/attempts/{id}/transcript-chunks` | worker secret | idempotent |
 | POST | `/api/worker/attempts/{id}/transcript` | worker secret | exactly once; enqueues scoring |
+| POST | `/api/v1/{platform,orgs/{org_slug}}/rubrics/{id}/versions/{n}/trial` | platform admin / org admin | trial mark (below) |
+
+**Trial mark** (`service_trial.py`, `router_trial.py`, rubric plan §8). A rubric
+version of the caller's own, a draft included, marked by the real engine
+against `{transcript}` (pasted, `Speaker: text` lines; `Doctor`/`Dr`/`Candidate`
+... are the candidate) or `{attempt_id}` (one of the caller's own attempts).
+Everything refusable is refused before the stream opens (422
+`invalid_rubric`/`invalid_trial_transcript`, 404, 429, 503
+`marker_unavailable`). The stream is `connected`, a `snapshot` (`TrialMarkRead`)
+every 5 s while `marking`, then one `marked` (marks + totals) or `failed`
+snapshot. A `POST`, so browsers read it with `fetch`. It stores nothing.
 
 ## Jobs
 `score_attempt` — runs the engine evaluator against a completed transcript and

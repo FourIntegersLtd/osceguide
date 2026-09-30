@@ -111,18 +111,18 @@ yours is the same refusal as asking for the circuit, and the frontend should
 not have two codes for it.
 
 ## Performance
-`performance.py` reads the marking engine's document into a score per domain
-and `service_performance.py` aggregates those across somebody's marked
-attempts at one exam. The arithmetic is `reviews`' throughout — the majority
-rating per domain, ties resolved downward, domains equally weighted — because
-an institution ranks its cohort on those numbers and a person's own dashboard
-must not quietly use different ones.
+`service_performance.py` scores each of somebody's marked attempts at one exam
+by the rubric it was marked with (`rubrics.service_scoring.result_totals` over
+the frozen structure and display), then aggregates: a domain's `value` is in
+the rubric's own unit (a sum, a mean, a share) and `score` is its 0-100
+fraction, averaged across the attempts that scored it. The payload carries the
+rubric's `display` and `rating`, so a chart labels values natively, and says
+when the attempts span several rubric versions (`mixed_versions`).
 
-"Pass" is stated once, as `service_performance.PASS_SCORE`: no seeded rubric
-carries a pass mark, so an attempt passes when its score is at least an amber
-(66.0). Passes and fails therefore sum to one, and a red anywhere is reported
-separately, because a passing attempt can still hold a competency worth a
-conversation.
+Pass comes from each rubric's own pass line. A rubric with none (SCA) has a
+null `pass_rate` and `fail_rate` rather than an invented one; only attempts its
+rubric could judge count. Critical concerns are reported separately, because a
+passing attempt can still hold a competency worth a conversation.
 
 The rubric's domains come from the marking snapshot rather than from a read of
 the rubric, so the ids used here are the keys the result document actually

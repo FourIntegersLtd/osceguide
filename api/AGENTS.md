@@ -17,6 +17,9 @@ feature slice is built, tests first) and `docs/README.md` (the doc map) first.
 - **B2B defines its own exams.** Platform exams are the consumer catalogue; an
   institution never waits on them (ADR 0017).
 - Errors are `AppError` subclasses; clients branch on `code`, never `message`.
+- **Per-exam behaviour lives in `exams.settings`** (`catalog.schemas.ExamSettings`):
+  date label, session modes, station subtypes, generation prompts. Never branch
+  on an exam code; `tests/guards/test_no_exam_code_branches.py` fails on it.
 
 ## Commands
 
@@ -60,8 +63,25 @@ make guards                                    # tests/guards only, fast
   as `PYTHONPATH=. poetry run python some_script.py` from `backend/platform-api`
   — pytest's own `pythonpath` config doesn't apply outside it. Needed to prove
   the E-4 erasure job against a real row rather than only through pytest.
-- The e2e run (`pytest -m e2e`) installs `aiohttp` and the LiveKit SDK. Remove
-  them afterwards or `make typecheck` fails on `voice/adapter.py`.
+- **A stored rubric structure is version 1 or version 2.** Never read
+  `structure["domains"]` or `structure["scale"]`: read it through
+  `rubrics.service.domain_titles` or `rubrics.domain.parse_structure`, which
+  upgrade version 1 on read. The dashboard did, and a republished version 2
+  rubric would have emptied it with every test green.
+- The e2e run (`pytest -m e2e`) needs the LiveKit `livekit` (rtc) package in
+  this venv; `aiohttp` and `livekit-api` are already locked dependencies, so
+  remove only `livekit` afterwards. `tests/conftest.py` blanks `OPENAI_API_KEY`
+  for every test; the e2e fixture alone restores it. A station with no
+  `patient_information` (or template layout) renders degraded, is never frozen,
+  and its attempt is silently never marked ("not queueing a marking" in the API
+  log) while the e2e still passes: check the stored result, not the test.
+- **Another slice imports only `service*`, `schemas`, `errors` and `jobs`**, a
+  `domain.py` imports no other slice, and one slice's `schemas` may not import
+  another's (`tests/guards`). A read shape two slices return goes in
+  `app/core/schemas.py`; rubric arithmetic is `rubrics.service_scoring`.
+- **A stored result payload is the marks alone**, validated by the rubric's
+  derived schema (`additionalProperties: false`). The model is the row's
+  `model_used` column; rows scored before 2026-09-30 also carry it in the payload.
 - **A failed request rolls back the whole test's session, not just itself.**
   `tests/conftest.py`'s `override_get_session` hands every request in one HTTP
   test the same `db_session`. A 422, or any `AppError` with the default
@@ -71,6 +91,20 @@ make guards                                    # tests/guards only, fast
   raises `MissingGreenlet` far from the real cause. Capture ids into a plain
   variable as soon as you create the row, and put a request expected to fail
   after any request whose committed effect the test still relies on.
+- **A rubric draft may be invalid.** Create and edit save any structure; only
+  publish refuses. Read a version's `problems` (or `parse_structure` it) before
+  treating a stored draft as markable; `service_marking.trial_rubric` does.
+- **The evaluator runs the engine in a thread** (`asyncio.to_thread`); a
+  cancelled caller cannot stop it. The trial stream drops its answer.
+- **Cleaning up an e2e run's leftover rows: delete users before stations.**
+  `attempts.user_id → users` and `assessment_results/transcripts/transcript_messages/refresh_chains
+  .attempt_id or .user_id → …` all cascade, so deleting the e2e users alone
+  removes their attempts and everything hung off them. But
+  `attempts.station_version_id → station_versions` is `RESTRICT`, so deleting
+  the e2e-created stations (which cascades to their `station_versions`) first
+  fails while a live attempt still points at one. Delete the users, then the
+  stations, in one transaction; check row counts by email/title and
+  `created_at` before either delete, on the local docker DB only.
 - **A mutation on a `Timestamps` row must `session.refresh()` it before
   returning, if the caller reads `updated_at`.** `onupdate=func.now()` runs in
   Postgres, so the ORM object is left expired after the `UPDATE`; reading the
