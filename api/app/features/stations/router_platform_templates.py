@@ -36,10 +36,21 @@ _LIFECYCLE = (
     responses=error_responses(*_AUTH),
 )
 async def list_platform_station_templates(
-    admin: PlatformAdmin, session: Session, page: Annotated[CursorParams, Depends()]
+    admin: PlatformAdmin,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    search: str | None = None,
+    exam_code: str | None = None,
+    published_only: bool = False,
 ) -> Page[schemas.StationTemplateRead]:
     templates, next_cursor = await service_templates.list_templates(
-        session, None, limit=page.limit, cursor=page.cursor
+        session,
+        None,
+        limit=page.limit,
+        cursor=page.cursor,
+        search=search,
+        exam_code=exam_code,
+        published_only=published_only,
     )
     return Page(items=templates, next_cursor=next_cursor)
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -187,21 +188,34 @@ async def record_redemption(
 
 
 async def my_redeemed_referrals_page(
-    session: AsyncSession, *, referrer_user_id: uuid.UUID, limit: int
-) -> list[Referral]:
-    """This person's own redeemed referrals, newest first, up to `limit` of them.
+    session: AsyncSession,
+    *,
+    referrer_user_id: uuid.UUID,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    matching_referee_ids: Sequence[uuid.UUID] | None = None,
+) -> tuple[list[Referral], str | None]:
+    """This person's own redeemed referrals, newest first, keyset-paginated.
 
-    Not keyset-paginated like the admin queue: the frontend does its own
-    client-side paging and searching over a single, larger fetch (up to 500
-    rows), so a plain offset-free `LIMIT` is all this needs.
+    `matching_referee_ids` narrows to referrals whose `referred_user_id` is in
+    the set — the caller resolves a `search` string to matching user ids first
+    (`identity.service.user_ids_matching`), since the referral row itself
+    carries no email and this repository does not own `identity.User`.
     """
-    stmt = (
-        select(Referral)
-        .where(Referral.referrer_user_id == referrer_user_id, Referral.redeemed_at.is_not(None))
-        .order_by(Referral.redeemed_at.desc())
-        .limit(limit)
+    stmt = select(Referral).where(
+        Referral.referrer_user_id == referrer_user_id, Referral.redeemed_at.is_not(None)
     )
-    return list((await session.execute(stmt)).scalars())
+    if matching_referee_ids is not None:
+        stmt = stmt.where(Referral.referred_user_id.in_(matching_referee_ids))
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Referral.redeemed_at,
+        id_col=Referral.id,
+        limit=limit,
+        cursor=cursor,
+        descending=True,
+    )
 
 
 async def redeemed_referrals_page(

@@ -34,6 +34,13 @@ async def list_open_slots(
     page: Annotated[CursorParams, Depends()],
     audience_filter: Annotated[AudienceFilter, Depends()],
     exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    status: Annotated[
+        str | None, Query(pattern="^(available|claimed)$", description="Narrow to one slot status.")
+    ] = None,
+    when: Annotated[
+        str | None,
+        Query(pattern="^(upcoming|past)$", description="Narrow to slots starting before or after now."),
+    ] = None,
 ) -> Page[schemas.PostRead]:
     """Availability and claimed slots this caller can see — the public pool plus every institution and
     group they belong to."""
@@ -45,6 +52,8 @@ async def list_open_slots(
         cursor=page.cursor,
         audience=audience_filter.audience,
         exam_code=exam_code,
+        status=status,
+        when=when,
     )
     return Page(items=posts, next_cursor=next_cursor)
 
@@ -137,10 +146,15 @@ async def list_my_posts(principal: CurrentPrincipal, session: Session) -> Page[s
 async def list_my_sessions(
     principal: CurrentPrincipal,
     session: Session,
+    clock: ClockDep,
     page: Annotated[CursorParams, Depends()],
+    when: Annotated[
+        str | None,
+        Query(pattern="^(upcoming|past)$", description="Narrow to sessions still joinable, or not."),
+    ] = None,
 ) -> Page[schemas.PeerSessionRead]:
     peer_sessions, next_cursor = await service.list_my_sessions(
-        session, principal.user_id, limit=page.limit, cursor=page.cursor
+        session, principal.user_id, limit=page.limit, cursor=page.cursor, now=clock.now(), when=when
     )
     return Page(items=peer_sessions, next_cursor=next_cursor)
 

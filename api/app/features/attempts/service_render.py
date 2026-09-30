@@ -85,6 +85,7 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
         title=station.title,
         content=station.content,
         examiner_context=str(context) if (context := rendered.get("examiner_context")) else None,
+        candidate_brief=stations.candidate_brief_text(station.sections),
     )
     definition = domain_definition.definition_payload(
         attempt_id=str(attempt.id),

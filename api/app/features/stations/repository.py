@@ -163,8 +163,13 @@ async def list_for_org(
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
+    include_archived: bool = False,
 ) -> tuple[list[Station], str | None]:
-    """A page of this org's stations, newest first, optionally filtered by exam or title."""
+    """A page of this org's stations, newest first, optionally filtered by exam, title or status.
+
+    Archived stations are left out by default — `include_archived` is the only way back in — since a
+    list an author browses to keep working on is, by default, the stations still in use.
+    """
     stmt = select(Station).where(owned_by(Station, org_id))
     if exam_id is not None:
         stmt = stmt.where(Station.exam_id == exam_id)
@@ -173,6 +178,8 @@ async def list_for_org(
         # title fragment, in SQL, so a term matches the whole catalogue rather
         # than only the page the screen had already walked.
         stmt = stmt.where(Station.title.ilike(f"%{search.strip()}%"))
+    if not include_archived:
+        stmt = stmt.where(Station.status != "archived")
     return await _station_page(session, stmt, limit=limit, cursor=cursor)
 
 
@@ -277,3 +284,16 @@ async def versions_with_stations_any_owner(
         .where(StationVersion.id.in_(list(version_ids)))
     )
     return [(version, station) for version, station in (await session.execute(stmt)).all()]
+
+
+async def version_ids_matching_title(session: AsyncSession, search: str) -> list[uuid.UUID]:
+    """Ids of every station version whose station's title contains `search`, case-insensitively.
+
+    For another slice's list to filter on a station title without importing this slice's models.
+    """
+    stmt = (
+        select(StationVersion.id)
+        .join(Station, Station.id == StationVersion.station_id)
+        .where(Station.title.ilike(f"%{search}%"))
+    )
+    return list((await session.execute(stmt)).scalars())

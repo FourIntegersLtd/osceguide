@@ -3,87 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Mapping
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.peer_practice.models import PracticeSession
-from app.features.peer_practice.schemas import (
-    PracticeCandidateScenarioRead,
-    PracticeDoctorInformationRead,
-    PracticeManagementPlanRead,
-    PracticePatientRoleplayRead,
-    PracticeSessionRead,
-    PracticeStationRead,
-    PracticeStationTeachingRead,
-)
+from app.features.peer_practice.schemas import PracticeSessionRead, PracticeStationRead
+from app.features.stations import service as stations_service
 from app.features.stations import service_reads as stations
-
-_PATIENT_KEYS = ("patient_information", "patient_info")
-_SCENARIO_KEYS = (
-    "station_type",
-    "clinical_scenario_title",
-    "clinical_scenario",
-    "radiograph_image_url",
-    "additional_image_urls",
-    "background_overview",
-    "patient_list_for_candidate",
-    "duration_minutes",
-)
-_TEACHING_KEYS = (
-    "key_concerns",
-    "history_overview",
-    "examination_overview",
-    "investigations_overview",
-    "management_overview",
-    "interview_questions",
-    "references",
-    "examiner_additional_info",
-    "suggested_order_overview",
-    "suggested_order",
-    "communication_themes",
-    "consent_approach",
-    "breaking_bad_news_framework",
-    "professional_conduct_topics",
-    "key_learning_points",
-    "portfolio_themes",
-)
-
-
-def _block(content: Mapping[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
-    """The first of these keys whose value is itself a nested object, or empty.
-
-    Fields authored as `null` are dropped: they mean "not given", and passing
-    them through made a list field such as `recent_notes` fail validation, so
-    every read of that session was a 500.
-    """
-    for key in keys:
-        candidate = content.get(key)
-        if isinstance(candidate, Mapping):
-            return {field: value for field, value in candidate.items() if value is not None}
-    return {}
-
-
-def _text(value: Any) -> str | None:
-    """The value as trimmed text, or `None` for nothing worth showing."""
-    if value is None:
-        return None
-    stripped = str(value).strip()
-    return stripped or None
-
-
-def _lines(value: Any) -> list[str]:
-    """The value as a list of non-empty lines, whatever shape it was authored in."""
-    if value is None:
-        return []
-    if isinstance(value, str):
-        return [value.strip()] if value.strip() else []
-    if isinstance(value, Mapping):
-        return [str(entry).strip() for entry in value.values() if str(entry).strip()]
-    if isinstance(value, (list, tuple)):
-        return [str(entry).strip() for entry in value if str(entry).strip()]
-    return [str(value).strip()]
 
 
 async def session_read(
@@ -182,64 +108,34 @@ async def station_read_for_version(
     mat = await stations.version_material(session, None, station_version_id)
     if mat is None:
         return None
-    return _station_payload(mat, is_doctor=is_doctor, reveal_review=reveal_review)
+    return await _station_payload(session, mat, is_doctor=is_doctor, reveal_review=reveal_review)
 
 
-def _station_payload(
-    mat: stations.VersionMaterial, *, is_doctor: bool, reveal_review: bool
+async def _station_payload(
+    session: AsyncSession, mat: stations.VersionMaterial, *, is_doctor: bool, reveal_review: bool
 ) -> PracticeStationRead:
-    """Shape one station's raw content into the wire read model.
+    """Shape one station's template-audience sections into the wire read model.
 
-    Hides what this role and phase should not see yet.
+    The candidate audience is always visible — it is the doctor's own brief.
+    The patient audience, hidden blocks included, is the actor's script: read
+    by whoever is not playing the doctor, or by the doctor too once the
+    debrief has revealed it. The examiner audience — the model answer and the
+    marking guidance — is read by neither until `reveal_review`, the same
+    moment an attempt's own review opens.
     """
-    content: dict[str, Any] = mat.content or {}
-    patient = _block(content, _PATIENT_KEYS)
-    doctor = _block(content, ("doctor_information",))
-    plan = _block(content, ("management_plan",))
-    reading = _text(content.get("reading_brief") or doctor.get("reading_brief") or "")
-    patient_script = _text(
-        patient.get("patient_script") or patient.get("script") or content.get("patient_script") or ""
-    )
-    management = _text(plan.get("management_plan") or plan.get("plan") or "")
-    scenario = {key: content[key] for key in _SCENARIO_KEYS if content.get(key) is not None} or None
-    teaching = {key: content[key] for key in _TEACHING_KEYS if content.get(key) is not None}
-    actor = (
-        PracticePatientRoleplayRead(
-            **{
-                key: _lines(patient.get(key))
-                for key in (
-                    "idea",
-                    "concerns",
-                    "expectation",
-                    "family_social_history",
-                    "past_med_history_allergies",
-                    "questions",
-                )
-            },
-            **{
-                key: _text(patient.get(key))
-                for key in (
-                    "patient_biodata",
-                    "gender",
-                    "opening_sentence",
-                    "expanded_history",
-                    "persona",
-                )
-            },
-        )
-        if patient
-        else None
+    audiences = ["candidate"]
+    include_hidden = not is_doctor
+    if reveal_review:
+        audiences.extend(["patient", "examiner"])
+        include_hidden = True
+    elif not is_doctor:
+        audiences.append("patient")
+    sections = await stations_service.audience_sections(
+        session, mat.template_version_id, mat.content, tuple(audiences), include_hidden=include_hidden
     )
     return PracticeStationRead(
         station_id=mat.station_id,
         station_version_id=mat.version_id,
         title=mat.title,
-        reading_brief=reading,
-        patient_script=patient_script if not is_doctor or reveal_review else None,
-        management_plan=management if reveal_review else None,
-        doctor_information=PracticeDoctorInformationRead(**doctor) if doctor else None,
-        patient_information=actor if not is_doctor or reveal_review else None,
-        management=PracticeManagementPlanRead(**plan) if plan and reveal_review else None,
-        scenario=PracticeCandidateScenarioRead(**scenario) if scenario else None,
-        teaching=PracticeStationTeachingRead(**teaching) if teaching and reveal_review else None,
+        sections=sections,
     )

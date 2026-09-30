@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -34,9 +34,14 @@ async def categories(
     responses=error_responses(Unauthenticated),
 )
 async def articles(
-    principal: CurrentPrincipal, exam_code: schemas.ExamCode = "sca", category: str | None = None
+    principal: CurrentPrincipal,
+    exam_code: schemas.ExamCode = "sca",
+    category: str | None = None,
+    search: Annotated[
+        str | None, Query(max_length=300, description="A fragment of a title or a body.")
+    ] = None,
 ) -> schemas.HelpArticles:
-    return schemas.HelpArticles(articles=service_help.list_articles(exam_code, category))
+    return schemas.HelpArticles(articles=service_help.list_articles(exam_code, category, search))
 
 
 @router.get(

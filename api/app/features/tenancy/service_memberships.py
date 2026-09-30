@@ -42,10 +42,37 @@ def _guard_role_grant(actor: Principal, org_id: uuid.UUID, role: str) -> None:
 
 
 async def list_memberships(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    search: str | None = None,
 ) -> tuple[list[MembershipRead], str | None]:
-    """A page of an organisation's memberships, with each person's email attached."""
-    memberships, next_cursor = await repository.list_memberships(session, org_id, limit=limit, cursor=cursor)
+    """A page of an organisation's memberships, with each person's email attached.
+
+    `search`, if given, narrows to a membership whose role or person matches
+    it: role by substring, person by email or name (resolved through
+    `identity`, which owns that table), or by their id typed in exactly.
+    """
+    term = (search or "").strip()
+    matching_user_ids: list[uuid.UUID] = []
+    exact_user_id: uuid.UUID | None = None
+    if term:
+        matching_user_ids = await identity.user_ids_matching(session, term)
+        try:
+            exact_user_id = uuid.UUID(term)
+        except ValueError:
+            exact_user_id = None
+    memberships, next_cursor = await repository.list_memberships(
+        session,
+        org_id,
+        limit=limit,
+        cursor=cursor,
+        role_pattern=f"%{term}%" if term else None,
+        matching_user_ids=matching_user_ids,
+        exact_user_id=exact_user_id,
+    )
     # The addresses are read for the page instead of being left null. A team
     # list without an email can only show the front of a user id, which is a
     # uuid printed as if it were a name; the one join is the whole of the fix.

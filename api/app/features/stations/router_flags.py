@@ -48,12 +48,23 @@ async def report_station(
 
 @router.get(
     "/me/station-flags",
-    response_model=list[schemas.StationFlagRead],
+    response_model=Page[schemas.StationFlagRead],
     responses=error_responses(Unauthenticated),
 )
-async def my_reports(principal: CurrentPrincipal, session: Session) -> list[schemas.StationFlagRead]:
-    """What this person has reported, so the runner's button and the list agree."""
-    return await service_flags.my_reports(session, principal.user_id)
+async def my_reports(
+    principal: CurrentPrincipal,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    search: str | None = None,
+) -> Page[schemas.StationFlagRead]:
+    """What this person has reported, so the runner's button and the list agree.
+
+    `search` is an ILIKE match on the reported station's title.
+    """
+    items, next_cursor = await service_flags.my_reports(
+        session, principal.user_id, limit=page.limit, cursor=page.cursor, search=search
+    )
+    return Page(items=items, next_cursor=next_cursor)
 
 
 @router.get(

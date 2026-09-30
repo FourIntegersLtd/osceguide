@@ -12,13 +12,27 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import case, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
 from app.features.attempts.domain import Status
 from app.features.attempts.models import Attempt, AttemptLiveCoverage
+
+# The product's names for `Attempt.kind`, exactly as
+# `platform-web/src/capabilities/transcripts/api.ts`'s `KIND_LABELS` spells
+# them — `search` on `/me/attempts` has to match what a person typed against
+# the same word the table renders, not the raw column value.
+_KIND_LABEL_CASE = case(
+    (Attempt.kind == "practice", "Practice"),
+    (Attempt.kind == "set_station", "Mock station"),
+    (Attempt.kind == "debrief", "Debrief"),
+    (Attempt.kind == "self_practice", "Self practice"),
+    (Attempt.kind == "exam_slot", "Exam station"),
+    (Attempt.kind == "peer", "Peer session"),
+    else_=Attempt.kind,
+)
 
 
 async def create_attempt(
@@ -150,8 +164,21 @@ async def list_for_user(
     station_version_id: uuid.UUID | None = None,
     set_entry_id: uuid.UUID | None = None,
     status: Status | None = None,
+    search: str | None = None,
+    matching_exam_ids: Sequence[uuid.UUID] | None = None,
+    transcribable_only: bool = False,
 ) -> tuple[list[Attempt], str | None]:
-    """This person's attempts, newest first, optionally narrowed to one station, set entry or status."""
+    """This person's attempts, newest first, optionally narrowed to one station, set entry or status.
+
+    `search` matches the attempt's kind, spelled the way the transcript table
+    shows it (`_KIND_LABEL_CASE`), or the exam's code via `matching_exam_ids` —
+    the caller resolves `search` against exam codes first
+    (`catalog.service.exam_ids_matching_code`), since looking up `Exam` rows
+    here would reach across the slice boundary this repository does not own.
+    `transcribable_only` is `listTranscribableAttempts`' own rule: an attempt
+    still `created` never reached the room, so there is nothing to transcribe
+    yet.
+    """
     stmt = select(Attempt).where(Attempt.user_id == user_id)
     if station_version_id is not None:
         stmt = stmt.where(Attempt.station_version_id == station_version_id)
@@ -159,6 +186,13 @@ async def list_for_user(
         stmt = stmt.where(Attempt.set_entry_id == set_entry_id)
     if status is not None:
         stmt = stmt.where(Attempt.status == str(status))
+    if transcribable_only:
+        stmt = stmt.where(Attempt.status != str(Status.CREATED))
+    if search:
+        conditions = [_KIND_LABEL_CASE.ilike(f"%{search}%")]
+        if matching_exam_ids:
+            conditions.append(Attempt.exam_id.in_(matching_exam_ids))
+        stmt = stmt.where(or_(*conditions))
     return await keyset_page(
         session, stmt, sort_col=Attempt.created_at, id_col=Attempt.id, limit=limit, cursor=cursor
     )

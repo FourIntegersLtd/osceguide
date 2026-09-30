@@ -206,6 +206,94 @@ async def test_an_org_admin_cannot_write_the_library(client: AsyncClient, make_a
     assert response.status_code == 403
 
 
+async def test_the_platform_station_list_filters_by_exam_code(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    await create_exam(client, admin, code="casc")
+    await client.post(
+        "/api/v1/platform/stations",
+        json={"title": "COPD exacerbation", "exam_code": "sca", "content": CONTENT},
+        headers=bearer(admin),
+    )
+    await client.post(
+        "/api/v1/platform/stations",
+        json={"title": "Low mood", "exam_code": "casc", "content": CONTENT},
+        headers=bearer(admin),
+    )
+
+    response = await client.get(
+        "/api/v1/platform/stations", params={"exam_code": "casc"}, headers=bearer(admin)
+    )
+    assert response.status_code == 200, response.text
+    assert [s["title"] for s in response.json()["items"]] == ["Low mood"]
+
+
+async def test_the_platform_station_list_excludes_archived_by_default(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+
+    await client.post(f"{station_path}/versions/1/archive", headers=bearer(admin))
+
+    default = await client.get("/api/v1/platform/stations", headers=bearer(admin))
+    assert default.json()["items"] == []
+
+    included = await client.get(
+        "/api/v1/platform/stations", params={"include_archived": "true"}, headers=bearer(admin)
+    )
+    assert [s["title"] for s in included.json()["items"]] == ["COPD exacerbation"]
+
+
+async def test_the_platform_template_list_filters_by_search_exam_and_published(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    await create_exam(client, admin, code="casc")
+
+    sca_template = await client.post(
+        "/api/v1/platform/station-templates",
+        json={"title": "SCA consultation", "exam_code": "sca", "structure": TEMPLATE},
+        headers=bearer(admin),
+    )
+    assert sca_template.status_code == 201, sca_template.text
+    await client.post(
+        f"/api/v1/platform/station-templates/{sca_template.json()['id']}/publish", headers=bearer(admin)
+    )
+    casc_template = await client.post(
+        "/api/v1/platform/station-templates",
+        json={"title": "CASC role-play", "exam_code": "casc", "structure": TEMPLATE},
+        headers=bearer(admin),
+    )
+    assert casc_template.status_code == 201, casc_template.text
+    unscoped_template = await client.post(
+        "/api/v1/platform/station-templates",
+        json={"title": "Generic form", "exam_code": None, "structure": TEMPLATE},
+        headers=bearer(admin),
+    )
+    assert unscoped_template.status_code == 201, unscoped_template.text
+
+    # `search` matches a title fragment.
+    searched = await client.get(
+        "/api/v1/platform/station-templates", params={"search": "consult"}, headers=bearer(admin)
+    )
+    assert [t["title"] for t in searched.json()["items"]] == ["SCA consultation"]
+
+    # `exam_code` matches that exam plus every exam-agnostic template.
+    scoped = await client.get(
+        "/api/v1/platform/station-templates", params={"exam_code": "sca"}, headers=bearer(admin)
+    )
+    assert {t["title"] for t in scoped.json()["items"]} == {"SCA consultation", "Generic form"}
+
+    # `published_only` keeps only the template with a published version.
+    published = await client.get(
+        "/api/v1/platform/station-templates", params={"published_only": "true"}, headers=bearer(admin)
+    )
+    assert [t["title"] for t in published.json()["items"]] == ["SCA consultation"]
+
+
 async def test_an_org_builds_its_own_station_on_a_platform_template(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """The shape is shared downward; the content stays the institution's own."""
     admin = await admin_token(make_actor)

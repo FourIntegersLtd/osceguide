@@ -32,14 +32,23 @@ def _catalogue() -> tuple[list[HelpCategory], list[HelpArticle]]:
     return categories, articles
 
 
-def list_articles(exam_code: str, category: str | None = None) -> list[HelpArticle]:
-    """This exam's published articles, in this category if one is given."""
+def list_articles(
+    exam_code: str, category: str | None = None, search: str | None = None
+) -> list[HelpArticle]:
+    """This exam's published articles, in this category if one is given.
+
+    `search` matches a fragment of the title or the body, case-insensitively —
+    this catalogue is a small, cached, in-memory list rather than a database
+    table, so the match is a plain substring test rather than an `ILIKE`.
+    """
+    term = search.strip().lower() if search else None
     return sorted(
         (
             article
             for article in _catalogue()[1]
             if ("all" in article.exam_codes or exam_code in article.exam_codes)
             and (category is None or article.category_slug == category)
+            and (term is None or term in article.title.lower() or term in article.body_md.lower())
         ),
         key=lambda article: (article.sort_order, article.title),
     )

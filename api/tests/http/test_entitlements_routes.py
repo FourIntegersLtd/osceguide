@@ -58,6 +58,47 @@ async def test_an_institution_grants_and_the_student_sees_it(client: AsyncClient
     assert [e["id"] for e in listed.json()["items"]] == [granted.json()["id"]]
 
 
+async def test_org_entitlements_can_be_searched_by_grantee_or_exam_code(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    await make_actor("priya@ashford.ac.uk")
+    await make_actor("other@ashford.ac.uk")
+    root = await make_actor("root-search@osceguide.com", platform_admin=True)
+    await create_exam(client, root, code="mrcp")
+
+    priya_grant = (
+        await client.post(
+            "/api/v1/orgs/kings/entitlements",
+            json={"email": "priya@ashford.ac.uk", "exam_code": "plab"},
+            headers=bearer(admin),
+        )
+    ).json()
+    other_grant = (
+        await client.post(
+            "/api/v1/orgs/kings/entitlements",
+            json={"email": "other@ashford.ac.uk", "exam_code": "mrcp"},
+            headers=bearer(admin),
+        )
+    ).json()
+
+    by_email = await client.get(
+        "/api/v1/orgs/kings/entitlements", params={"search": "priya"}, headers=bearer(admin)
+    )
+    assert [e["id"] for e in by_email.json()["items"]] == [priya_grant["id"]]
+
+    by_exam_code = await client.get(
+        "/api/v1/orgs/kings/entitlements", params={"search": "mrcp"}, headers=bearer(admin)
+    )
+    assert [e["id"] for e in by_exam_code.json()["items"]] == [other_grant["id"]]
+
+    no_match = await client.get(
+        "/api/v1/orgs/kings/entitlements", params={"search": "nobody-like-this"}, headers=bearer(admin)
+    )
+    assert no_match.json()["items"] == []
+    assert no_match.json()["next_cursor"] is None
+
+
 async def test_a_grant_can_be_withdrawn_and_stays_on_record(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
     student = await make_actor("leaver@ashford.ac.uk")

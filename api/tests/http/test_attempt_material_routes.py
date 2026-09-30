@@ -20,6 +20,7 @@ from app.features.attempts import repository as attempts_repo
 from app.features.entitlements import repository as ent_repo
 from app.features.identity import repository as identity_repo
 from app.features.stations import repository as stations_repo
+from app.features.stations import repository_templates as templates_repo
 from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 
@@ -63,6 +64,81 @@ STATION_CONTENT = {
     "key_concerns": ["Missed ACS"],
 }
 
+# The template these tests bind every station to. Section ids match
+# `STATION_CONTENT`'s nested keys, so `domain_content.content_for_template`
+# lifts each nested block onto its own id the same way a platform-authored
+# template's does; block ids are a block's own id within that nested dict.
+# `escalation` names no schema anywhere — it is declared here and nowhere
+# else, which is the point of `test_a_station_key_no_schema_names_still_reaches_the_client`.
+TEMPLATE_STRUCTURE = {
+    "schemaVersion": 1,
+    "sections": [
+        {
+            "id": "doctor_information",
+            "title": "Doctor information",
+            "audience": "candidate",
+            "blocks": [
+                {"id": "patient_biodata", "type": "text", "label": "Patient", "role": "candidate_brief"},
+                {"id": "recent_notes", "type": "list", "label": "Notes", "role": "candidate_brief"},
+                {
+                    "id": "current_medications",
+                    "type": "list",
+                    "label": "Medications",
+                    "role": "candidate_brief",
+                },
+                {"id": "past_medical_history", "type": "list", "label": "History", "role": "candidate_brief"},
+                {
+                    "id": "social_history",
+                    "type": "list",
+                    "label": "Social history",
+                    "role": "candidate_brief",
+                },
+                {
+                    "id": "recent_investigations",
+                    "type": "list",
+                    "label": "Investigations",
+                    "role": "candidate_brief",
+                },
+                {"id": "photos", "type": "list", "label": "Photos", "role": "candidate_brief"},
+                {"id": "task_instructions", "type": "text", "label": "Task", "role": "candidate_brief"},
+            ],
+        },
+        {
+            "id": "patient_information",
+            "title": "Patient information",
+            "audience": "patient",
+            "blocks": [
+                {"id": "patient_biodata", "type": "text", "label": "Patient", "role": "persona"},
+                {"id": "gender", "type": "text", "label": "Gender", "role": "persona"},
+                {"id": "idea", "type": "list", "label": "Idea", "role": "hidden"},
+                {"id": "concerns", "type": "list", "label": "Concerns", "role": "hidden"},
+                {"id": "expectation", "type": "list", "label": "Expectation", "role": "hidden"},
+                {"id": "persona", "type": "text", "label": "Persona", "role": "hidden"},
+                {"id": "opening_sentence", "type": "text", "label": "Opens with", "role": "hidden"},
+                {"id": "expanded_history", "type": "text", "label": "History", "role": "hidden"},
+            ],
+        },
+        {
+            "id": "management_plan",
+            "title": "Management plan",
+            "audience": "examiner",
+            "blocks": [
+                {"id": "explanation", "type": "text", "label": "Explanation", "role": "examiner"},
+                {
+                    "id": "differential_diagnosis",
+                    "type": "list",
+                    "label": "Differentials",
+                    "role": "examiner",
+                },
+                {"id": "immediate_actions", "type": "list", "label": "Immediate actions", "role": "examiner"},
+                {"id": "safety_netting", "type": "text", "label": "Safety netting", "role": "examiner"},
+                {"id": "escalation", "type": "text", "label": "Escalation", "role": "examiner"},
+            ],
+        },
+    ],
+    "layout": {"persona": "patient"},
+}
+
 
 @dataclass(frozen=True)
 class Sat:
@@ -79,13 +155,32 @@ class Sat:
     attempt_id: uuid.UUID
 
 
+async def _template_version(session: AsyncSession, exam_id: uuid.UUID) -> uuid.UUID:
+    """A published template with `TEMPLATE_STRUCTURE`, one per test's exam."""
+    template = await templates_repo.create_template(session, None, exam_id=exam_id, title="Consultation")
+    version = await templates_repo.add_template_version(
+        session, None, template_id=template.id, version=1, structure=TEMPLATE_STRUCTURE
+    )
+    await templates_repo.set_template_version_status(
+        session, None, version.id, status="published", at=NOW, by=None
+    )
+    await session.flush()
+    return version.id
+
+
 async def _station(
     session: AsyncSession, exam_id: uuid.UUID, content: dict | None = None
 ) -> tuple[uuid.UUID, uuid.UUID]:
-    """A published platform-library station, which is what a consumer sits."""
+    """A published platform-library station bound to `TEMPLATE_STRUCTURE`, which is what a consumer sits."""
+    template_version_id = await _template_version(session, exam_id)
     station = await stations_repo.create_station(session, None, exam_id=exam_id, title="Chest pain")
     version = await stations_repo.add_version(
-        session, None, station_id=station.id, version=1, content=content or STATION_CONTENT
+        session,
+        None,
+        station_id=station.id,
+        version=1,
+        content=content or STATION_CONTENT,
+        template_version_id=template_version_id,
     )
     await stations_repo.set_version_status(session, None, version.id, status="published", at=NOW, by=None)
     await session.flush()
@@ -134,8 +229,10 @@ async def test_the_brief_is_readable_as_soon_as_the_attempt_exists(
     assert body["station_id"] == str(sat.station_id)
     assert body["station_version_id"] == str(sat.version_id)
     assert body["exam_code"] == "sca"
-    assert body["doctor_information"]["patient_biodata"] == "Mr Ade Bello, 54"
-    assert body["doctor_information"]["photos"] == ["https://cdn.example.com/ecg.png"]
+    doctor_section = next(s for s in body["sections"] if s["id"] == "doctor_information")
+    blocks = {block["id"]: block["value"] for block in doctor_section["blocks"]}
+    assert blocks["patient_biodata"] == "Mr Ade Bello, 54"
+    assert blocks["photos"] == ["https://cdn.example.com/ecg.png"]
     assert body["patient"]["gender"] == "male"
 
 
@@ -153,9 +250,9 @@ async def test_the_brief_never_carries_the_patient_or_the_plan(
 
     body = (await client.get(f"/api/v1/attempts/{sat.attempt_id}/brief", headers=bearer(token))).json()
 
+    section_ids = {section["id"] for section in body["sections"]}
+    assert section_ids == {"doctor_information"}
     serialised = str(body)
-    assert "management_plan" not in body
-    assert "patient_information" not in body
     assert "Anxious, talks quickly" not in serialised
     assert "Likely stable angina" not in serialised
     assert "Crushing central chest pain" not in serialised
@@ -192,14 +289,16 @@ async def test_the_review_is_the_model_answer_once_the_interaction_is_complete(
 
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["management_plan"]["explanation"] == "Likely stable angina."
-    assert body["management_plan"]["immediate_actions"] == ["ECG", "Troponin"]
-    assert body["patient_information"]["concerns"] == ["Worried about his heart"]
-    # The patient block is narrowed rather than passed through: how the patient
-    # is played stays on the server even after the consultation.
-    assert "persona" not in body["patient_information"]
-    assert "opening_sentence" not in body["patient_information"]
-    assert "expanded_history" not in body["patient_information"]
+    section_ids = {section["id"] for section in body["sections"]}
+    # Candidate again, plus every examiner section — the model answer and the
+    # marking guidance. Not the patient audience: how the patient is played
+    # stays on the server even after the consultation, readable only through
+    # `/attempts/{id}/roleplay` by the candidate who is about to play it back.
+    assert section_ids == {"doctor_information", "management_plan"}
+    plan = next(s for s in body["sections"] if s["id"] == "management_plan")
+    blocks = {block["id"]: block["value"] for block in plan["blocks"]}
+    assert blocks["explanation"] == "Likely stable angina."
+    assert blocks["immediate_actions"] == ["ECG", "Troponin"]
 
 
 async def test_a_station_key_no_schema_names_still_reaches_the_client(
@@ -222,7 +321,9 @@ async def test_a_station_key_no_schema_names_still_reaches_the_client(
 
     body = (await client.get(f"/api/v1/attempts/{sat.attempt_id}/review", headers=bearer(token))).json()
 
-    assert body["management_plan"]["escalation"] == "Refer same day"
+    plan = next(s for s in body["sections"] if s["id"] == "management_plan")
+    blocks = {block["id"]: block["value"] for block in plan["blocks"]}
+    assert blocks["escalation"] == "Refer same day"
 
 
 async def test_an_abandoned_attempt_is_still_reviewable(
@@ -310,6 +411,60 @@ async def test_my_attempts_can_be_narrowed_to_one_station(
     assert response.status_code == 200, response.text
     items = response.json()["items"]
     assert [item["id"] for item in items] == [str(mine.attempt_id)]
+
+
+async def test_my_attempts_search_matches_exam_code_or_kind_label(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The same two fields `TranscriptList` filtered client-side: the exam's
+    code, and the kind spelled the way the transcripts table renders it."""
+    token = await make_actor("search-attempts@example.com")
+    sca_attempt = await _entitled_attempt(db_session, "search-attempts@example.com")
+    plab_exam = await ensure_exam(db_session, "plab")
+    await attempts_repo.create_attempt(
+        db_session,
+        kind="practice",
+        user_id=sca_attempt.user_id,
+        exam_id=plab_exam.id,
+        org_id=None,
+    )
+    await db_session.commit()
+
+    by_exam_code = await client.get("/api/v1/me/attempts", params={"search": "plab"}, headers=bearer(token))
+    by_kind_label = await client.get(
+        "/api/v1/me/attempts", params={"search": "Practice"}, headers=bearer(token)
+    )
+
+    assert by_exam_code.status_code == 200, by_exam_code.text
+    assert [item["exam_code"] for item in by_exam_code.json()["items"]] == ["plab"]
+    # Both attempts are `practice`, so both match the kind label.
+    assert {item["exam_code"] for item in by_kind_label.json()["items"]} == {"sca", "plab"}
+
+
+async def test_my_attempts_transcribable_only_drops_an_attempt_that_never_started(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """`listTranscribableAttempts` dropped anything still `created`: it never
+    reached the room, so there is nothing to transcribe yet."""
+    token = await make_actor("transcribable@example.com")
+    never_started = await _entitled_attempt(db_session, "transcribable@example.com")
+    ran = await attempts_repo.create_attempt(
+        db_session,
+        kind="practice",
+        user_id=never_started.user_id,
+        exam_id=(await ensure_exam(db_session, "sca")).id,
+        org_id=None,
+    )
+    ran_id = ran.id
+    await attempts_repo.set_status(db_session, ran_id, status=domain.Status.RUNNING, at=NOW)
+    await db_session.commit()
+
+    response = await client.get(
+        "/api/v1/me/attempts", params={"transcribable_only": True}, headers=bearer(token)
+    )
+
+    assert response.status_code == 200, response.text
+    assert [item["id"] for item in response.json()["items"]] == [str(ran_id)]
 
 
 async def test_my_attempts_shows_nobody_elses(

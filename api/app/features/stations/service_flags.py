@@ -35,10 +35,21 @@ async def report(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.
     return _read(flag, None, None)
 
 
-async def my_reports(session: AsyncSession, user_id: uuid.UUID) -> list[StationFlagRead]:
-    """What this person has reported, newest first, with the case's title."""
-    reports = await flags.for_reporter(session, user_id)
-    return [_read(flag, title, None) for flag, title in reports]
+async def my_reports(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    search: str | None = None,
+) -> tuple[list[StationFlagRead], str | None]:
+    """What this person has reported, newest first, with the case's title, one page at a time."""
+    page, next_cursor = await flags.for_reporter_page(
+        session, user_id, limit=limit, cursor=cursor, search=search
+    )
+    titles = await flags.titles_by_ids(session, [flag.station_id for flag in page])
+    reads = [_read(flag, titles.get(flag.station_id), None) for flag in page]
+    return reads, next_cursor
 
 
 async def queue(

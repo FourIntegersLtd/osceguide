@@ -13,6 +13,7 @@ import pytest
 from httpx import AsyncClient
 
 from app.core.auth import Membership
+from tests.support.catalog import create_exam
 from tests.support.rubrics import FULL_RUBRIC, MINIMAL_RUBRIC, PACING, SYSTEM_PROMPT, create_rubric
 from tests.support.tokens import bearer
 
@@ -148,6 +149,34 @@ async def test_an_org_authors_its_own_rubric(client: AsyncClient, make_actor) ->
 
     assert rubric["owner_kind"] == "org"
     assert rubric["org_id"] == str(org_id)
+
+
+async def test_platform_rubrics_can_be_searched_by_title(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("search-admin@osceguide.com", platform_admin=True)
+    await create_rubric(client, admin, title="SCA marking")
+    await create_rubric(client, admin, title="PLAB marking")
+
+    response = await client.get("/api/v1/platform/rubrics", params={"search": "sca"}, headers=bearer(admin))
+
+    assert response.status_code == 200, response.text
+    assert [item["title"] for item in response.json()["items"]] == ["SCA marking"]
+
+
+async def test_platform_rubrics_can_be_narrowed_to_the_one_an_exam_uses(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The server-side twin of platform-web's `rubricMatchesExam`: a rubric
+    matches when one of its versions is the exam's current `rubric_version_id`."""
+    admin = await make_actor("exam-match-admin@osceguide.com", platform_admin=True)
+    bound = await create_exam(client, admin, code="sca")
+    await create_rubric(client, admin, title="Unrelated rubric")
+
+    response = await client.get(
+        "/api/v1/platform/rubrics", params={"exam_code": "sca"}, headers=bearer(admin)
+    )
+
+    assert response.status_code == 200, response.text
+    assert [item["id"] for item in response.json()["items"]] == [bound["rubric_id"]]
 
 
 async def test_an_org_sees_the_platform_library_alongside_its_own(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

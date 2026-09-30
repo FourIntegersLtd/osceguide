@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -143,10 +143,32 @@ async def membership_by_id(
 
 
 async def list_memberships(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    role_pattern: str | None = None,
+    matching_user_ids: Sequence[uuid.UUID] | None = None,
+    exact_user_id: uuid.UUID | None = None,
 ) -> tuple[list[Membership], str | None]:
-    """A page of an organisation's memberships, oldest first."""
+    """A page of an organisation's memberships, oldest first.
+
+    `role_pattern`, `matching_user_ids` and `exact_user_id` are the three ways
+    a search term can match a row — its role by `ILIKE`, its person's email or
+    name (resolved to ids by `identity` before this call), or its person's id
+    typed in exactly — combined with `OR`. The caller passes all three or none:
+    a search with no id match still needs `matching_user_ids=[]`, which is not
+    the same as no search at all.
+    """
     stmt = select(Membership).where(Membership.org_id == org_id)
+    if role_pattern is not None:
+        conditions: list[Any] = [Membership.role.ilike(role_pattern)]
+        if matching_user_ids:
+            conditions.append(Membership.user_id.in_(list(matching_user_ids)))
+        if exact_user_id is not None:
+            conditions.append(Membership.user_id == exact_user_id)
+        stmt = stmt.where(or_(*conditions))
     return await keyset_page(
         session,
         stmt,

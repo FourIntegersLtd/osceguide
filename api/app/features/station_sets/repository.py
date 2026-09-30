@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -267,14 +267,45 @@ async def set_entry_flag(
     )
 
 
-async def flagged_entries_for_owner(
-    session: AsyncSession, owner_user_id: uuid.UUID
-) -> list[tuple[StationSetEntry, StationSet]]:
-    """Every flagged entry across this person's sets, most recently flagged first."""
+async def flagged_entries_page(
+    session: AsyncSession,
+    owner_user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    search: str | None = None,
+    matching_version_ids: Sequence[uuid.UUID] | None = None,
+) -> tuple[list[tuple[StationSetEntry, StationSet]], str | None]:
+    """One page of the flagged entries across this person's sets, most recently flagged first.
+
+    `search` matches the set's name, or a station version in `matching_version_ids` (the
+    caller resolves those from station titles through the stations slice).
+    """
     stmt = (
-        select(StationSetEntry, StationSet)
+        select(StationSetEntry)
         .join(StationSet, StationSet.id == StationSetEntry.set_id)
         .where(StationSet.owner_user_id == owner_user_id, StationSetEntry.flagged_at.is_not(None))
-        .order_by(StationSetEntry.flagged_at.desc(), StationSetEntry.id)
     )
-    return [(entry, station_set) for entry, station_set in (await session.execute(stmt)).all()]
+    if search:
+        stmt = stmt.where(
+            or_(
+                StationSet.name.ilike(f"%{search}%"),
+                StationSetEntry.station_version_id.in_(matching_version_ids or []),
+            )
+        )
+    entries, next_cursor = await keyset_page(
+        session,
+        stmt,
+        sort_col=StationSetEntry.flagged_at,
+        id_col=StationSetEntry.id,
+        limit=limit,
+        cursor=cursor,
+    )
+    set_ids = {entry.set_id for entry in entries}
+    sets_by_id = {
+        station_set.id: station_set
+        for station_set in (
+            await session.execute(select(StationSet).where(StationSet.id.in_(set_ids)))
+        ).scalars()
+    }
+    return [(entry, sets_by_id[entry.set_id]) for entry in entries], next_cursor

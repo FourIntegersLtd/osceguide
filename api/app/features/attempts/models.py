@@ -63,6 +63,9 @@ class Attempt(Base, UUIDPrimaryKey, Timestamps):
         ),
         Index("ix_attempts_user_created", "user_id", "created_at"),
         Index("ix_attempts_org_created", "org_id", "created_at"),
+        # Backs `/me/attempts?search=`, which matches the exam's code via
+        # ids resolved from `catalog.exam_ids_matching_code`.
+        Index("ix_attempts_exam_id", "exam_id"),
         Index("ix_attempts_station_version", "station_version_id"),
         # A slot has at most one attempt that has not failed; a re-dispatch
         # fails the old one first and then creates a new row.

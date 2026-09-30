@@ -469,7 +469,7 @@ async def test_a_station_can_be_flagged_to_come_back_to(
 
     listed = await client.get("/api/v1/me/flagged-stations", headers=bearer(token))
     assert listed.status_code == 200, listed.text
-    assert listed.json() == [
+    assert listed.json()["items"] == [
         {
             "set_id": created["id"],
             "set_name": "Week one",
@@ -480,13 +480,19 @@ async def test_a_station_can_be_flagged_to_come_back_to(
             "flagged_at": first_flagged_at,
         }
     ]
+    by_title = await client.get("/api/v1/me/flagged-stations?search=chest", headers=bearer(token))
+    assert [row["entry_id"] for row in by_title.json()["items"]] == [entry_id]
+    by_set_name = await client.get("/api/v1/me/flagged-stations?search=week", headers=bearer(token))
+    assert [row["entry_id"] for row in by_set_name.json()["items"]] == [entry_id]
+    unmatched = await client.get("/api/v1/me/flagged-stations?search=fracture", headers=bearer(token))
+    assert unmatched.json() == {"items": [], "next_cursor": None}
 
     stranger = await make_actor("flag-stranger@example.com")
-    assert (await client.get("/api/v1/me/flagged-stations", headers=bearer(stranger))).json() == []
+    assert (await client.get("/api/v1/me/flagged-stations", headers=bearer(stranger))).json()["items"] == []
 
     cleared = await client.put(flag_url, json={"flagged": False}, headers=bearer(token))
     assert cleared.json()["entries"][0]["flagged_at"] is None
-    assert (await client.get("/api/v1/me/flagged-stations", headers=bearer(token))).json() == []
+    assert (await client.get("/api/v1/me/flagged-stations", headers=bearer(token))).json()["items"] == []
 
 
 async def test_someone_elses_entry_cannot_be_flagged(

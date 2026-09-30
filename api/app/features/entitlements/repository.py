@@ -7,9 +7,10 @@ from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import false, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import keyset_page
 from app.features.entitlements.models import Entitlement
 
 
@@ -103,10 +104,35 @@ async def live_grant_from_org(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def for_org(session: AsyncSession, org_id: uuid.UUID) -> list[Entitlement]:
-    """What an institution has granted. Org-scoped: `org_id` first."""
-    stmt = select(Entitlement).where(Entitlement.org_id == org_id).order_by(Entitlement.created_at.desc())
-    return list((await session.execute(stmt)).scalars())
+async def for_org(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    matching_user_ids: Collection[uuid.UUID] | None = None,
+    matching_exam_ids: Collection[uuid.UUID] | None = None,
+    has_search: bool = False,
+) -> tuple[list[Entitlement], str | None]:
+    """A page of what an institution has granted, newest first. Org-scoped: `org_id` first.
+
+    `matching_user_ids` and `matching_exam_ids` are ids `identity` and
+    `catalog` already resolved from a search term (grantee name/email, or exam
+    code); this never queries those tables itself. `has_search` distinguishes
+    "no search was asked for" from "a search was asked for and matched
+    nobody" — the latter must return no rows rather than every row.
+    """
+    stmt = select(Entitlement).where(Entitlement.org_id == org_id)
+    if has_search:
+        conditions = []
+        if matching_user_ids:
+            conditions.append(Entitlement.user_id.in_(list(matching_user_ids)))
+        if matching_exam_ids:
+            conditions.append(Entitlement.exam_id.in_(list(matching_exam_ids)))
+        stmt = stmt.where(or_(*conditions) if conditions else false())
+    return await keyset_page(
+        session, stmt, sort_col=Entitlement.created_at, id_col=Entitlement.id, limit=limit, cursor=cursor
+    )
 
 
 async def by_id_for_org(

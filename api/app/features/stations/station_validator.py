@@ -5,7 +5,22 @@ from __future__ import annotations
 from typing import Any
 
 _VALID_BLOCK_TYPES = frozenset(
-    {"shortText", "longText", "list", "singleSelect", "multiSelect", "checklist", "scale", "ragCriterion"}
+    {
+        "shortText",
+        "longText",
+        "list",
+        "singleSelect",
+        "multiSelect",
+        "checklist",
+        "scale",
+        "ragCriterion",
+        # Rich types: the type also says how the block is drawn, so a new exam's
+        # layout is template data rather than a screen of its own.
+        "image",
+        "records",
+        "qaList",
+        "groupedList",
+    }
 )
 
 
@@ -98,6 +113,16 @@ def validate_station_structure(structure: Any) -> tuple[bool, list[str]]:
                 path_stem = block.get("pathStem")
                 if not isinstance(path_stem, str) or not path_stem.strip():
                     errors.append(f"{block_path}.pathStem is required for ragCriterion blocks")
+
+            if block_type == "records" and "fields" in block:
+                fields = block.get("fields")
+                if not isinstance(fields, list) or not all(
+                    isinstance(record_field, dict)
+                    and isinstance(record_field.get("key"), str)
+                    and record_field["key"].strip()
+                    for record_field in fields
+                ):
+                    errors.append(f"{block_path}.fields must be a list of {{key, label}} objects")
 
             generation_hint = block.get("generationHint")
             if generation_hint is not None and not isinstance(generation_hint, str):

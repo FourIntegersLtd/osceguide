@@ -94,19 +94,17 @@ async def test_a_second_attribution_does_not_overwrite_the_first(
     assert second is None
 
 
-async def test_an_arrival_outside_the_window_is_not_credited(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_an_old_arrival_is_still_credited(client: AsyncClient, db_session: AsyncSession) -> None:
+    """No window: once a partner's link is clicked, that partner is credited."""
     await arrive(client, "vk_6")
     user = await identity_repo.create_user(
         session=db_session, email="stale@example.com", name="S", password_hash=None
     )
     await db_session.flush()
     much_later = now() + timedelta(days=200)
-    assert (
-        await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_6", now=much_later)
-        is None
-    )
+    credited = await service.attribute_signup(db_session, user_id=user.id, visitor_key="vk_6", now=much_later)
+    assert credited is not None
+    assert credited.partner == "bmj"
 
 
 async def test_signing_up_with_no_arrival_credits_nobody(db_session: AsyncSession) -> None:
@@ -769,3 +767,36 @@ async def test_an_unredeemed_code_does_not_appear_in_the_history(client: AsyncCl
 
     assert response.status_code == 200, response.text
     assert response.json()["items"] == []
+
+
+async def test_the_history_search_matches_the_referees_email(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """`search` narrows the history server-side now, instead of the frontend
+    fetching everything and filtering it in the browser."""
+    referrer = await make_actor("history-search-referrer@example.com")
+    code = (await client.post("/api/v1/me/referral-code", headers=bearer(referrer))).json()["code"]
+    await make_actor("findable-friend@example.com")
+    findable = await identity_repo.user_by_email(db_session, "findable-friend@example.com")
+    assert findable is not None
+    await service.credit_referral_purchase(
+        db_session, code=code, referred_user_id=findable.id, plan_duration_days=90, now=now()
+    )
+    await make_actor("someone-else-entirely@example.com")
+    other = await identity_repo.user_by_email(db_session, "someone-else-entirely@example.com")
+    assert other is not None
+    # Same shareable code, reused for a second buyer: `record_redemption` gives
+    # each redemption its own row and suffix, so this is two history rows.
+    await service.credit_referral_purchase(
+        db_session, code=code, referred_user_id=other.id, plan_duration_days=90, now=now()
+    )
+    await db_session.flush()
+
+    response = await client.get(
+        "/api/v1/me/referrals/history", params={"search": "findable"}, headers=bearer(referrer)
+    )
+
+    assert response.status_code == 200, response.text
+    rows = response.json()["items"]
+    assert len(rows) == 1
+    assert rows[0]["referee_email"] == "findable-friend@example.com"

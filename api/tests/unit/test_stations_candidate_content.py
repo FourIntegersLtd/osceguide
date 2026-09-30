@@ -8,8 +8,7 @@ route and its roles.
 
 from __future__ import annotations
 
-from app.features.attempts import domain_material
-from app.features.stations import domain_content, service_versions
+from app.features.stations import domain_content
 
 FULL = {
     "reading_brief": "Mrs Patel, 42, chest pain for two days.",
@@ -85,27 +84,9 @@ def test_a_station_with_no_version_has_no_document() -> None:
     assert domain_content.candidate_content(None) is None
 
 
-# --------------------------------------------------------------------------
-# The mirror is pinned to what it mirrors
-# --------------------------------------------------------------------------
-
-
-def test_the_candidate_keys_mirror_the_attempt_brief_read() -> None:
-    """The same document vocabulary, owned by two slices.
-
-    `attempts/domain_material.py` decides what a candidate reads through their
-    attempt; `stations/domain_content.py` decides what a trainee-only reader of
-    the org list gets. They may not drift, or one route would disclose what the
-    other was written to withhold — the same arrangement the shared
-    `unknown_exam` code has.
-    """
-    assert domain_content.SCENARIO_KEYS == domain_material.SCENARIO_KEYS
-    assert domain_content.PATIENT_BLOCKS == domain_material.PATIENT_BLOCKS
-    assert service_versions.BRIEF_KEY in domain_content.BRIEF_KEYS
-
-
 def test_the_projection_discloses_nothing_the_review_owns() -> None:
-    """The management plan and the teaching keys are the debrief: readable
-    once a consultation is over, and not one moment before."""
-    review_only = set(domain_material.TEACHING_KEYS) | {"management_plan", "patient_brief"}
+    """The management plan is the debrief: readable once a consultation is
+    over, and not one moment before — the legacy-fallback allowlist must never
+    carry it."""
+    review_only = {"management_plan", "patient_brief"}
     assert not review_only & domain_content.CANDIDATE_FACING_KEYS

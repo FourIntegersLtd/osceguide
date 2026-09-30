@@ -63,7 +63,7 @@ def test_a_landing_path_identifies_the_exam() -> None:
 
 
 # --------------------------------------------------------------------------
-# Attribution window
+# Attribution
 # --------------------------------------------------------------------------
 
 
@@ -71,15 +71,14 @@ def test_a_recent_arrival_attributes_a_signup() -> None:
     assert domain.attributes(arrived_at=NOW - timedelta(days=30), signed_up_at=NOW)
 
 
-def test_an_arrival_outside_the_window_does_not() -> None:
-    """Oracle: a 90-day cookie. Past that the signup is not the partner's."""
-    assert not domain.attributes(
-        arrived_at=NOW - domain.ATTRIBUTION_WINDOW - timedelta(days=1), signed_up_at=NOW
-    )
+def test_an_old_arrival_still_attributes() -> None:
+    """No window: once a partner's link is clicked, that partner is credited."""
+    assert domain.attributes(arrived_at=NOW - timedelta(days=91), signed_up_at=NOW)
+    assert domain.attributes(arrived_at=NOW - timedelta(days=365), signed_up_at=NOW)
 
 
-def test_the_boundary_attributes() -> None:
-    assert domain.attributes(arrived_at=NOW - domain.ATTRIBUTION_WINDOW, signed_up_at=NOW)
+def test_an_arrival_at_the_moment_of_signup_attributes() -> None:
+    assert domain.attributes(arrived_at=NOW, signed_up_at=NOW)
 
 
 def test_an_arrival_after_the_signup_does_not_attribute() -> None:

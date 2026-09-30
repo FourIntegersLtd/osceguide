@@ -312,6 +312,12 @@ async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID])
     return {user.id: _ref(user) for user in users}
 
 
+async def user_ids_matching(session: AsyncSession, term: str) -> list[uuid.UUID]:
+    """Ids of every account whose name or email contains `term`. For another
+    slice's own search filter, so it never joins `users` itself."""
+    return await repository.user_ids_matching(session, term)
+
+
 async def count_users(session: AsyncSession) -> int:
     return await repository_platform.count_users(session)
 

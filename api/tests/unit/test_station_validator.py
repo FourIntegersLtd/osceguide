@@ -37,3 +37,67 @@ def test_validate_station_content_accepts_filled_block() -> None:
     ok, errs = validate_station_content(MINIMAL_STRUCTURE, {"notes": "Hello"})
     assert ok
     assert errs == []
+
+
+RICH_STRUCTURE = {
+    "schemaVersion": 1,
+    "sections": [
+        {
+            "id": "main",
+            "title": "Main",
+            "blocks": [
+                {"id": "scans", "type": "image", "label": "Radiographs"},
+                {
+                    "id": "ward",
+                    "type": "records",
+                    "label": "Ward list",
+                    "fields": [{"key": "age", "label": "Age"}, {"key": "summary", "label": "Summary"}],
+                },
+                {"id": "viva", "type": "qaList", "label": "Questions"},
+                {"id": "order", "type": "groupedList", "label": "Theatre order"},
+            ],
+        },
+    ],
+}
+
+
+def test_rich_block_types_are_valid_structure() -> None:
+    assert validate_station_structure(RICH_STRUCTURE) == (True, [])
+
+
+def test_records_fields_must_name_keys() -> None:
+    broken = {
+        "sections": [
+            {"id": "main", "blocks": [{"id": "ward", "type": "records", "fields": [{"label": "Age"}]}]}
+        ]
+    }
+    ok, errs = validate_station_structure(broken)
+    assert not ok
+    assert errs == ["sections[0].blocks[0].fields must be a list of {key, label} objects"]
+
+
+def test_rich_values_in_their_shapes_are_accepted() -> None:
+    content = {
+        "scans": ["https://example.test/a.png", "https://example.test/b.png"],
+        "ward": [{"age": 71, "summary": "Hip fracture"}],
+        "viva": [{"question": "First step?", "answer": "ATLS primary survey"}],
+        "order": {"Trauma list": [{"title": "Bed 2", "reasons": ["Open fracture"]}, "Bed 4"]},
+    }
+    assert validate_station_content(RICH_STRUCTURE, content) == (True, [])
+
+
+def test_rich_values_in_the_wrong_shape_are_refused() -> None:
+    content = {
+        "scans": 3,
+        "ward": ["Bed 1"],
+        "viva": [{"answer": "No question"}],
+        "order": {"Trauma list": [{"reasons": ["no title"]}]},
+    }
+    ok, errs = validate_station_content(RICH_STRUCTURE, content)
+    assert not ok
+    assert errs == [
+        "Block 'scans' must be an image URL or a list of image URLs",
+        "Block 'ward' must be an array of objects",
+        "Block 'viva' must be an array of {question, answer} objects",
+        "Block 'order' must be an object of groups, each an array of text or {title, reasons}",
+    ]

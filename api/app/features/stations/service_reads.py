@@ -57,6 +57,11 @@ async def summaries_by_version_id(
     }
 
 
+async def version_ids_matching_title(session: AsyncSession, search: str) -> list[uuid.UUID]:
+    """Station version ids whose title contains `search`, so another slice can search by title in SQL."""
+    return await repository.version_ids_matching_title(session, search)
+
+
 async def count_stations(session: AsyncSession, org_id: uuid.UUID | None) -> int:
     """How many stations this organisation has authored."""
     return await repository.count_for_org(session, org_id)
@@ -94,6 +99,10 @@ class VersionMaterial:
     title: str
     exam_id: uuid.UUID
     content: dict[str, Any]
+    # The template this version was authored against, if any. Callers that
+    # want the document projected by audience (`stations.service.audience_sections`)
+    # need this; one bound to no template has nothing to project.
+    template_version_id: uuid.UUID | None = None
 
 
 async def version_material(
@@ -110,6 +119,7 @@ async def version_material(
         title=station.title,
         exam_id=station.exam_id,
         content=dict(version.content or {}),
+        template_version_id=version.template_version_id,
     )
 
 

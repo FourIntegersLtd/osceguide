@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import date, datetime, time
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity.domain import normalize_email
@@ -59,6 +59,15 @@ async def user_by_email(session: AsyncSession, email: str) -> User | None:
 
 async def user_by_id(session: AsyncSession, user_id: uuid.UUID) -> User | None:
     return (await session.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+
+
+async def user_ids_matching(session: AsyncSession, term: str) -> list[uuid.UUID]:
+    """Ids of every account whose name or email contains `term`,
+    case-insensitively. For another slice to narrow its own list by person
+    without joining `users` itself."""
+    pattern = f"%{term}%"
+    stmt = select(User.id).where(or_(User.email.ilike(pattern), User.name.ilike(pattern)))
+    return list((await session.execute(stmt)).scalars())
 
 
 async def user_ids_closed_before(session: AsyncSession, *, cutoff: datetime) -> list[uuid.UUID]:

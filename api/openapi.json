@@ -335,22 +335,12 @@
         "type": "object"
       },
       "AttemptBriefRead": {
-        "description": "The reading-time screen, keyed on the attempt rather than the station.\n\nKeyed on the attempt because that is what the entitlement check has already been made against;\nthe library itself is browsable by everyone but carries no content.",
+        "description": "The reading-time screen, keyed on the attempt rather than the station.\n\nKeyed on the attempt because that is what the entitlement check has already been made against;\nthe library itself is browsable by everyone but carries no content. `sections` are the\ncandidate-audience sections of the station's template, in template order.",
         "properties": {
           "attempt_id": {
             "format": "uuid",
             "title": "Attempt Id",
             "type": "string"
-          },
-          "doctor_information": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DoctorInformationRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "exam_code": {
             "title": "Exam Code",
@@ -363,15 +353,13 @@
           "patient": {
             "$ref": "#/components/schemas/PatientIdentityRead"
           },
-          "scenario": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CandidateScenarioRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "sections": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AudienceSectionRead"
+            },
+            "title": "Sections",
+            "type": "array"
           },
           "set_entry_id": {
             "anyOf": [
@@ -605,7 +593,7 @@
         "type": "object"
       },
       "AttemptReviewRead": {
-        "description": "The management step: what the candidate should have covered.",
+        "description": "The management step: what the candidate should have covered.\n\n`sections` are the candidate-audience sections again, followed by every examiner-audience\nsection \u2014 the model answer and the marking guidance, readable once the consultation is over and\nnot one moment before.",
         "properties": {
           "attempt_id": {
             "format": "uuid",
@@ -620,35 +608,13 @@
             "title": "Kind",
             "type": "string"
           },
-          "management_plan": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ManagementPlanRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "patient_information": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PatientReviewRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "scenario": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CandidateScenarioRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "sections": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AudienceSectionRead"
+            },
+            "title": "Sections",
+            "type": "array"
           },
           "set_entry_id": {
             "anyOf": [
@@ -679,16 +645,6 @@
           "status": {
             "title": "Status",
             "type": "string"
-          },
-          "teaching": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/StationTeachingRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "required": [
@@ -701,6 +657,53 @@
           "station_title"
         ],
         "title": "AttemptReviewRead",
+        "type": "object"
+      },
+      "AudienceBlockRead": {
+        "description": "One block of a section, as one audience may read it.",
+        "properties": {
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecordFieldRead"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "type",
+          "role",
+          "value"
+        ],
+        "title": "AudienceBlockRead",
         "type": "object"
       },
       "AudienceIn": {
@@ -773,6 +776,38 @@
           "visibility"
         ],
         "title": "AudienceOut",
+        "type": "object"
+      },
+      "AudienceSectionRead": {
+        "description": "A station's content, grouped by its template's sections, for one audience.\n\nThe one read model every screen that shows a candidate, a patient actor or\nan examiner a station's material is built from. Shared here rather than\nowned by `stations`: `attempts` and `peer_practice` both build one, and a\nslice's `schemas.py` may not import another slice's.",
+        "properties": {
+          "audience": {
+            "title": "Audience",
+            "type": "string"
+          },
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/AudienceBlockRead"
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "audience",
+          "blocks"
+        ],
+        "title": "AudienceSectionRead",
         "type": "object"
       },
       "AuditRead": {
@@ -1518,94 +1553,6 @@
           "decision"
         ],
         "title": "CandidateReport",
-        "type": "object"
-      },
-      "CandidateScenarioRead": {
-        "additionalProperties": true,
-        "description": "Candidate-facing keys that sit flat on the document rather than in a block.\n\nOrtho's stations are shaped this way: an interview or a trauma list rather\nthan a consultation, so the brief is a scenario and a set of images.",
-        "properties": {
-          "additional_image_urls": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Additional Image Urls",
-            "type": "array"
-          },
-          "background_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Background Overview"
-          },
-          "clinical_scenario": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clinical Scenario"
-          },
-          "clinical_scenario_title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clinical Scenario Title"
-          },
-          "duration_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Duration Minutes"
-          },
-          "patient_list_for_candidate": {
-            "items": {
-              "$ref": "#/components/schemas/PrioritisationPatientRead"
-            },
-            "title": "Patient List For Candidate",
-            "type": "array"
-          },
-          "radiograph_image_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Radiograph Image Url"
-          },
-          "station_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Station Type"
-          }
-        },
-        "title": "CandidateScenarioRead",
         "type": "object"
       },
       "Capabilities": {
@@ -4207,107 +4154,6 @@
         "title": "DispatchResult",
         "type": "object"
       },
-      "DoctorInformationRead": {
-        "additionalProperties": true,
-        "description": "The candidate's brief: what the doctor has in front of them.",
-        "properties": {
-          "current_medications": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Current Medications",
-            "type": "array"
-          },
-          "doctor_identity": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Doctor Identity"
-          },
-          "doctor_task": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Doctor Task"
-          },
-          "past_medical_history": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Past Medical History",
-            "type": "array"
-          },
-          "patient_biodata": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Patient Biodata"
-          },
-          "patient_information": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Patient Information",
-            "type": "array"
-          },
-          "photos": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Photos",
-            "type": "array"
-          },
-          "recent_investigations": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Recent Investigations",
-            "type": "array"
-          },
-          "recent_notes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Recent Notes",
-            "type": "array"
-          },
-          "social_history": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Social History",
-            "type": "array"
-          },
-          "task_instructions": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Task Instructions"
-          }
-        },
-        "title": "DoctorInformationRead",
-        "type": "object"
-      },
       "DomainComposition": {
         "description": "How many marked attempts landed red, amber or green on one domain.\n\n83 and above is green, 50 to 83 is amber, below that is red.",
         "properties": {
@@ -6137,35 +5983,6 @@
         "title": "Interventions",
         "type": "object"
       },
-      "InterviewQuestionRead": {
-        "additionalProperties": true,
-        "properties": {
-          "answer": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Answer"
-          },
-          "question": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Question"
-          }
-        },
-        "title": "InterviewQuestionRead",
-        "type": "object"
-      },
       "InvitationRead": {
         "description": "A re-sent invitation. The token itself is never returned; it goes only to\nthe address it was minted for.\n\nShared by roster's and tenancy's resend routes.",
         "properties": {
@@ -7122,128 +6939,6 @@
           }
         },
         "title": "LogoutRequest",
-        "type": "object"
-      },
-      "ManagementPlanRead": {
-        "additionalProperties": true,
-        "description": "The model answer, readable once the consultation is over.",
-        "properties": {
-          "additional_notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Additional Notes"
-          },
-          "assessment": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Assessment",
-            "type": "array"
-          },
-          "differential_diagnosis": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Differential Diagnosis",
-            "type": "array"
-          },
-          "examination_findings": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Examination Findings",
-            "type": "array"
-          },
-          "explanation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Explanation"
-          },
-          "follow_up": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Follow Up"
-          },
-          "further_investigations": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Further Investigations",
-            "type": "array"
-          },
-          "health_education": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Health Education",
-            "type": "array"
-          },
-          "ice": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Ice",
-            "type": "array"
-          },
-          "immediate_actions": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Immediate Actions",
-            "type": "array"
-          },
-          "non_pharmacological_treatment": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Non Pharmacological Treatment",
-            "type": "array"
-          },
-          "pharmacological_treatment": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Pharmacological Treatment",
-            "type": "array"
-          },
-          "safety_netting": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Safety Netting"
-          },
-          "social_concerns": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Social Concerns",
-            "type": "array"
-          }
-        },
-        "title": "ManagementPlanRead",
         "type": "object"
       },
       "MeEventEnvelope": {
@@ -8714,6 +8409,33 @@
         "title": "Page[ExamRead]",
         "type": "object"
       },
+      "Page_FlaggedEntryRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FlaggedEntryRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[FlaggedEntryRead]",
+        "type": "object"
+      },
       "Page_GroupRead_": {
         "properties": {
           "items": {
@@ -9587,153 +9309,14 @@
         "title": "PatientIdentityRead",
         "type": "object"
       },
-      "PatientReviewRead": {
-        "description": "The patient's side, as a candidate may read it afterwards.\n\nNot a passthrough: `persona`, `opening_sentence`, `expanded_history` and the hidden question list\nare how the patient is played, and stay on the server. What is here is the biodata line and the\nideas, concerns and expectations the candidate was supposed to draw out.",
-        "properties": {
-          "concerns": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Concerns",
-            "type": "array"
-          },
-          "expectation": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Expectation",
-            "type": "array"
-          },
-          "gender": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gender"
-          },
-          "idea": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Idea",
-            "type": "array"
-          },
-          "patient_biodata": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Patient Biodata"
-          }
-        },
-        "title": "PatientReviewRead",
-        "type": "object"
-      },
       "PatientRoleplayRead": {
+        "description": "The patient's whole script, for the candidate to play back once their own attempt has finished.\n\nThe patient audience's sections, with `include_hidden=True`: the actor needs the ICE and the\nquestions the patient holds back, not just what a candidate or an examiner may read of the same\nstation.",
         "properties": {
-          "concerns": {
+          "sections": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AudienceSectionRead"
             },
-            "title": "Concerns",
-            "type": "array"
-          },
-          "expanded_history": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expanded History"
-          },
-          "expectation": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Expectation",
-            "type": "array"
-          },
-          "family_social_history": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Family Social History",
-            "type": "array"
-          },
-          "gender": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gender"
-          },
-          "idea": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Idea",
-            "type": "array"
-          },
-          "opening_sentence": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Opening Sentence"
-          },
-          "past_med_history_allergies": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Past Med History Allergies",
-            "type": "array"
-          },
-          "patient_biodata": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Patient Biodata"
-          },
-          "persona": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Persona"
-          },
-          "questions": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Questions",
+            "title": "Sections",
             "type": "array"
           }
         },
@@ -11297,410 +10880,6 @@
         "title": "PracticeAccessRow",
         "type": "object"
       },
-      "PracticeCandidateScenarioRead": {
-        "additionalProperties": true,
-        "properties": {
-          "additional_image_urls": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Additional Image Urls",
-            "type": "array"
-          },
-          "background_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Background Overview"
-          },
-          "clinical_scenario": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clinical Scenario"
-          },
-          "clinical_scenario_title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clinical Scenario Title"
-          },
-          "duration_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Duration Minutes"
-          },
-          "radiograph_image_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Radiograph Image Url"
-          },
-          "station_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Station Type"
-          }
-        },
-        "title": "PracticeCandidateScenarioRead",
-        "type": "object"
-      },
-      "PracticeDoctorInformationRead": {
-        "additionalProperties": true,
-        "properties": {
-          "current_medications": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Current Medications",
-            "type": "array"
-          },
-          "doctor_identity": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Doctor Identity"
-          },
-          "doctor_task": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Doctor Task"
-          },
-          "past_medical_history": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Past Medical History",
-            "type": "array"
-          },
-          "patient_biodata": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Patient Biodata"
-          },
-          "patient_information": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Patient Information",
-            "type": "array"
-          },
-          "photos": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Photos",
-            "type": "array"
-          },
-          "recent_investigations": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Recent Investigations",
-            "type": "array"
-          },
-          "recent_notes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Recent Notes",
-            "type": "array"
-          },
-          "social_history": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Social History",
-            "type": "array"
-          },
-          "task_instructions": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Task Instructions"
-          }
-        },
-        "title": "PracticeDoctorInformationRead",
-        "type": "object"
-      },
-      "PracticeManagementPlanRead": {
-        "additionalProperties": true,
-        "properties": {
-          "additional_notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Additional Notes"
-          },
-          "assessment": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Assessment",
-            "type": "array"
-          },
-          "differential_diagnosis": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Differential Diagnosis",
-            "type": "array"
-          },
-          "examination_findings": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Examination Findings",
-            "type": "array"
-          },
-          "explanation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Explanation"
-          },
-          "follow_up": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Follow Up"
-          },
-          "further_investigations": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Further Investigations",
-            "type": "array"
-          },
-          "health_education": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Health Education",
-            "type": "array"
-          },
-          "ice": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Ice",
-            "type": "array"
-          },
-          "immediate_actions": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Immediate Actions",
-            "type": "array"
-          },
-          "non_pharmacological_treatment": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Non Pharmacological Treatment",
-            "type": "array"
-          },
-          "pharmacological_treatment": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Pharmacological Treatment",
-            "type": "array"
-          },
-          "safety_netting": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Safety Netting"
-          },
-          "social_concerns": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Social Concerns",
-            "type": "array"
-          }
-        },
-        "title": "PracticeManagementPlanRead",
-        "type": "object"
-      },
-      "PracticePatientRoleplayRead": {
-        "properties": {
-          "concerns": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Concerns",
-            "type": "array"
-          },
-          "expanded_history": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expanded History"
-          },
-          "expectation": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Expectation",
-            "type": "array"
-          },
-          "family_social_history": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Family Social History",
-            "type": "array"
-          },
-          "gender": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gender"
-          },
-          "idea": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Idea",
-            "type": "array"
-          },
-          "opening_sentence": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Opening Sentence"
-          },
-          "past_med_history_allergies": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Past Med History Allergies",
-            "type": "array"
-          },
-          "patient_biodata": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Patient Biodata"
-          },
-          "persona": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Persona"
-          },
-          "questions": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Questions",
-            "type": "array"
-          }
-        },
-        "title": "PracticePatientRoleplayRead",
-        "type": "object"
-      },
       "PracticeSessionRead": {
         "properties": {
           "accept_expires_at": {
@@ -11909,79 +11088,14 @@
         "type": "object"
       },
       "PracticeStationRead": {
+        "description": "A peer session's station, for whichever of the two humans is asking.\n\n`sections` are the template's audience sections this viewer's role and\nphase may see, in template order \u2014 the same `AudienceSectionRead` shape\n`stations` defines once, projected by `service_station._station_payload`:\nthe candidate audience always, the patient audience (with its `hidden`\nblocks, the actor's own script) for whoever is not the doctor or once the\ndebrief has revealed it, and the examiner audience only once revealed.",
         "properties": {
-          "doctor_information": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PracticeDoctorInformationRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "management": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PracticeManagementPlanRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "management_plan": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Management Plan"
-          },
-          "patient_information": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PracticePatientRoleplayRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "patient_script": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Patient Script"
-          },
-          "reading_brief": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reading Brief"
-          },
-          "scenario": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PracticeCandidateScenarioRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/AudienceSectionRead"
+            },
+            "title": "Sections",
+            "type": "array"
           },
           "station_id": {
             "format": "uuid",
@@ -11992,16 +11106,6 @@
             "format": "uuid",
             "title": "Station Version Id",
             "type": "string"
-          },
-          "teaching": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PracticeStationTeachingRead"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "title": {
             "title": "Title",
@@ -12014,185 +11118,6 @@
           "title"
         ],
         "title": "PracticeStationRead",
-        "type": "object"
-      },
-      "PracticeStationTeachingRead": {
-        "additionalProperties": true,
-        "properties": {
-          "breaking_bad_news_framework": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Breaking Bad News Framework"
-          },
-          "communication_themes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Communication Themes",
-            "type": "array"
-          },
-          "consent_approach": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Consent Approach"
-          },
-          "examination_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Examination Overview"
-          },
-          "history_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "History Overview"
-          },
-          "investigations_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Investigations Overview"
-          },
-          "key_concerns": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Key Concerns",
-            "type": "array"
-          },
-          "key_learning_points": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Key Learning Points",
-            "type": "array"
-          },
-          "management_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Management Overview"
-          },
-          "portfolio_themes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Portfolio Themes",
-            "type": "array"
-          },
-          "professional_conduct_topics": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Professional Conduct Topics",
-            "type": "array"
-          },
-          "references": {
-            "items": {
-              "type": "string"
-            },
-            "title": "References",
-            "type": "array"
-          },
-          "suggested_order": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Suggested Order"
-          },
-          "suggested_order_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Suggested Order Overview"
-          }
-        },
-        "title": "PracticeStationTeachingRead",
-        "type": "object"
-      },
-      "PrioritisationPatientRead": {
-        "additionalProperties": true,
-        "description": "One patient on an Ortho prioritisation list.",
-        "properties": {
-          "age": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Age"
-          },
-          "gender": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gender"
-          },
-          "number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Number"
-          }
-        },
-        "title": "PrioritisationPatientRead",
         "type": "object"
       },
       "ProgrammeRead": {
@@ -12625,6 +11550,25 @@
           "visitor_key"
         ],
         "title": "RecordArrival",
+        "type": "object"
+      },
+      "RecordFieldRead": {
+        "description": "One column of a `records` block: the key in each record, and its heading.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "RecordFieldRead",
         "type": "object"
       },
       "RecordManualPayment": {
@@ -16079,159 +15023,6 @@
           "overall_rag"
         ],
         "title": "StationReport",
-        "type": "object"
-      },
-      "StationTeachingRead": {
-        "additionalProperties": true,
-        "description": "Ortho's flat teaching keys: the debrief material for a non-consultation station.",
-        "properties": {
-          "breaking_bad_news_framework": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Breaking Bad News Framework"
-          },
-          "communication_themes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Communication Themes",
-            "type": "array"
-          },
-          "consent_approach": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Consent Approach"
-          },
-          "examination_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Examination Overview"
-          },
-          "examiner_additional_info": {
-            "items": {
-              "$ref": "#/components/schemas/PrioritisationPatientRead"
-            },
-            "title": "Examiner Additional Info",
-            "type": "array"
-          },
-          "history_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "History Overview"
-          },
-          "interview_questions": {
-            "items": {
-              "$ref": "#/components/schemas/InterviewQuestionRead"
-            },
-            "title": "Interview Questions",
-            "type": "array"
-          },
-          "investigations_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Investigations Overview"
-          },
-          "key_concerns": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Key Concerns",
-            "type": "array"
-          },
-          "key_learning_points": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Key Learning Points",
-            "type": "array"
-          },
-          "management_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Management Overview"
-          },
-          "portfolio_themes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Portfolio Themes",
-            "type": "array"
-          },
-          "professional_conduct_topics": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Professional Conduct Topics",
-            "type": "array"
-          },
-          "references": {
-            "items": {
-              "type": "string"
-            },
-            "title": "References",
-            "type": "array"
-          },
-          "suggested_order": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Suggested Order"
-          },
-          "suggested_order_overview": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Suggested Order Overview"
-          }
-        },
-        "title": "StationTeachingRead",
         "type": "object"
       },
       "StationTemplateRead": {
@@ -24615,6 +23406,25 @@
               ],
               "title": "Category"
             }
+          },
+          {
+            "description": "A fragment of a title or a body.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A fragment of a title or a body.",
+              "title": "Search"
+            }
           }
         ],
         "responses": {
@@ -24928,6 +23738,44 @@
                 }
               ],
               "title": "Exam Code"
+            }
+          },
+          {
+            "description": "Narrow to one slot status.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(available|claimed)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Narrow to one slot status.",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Narrow to slots starting before or after now.",
+            "in": "query",
+            "name": "when",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(upcoming|past)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Narrow to slots starting before or after now.",
+              "title": "When"
             }
           },
           {
@@ -25627,7 +24475,7 @@
     },
     "/api/v1/me/attempts": {
       "get": {
-        "description": "Everything this person has sat, newest first.\n\nThe two filters answer the two questions the screens ask: every attempt at\none station, and every attempt at one entry of a practice set.",
+        "description": "Everything this person has sat, newest first.\n\nThe two id filters answer the two questions the screens ask: every attempt\nat one station, and every attempt at one entry of a practice set. `search`\nmatches the exam or the attempt's kind, and `transcribable_only` drops\nattempts still `created` \u2014 the filters the transcripts screen used to\napply itself after walking every page of this same endpoint.",
         "operationId": "attempts_list_my_attempts",
         "parameters": [
           {
@@ -25662,6 +24510,32 @@
                 }
               ],
               "title": "Set Entry Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "transcribable_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Transcribable Only",
+              "type": "boolean"
             }
           },
           {
@@ -26322,16 +25196,61 @@
     "/api/v1/me/flagged-stations": {
       "get": {
         "operationId": "station_sets_list_flagged_stations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/FlaggedEntryRead"
-                  },
-                  "title": "Response Station Sets List Flagged Stations",
-                  "type": "array"
+                  "$ref": "#/components/schemas/Page_FlaggedEntryRead_"
                 }
               }
             },
@@ -26350,6 +25269,16 @@
               "unauthenticated",
               "account_suspended"
             ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -26754,6 +25683,25 @@
       "get": {
         "operationId": "marketplace_list_my_sessions",
         "parameters": [
+          {
+            "description": "Narrow to sessions still joinable, or not.",
+            "in": "query",
+            "name": "when",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(upcoming|past)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Narrow to sessions still joinable, or not.",
+              "title": "When"
+            }
+          },
           {
             "description": "Opaque cursor from a previous page",
             "in": "query",
@@ -28483,16 +27431,53 @@
     },
     "/api/v1/me/referrals/history": {
       "get": {
-        "description": "This person's own redeemed referrals: who joined, what they bought, and what it earned.\n\nNo cursor: the frontend pages and searches this list client-side, so one\ncall returns up to `limit` rows and there is nothing to page further.",
+        "description": "This person's own redeemed referrals: who joined, what they bought, and what it earned.\n\nCursor-paginated, like every other list endpoint \u2014 the frontend pages and\nsearches this server-side now rather than fetching everything up front.",
         "operationId": "growth_read_my_referral_history",
         "parameters": [
+          {
+            "description": "A fragment of the referee's email.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A fragment of the referee's email.",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
           {
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 500,
-              "maximum": 500,
+              "default": 25,
+              "maximum": 100,
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
@@ -28975,18 +27960,62 @@
     },
     "/api/v1/me/station-flags": {
       "get": {
-        "description": "What this person has reported, so the runner's button and the list agree.",
+        "description": "What this person has reported, so the runner's button and the list agree.\n\n`search` is an ILIKE match on the reported station's title.",
         "operationId": "stations_my_reports",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/StationFlagRead"
-                  },
-                  "title": "Response Stations My Reports",
-                  "type": "array"
+                  "$ref": "#/components/schemas/Page_StationFlagRead_"
                 }
               }
             },
@@ -29005,6 +28034,16 @@
               "unauthenticated",
               "account_suspended"
             ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -33979,7 +33018,7 @@
     },
     "/api/v1/orgs/{org_slug}/entitlements": {
       "get": {
-        "description": "What this institution has granted, revoked ones included.",
+        "description": "A page of what this institution has granted, revoked ones included.",
         "operationId": "entitlements_list_org_entitlements",
         "parameters": [
           {
@@ -33991,6 +33030,54 @@
               "description": "Organisation slug",
               "title": "Org Slug",
               "type": "string"
+            }
+          },
+          {
+            "description": "A grantee's name, email, or the exam's code",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A grantee's name, email, or the exam's code",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
             }
           }
         ],
@@ -35488,6 +34575,24 @@
               "description": "Organisation slug",
               "title": "Org Slug",
               "type": "string"
+            }
+          },
+          {
+            "description": "A membership's email, role, or user id",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A membership's email, role, or user id",
+              "title": "Search"
             }
           },
           {
@@ -37069,7 +36174,7 @@
     },
     "/api/v1/orgs/{org_slug}/rubrics": {
       "get": {
-        "description": "The organisation's own rubrics, and the platform's, which it may mark with.",
+        "description": "The organisation's own rubrics, and the platform's, which it may mark with.\n\n`search` matches a rubric's title; `exam_code` narrows to rubrics already\nbound to that exam (the platform-web author screen used to do this join\nclient-side).",
         "operationId": "rubrics_list_org_rubrics",
         "parameters": [
           {
@@ -37081,6 +36186,38 @@
               "description": "Organisation slug",
               "title": "Org Slug",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
             }
           },
           {
@@ -41363,6 +40500,48 @@
             }
           },
           {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "published_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Published Only",
+              "type": "boolean"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -42044,7 +41223,7 @@
     },
     "/api/v1/orgs/{org_slug}/stations": {
       "get": {
-        "description": "The stations this organisation has authored.\n\n`OrgReader` admits every rostered trainee, who gets the candidate-facing projection of each\n`content` (S1) rather than the patient's persona and examiner's notes. Staff and a platform\nadmin read the whole thing.",
+        "description": "The stations this organisation has authored.\n\n`OrgReader` admits every rostered trainee, who gets the candidate-facing projection of each\n`content` (S1) rather than the patient's persona and examiner's notes. Staff and a platform\nadmin read the whole thing. Archived stations are left out unless `include_archived` is set.",
         "operationId": "stations_list_stations",
         "parameters": [
           {
@@ -42072,6 +41251,32 @@
                 }
               ],
               "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
             }
           },
           {
@@ -43916,6 +43121,24 @@
               "description": "Organisation slug",
               "title": "Org Slug",
               "type": "string"
+            }
+          },
+          {
+            "description": "A trainee's name, email, or cohort",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A trainee's name, email, or cohort",
+              "title": "Search"
             }
           },
           {
@@ -49454,8 +48677,41 @@
     },
     "/api/v1/platform/rubrics": {
       "get": {
+        "description": "`search` matches a rubric's title; `exam_code` narrows to rubrics already\nbound to that exam.",
         "operationId": "rubrics_list_platform_rubrics",
         "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
           {
             "description": "Opaque cursor from a previous page",
             "in": "query",
@@ -50561,6 +49817,48 @@
         "operationId": "stations_list_platform_station_templates",
         "parameters": [
           {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "published_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Published Only",
+              "type": "boolean"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -51271,7 +50569,7 @@
     },
     "/api/v1/platform/stations": {
       "get": {
-        "description": "Every library station, drafts included \u2014 the author's own view of it.",
+        "description": "Every library station, drafts included \u2014 the author's own view of it.\n\nArchived stations are left out unless `include_archived` is set.",
         "operationId": "stations_list_platform_stations",
         "parameters": [
           {
@@ -51288,6 +50586,32 @@
                 }
               ],
               "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
             }
           },
           {

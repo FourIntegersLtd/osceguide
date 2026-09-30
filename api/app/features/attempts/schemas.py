@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from app.features.attempts.schemas_material import PatientReviewRead
+from app.core.schemas import AudienceSectionRead
 
 
 class TranscriptMessageIn(BaseModel):
@@ -112,13 +112,15 @@ class CreateAttempt(BaseModel):
 # --- Actor material available to the owner after a consultation finishes.
 
 
-class PatientRoleplayRead(PatientReviewRead):
-    opening_sentence: str | None = None
-    expanded_history: str | None = None
-    persona: str | None = None
-    family_social_history: list[str] = Field(default_factory=list)
-    past_med_history_allergies: list[str] = Field(default_factory=list)
-    questions: list[str] = Field(default_factory=list)
+class PatientRoleplayRead(BaseModel):
+    """The patient's whole script, for the candidate to play back once their own attempt has finished.
+
+    The patient audience's sections, with `include_hidden=True`: the actor needs the ICE and the
+    questions the patient holds back, not just what a candidate or an examiner may read of the same
+    station.
+    """
+
+    sections: list[AudienceSectionRead] = Field(default_factory=list)
 
 
 # --- Live coverage of an attempt.

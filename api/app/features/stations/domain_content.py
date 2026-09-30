@@ -1,25 +1,19 @@
 """Which parts of a station document a trainee-only reader may be served.
 
-Pure rules, no session. `attempts/domain_material.py` answers the same
-question for a candidate reading through their attempt; this answers it for
-the org station list, whose `OrgReader` permission admits every rostered
-trainee. Before this existed the list handed each of them the whole document
-— the patient's persona and hidden history, the examiner's material, for the
-stations they were about to be examined on.
+Pure rules, no session, for `GET /orgs/{slug}/stations`'s trainee-scoped list
+(`OrgReader` admits every rostered trainee — before this existed the list
+handed each of them the whole document, the patient's persona and hidden
+history and the examiner's material included, for stations they were about to
+be examined on).
 
-The key tuples are mirrored from `attempts/domain_material.py` rather than
-imported: a slice reaches another only through its service, and each slice
-owning its copy of a rule is what keeps that true. The *keys* are deliberately
-shared — they are one document's vocabulary — so a unit test pins the two
-together, the same arrangement the shared `unknown_exam` code has.
-
-A template whose blocks carry custom ids contributes nothing to a trainee
-projection unless a block id happens to be one named here; a template can
-mark a block `candidate_brief`, and reading one back per station is a lookup
-this list route does not make. The conservative default is the point: what is
-not named here stays on the server, and the candidate-facing material a
-template authored is still readable through the attempt, whose brief read
-renders by role.
+A station bound to a template is now projected by its template's `candidate`
+audience instead (`stations.service.audience_sections`, called from this
+slice's own `service.py`) — a block with a custom id, one that is not
+`management_plan` or `doctor_information`, reaches this reader the same way it
+reaches the attempt's brief. `candidate_content` below is what a station with
+no template, or an unreadable one, falls back to: the same named-key allowlist
+every screen used before templates existed. The conservative default is the
+point: what is not named here stays on the server.
 """
 
 from __future__ import annotations

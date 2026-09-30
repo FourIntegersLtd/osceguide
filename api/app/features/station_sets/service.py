@@ -314,12 +314,30 @@ async def flag_entry(
     return await read_set(session, owner_user_id, station_set.id)
 
 
-async def list_flagged(session: AsyncSession, owner_user_id: uuid.UUID) -> list[FlaggedEntryRead]:
-    """Every station this person has flagged across their sets, most recent first.
+async def list_flagged(
+    session: AsyncSession,
+    owner_user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    search: str | None = None,
+) -> tuple[list[FlaggedEntryRead], str | None]:
+    """One page of the stations this person has flagged across their sets, most recent first.
 
-    Titles come from `stations` in one read for the whole list.
+    `search` matches the set name or the station title, in SQL. Titles come from `stations`
+    in one read for the page.
     """
-    flagged = await repository.flagged_entries_for_owner(session, owner_user_id)
+    matching_version_ids = (
+        await stations_reads.version_ids_matching_title(session, search) if search else None
+    )
+    flagged, next_cursor = await repository.flagged_entries_page(
+        session,
+        owner_user_id,
+        limit=limit,
+        cursor=cursor,
+        search=search,
+        matching_version_ids=matching_version_ids,
+    )
     summaries = await stations_reads.summaries_by_version_id(
         session, None, [entry.station_version_id for entry, _ in flagged]
     )
@@ -340,7 +358,7 @@ async def list_flagged(session: AsyncSession, owner_user_id: uuid.UUID) -> list[
                 flagged_at=entry.flagged_at,
             )
         )
-    return reads
+    return reads, next_cursor
 
 
 async def _require(session: AsyncSession, owner_user_id: uuid.UUID, set_id: uuid.UUID) -> StationSet:

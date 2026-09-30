@@ -706,14 +706,14 @@
               },
               {
                 "id": "radiograph_image_url",
-                "type": "shortText",
+                "type": "image",
                 "role": "candidate_brief",
                 "label": "Radiograph Image URL",
                 "placeholder": "Optional URL to primary imaging"
               },
               {
                 "id": "additional_image_urls",
-                "type": "list",
+                "type": "image",
                 "role": "candidate_brief",
                 "label": "Additional Image URLs",
                 "placeholder": "Classification diagrams, post-op X-rays, etc."
@@ -771,7 +771,7 @@
             "blocks": [
               {
                 "id": "interview_questions",
-                "type": "longText",
+                "type": "qaList",
                 "role": "examiner",
                 "label": "Interview Questions",
                 "placeholder": "Question and answer pairs for the examiner"
@@ -873,7 +873,7 @@
             "blocks": [
               {
                 "id": "interview_questions",
-                "type": "longText",
+                "type": "qaList",
                 "role": "examiner",
                 "label": "Interview Questions"
               }
@@ -961,15 +961,59 @@
             "blocks": [
               {
                 "id": "patient_list_for_candidate",
-                "type": "longText",
+                "type": "records",
                 "role": "candidate_brief",
-                "label": "Patient List for Candidate"
+                "label": "Patient List for Candidate",
+                "fields": [
+                  {
+                    "key": "number",
+                    "label": "Patient"
+                  },
+                  {
+                    "key": "age",
+                    "label": "Age"
+                  },
+                  {
+                    "key": "gender",
+                    "label": "Gender"
+                  },
+                  {
+                    "key": "summary",
+                    "label": "Summary"
+                  },
+                  {
+                    "key": "notes",
+                    "label": "Notes"
+                  }
+                ]
               },
               {
                 "id": "examiner_additional_info",
-                "type": "longText",
+                "type": "records",
                 "role": "examiner",
-                "label": "Examiner Additional Info"
+                "label": "Examiner Additional Info",
+                "fields": [
+                  {
+                    "key": "number",
+                    "label": "Patient"
+                  },
+                  {
+                    "key": "age",
+                    "label": "Age"
+                  },
+                  {
+                    "key": "gender",
+                    "label": "Gender"
+                  },
+                  {
+                    "key": "summary",
+                    "label": "Summary"
+                  },
+                  {
+                    "key": "notes",
+                    "label": "Notes"
+                  }
+                ]
               }
             ]
           },
@@ -980,7 +1024,7 @@
             "blocks": [
               {
                 "id": "suggested_order",
-                "type": "longText",
+                "type": "groupedList",
                 "role": "examiner",
                 "label": "Suggested List Order"
               }
@@ -993,7 +1037,7 @@
             "blocks": [
               {
                 "id": "interview_questions",
-                "type": "longText",
+                "type": "qaList",
                 "role": "examiner",
                 "label": "Interview Questions"
               }
@@ -1048,7 +1092,7 @@
             "blocks": [
               {
                 "id": "interview_questions",
-                "type": "longText",
+                "type": "qaList",
                 "role": "examiner",
                 "label": "Interview Questions"
               }

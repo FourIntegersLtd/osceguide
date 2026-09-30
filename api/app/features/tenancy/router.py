@@ -103,10 +103,13 @@ async def set_staff_mfa_policy(
     responses=error_responses(Forbidden),
 )
 async def list_memberships(
-    workspace: OrgAdmin, session: Session, page: Annotated[CursorParams, Depends()]
+    workspace: OrgAdmin,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    search: Annotated[str | None, Query(description="A membership's email, role, or user id")] = None,
 ) -> Page[schemas.MembershipRead]:
     memberships, next_cursor = await service_memberships.list_memberships(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+        session, workspace.org_id, limit=page.limit, cursor=page.cursor, search=search
     )
     return Page(items=memberships, next_cursor=next_cursor)
 

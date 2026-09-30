@@ -29,10 +29,16 @@ async def list_my_sessions(
     *,
     limit: int,
     cursor: dict[str, Any] | None = None,
+    now: datetime | None = None,
+    when: str | None = None,
 ) -> tuple[list[PeerSessionRead], str | None]:
-    """Every session this person has offered or claimed, latest start time first."""
+    """Every session this person has offered or claimed, latest start time first.
+
+    `when` ("upcoming"/"past") narrows the same way `UpcomingSessions.tsx`
+    used to filter client-side.
+    """
     peer_sessions, next_cursor = await repository.sessions_for_user(
-        session, user_id, limit=limit, cursor=cursor
+        session, user_id, limit=limit, cursor=cursor, now=now, when=when
     )
     exam_codes = await _exam_codes(session, {peer_session.exam_id for peer_session in peer_sessions})
     partner_ids = {_partner_id(peer_session, user_id) for peer_session in peer_sessions}

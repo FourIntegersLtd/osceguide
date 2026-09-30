@@ -297,6 +297,44 @@ async def test_registering_claims_a_roster_entry_left_unlinked(
     assert entry["user_id"] == user_id
 
 
+async def test_the_roster_can_be_searched_by_name_email_or_cohort(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    cohort = (
+        await client.post("/api/v1/orgs/kings/cohorts", json={"name": "2027 intake"}, headers=bearer(admin))
+    ).json()
+    await client.post(
+        "/api/v1/orgs/kings/trainees",
+        json={
+            "email": "priya@example.com",
+            "first_name": "Priya",
+            "last_name": "Nair",
+            "cohort_id": cohort["id"],
+        },
+        headers=bearer(admin),
+    )
+    await add_trainee(client, admin, "unrelated@example.com")
+
+    by_name = await client.get(
+        "/api/v1/orgs/kings/trainees", params={"search": "priya"}, headers=bearer(admin)
+    )
+    assert [t["email"] for t in by_name.json()["items"]] == ["priya@example.com"]
+
+    by_email = await client.get(
+        "/api/v1/orgs/kings/trainees", params={"search": "PRIYA@example.com"}, headers=bearer(admin)
+    )
+    assert [t["email"] for t in by_email.json()["items"]] == ["priya@example.com"]
+
+    by_cohort = await client.get(
+        "/api/v1/orgs/kings/trainees", params={"search": "2027"}, headers=bearer(admin)
+    )
+    assert [t["email"] for t in by_cohort.json()["items"]] == ["priya@example.com"]
+
+    no_match = await client.get(
+        "/api/v1/orgs/kings/trainees", params={"search": "nobody-like-this"}, headers=bearer(admin)
+    )
+    assert no_match.json()["items"] == []
+
+
 async def test_a_spreadsheet_is_rostered_in_one_request(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """Duplicates are reported, not fatal: one bad row must not refuse the cohort."""
     _, admin = await org_with_admin(client, make_actor)

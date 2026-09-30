@@ -34,10 +34,21 @@ _LIFECYCLE = (errors.NotEditableError, errors.AlreadyPublishedError, errors.NotA
     response_model=Page[schemas.RubricRead],
     responses=error_responses(Forbidden),
 )
-async def list_org_rubrics(workspace: OrgReader, session: Session, page: Pager) -> Page[schemas.RubricRead]:
-    """The organisation's own rubrics, and the platform's, which it may mark with."""
+async def list_org_rubrics(
+    workspace: OrgReader,
+    session: Session,
+    page: Pager,
+    search: str | None = None,
+    exam_code: str | None = None,
+) -> Page[schemas.RubricRead]:
+    """The organisation's own rubrics, and the platform's, which it may mark with.
+
+    `search` matches a rubric's title; `exam_code` narrows to rubrics already
+    bound to that exam (the platform-web author screen used to do this join
+    client-side).
+    """
     rubrics, next_cursor = await service.list_rubrics(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+        session, workspace.org_id, limit=page.limit, cursor=page.cursor, search=search, exam_code=exam_code
     )
     return Page(items=rubrics, next_cursor=next_cursor)
 

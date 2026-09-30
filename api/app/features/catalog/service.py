@@ -166,6 +166,12 @@ async def exam_code_by_id(session: AsyncSession, exam_id: uuid.UUID) -> str | No
     return None if exam is None else exam.code
 
 
+async def exam_ids_matching_code(session: AsyncSession, term: str) -> list[uuid.UUID]:
+    """Ids of every exam whose code contains `term`. For another slice's own
+    search filter, so it never queries `exams` itself."""
+    return await repository.exam_ids_matching_code(session, term)
+
+
 async def exam_codes(session: AsyncSession, org_id: uuid.UUID | None = None) -> list[str]:
     """Every published exam's code this caller may see. Small enough not to page."""
     return [exam.code for exam in await _published(session, org_id)]

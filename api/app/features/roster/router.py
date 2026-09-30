@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
@@ -32,11 +32,14 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(Forbidden),
 )
 async def list_trainees(
-    workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
+    workspace: OrgReader,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    search: Annotated[str | None, Query(description="A trainee's name, email, or cohort")] = None,
 ) -> Page[schemas.TraineeRead]:
     """Readable by any member: a supervisor needs names to run a circuit."""
     trainees, next_cursor = await service.list_trainees(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+        session, workspace.org_id, limit=page.limit, cursor=page.cursor, search=search
     )
     return Page(items=trainees, next_cursor=next_cursor)
 

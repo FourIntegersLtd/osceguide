@@ -52,9 +52,26 @@ async def list_rubrics(
     *,
     limit: int,
     cursor: dict[str, Any] | None = None,
+    search: str | None = None,
+    rubric_version_id: uuid.UUID | None = None,
 ) -> tuple[list[Rubric], str | None]:
-    """An org sees its own rubrics and the platform's; the platform sees its own."""
+    """An org sees its own rubrics and the platform's; the platform sees its own.
+
+    `search` narrows by title (case-insensitive substring). `rubric_version_id`
+    narrows to rubrics one of whose versions is the given id — the caller
+    resolves an `exam_code` to this id first (`catalog.service.resolve_exam`),
+    since looking up another slice's `Exam` model here would reach across the
+    slice boundary that `Rubric`'s repository does not own.
+    """
     stmt = select(Rubric).where(visible_to(Rubric, org_id))
+    if search:
+        stmt = stmt.where(Rubric.title.ilike(f"%{search}%"))
+    if rubric_version_id:
+        matching_version = select(RubricVersion.id).where(
+            RubricVersion.rubric_id == Rubric.id,
+            RubricVersion.id == rubric_version_id,
+        )
+        stmt = stmt.where(matching_version.exists())
     return await _rubric_page(session, stmt, limit=limit, cursor=cursor)
 
 

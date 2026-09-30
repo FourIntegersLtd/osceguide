@@ -9,12 +9,12 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
 from app.features.roster.domain import normalize_email
-from app.features.roster.models import Trainee
+from app.features.roster.models import Cohort, Trainee
 
 
 async def create_trainee(
@@ -63,10 +63,31 @@ async def trainee_by_email(session: AsyncSession, org_id: uuid.UUID, email: str)
 
 
 async def list_trainees(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    search: str | None = None,
 ) -> tuple[list[Trainee], str | None]:
-    """A page of an organisation's roster, oldest trainee first."""
+    """A page of an organisation's roster, oldest trainee first.
+
+    `search`, if given, narrows to a trainee whose name, email or cohort name
+    contains it, case-insensitively. A left join to `cohorts` so a trainee with
+    no cohort is still searchable on name and email.
+    """
     stmt = select(Trainee).where(Trainee.org_id == org_id)
+    term = (search or "").strip()
+    if term:
+        pattern = f"%{term}%"
+        stmt = stmt.outerjoin(Cohort, Trainee.cohort_id == Cohort.id).where(
+            or_(
+                Trainee.first_name.ilike(pattern),
+                Trainee.last_name.ilike(pattern),
+                Trainee.email.ilike(pattern),
+                Cohort.name.ilike(pattern),
+            )
+        )
     return await keyset_page(
         session,
         stmt,

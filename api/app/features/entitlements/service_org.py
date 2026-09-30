@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,13 +52,41 @@ async def grant_for_org(
         raise errors.UnknownExamError(str(exc)) from exc
 
 
-async def list_for_org(session: AsyncSession, org_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:
-    """Every grant this institution has made, revoked ones included."""
+async def list_for_org(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    now: datetime,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    search: str | None = None,
+) -> tuple[list[EntitlementRead], str | None]:
+    """A page of what this institution has granted, revoked ones included.
+
+    `search`, if given, narrows to a grant whose grantee's name or email, or
+    whose exam code, contains it — resolved through `identity` and `catalog`,
+    which own those tables, rather than joining them here.
+    """
+    term = (search or "").strip()
+    matching_user_ids: list[uuid.UUID] = []
+    matching_exam_ids: list[uuid.UUID] = []
+    if term:
+        matching_user_ids = await identity.user_ids_matching(session, term)
+        matching_exam_ids = await catalog.exam_ids_matching_code(session, term)
+    entitlements, next_cursor = await repository.for_org(
+        session,
+        org_id,
+        limit=limit,
+        cursor=cursor,
+        matching_user_ids=matching_user_ids,
+        matching_exam_ids=matching_exam_ids,
+        has_search=bool(term),
+    )
     reads = []
-    for entitlement in await repository.for_org(session, org_id):
+    for entitlement in entitlements:
         code = await catalog.exam_code_by_id(session, entitlement.exam_id)
         reads.append(service._read(entitlement, code or "", now=now))
-    return reads
+    return reads, next_cursor
 
 
 async def revoke_for_org(

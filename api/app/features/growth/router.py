@@ -129,12 +129,6 @@ async def read_my_referrals(principal: CurrentPrincipal, session: Session) -> sc
     return await service.read_my_referrals(session, principal.user_id)
 
 
-# The frontend does its own client-side paging (10 per page) and search over a
-# single fetch, so this accepts a much larger cap than the keyset pages
-# elsewhere in this router.
-MAX_REFERRAL_HISTORY_LIMIT = service.MAX_REFERRAL_HISTORY_ROWS
-
-
 @router.get(
     "/me/referrals/history",
     response_model=Page[schemas.ReferralHistoryRead],
@@ -143,15 +137,20 @@ MAX_REFERRAL_HISTORY_LIMIT = service.MAX_REFERRAL_HISTORY_ROWS
 async def read_my_referral_history(
     principal: CurrentPrincipal,
     session: Session,
-    limit: Annotated[int, Query(ge=1, le=MAX_REFERRAL_HISTORY_LIMIT)] = MAX_REFERRAL_HISTORY_LIMIT,
+    page: Annotated[CursorParams, Depends()],
+    search: Annotated[
+        str | None, Query(max_length=300, description="A fragment of the referee's email.")
+    ] = None,
 ) -> Page[schemas.ReferralHistoryRead]:
     """This person's own redeemed referrals: who joined, what they bought, and what it earned.
 
-    No cursor: the frontend pages and searches this list client-side, so one
-    call returns up to `limit` rows and there is nothing to page further.
+    Cursor-paginated, like every other list endpoint — the frontend pages and
+    searches this server-side now rather than fetching everything up front.
     """
-    rows = await service.read_my_referral_history(session, user_id=principal.user_id, limit=limit)
-    return Page(items=rows, next_cursor=None)
+    rows, next_cursor = await service.read_my_referral_history(
+        session, user_id=principal.user_id, limit=page.limit, cursor=page.cursor, search=search
+    )
+    return Page(items=rows, next_cursor=next_cursor)
 
 
 @router.get(

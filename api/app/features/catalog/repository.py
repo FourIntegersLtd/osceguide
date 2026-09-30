@@ -162,6 +162,14 @@ async def exam_codes_by_id(session: AsyncSession, exam_ids: set[uuid.UUID]) -> d
     return {exam_id: str(code) for exam_id, code in result.all()}
 
 
+async def exam_ids_matching_code(session: AsyncSession, term: str) -> list[uuid.UUID]:
+    """Ids of every exam whose code contains `term`, case-insensitively. For
+    another slice's own search filter, so it never queries `exams` itself."""
+    pattern = f"%{term}%"
+    stmt = select(Exam.id).where(Exam.code.ilike(pattern))
+    return list((await session.execute(stmt)).scalars())
+
+
 async def create_programme(
     session: AsyncSession,
     org_id: uuid.UUID,

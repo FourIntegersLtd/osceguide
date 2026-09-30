@@ -68,11 +68,36 @@ async def create_template(
 
 
 async def list_templates(
-    session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    search: str | None = None,
+    exam_code: str | None = None,
+    published_only: bool = False,
 ) -> tuple[list[StationTemplateRead], str | None]:
-    """A page of this org's own templates and the platform's, each with all its versions."""
+    """A page of this org's own templates and the platform's, each with all its versions.
+
+    `search` is a title fragment. `exam_code`, when given, matches templates written for that exam
+    plus every exam-agnostic template; a code this owner may not resolve answers an empty page rather
+    than a catalogue error, since this is a list filter, not authoring input. `published_only` keeps
+    only templates with at least one published version.
+    """
+    exam_id = None
+    if exam_code is not None:
+        try:
+            exam_id = (await resolve_exam(session, exam_code, org_id=org_id)).id
+        except CatalogUnknownExam:
+            return [], None
     templates, next_cursor = await repository.templates_visible_to(
-        session, org_id, limit=limit, cursor=cursor
+        session,
+        org_id,
+        limit=limit,
+        cursor=cursor,
+        search=search,
+        exam_id=exam_id,
+        published_only=published_only,
     )
     templates_read: list[StationTemplateRead] = []
     for template in templates:

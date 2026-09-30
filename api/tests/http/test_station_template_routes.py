@@ -106,6 +106,47 @@ async def test_a_template_is_listed(client: AsyncClient, make_actor) -> None:  #
     assert [t["title"] for t in listed.json()["items"]] == ["SCA consultation"]
 
 
+async def test_templates_are_filtered_by_search_exam_and_published(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    root = await make_actor("root2-kings@osceguide.com", platform_admin=True)
+    await create_exam(client, root, code="casc")
+
+    sca_template = await a_template(client, admin)  # "SCA consultation", exam_code sca
+    await client.post(
+        f"/api/v1/orgs/kings/station-templates/{sca_template['id']}/publish", headers=bearer(admin)
+    )
+    casc_template = await client.post(
+        "/api/v1/orgs/kings/station-templates",
+        json={"title": "CASC role-play", "exam_code": "casc", "structure": STRUCTURE},
+        headers=bearer(admin),
+    )
+    assert casc_template.status_code == 201, casc_template.text
+    unscoped_template = await client.post(
+        "/api/v1/orgs/kings/station-templates",
+        json={"title": "Generic form", "exam_code": None, "structure": STRUCTURE},
+        headers=bearer(admin),
+    )
+    assert unscoped_template.status_code == 201, unscoped_template.text
+
+    # `search` matches a title fragment.
+    searched = await client.get(
+        "/api/v1/orgs/kings/station-templates", params={"search": "consult"}, headers=bearer(admin)
+    )
+    assert [t["title"] for t in searched.json()["items"]] == ["SCA consultation"]
+
+    # `exam_code` matches that exam plus every exam-agnostic template.
+    scoped = await client.get(
+        "/api/v1/orgs/kings/station-templates", params={"exam_code": "sca"}, headers=bearer(admin)
+    )
+    assert {t["title"] for t in scoped.json()["items"]} == {"SCA consultation", "Generic form"}
+
+    # `published_only` keeps only the template with a published version.
+    published = await client.get(
+        "/api/v1/orgs/kings/station-templates", params={"published_only": "true"}, headers=bearer(admin)
+    )
+    assert [t["title"] for t in published.json()["items"]] == ["SCA consultation"]
+
+
 async def test_a_published_version_is_not_editable(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
     template = await a_template(client, admin)

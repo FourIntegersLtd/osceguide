@@ -61,10 +61,22 @@ async def list_platform_stations(
     session: Session,
     page: Annotated[CursorParams, Depends()],
     search: str | None = None,
+    exam_code: str | None = None,
+    include_archived: bool = False,
 ) -> Page[schemas.StationRead]:
-    """Every library station, drafts included — the author's own view of it."""
+    """Every library station, drafts included — the author's own view of it.
+
+    Archived stations are left out unless `include_archived` is set.
+    """
     items, next_cursor = await service.list_stations(
-        session, None, limit=page.limit, cursor=page.cursor, full_content=True, search=search
+        session,
+        None,
+        limit=page.limit,
+        cursor=page.cursor,
+        full_content=True,
+        search=search,
+        exam_code=exam_code,
+        include_archived=include_archived,
     )
     return Page(items=items, next_cursor=next_cursor)
 

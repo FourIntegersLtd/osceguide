@@ -168,11 +168,15 @@ async def list_open_slots(
     cursor: dict[str, Any] | None,
     audience: Audience | None = None,
     exam_code: str | None = None,
+    status: str | None = None,
+    when: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
     """The slots this person may see, open or already claimed.
 
     That is every public slot, plus any offered only to their institution or to
-    a teaching group they belong to.
+    a teaching group they belong to. `status` ("available"/"claimed") and
+    `when` ("upcoming"/"past") let the caller ask for one section of what
+    `SlotSections.tsx` used to split out of a single feed itself.
     """
     viewer_audiences = await audiences_for(session, viewer_id)
     exam_id: uuid.UUID | None = None
@@ -186,6 +190,9 @@ async def list_open_slots(
         cursor=cursor,
         audience=audience,
         exam_id=exam_id,
+        status=status,
+        now=now,
+        when=when,
     )
     exam_codes = await _exam_codes(session, {post.exam_id for post in posts})
     return await service_reads.posts_read(session, posts, exam_codes, viewer_id=viewer_id), next_cursor
@@ -217,10 +224,12 @@ async def list_my_sessions(
     *,
     limit: int,
     cursor: dict[str, Any] | None = None,
+    now: datetime | None = None,
+    when: str | None = None,
 ) -> tuple[list[PeerSessionRead], str | None]:
     from app.features.marketplace.service_sessions import list_my_sessions as _impl
 
-    return await _impl(session, user_id, limit=limit, cursor=cursor)
+    return await _impl(session, user_id, limit=limit, cursor=cursor, now=now, when=when)
 
 
 async def join_session(

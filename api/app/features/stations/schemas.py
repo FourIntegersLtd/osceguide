@@ -10,6 +10,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.core.schemas import AudienceBlockRead, AudienceSectionRead, RecordFieldRead
+
+__all__ = ["AudienceBlockRead", "AudienceSectionRead", "RecordFieldRead"]
+
 
 class StationVersionRead(BaseModel):
     id: uuid.UUID

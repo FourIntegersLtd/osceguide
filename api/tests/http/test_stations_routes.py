@@ -232,6 +232,47 @@ async def test_an_org_station_search_matches_a_title_fragment(client: AsyncClien
     assert {s["title"] for s in response.json()["items"]} == {"Chest pain", "Abdominal pain"}
 
 
+async def test_an_org_station_list_filters_by_exam_code(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The same exam scoping the library applies, answered server-side rather than by the browser
+    walking every page and throwing rows away."""
+    org_id = await seed_org(client, make_actor)
+    token = await member(make_actor, org_id, "kings", "owner")
+    root = await make_actor("root2-kings@osceguide.com", platform_admin=True)
+    await create_exam(client, root, code="casc")
+    await make_station(client, token)  # "Chest pain", exam_code sca
+    await client.post(
+        "/api/v1/orgs/kings/stations",
+        json={"title": "Low mood", "exam_code": "casc", "content": CONTENT},
+        headers=bearer(token),
+    )
+
+    response = await client.get(
+        "/api/v1/orgs/kings/stations", params={"exam_code": "casc"}, headers=bearer(token)
+    )
+    assert response.status_code == 200, response.text
+    assert [s["title"] for s in response.json()["items"]] == ["Low mood"]
+
+
+async def test_an_org_station_list_excludes_archived_by_default(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor)
+    token = await member(make_actor, org_id, "kings", "owner")
+    station = await make_station(client, token)
+    await client.post(
+        f"/api/v1/orgs/kings/stations/{station['id']}/versions/1/publish", headers=bearer(token)
+    )
+    await client.post(
+        f"/api/v1/orgs/kings/stations/{station['id']}/versions/1/archive", headers=bearer(token)
+    )
+
+    default = await client.get("/api/v1/orgs/kings/stations", headers=bearer(token))
+    assert default.json()["items"] == []
+
+    included = await client.get(
+        "/api/v1/orgs/kings/stations", params={"include_archived": "true"}, headers=bearer(token)
+    )
+    assert [s["title"] for s in included.json()["items"]] == ["Chest pain"]
+
+
 async def test_a_trainee_may_browse_stations(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id = await seed_org(client, make_actor)
     await make_station(client, await member(make_actor, org_id, "kings", "owner"))

@@ -118,13 +118,17 @@ def scenario_payload(
     title: str,
     content: Mapping[str, Any] | None,
     examiner_context: str | None = None,
+    candidate_brief: str | None = None,
 ) -> dict[str, Any]:
     """The scenario the worker is handed, shaped as `osce_assessment.contracts.Scenario`.
 
     Only what the worker needs: identity, title and the patient's gender. `raw` stays empty and no
     marking material travels with the session. `examiner_context` is the exception — it is not for
     the worker, but for the marker later, and holds the expected answers a station template marks
-    `examiner`, which the live persona is never shown.
+    `examiner`, which the live persona is never shown. `candidate_brief` is the station's candidate
+    audience sections rendered to text (`domain_audience.sections_as_text`) — what the candidate was
+    told, for the transcript and the debrief tutor to refer back to; `None` for a station with no
+    template bound, the same as `examiner_context`.
     """
     return {
         "id": scenario_id,
@@ -132,7 +136,7 @@ def scenario_payload(
         "title": title,
         "patient_brief": {},
         "patient_gender": patient_gender(content),
-        "candidate_brief": None,
+        "candidate_brief": candidate_brief,
         "duration_seconds": None,
         "examiner_context": examiner_context,
         "raw": {},

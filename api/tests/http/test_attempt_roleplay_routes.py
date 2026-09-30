@@ -29,11 +29,14 @@ async def test_roleplay_is_private_and_post_consultation(
     response = await client.get(url, headers=bearer(token))
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["opening_sentence"] == "Doctor, I have this pain."
-    assert body["expanded_history"] == "Crushing central chest pain for three days."
-    assert body["persona"] == "Anxious, talks quickly"
-    assert "management_plan" not in body
-    assert "key_concerns" not in body
+    section_ids = {section["id"] for section in body["sections"]}
+    assert section_ids == {"patient_information"}
+    patient = next(s for s in body["sections"] if s["id"] == "patient_information")
+    blocks = {block["id"]: block["value"] for block in patient["blocks"]}
+    assert blocks["opening_sentence"] == "Doctor, I have this pain."
+    assert blocks["expanded_history"] == "Crushing central chest pain for three days."
+    assert blocks["persona"] == "Anxious, talks quickly"
+    assert "management_plan" not in section_ids
 
 
 async def test_standalone_debrief_requires_owned_finished_recording(

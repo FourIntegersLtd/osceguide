@@ -41,7 +41,7 @@ _TEMPLATE_AUTOGENERATE_RULES = (
     "Return JSON only. No markdown.\n\n"
     "Output shape:\n"
     '{ "title": string, "blocks": [ { "blockId": string, '
-    '"value": string | string[] | number | boolean }, ... ] }\n\n'
+    '"value": string | string[] | number | boolean | object | object[] }, ... ] }\n\n'
     "Rules:\n"
     "- blocks MUST include one object for EVERY blockId from allBlockIds (required AND optional).\n"
     "- blockId must match templateStructure exactly. Do NOT nest values by section title.\n"
@@ -53,6 +53,10 @@ _TEMPLATE_AUTOGENERATE_RULES = (
     "- multiSelect: array of provided options (strings).\n"
     "- checklist: array of item ids (strings).\n"
     "- scale: number between min and max.\n"
+    "- image: an image URL string or an array of them; leave it out if you have no real URL.\n"
+    "- records: array of objects, one per record, keyed by the block's fields.\n"
+    '- qaList: array of {"question": string, "answer": string}.\n'
+    '- groupedList: object of group name -> array of {"title": string, "reasons": string[]}.\n'
     "- Clinician pack and management sections must be as detailed as patient information.\n\n"
     "Patient pack — opening_sentence (CRITICAL):\n"
     "- Write a SHORT first-person line the AI simulated patient speaks to start the consultation.\n"

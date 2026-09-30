@@ -73,12 +73,14 @@ async def list_stations(
     session: Session,
     page: Annotated[CursorParams, Depends()],
     search: str | None = None,
+    exam_code: str | None = None,
+    include_archived: bool = False,
 ) -> Page[schemas.StationRead]:
     """The stations this organisation has authored.
 
     `OrgReader` admits every rostered trainee, who gets the candidate-facing projection of each
     `content` (S1) rather than the patient's persona and examiner's notes. Staff and a platform
-    admin read the whole thing.
+    admin read the whole thing. Archived stations are left out unless `include_archived` is set.
     """
     items, next_cursor = await service.list_stations(
         session,
@@ -87,6 +89,8 @@ async def list_stations(
         cursor=page.cursor,
         full_content=workspace.is_platform_admin or may_run_circuit_policy()(workspace.role),
         search=search,
+        exam_code=exam_code,
+        include_archived=include_archived,
     )
     return Page(items=items, next_cursor=next_cursor)
 

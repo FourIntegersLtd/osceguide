@@ -25,7 +25,8 @@ so the rules are strict and nothing is inferred.
   declining, because the cost of a wrong guess is money owed to the wrong party.
 - The pilot is `bmj` and the exams are SCA, PLAB and Ortho. **CASC is excluded**,
   as in the legacy constants.
-- Attribution runs for 90 days and only forwards: somebody who followed a
+- Attribution has no time limit and only forwards: once a partner's link is
+  clicked, that partner is credited however long the signup takes, but somebody who followed a
   partner link *after* signing up was not sent by that partner.
 - An acquisition is written **once**. Re-attributing a user because they later
   clicked another partner's link is how the numbers stop reconciling.

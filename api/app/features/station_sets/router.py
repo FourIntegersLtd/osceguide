@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -135,13 +135,19 @@ async def flag_set_entry(
 # Every station you have flagged across your sets, most recently flagged first.
 @router.get(
     "/me/flagged-stations",
-    response_model=list[schemas.FlaggedEntryRead],
+    response_model=Page[schemas.FlaggedEntryRead],
     responses=error_responses(Unauthenticated),
 )
 async def list_flagged_stations(
-    principal: CurrentPrincipal, session: Session
-) -> list[schemas.FlaggedEntryRead]:
-    return await service.list_flagged(session, principal.user_id)
+    principal: CurrentPrincipal,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    search: Annotated[str | None, Query(max_length=200)] = None,
+) -> Page[schemas.FlaggedEntryRead]:
+    flagged, next_cursor = await service.list_flagged(
+        session, principal.user_id, limit=page.limit, cursor=page.cursor, search=search
+    )
+    return Page(items=flagged, next_cursor=next_cursor)
 
 
 @router.post(

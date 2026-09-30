@@ -49,6 +49,8 @@ class StationTemplateVersion(Base, UUIDPrimaryKey, Timestamps):
     __table_args__ = (
         UniqueConstraint("template_id", "version", name="uq_station_template_versions_template_version"),
         Index("ix_station_template_versions_org_status", "org_id", "status"),
+        # Backs the `published_only` filter's per-template EXISTS subquery.
+        Index("ix_station_template_versions_template_status", "template_id", "status"),
         CheckConstraint(_OWNER_MATCHES_ORG, name="ck_station_template_versions_owner_matches_org"),
     )
 
@@ -81,6 +83,9 @@ class Station(Base, UUIDPrimaryKey, Timestamps):
         ),
         Index("ix_stations_org_exam", "org_id", "exam_id"),
         Index("ix_stations_exam_owner", "exam_id", "owner_kind"),
+        # Backs `include_archived=false` on the station list endpoints, which
+        # excludes archived rows by default.
+        Index("ix_stations_org_status", "org_id", "status"),
     )
 
     owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)

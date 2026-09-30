@@ -212,11 +212,16 @@ async def list_my_attempts(
     page: Annotated[CursorParams, Depends()],
     station_version_id: uuid.UUID | None = None,
     set_entry_id: uuid.UUID | None = None,
+    search: str | None = None,
+    transcribable_only: bool = False,
 ) -> Page[schemas_material.AttemptHistoryItem]:
     """Everything this person has sat, newest first.
 
-    The two filters answer the two questions the screens ask: every attempt at
-    one station, and every attempt at one entry of a practice set.
+    The two id filters answer the two questions the screens ask: every attempt
+    at one station, and every attempt at one entry of a practice set. `search`
+    matches the exam or the attempt's kind, and `transcribable_only` drops
+    attempts still `created` — the filters the transcripts screen used to
+    apply itself after walking every page of this same endpoint.
     """
     return await service_material.list_history(
         session,
@@ -225,6 +230,8 @@ async def list_my_attempts(
         cursor=page.cursor,
         station_version_id=station_version_id,
         set_entry_id=set_entry_id,
+        search=search,
+        transcribable_only=transcribable_only,
     )
 
 

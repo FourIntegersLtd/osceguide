@@ -21,6 +21,9 @@ class AvailabilityPost(Base, UUIDPrimaryKey, Timestamps, Addressed):
         CheckConstraint(AUDIENCE_CHECK, name="ck_availability_posts_audience"),
         Index("ix_availability_posts_audience_org_id", "audience_org_id", "starts_at"),
         Index("ix_availability_posts_audience_group_id", "audience_group_id", "starts_at"),
+        # Backs `/marketplace/slots?status=&when=`, which also matches claimed
+        # (not just open) posts.
+        Index("ix_availability_posts_status_starts_at", "status", "starts_at"),
     )
 
     owner_user_id: Mapped[uuid.UUID] = mapped_column(
@@ -41,7 +44,11 @@ class PeerSession(Base, UUIDPrimaryKey, Timestamps):
     """The session a claim creates. Two people, one room, one appointed time."""
 
     __tablename__ = "peer_sessions"
-    __table_args__ = (Index("ix_peer_sessions_participants", "owner_user_id", "claimer_user_id"),)
+    __table_args__ = (
+        Index("ix_peer_sessions_participants", "owner_user_id", "claimer_user_id"),
+        # Backs `/me/peer-sessions?when=`.
+        Index("ix_peer_sessions_status_starts_at", "status", "starts_at"),
+    )
 
     post_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("availability_posts.id", ondelete="SET NULL")

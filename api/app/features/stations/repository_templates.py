@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, exists, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import owned_by, owner_kind_for, visible_to
@@ -40,11 +40,36 @@ async def template_by_id(
 
 
 async def templates_visible_to(
-    session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None = None
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    search: str | None = None,
+    exam_id: uuid.UUID | None = None,
+    published_only: bool = False,
 ) -> tuple[list[StationTemplate], str | None]:
     """A page of this owner's templates and the platform's, oldest first: what a
-    station may be built on."""
+    station may be built on.
+
+    `search` matches a title fragment. `exam_id` narrows to templates written for that exam, plus
+    every exam-agnostic template — one written with no exam at all matches any exam, the same rule
+    platform-web applied client-side before this filter existed. `published_only` keeps only
+    templates that have at least one published version, so a station is never built on a shape that
+    is all drafts.
+    """
     stmt = select(StationTemplate).where(visible_to(StationTemplate, org_id))
+    if search and search.strip():
+        stmt = stmt.where(StationTemplate.title.ilike(f"%{search.strip()}%"))
+    if exam_id is not None:
+        stmt = stmt.where(or_(StationTemplate.exam_id == exam_id, StationTemplate.exam_id.is_(None)))
+    if published_only:
+        stmt = stmt.where(
+            exists().where(
+                StationTemplateVersion.template_id == StationTemplate.id,
+                StationTemplateVersion.status == "published",
+            )
+        )
     return await keyset_page(
         session,
         stmt,

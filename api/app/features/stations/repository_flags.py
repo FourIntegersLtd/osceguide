@@ -39,19 +39,29 @@ async def by_id(session: AsyncSession, flag_id: uuid.UUID) -> StationFlag | None
     return await session.get(StationFlag, flag_id)
 
 
-async def for_reporter(session: AsyncSession, user_id: uuid.UUID) -> list[tuple[StationFlag, str | None]]:
-    """Everything this person has reported, with the station's title.
+async def for_reporter_page(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    search: str | None = None,
+) -> tuple[list[StationFlag], str | None]:
+    """One page of what this person has reported, newest first.
 
-    Joined here rather than resolved client-side, so a report on a station that is not on the
-    caller's current page still shows a real title instead of "Unknown Station".
+    `search` is an ILIKE on the reported station's title, joined in only to
+    filter — `keyset_page` still returns plain `StationFlag` scalars, so the
+    caller resolves titles the same way the staff queue does, with
+    `titles_by_ids`.
     """
-    stmt = (
-        select(StationFlag, Station.title)
-        .join(Station, Station.id == StationFlag.station_id)
-        .where(StationFlag.user_id == user_id)
-        .order_by(StationFlag.created_at.desc())
+    stmt = select(StationFlag).where(StationFlag.user_id == user_id)
+    if search:
+        stmt = stmt.join(Station, Station.id == StationFlag.station_id).where(
+            Station.title.ilike(f"%{search}%")
+        )
+    return await keyset_page(
+        session, stmt, sort_col=StationFlag.created_at, id_col=StationFlag.id, limit=limit, cursor=cursor
     )
-    return [(flag, title) for flag, title in (await session.execute(stmt)).all()]
 
 
 async def list_page(

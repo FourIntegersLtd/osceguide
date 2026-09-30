@@ -62,9 +62,17 @@ async def create_platform_rubric(
     responses=error_responses(Unauthenticated, Forbidden),
 )
 async def list_platform_rubrics(
-    admin: PlatformAdmin, session: Session, page: Pager
+    admin: PlatformAdmin,
+    session: Session,
+    page: Pager,
+    search: str | None = None,
+    exam_code: str | None = None,
 ) -> Page[schemas.RubricRead]:
-    rubrics, next_cursor = await service.list_rubrics(session, None, limit=page.limit, cursor=page.cursor)
+    """`search` matches a rubric's title; `exam_code` narrows to rubrics already
+    bound to that exam."""
+    rubrics, next_cursor = await service.list_rubrics(
+        session, None, limit=page.limit, cursor=page.cursor, search=search, exam_code=exam_code
+    )
     return Page(items=rubrics, next_cursor=next_cursor)
 
 

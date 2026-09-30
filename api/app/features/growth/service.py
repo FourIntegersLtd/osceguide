@@ -5,6 +5,7 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,7 +78,7 @@ async def attribute_signup(
     """Credit a signup to the partner who sent them, once.
 
     Returns None when there is nothing to credit — no arrival, an arrival
-    outside the window, or a user already attributed.
+    after the signup, or a user already attributed.
     """
     if not visitor_key:
         return None
@@ -278,22 +279,32 @@ async def write_my_payout_details(
 
 # --- A2: a referrer's own referral history -----------------------------------
 
-# The frontend pages through this client-side (10 per page, searching by
-# email) rather than asking the server again, so it fetches up to this many
-# rows in one call instead of the usual keyset page size.
-MAX_REFERRAL_HISTORY_ROWS = 500
-
 
 async def read_my_referral_history(
-    session: AsyncSession, *, user_id: uuid.UUID, limit: int
-) -> list[ReferralHistoryRead]:
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    search: str | None = None,
+) -> tuple[list[ReferralHistoryRead], str | None]:
     """This person's own redeemed referrals, newest first, with who joined and what they bought.
 
-    Referee emails are resolved in one lookup rather than per row.
+    Cursor-paginated like every other list endpoint: the frontend no longer
+    fetches the whole history and pages or searches it client-side. `search`
+    matches the referee's email.
+
+    Referee emails are resolved in one lookup rather than per row. `search`
+    is resolved to matching user ids through identity's own service, since
+    the referral row carries no email and this slice does not own `User`.
     """
-    bounded_limit = min(limit, MAX_REFERRAL_HISTORY_ROWS)
-    redeemed = await repository.my_redeemed_referrals_page(
-        session, referrer_user_id=user_id, limit=bounded_limit
+    matching_referee_ids = await identity.user_ids_matching(session, search) if search else None
+    redeemed, next_cursor = await repository.my_redeemed_referrals_page(
+        session,
+        referrer_user_id=user_id,
+        limit=limit,
+        cursor=cursor,
+        matching_referee_ids=matching_referee_ids,
     )
     referee_ids = [referral.referred_user_id for referral in redeemed if referral.referred_user_id]
     referees = await identity.user_refs_by_ids(session, referee_ids)
@@ -314,7 +325,7 @@ async def read_my_referral_history(
                 paid_at=referral.paid_at,
             )
         )
-    return rows
+    return rows, next_cursor
 
 
 def _referral_read(code: str, referrals: list) -> ReferralRead:  # type: ignore[type-arg]

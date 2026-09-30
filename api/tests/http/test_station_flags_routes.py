@@ -49,7 +49,7 @@ async def test_a_report_is_written_down(client: AsyncClient, make_actor) -> None
 
     mine = await client.get("/api/v1/me/station-flags", headers=bearer(reader))
     assert mine.status_code == 200
-    assert [(row["station_id"], row["station_title"], row["status"]) for row in mine.json()] == [
+    assert [(row["station_id"], row["station_title"], row["status"]) for row in mine.json()["items"]] == [
         (station_id, "Wheezy child", "open")
     ]
 
@@ -70,7 +70,7 @@ async def test_a_second_tap_is_the_same_report(client: AsyncClient, make_actor) 
         ).status_code == 204
 
     mine = await client.get("/api/v1/me/station-flags", headers=bearer(reader))
-    assert len(mine.json()) == 1
+    assert len(mine.json()["items"]) == 1
 
 
 async def test_two_readers_reporting_one_station_are_two_reports(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
@@ -101,6 +101,33 @@ async def test_a_report_on_nothing_is_refused(client: AsyncClient, make_actor) -
 async def test_nobody_signed_in_reports_nothing(client: AsyncClient) -> None:
     response = await client.post("/api/v1/me/station-flags", json={"station_id": str(uuid.uuid4())})
     assert response.status_code == 401
+
+
+async def test_my_reports_can_be_searched_by_station_title(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The server does the same ILIKE the client used to do over every page it
+    had already fetched, so a title outside the first page is still findable."""
+    _, admin = await org_with_admin(client, make_actor)
+    wheezy_id = await a_station(client, admin, slug="kings")
+    sore_ankle = await client.post(
+        "/api/v1/orgs/kings/stations",
+        json={"title": "A sore ankle", "exam_code": "sca", "content": CONTENT},
+        headers=bearer(admin),
+    )
+    assert sore_ankle.status_code == 201, sore_ankle.text
+    reader = await make_actor("search-flag@example.com")
+    for station_id in (wheezy_id, sore_ankle.json()["id"]):
+        assert (
+            await client.post(
+                "/api/v1/me/station-flags", json={"station_id": station_id}, headers=bearer(reader)
+            )
+        ).status_code == 204
+
+    narrowed = await client.get(
+        "/api/v1/me/station-flags", params={"search": "wheezy"}, headers=bearer(reader)
+    )
+
+    assert narrowed.status_code == 200, narrowed.text
+    assert [row["station_title"] for row in narrowed.json()["items"]] == ["Wheezy child"]
 
 
 # --- the content team's half ------------------------------------------------
@@ -160,7 +187,7 @@ async def test_closing_a_report_sticks_and_reopening_clears_it(client: AsyncClie
     # And the reader's own list says the same thing, so the button does not
     # invite them to file it again.
     mine = await client.get("/api/v1/me/station-flags", headers=bearer(reader))
-    assert mine.json()[0]["status"] == "resolved"
+    assert mine.json()["items"][0]["status"] == "resolved"
 
     reopened = await client.patch(
         f"/api/v1/platform/station-flags/{flag_id}",
@@ -212,6 +239,6 @@ async def test_a_library_station_can_be_reported_by_a_learner_with_no_org(
     )
     assert reported.status_code == 204, reported.text
 
-    assert (await client.get("/api/v1/me/station-flags", headers=bearer(learner))).json()[0][
+    assert (await client.get("/api/v1/me/station-flags", headers=bearer(learner))).json()["items"][0][
         "station_title"
     ] == "A sore ankle"

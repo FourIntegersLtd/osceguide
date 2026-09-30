@@ -27,6 +27,19 @@ def test_categories_articles_and_related_links(exam):
         assert all(service_help.read_article(slug, exam) for slug in detail.related_slugs)
 
 
+def test_search_matches_a_fragment_of_the_title_or_the_body():
+    """`search` is a plain case-insensitive substring test over the cached catalogue,
+    not a database query — there is no database behind the help articles."""
+    all_articles = service_help.list_articles("sca")
+    target = next(a for a in all_articles if a.body_md)
+    fragment = target.title.split()[0]
+
+    by_title = service_help.list_articles("sca", search=fragment.upper())
+    assert target.slug in {a.slug for a in by_title}
+
+    assert service_help.list_articles("sca", search="no-such-fragment-anywhere") == []
+
+
 def test_exam_specific_articles_are_not_exposed_to_other_exams():
     specific = next(a for a in service_help.list_articles("sca") if a.exam_codes == ["sca"])
     with pytest.raises(NotFound):
@@ -47,6 +60,9 @@ def test_browser_endpoint_contract():
         )
         assert articles.status_code == 200
         slug = articles.json()["articles"][0]["slug"]
+        searched = client.get("/api/v1/help/articles", params={"exam_code": "sca", "search": "no-match-xyz"})
+        assert searched.status_code == 200
+        assert searched.json()["articles"] == []
         detail = client.get(f"/api/v1/help/articles/{slug}?exam_code=sca")
         assert detail.status_code == 200
         assert detail.json()["article"]["body_md"]

@@ -31,10 +31,21 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(Forbidden),
 )
 async def list_station_templates(
-    workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
+    workspace: OrgReader,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    search: str | None = None,
+    exam_code: str | None = None,
+    published_only: bool = False,
 ) -> Page[schemas.StationTemplateRead]:
     templates, next_cursor = await service_templates.list_templates(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+        session,
+        workspace.org_id,
+        limit=page.limit,
+        cursor=page.cursor,
+        search=search,
+        exam_code=exam_code,
+        published_only=published_only,
     )
     return Page(items=templates, next_cursor=next_cursor)
 

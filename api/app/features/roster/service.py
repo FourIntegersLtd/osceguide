@@ -73,10 +73,18 @@ def _display_name(first: str | None, last: str | None, email: str) -> str:
 
 
 async def list_trainees(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    search: str | None = None,
 ) -> tuple[list[TraineeRead], str | None]:
-    """A page of an organisation's roster."""
-    trainees, next_cursor = await repository.list_trainees(session, org_id, limit=limit, cursor=cursor)
+    """A page of an organisation's roster, optionally narrowed to a trainee
+    whose name, email or cohort matches `search`."""
+    trainees, next_cursor = await repository.list_trainees(
+        session, org_id, limit=limit, cursor=cursor, search=search
+    )
     return [_trainee_read(trainee) for trainee in trainees], next_cursor
 
 

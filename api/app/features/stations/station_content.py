@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 
@@ -142,6 +143,48 @@ def summarize_station_content_coverage(structure: Any, content: Any) -> dict[str
     }
 
 
+def _is_image(value: Any) -> bool:
+    """A URL, or a list of URLs."""
+    if isinstance(value, str):
+        return True
+    return isinstance(value, list) and all(isinstance(url, str) for url in value)
+
+
+def _is_records(value: Any) -> bool:
+    """A list of objects, one per record."""
+    return isinstance(value, list) and all(isinstance(record, dict) for record in value)
+
+
+def _is_qa_list(value: Any) -> bool:
+    """A list of `{question, answer}` objects."""
+    return isinstance(value, list) and all(
+        isinstance(pair, dict) and isinstance(pair.get("question"), str) for pair in value
+    )
+
+
+def _is_grouped_list(value: Any) -> bool:
+    """`{group: [text | {title, reasons[]}]}`."""
+    if not isinstance(value, dict):
+        return False
+    for items in value.values():
+        if not isinstance(items, list):
+            return False
+        for item in items:
+            if isinstance(item, str):
+                continue
+            if not isinstance(item, dict) or not isinstance(item.get("title"), str):
+                return False
+    return True
+
+
+_RICH_SHAPES: dict[str, tuple[Callable[[Any], bool], str]] = {
+    "image": (_is_image, "an image URL or a list of image URLs"),
+    "records": (_is_records, "an array of objects"),
+    "qaList": (_is_qa_list, "an array of {question, answer} objects"),
+    "groupedList": (_is_grouped_list, "an object of groups, each an array of text or {title, reasons}"),
+}
+
+
 def validate_station_content(structure: Any, content: Any) -> tuple[bool, list[str]]:
     """Validate that content matches the station template structure."""
     errors: list[str] = []
@@ -189,6 +232,8 @@ def validate_station_content(structure: Any, content: Any) -> tuple[bool, list[s
             elif block_type == "checklist":
                 if not isinstance(value, list):
                     errors.append(f"Block '{block_id}' must be an array of item ids")
+            elif block_type in _RICH_SHAPES and not _RICH_SHAPES[block_type][0](value):
+                errors.append(f"Block '{block_id}' must be {_RICH_SHAPES[block_type][1]}")
             elif block_type == "scale":
                 if not isinstance(value, (int, float)):
                     errors.append(f"Block '{block_id}' must be a number")

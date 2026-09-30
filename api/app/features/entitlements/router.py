@@ -5,13 +5,13 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
-from app.core.pagination import Page
+from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin
 from app.features.entitlements import errors, schemas, service, service_org, service_practice_access
@@ -41,11 +41,17 @@ async def list_my_entitlements(
     responses=error_responses(Forbidden),
 )
 async def list_org_entitlements(
-    workspace: OrgAdmin, session: Session, clock: ClockDep
+    workspace: OrgAdmin,
+    session: Session,
+    clock: ClockDep,
+    page: Annotated[CursorParams, Depends()],
+    search: Annotated[str | None, Query(description="A grantee's name, email, or the exam's code")] = None,
 ) -> Page[schemas.EntitlementRead]:
-    """What this institution has granted, revoked ones included."""
-    entitlements = await service_org.list_for_org(session, workspace.org_id, now=clock.now())
-    return Page(items=entitlements, next_cursor=None)
+    """A page of what this institution has granted, revoked ones included."""
+    entitlements, next_cursor = await service_org.list_for_org(
+        session, workspace.org_id, now=clock.now(), limit=page.limit, cursor=page.cursor, search=search
+    )
+    return Page(items=entitlements, next_cursor=next_cursor)
 
 
 @router.post(

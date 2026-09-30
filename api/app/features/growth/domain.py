@@ -18,9 +18,6 @@ PILOT_PARTNERS = frozenset({"bmj"})
 # not a constant here, so adding one is an admin toggling it, not a code
 # change. Callers pass the set in.
 
-# Oracle: the 90-day acquisition cookie.
-ATTRIBUTION_WINDOW = timedelta(days=90)
-
 _LANDING_PREFIX = "/exams/"
 
 
@@ -85,12 +82,12 @@ def landing_path_for(exam: str) -> str:
 def attributes(*, arrived_at: datetime, signed_up_at: datetime) -> bool:
     """Whether an arrival can be credited with a signup.
 
-    Inside the window, and before it — somebody who followed a partner link
-    after signing up was not sent by that partner.
+    Any arrival before the signup counts, however long ago: once a partner's
+    link is clicked, that partner is credited. Only one after the signup does
+    not — somebody who followed a partner link after signing up was not sent by
+    that partner.
     """
-    if arrived_at > signed_up_at:
-        return False
-    return signed_up_at - arrived_at <= ATTRIBUTION_WINDOW
+    return arrived_at <= signed_up_at
 
 
 @dataclass(frozen=True)

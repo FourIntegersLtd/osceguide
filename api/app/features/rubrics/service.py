@@ -19,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import lifecycle
 from app.core.errors import AppError, raise_mapped
+from app.features.catalog import service as catalog_service
+from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.rubrics import domain, errors, repository
 from app.features.rubrics.models import Rubric, RubricVersion
 from app.features.rubrics.schemas import RubricRead, RubricVersionRead
@@ -61,10 +63,33 @@ async def create_rubric(
 
 
 async def list_rubrics(
-    session: AsyncSession, org_id: uuid.UUID | None, *, limit: int, cursor: dict[str, Any] | None = None
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    search: str | None = None,
+    exam_code: str | None = None,
 ) -> tuple[list[RubricRead], str | None]:
-    """This owner's rubrics, each with all of its versions, one page at a time."""
-    rubrics, next_cursor = await repository.list_rubrics(session, org_id, limit=limit, cursor=cursor)
+    """This owner's rubrics, each with all of its versions, one page at a time.
+
+    `search` matches a rubric's title; `exam_code` narrows to rubrics bound to
+    one exam, so an author picking a rubric for an exam sees only candidates.
+    An unresolvable `exam_code` is treated as no match, since this is a list
+    filter, not authoring input.
+    """
+    rubric_version_id = None
+    if exam_code:
+        try:
+            exam = await catalog_service.resolve_exam(session, exam_code, org_id=org_id)
+        except CatalogUnknownExam:
+            return [], None
+        rubric_version_id = exam.rubric_version_id
+        if rubric_version_id is None:
+            return [], None
+    rubrics, next_cursor = await repository.list_rubrics(
+        session, org_id, limit=limit, cursor=cursor, search=search, rubric_version_id=rubric_version_id
+    )
     rubric_reads = []
     for rubric in rubrics:
         versions = await repository.versions_for_rubric(session, org_id, rubric.id)

@@ -151,6 +151,38 @@ async def test_memberships_are_listed_as_a_page(client: AsyncClient, make_actor)
     assert "items" in body and "next_cursor" in body
 
 
+async def test_memberships_can_be_searched_by_email_role_or_user_id(client: AsyncClient, make_actor) -> None:
+    org_id = await seed_org(client, make_actor)
+    owner_token = await member_token(make_actor, org_id, "kings", "owner")
+    added = await client.post(
+        "/api/v1/orgs/kings/memberships",
+        json={"email": "tutor@kings.example", "role": "supervisor"},
+        headers=bearer(owner_token),
+    )
+    tutor_membership_id = added.json()["id"]
+    tutor_user_id = added.json()["user_id"]
+
+    by_email = await client.get(
+        "/api/v1/orgs/kings/memberships", params={"search": "TUTOR@kings"}, headers=bearer(owner_token)
+    )
+    assert [m["id"] for m in by_email.json()["items"]] == [tutor_membership_id]
+
+    by_role = await client.get(
+        "/api/v1/orgs/kings/memberships", params={"search": "supervisor"}, headers=bearer(owner_token)
+    )
+    assert [m["id"] for m in by_role.json()["items"]] == [tutor_membership_id]
+
+    by_user_id = await client.get(
+        "/api/v1/orgs/kings/memberships", params={"search": tutor_user_id}, headers=bearer(owner_token)
+    )
+    assert [m["id"] for m in by_user_id.json()["items"]] == [tutor_membership_id]
+
+    no_match = await client.get(
+        "/api/v1/orgs/kings/memberships", params={"search": "nobody-like-this"}, headers=bearer(owner_token)
+    )
+    assert no_match.json()["items"] == []
+
+
 async def test_a_membership_row_carries_the_address_it_belongs_to(client: AsyncClient, make_actor) -> None:
     """The list used to answer `email: null` for every row but the one it had
     just invited, which left a team screen showing the front of a user id where

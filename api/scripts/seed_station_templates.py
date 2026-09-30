@@ -16,8 +16,10 @@ the same shape. Regenerate it when a preset changes.
 
 Written through `service_templates`, so a structure the API would refuse is
 refused here too. Idempotent: a platform template with the same title on the
-same exam is left exactly as it is, since a published version is what
-stations are already built on.
+same exam is left as it is when its latest published structure matches the
+seed; when the seed has changed, a new version is published beside it, since
+stations already built on the old one keep it until
+`link_stations_to_templates.py --upgrade` moves them.
 
 The database URL is read from Railway (`--env`), never typed or printed; with
 no `--env` the local `DATABASE_URL` is used.
@@ -51,7 +53,7 @@ async def seed(*, apply: bool) -> int:
     from app.core.db import get_session_factory, import_all_models
     from app.features.catalog.models import Exam
     from app.features.identity.models import User
-    from app.features.stations import service_templates
+    from app.features.stations import repository_templates, service_templates
     from app.features.stations.models import StationTemplate
 
     import_all_models()
@@ -59,6 +61,7 @@ async def seed(*, apply: bool) -> int:
     now = datetime.now(UTC)
     created: list[str] = []
     skipped: list[str] = []
+    republished: list[str] = []
 
     factory = get_session_factory()
     try:
@@ -80,7 +83,19 @@ async def seed(*, apply: bool) -> int:
                     )
                 )
                 if existing is not None:
-                    skipped.append(label)
+                    versions = await repository_templates.template_versions(session, None, existing)
+                    published = [version for version in versions if version.status == "published"]
+                    if published and published[-1].structure == entry["structure"]:
+                        skipped.append(label)
+                        continue
+                    draft = await service_templates.add_version(session, None, existing)
+                    await service_templates.edit_version(
+                        session, None, existing, draft.version, structure=entry["structure"]
+                    )
+                    await service_templates.publish_version(
+                        session, None, existing, actor_id=publisher_id, now=now
+                    )
+                    republished.append(f"{label} (v{draft.version})")
                     continue
                 template = await service_templates.create_template(
                     session,
@@ -105,6 +120,8 @@ async def seed(*, apply: bool) -> int:
     print("APPLIED" if apply else "dry run, rolled back")  # noqa: T201
     for label in created:
         print(f"  created and published  {label}")  # noqa: T201
+    for label in republished:
+        print(f"  changed, republished   {label}")  # noqa: T201
     for label in skipped:
         print(f"  already present, left  {label}")  # noqa: T201
     return 0

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import or_, select, update
@@ -108,11 +108,20 @@ async def list_feed(
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
     audience: Audience | None = None,
+    status: str | None = None,
+    now: datetime | None = None,
+    when: str | None = None,
 ) -> tuple[list[AvailabilityPost], str | None]:
     """Open and claimed slots, latest start time first.
 
     Claimed slots stay in the feed because the app shows them under Scheduled and,
     once their time has passed, Completed.
+
+    `status` narrows to `available` or `claimed` alone, matching the two rows
+    the feed already carries. `when`, read against `now`, narrows to slots
+    starting in the future (`upcoming`) or already started (`past`) — the same
+    split `SlotSections.tsx` used to make client-side to show Available/
+    Scheduled versus Completed.
     """
     stmt = select(AvailabilityPost).where(
         AvailabilityPost.status.in_(("available", "claimed")),
@@ -122,6 +131,14 @@ async def list_feed(
         stmt = stmt.where(AvailabilityPost.exam_id == exam_id)
     if audience is not None:
         stmt = stmt.where(addressed_to(AvailabilityPost, audience))
+    if status is not None:
+        stmt = stmt.where(AvailabilityPost.status == status)
+    if when is not None:
+        assert now is not None, "`when` requires `now`"
+        if when == "upcoming":
+            stmt = stmt.where(AvailabilityPost.starts_at >= now)
+        elif when == "past":
+            stmt = stmt.where(AvailabilityPost.starts_at < now)
     return await keyset_page(
         session,
         stmt,
@@ -242,14 +259,30 @@ async def sessions_for_user(
     *,
     limit: int,
     cursor: dict[str, Any] | None = None,
+    now: datetime | None = None,
+    when: str | None = None,
 ) -> tuple[list[PeerSession], str | None]:
-    """Every session this person offered or claimed, latest start time first."""
+    """Every session this person offered or claimed, latest start time first.
+
+    `when`, read against `now`, matches `isUpcoming` in `UpcomingSessions.tsx`:
+    `upcoming` keeps sessions still `scheduled` or `active` whose join window
+    (one hour past `starts_at`) has not yet closed; `past` is everything else
+    — cancelled, completed, or scheduled/active sessions nobody joined in time.
+    """
     stmt = select(PeerSession).where(
         or_(
             PeerSession.owner_user_id == user_id,
             PeerSession.claimer_user_id == user_id,
         )
     )
+    if when is not None:
+        assert now is not None, "`when` requires `now`"
+        join_window_closes_at = PeerSession.starts_at + timedelta(hours=1)
+        is_upcoming = PeerSession.status.in_(("scheduled", "active")) & (join_window_closes_at >= now)
+        if when == "upcoming":
+            stmt = stmt.where(is_upcoming)
+        elif when == "past":
+            stmt = stmt.where(~is_upcoming)
     return await keyset_page(
         session,
         stmt,

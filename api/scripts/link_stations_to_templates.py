@@ -20,6 +20,9 @@ Ortho needs osce-assessment 0.9.0, the first engine that gives the examiner
 persona its `examiner` blocks.
 
 Idempotent: a version already bound to a template is left as it is.
+`--upgrade` also moves a version bound to an older published version of the
+same template onto its latest, once `seed_station_templates.py` has published
+a changed structure.
 """
 
 from __future__ import annotations
@@ -63,7 +66,7 @@ def _template_title(exam_code: str, content: dict[str, Any]) -> str | None:
     return TEMPLATE_TITLES.get(exam_code)
 
 
-async def link(*, apply: bool) -> int:
+async def link(*, apply: bool, upgrade: bool = False) -> int:
     """Bind, prove every bound station still renders, and commit only when applying and proven."""
     from osce_assessment.prompts import create_station_prompt, station_examiner_context
     from sqlalchemy import select, text
@@ -85,6 +88,7 @@ async def link(*, apply: bool) -> int:
         async with factory() as session, session.begin():
             # Latest published version of each platform template, by (exam, title).
             template_versions: dict[tuple[str, str], uuid.UUID] = {}
+            every_version: dict[tuple[str, str], set[uuid.UUID]] = {}
             template_rows = await session.execute(
                 select(Exam.code, StationTemplate.title, StationTemplateVersion.id)
                 .join(StationTemplate, StationTemplate.exam_id == Exam.id)
@@ -94,6 +98,7 @@ async def link(*, apply: bool) -> int:
             )
             for exam_code, title, version_id in template_rows:
                 template_versions[(exam_code, title)] = version_id
+                every_version.setdefault((exam_code, title), set()).add(version_id)
 
             station_rows = await session.execute(
                 select(Station.id, Station.title, Station.current_version_id, Exam.code)
@@ -115,7 +120,16 @@ async def link(*, apply: bool) -> int:
                     unmatched.append(f"{exam_code}: {station_title}")
                     continue
                 label = f"{exam_code}: {title}"
-                unbound = [version.id for version in versions if version.template_version_id is None]
+                older = (
+                    every_version.get((exam_code, title or ""), set()) - {template_version_id}
+                    if upgrade
+                    else set()
+                )
+                unbound = [
+                    version.id
+                    for version in versions
+                    if version.template_version_id is None or version.template_version_id in older
+                ]
                 if not unbound:
                     already[label] += 1
                     continue
@@ -134,6 +148,14 @@ async def link(*, apply: bool) -> int:
                 if station is None or station.layout is None:
                     continue
                 name = f"{exam_code}: {station_title}"
+                leaked = [
+                    block.id
+                    for section in station.sections
+                    for block in section.blocks
+                    if block.role == "examiner"
+                ]
+                if leaked:
+                    failures.append(f"{name} — examiner material in the candidate brief: {', '.join(leaked)}")
                 if not scenario_is_renderable(station.content, station.layout, station.persona):
                     failures.append(f"{name} — not renderable")
                     continue
@@ -184,13 +206,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--env", choices=("staging", "production"), help="Railway environment to link.")
     parser.add_argument("--apply", action="store_true", help="Commit. Without it the run is rolled back.")
+    parser.add_argument(
+        "--upgrade",
+        action="store_true",
+        help="Also move versions on an older template version to the latest.",
+    )
     arguments = parser.parse_args(argv)
     if arguments.env:
         from copy_authoring_content import database_url
 
         # Before any `app` import: settings read DATABASE_URL once.
         os.environ["DATABASE_URL"] = database_url(arguments.env)
-    return asyncio.run(link(apply=arguments.apply))
+    return asyncio.run(link(apply=arguments.apply, upgrade=arguments.upgrade))
 
 
 if __name__ == "__main__":
