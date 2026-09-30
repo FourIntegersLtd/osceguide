@@ -29,8 +29,15 @@ REQUIRED = (
 )
 
 
+def _configured(name: str) -> str:
+    """An e2e setting, reading OpenAI's key from where `tests/conftest.py` set it aside."""
+    if name == "OPENAI_API_KEY":
+        return os.environ.get("OPENAI_API_KEY") or os.environ.get("E2E_OPENAI_API_KEY", "")
+    return os.environ.get(name, "")
+
+
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    missing = [v for v in REQUIRED if not os.environ.get(v)]
+    missing = [v for v in REQUIRED if not _configured(v)]
     if not missing:
         return
     skip = pytest.mark.skip(reason=f"e2e needs {missing}")
@@ -41,4 +48,6 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
 @pytest.fixture(scope="session")
 def e2e_env() -> dict[str, str]:
-    return {v: os.environ[v] for v in REQUIRED}
+    """The e2e settings, with OpenAI's key restored so the worker subprocess inherits it."""
+    os.environ["OPENAI_API_KEY"] = _configured("OPENAI_API_KEY")
+    return {v: _configured(v) for v in REQUIRED}

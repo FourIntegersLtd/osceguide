@@ -91,6 +91,7 @@ async def create_exam(
     station_attempt_limit: int,
     rubric_version_id: uuid.UUID | None,
     partner_pilot: bool,
+    settings: dict[str, Any],
 ) -> Exam:
     """Insert a new exam row as a draft, and hand back the row with its id set."""
     exam = Exam(
@@ -103,6 +104,7 @@ async def create_exam(
         station_attempt_limit=station_attempt_limit,
         rubric_version_id=rubric_version_id,
         partner_pilot=partner_pilot,
+        settings=settings,
     )
     session.add(exam)
     await session.flush()

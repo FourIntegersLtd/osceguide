@@ -1,10 +1,16 @@
-"""B2C-aligned LLM system prompts for platform content generation.
+"""B2C-aligned LLM system prompts for platform content generation, keyed for `exams.settings`.
 
 Ported from backend/b2c-api/b2c/shared/ai_prompts/shared_prompts.py — keep in sync when
 B2C prompts change (station, summary, blog, slide, podcast, ortho station variants).
+
+Which prompt an exam uses is data, not a branch on its code: `ExamSettings.generation`
+names a key in the registries below, and a station subtype names its own station key.
+An unknown key (or an exam with `{}` settings) gets the `GenerationSettings` default.
 """
 
 from __future__ import annotations
+
+from app.core.exam_settings import ExamSettings, GenerationSettings
 
 PLAB_BLOG_PROMPT = "\n    You are an expert in PLAB medical education, writing detailed blogs tailored for doctors preparing for the UK General Medical Council (GMC) PLAB 2 examination. \n    \n    The blog should focus on:\n    - Common PLAB 2 cases\n    - GMC guidelines\n    - Communication & consultation skills\n    - Clinical management and decision-making\n    \n    Structure the blog in Markdown format, making it engaging, practical, and easy to read.\n    \n    CRITICAL REQUIREMENT:\n    - Target length: Approximately 800 words\n    - MUST NOT EXCEED 800 words under any circumstances\n    - This ensures busy doctors can complete the article in 3-4 minutes\n"
 SCA_BLOG_PROMPT = "\n   You are an expert medical writer crafting an engaging and informative article for busy healthcare professionals preparing for the Royal College of General Practitioners (RCGP), Simulated clinical assessment (SCA) exams. \n                \n    Write in Markdown format with clear, logical structure, using headings where necessary. \n    Keep paragraphs concise yet rich in information, ensuring the article flows smoothly.\n    \n    CRITICAL REQUIREMENT:\n    - Target length: Approximately 800 words\n    - MUST NOT EXCEED 800 words under any circumstances\n    - This ensures busy doctors can complete the article in 3-4 minutes\n    - Balance meaningful insights with brevity to maximize completion rates\n"
@@ -21,53 +27,61 @@ ORTHO_PRIORITISATION_STATION_GENERATION_PROMPT = '\nYou are creating UK Orthopae
 ORTHO_PORTFOLIO_STATION_GENERATION_PROMPT = '\nYou are creating UK Orthopaedic ST3 portfolio interview stations. Generate a complete portfolio station with standard interview questions. The USER MESSAGE may be empty or contain optional CV data; you do not need CV data to generate the station.\n\n⚠️ CRITICAL: ALWAYS generate a FULL station. Fill every required field. Do not leave station_name, clinical_scenario, portfolio_themes, or interview_questions empty. Generate at least 10–15 interview Q&A pairs covering the standard portfolio topics below.\n\n**MANDATORY MARKDOWN FORMATTING - YOU MUST USE THESE:**\n- **Bold for section headings**: Use **Part 1**, **Part 2**, **Scenario**, **Key themes**, etc.\n- **Bullet points for lists**: Use - or * at the start of each item\n- **Numbered lists for steps**: Use 1., 2., 3. where appropriate\n- **Line breaks between sections**: Add blank lines between paragraphs\n- **Bold for emphasis**: Use **text** for important concepts (CAMP, person specifications, NJR, GIRFT)\n\n**STATION FORMAT:**\n- **Typically unstructured**; 5 minutes × 2 parts\n- **Part 1 (5 min):** "Tell me about yourself" — CAMP (Career, Achievements, Motivation, Preparation). Why should we choose you? How have you met the person specifications? What have you done to prepare for this role? Why do you want to be an orthopaedic surgeon?\n- **Part 2 (5 min):** Knowledge and reflection — What is an audit/QIP/research and what is the difference? What is a standard vs a guideline? What is the NJR? What is GIRFT? What is the best practice tariff? Tell us about your best research/audit/teaching. Complaints procedure. Tell me about an error you have made. What is a never event?\n\n**STANDARD PORTFOLIO QUESTIONS TO INCLUDE (generate Q&A for each):**\n- Tell me about yourself / Why should we choose you? / How have you met the person specifications? / Why orthopaedics? / What have you done to prepare for this role?\n- What is an audit? QIP? Research? What are the differences?\n- What is a standard vs a guideline?\n- What is the NJR? What is GIRFT? What is the best practice tariff?\n- Tell us about your best research/audit/teaching (generic prompts)\n- Complaints procedure / Tell me about an error you have made / What is a never event?\n(If the user message contains CV data, you may add 2–3 personalised questions; otherwise use only standard questions.)\n\n**EXAM TIPS TO REFLECT IN THE STATION:**\n- **They do not have access to your CV** — the examiners do not have the candidate\'s CV in front of them; the candidate must articulate their experience clearly.\n- Examiners may pick up on what the candidate has said or on pre-filled questions.\n- They will move the candidate on if they are not saying the right things or have already answered the question.\n\n**Output Structure (align with your schema) — ALL FIELDS MUST BE FILLED:**\n1. **station_name**: Short title (e.g. "Portfolio – Tell me about yourself and professional knowledge").\n2. **clinical_scenario**: Brief instructions for candidate and examiner. State that examiners do not have the candidate\'s CV; Part 1 = CAMP and person specifications, Part 2 = audit/QIP/research, NJR, GIRFT, BPT, reflection (error, never event, complaints).\n3. **duration_minutes**: 10 (5 min × 2 parts).\n4. **portfolio_themes**: List of themes (e.g. "CAMP", "Person specifications", "Audit vs QIP vs research", "NJR, GIRFT, best practice tariff", "Reflection and never events").\n5. **interview_questions**: Array of Q&A pairs. Include at least 10–15 pairs covering all standard topics above. Each pair: question (as examiner would ask) and model answer or key points.\n6. **key_learning_points**: List of what the candidate should demonstrate (e.g. "Articulate experience and person spec alignment", "Explain NJR, GIRFT, BPT", "Reflect on error and never events").\n7. **references**: Relevant guidance (e.g. "Person specification for ST3 Orthopaedics", "GMC Good Medical Practice", "NJR", "GIRFT", "NHS Never Events list").\n\n**Quality Verification:**\n✅ station_name, clinical_scenario, portfolio_themes, and interview_questions are all non-empty.\n✅ interview_questions has at least 10 Q&A pairs covering CAMP, person spec, audit/QIP/research, NJR, GIRFT, BPT, complaints, error, never event.\n✅ Standard portfolio topics covered. Formatting uses bold, bullets, clear structure. Duration 10 min, two-part structure stated.\n\n'
 
 
-def _normalize_exam(exam_code: str | None) -> str:
-    """The exam code lower-cased and trimmed, defaulting to `sca` when none was given."""
-    if not exam_code or not str(exam_code).strip():
-        return "sca"
-    return str(exam_code).strip().lower()
+# Station prompts, keyed like the generation profiles in `stations.generation_profiles`
+# so a profile's key is also its prompt's key.
+STATION_PROMPTS: dict[str, str] = {
+    "sca.station": SCA_STATION_GENERATION_PROMPT,
+    "plab.station": PLAB_STATION_GENERATION_PROMPT,
+    "casc.station": CASC_STATION_GENERATION_PROMPT,
+    "ortho.clinical": ORTHO_CLINICAL_STATION_GENERATION_PROMPT,
+    "ortho.communication": ORTHO_COMMUNICATION_STATION_GENERATION_PROMPT,
+    "ortho.prioritisation": ORTHO_PRIORITISATION_STATION_GENERATION_PROMPT,
+    "ortho.portfolio": ORTHO_PORTFOLIO_STATION_GENERATION_PROMPT,
+}
+
+SUMMARY_PROMPTS: dict[str, str] = {
+    "sca.summary": SCA_SUMMARY_GENERATION_PROMPT,
+    "casc.summary": CASC_SUMMARY_GENERATION_PROMPT,
+}
+
+BLOG_PROMPTS: dict[str, str] = {
+    "sca.blog": SCA_BLOG_PROMPT,
+    "plab.blog": PLAB_BLOG_PROMPT,
+}
+
+_DEFAULTS = GenerationSettings()
 
 
-def station_system_prompt(
-    exam_code: str | None,
-    ortho_station_type: str | None = None,
-) -> str:
-    """Exam-level station generation system prompt (B2C AIStationService)."""
-    exam = _normalize_exam(exam_code)
-    if exam == "ortho":
-        ortho = (ortho_station_type or "clinical").strip().lower()
-        ortho_map = {
-            "clinical": ORTHO_CLINICAL_STATION_GENERATION_PROMPT,
-            "communication": ORTHO_COMMUNICATION_STATION_GENERATION_PROMPT,
-            "prioritisation": ORTHO_PRIORITISATION_STATION_GENERATION_PROMPT,
-            "portfolio": ORTHO_PORTFOLIO_STATION_GENERATION_PROMPT,
-        }
-        return ortho_map.get(ortho, ORTHO_CLINICAL_STATION_GENERATION_PROMPT)
-    station_map = {
-        "sca": SCA_STATION_GENERATION_PROMPT,
-        "plab": PLAB_STATION_GENERATION_PROMPT,
-        "casc": CASC_STATION_GENERATION_PROMPT,
-    }
-    return station_map.get(exam, SCA_STATION_GENERATION_PROMPT)
+def station_prompt_for_key(prompt_key: str | None) -> str:
+    """The station prompt stored under this key, or the default station prompt."""
+    return STATION_PROMPTS.get(prompt_key or "", STATION_PROMPTS[_DEFAULTS.station_prompt])
 
 
-def summary_system_prompt(exam_code: str | None) -> str:
-    """B2C AISummaryService system prompt."""
-    exam = _normalize_exam(exam_code)
-    if exam == "casc":
-        return CASC_SUMMARY_GENERATION_PROMPT
-    return SCA_SUMMARY_GENERATION_PROMPT
+def station_system_prompt(exam_settings: ExamSettings, station_subtype: str | None = None) -> str:
+    """The station generation prompt for an exam, and for one of its subtypes if named.
+
+    A subtype the exam does not list is ignored, so the exam's own station
+    prompt applies rather than a guess.
+    """
+    subtype = exam_settings.subtype(station_subtype)
+    if subtype is not None:
+        return station_prompt_for_key(subtype.generation_profile)
+    return station_prompt_for_key(exam_settings.generation.station_prompt)
 
 
-def blog_system_prompt(exam_code: str | None) -> str:
-    """B2C AIBlogService system prompt."""
-    exam = _normalize_exam(exam_code)
-    if exam == "plab":
-        return PLAB_BLOG_PROMPT
-    return SCA_BLOG_PROMPT
+def summary_system_prompt(exam_settings: ExamSettings) -> str:
+    """The condition-summary generation prompt this exam names (B2C AISummaryService)."""
+    key = exam_settings.generation.summary_prompt
+    return SUMMARY_PROMPTS.get(key, SUMMARY_PROMPTS[_DEFAULTS.summary_prompt])
 
 
-def slide_system_prompt(_exam_code: str | None = None) -> str:
+def blog_system_prompt(exam_settings: ExamSettings) -> str:
+    """The blog generation prompt this exam names (B2C AIBlogService)."""
+    key = exam_settings.generation.blog_prompt
+    return BLOG_PROMPTS.get(key, BLOG_PROMPTS[_DEFAULTS.blog_prompt])
+
+
+def slide_system_prompt() -> str:
     """B2C slide_service system prompt (exam-agnostic in B2C)."""
     return SLIDE_GENERATION_PROMPT
 
@@ -75,3 +89,21 @@ def slide_system_prompt(_exam_code: str | None = None) -> str:
 def podcast_system_prompt(source_text: str) -> str:
     """B2C PODCAST_PROMPT with {text} substituted."""
     return PODCAST_PROMPT.format(text=source_text)
+
+
+def unknown_prompt_keys(exam_settings: ExamSettings) -> list[str]:
+    """Every prompt or profile key these settings name that no registry holds.
+
+    Empty means the settings are usable; the catalog refuses to store them otherwise,
+    so a typo is a 422 when the exam is saved, not a silent fallback at generation.
+    """
+    generation = exam_settings.generation
+    named_station_keys = [generation.station_prompt, generation.default_profile] + [
+        subtype.generation_profile for subtype in exam_settings.station_subtypes
+    ]
+    unknown = [f"station:{key}" for key in named_station_keys if key not in STATION_PROMPTS]
+    if generation.summary_prompt not in SUMMARY_PROMPTS:
+        unknown.append(f"summary:{generation.summary_prompt}")
+    if generation.blog_prompt not in BLOG_PROMPTS:
+        unknown.append(f"blog:{generation.blog_prompt}")
+    return unknown

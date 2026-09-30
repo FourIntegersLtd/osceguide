@@ -16,6 +16,7 @@ from typing import Any
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exam_settings import ExamSettings
 from app.features.catalog import domain, repository
 from app.features.catalog.errors import (
     ExamCodeTaken,
@@ -23,6 +24,7 @@ from app.features.catalog.errors import (
     ExamNotOwned,
     ExamNotPublishable,
     InvalidExamCodeError,
+    InvalidExamSettings,
 )
 from app.features.catalog.models import Exam
 from app.features.catalog.schemas import ExamRead
@@ -69,11 +71,13 @@ async def create_exam(
     station_attempt_limit: int = 3,
     rubric_version_id: uuid.UUID | None = None,
     partner_pilot: bool = False,
+    settings: ExamSettings | None = None,
 ) -> ExamRead:
     """A new exam, as a draft. Nothing may be built on it until it is published.
 
     `org_id` is the author: `None` writes a platform exam, an org id writes
     that institution's own, with no list of platform exams to pick from.
+    `settings` omitted stores `{}`, which reads back as every default.
     """
     try:
         normalised = domain.normalise_code(code)
@@ -83,6 +87,7 @@ async def create_exam(
         raise ExamCodeTaken(f"An exam with the code {normalised!r} already exists.")
     if rubric_version_id is not None:
         await _usable_rubric(session, org_id, rubric_version_id)
+    stored_settings = {} if settings is None else _storable_settings(settings)
     exam = await repository.create_exam(
         session,
         owner_kind=domain.owner_of(org_id),
@@ -94,6 +99,7 @@ async def create_exam(
         station_attempt_limit=station_attempt_limit,
         rubric_version_id=rubric_version_id,
         partner_pilot=partner_pilot and org_id is None,
+        settings=stored_settings,
     )
     return exam_read(exam)
 
@@ -110,6 +116,8 @@ async def update_exam(
     changes = {field: value for field, value in fields.items() if value is not None}
     if "rubric_version_id" in changes:
         await _usable_rubric(session, org_id, changes["rubric_version_id"])
+    if "settings" in changes:
+        changes["settings"] = _storable_settings(ExamSettings.model_validate(changes["settings"]))
     if org_id is not None:
         # Partner attribution is a consumer funnel; an org exam is never in it.
         changes.pop("partner_pilot", None)
@@ -161,6 +169,22 @@ async def delete_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UU
         await repository.delete_exam(session, exam.id)
     except IntegrityError as exc:
         raise ExamInUse() from exc
+
+
+def _storable_settings(settings: ExamSettings) -> dict[str, Any]:
+    """Settings as the JSON column stores them, refused if they name a prompt that does not exist.
+
+    Checked here rather than at generation so a typo fails when the exam is
+    saved, not later as a silent fallback to the default prompt.
+    """
+    # Imported here: generation reads `catalog.schemas`, so a module-level
+    # import would make the two slices load each other.
+    from app.features.generation import service as generation
+
+    unknown = generation.unknown_prompt_keys(settings)
+    if unknown:
+        raise InvalidExamSettings(f"Unknown generation keys in settings: {', '.join(unknown)}.")
+    return settings.model_dump(mode="json")
 
 
 async def _owned_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID | None) -> Exam:

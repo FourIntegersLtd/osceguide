@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.core.exam_settings import ExamSettings
 from app.features.stations.generation_profiles.resolve import (
     effective_block_hints_for_profile,
     resolve_block_generation_hints,
@@ -128,5 +129,5 @@ def test_resolve_system_prompt_uses_profile() -> None:
     from app.features.stations.generation_profiles.resolve import resolve_system_prompt
 
     structure = {"generation": {"profileKey": "sca.station"}}
-    prompt = resolve_system_prompt(structure, exam_code="sca", allow_custom_override=False)
+    prompt = resolve_system_prompt(structure, exam_settings=ExamSettings(), allow_custom_override=False)
     assert "UK primary care" in prompt

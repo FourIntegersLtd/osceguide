@@ -66,6 +66,7 @@ async def list_platform_exams(
         Forbidden,
         errors.ExamCodeTaken,
         errors.InvalidExamCodeError,
+        errors.InvalidExamSettings,
         errors.RubricVersionNotFound,
     ),
 )
@@ -80,6 +81,7 @@ async def create_exam(body: schemas.CreateExam, admin: PlatformAdmin, session: S
         station_attempt_limit=body.station_attempt_limit,
         rubric_version_id=body.rubric_version_id,
         partner_pilot=body.partner_pilot,
+        settings=body.settings,
     )
 
 
@@ -88,7 +90,11 @@ async def create_exam(body: schemas.CreateExam, admin: PlatformAdmin, session: S
     "/platform/exams/{exam_id}",
     response_model=schemas.ExamRead,
     responses=error_responses(
-        Unauthenticated, Forbidden, errors.UnknownExamError, errors.RubricVersionNotFound
+        Unauthenticated,
+        Forbidden,
+        errors.UnknownExamError,
+        errors.InvalidExamSettings,
+        errors.RubricVersionNotFound,
     ),
 )
 async def update_exam(
@@ -174,6 +180,7 @@ async def import_platform_exam(
         Forbidden,
         errors.ExamCodeTaken,
         errors.InvalidExamCodeError,
+        errors.InvalidExamSettings,
         errors.RubricVersionNotFound,
     ),
 )
@@ -194,13 +201,16 @@ async def create_org_exam(
         default_simulation_seconds=body.default_simulation_seconds,
         station_attempt_limit=body.station_attempt_limit,
         rubric_version_id=body.rubric_version_id,
+        settings=body.settings,
     )
 
 
 @router.patch(
     "/orgs/{org_slug}/exams/{exam_id}",
     response_model=schemas.ExamRead,
-    responses=error_responses(Forbidden, errors.UnknownExamError, errors.RubricVersionNotFound),
+    responses=error_responses(
+        Forbidden, errors.UnknownExamError, errors.InvalidExamSettings, errors.RubricVersionNotFound
+    ),
 )
 async def update_org_exam(
     exam_id: uuid.UUID, body: schemas.UpdateExam, workspace: OrgAdmin, session: Session

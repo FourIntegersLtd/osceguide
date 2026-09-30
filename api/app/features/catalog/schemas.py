@@ -6,6 +6,8 @@ import uuid
 
 from pydantic import BaseModel, Field
 
+from app.core.exam_settings import ExamSettings
+
 
 class ExamRead(BaseModel):
     id: uuid.UUID
@@ -24,6 +26,7 @@ class ExamRead(BaseModel):
     default_simulation_seconds: int
     station_attempt_limit: int
     partner_pilot: bool = False
+    settings: ExamSettings = Field(default_factory=ExamSettings)
 
 
 class CreateExam(BaseModel):
@@ -34,6 +37,8 @@ class CreateExam(BaseModel):
     station_attempt_limit: int = Field(default=3, gt=0, le=100)
     rubric_version_id: uuid.UUID | None = None
     partner_pilot: bool = False
+    # Omitted, the exam behaves like the defaults (`ExamSettings()`).
+    settings: ExamSettings | None = None
 
 
 class UpdateExam(BaseModel):
@@ -45,6 +50,8 @@ class UpdateExam(BaseModel):
     station_attempt_limit: int | None = Field(default=None, gt=0, le=100)
     rubric_version_id: uuid.UUID | None = None
     partner_pilot: bool | None = None
+    # Replaces the whole settings object; there is no partial merge.
+    settings: ExamSettings | None = None
 
 
 class ProgrammeRead(BaseModel):

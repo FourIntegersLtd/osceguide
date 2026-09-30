@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exam_settings import ExamSettings
 from app.core.settings import Settings
+from app.features.catalog import service as catalog
 from app.features.generation import exam_prompts
 from app.features.generation.errors import GenerationUnavailable
 from app.features.generation.normalizers import (
@@ -59,11 +63,16 @@ async def generate_station(
     *,
     prompt: str,
     exam_code: str,
-    ortho_station_type: str | None = None,
+    session: AsyncSession,
+    station_subtype: str | None = None,
     settings: Settings,
 ) -> dict[str, Any]:
-    """Drafts a new station for a platform admin to review, as raw JSON matching the station schema."""
-    system = exam_prompts.station_system_prompt(exam_code, ortho_station_type) + _STATION_JSON_APPENDIX
+    """Drafts a new station for a platform admin to review, as raw JSON matching the station schema.
+
+    The prompt is the one the exam's settings name, or its subtype's when one is given.
+    """
+    exam_settings = await catalog.exam_settings_for_code(session, exam_code)
+    system = exam_prompts.station_system_prompt(exam_settings, station_subtype) + _STATION_JSON_APPENDIX
     return await _json_completion(
         settings=settings,
         system=system,
@@ -71,10 +80,13 @@ async def generate_station(
     )
 
 
-async def generate_summary(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
+async def generate_summary(
+    *, prompt: str, exam_code: str | None, session: AsyncSession, settings: Settings
+) -> dict[str, Any]:
     """Drafts a condition summary, normalised to the platform's summary draft keys."""
     exam = exam_code or "sca"
-    system = exam_prompts.summary_system_prompt(exam) + _SUMMARY_JSON_APPENDIX
+    exam_settings = await catalog.exam_settings_for_code(session, exam_code)
+    system = exam_prompts.summary_system_prompt(exam_settings) + _SUMMARY_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
@@ -83,10 +95,13 @@ async def generate_summary(*, prompt: str, exam_code: str | None, settings: Sett
     return normalize_summary_response(raw)
 
 
-async def generate_blog(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
+async def generate_blog(
+    *, prompt: str, exam_code: str | None, session: AsyncSession, settings: Settings
+) -> dict[str, Any]:
     """Drafts a blog post, normalised to the platform's blog draft keys."""
     exam = exam_code or "sca"
-    system = exam_prompts.blog_system_prompt(exam) + _BLOG_JSON_APPENDIX
+    exam_settings = await catalog.exam_settings_for_code(session, exam_code)
+    system = exam_prompts.blog_system_prompt(exam_settings) + _BLOG_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
@@ -98,7 +113,7 @@ async def generate_blog(*, prompt: str, exam_code: str | None, settings: Setting
 async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
     """Drafts a slide deck, normalised to the platform's slide deck draft keys."""
     exam = exam_code or "sca"
-    system = exam_prompts.slide_system_prompt(exam) + _SLIDE_JSON_APPENDIX
+    system = exam_prompts.slide_system_prompt() + _SLIDE_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
@@ -171,9 +186,19 @@ async def _json_completion(*, settings: Settings, system: str, user: str) -> dic
     return parsed
 
 
-def station_system_prompt(exam_code: str | None, ortho_station_type: str | None = None) -> str:
+def station_system_prompt(exam_settings: ExamSettings, station_subtype: str | None = None) -> str:
     """Exam-level station generation prompt, for other slices to compose with."""
-    return exam_prompts.station_system_prompt(exam_code, ortho_station_type)
+    return exam_prompts.station_system_prompt(exam_settings, station_subtype)
+
+
+def station_prompt_for_key(prompt_key: str | None) -> str:
+    """The station prompt a generation profile key names, for other slices to compose with."""
+    return exam_prompts.station_prompt_for_key(prompt_key)
+
+
+def unknown_prompt_keys(exam_settings: ExamSettings) -> list[str]:
+    """The prompt and profile keys in these settings that no prompt registry holds."""
+    return exam_prompts.unknown_prompt_keys(exam_settings)
 
 
 PODCAST_PROMPT = exam_prompts.PODCAST_PROMPT

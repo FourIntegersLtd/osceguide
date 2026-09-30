@@ -91,3 +91,10 @@ class RubricVersionNotFound(NotFound):
 
     code = "rubric_version_not_found"
     default_message = "No such rubric version"
+
+
+class InvalidExamSettings(InvalidInput):
+    """The exam's settings name a generation prompt or profile that does not exist."""
+
+    code = "invalid_exam_settings"
+    default_message = "Those exam settings name a prompt that does not exist"

@@ -8,23 +8,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+from app.core.exam_settings import ExamSettings
 from app.features.generation import service as generation
 
 _GENERATED_DIR = Path(__file__).resolve().parent / "_generated"
-
-EXAM_DEFAULT_PROFILE: dict[str, str] = {
-    "sca": "sca.station",
-    "plab": "plab.station",
-    "casc": "casc.station",
-    "ortho": "ortho.clinical",
-}
-
-ORTHO_PROFILE_BY_TYPE: dict[str, str] = {
-    "clinical": "ortho.clinical",
-    "communication": "ortho.communication",
-    "prioritisation": "ortho.prioritisation",
-    "portfolio": "ortho.portfolio",
-}
 
 
 @dataclass(frozen=True)
@@ -48,9 +35,8 @@ class GenerationProfile:
         """This profile's system prompt for autogeneration, or empty for the custom profile."""
         if self.meta.profile_key == "custom":
             return ""
-        exam = self.meta.exam_code or "sca"
-        ortho = self.meta.ortho_station_type
-        return generation.station_system_prompt(exam, ortho)
+        # A profile's key is also its station prompt's key in `generation`.
+        return generation.station_prompt_for_key(self.meta.profile_key)
 
 
 def _json_path_for_key(profile_key: str) -> Path:
@@ -100,24 +86,24 @@ def list_profile_meta() -> list[GenerationProfileMeta]:
 
 
 def get_profile(profile_key: str) -> GenerationProfile | None:
+    """One profile by key, or `None` when no shipped profile has it."""
     return _load_all_profiles().get(profile_key)
 
 
 def default_profile_key_for_exam(
-    exam_code: str | None,
-    ortho_station_type: str | None = None,
+    exam_settings: ExamSettings,
+    station_subtype: str | None = None,
 ) -> str:
-    """The profile a station of this exam (and, for ortho, this station type) generates from by default."""
-    exam = (exam_code or "sca").strip().lower()
-    if exam == "ortho" and ortho_station_type:
-        ortho = ortho_station_type.strip().lower()
-        return ORTHO_PROFILE_BY_TYPE.get(ortho, "ortho.clinical")
-    return EXAM_DEFAULT_PROFILE.get(exam, "sca.station")
+    """The profile a station of this exam (and of this subtype, if it lists one) generates from by default."""
+    subtype = exam_settings.subtype(station_subtype)
+    if subtype is not None:
+        return subtype.generation_profile
+    return exam_settings.generation.default_profile
 
 
 def resolve_profile_key_from_structure(
     structure: dict[str, Any],
-    exam_code: str | None,
+    exam_settings: ExamSettings,
 ) -> str:
     """The profile a template names explicitly, or the exam's default when it names none."""
     generation = structure.get("generation")
@@ -125,4 +111,4 @@ def resolve_profile_key_from_structure(
         key = generation.get("profileKey")
         if isinstance(key, str) and key.strip():
             return key.strip()
-    return default_profile_key_for_exam(exam_code)
+    return default_profile_key_for_exam(exam_settings)

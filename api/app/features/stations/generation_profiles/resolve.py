@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.core.exam_settings import ExamSettings
 from app.features.stations.generation_profiles.platform_overrides import (
     PLATFORM_BLOCK_HINT_OVERRIDES,
 )
@@ -19,11 +20,11 @@ from app.features.stations.generation_profiles.template_block_hint_supplements i
 def resolve_system_prompt(
     structure: dict[str, Any],
     *,
-    exam_code: str | None,
+    exam_settings: ExamSettings,
     allow_custom_override: bool,
 ) -> str:
     """The system prompt autogeneration runs with, for this template's structure and exam."""
-    profile_key = resolve_profile_key_from_structure(structure, exam_code)
+    profile_key = resolve_profile_key_from_structure(structure, exam_settings)
     raw_generation = structure.get("generation")
     generation: dict[str, Any] = raw_generation if isinstance(raw_generation, dict) else {}
 
@@ -40,7 +41,7 @@ def resolve_system_prompt(
         else:
             from app.features.generation.service import station_system_prompt
 
-            base = station_system_prompt(exam_code).strip()
+            base = station_system_prompt(exam_settings).strip()
 
     append = generation.get("systemPromptAppend")
     if isinstance(append, str) and append.strip():
@@ -112,5 +113,6 @@ def resolve_block_generation_hints(
     return hints
 
 
-def profile_key_for_structure(structure: dict[str, Any], exam_code: str | None) -> str:
-    return resolve_profile_key_from_structure(structure, exam_code)
+def profile_key_for_structure(structure: dict[str, Any], exam_settings: ExamSettings) -> str:
+    """The profile this template generates from: its own choice, else the exam's default."""
+    return resolve_profile_key_from_structure(structure, exam_settings)

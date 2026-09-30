@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exam_settings import ExamSettings
 from app.features.catalog import domain, repository
 from app.features.catalog.errors import ProgrammeNotFound, UnknownExamError
 from app.features.catalog.models import Exam
@@ -73,7 +74,43 @@ def exam_read(exam: Exam) -> ExamRead:
         default_simulation_seconds=exam.default_simulation_seconds,
         station_attempt_limit=exam.station_attempt_limit,
         partner_pilot=exam.partner_pilot,
+        settings=exam_settings(exam),
     )
+
+
+def exam_settings(exam: Exam) -> ExamSettings:
+    """The exam's stored settings, with every missing field at its default."""
+    return ExamSettings.model_validate(exam.settings or {})
+
+
+async def exam_settings_for_code(
+    session: AsyncSession, code: str | None, *, org_id: uuid.UUID | None = None
+) -> ExamSettings:
+    """The settings of the exam with this code, or the defaults when there is no such exam.
+
+    For generation and presentation, where an unknown or missing exam should
+    behave like a plain exam rather than refuse: nothing is marked from this.
+    """
+    if not code or not code.strip():
+        return ExamSettings()
+    exam = await repository.exam_by_code(session, org_id, code)
+    return ExamSettings() if exam is None else exam_settings(exam)
+
+
+async def exam_settings_by_id(session: AsyncSession, exam_id: uuid.UUID | None) -> ExamSettings:
+    """The settings of one exam by id, or the defaults when it is gone or not given."""
+    exam = None if exam_id is None else await repository.exam_by_id(session, exam_id)
+    return ExamSettings() if exam is None else exam_settings(exam)
+
+
+async def exam_read_by_code(
+    session: AsyncSession, code: str | None, *, org_id: uuid.UUID | None = None
+) -> ExamRead | None:
+    """The exam with this code as a route returns it, whatever its status, or `None`."""
+    if not code or not code.strip():
+        return None
+    exam = await repository.exam_by_code(session, org_id, code)
+    return None if exam is None else exam_read(exam)
 
 
 def _framework_id(exam: Exam) -> str:

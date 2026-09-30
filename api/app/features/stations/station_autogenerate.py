@@ -10,9 +10,10 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import InvalidInput
+from app.core.exam_settings import ExamSettings
 from app.core.logging import get_logger
 from app.core.settings import Settings
-from app.features.catalog.service import exam_code_by_id
+from app.features.catalog.service import exam_code_by_id, exam_settings_by_id
 from app.features.generation.errors import GenerationUnavailable
 from app.features.stations import repository_templates as template_repository
 from app.features.stations import service_templates as templates
@@ -73,16 +74,22 @@ _TEMPLATE_AUTOGENERATE_RULES = (
 )
 
 
-async def _exam_code_for_template_version(
+async def _exam_for_template_version(
     session: AsyncSession,
     org_id: uuid.UUID | None,
     template_version: Any,
-) -> str:
-    """The exam this template version belongs to, or the SCA fallback if it has none."""
+) -> tuple[str | None, ExamSettings]:
+    """The code and settings of the exam this template version belongs to.
+
+    A template with no exam gets no code and the default settings, which
+    generate like any plain exam.
+    """
     template = await template_repository.template_by_id(session, org_id, template_version.template_id)
     if template is None or template.exam_id is None:
-        return "sca"
-    return await exam_code_by_id(session, template.exam_id) or "sca"
+        return None, ExamSettings()
+    return await exam_code_by_id(session, template.exam_id), await exam_settings_by_id(
+        session, template.exam_id
+    )
 
 
 async def autogenerate_station_draft(
@@ -105,9 +112,9 @@ async def autogenerate_station_draft(
         raise InvalidInput(f"Template structure invalid: {errs_struct}")
 
     spec = structure_spec(structure)
-    exam_code = await _exam_code_for_template_version(session, org_id, template_version)
-    profile_key = profile_key_for_structure(structure, exam_code)
-    block_hints = hints_for_structure(structure, exam_code=exam_code)
+    exam_code, exam_settings = await _exam_for_template_version(session, org_id, template_version)
+    profile_key = profile_key_for_structure(structure, exam_settings)
+    block_hints = hints_for_structure(structure, exam_settings=exam_settings)
     required_block_ids = collect_required_station_block_ids(structure)
     all_block_ids = sorted(collect_station_block_ids(structure))
     logger.info(
@@ -127,7 +134,7 @@ async def autogenerate_station_draft(
     system = (
         resolve_system_prompt(
             structure,
-            exam_code=exam_code,
+            exam_settings=exam_settings,
             allow_custom_override=allow_custom,
         )
         + "\n\n"
@@ -239,9 +246,9 @@ async def autogenerate_station_draft(
 # --- Per-block AI generation hints for station autogenerate.
 
 
-def hints_for_structure(structure: Any, *, exam_code: str | None = None) -> dict[str, str]:
+def hints_for_structure(structure: Any, *, exam_settings: ExamSettings | None = None) -> dict[str, str]:
     """Return generation hints for block ids present in the template structure."""
     if not isinstance(structure, dict):
         return {}
-    profile_key = profile_key_for_structure(structure, exam_code)
+    profile_key = profile_key_for_structure(structure, exam_settings or ExamSettings())
     return resolve_block_generation_hints(structure, profile_key=profile_key)

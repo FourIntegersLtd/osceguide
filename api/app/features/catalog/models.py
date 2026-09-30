@@ -82,6 +82,14 @@ class Exam(Base, UUIDPrimaryKey, Timestamps):
     # Whether partner attribution links may name this exam. Consumer-side, so
     # it is only ever set on a platform exam.
     partner_pilot: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # How this exam differs from the others apart from its rubric: labels,
+    # which debrief modes and help it offers, which generation prompts it
+    # uses. Validated by `schemas.ExamSettings`, whose defaults make `{}` a
+    # whole exam. Justified JSON: a bag of per-exam presentation choices that
+    # grows with the product and is never queried by field.
+    settings: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
 
 
 class Programme(Base, UUIDPrimaryKey, Timestamps):

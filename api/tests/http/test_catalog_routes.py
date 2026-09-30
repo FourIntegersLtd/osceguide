@@ -300,3 +300,86 @@ async def test_the_console_lists_platform_exams_in_every_status(client: AsyncCli
 async def test_only_a_platform_admin_lists_platform_exams(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     refused = await client.get("/api/v1/platform/exams", headers=bearer(await make_actor("t@example.com")))
     assert refused.status_code == 403
+
+
+DEFAULT_SETTINGS = {
+    "date_label": "Exam date",
+    "session_modes": ["debrief", "practice_as_patient"],
+    "station_subtypes": [],
+    "show_tips_while_marking": False,
+    "help_modes": ["navigate"],
+    "peer_waiting_email": False,
+    "generation": {
+        "station_prompt": "sca.station",
+        "summary_prompt": "sca.summary",
+        "blog_prompt": "sca.blog",
+        "default_profile": "sca.station",
+    },
+}
+
+
+async def test_an_exam_without_settings_reads_the_defaults(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """A new exam behaves like every other until somebody says otherwise; nothing branches on its code."""
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    exam = await create_exam(client, admin, code="mrcs-b")
+    assert exam["settings"] == DEFAULT_SETTINGS
+
+
+async def test_an_exam_carries_the_settings_it_was_written_with(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    rubric = await create_rubric(client, admin, title="Orthopaedic rubric")
+    created = await client.post(
+        "/api/v1/platform/exams",
+        json={
+            "code": "frcs-orth",
+            "name": "FRCS Orth",
+            "default_reading_seconds": 120,
+            "default_simulation_seconds": 660,
+            "rubric_version_id": rubric["version_id"],
+            "settings": {
+                "date_label": "Viva date",
+                "session_modes": ["debrief"],
+                "station_subtypes": [
+                    {"key": "clinical", "label": "Clinical", "generation_profile": "ortho.clinical"}
+                ],
+                "generation": {"station_prompt": "ortho.clinical", "default_profile": "ortho.clinical"},
+            },
+        },
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+    settings = created.json()["settings"]
+    assert settings["date_label"] == "Viva date"
+    assert settings["session_modes"] == ["debrief"]
+    assert settings["station_subtypes"] == [
+        {"key": "clinical", "label": "Clinical", "generation_profile": "ortho.clinical"}
+    ]
+    assert settings["generation"] == {
+        "station_prompt": "ortho.clinical",
+        "summary_prompt": "sca.summary",
+        "blog_prompt": "sca.blog",
+        "default_profile": "ortho.clinical",
+    }
+
+    changed = await client.patch(
+        f"/api/v1/platform/exams/{created.json()['id']}",
+        json={"settings": {"date_label": "Sitting date"}},
+        headers=bearer(admin),
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["settings"] == {**DEFAULT_SETTINGS, "date_label": "Sitting date"}
+
+
+async def test_settings_naming_a_prompt_that_does_not_exist_are_refused(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Stored, it would fail at the first generation; refused, the author sees it now."""
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    exam = await create_exam(client, admin, code="mrcs-b")
+    refused = await client.patch(
+        f"/api/v1/platform/exams/{exam['id']}",
+        json={"settings": {"generation": {"station_prompt": "nope.station"}}},
+        headers=bearer(admin),
+    )
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["code"] == "invalid_exam_settings"

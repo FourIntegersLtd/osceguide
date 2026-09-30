@@ -360,6 +360,7 @@ asking us, published on its own schedule, and never in `GET /exams`.
 | `default_simulation_seconds` | `int not null` | |
 | `station_attempt_limit` | `int not null default 3` | |
 | `partner_pilot` | `bool not null default false` | whether a partner attribution link may name it; was `growth.domain.PILOT_EXAMS`. Consumer-side, so forced false on an org exam |
+| `settings` | `jsonb not null default '{}'` | how this exam differs apart from its rubric: date label, debrief modes, station subtypes, marking tips, help modes, peer email, generation prompt keys. Validated by `catalog.schemas.ExamSettings`, whose defaults make `{}` a whole exam. Replaces every `exam == "ortho"`-style branch; justified JSON because it is presentation config never queried by field |
 
 CHECK `ck_exams_published_has_rubric`: `status <> 'published' OR rubric_version_id IS NOT NULL`
 — an exam that could be sat and then found unmarkable is the failure this prevents.
@@ -430,7 +431,7 @@ wording of the rubric that produced it.
 | `structure` | `jsonb not null` | scale, domains, competencies and their descriptors — authored, so it has no fixed columns |
 | `system_prompt` | `text not null` | the marking instructions; was a `.txt` file in the engine |
 | `pacing` | `jsonb not null` | the consultation clock: four marks in seconds |
-| `result_schema_override` | `jsonb null` | escape hatch for a shape the derivation cannot express; normally null |
+| `result_schema_override` | `jsonb null` | retired: nothing reads or writes it since rubric structure v2 (plan `rubric-templates.md` Stage 1); drop in a later migration |
 | `marking_layout` | `jsonb null` | examiner / structured human review UI (`StationStructure`); required on publish for platform catalogue rubrics |
 | `status` | `varchar(32) not null default 'draft'` | `draft` → `published` → `archived` |
 | `published_at/by` | `timestamptz null`, `uuid null` → `users.id` SET NULL | |

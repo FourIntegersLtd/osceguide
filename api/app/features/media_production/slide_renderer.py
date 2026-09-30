@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import re
 import textwrap
-import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -24,49 +23,28 @@ from moviepy import (
 from moviepy.video.fx import CrossFadeIn
 
 from app.core.logging import get_logger
-from app.features.media_production.slide_models import BulletAudioSegment, SlideGenerationResponse
+from app.features.media_production.slide_models import BulletAudioSegment
 
 if TYPE_CHECKING:
     from app.core.settings import Settings
 
 log = get_logger(__name__)
 
-# Unused when firestore_service is None (platform AV jobs).
-COLLECTION_MAPPING: dict = {}
-
-SLIDE_GENERATION_PROMPT = ""
-
-
-def set_nested_value(document: dict, key: str, new_value) -> None:
-    """Sets a dotted key such as `"slides.0.title"` on a nested dict, creating any
-    intermediate dicts that do not exist yet.
-    """
-    parts = key.split(".")
-    target = document
-    for part in parts[:-1]:
-        target = target.setdefault(part, {})
-    target[parts[-1]] = new_value
-
 
 def utc_now_iso_z() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-openai_client = None
-
-
 class SlideService:
     """Renders a slide deck's narration audio and teaching video with MoviePy, ported from the
-    B2C slide service. `firestore_service` is always `None` in the platform AV jobs that call
-    this today; it is kept so this class still works unmodified against the legacy store too.
+    B2C slide service. It reads and writes the deck as a local JSON file; the legacy
+    Firestore store it once mirrored to is gone.
     """
 
-    def __init__(self, firestore_service=None, settings: Settings | None = None):
+    def __init__(self, settings: Settings | None = None):
         from app.core.settings import get_settings
 
         self.settings = settings or get_settings()
-        self.openai_client = openai_client
-        self.firestore_service = firestore_service
 
         cartesia_key = self.settings.cartesia_api_key.strip()
         if cartesia_key:
@@ -170,380 +148,9 @@ class SlideService:
         log.debug(f"Saved slides JSON: {json_path}")
         return json_path
 
-    def generate_slides(
-        self,
-        prompt: str,
-        user_id: str = None,
-        app_type: str = "sca",
-        specialty: str = None,
-    ) -> dict:
-        """
-        Generate AI-narrated teaching video slides from a given scenario.
-
-        Args:
-            prompt: The scenario to generate slides for
-            user_id: Optional user ID of the creator
-            app_type: App type (sca, plab, casc) - defaults to "sca"
-
-        Returns:
-            dict: Generated slide data with status and slide_id, or error message
-        """
-        if not prompt or not isinstance(prompt, str):
-            log.error("Invalid or missing prompt")
-            return {"error": "Invalid or missing prompt"}, 400
-
-        log.debug(f"[SLIDE_GENERATION] Starting slide generation for prompt: {prompt[:100]}...")
-
-        # Construct user prompt
-        user_prompt = f"Generate teaching slides based on the following clinical scenario: {prompt}"
-
-        log.debug(f"User prompt: {user_prompt}")
-
-        messages = [
-            {"role": "system", "content": SLIDE_GENERATION_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ]
-
-        try:
-            log.debug("[SLIDE_GENERATION] Calling OpenAI API for structured slide generation")
-
-            completion = self.openai_client.beta.chat.completions.parse(
-                model="gpt-4o",
-                messages=messages,
-                response_format=SlideGenerationResponse,
-            )
-
-            slide_response = completion.choices[0].message.parsed
-            log.debug(f"[SLIDE_GENERATION] Successfully generated {len(slide_response.slides)} slides")
-
-            # Generate a unique ID for the slide job
-            slide_id = f"slide_{str(uuid.uuid4())[:8]}"
-
-            # Add metadata to the slide response
-            self._add_slide_metadata(slide_response, slide_id, user_id, specialty)
-
-            # Convert from Pydantic model to Python dict for storage/return
-            slide_data = slide_response.model_dump()
-
-            # Create topic-specific folder - topic_<slide_id>
-            topic_folder = self._create_topic_folder(slide_response.topic, slide_id)
-
-            # Save to Firestore and then save the JSON
-            if self.firestore_service:
-                success, firestore_doc_id = self._save_to_firestore(slide_data, app_type)
-                if not success:
-                    log.warning(
-                        "[SLIDE_GENERATION] Failed to save to Firestore, but continuing with local JSON save."
-                    )
-                else:
-                    # Store the Firestore document ID in slide_data for future updates
-                    slide_data["firestore_doc_id"] = firestore_doc_id
-
-            # Save the final slide_data to JSON (now contains Firestore ID if available)
-            json_path = self._save_slides_json(slide_data, topic_folder, slide_id)
-
-            log.debug(f"[SLIDE_GENERATION] Slide generation completed: {slide_id}")
-            log.debug(f"Slides saved to: {json_path}")
-
-            return {
-                "message": "Slides generated successfully",
-                "slide_id": slide_id,
-                "topic": slide_response.topic,
-                "about": slide_response.about,
-                "slides_count": len(slide_response.slides),
-                "status": "draft",
-                "topic_folder": str(topic_folder),
-                "json_path": str(json_path),
-                "data": slide_data,
-            }, 200
-
-        except Exception as e:
-            log.error(f"[SLIDE_GENERATION] Failed to generate slides: {str(e)}", exc_info=True)
-            return {"error": f"Slide generation failed: {str(e)}"}, 500
-
-    def _add_slide_metadata(
-        self,
-        slide_response: SlideGenerationResponse,
-        slide_id: str,
-        user_id: str,
-        specialty: str = None,
-    ):
-        """
-        Enrich the slide response object with metadata.
-
-        Args:
-            slide_response: The SlideGenerationResponse object from the AI
-            slide_id: The unique ID for this slide job
-            user_id: The ID of the user creating the slides
-            specialty: Optional medical specialty for this slide set
-        """
-        # Add metadata to each individual slide
-        for index, slide in enumerate(slide_response.slides, start=1):
-            slide.position = index
-            slide.id = f"slide_{index:04d}"
-
-        # Add overall metadata to the response object
-        slide_response.slide_id = slide_id
-        slide_response.slides_count = len(slide_response.slides)
-        slide_response.status = "draft"
-        slide_response.created_by = user_id
-        slide_response.created_at = utc_now_iso_z()
-        slide_response.updated_at = utc_now_iso_z()
-        if specialty:
-            slide_response.specialty = specialty
-
-    def _save_to_firestore(self, slide_data: dict, app_type: str = "sca") -> tuple:
-        """
-        Save complete slide data to Firestore.
-
-        Args:
-            slide_data: Complete slide data dictionary
-            app_type: Exam type (sca, plab, casc) - used for collection name
-
-        Returns:
-            tuple: (success: bool, firestore_doc_id: str or None)
-        """
-        try:
-            slide_id = slide_data.get("slide_id")
-            log.debug(f"[SLIDE_GENERATION] Saving slides to Firestore: {slide_id} (app_type: {app_type})")
-
-            # Use app_type-specific collection name
-            collection_name = COLLECTION_MAPPING[app_type]["slide"]
-
-            # Add complete document to Firestore (auto-generates document ID)
-            success, message = self.firestore_service.add_document(
-                collection_name=collection_name,
-                data=slide_data,
-            )
-
-            if not success:
-                log.error(f"[SLIDE_GENERATION] Firestore save failed: {message}")
-                return False, None
-
-            # Extract the Firestore document ID from response
-            firestore_doc_id = message.get("id") if isinstance(message, dict) else None
-
-            if firestore_doc_id:
-                log.debug(
-                    f"[SLIDE_GENERATION] Successfully saved to Firestore with document ID: {firestore_doc_id}"
-                )
-                return True, firestore_doc_id
-            else:
-                log.error("[SLIDE_GENERATION] No document ID returned from Firestore")
-                return False, None
-
-        except Exception as e:
-            log.error(
-                f"[SLIDE_GENERATION] Exception during Firestore save: {str(e)}",
-                exc_info=True,
-            )
-            return False, None
-
-    def get_slides_by_id(self, slide_id: str, app_type: str = "sca") -> dict:
-        """
-        Retrieve slide data from Firestore by slide_id.
-
-        Args:
-            slide_id: The unique slide job ID
-            app_type: Exam type (sca, plab, casc) - defaults to "sca"
-
-        Returns:
-            dict: Slide data or error message
-        """
-        if not self.firestore_service:
-            return {"error": "Firestore service not configured"}, 500
-
-        try:
-            log.debug(f"[SLIDE_GENERATION] Retrieving slides: {slide_id} (app_type: {app_type})")
-
-            # Get collection name for specific app_type
-            collection_name = COLLECTION_MAPPING[app_type]["slide"]
-            success, slides = self.firestore_service.get_documents(
-                collection_name=collection_name, filters={"slide_id": slide_id}
-            )
-
-            if not success or not slides:
-                log.error(f"[SLIDE_GENERATION] Slides not found: {slide_id} in {collection_name}")
-                return {"error": "Slides not found"}, 404
-
-            # Normalize the 'slides' field from a dict to a list if necessary
-            self._normalize_slides_array(slides)
-
-            log.debug(f"Found slides in {collection_name}")
-            return slides, 200
-
-        except Exception as e:
-            log.error(f"[SLIDE_GENERATION] Failed to retrieve slides: {str(e)}", exc_info=True)
-            return {"error": f"Failed to retrieve slides: {str(e)}"}, 500
-
-    def update_slide(self, slide_id: str, updated_data: dict, app_type: str = "sca") -> dict:
-        """
-        Update slide content in Firestore (and JSON file if exists).
-
-        Args:
-            slide_id: The unique slide job ID
-            updated_data: A dictionary containing fields to update.
-                Example payload from the frontend:
-                {
-                    "topic": "New Topic Title",
-                    "slides": [
-                        {"title": "Updated Slide 1", ...},
-                        {"title": "Updated Slide 2", ...}
-                    ]
-                }
-
-            app_type: Exam type (sca, plab, casc) - defaults to "sca"
-
-        Returns:
-            dict: Success message or error
-        """
-        if not self.firestore_service:
-            return {"error": "Firestore service not configured"}, 500
-
-        try:
-            log.debug(f"[SLIDE_UPDATE] Updating slide: {slide_id} (app_type: {app_type})")
-            log.debug(f"[SLIDE_UPDATE] Updated data keys: {list(updated_data.keys())}")
-
-            # Get collection name for specific app_type
-            collection_name = COLLECTION_MAPPING[app_type]["slide"]
-
-            # Get the current slide data from Firestore
-            success, slide_data = self.firestore_service.get_documents(
-                collection_name=collection_name, filters={"slide_id": slide_id}
-            )
-
-            if not success or not slide_data:
-                log.error(f"[SLIDE_UPDATE] Slide not found in Firestore: {slide_id}")
-                return {"error": "Slide not found"}, 404
-
-            # Get the Firestore document ID
-            firestore_doc_id = slide_data.get("id")
-            if not firestore_doc_id:
-                log.error(f"[SLIDE_UPDATE] No Firestore document ID found for: {slide_id}")
-                return {"error": "Firestore document ID not found"}, 404
-
-            # Update the slide data with new values using dot notation
-            for key, value in updated_data.items():
-                log.debug(f"Setting {key} = {str(value)[:100]}")
-                set_nested_value(slide_data, key, value)
-
-            # Update in Firestore
-            # For Firestore, we need to send the full updated document
-            success, message = self.firestore_service.update_document(
-                collection_name=collection_name,
-                document_id=firestore_doc_id,
-                updated_data=slide_data,
-            )
-
-            if not success:
-                log.error(f"Firestore update failed: {message}")
-                return {"error": f"Firestore update failed: {message}"}, 500
-
-            log.debug(f"[SLIDE_UPDATE] Updated Firestore document: {firestore_doc_id}")
-
-            # Optionally update JSON file if it exists (not required)
-            try:
-                json_files = list(self.slides_base_dir.glob(f"**/slides_{slide_id}.json"))
-                if json_files:
-                    json_path = json_files[0]
-                    with open(json_path, "w", encoding="utf-8") as handle:
-                        json.dump(slide_data, handle, indent=2, ensure_ascii=False)
-                    log.debug(f"[SLIDE_UPDATE] Also updated JSON file: {json_path}")
-                else:
-                    log.debug(f"[SLIDE_UPDATE] No JSON file found for {slide_id}, skipping JSON update")
-            except Exception as json_error:
-                log.warning(f"[SLIDE_UPDATE] Failed to update JSON file: {str(json_error)}")
-                # Continue anyway since Firestore update succeeded
-
-            return {"message": "Slide updated successfully", "slide_id": slide_id}, 200
-
-        except Exception as e:
-            log.error(f"[SLIDE_UPDATE] Failed to update slide: {str(e)}", exc_info=True)
-            return {"error": f"Failed to update slide: {str(e)}"}, 500
-
-    def update_slide_status(
-        self,
-        slide_id: str,
-        status: str,
-        additional_data: dict = None,
-        app_type: str = None,
-    ) -> dict:
-        """
-        Update the status of a slide generation job in Firestore.
-        Fetches the document ID directly from Firestore.
-
-        Args:
-            slide_id: The unique slide job ID
-            status: New status ("draft", "generating_audio", "generating_video", "completed", "failed")
-            additional_data: Optional additional fields to update (e.g., audio_url, video_url)
-            app_type: Optional app_type override (if not provided, will search all collections)
-
-        Returns:
-            dict: Success message or error
-        """
-        if not self.firestore_service:
-            return {"error": "Firestore service not configured"}, 500
-
-        try:
-            log.debug(f"[SLIDE_GENERATION] Updating slide status: {slide_id} -> {status}")
-
-            # Try all app_types to find the slide and get document ID
-            firestore_doc_id = None
-            detected_app_type = app_type
-
-            for current_app_type in ["sca", "plab", "casc"]:
-                if app_type and current_app_type != app_type:
-                    continue  # Skip if specific app_type was provided
-
-                collection_name = COLLECTION_MAPPING[current_app_type]["slide"]
-                success, documents_result = self.firestore_service.get_documents(
-                    collection_name=collection_name, filters={"slide_id": slide_id}
-                )
-                if success and documents_result:
-                    firestore_doc_id = documents_result.get("id")
-                    detected_app_type = current_app_type
-                    log.debug(
-                        f"[SLIDE_GENERATION] Found slide in {collection_name}, doc_id: {firestore_doc_id}"
-                    )
-                    break
-
-            if not firestore_doc_id:
-                log.error(f"[SLIDE_GENERATION] Slide not found in Firestore: {slide_id}")
-                return {"error": "Slide not found in Firestore"}, 404
-
-            update_data = {
-                "status": status,
-                "updated_at": utc_now_iso_z(),
-            }
-
-            if additional_data:
-                update_data.update(additional_data)
-
-            collection_name = COLLECTION_MAPPING[detected_app_type]["slide"]
-            success, message = self.firestore_service.update_document(
-                collection_name=collection_name,
-                document_id=firestore_doc_id,
-                updated_data=update_data,
-            )
-
-            if not success:
-                log.error(f"Status update failed: {message}")
-                return {"error": message}, 500
-
-            log.debug(f"[SLIDE_GENERATION] Status updated successfully to: {status}")
-            return {
-                "message": "Status updated successfully",
-                "slide_id": slide_id,
-                "status": status,
-            }, 200
-
-        except Exception as e:
-            log.error(f"[SLIDE_GENERATION] Failed to update status: {str(e)}", exc_info=True)
-            return {"error": f"Failed to update status: {str(e)}"}, 500
-
     def _load_slide_data(self, slide_id: str, json_path: str = None) -> tuple[dict | None, str | None]:
         """
-        Load slide data, prioritizing Firestore and falling back to a local JSON file.
+        Load slide data from its local JSON file.
         Also normalizes the 'slides' array from a dict to a list.
 
         Args:
@@ -557,27 +164,7 @@ class SlideService:
         slide_data = None
         app_type = None
 
-        # Prioritize loading from Firestore if the service is available
-        if self.firestore_service:
-            for current_app_type in ["sca", "plab", "casc"]:
-                collection_name = COLLECTION_MAPPING[current_app_type]["slide"]
-                success, documents_result = self.firestore_service.get_documents(
-                    collection_name=collection_name, filters={"slide_id": slide_id}
-                )
-                if success and documents_result:
-                    slide_data = documents_result
-                    app_type = current_app_type
-                    log.debug(
-                        "[SLIDE_DATA] Found and loaded slide data from Firestore "
-                        f"collection: {collection_name}"
-                    )
-                    break
-
-        # Fallback to loading from JSON if Firestore fails or is unavailable
-        if not slide_data and json_path:
-            log.warning(
-                f"[SLIDE_DATA] Could not find slide in Firestore, falling back to JSON path: {json_path}"
-            )
+        if json_path:
             json_path_obj = Path(json_path)
             if json_path_obj.exists():
                 with open(json_path_obj, encoding="utf-8") as handle:
@@ -590,79 +177,6 @@ class SlideService:
             self._normalize_slides_array(slide_data)
 
         return slide_data, app_type
-
-    def delete_slide(self, slide_id: str, app_type: str = "sca") -> dict:
-        """
-        Delete a slide from Firestore and the local filesystem.
-
-        This function attempts to delete the slide from both locations. It identifies
-        the Firestore document by querying for the slide_id and the local files
-        by searching for the slide's folder. The operation is successful if either
-        the database record or the local folder is deleted.
-
-        Args:
-            slide_id: The unique slide job ID
-            app_type: Exam type (sca, plab, casc) - defaults to "sca"
-
-        Returns:
-            dict: Success message or error
-        """
-        if not self.firestore_service:
-            return {"error": "Firestore service not configured"}, 500
-
-        try:
-            log.debug(f"[SLIDE_DELETE] Deleting slide: {slide_id} (app_type: {app_type})")
-
-            was_deleted = False
-
-            # --- Step 1: Delete from Firestore ---
-            collection_name = COLLECTION_MAPPING[app_type]["slide"]
-            success, slide_doc = self.firestore_service.get_documents(
-                collection_name=collection_name, filters={"slide_id": slide_id}
-            )
-
-            if success and slide_doc:
-                firestore_doc_id = slide_doc.get("id")
-                if firestore_doc_id:
-                    del_success, message = self.firestore_service.delete_document(
-                        collection_name=collection_name, document_id=firestore_doc_id
-                    )
-                    if del_success:
-                        log.debug(f"[SLIDE_DELETE] Removed Firestore document: {firestore_doc_id}")
-                        was_deleted = True
-                    else:
-                        log.warning(f"[SLIDE_DELETE] Firestore delete failed: {message}")
-                else:
-                    log.warning(f"[SLIDE_DELETE] Found doc in Firestore but it has no ID: {slide_id}")
-            else:
-                log.debug(f"[SLIDE_DELETE] Slide not found in Firestore collection '{collection_name}'")
-
-            # --- Step 2: Delete from local filesystem ---
-            json_files = list(self.slides_base_dir.glob(f"**/slides_{slide_id}.json"))
-            if json_files:
-                topic_folder = json_files[0].parent
-                if topic_folder.exists():
-                    import shutil
-
-                    shutil.rmtree(topic_folder)
-                    log.debug(f"[SLIDE_DELETE] Deleted local folder: {topic_folder}")
-                    was_deleted = True
-            else:
-                log.debug(f"[SLIDE_DELETE] No local folder found for {slide_id}, skipping local delete.")
-
-            # --- Step 3: Return result ---
-            if was_deleted:
-                return {
-                    "message": "Slide deleted successfully",
-                    "slide_id": slide_id,
-                }, 200
-            else:
-                log.error(f"[SLIDE_DELETE] Slide not found anywhere for ID: {slide_id}")
-                return {"error": "Slide not found"}, 404
-
-        except Exception as e:
-            log.error(f"[SLIDE_DELETE] Failed to delete slide: {str(e)}", exc_info=True)
-            return {"error": f"Failed to delete slide: {str(e)}"}, 500
 
     def generate_audio_for_slides(self, slide_id: str, json_path: str = None) -> dict:
         """
@@ -766,28 +280,6 @@ class SlideService:
                 "[AUDIO_GENERATION] Audio generation completed: "
                 f"{len(audio_paths)} files, {total_duration:.2f}s total"
             )
-
-            # Update Firestore with complete slide data (including updated slides with audio metadata)
-            if self.firestore_service:
-                # Get the Firestore document ID
-                success, firestore_doc = self.firestore_service.get_documents(
-                    collection_name=COLLECTION_MAPPING[app_type]["slide"],
-                    filters={"slide_id": slide_id},
-                )
-
-                if success and firestore_doc:
-                    firestore_doc_id = firestore_doc.get("id")
-                    if firestore_doc_id:
-                        # Update Firestore with complete slide data including audio metadata
-                        success, message = self.firestore_service.update_document(
-                            collection_name=COLLECTION_MAPPING[app_type]["slide"],
-                            document_id=firestore_doc_id,
-                            updated_data=slide_data,
-                        )
-                        if success:
-                            log.debug("[AUDIO_GENERATION] Updated Firestore with complete slide data")
-                        else:
-                            log.warning(f"[AUDIO_GENERATION] Failed to update Firestore: {message}")
 
             return {
                 "message": "Audio generated successfully with bullet timing",
@@ -1372,19 +864,6 @@ class SlideService:
 
             with open(json_path, "w", encoding="utf-8") as handle:
                 json.dump(slide_data, handle, indent=2, ensure_ascii=False)
-
-            # Update Firestore status with S3 URL
-            if self.firestore_service:
-                self.update_slide_status(
-                    slide_id,
-                    "completed",
-                    {
-                        "final_video_url": video_url,
-                        "local_video_path": str(video_path),
-                        "total_duration": total_duration,
-                    },
-                    app_type=app_type,  # Pass app_type to ensure it updates the correct collection
-                )
 
             return {
                 "message": "Video generated and uploaded successfully",

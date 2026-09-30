@@ -49,7 +49,7 @@ def regenerate_slide_av(
     work_dir.mkdir(parents=True, exist_ok=True)
 
     slide_data = _prepare_slide_payload(content, media_id, exam_code)
-    slide_service = SlideService(firestore_service=None, settings=settings)
+    slide_service = SlideService(settings=settings)
     slide_service.slides_base_dir = work_dir
 
     topic = str(slide_data.get("topic", "untitled_slides"))
