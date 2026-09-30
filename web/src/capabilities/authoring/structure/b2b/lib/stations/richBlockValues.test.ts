@@ -29,8 +29,10 @@ test("renaming a column keeps its stored key; a new one gets a key from its labe
 });
 
 test("rich shapes accept what the backend accepts", () => {
-  assert.equal(RICH_SHAPES.image?.accepts(["https://a.test/x.png"]), true);
-  assert.equal(RICH_SHAPES.image?.accepts([1]), false);
+  assert.equal(RICH_SHAPES.media?.accepts(["https://a.test/x.png"]), true);
+  assert.equal(RICH_SHAPES.media?.accepts([1]), false);
+  assert.equal(RICH_SHAPES.media?.accepts([{ url: "https://a.test/r.pdf", caption: "Letter" }]), true);
+  assert.equal(RICH_SHAPES.media?.accepts([{ caption: "no url" }]), false);
   assert.equal(RICH_SHAPES.qaList?.accepts([{ question: "Why?", answer: "Because" }]), true);
   assert.equal(RICH_SHAPES.qaList?.accepts([{ answer: "no question" }]), false);
   assert.equal(RICH_SHAPES.groupedList?.accepts({ trauma: ["Bed 1", { title: "Bed 2", reasons: ["x"] }] }), true);

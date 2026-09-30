@@ -8,6 +8,11 @@ export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** A media item: a bare URL, or `{url, kind?, caption?, alt?}`. */
+function isMediaItem(item: unknown): boolean {
+  return typeof item === "string" || (isObject(item) && typeof item.url === "string");
+}
+
 function isGroupedItem(item: unknown): boolean {
   if (typeof item === "string") return true;
   return (
@@ -20,10 +25,9 @@ function isGroupedItem(item: unknown): boolean {
 
 /** Mirrors `_RICH_SHAPES` in platform-api's `station_content.py`: each rich type's value shape and its error. */
 export const RICH_SHAPES: Partial<Record<StationBlockType, { accepts: (value: unknown) => boolean; message: string }>> = {
-  image: {
-    accepts: (value) =>
-      typeof value === "string" || (Array.isArray(value) && value.every((url) => typeof url === "string")),
-    message: "Must be an image URL or a list of image URLs",
+  media: {
+    accepts: (value) => isMediaItem(value) || (Array.isArray(value) && value.every(isMediaItem)),
+    message: "Must be a media URL, a {url} object, or a list of them",
   },
   records: {
     accepts: (value) => Array.isArray(value) && value.every(isObject),

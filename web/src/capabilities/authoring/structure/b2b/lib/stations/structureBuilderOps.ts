@@ -19,8 +19,8 @@ export function defaultBlock(type: StationBlockType): StationBlock {
       return { id, type: "longText", label };
     case "list":
       return { id, type: "list", label, itemLabel: "Item" };
-    case "image":
-      return { id, type: "image", label };
+    case "media":
+      return { id, type: "media", label };
     case "records":
       return {
         id,

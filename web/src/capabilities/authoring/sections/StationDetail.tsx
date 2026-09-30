@@ -25,8 +25,10 @@ import {
   deleteStationVersion,
   editStationVersion,
   publishStationVersion,
+  removeStationPhoto,
   supportsBrief,
   supportsVersionDelete,
+  uploadStationPhotos,
   type Station,
   type StationTemplate,
   type StationVersion,
@@ -35,7 +37,6 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { BriefEditor } from "@/capabilities/authoring/sections/BriefEditor";
-import { StationPhotosCard } from "@/capabilities/authoring/sections/StationPhotosCard";
 import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
 
 function structureForTemplateVersion(
@@ -86,6 +87,27 @@ export function StationDetail({
     const src = (working?.content ?? station.content ?? {}) as Record<string, unknown>;
     setEditContent({ ...src });
   }, [station.id, version]);
+
+  /*
+    Media is editable on a published version for the same reason the reading
+    brief is: it is what a candidate is shown rather than what they are marked
+    against, and an attempt freezes its own copy of the scenario. An archived
+    version still refuses. The server writes the block, so its content wins.
+  */
+  const media =
+    status === "archived"
+      ? undefined
+      : {
+          upload: async (blockId: string, files: File[]) => {
+            const result = await uploadStationPhotos(scope, station.id, version, blockId, files);
+            setEditContent((result.version.content ?? {}) as Record<string, unknown>);
+            return { uploaded: result.uploaded, failed: result.failed };
+          },
+          remove: async (url: string) => {
+            const updated = await removeStationPhoto(scope, station.id, version, url);
+            setEditContent((updated.content ?? {}) as Record<string, unknown>);
+          },
+        };
 
   async function handlePublish() {
     void action.run("publish", async () => {
@@ -264,21 +286,7 @@ export function StationDetail({
             content={editContent}
             onChange={setEditContent}
             readOnly={!isDraft}
-          />
-          {/*
-            Images are editable on a published version for the same reason the
-            reading brief is: they are what a candidate is shown rather than
-            what they are marked against, and an attempt freezes its own copy
-            of the scenario. An archived version still refuses.
-          */}
-          <StationPhotosCard
-            scope={scope}
-            stationId={station.id}
-            version={version}
-            examCode={station.exam_code}
-            content={editContent}
-            onChanged={setEditContent}
-            readOnly={status === "archived"}
+            media={media}
           />
           {isDraft ? (
             <div className="mt-6 flex justify-end border-t border-b2b-border pt-4">

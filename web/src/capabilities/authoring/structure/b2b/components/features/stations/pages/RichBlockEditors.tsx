@@ -2,7 +2,10 @@
 
 import { useState, type ReactNode } from "react";
 import { HiOutlinePlus, HiOutlineXMark } from "react-icons/hi2";
-import { StationInstanceArrayField } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/StationInstanceArrayField";
+import {
+  MediaBlockEditor,
+  type MediaUploads,
+} from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/MediaBlockEditor";
 import {
   groupedItemsFromText,
   groupedItemsToText,
@@ -14,7 +17,7 @@ import { splitMultilineToTrimmedLines } from "@/capabilities/authoring/structure
 import type { RecordField, StationBlock } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { b2bInputBase } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 
-type RichBlock = Extract<StationBlock, { type: "image" | "records" | "qaList" | "groupedList" }>;
+type RichBlock = Extract<StationBlock, { type: "media" | "records" | "qaList" | "groupedList" }>;
 
 const input = `${b2bInputBase} py-2 text-osce-body`;
 const card = "rounded-md border border-b2b-border bg-b2b-cream/30 p-3";
@@ -29,37 +32,27 @@ export function RichBlockEditor({
   value,
   required,
   readOnly,
+  media,
   onChange,
 }: {
   block: RichBlock;
   value: unknown;
   required: boolean;
   readOnly: boolean;
+  media?: MediaUploads;
   onChange: (next: unknown) => void;
 }) {
-  if (block.type === "image") {
-    const urls = (Array.isArray(value) ? value : [value]).filter(
-      (url): url is string => typeof url === "string" && url !== "",
-    );
+  if (block.type === "media") {
     return (
-      <div className="min-w-0 md:col-span-2">
-        <StationInstanceArrayField
-          label={block.label}
-          required={required}
-          items={urls}
-          readOnly={readOnly}
-          // A block stored as one URL stays one URL, so readers of the single field keep working.
-          onChange={(next) => onChange(typeof value === "string" && next.length <= 1 ? (next[0] ?? "") : next)}
-        />
-        {urls.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {urls.map((url) => (
-              // eslint-disable-next-line @next/next/no-img-element -- an author-supplied URL on any host
-              <img key={url} src={url} alt="" className="h-20 w-20 rounded-md border border-b2b-border object-cover" />
-            ))}
-          </div>
-        ) : null}
-      </div>
+      <MediaBlockEditor
+        blockId={block.id}
+        label={block.label}
+        required={required}
+        value={value}
+        readOnly={readOnly}
+        media={media}
+        onChange={onChange}
+      />
     );
   }
 

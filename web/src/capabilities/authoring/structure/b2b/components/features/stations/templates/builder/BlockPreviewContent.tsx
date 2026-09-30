@@ -129,7 +129,7 @@ export function BlockPreviewContent({
               ))}
           </div>
         )}
-        {block.type === "image" && (
+        {block.type === "media" && (
           <div className="flex gap-2">
             {[0, 1, 2].map((index) => (
               <span key={index} className={`h-12 w-16 rounded-md ${minimal ? "bg-osce-canvas" : "border border-osce-border bg-osce-canvas"}`} />

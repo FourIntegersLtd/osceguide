@@ -13,12 +13,13 @@ export function b2cPatientInformationSection(
   };
 }
 
+/** Every exam's doctor information ends with its photos, read from b2c's `doctor_information.photos`. */
 export function b2cDoctorInformationSection(blocks: StationBlock[]): StationSection {
   return {
     id: "doctor_information",
     title: "Doctor Information",
     audience: "candidate",
-    blocks,
+    blocks: [...blocks, { id: "doctor_photos", type: "media", role: "candidate_brief", label: "Photos" }],
   };
 }
 

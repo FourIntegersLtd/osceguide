@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { asText, sectionLines, sectionsFor, type AudienceSection } from "./sectionsByAudience";
+import { asText, mediaItems, sectionLines, sectionsFor, type AudienceSection } from "./sectionsByAudience";
 
 // The Ortho prioritisation review after the backend merged it by section id.
 const review: AudienceSection[] = [
@@ -56,4 +56,22 @@ test("sections flatten to label lines for a voice agent", () => {
 test("rich values read as text in every shape", () => {
   assert.equal(asText([{ question: "First step?", answer: "ATLS" }]), "question: First step?, answer: ATLS");
   assert.equal(asText(["https://a.test/x.png", " "]), "https://a.test/x.png");
+});
+
+test("media values in every stored shape come out as items with a kind", () => {
+  assert.deepEqual(mediaItems("https://cdn.test/xray.png"), [{ url: "https://cdn.test/xray.png", kind: "image" }]);
+  assert.deepEqual(
+    mediaItems([
+      "https://cdn.test/heart.mp3?sig=1",
+      { url: "https://cdn.test/report.pdf", caption: "Discharge letter" },
+      { url: "https://cdn.test/clip", kind: "video", alt: "Gait" },
+      { caption: "no url" },
+      "",
+    ]),
+    [
+      { url: "https://cdn.test/heart.mp3?sig=1", kind: "audio" },
+      { url: "https://cdn.test/report.pdf", kind: "pdf", caption: "Discharge letter" },
+      { url: "https://cdn.test/clip", kind: "video", alt: "Gait" },
+    ],
+  );
 });

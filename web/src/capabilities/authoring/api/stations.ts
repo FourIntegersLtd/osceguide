@@ -158,7 +158,7 @@ export function generateStation(input: {
 export type StationPhotosResult = S["StationPhotosResult"];
 
 /**
- * Put images on a station's version.
+ * Put images on one media block of a station's version.
  *
  * The field name is `files`, repeated once per image — the backend's
  * parameter name, and the same one the retiring uploader sent. A partial
@@ -169,12 +169,13 @@ export function uploadStationPhotos(
   scope: AuthoringScope,
   station: string,
   version: number,
+  blockId: string,
   files: File[],
 ): Promise<StationPhotosResult> {
   const form = new FormData();
   for (const file of files) form.append("files", file);
   return platformRequest<StationPhotosResult>(
-    `${scope.base}/stations/${pathId(station)}/versions/${version}/photos`,
+    `${scope.base}/stations/${pathId(station)}/versions/${version}/photos?block=${encodeURIComponent(blockId)}`,
     { method: "POST", formData: form },
   );
 }

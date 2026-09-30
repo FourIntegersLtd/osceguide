@@ -1,5 +1,6 @@
 "use client";
 
+import type { MediaUploads } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/MediaBlockEditor";
 import { RichBlockEditor } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/RichBlockEditors";
 import { StationInstanceArrayField } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/StationInstanceArrayField";
 import { splitMultilineToTrimmedLines } from "@/capabilities/authoring/structure/b2b/lib/string/splitMultilineToTrimmedLines";
@@ -14,6 +15,7 @@ export function StationInstanceBlocks({
   readOnly,
   showBlockIds = false,
   listEditor = "admin",
+  media,
 }: {
   blocks: Block[];
   content: Record<string, unknown>;
@@ -22,6 +24,8 @@ export function StationInstanceBlocks({
   showBlockIds?: boolean;
   /** `admin` = B2C update-station list UI; `lines` = one textarea per line */
   listEditor?: "admin" | "lines";
+  /** Upload and remove for media blocks, once the station has a saved version. */
+  media?: MediaUploads;
 }) {
   const ro = !!readOnly;
 
@@ -50,7 +54,7 @@ export function StationInstanceBlocks({
         const label = b.label;
         const required = !!(b as { required?: boolean }).required;
 
-        if (b.type === "image" || b.type === "records" || b.type === "qaList" || b.type === "groupedList") {
+        if (b.type === "media" || b.type === "records" || b.type === "qaList" || b.type === "groupedList") {
           return (
             <RichBlockEditor
               key={b.id}
@@ -58,6 +62,7 @@ export function StationInstanceBlocks({
               value={content[key]}
               required={required}
               readOnly={ro}
+              media={media}
               onChange={(next) => patch(key, next)}
             />
           );

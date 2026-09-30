@@ -5,10 +5,18 @@ import { Dropdown } from "@/foundation/table";
 import { MarkdownRenderer, Modal } from "@/foundation/ui";
 import { B2CSegmentedTabs } from "@/foundation/ui/B2CSegmentedTabs";
 import { DoctorInfoBulletList, DoctorInfoSection } from "./DoctorInfoLayout";
-import { asText, humanise, isRecord, type AudienceBlock, type AudienceSection } from "./sectionsByAudience";
+import {
+  asText,
+  humanise,
+  isRecord,
+  mediaItems,
+  type AudienceBlock,
+  type AudienceSection,
+  type MediaItem,
+} from "./sectionsByAudience";
 
 export type { Audience, AudienceBlock, AudienceSection } from "./sectionsByAudience";
-export { sectionLines, sectionsFor } from "./sectionsByAudience";
+export { mediaItems, sectionLines, sectionsFor } from "./sectionsByAudience";
 
 /**
  * How a set of sections is laid out: open cards for a brief, collapsible
@@ -19,7 +27,7 @@ export type SectionsVariant = "open" | "collapsible" | "tabs";
 /**
  * A station's content, drawn from its template's own sections and block types
  * rather than by field name or exam, so a new exam's layout is template data.
- * Each block `type` has one way to look (`image` a grid, `records` a card per
+ * Each block `type` has one way to look (`media` a gallery, `records` a card per
  * record, `qaList` numbered questions, `groupedList` headed groups, `longText`
  * markdown); the backend has already decided who may read which block.
  */
@@ -91,11 +99,9 @@ function SectionBlocks({ section }: { section: AudienceSection }) {
 export function BlockView({ block }: { block: AudienceBlock }) {
   const { value } = block;
   switch (block.type) {
-    case "image": {
-      const urls = (Array.isArray(value) ? value : [value]).filter(
-        (url): url is string => typeof url === "string" && url.trim() !== "",
-      );
-      if (urls.length > 0) return <ImageGrid urls={urls} />;
+    case "media": {
+      const items = mediaItems(value);
+      if (items.length > 0) return <MediaGallery items={items} />;
       break;
     }
     case "records":
@@ -119,34 +125,65 @@ export function BlockView({ block }: { block: AudienceBlock }) {
 }
 
 /**
- * Images, click to enlarge. A plain `<img>` rather than `next/image`: these are
- * absolute URLs on hosts this app does not configure, and an unconfigured host
- * is a runtime error rather than a slow image.
+ * A media block: images in a grid, click to enlarge; audio and video with the
+ * browser's own controls; a PDF as a link. A plain `<img>` rather than
+ * `next/image`: these are absolute URLs on hosts this app does not configure,
+ * and an unconfigured host is a runtime error rather than a slow image.
  */
-function ImageGrid({ urls }: { urls: string[] }) {
-  const [enlarged, setEnlarged] = useState<string | null>(null);
+function MediaGallery({ items }: { items: MediaItem[] }) {
+  const [enlarged, setEnlarged] = useState<MediaItem | null>(null);
+  const images = items.filter((item) => item.kind === "image");
+  const others = items.filter((item) => item.kind !== "image");
   return (
-    <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {urls.map((url, index) => (
-          <button key={url} type="button" className="group text-left" onClick={() => setEnlarged(url)}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={url}
-              alt={`Clinical material ${index + 1}`}
-              className="h-40 w-full rounded-md border border-b2c-border object-cover transition-transform duration-300 group-hover:scale-[1.01]"
-            />
-          </button>
-        ))}
-      </div>
-      <p className="mt-2 text-center text-osce-body text-b2c-text-muted">Click to enlarge</p>
+    <div className="space-y-3">
+      {images.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {images.map((item, index) => (
+            <figure key={item.url}>
+              <button type="button" className="group block w-full text-left" onClick={() => setEnlarged(item)}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.url}
+                  alt={item.alt ?? item.caption ?? `Clinical material ${index + 1}`}
+                  className="h-40 w-full rounded-md border border-b2c-border object-cover transition-transform duration-300 group-hover:scale-[1.01]"
+                />
+              </button>
+              {item.caption ? (
+                <figcaption className="mt-1 text-osce-caption text-b2c-text-muted">{item.caption}</figcaption>
+              ) : null}
+            </figure>
+          ))}
+        </div>
+      ) : null}
+      {images.length > 0 ? (
+        <p className="text-center text-osce-body text-b2c-text-muted">Click an image to enlarge</p>
+      ) : null}
+      {others.map((item) => (
+        <figure key={item.url} className="rounded-osce-md border border-b2c-border bg-osce-surface p-3">
+          {/* Authored clinical media carries no caption track; its caption is shown beneath. */}
+          {item.kind === "audio" ? (
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <audio controls preload="metadata" src={item.url} className="w-full" />
+          ) : item.kind === "video" ? (
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video controls preload="metadata" src={item.url} className="w-full rounded-md" />
+          ) : (
+            <a href={item.url} target="_blank" rel="noreferrer" className="font-medium text-osce-accent hover:underline">
+              {item.caption ?? "Open document"}
+            </a>
+          )}
+          {item.caption && item.kind !== "pdf" ? (
+            <figcaption className="mt-2 text-osce-caption text-b2c-text-muted">{item.caption}</figcaption>
+          ) : null}
+        </figure>
+      ))}
       {enlarged && (
         <Modal onClose={() => setEnlarged(null)} width="min(95vw, 56rem)" height="fit-content">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={enlarged} alt="Enlarged" className="h-auto w-full rounded-md" />
+          <img src={enlarged.url} alt={enlarged.alt ?? enlarged.caption ?? "Enlarged"} className="h-auto w-full rounded-md" />
         </Modal>
       )}
-    </>
+    </div>
   );
 }
 

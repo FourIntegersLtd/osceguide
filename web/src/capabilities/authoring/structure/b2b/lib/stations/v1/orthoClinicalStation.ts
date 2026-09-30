@@ -29,14 +29,14 @@ export function orthoClinicalStationTemplateV1(): StationStructure {
           },
           {
             id: "radiograph_image_url",
-            type: "image",
+            type: "media",
             role: "candidate_brief",
             label: "Radiograph Image URL",
             placeholder: "Optional URL to primary imaging",
           },
           {
             id: "additional_image_urls",
-            type: "image",
+            type: "media",
             role: "candidate_brief",
             label: "Additional Image URLs",
             placeholder: "Classification diagrams, post-op X-rays, etc.",

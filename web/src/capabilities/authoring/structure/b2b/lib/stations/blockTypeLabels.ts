@@ -53,10 +53,11 @@ export const STATION_BLOCK_FORMS_ORDER: StationBlockFormsMeta[] = [
     icon: HiListBullet,
   },
   {
-    type: "image",
+    type: "media",
     group: "rich",
-    formsLabel: "Images",
-    description: "One or more images, shown as a grid the reader can enlarge. Good for radiographs and scans.",
+    formsLabel: "Media",
+    description:
+      "Images, audio, video or PDFs, each with an optional caption. Good for radiographs, scans, heart sounds and letters.",
     icon: HiPhoto,
   },
   {
@@ -127,7 +128,7 @@ export const STATION_BLOCK_FORMS_ORDER: StationBlockFormsMeta[] = [
  * lists; ticks, scales and R/A/G scores belong on a marking form. */
 export type TemplateKind = "station" | "feedback";
 export const BLOCK_TYPES_FOR_KIND: Record<TemplateKind, readonly StationBlockType[]> = {
-  station: ["shortText", "longText", "list", "singleSelect", "image", "records", "qaList", "groupedList"],
+  station: ["shortText", "longText", "list", "singleSelect", "media", "records", "qaList", "groupedList"],
   feedback: ["shortText", "longText", "list", "singleSelect", "multiSelect", "checklist", "scale", "ragCriterion"],
 };
 export function formsOrderForKind(kind: TemplateKind): StationBlockFormsMeta[] {

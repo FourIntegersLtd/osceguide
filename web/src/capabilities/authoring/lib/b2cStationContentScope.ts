@@ -1,4 +1,4 @@
-import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
+import type { StationSection, StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { validateStationContent } from "@/capabilities/authoring/structure/b2b/lib/stations/validateStationContent";
 
 /** Firestore-shaped station JSON nests fields; the B2C admin editor reads per section. */
@@ -9,29 +9,60 @@ const NESTED_SECTION_IDS = new Set([
   "management_plan",
 ]);
 
-export function contentSliceForSection(
-  content: Record<string, unknown>,
-  sectionId: string,
-): Record<string, unknown> {
-  if (!NESTED_SECTION_IDS.has(sectionId)) {
-    return content;
-  }
+type SectionRef = Pick<StationSection, "id" | "blocks">;
+
+function nestedOf(content: Record<string, unknown>, sectionId: string): Record<string, unknown> {
   const nested = content[sectionId];
-  if (nested && typeof nested === "object" && !Array.isArray(nested)) {
-    return nested as Record<string, unknown>;
-  }
-  return {};
+  return nested && typeof nested === "object" && !Array.isArray(nested) ? (nested as Record<string, unknown>) : {};
 }
 
+/**
+ * The key a block's value is stored under in a nested section: its own id, or
+ * its id without the section's prefix (`doctor_photos` is
+ * `doctor_information.photos`). Mirrors platform-api's `content_for_template`.
+ */
+function storedKey(nested: Record<string, unknown>, sectionId: string, blockId: string): string {
+  const prefix = `${sectionId.split("_")[0]}_`;
+  const bare = blockId.startsWith(prefix) ? blockId.slice(prefix.length) : blockId;
+  return blockId in nested || !(bare in nested) ? blockId : bare;
+}
+
+/** A section's values keyed by block id, whether the station stores them nested (b2c) or flat. */
+export function contentSliceForSection(
+  content: Record<string, unknown>,
+  section: SectionRef,
+): Record<string, unknown> {
+  if (!NESTED_SECTION_IDS.has(section.id)) {
+    return content;
+  }
+  const nested = nestedOf(content, section.id);
+  const slice = { ...nested };
+  for (const block of section.blocks) {
+    const key = storedKey(nested, section.id, block.id);
+    if (key !== block.id) slice[block.id] = nested[key];
+  }
+  return slice;
+}
+
+/** Writes a section's edited slice back where each value was read from. */
 export function mergeSectionIntoContent(
   content: Record<string, unknown>,
-  sectionId: string,
+  section: SectionRef,
   slice: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (NESTED_SECTION_IDS.has(sectionId)) {
-    return { ...content, [sectionId]: slice };
+  if (!NESTED_SECTION_IDS.has(section.id)) {
+    return { ...content, ...slice };
   }
-  return { ...content, ...slice };
+  const nested = nestedOf(content, section.id);
+  const merged = { ...slice };
+  for (const block of section.blocks) {
+    const key = storedKey(nested, section.id, block.id);
+    if (key !== block.id && block.id in merged) {
+      merged[key] = merged[block.id];
+      delete merged[block.id];
+    }
+  }
+  return { ...content, [section.id]: merged };
 }
 
 /** Validates each accordion section against its slice (nested B2C JSON or flat template content). */
@@ -41,7 +72,7 @@ export function validateStationContentScoped(
 ): { ok: true } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   for (const section of structure.sections ?? []) {
-    const slice = contentSliceForSection(content, section.id);
+    const slice = contentSliceForSection(content, section);
     const partial = validateStationContent(
       {
         schemaVersion: structure.schemaVersion,

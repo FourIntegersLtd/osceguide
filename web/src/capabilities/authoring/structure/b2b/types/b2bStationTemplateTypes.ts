@@ -7,7 +7,7 @@ export type StationBlockType =
   | "checklist"
   | "scale"
   | "ragCriterion"
-  | "image"
+  | "media"
   | "records"
   | "qaList"
   | "groupedList";
@@ -78,7 +78,7 @@ export type StationBlock =
       /** B2C-aligned path stem, e.g. `global_skills.structures_consultation` */
       pathStem: string;
     })
-  | (StationBlockBase & { type: "image" })
+  | (StationBlockBase & { type: "media" })
   | (StationBlockBase & { type: "records"; fields?: RecordField[] })
   | (StationBlockBase & { type: "qaList" })
   | (StationBlockBase & { type: "groupedList" });

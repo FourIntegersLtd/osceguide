@@ -1,5 +1,6 @@
 "use client";
 
+import type { MediaUploads } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/MediaBlockEditor";
 import { StationInstanceBlocks } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/StationInstanceBlocks";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import {
@@ -14,11 +15,13 @@ export function StationInstanceContentPanel({
   content,
   onChange,
   readOnly,
+  media,
 }: {
   structure: StationStructure;
   content: Record<string, unknown>;
   onChange: (next: Record<string, unknown>) => void;
   readOnly?: boolean;
+  media?: MediaUploads;
 }) {
   return (
     <div className="space-y-3">
@@ -34,10 +37,11 @@ export function StationInstanceContentPanel({
           ) : null}
           <StationInstanceBlocks
             blocks={sec.blocks}
-            content={contentSliceForSection(content, sec.id)}
-            onChange={(slice) => onChange(mergeSectionIntoContent(content, sec.id, slice))}
+            content={contentSliceForSection(content, sec)}
+            onChange={(slice) => onChange(mergeSectionIntoContent(content, sec, slice))}
             readOnly={readOnly}
             listEditor="admin"
+            media={media}
           />
         </Dropdown>
       ))}

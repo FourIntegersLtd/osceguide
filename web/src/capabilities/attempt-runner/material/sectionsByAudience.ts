@@ -57,3 +57,51 @@ export function asText(value: unknown): string {
   }
   return String(value);
 }
+
+export type MediaKind = "image" | "audio" | "video" | "pdf";
+/** One item of a `media` block, whichever of its stored shapes it came in. */
+export type MediaItem = { url: string; kind: MediaKind; caption?: string; alt?: string };
+
+const KINDS_BY_EXTENSION: Record<string, MediaKind> = {
+  mp3: "audio",
+  wav: "audio",
+  m4a: "audio",
+  ogg: "audio",
+  mp4: "video",
+  webm: "video",
+  mov: "video",
+  pdf: "pdf",
+};
+
+/** A media URL's kind from its extension; anything unrecognised is drawn as an image. */
+export function mediaKind(url: string): MediaKind {
+  const extension = url.split(/[?#]/)[0]!.split(".").pop()?.toLowerCase() ?? "";
+  return KINDS_BY_EXTENSION[extension] ?? "image";
+}
+
+function isMediaKind(value: unknown): value is MediaKind {
+  return value === "image" || value === "audio" || value === "video" || value === "pdf";
+}
+
+/**
+ * A media block's value as items: a bare URL, a list of URLs, or `{url, kind?,
+ * caption?, alt?}` objects. An item's own `kind` wins over its extension.
+ */
+export function mediaItems(value: unknown): MediaItem[] {
+  const entries = Array.isArray(value) ? value : [value];
+  return entries.flatMap((entry): MediaItem[] => {
+    if (typeof entry === "string") {
+      return entry.trim() ? [{ url: entry.trim(), kind: mediaKind(entry.trim()) }] : [];
+    }
+    if (!isRecord(entry) || typeof entry.url !== "string" || !entry.url.trim()) return [];
+    const url = entry.url.trim();
+    return [
+      {
+        url,
+        kind: isMediaKind(entry.kind) ? entry.kind : mediaKind(url),
+        ...(typeof entry.caption === "string" && entry.caption ? { caption: entry.caption } : {}),
+        ...(typeof entry.alt === "string" && entry.alt ? { alt: entry.alt } : {}),
+      },
+    ];
+  });
+}
