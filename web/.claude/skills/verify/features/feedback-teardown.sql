@@ -1,0 +1,12 @@
+DELETE FROM assessment_results WHERE attempt_id IN (SELECT id FROM attempts WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics'));
+DELETE FROM attempts WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics');
+DELETE FROM gp_lead_reviews WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics');
+DELETE FROM slot_reviews WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics');
+DELETE FROM slots WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics');
+DELETE FROM circuit_trainees WHERE circuit_id IN (SELECT id FROM circuits WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics'));
+DELETE FROM circuit_stations WHERE circuit_id IN (SELECT id FROM circuits WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics'));
+DELETE FROM circuits WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics');
+DELETE FROM sittings WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics');
+DELETE FROM trainees WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics');
+DELETE FROM memberships WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-rubrics');
+DELETE FROM organizations WHERE slug='verify-rubrics';

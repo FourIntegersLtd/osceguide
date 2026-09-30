@@ -1,0 +1,163 @@
+# Design language
+
+How platform-web looks, and which token to reach for. Carried across from the
+retiring client's two Cursor rules (`b2c-design-language.mdc`,
+`b2b-design-language.mdc`), corrected to what this app actually does.
+
+Before finishing UI work: look away, look back. The page should feel **alive
+but professional**, never bland.
+
+## Two palettes, on purpose
+
+| Palette | Classes | Defined in | Use it for |
+|---|---|---|---|
+| **Semantic** | `bg-canvas`, `bg-surface`, `text-ink`, `text-ink-muted`, `bg-accent`, `border-border`, `bg-danger-subtle`… | `src/foundation/ui/tokens.css` | **All new code.** Each arm's shell sets `data-surface`, and these re-skin themselves |
+| **Product** | `osce-*` (and the older `b2c-*`, `b2b-*`, `landing-*` aliases) | `src/foundation/ui/osceTokens.css` | Ported screens, which keep them so they look exactly as they did |
+
+A literal `bg-blue-600` picks one arm's side and breaks the other skins. The
+reasoning is in the header of `tailwind.config.ts`.
+
+### The four skins (`tokens.css`)
+
+| `data-surface` | Feel | Accent | Radius |
+|---|---|---|---|
+| `train` (default) | The consumer app: osce canvas, calm | blue `#2563EB` | control 8px, panel 12px |
+| `assess` | A workspace used all day: denser, cooler, flatter | navy `#1E3A8A` | control 6px, panel 8px |
+| `hire` | Assess with the employer's warmer accent | teal `#0D9488` | as assess |
+| `platform` | Staff console: same as train | blue | as train |
+
+## Colour
+
+- **Canvas** `#F7F8FA` · **surface** white · **nav active** `#F2F4F7`
+- **Borders** `#E4E7EC`, light `#F2F4F7`: 1px hairlines, never dark
+- **Ink** `900 #101828` headlines · `700 #344054` body · `500 #667085`
+  secondary · `400 #98A2B3` muted
+- **Semantic** `success | warning | danger | info`, each with its tints. Never
+  raw green/red/amber.
+- **Feedback bands** (`osce-band-*`) are for scores only, never chrome.
+
+**No black.** No `border-black`, `text-black` or near-black borders anywhere.
+Text is the gray ink scale; borders are light hairlines. This is a standing
+product preference, not a default.
+
+## Type scale (`tailwind.config.ts`)
+
+| Token | Size | Use |
+|---|---|---|
+| `text-osce-micro` | 10 | dense overlay chrome only (video tile pills) |
+| `text-osce-caption` | 11 | eyebrows, table headers |
+| `text-osce-meta` | 13 | metadata, helper text |
+| `text-osce-data` | 14 | table cells |
+| `text-osce-body` | **16** | default body. Not 15: iOS Safari zooms any focused input under 16px |
+| `text-osce-subheading` / `title` / `heading` | fluid | section titles, page titles, rare hero |
+| `text-osce-display-*` | fluid | marketing only |
+
+- Never raw `text-sm` / `text-lg` / `text-[Npx]`.
+- Headings are fluid already, so **never pair a token with a responsive
+  step-up** (`text-osce-title sm:text-osce-heading` double-scales).
+- Fonts: Inter (UI), Archivo (`font-heading`), IBM Plex Mono (`font-mono`,
+  eyebrows, marks and timestamps).
+
+## Surfaces, radius, layout
+
+- **Cards are flat**: a 1px border on white over the canvas, no shadow. Only
+  floating surfaces (modals, toasts, dropdowns) carry a shadow.
+- Radius: `rounded-osce-sm` 6 inputs/chips · `md` 8 buttons · `lg` 10 cards ·
+  `xl` 16 modals · `rounded-full` avatars and pills only. Semantic primitives
+  use the skin's `--radius-control` / `--radius-panel`.
+- Width: `max-w-osce-page` (1200px) for consumer pages, `max-w-osce-narrow`
+  (820px) for prose. Institution workspaces are full width.
+- The shell owns the page inset. Don't add shell-level padding or
+  mobile-nav spacers (`mt-20 lg:mt-0`) in a page.
+
+## Forms
+
+One control surface: `Input` / `getInputClassName()` (`src/foundation/ui/inputStyles.ts`),
+with `size` and `invalid`. `focus:outline-none` is always paired with
+`focus:ring-2`. Never `focus:ring-0`, which leaves keyboard users no focus
+indicator (WCAG 2.4.7). `invalid` sets `aria-invalid` too, so errors are not
+colour-only.
+
+## Reading tones
+
+Clinical content is tinted by **stage of the consultation**, so a colour means
+the same thing in SCA, PLAB, CASC, Ortho and the institution review view.
+Keys are in `b2cReadingTones` (`src/foundation/ui/productTokens.ts`).
+
+| Key | Covers | Hue |
+|---|---|---|
+| `history` | history taking, ICE, patient story | blue |
+| `examination` | findings, investigations | teal |
+| `reasoning` | differentials, assessment | violet |
+| `management` | plan, medication, treatment | green |
+| `safety` | red flags, safety-netting | red |
+| `education` | explanation, advice | amber |
+| `tip` / `practice` | candidate coaching, never beside stage tones | blue / amber |
+
+**Eliciting** from the patient is `history`; **explaining** to the patient is
+`education`. Write `tone="history"`, never a colour name. Do not add a second,
+arm-local colour map.
+
+## Layout principles
+
+1. **One focal idea per screen**: one primary CTA; demote the rest.
+2. **Typography is hierarchy**: eyebrow → page title → description in muted ink.
+3. **Quiet surfaces**: white cards on grey canvas; colour comes from chips,
+   badges and the accent CTA.
+4. **Grouped lists** for settings-style rows.
+5. **Metrics** in stat cards, not inline counts.
+
+## Console layout (staff pages)
+
+Staff pages (`domains/platform/*`, `staff-media`, `staff-moderation`,
+`staff-growth`) use a dedicated kit in `foundation/ui/PlatformConsole.tsx`,
+adapted structurally from eventtz's legacy admin — same colours and fonts,
+different spacing and arrangement. Same tokens as everywhere else; no new
+palette.
+
+- **Shell** (`surfaces/platform/PlatformStaffShell.tsx`, `PlatformSidebar.tsx`):
+  a fixed-width sidebar (no user-collapse — that mode stayed on the consumer
+  rail, `TrainSidebar.tsx`, because it is a different shell). Content is capped
+  at `max-w-[80rem]` so wide screens don't stretch tables.
+- **`PlatformPageHeader`**: title inline (not in a banded header), an optional
+  `icon` chip, a muted `description`, right-aligned `actions`, and an optional
+  `back` link — no more hand-rolled back links per page.
+- **`Panel`**: replaces the old `Section` + `Card` pairing. Title, description
+  and actions live inside the panel, above a divider; `padding="none"` for a
+  full-bleed `RowList` body.
+- **`RowList` / `Row` / `RowLink`**: list rows at `px-5 py-3.5 sm:px-6`.
+  `RowLink` adds the hover tint and trailing chevron for a row that navigates.
+- **`StatGrid` / `StatTile`**: a `gap-3 sm:grid-cols-2 lg:grid-cols-4` KPI row —
+  uppercase micro-label, `tabular-nums` value, tinted icon chip.
+- **`DetailLayout` / `ActionRail`**: a two-column detail page,
+  `lg:grid-cols-[minmax(0,1fr)_20rem]`, with a sticky action rail on the right
+  (destructive action last, behind a divider).
+- **`EmptyPanel`**: a dashed-border empty state.
+
+`domains/platform/chrome.tsx` now holds only `StatusBadge` and
+`WriteOnlyNote` — domain vocabulary that doesn't belong in a generic kit.
+Every staff screen imports layout pieces from `foundation/ui` directly.
+
+## Components to reuse (`src/foundation/ui`)
+
+| Use | For |
+|---|---|
+| `Card`, `Button`, `ButtonLink`, `TextLink`, `Badge`, `Input` | the primitives, built on semantic tokens |
+| `PageHeader`, `PlatformPageHeader`, `B2CPageHeader` | page titles |
+| `B2CGroupedList` | settings-style navigation |
+| `B2CSegmentedTabs`, `PlatformTabbedScreen` | page-level tabs |
+| `EmptyState`, `B2CEmptyState`, `B2CSkeleton`, `AsyncBoundary` | empty, loading and failed states |
+| `Modal`, `ConfirmModal`, toast | floating surfaces |
+| `B2BIconChip` (`capabilities/authoring/structure/b2b/components/ui`) | tinted icon squares |
+
+## Do / don't
+
+| Do | Don't |
+|---|---|
+| Semantic tokens in new code | Raw Tailwind palette (`bg-blue-600`, `gray-*`) |
+| `text-osce-*` for every size | `text-sm`, `text-[15px]` |
+| Gray ink, light hairlines | Black text or dark borders |
+| Flat cards, 1px border | Shadows on cards |
+| `focus:ring-2` with `outline-none` | `focus:ring-0` |
+| `tone="safety"` | `bgColor="red"` |
+| One accent primary per view | Several competing full-width primaries |

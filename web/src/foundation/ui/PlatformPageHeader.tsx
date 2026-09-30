@@ -1,0 +1,66 @@
+"use client";
+
+import Link from "next/link";
+import type { ReactNode } from "react";
+import type { IconType } from "react-icons";
+import { HiOutlineChevronLeft } from "react-icons/hi2";
+
+/**
+ * Staff console page title.
+ *
+ * Deliberately its own layout, not `B2CPageHeader`: the consumer header bands
+ * the title under a bottom border and gives its icon top billing, sized for a
+ * screen someone lands on once. A console screen is read over and over, so
+ * the title sits inline with the body — no band — and the primary action is
+ * what a scanning eye needs, on the right.
+ */
+export function PlatformPageHeader({
+  title,
+  description,
+  icon: Icon,
+  actions,
+  back,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  icon?: IconType;
+  actions?: ReactNode;
+  /** A link back to the listing this screen drilled in from. */
+  back?: { href: string; label?: string };
+}) {
+  return (
+    <div>
+      {back ? (
+        <Link
+          href={back.href}
+          className="mb-3 inline-flex items-center gap-1 text-osce-meta font-medium text-b2c-text-muted transition-colors hover:text-osce-ink-900 focus:outline-none focus:ring-2 focus:ring-osce-accent/20"
+        >
+          <HiOutlineChevronLeft className="h-4 w-4" aria-hidden />
+          {back.label ?? "Back"}
+        </Link>
+      ) : null}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {Icon ? (
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-osce-md bg-osce-accent-subtle text-osce-accent">
+              <Icon className="h-4 w-4" aria-hidden />
+            </span>
+          ) : null}
+          <div className="min-w-0">
+            <h1 className="truncate font-heading text-osce-title font-semibold tracking-tight text-osce-ink-900">
+              {title}
+            </h1>
+            {description ? (
+              <p className="mt-1 max-w-prose text-osce-meta leading-relaxed text-b2c-text-muted">
+                {description}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        {actions ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

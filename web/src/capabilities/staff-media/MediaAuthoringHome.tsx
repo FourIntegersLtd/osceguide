@@ -1,0 +1,177 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { HiOutlinePlusCircle } from "react-icons/hi2";
+import { Alert, AsyncBoundary, Button, PlatformTabbedScreen, type B2CSegmentedTabItem } from "@/foundation/ui";
+import { useCursorPages, useToast } from "@/foundation/hooks";
+import { isMediaKind, MEDIA_KIND_LABELS, type MediaKind } from "@/capabilities/media/api";
+import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
+import {
+  AUTHORING_ALL_EXAMS,
+} from "@/capabilities/authoring/parts/examCatalogFilter";
+import {
+  AUTHORING_MEDIA_PAGE_LIMIT,
+  deleteMedia,
+  listMediaForAuthoring,
+  publishMedia,
+  type MediaItem,
+} from "@/capabilities/staff-media/api";
+import { MediaListTable } from "@/capabilities/staff-media/MediaListTable";
+import { MediaNewModal } from "@/capabilities/staff-media/MediaNewScreen";
+import { staffMediaDetailPath } from "@/capabilities/staff-media/paths";
+import { useAction } from "@/capabilities/authoring/parts/useAction";
+
+const TABS: B2CSegmentedTabItem<MediaKind>[] = [
+  { id: "summary", label: "Summaries" },
+  { id: "slide_deck", label: "Slide decks" },
+  { id: "blog", label: "Blog" },
+  { id: "podcast", label: "Podcast" },
+];
+
+export function MediaAuthoringHome() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [kind, setKind] = useState<MediaKind>("summary");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
+  const [search, setSearch] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // A page at a time, scoped and searched in SQL. This used to walk every
+  // cursor up front and re-filter by exam and search text in the browser.
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listMediaForAuthoring(
+        kind,
+        { cursor, limit: AUTHORING_MEDIA_PAGE_LIMIT, examCode: examFilter || null, q: query || null },
+        signal,
+      ),
+    [kind, examFilter, query],
+  );
+  const list = pages.state;
+
+  useEffect(() => {
+    setSearch("");
+  }, [kind]);
+
+  useEffect(() => {
+    if (searchParams.get("new") === "1") setCreateOpen(true);
+  }, [searchParams]);
+
+  const createKind = useMemo(() => {
+    const raw = searchParams.get("kind");
+    if (raw && isMediaKind(raw)) return raw;
+    return kind;
+  }, [searchParams, kind]);
+
+  const closeCreate = () => {
+    setCreateOpen(false);
+    if (searchParams.get("new") === "1") {
+      router.replace("/staff/media");
+    }
+  };
+  const action = useAction(list.reload);
+  const toast = useToast();
+
+  const kindLabel = MEDIA_KIND_LABELS[kind].one;
+
+  const visibleCount = useMemo(() => list.data?.length ?? 0, [list.data]);
+
+  return (
+    <PlatformTabbedScreen
+      title="Study material"
+      tabs={TABS}
+      value={kind}
+      onChange={setKind}
+      ariaLabel="Material kind"
+    >
+      <AuthoringCatalogFilterBar
+        examCode={examFilter}
+        onExamCodeChange={setExamFilter}
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by title or slug…"
+        searchAriaLabel="Search study material by title or slug"
+        leading={
+          <p className="text-osce-body text-b2c-text-muted">
+            {visibleCount}
+            {pages.hasMore ? "+" : ""} {MEDIA_KIND_LABELS[kind].many.toLowerCase()} in the catalogue.
+          </p>
+        }
+        trailing={
+          <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
+            <HiOutlinePlusCircle className="h-4 w-4" aria-hidden />
+            New {kindLabel.toLowerCase()}
+          </Button>
+        }
+      />
+
+      <MediaNewModal
+        open={createOpen}
+        initialKind={createKind}
+        onClose={closeCreate}
+        onCreated={() => {
+          list.reload();
+        }}
+      />
+
+      {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
+
+      <AsyncBoundary
+        state={list}
+        isEmpty={() => (list.data?.length ?? 0) === 0}
+        empty={{
+          title: `No ${MEDIA_KIND_LABELS[kind].many.toLowerCase()}`,
+          description: examFilter
+            ? "Nothing matches this exam filter. Try clearing it."
+            : "Create one to get started.",
+        }}
+      >
+        {() => (
+          <>
+            <MediaListTable
+              items={list.data ?? []}
+              busy={action.busy}
+              onOpen={(item: MediaItem) => router.push(staffMediaDetailPath(item.id))}
+              onPublish={(item) =>
+                void action.run(`publish:${item.id}`, async () => {
+                  await publishMedia(item.id);
+                  toast.success("Published");
+                })
+              }
+              onDelete={(item) =>
+                void action.run(`delete:${item.id}`, async () => {
+                  await deleteMedia(item.id);
+                  toast.success("Deleted");
+                })
+              }
+            />
+
+            {pages.moreError ? (
+              <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+            ) : null}
+            {pages.hasMore ? (
+              <div className="flex justify-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pages.loadingMore}
+                  onClick={pages.loadMore}
+                >
+                  {pages.loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </AsyncBoundary>
+    </PlatformTabbedScreen>
+  );
+}

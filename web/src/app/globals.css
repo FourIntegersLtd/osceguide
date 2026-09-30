@@ -1,0 +1,1453 @@
+/*
+ * Two palettes and one stylesheet, in the order they have to be in.
+ *
+ * The token files are plain `:root` blocks, so they can be imported — CSS
+ * hoists every `@import` above everything else, which is fine for variables.
+ * `productStyles` cannot be imported: it extends Tailwind's own layers, and a
+ * hoisted `@layer utilities` has no `@tailwind utilities` above it to layer
+ * into. It is inlined below the directives instead, which is the only order
+ * that works and is why it reads as one long file.
+ */
+@import "../foundation/ui/osceTokens.css";
+@import "../foundation/ui/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  /*
+   * Preflight sets `border-color: currentColor`. Body ink is near-black, so a
+   * `border` without a colour token paints as a black rule. Default to the
+   * grey hairline; explicit `border-*` utilities still override.
+   */
+  *,
+  ::before,
+  ::after {
+    @apply border-border;
+  }
+  body {
+    @apply bg-canvas text-ink antialiased;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-canvas;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * The product's own stylesheet, brought across from the retiring client.
+ *
+ * `osceTokens.css` holds the palette; this is everything built on it — the
+ * `--b2c-*` aliases the ported components name, the typography, the shell and
+ * landing scopes, and the component rules that never fitted in a class list.
+ *
+ * One change from the original. There, these lived under
+ * `html:has([data-b2c-shell])` because two source trees shared one document
+ * and the consumer app had to scope itself away from the institution one.
+ * There is one app now: the aliases sit on `:root`, so a ported component
+ * renders correctly wherever it is mounted — including a modal portaled to
+ * `document.body`, which was the case the `:has()` was working around.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+/* App-wide: hide scrollbars; scrolling still works (wheel, touch, keyboard). */
+html,
+body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+*,
+*::before,
+*::after {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+/* The app shell locks document scroll; inner regions scroll. */
+html:has([data-b2c-shell]),
+body:has([data-b2c-shell]) {
+  overflow: hidden !important;
+}
+
+/*
+ * Color tokens live on html (not only [data-b2c-shell]) so portaled overlays
+ * (modals on document.body) inherit the same brand blue as the app shell.
+ */
+:root {
+  --brand-primary: var(--osce-accent);
+  --brand-primary-hover: var(--osce-accent-hover);
+  --brand-primary-muted: var(--osce-accent-muted);
+  --brand-primary-subtle: var(--osce-accent-subtle);
+  --brand-primary-light: var(--osce-accent-light);
+  --b2c-primary: var(--osce-accent);
+  --b2c-primary-hover: var(--osce-accent-hover);
+  --b2c-primary-muted: var(--osce-accent-muted);
+  --b2c-primary-subtle: var(--osce-accent-subtle);
+  --b2c-primary-light: var(--osce-accent-light);
+  /*
+   * Cool-neutral product shell (Mixpanel/Stripe-style): light gray canvas,
+   * white sidebar and cards, cool ink. Marketing cream stays on landing/auth.
+   */
+  --b2c-surface: var(--osce-surface);
+  --b2c-surface-muted: var(--osce-canvas);
+  --b2c-nav-active: var(--osce-nav-active);
+  /* Legacy warm greys — not on the osce ramp; revisited with Button variants. */
+  --b2c-secondary: #f3f3f3;
+  --b2c-secondary-hover: #ebebeb;
+  --b2c-border: var(--osce-border);
+  --b2c-border-light: var(--osce-border-light);
+  --b2c-text-primary: var(--osce-ink-900);
+  --b2c-text-secondary: var(--osce-ink-500);
+  --b2c-text-muted: var(--osce-ink-400);
+  --b2c-band-competent: var(--osce-band-competent);
+  --b2c-band-competent-bg: var(--osce-band-competent-bg);
+  --b2c-band-competent-border: var(--osce-band-competent-border);
+  --b2c-band-developing: var(--osce-band-developing);
+  --b2c-band-developing-bg: var(--osce-band-developing-bg);
+  --b2c-band-developing-border: var(--osce-band-developing-border);
+  --b2c-band-development: var(--osce-band-development);
+  --b2c-band-development-bg: var(--osce-band-development-bg);
+  --b2c-band-development-border: var(--osce-band-development-border);
+}
+
+/* B2C app shell — Inter body, Archivo headings (matches landing). */
+/* 16px matches `osce-body`. Anything under 16px makes iOS Safari zoom the
+   viewport when a field is focused, so the app base and the token agree. */
+[data-b2c-shell] {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+[data-b2c-shell] h1,
+[data-b2c-shell] h2,
+[data-b2c-shell] h3,
+[data-b2c-shell] h4,
+[data-b2c-shell] h5,
+[data-b2c-shell] h6,
+[data-b2c-shell] .font-heading {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-shell] #logo span {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+/*
+ * The raw `text-sm` / `text-lg` / `text-2xl` coercion that used to live here
+ * is gone. It only applied inside `[data-b2c-shell]`, so the same class was
+ * one size in the app and another in B2B and marketing, and it made class
+ * names lie — `text-sm`, `text-base` and `text-lg` all rendered at 15px.
+ * Every in-shell call site now uses a `text-osce-*` token, which means what
+ * it says everywhere. Use those; do not reintroduce raw sizes in app code.
+ */
+
+/* Data tables — Inter 14px cells; mono caption headers (see b2cTable* in b2cUi.ts) */
+[data-b2c-table] tbody td {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+[data-b2c-table] tbody .text-osce-body,
+[data-b2c-table] tbody .text-osce-meta {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+[data-b2c-table] tbody a {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Marketing / landing — Ferndesk-like: Archivo display, Inter body. */
+[data-b2c-landing] {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+[data-b2c-landing] h1,
+[data-b2c-landing] h2,
+[data-b2c-landing] h3,
+[data-b2c-landing] h4,
+[data-b2c-landing] h5,
+[data-b2c-landing] h6,
+[data-b2c-landing] .font-landing-heading {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing] .font-landing-body,
+[data-b2c-landing] .font-inter {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing] #logo span {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Classic landing (`/`) — original brand blue (Tailwind blue-600). */
+[data-b2c-landing-variant="classic"] {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  --brand-primary: var(--osce-accent);
+  --brand-primary-hover: var(--osce-accent-hover);
+  --brand-primary-muted: var(--osce-accent-muted);
+  --brand-primary-subtle: var(--osce-accent-subtle);
+  --brand-primary-light: var(--osce-accent-light);
+  --b2c-primary: var(--osce-accent);
+  --b2c-primary-hover: var(--osce-accent-hover);
+  --b2c-primary-muted: var(--osce-accent-muted);
+  --b2c-primary-subtle: var(--osce-accent-subtle);
+  --b2c-primary-light: var(--osce-accent-light);
+  --b2c-text-primary: var(--osce-ink-900);
+  --b2c-text-secondary: var(--osce-ink-500);
+  --b2c-text-muted: var(--osce-ink-400);
+  --b2c-surface: var(--osce-surface);
+  --b2c-surface-muted: var(--osce-canvas);
+  --b2c-border: var(--osce-border);
+  --b2c-border-light: var(--osce-border-light);
+  --landing-ink: var(--osce-ink-900);
+  --landing-ink-hover: var(--osce-ink-800);
+  --landing-ink-body: var(--osce-ink-700);
+  --landing-ink-muted: var(--osce-ink-600);
+  --b2c-band-competent: var(--osce-band-competent);
+  --b2c-band-competent-bg: var(--osce-band-competent-bg);
+  --b2c-band-competent-border: var(--osce-band-competent-border);
+  --b2c-band-developing: var(--osce-band-developing);
+  --b2c-band-developing-bg: var(--osce-band-developing-bg);
+  --b2c-band-developing-border: var(--osce-band-developing-border);
+  --b2c-band-development: var(--osce-band-development);
+  --b2c-band-development-bg: var(--osce-band-development-bg);
+  --b2c-band-development-border: var(--osce-band-development-border);
+}
+
+[data-b2c-landing-variant="classic"] h1,
+[data-b2c-landing-variant="classic"] h2,
+[data-b2c-landing-variant="classic"] h3,
+[data-b2c-landing-variant="classic"] h4,
+[data-b2c-landing-variant="classic"] h5,
+[data-b2c-landing-variant="classic"] h6,
+[data-b2c-landing-variant="classic"] .font-landing-heading {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing-variant="classic"] .font-landing-body,
+[data-b2c-landing-variant="classic"] .font-inter {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing-variant="classic"] #logo span {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing-variant="classic"] .font-landing-mono,
+[data-b2c-landing] .font-landing-mono {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+}
+
+/* Exam landings (SCA / PLAB / Ortho) — same brand blue as classic + main `/`. */
+[data-b2c-landing-variant="exam"] {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  --brand-primary: var(--osce-accent);
+  --brand-primary-hover: var(--osce-accent-hover);
+  --brand-primary-muted: var(--osce-accent-muted);
+  --brand-primary-subtle: var(--osce-accent-subtle);
+  --brand-primary-light: var(--osce-accent-light);
+  --b2c-primary: var(--osce-accent);
+  --b2c-primary-hover: var(--osce-accent-hover);
+  --b2c-primary-muted: var(--osce-accent-muted);
+  --b2c-primary-subtle: var(--osce-accent-subtle);
+  --b2c-primary-light: var(--osce-accent-light);
+  --b2c-text-primary: var(--osce-ink-900);
+  --b2c-text-secondary: var(--osce-ink-500);
+  --b2c-text-muted: var(--osce-ink-400);
+  --b2c-surface: var(--osce-surface);
+  --b2c-surface-muted: var(--osce-canvas);
+  --b2c-border: var(--osce-border);
+  --b2c-border-light: var(--osce-border-light);
+  --landing-ink: var(--osce-ink-900);
+  --landing-ink-hover: var(--osce-ink-800);
+  --landing-ink-body: var(--osce-ink-700);
+  --landing-ink-muted: var(--osce-ink-600);
+  --b2c-band-competent: var(--osce-band-competent);
+  --b2c-band-competent-bg: var(--osce-band-competent-bg);
+  --b2c-band-competent-border: var(--osce-band-competent-border);
+  --b2c-band-developing: var(--osce-band-developing);
+  --b2c-band-developing-bg: var(--osce-band-developing-bg);
+  --b2c-band-developing-border: var(--osce-band-developing-border);
+  --b2c-band-development: var(--osce-band-development);
+  --b2c-band-development-bg: var(--osce-band-development-bg);
+  --b2c-band-development-border: var(--osce-band-development-border);
+}
+
+[data-b2c-landing-variant="exam"] h1,
+[data-b2c-landing-variant="exam"] h2,
+[data-b2c-landing-variant="exam"] h3,
+[data-b2c-landing-variant="exam"] h4,
+[data-b2c-landing-variant="exam"] h5,
+[data-b2c-landing-variant="exam"] h6,
+[data-b2c-landing-variant="exam"] .font-landing-heading {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing-variant="exam"] .font-landing-body,
+[data-b2c-landing-variant="exam"] .font-inter {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing-variant="exam"] #logo span {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing-surface="cream"] h1,
+[data-b2c-landing-surface="cream"] h2,
+[data-b2c-landing-surface="cream"] h3,
+[data-b2c-landing-surface="cream"] h4,
+[data-b2c-landing-surface="cream"] h5,
+[data-b2c-landing-surface="cream"] h6,
+[data-b2c-landing-surface="cream"] .font-landing-heading,
+[data-b2c-landing-surface="cream"] #logo span {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing-surface="cream"] .font-landing-body,
+[data-b2c-landing-surface="cream"] .font-inter {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-landing-surface="cream"] .font-landing-mono {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+}
+
+/*
+ * Sky canvas for every marketing page (`/`, the SCA/PLAB/Ortho exam landings,
+ * and institutions) — cool ice-white paper, white card islands, sky-blue
+ * section washes, and original brand blue (#2563eb) as the saturated accent.
+ * Attribute stays `cream` so existing opt-in markup does not need a rename.
+ * Tailwind `landing-*` fallbacks remain the pre-sky values.
+ */
+[data-b2c-landing-surface="cream"] {
+  /* Original brand blue (Tailwind blue-600) + report band tokens */
+  --brand-primary: var(--osce-accent);
+  --brand-primary-hover: var(--osce-accent-hover);
+  --brand-primary-muted: var(--osce-accent-muted);
+  --brand-primary-subtle: var(--osce-accent-subtle);
+  --brand-primary-light: var(--osce-accent-light);
+  --b2c-primary: var(--osce-accent);
+  --b2c-primary-hover: var(--osce-accent-hover);
+  --b2c-primary-muted: var(--osce-accent-muted);
+  --b2c-primary-subtle: var(--osce-accent-subtle);
+  --b2c-primary-light: var(--osce-accent-light);
+  --b2c-band-competent: var(--osce-band-competent);
+  --b2c-band-competent-bg: var(--osce-band-competent-bg);
+  --b2c-band-competent-border: var(--osce-band-competent-border);
+  --b2c-band-developing: var(--osce-band-developing);
+  --b2c-band-developing-bg: var(--osce-band-developing-bg);
+  --b2c-band-developing-border: var(--osce-band-developing-border);
+  --b2c-band-development: var(--osce-band-development);
+  --b2c-band-development-bg: var(--osce-band-development-bg);
+  --b2c-band-development-border: var(--osce-band-development-border);
+  --b2c-surface: var(--osce-surface);
+  /*
+   * Landing-specific cool tints — deliberately off the shared neutral ramp;
+   * the marketing surface keeps its own sky palette.
+   *
+   * This is why `b2c-border`, `b2c-border-light`, `b2c-surface-muted`,
+   * `b2c-text-secondary` and `b2c-text-muted` still exist as aliases rather
+   * than being retired onto osce-*: they are scope-aware indirection, not
+   * dead weight. A component using `border-b2c-border` renders grey in the
+   * app and sky-blue on marketing, from one class. Replacing them with a
+   * fixed osce token would flatten the marketing palette.
+   */
+  --b2c-surface-muted: #f4f8fd;
+  --b2c-border: #d5e4f3;
+  --b2c-border-light: #e8f0f8;
+
+  /* Canvas + section rhythm */
+  --landing-canvas: #f7fbff;
+  --landing-band: #eef5fc;
+  --landing-nav: rgba(247, 251, 255, 0.88);
+  --landing-bloom-warm: rgba(186, 230, 253, 0.42);
+  --landing-bloom-soft: rgba(235, 244, 255, 0.72);
+  --landing-bloom-deep: rgba(29, 95, 184, 0.1);
+  --landing-footer-fade: rgba(186, 230, 253, 0.42);
+
+  /* White card islands, ice paper for nested rows */
+  --landing-card: #ffffff;
+  --landing-card-muted: #f4f8fd;
+  --landing-card-accent: #ebf4ff;
+  --landing-panel-bg: linear-gradient(145deg, #eef4fb 0%, #f3f8fe 48%, #f8fafc 100%);
+
+  /* Cool sky rules */
+  --landing-warm: #d5e4f3;
+  --landing-warm-strong: #b8d4f0;
+  --landing-divider: transparent;
+  --landing-rule: rgba(29, 95, 184, 0.16);
+  --landing-hairline: #e8f0f8;
+
+  /* 12-16px cards and panels; CTAs match app buttons (rounded-md) */
+  --landing-radius-card: 12px;
+  --landing-radius-cta: 6px;
+  --landing-radius-panel: 16px;
+  --landing-radius-panel-sm: 16px;
+  --landing-radius-panel-lg: 16px;
+
+  /* Restrained, cool-tinted shadows */
+  --landing-shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --landing-shadow-card-hover: 0 4px 6px -1px rgba(16, 24, 40, 0.08),
+    0 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --landing-shadow-soft: 0 1px 2px rgba(16, 24, 40, 0.04),
+    0 10px 26px -12px rgba(16, 24, 40, 0.08);
+  --landing-shadow-panel: 0 1px 2px rgba(16, 24, 40, 0.04),
+    0 12px 32px -12px rgba(16, 24, 40, 0.08);
+  --landing-shadow-showcase: 0 30px 60px -20px rgba(16, 24, 40, 0.16),
+    0 12px 30px -10px rgba(16, 24, 40, 0.09);
+  --landing-shadow-showcase-side: 0 12px 30px -14px rgba(16, 24, 40, 0.14);
+  --landing-shadow-cta: 0 4px 6px -1px rgba(16, 24, 40, 0.1),
+    0 2px 4px -2px rgba(16, 24, 40, 0.08);
+
+  /* Quieter secondary action: white fill, sky rule, blue on hover */
+  --landing-shadow-cta-secondary: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --landing-cta-secondary-bg: #ffffff;
+  --landing-cta-secondary-ink: #344054;
+
+  /* OSCE blue carries emphasis: eyebrows, pricing, links, selected icons */
+  --landing-eyebrow: var(--b2c-primary);
+  --landing-price: var(--b2c-primary);
+  --landing-tick: var(--b2c-primary);
+  --landing-badge-soon: #8a6320;
+
+  /* Cool ink ramp — every step clears 4.5:1 on the sky canvas */
+  --landing-ink: var(--osce-ink-900);
+  --landing-ink-hover: var(--osce-ink-800);
+  --landing-ink-body: var(--osce-ink-700);
+  --landing-ink-muted: var(--osce-ink-600);
+  --b2c-text-primary: var(--osce-ink-900);
+  --b2c-text-secondary: var(--osce-ink-600);
+  --b2c-text-muted: var(--osce-ink-500);
+
+  /* Editorial type: bigger leads, tighter headline, more air per section */
+  --landing-heading-weight: 600;
+  --landing-hero-weight: 700;
+  --landing-subtitle-gap: 1.25rem;
+  --landing-subtitle-size: 1.0625rem;
+  --landing-section-py: 4.5rem;
+  --landing-section-py-lg: 7rem;
+
+  /*
+   * Sky blooms sit under the page; each section then adds its own wash so the
+   * page reads as a sequence of ice / sky / azure bands rather than one sheet.
+   */
+  background-color: var(--landing-canvas);
+  background-image:
+    radial-gradient(
+      55rem 34rem at 12% 4%,
+      var(--landing-bloom-warm) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      48rem 30rem at 90% 16%,
+      var(--landing-bloom-soft) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      60rem 38rem at 30% 52%,
+      var(--landing-bloom-soft) 0%,
+      transparent 58%
+    ),
+    radial-gradient(
+      52rem 34rem at 82% 74%,
+      var(--landing-bloom-warm) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      70rem 40rem at 50% 100%,
+      var(--landing-bloom-deep) 0%,
+      transparent 65%
+    );
+  background-repeat: no-repeat;
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-surface {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: transparent;
+  border-top-color: transparent;
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-surface > * {
+  position: relative;
+  z-index: 1;
+}
+
+/*
+ * Section delineation: a hairline that dissolves at both ends and stops short
+ * of the viewport edges, so sections read as separate without a hard rule.
+ * The footer is excluded — its sky fade already marks the break.
+ */
+[data-b2c-landing-surface="cream"]
+  .landing-section-surface:not(.landing-section-footer)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(1200px, calc(100% - 2.5rem));
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--landing-rule) 22%,
+    var(--landing-rule) 78%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Hero: sky radial behind the headline */
+[data-b2c-landing-surface="cream"] .landing-section-hero {
+  background:
+    radial-gradient(
+      ellipse 80% 70% at 50% -8%,
+      rgba(186, 230, 253, 0.55) 0%,
+      rgba(235, 244, 255, 0.42) 42%,
+      transparent 72%
+    );
+}
+
+/* Ice / sky / azure band per section — vertically fading so edges stay soft */
+[data-b2c-landing-surface="cream"] .landing-section-numbers {
+  background: linear-gradient(
+    180deg,
+    rgba(239, 246, 255, 0) 0%,
+    rgba(239, 246, 255, 0.72) 48%,
+    rgba(239, 246, 255, 0) 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-features {
+  background: linear-gradient(
+    180deg,
+    rgba(219, 234, 254, 0.12) 0%,
+    rgba(219, 234, 254, 0.58) 42%,
+    rgba(235, 244, 255, 0.38) 72%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-exams {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(186, 230, 253, 0.38) 42%,
+    rgba(224, 242, 254, 0.28) 72%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-practice {
+  background: linear-gradient(
+    180deg,
+    rgba(235, 244, 255, 0) 0%,
+    rgba(235, 244, 255, 0.78) 46%,
+    rgba(235, 244, 255, 0) 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-neuro {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(207, 250, 254, 0.32) 46%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-founders {
+  background: linear-gradient(
+    180deg,
+    rgba(239, 246, 255, 0) 0%,
+    rgba(191, 219, 254, 0.28) 50%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-faq {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(224, 242, 254, 0.48) 50%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-pricing {
+  background: linear-gradient(
+    180deg,
+    rgba(219, 234, 254, 0.1) 0%,
+    rgba(191, 219, 254, 0.48) 44%,
+    rgba(219, 234, 254, 0.22) 76%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-feedback {
+  background: linear-gradient(
+    180deg,
+    rgba(248, 250, 252, 0) 0%,
+    rgba(241, 245, 249, 0.7) 50%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-testimonials {
+  background: linear-gradient(
+    180deg,
+    rgba(219, 234, 254, 0.12) 0%,
+    rgba(186, 230, 253, 0.4) 48%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-blog {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(224, 242, 254, 0.42) 46%,
+    rgba(239, 246, 255, 0.24) 74%,
+    transparent 100%
+  );
+}
+
+[data-b2c-landing-surface="cream"] .landing-section-footer {
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--landing-footer-fade) 55%,
+    rgba(186, 230, 253, 0.32) 100%
+  );
+}
+
+/*
+ * B2C + B2B auth — brand blue, sky canvas, and cards come from
+ * data-b2c-landing-surface="cream" on the same wrapper.
+ */
+[data-b2c-auth] {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  --b2c-secondary: #f3f3f3;
+  --b2c-secondary-hover: #ebebeb;
+}
+
+[data-b2c-auth] h1,
+[data-b2c-auth] h2,
+[data-b2c-auth] h3,
+[data-b2c-auth] h4,
+[data-b2c-auth] h5,
+[data-b2c-auth] h6,
+[data-b2c-auth] .font-landing-heading {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-auth] .font-landing-body,
+[data-b2c-auth] .font-inter {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-auth] #logo span {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-b2c-auth] .font-landing-mono {
+  font-family: var(--font-ibm-plex-mono), ui-monospace, monospace;
+}
+
+[data-b2c-auth] .auth-alert-success {
+  border-color: #c6dcd0;
+  background-color: #e8f1ec;
+  color: #2f6e52;
+}
+
+[data-b2c-auth] .auth-alert-error {
+  border-color: #ebcfcd;
+  background-color: #f8ebea;
+  color: #9e3b36;
+}
+
+details[open] .landing-faq-chevron {
+  transform: rotate(180deg);
+}
+
+@keyframes voice-memo-wave {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.voice-memo-bar {
+  transform-origin: center center;
+  animation: voice-memo-wave 0.95s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes landing-transcript-scroll {
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.landing-transcript-scroll {
+  animation: landing-transcript-scroll 18s linear infinite;
+}
+
+.landing-showcase-viewport {
+  container-type: size;
+  container-name: showcase;
+}
+
+.landing-showcase-scene {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.landing-showcase-scene-header {
+  flex-shrink: 0;
+}
+
+.landing-showcase-scene-body {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@container showcase (max-height: 520px) {
+  .landing-showcase-scene {
+    padding: clamp(0.5rem, 2.5cqh, 0.875rem) clamp(0.625rem, 2.5cqw, 0.875rem);
+  }
+
+  .landing-showcase-scene .showcase-title {
+    font-size: clamp(0.8125rem, 4.5cqh, 1.125rem);
+    line-height: 1.25;
+  }
+
+  .landing-showcase-scene .showcase-subtitle {
+    font-size: clamp(0.625rem, 3.2cqh, 0.8125rem);
+    line-height: 1.35;
+  }
+
+  .landing-showcase-scene .showcase-eyebrow {
+    font-size: clamp(0.5625rem, 2.6cqh, 0.6875rem);
+    letter-spacing: 0.08em;
+  }
+
+  .landing-showcase-scene .showcase-body {
+    font-size: clamp(0.625rem, 3cqh, 0.8125rem);
+    line-height: 1.35;
+  }
+
+  .landing-showcase-scene .showcase-card {
+    padding: clamp(0.375rem, 2cqh, 0.625rem) clamp(0.625rem, 2.5cqw, 0.875rem);
+    border-radius: 0.625rem;
+  }
+
+  .landing-showcase-scene .showcase-calendar-cell {
+    height: clamp(1rem, 7.5cqh, 1.375rem);
+    font-size: clamp(0.5rem, 2.4cqh, 0.6875rem);
+    border-radius: 0.25rem;
+    width: 100%;
+  }
+
+  .landing-showcase-scene .showcase-stack {
+    gap: clamp(0.25rem, 1.5cqh, 0.5rem);
+  }
+
+  .landing-showcase-scene .showcase-avatar {
+    width: clamp(1.75rem, 10cqh, 2.75rem);
+    height: clamp(1.75rem, 10cqh, 2.75rem);
+  }
+
+  .landing-showcase-scene .showcase-avatar-label {
+    font-size: clamp(0.5rem, 2.4cqh, 0.6875rem);
+    margin-top: clamp(0.125rem, 0.8cqh, 0.375rem);
+  }
+
+  .landing-showcase-scene .showcase-bubble {
+    max-width: min(100%, 88%);
+    padding: clamp(0.3rem, 1.5cqh, 0.5rem) clamp(0.4rem, 2cqw, 0.625rem);
+    border-radius: 0.625rem;
+  }
+
+  .landing-showcase-scene .showcase-bubble-role {
+    font-size: clamp(0.46875rem, 2.2cqh, 0.625rem);
+  }
+
+  .landing-showcase-scene .showcase-bubble-text {
+    font-size: clamp(0.5625rem, 2.8cqh, 0.75rem);
+    line-height: 1.3;
+  }
+
+  .landing-showcase-scene .showcase-transcript-header {
+    padding: clamp(0.3rem, 1.4cqh, 0.5rem) clamp(0.4rem, 2cqw, 0.625rem);
+  }
+
+  .landing-showcase-scene .showcase-calendar-day {
+    font-size: clamp(0.46875rem, 2.2cqh, 0.625rem);
+  }
+
+  .landing-showcase-scene .showcase-icon-badge {
+    width: clamp(1.375rem, 7cqh, 2rem);
+    height: clamp(1.375rem, 7cqh, 2rem);
+  }
+
+  .landing-showcase-scene .showcase-icon-badge svg {
+    width: clamp(0.5rem, 2.5cqh, 0.75rem);
+    height: clamp(0.5rem, 2.5cqh, 0.75rem);
+  }
+
+  .landing-showcase-scene .showcase-tile-avatar {
+    width: clamp(1.75rem, 12cqh, 2.5rem);
+    height: clamp(1.75rem, 12cqh, 2.5rem);
+  }
+
+  .landing-showcase-scene .showcase-voice-wrap {
+    padding: clamp(0.25rem, 1.2cqh, 0.5rem) clamp(0.5rem, 2.5cqw, 0.875rem);
+    border-radius: 0.375rem;
+  }
+
+  .landing-showcase-scene .showcase-voice-bars {
+    height: clamp(0.75rem, 4cqh, 1rem);
+    gap: clamp(1px, 0.4cqw, 2px);
+  }
+
+  .landing-showcase-scene .showcase-voice-bars .voice-memo-bar {
+    width: clamp(1.5px, 0.45cqw, 2.5px);
+  }
+
+  .landing-showcase-scene .showcase-voice-bars--compact .voice-memo-bar {
+    height: clamp(3px, 2.5cqh, 10px) !important;
+  }
+
+  .landing-showcase-scene .showcase-footer-bar {
+    padding: clamp(0.25rem, 1.2cqh, 0.5rem) clamp(0.4rem, 2cqw, 0.625rem);
+    font-size: clamp(0.5rem, 2.4cqh, 0.6875rem);
+  }
+
+  .landing-showcase-chrome-label {
+    font-size: clamp(0.625rem, 2.8cqh, 0.8125rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-transcript-scroll {
+    animation: none;
+  }
+}
+
+/*
+ * Live-marking checklist. Items share one period and stagger via --landing-tick-index,
+ * so the tick sweeps down the list and clears in the same order, forever in phase.
+ */
+@keyframes landing-checklist-box {
+  0%,
+  6% {
+    border-color: var(--landing-warm-strong);
+    background-color: var(--landing-card);
+  }
+
+  12%,
+  88% {
+    border-color: var(--osce-band-competent-border);
+    background-color: var(--osce-band-competent-bg);
+  }
+
+  94%,
+  100% {
+    border-color: var(--landing-warm-strong);
+    background-color: var(--landing-card);
+  }
+}
+
+@keyframes landing-checklist-mark {
+  0%,
+  6% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+
+  12%,
+  88% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  94%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes landing-checklist-label {
+  0%,
+  6% {
+    color: var(--b2c-text-muted);
+  }
+
+  12%,
+  88% {
+    color: var(--landing-ink-body);
+  }
+
+  94%,
+  100% {
+    color: var(--b2c-text-muted);
+  }
+}
+
+.landing-checklist-item {
+  animation-delay: calc(var(--landing-tick-index, 0) * 1.5s);
+  animation-duration: 14s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  /* Hold the 0% frame through the stagger delay, or the authored `done` styling
+     flashes on the first items before their animation starts. */
+  animation-fill-mode: backwards;
+}
+
+.landing-checklist-box {
+  animation-name: landing-checklist-box;
+}
+
+.landing-checklist-mark {
+  animation-name: landing-checklist-mark;
+  transform-origin: center;
+}
+
+.landing-checklist-label {
+  animation-name: landing-checklist-label;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Fall back to the authored `done` state rather than freezing mid-sweep. */
+  .landing-checklist-item {
+    animation: none;
+  }
+
+  .landing-checklist-mark {
+    opacity: var(--landing-tick-static-opacity, 0);
+    transform: none;
+  }
+}
+
+@keyframes landing-features-wave-dash {
+  0% {
+    stroke-dashoffset: 0;
+  }
+
+  100% {
+    stroke-dashoffset: -160;
+  }
+}
+
+.landing-features-wave {
+  fill: none;
+  opacity: 0.18;
+  stroke-dasharray: 10 18;
+  animation: landing-features-wave-dash 28s linear infinite;
+}
+
+.landing-features-wave-1 {
+  animation-duration: 32s;
+  opacity: 0.16;
+}
+
+.landing-features-wave-2 {
+  animation-duration: 36s;
+  animation-direction: reverse;
+  opacity: 0.2;
+}
+
+.landing-features-wave-3 {
+  animation-duration: 30s;
+  opacity: 0.2;
+}
+
+.landing-features-wave-4 {
+  animation-duration: 26s;
+  animation-direction: reverse;
+  opacity: 0.22;
+}
+
+.landing-features-wave-5 {
+  animation-duration: 34s;
+  opacity: 0.12;
+}
+
+.landing-neurodiversity-wave-1 {
+  animation-duration: 34s;
+  opacity: 0.55;
+  stroke-dasharray: 14 22;
+}
+
+.landing-neurodiversity-wave-2 {
+  animation-duration: 30s;
+  animation-direction: reverse;
+  opacity: 0.45;
+  stroke-dasharray: 12 20;
+}
+
+.landing-neurodiversity-wave-classic-1 {
+  animation-duration: 34s;
+  opacity: 0.55;
+  stroke-dasharray: 14 22;
+}
+
+.landing-neurodiversity-wave-classic-2 {
+  animation-duration: 30s;
+  animation-direction: reverse;
+  opacity: 0.45;
+  stroke-dasharray: 12 20;
+}
+
+.landing-neuro-classic-header h2,
+.landing-neuro-classic-header p {
+  text-shadow:
+    0 0 20px rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(255, 255, 255, 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-features-wave {
+    animation: none;
+  }
+}
+
+@layer utilities {
+  .b2c-scroll-y {
+    @apply overflow-y-auto overflow-x-hidden;
+  }
+
+  .b2c-scroll-x {
+    @apply touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain;
+  }
+}
+
+@layer components {
+  /*
+   * Voice / LiveKit end control. `!important` is what beats
+   * `.lk-disconnect-button`'s theme variables — the colour itself can be a
+   * token like anything else.
+   */
+  .b2c-livekit-end-button {
+    background-color: var(--osce-danger-hover) !important;
+    color: #ffffff !important;
+    border-color: transparent !important;
+  }
+
+  .b2c-livekit-end-button:hover:not(:disabled) {
+    background-color: var(--osce-danger-text) !important;
+  }
+}
+
+/* Default Light Mode */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Shared brand. whitelabel entry point (B2B + B2C accent/danger) */
+  --brand-primary: var(--osce-accent);
+  --brand-primary-hover: var(--osce-accent-hover);
+  --brand-primary-muted: var(--osce-accent-muted);
+  --brand-primary-subtle: var(--osce-accent-subtle);
+  --brand-primary-light: var(--osce-accent-light);
+  --brand-danger: var(--osce-danger);
+  --brand-danger-hover: var(--osce-danger-hover);
+
+  /* B2C palette (accent aliases shared brand) */
+  --b2c-primary: var(--brand-primary);
+  --b2c-primary-hover: var(--brand-primary-hover);
+  --b2c-primary-muted: var(--brand-primary-muted);
+  --b2c-primary-subtle: var(--brand-primary-subtle);
+  --b2c-primary-light: var(--brand-primary-light);
+  --b2c-secondary: #f3f3f3;
+  --b2c-secondary-hover: #ebebeb;
+  --b2c-danger: var(--brand-danger);
+  --b2c-danger-hover: var(--brand-danger-hover);
+
+  /*
+   * Global B2C defaults. These reach the routes that sit outside
+   * `data-b2c-shell` — /blogs, /compliances/*, /partner/[slug]/reporting —
+   * which previously fell back to a separate pure-grey ramp (#111111 /
+   * #e5e5e5 / #f9f9f9) and so rendered a different grey from the app.
+   * Now folded onto the shared ramp; each step moves by at most one or two
+   * levels of lightness, so the pages keep their weight and gain the app's
+   * hue.
+   */
+  --b2c-surface: var(--osce-surface);
+  --b2c-surface-muted: var(--osce-canvas);
+  --b2c-nav-active: var(--osce-nav-active);
+  --b2c-border: var(--osce-border);
+  --b2c-border-light: var(--osce-border-light);
+
+  --b2c-text-primary: var(--osce-ink-900);
+  --b2c-text-secondary: var(--osce-ink-500);
+  /*
+   * Deliberately ink-500, not the shell's ink-400: these routes carry
+   * long-form reading (legal pages, blog posts) where #98a2b3 on white
+   * falls below 4.5:1. This also matches what they render today (#666666).
+   */
+  --b2c-text-muted: var(--osce-ink-500);
+
+  /* Score bands were undefined outside the shell; define them globally. */
+  --b2c-band-competent: var(--osce-band-competent);
+  --b2c-band-competent-bg: var(--osce-band-competent-bg);
+  --b2c-band-competent-border: var(--osce-band-competent-border);
+  --b2c-band-developing: var(--osce-band-developing);
+  --b2c-band-developing-bg: var(--osce-band-developing-bg);
+  --b2c-band-developing-border: var(--osce-band-developing-border);
+  --b2c-band-development: var(--osce-band-development);
+  --b2c-band-development-bg: var(--osce-band-development-bg);
+  --b2c-band-development-border: var(--osce-band-development-border);
+}
+
+/* App typography — Inter body, Archivo headings. */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+}
+
+
+.clip-arrow {
+  clip-path: polygon(0 0, 0 100%, 50% 50%);
+}
+
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.animate-progress {
+  animation: progress 45s linear;
+}
+
+@keyframes testimonial-marquee-ltr {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.testimonial-marquee-track {
+  animation: testimonial-marquee-ltr 90s linear infinite;
+  width: max-content;
+  will-change: transform;
+}
+
+.testimonial-marquee-viewport {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 4%,
+    #000 96%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 4%,
+    #000 96%,
+    transparent
+  );
+}
+
+.testimonial-marquee-viewport:hover .testimonial-marquee-track,
+.testimonial-marquee-viewport:focus-within .testimonial-marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .testimonial-marquee-track {
+    animation: none;
+    transform: none;
+    will-change: auto;
+  }
+
+  .testimonial-marquee-duplicate {
+    display: none;
+  }
+
+  .testimonial-marquee-viewport {
+    overflow-x: auto;
+  }
+}
+
+/* Availability form: React Day Picker – app primary blue, fill container width */
+.availability-form-calendar .rdp-root {
+  --rdp-accent-color: var(--b2c-primary);
+  --rdp-accent-background-color: var(--b2c-primary-muted);
+  --rdp-selected-border: 2px solid transparent;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.availability-form-calendar .rdp-root * {
+  box-sizing: border-box;
+}
+/* Stretch calendar grid to fill container (remove empty space on right) */
+.availability-form-calendar .rdp-months {
+  width: 100%;
+  max-width: 100%;
+}
+.availability-form-calendar .rdp-month {
+  width: 100%;
+}
+.availability-form-calendar .rdp-month_grid {
+  width: 100%;
+  table-layout: fixed;
+}
+.availability-form-calendar .rdp-day,
+.availability-form-calendar .rdp-weekday {
+  width: 14.28%; 
+}
+.availability-form-calendar .rdp-day_button {
+  width: 100%;
+  max-width: 100%;
+}
+/* Selected day: one filled circle (no extra outline from library border) */
+.availability-form-calendar .rdp-selected .rdp-day_button {
+  border-color: transparent;
+  background-color: var(--b2c-primary);
+  color: white;
+  font-weight: 700;
+  box-shadow: none;
+}
+/* Today: single ring only until another day is selected */
+.availability-form-calendar:not(.availability-form-calendar--other-day-selected)
+  .rdp-today:not(.rdp-outside):not(.rdp-selected)
+  .rdp-day_button,
+.availability-form-calendar:not(.availability-form-calendar--other-day-selected)
+  .rdp-day_today:not(.rdp-outside):not(.rdp-selected)
+  .rdp-day_button {
+  font-weight: 700;
+  color: var(--b2c-primary-hover);
+  background-color: var(--b2c-primary-muted);
+  box-shadow: 0 0 0 2px var(--b2c-primary);
+}
+/* Another day selected: today is a small dot only (selection stays the single focus) */
+.availability-form-calendar.availability-form-calendar--other-day-selected
+  .rdp-today:not(.rdp-outside):not(.rdp-selected)
+  .rdp-day_button,
+.availability-form-calendar.availability-form-calendar--other-day-selected
+  .rdp-day_today:not(.rdp-outside):not(.rdp-selected)
+  .rdp-day_button {
+  position: relative;
+  font-weight: 600;
+  color: var(--b2c-text-primary);
+  background-color: transparent;
+  box-shadow: none;
+}
+.availability-form-calendar.availability-form-calendar--other-day-selected
+  .rdp-today:not(.rdp-outside):not(.rdp-selected)
+  .rdp-day_button::after,
+.availability-form-calendar.availability-form-calendar--other-day-selected
+  .rdp-day_today:not(.rdp-outside):not(.rdp-selected)
+  .rdp-day_button::after {
+  content: "";
+  position: absolute;
+  bottom: 0.2rem;
+  left: 50%;
+  width: 0.3rem;
+  height: 0.3rem;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+  background-color: var(--b2c-primary);
+}
+.availability-form-calendar .rdp-disabled .rdp-day_button,
+.availability-form-calendar .rdp-day_disabled .rdp-day_button {
+  opacity: 0.32;
+  color: var(--b2c-text-muted);
+  cursor: not-allowed;
+  pointer-events: none;
+  filter: blur(0.6px);
+}
+
+/* Marketplace: days with a session booked */
+.availability-form-calendar.marketplace-sessions-calendar .rdp-day_has_session .rdp-day_button {
+  background-color: var(--b2c-primary);
+  color: white;
+  font-weight: 600;
+}
+.availability-form-calendar.marketplace-sessions-calendar .rdp-day_has_session.rdp-day_today:not(.rdp-selected) .rdp-day_button {
+  box-shadow: 0 0 0 2px var(--b2c-primary);
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+   Modal overlay + toast progress
+   Tailwind's animate-in/backdrop-blur utilities aren't available here (no
+   tailwindcss-animate plugin, and backdrop-filter needs the -webkit- prefix
+   for Safari), so the modal scrim and toast countdown are hand-rolled.
+--------------------------------------------------------------------------- */
+
+@keyframes osce-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes osce-modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Scrim behind modals. Dim + blur + slight desaturation so the page reads as
+   clearly out of reach rather than as a faintly greyed backdrop. */
+.osce-modal-scrim {
+  background-color: color-mix(in srgb, var(--osce-ink-900) 58%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(0.85) brightness(0.92);
+  backdrop-filter: blur(14px) saturate(0.85) brightness(0.92);
+  animation: osce-overlay-in 180ms ease-out both;
+}
+
+/* Browsers without backdrop-filter get a heavier dim instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .osce-modal-scrim {
+    background-color: color-mix(in srgb, var(--osce-ink-900) 76%, transparent);
+  }
+}
+
+.osce-modal-panel-enter {
+  animation: osce-modal-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes osce-toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.osce-toast-progress-bar {
+  transform-origin: left;
+  animation: osce-toast-progress var(--toast-duration, 4500ms) linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .osce-modal-scrim,
+  .osce-modal-panel-enter {
+    animation: none;
+  }
+}
+/* Template builder: a section or drawer coming into view. */
+@keyframes osce-builder-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.osce-builder-in {
+  animation: osce-builder-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .osce-builder-in {
+    animation: none;
+  }
+}
+
+/* Shared B2B dialogs (`B2BModal`, in `capabilities/authoring/structure`)
+   rendered on this surface. Colour tokens live on `:root` in osceTokens.css;
+   these rules cover the dialog chrome. */
+.b2b-portal {
+  background-color: var(--osce-surface);
+  color: var(--osce-ink-700);
+}
+dialog.b2b-modal {
+  background-color: var(--osce-surface);
+  color: var(--osce-ink-700);
+}
+dialog.b2b-modal:not([open]) {
+  display: none !important;
+}
+dialog.b2b-modal[open] {
+  display: flex;
+  flex-direction: column;
+}
+dialog.b2b-modal::backdrop {
+  background-color: rgba(16, 24, 40, 0.45);
+  -webkit-backdrop-filter: blur(10px) saturate(0.9);
+  backdrop-filter: blur(10px) saturate(0.9);
+  animation: osce-builder-in 180ms ease-out both;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  dialog.b2b-modal::backdrop {
+    background-color: rgba(16, 24, 40, 0.65);
+  }
+}

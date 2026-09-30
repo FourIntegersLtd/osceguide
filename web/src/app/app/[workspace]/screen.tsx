@@ -1,0 +1,93 @@
+"use client";
+
+import { createElement, useEffect, useState } from "react";
+import { notFound } from "next/navigation";
+import { Spinner } from "@/foundation/ui";
+import { useSession } from "@/foundation/session";
+import { loadScreenComponent, resolveWorkspace, surfaceForWorkspace } from "@/surfaces";
+import type { ScreenName } from "@/surfaces";
+import type { ScreenProps } from "@/surfaces/contract";
+import type { ComponentType } from "react";
+
+/**
+ * The one place a page's arm-dependence is resolved.
+ *
+ * `/app/me/dashboard` and `/app/kings/dashboard` are one route file. Which
+ * component answers comes from the arm's screen map, so a page never branches
+ * and adding an arm adds no route files at all. An arm that does not declare
+ * the screen renders a 404, which is how `/app/kings/mocks` — a consumer page
+ * asked of an institution — comes out right without anybody listing the
+ * combinations.
+ */
+export function Screen({
+  name,
+  slug,
+  params,
+}: {
+  name: ScreenName;
+  slug: string;
+  params?: Record<string, string>;
+}) {
+  const { session } = useSession();
+  const workspace = resolveWorkspace(slug, session?.user ?? null);
+  if (!workspace) notFound();
+
+  const manifest = surfaceForWorkspace(workspace);
+  const surfaceKey = manifest.screensFrom ?? manifest.id;
+
+  return (
+    <ResolvedScreen
+      key={`${surfaceKey}-${name}`}
+      manifest={manifest}
+      name={name}
+      workspace={workspace}
+      params={params}
+    />
+  );
+}
+
+function ResolvedScreen({
+  manifest,
+  name,
+  workspace,
+  params,
+}: {
+  manifest: ReturnType<typeof surfaceForWorkspace>;
+  name: ScreenName;
+  workspace: NonNullable<ReturnType<typeof resolveWorkspace>>;
+  params?: Record<string, string>;
+}) {
+  const [screen, setScreen] = useState<ComponentType<ScreenProps> | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadScreenComponent(manifest, name).then((component) => {
+      if (cancelled) return;
+      // `setScreen(Fn)` is an updater: React would call `Fn(prev)` and store
+      // the JSX it returned. Wrap so the component itself is the state.
+      setScreen(() => component ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [manifest, name]);
+
+  if (screen === undefined) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Spinner label="Loading" />
+      </div>
+    );
+  }
+
+  if (!screen) notFound();
+
+  /*
+   * `createElement` rather than `<Screen />` from a local binding: the React
+   * Compiler reads an assignment to a capitalised local as defining a
+   * component during render, which is the real mistake it is looking for. This
+   * is a lookup in a table fixed at module scope, and saying so directly is
+   * clearer than suppressing the rule.
+   */
+  return createElement(screen, { workspace, params });
+}

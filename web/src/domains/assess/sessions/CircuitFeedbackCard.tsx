@@ -1,0 +1,140 @@
+"use client";
+
+import { useState } from "react";
+import { HiCheckCircle } from "react-icons/hi2";
+import { Alert, AsyncBoundary, Button, b2bTokens } from "@/foundation/ui";
+import { useAsync } from "@/foundation/hooks";
+import {
+  finalizeCircuitReview,
+  readCircuitReview,
+  type CircuitReviewState,
+} from "@/domains/assess/sessions/api";
+import type { CircuitConsole } from "@/domains/assess/sessions/api";
+
+/**
+ * Publishing what was marked, once the circuit is done.
+ *
+ * The retiring runner counted saved feedback by probing one request per slot;
+ * the console frame already says which stations have been marked, so the count
+ * is read rather than asked for. Publishing stays off until at least one has
+ * been, which is the same rule the old card enforced.
+ *
+ * Whether it has already been published is read from the server
+ * (`readCircuitReview`), so reopening the console after publishing says so,
+ * with the notes that went out. It used to say only what it had done in this
+ * visit, so a reopened console offered to publish again from empty notes.
+ */
+export function CircuitFeedbackCard({
+  data,
+  orgSlug,
+  circuitId,
+  busy,
+  run,
+}: {
+  data: CircuitConsole;
+  orgSlug: string;
+  circuitId: string;
+  busy: string | null;
+  run: (name: string, action: () => Promise<unknown>) => Promise<void>;
+}) {
+  const slots = data.slots ?? [];
+  const review = useAsync(
+    (signal) => readCircuitReview(orgSlug, circuitId, signal),
+    [orgSlug, circuitId],
+  );
+
+  if (slots.length === 0) return null;
+
+  return (
+    <AsyncBoundary state={review}>
+      {(current) => (
+        <FeedbackForm
+          key={current.review?.finalized_at ?? "none"}
+          current={current}
+          marked={slots.filter((slot) => slot.has_review).length}
+          total={slots.length}
+          busy={busy}
+          publish={async (notes) => {
+            // `run` keeps a failure for the runner's banner rather than
+            // throwing, so success is recorded from inside the action.
+            let done = false;
+            await run("publish", async () => {
+              await finalizeCircuitReview(orgSlug, circuitId, notes);
+              done = true;
+            });
+            if (done) review.reload();
+            return done;
+          }}
+        />
+      )}
+    </AsyncBoundary>
+  );
+}
+
+function FeedbackForm({
+  current,
+  marked,
+  total,
+  busy,
+  publish,
+}: {
+  current: CircuitReviewState;
+  marked: number;
+  total: number;
+  busy: string | null;
+  publish: (notes: string | null) => Promise<boolean>;
+}) {
+  const [notes, setNotes] = useState(current.review?.merged_notes ?? "");
+  const publishedAt = current.state === "published" ? current.review.finalized_at : null;
+
+  return (
+    <section className="space-y-3 rounded-lg border border-b2b-border bg-white p-4 sm:p-5">
+      <h2 className={b2bTokens.b2bSectionTitle}>Share this circuit&apos;s feedback</h2>
+      <p className="text-osce-body text-b2b-mid">
+        Publishes one summary from everything marked across this circuit. Candidates read it as
+        their circuit feedback; publishing again after an edit replaces it.
+      </p>
+      <p className="text-osce-caption font-medium text-b2b-headline">
+        Marked on {marked} of {total} station{total === 1 ? "" : "s"}
+      </p>
+
+      <label htmlFor="circuit-feedback-notes" className="sr-only">
+        Notes on the circuit as a whole
+      </label>
+      <textarea
+        id="circuit-feedback-notes"
+        value={notes}
+        onChange={(event) => setNotes(event.target.value)}
+        rows={3}
+        placeholder="Anything to say about the circuit as a whole (optional)"
+        className={`${b2bTokens.b2bInputBase} w-full`}
+      />
+
+      {publishedAt ? (
+        <Alert tone="success">
+          Published {new Date(publishedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}.
+          Publishing again replaces it.
+        </Alert>
+      ) : (
+        <p className="text-osce-caption text-b2b-mid">Not published yet.</p>
+      )}
+
+      {marked === 0 ? (
+        <p className="text-osce-caption text-b2b-mid">
+          Publishing stays off until at least one station has been marked.
+        </p>
+      ) : null}
+
+      <Button
+        themeType="b2b"
+        variant="secondary"
+        isLoading={busy === "publish"}
+        disabled={busy !== null || marked === 0}
+        onClick={() => void publish(notes.trim() || null)}
+      >
+        <HiCheckCircle className="h-4 w-4 shrink-0 text-b2b-success-text" aria-hidden />
+        {publishedAt ? "Publish again" : "Publish circuit feedback"}
+      </Button>
+    </section>
+  );
+}

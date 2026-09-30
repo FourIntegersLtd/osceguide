@@ -1,0 +1,281 @@
+import type {
+  CandidateReport,
+  CohortCandidate,
+  Evidence,
+  SittingReadout,
+} from "@/domains/assess/results/api";
+
+/**
+ * The vocabulary and the arithmetic behind the results screens.
+ *
+ * Pure, so the things that decide what a candidate is told — which outcomes
+ * exist, what a decision was judged against, whether it is safe to sign off —
+ * can be tested rather than read off a component.
+ */
+
+/**
+ * The four outcomes, as the backend's pattern spells them.
+ *
+ * The rebuilt screen offered "borderline", which `SaveDecision` rejects: the
+ * unresolved outcomes here are `inconclusive` and `withheld`, and they mean
+ * different things. Getting this list wrong is a 422 at the moment somebody is
+ * trying to record a result.
+ */
+export const ASSESSMENT_OUTCOMES = ["pass", "fail", "inconclusive", "withheld"] as const;
+export type AssessmentOutcome = (typeof ASSESSMENT_OUTCOMES)[number];
+
+export const OUTCOME_LABEL: Record<AssessmentOutcome, string> = {
+  pass: "Pass",
+  fail: "Fail",
+  inconclusive: "Inconclusive",
+  withheld: "Withheld",
+};
+
+export const OUTCOME_HINT: Record<AssessmentOutcome, string> = {
+  pass: "Met the standard.",
+  fail: "Did not meet the standard.",
+  inconclusive: "Not enough was assessed to decide.",
+  withheld: "Decided, and not being released — an investigation, an appeal.",
+};
+
+export function outcomeTone(
+  outcome: string | null | undefined,
+): "success" | "danger" | "warning" | "neutral" {
+  if (outcome === "pass") return "success";
+  if (outcome === "fail") return "danger";
+  if (outcome === "inconclusive" || outcome === "withheld") return "warning";
+  return "neutral";
+}
+
+/* ---------- where a decision has got to ---------- */
+
+export const WORKFLOW_LABEL: Record<string, string> = {
+  draft: "Draft",
+  signed_off: "Signed off",
+  released: "Released",
+};
+
+export function workflowLabel(state: string | null | undefined): string {
+  if (!state) return "Not started";
+  return WORKFLOW_LABEL[state] ?? state.replace(/_/g, " ");
+}
+
+export function workflowTone(state: string | null | undefined): "success" | "accent" | "neutral" {
+  if (state === "released") return "success";
+  if (state === "signed_off") return "accent";
+  return "neutral";
+}
+
+/* ---------- who a GP lead should look at first ---------- */
+
+export const PRIORITY_LABEL: Record<string, string> = {
+  urgent: "Urgent review",
+  high: "High priority",
+  standard: "Standard",
+  low: "Low priority",
+};
+
+export function priorityTone(
+  priority: string,
+): "danger" | "warning" | "info" | "success" | "neutral" {
+  if (priority === "urgent") return "danger";
+  if (priority === "high") return "warning";
+  if (priority === "standard") return "info";
+  if (priority === "low") return "success";
+  return "neutral";
+}
+
+export function candidateName(person: { name?: string | null; email?: string | null }): string {
+  return person.name ?? person.email ?? "Candidate";
+}
+
+export function formatScore(score: number | null | undefined): string {
+  if (score === null || score === undefined || Number.isNaN(score)) return "Not assessed";
+  return `${Math.round(score)}/100`;
+}
+
+export function formatCompletion(rate: number | null | undefined): string {
+  if (rate === null || rate === undefined || Number.isNaN(rate)) return "—";
+  return `${Math.round(rate * 100)}%`;
+}
+
+export function cohortSubtitle(candidate: CohortCandidate): string {
+  const parts = [`${candidate.stations_completed}/${candidate.stations_total} stations`];
+  if (candidate.assessment_score !== null && candidate.assessment_score !== undefined) {
+    parts.push(formatScore(candidate.assessment_score));
+  }
+  return parts.join(" · ");
+}
+
+/* ------------------------------------------------------------------------
+ * The evidence.
+ *
+ * What the outcome was judged against, sent with the draft and again at
+ * release. The backend fingerprints it at sign-off and refuses a release whose
+ * evidence no longer matches — a station re-marked in between would otherwise
+ * send a candidate an outcome nobody approved.
+ *
+ * The retiring client never sent any, so that check compared two empty objects
+ * and passed every time. Only the marking goes in: the shape has to be stable,
+ * or an unrelated edit elsewhere in the report would read as tampering.
+ * --------------------------------------------------------------------- */
+
+export function evidenceFor(candidate: CandidateReport): Evidence {
+  const stations = (candidate.stations ?? [])
+    .map((station) => ({
+      slot_id: station.slot_id,
+      marked: station.marked,
+      overall_rag: station.overall_rag ?? null,
+    }))
+    .sort((a, b) => a.slot_id.localeCompare(b.slot_id));
+
+  return {
+    stations,
+    stations_marked: candidate.stations_marked,
+    overall_rag: candidate.overall_rag ?? null,
+  };
+}
+
+/* ------------------------------------------------------------------------
+ * What a decision needs before anybody puts their name to it.
+ *
+ * The backend is the authority — `ensure_signable` refuses a sign-off without
+ * both — and these are here so the screen can say what is missing before
+ * somebody presses the button, rather than after.
+ * --------------------------------------------------------------------- */
+
+export function signOffBlockers(input: {
+  outcome: string | null;
+  rationale: string | null;
+}): string[] {
+  const blockers: string[] = [];
+  if (!input.outcome) blockers.push("An outcome has to be chosen.");
+  if (!(input.rationale ?? "").trim()) {
+    blockers.push("A rationale has to be written — somebody has to be able to say why, later.");
+  }
+  return blockers;
+}
+
+/** A candidate whose sign-off is done and whose release is not. */
+export function releasable(candidate: CandidateReport): boolean {
+  const decision = candidate.decision;
+  return Boolean(decision?.signed_off_at) && !decision?.released_at;
+}
+
+/**
+ * The read-out file's name: the sitting it came from, then what it is.
+ *
+ * The retiring client took the name off the server's `content-disposition`
+ * because the server rendered the document. Here the browser writes the file, so
+ * the name is made here — and it is the same shape the old downloads had, so two
+ * of them in a Downloads folder still say which exam each belongs to.
+ */
+export function readoutFilename(readout: SittingReadout): string {
+  return `${readout.sitting.sitting_id}-exam-readout.md`;
+}
+
+/**
+ * The read-out as the markdown document the retiring screen handed over.
+ *
+ * The platform serves the read-out as the JSON it actually is and renders
+ * nothing, so the document is written here. It is built from the same
+ * `candidateName`, `formatScore`, `formatCompletion` and `PRIORITY_LABEL` the
+ * cohort table on screen uses, which is the only way a file somebody files away
+ * and a screen somebody reads can be guaranteed to say the same thing about the
+ * same candidate — a second set of formatters is a second opinion.
+ */
+export function readoutAsMarkdown(readout: SittingReadout): string {
+  const { sitting, summary } = readout;
+  const candidates = readout.candidates ?? [];
+  const stamp = (value: string) => new Date(value).toLocaleString("en-GB");
+  const lines: string[] = [];
+
+  lines.push(`# ${sitting.name} — examination read-out`, "");
+  lines.push(
+    `Sitting \`${sitting.sitting_id}\` · organisation \`${readout.org_slug}\` · read-out v${readout.readout_version}`,
+    "",
+  );
+  lines.push(
+    `- Scheduled: ${sitting.scheduled_for ? stamp(sitting.scheduled_for) : "not scheduled"}`,
+    `- Stations required: ${sitting.required_station_count}`,
+    `- Generated: ${stamp(readout.generated_at)}`,
+    "",
+  );
+
+  lines.push("## Cohort", "", "| Measure | Value |", "| --- | --- |");
+  lines.push(`| Cohort size | ${summary.cohort_size} |`);
+  lines.push(`| Fully complete | ${summary.fully_complete_count} |`);
+  lines.push(`| Average assessment score | ${cell(formatScore(summary.average_assessment_score))} |`);
+  lines.push(`| Computed at | ${stamp(summary.computed_at)} |`, "");
+
+  const priorities = Object.entries(summary.priorities ?? {});
+  if (priorities.length > 0) {
+    lines.push("### Review priorities", "");
+    for (const [key, count] of priorities) {
+      lines.push(`- ${PRIORITY_LABEL[key] ?? key}: ${count}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("## Candidates", "");
+  if (candidates.length === 0) {
+    lines.push("Nobody was rostered onto this examination.", "");
+  } else {
+    lines.push(
+      "| Rank | Candidate | Assessment score | Stations | Completion | Review priority |",
+      "| --- | --- | --- | --- | --- | --- |",
+    );
+    for (const candidate of candidates) {
+      const row = [
+        candidate.rank,
+        cell(candidateName(candidate.trainee)),
+        cell(formatScore(candidate.assessment_score)),
+        `${candidate.stations_completed}/${candidate.stations_total}`,
+        cell(formatCompletion(candidate.completion_rate)),
+        cell(PRIORITY_LABEL[candidate.review_priority] ?? candidate.review_priority),
+      ];
+      lines.push(`| ${row.join(" | ")} |`);
+    }
+    lines.push("");
+  }
+
+  const recommendations = readout.recommendations ?? [];
+  if (recommendations.length > 0) {
+    lines.push("## Recommendations", "");
+    for (const item of recommendations) lines.push(`- ${item}`);
+    lines.push("");
+  }
+
+  lines.push("## Methodology", "", readout.methodology, "");
+  return lines.join("\n");
+}
+
+/**
+ * One markdown table cell.
+ *
+ * A pipe in a name ends the cell early and shifts every column after it, and
+ * names and priorities arrive from people and from data rather than from us.
+ */
+function cell(value: string): string {
+  return value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+}
+
+/**
+ * Why the backend skipped one candidate in a bulk release, for the lead.
+ *
+ * The bulk answer carries each refusal's code, not its message.
+ */
+export function releaseRefusal(code: string): string {
+  switch (code) {
+    case "evidence_changed":
+      return "the marking changed after sign-off, so sign it off again";
+    case "invalid_workflow":
+      return "not signed off, or already released";
+    case "decision_revised":
+      return "the decision was changed by somebody else; reload and check it";
+    case "result_not_found":
+      return "no decision recorded";
+    default:
+      return `refused (${code})`;
+  }
+}

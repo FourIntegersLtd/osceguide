@@ -1,0 +1,97 @@
+"use client";
+
+import { useState } from "react";
+import { LuShield } from "react-icons/lu";
+import { AsyncBoundary, Button, Card, ConfirmModal, PlatformPageHeader } from "@/foundation/ui";
+import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import {
+  deleteModerationPost,
+  listModerationPosts,
+  type ModerationPost,
+} from "@/capabilities/staff-moderation/api";
+
+function formatDay(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+export function ModerationHome() {
+  const state = useAsync((signal) => listModerationPosts({ days: 7 }, signal), []);
+  const toast = useToast();
+  const [target, setTarget] = useState<ModerationPost | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const confirmDelete = async () => {
+    if (!target) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteModerationPost(target.id);
+      toast.success("Post removed");
+      setTarget(null);
+      state.reload();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <PlatformPageHeader
+        title="Moderation"
+        description="Recent community posts. Remove anything that should not stay public."
+        icon={LuShield}
+      />
+
+      <AsyncBoundary
+        state={state}
+        isEmpty={(page) => page.items.length === 0}
+        empty={{ title: "Queue is empty", description: "No posts in the last seven days." }}
+      >
+        {(page) => (
+          <Card>
+            <ul className="divide-y divide-border">
+              {page.items.map((post) => (
+                <li key={post.id} className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-ink">
+                      {"title" in post && typeof post.title === "string" && post.title
+                        ? post.title
+                        : post.kind === "reply"
+                          ? "Reply"
+                          : "Post"}
+                    </p>
+                    <p className="mt-1 line-clamp-3 text-sm text-ink-muted">{post.body}</p>
+                    <p className="mt-1 text-xs text-ink-subtle">{formatDay(post.created_at)}</p>
+                  </div>
+                  <Button variant="danger" size="sm" onClick={() => setTarget(post)}>
+                    Delete
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </AsyncBoundary>
+
+      <ConfirmModal
+        isOpen={target !== null}
+        onCancel={() => {
+          setTarget(null);
+          setError(null);
+        }}
+        onConfirm={() => void confirmDelete()}
+        isLoading={busy}
+        error={error}
+        tone="danger"
+        title="Delete this post?"
+        confirmText="Delete"
+        message="This removes the post for everyone. It cannot be undone from here."
+      />
+    </div>
+  );
+}

@@ -1,0 +1,393 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Button,
+  EmptyState,
+  PlatformFilterBar,
+  PlatformFilterSearch,
+  b2bTokens,
+} from "@/foundation/ui";
+import Table, { type FetchPageResult } from "@/foundation/table/Table";
+import { b2cTableCellText } from "@/foundation/ui/productTokens";
+import { cn } from "@/foundation/ui/cn";
+import { hasCode } from "@/foundation/platform-client";
+import { errorMessage, useCursorPages } from "@/foundation/hooks";
+import { Dialog } from "@/domains/assess/team/chrome";
+import type { Trainee } from "@/domains/assess/api";
+import {
+  anonymiseTrainee,
+  deleteTrainee,
+  listTrainees,
+  resendInvitation,
+  setTraineeAccess,
+  type Cohort,
+} from "@/domains/assess/roster/api";
+import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
+import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
+import { accessActive, cohortName, displayName, traineeCountLabel } from "@/domains/assess/roster/support";
+
+type Pending = { kind: "revoke" | "restore" | "delete" | "anonymise"; trainee: Trainee } | null;
+
+/** The line above the table: what the last press actually did. */
+type Message = { tone: "success" | "warning" | "danger"; text: string };
+
+/**
+ * Who the organisation examines.
+ *
+ * Revoking is the reversible removal, offered for anyone: a trainee who has
+ * sat something keeps their results on revoke, where deleting the row would
+ * take an examination's candidate with it. Delete exists too, since 2026-09-24,
+ * offered on every row, same as the old
+ * client's "Remove from team" — but the backend refuses it the moment a
+ * decision is recorded (`trainee_in_use`), which is what makes it safe to
+ * offer unconditionally rather than trying to know in advance.
+ *
+ * Correcting a row and re-sending an invitation both live here, because both
+ * are things an administrator does while looking at this list. Neither is a
+ * separate screen, which is where the retiring client put them: the edit modal
+ * was reached from an overflow menu on a different tab from the one that showed
+ * the invitation had gone unanswered.
+ *
+ * The list itself is one server page at a time, searched in SQL — this used to
+ * take the whole roster from `Trainees` and filter and slice it in the browser,
+ * which is exactly the walk that silently stopped at 2,500 rows on the
+ * station catalogue. `cohorts` still comes from the parent, since every tab on
+ * this screen needs the same small lookup table.
+ */
+export function TraineesPanel({
+  orgSlug,
+  cohorts,
+  canManage,
+  onChanged,
+}: {
+  orgSlug: string;
+  cohorts: Cohort[];
+  canManage: boolean;
+  onChanged: () => void;
+}) {
+  const [pending, setPending] = useState<Pending>(null);
+  const [editing, setEditing] = useState<Trainee | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<Message | null>(null);
+  /** Rows the backend has said have nothing pending. See `TraineeRowActions`. */
+  const [settled, setSettled] = useState<Set<string>>(() => new Set());
+  const [resending, setResending] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // A page at a time, searched in SQL, rather than the whole roster walked and
+  // filtered in the browser.
+  const pages = useCursorPages(
+    (cursor, signal) => listTrainees(orgSlug, signal, { cursor, search: query }),
+    [orgSlug, query],
+  );
+  const rows = pages.state.data ?? [];
+
+  const commit = useCallback(async () => {
+    if (!pending) return;
+    setBusy(true);
+    setError(null);
+    try {
+      if (pending.kind === "delete") {
+        // `trainees.id`, not the user id a circuit slot names.
+        await deleteTrainee(orgSlug, pending.trainee.id);
+        setNotice({ tone: "success", text: `Removed ${displayName(pending.trainee)} from the roster.` });
+      } else if (pending.kind === "anonymise") {
+        await anonymiseTrainee(orgSlug, pending.trainee.id);
+        setNotice({
+          tone: "success",
+          text: `${displayName(pending.trainee)}'s name and address have been scrubbed. Any decision on record is unchanged.`,
+        });
+      } else {
+        const revoking = pending.kind === "revoke";
+        await setTraineeAccess(orgSlug, pending.trainee.id, revoking);
+        setNotice({
+          tone: "success",
+          text: revoking
+            ? `Revoked access for ${displayName(pending.trainee)}.`
+            : `Restored access for ${displayName(pending.trainee)}.`,
+        });
+      }
+      setPending(null);
+      pages.state.reload();
+      onChanged();
+    } catch (cause) {
+      if (pending.kind === "delete" && hasCode(cause, "trainee_in_use")) {
+        setError(
+          `${displayName(pending.trainee)} has a decision recorded and cannot be deleted. Revoke their access instead.`,
+        );
+      } else {
+        setError(errorMessage(cause));
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [pending, orgSlug, onChanged, pages.state]);
+
+  /**
+   * Re-send the choose-a-password link.
+   *
+   * `invitation_not_pending` is the one answer with a consequence the screen
+   * has to keep: it means this person can already sign in, so that row stops
+   * offering the button rather than offering a refusal on every press. Anything
+   * else leaves the offer standing, because the next attempt may get through.
+   */
+  const resend = useCallback(
+    async (trainee: Trainee) => {
+      setResending(trainee.id);
+      setError(null);
+      setNotice(null);
+      try {
+        const invitation = await resendInvitation(orgSlug, trainee.id);
+        setNotice({
+          tone: "success",
+          text: `Emailed ${invitation.email} a link to choose a password for ${invitation.invited_to}.`,
+        });
+        onChanged();
+      } catch (cause) {
+        if (hasCode(cause, "invitation_not_pending")) {
+          setSettled((current) => new Set(current).add(trainee.id));
+          setNotice({
+            tone: "warning",
+            text: `${displayName(trainee)} has already chosen a password, so there is no invitation to re-send.`,
+          });
+        } else {
+          setNotice({ tone: "danger", text: errorMessage(cause) });
+        }
+      } finally {
+        setResending(null);
+      }
+    },
+    [orgSlug, onChanged],
+  );
+
+  /** Table renders whatever page the server has already handed back — it does
+   * not re-page, re-sort or re-filter what it is given. */
+  const tableFetchPage = useCallback(
+    async (): Promise<FetchPageResult<Trainee>> => ({ items: rows, totalCount: rows.length }),
+    [rows],
+  );
+
+  const columns = useMemo(
+    () => [
+      {
+        header: "Name",
+        key: "first_name" as keyof Trainee,
+        priority: "primary" as const,
+        render: (trainee: Trainee) => (
+          <span className={cn(b2cTableCellText, "font-medium text-osce-ink-900")}>
+            {trainee.first_name || trainee.last_name ? displayName(trainee) : "None"}
+          </span>
+        ),
+      },
+      {
+        header: "Email",
+        key: "email" as keyof Trainee,
+        render: (trainee: Trainee) => (
+          <span className={cn(b2cTableCellText, "text-b2b-graphite")}>{trainee.email}</span>
+        ),
+      },
+      {
+        header: "Group",
+        key: "cohort_id" as keyof Trainee,
+        render: (trainee: Trainee) => (
+          <span className={cn(b2cTableCellText, "text-b2b-mid")}>
+            {cohortName(cohorts, trainee.cohort_id)}
+          </span>
+        ),
+      },
+      {
+        header: "Access",
+        key: "id" as keyof Trainee,
+        render: (trainee: Trainee) =>
+          accessActive(trainee) ? (
+            <span className="text-osce-caption font-medium text-b2b-success-text">Active</span>
+          ) : (
+            <span className="text-osce-caption font-medium text-b2b-warning-text/90">Revoked</span>
+          ),
+      },
+      {
+        header: "Actions",
+        key: "user_id" as keyof Trainee,
+        priority: "detail" as const,
+        render: (trainee: Trainee) => (
+          <TraineeRowActions
+            trainee={trainee}
+            invitationSettled={settled.has(trainee.id)}
+            canManage={canManage}
+            busy={resending === trainee.id}
+            onEdit={() => {
+              setError(null);
+              setNotice(null);
+              setEditing(trainee);
+            }}
+            onResend={() => void resend(trainee)}
+            onAccess={() => {
+              setError(null);
+              setPending({
+                kind: accessActive(trainee) ? "revoke" : "restore",
+                trainee,
+              });
+            }}
+            onDelete={() => {
+              setError(null);
+              setPending({ kind: "delete", trainee });
+            }}
+            onAnonymise={() => {
+              setError(null);
+              setPending({ kind: "anonymise", trainee });
+            }}
+          />
+        ),
+      },
+    ],
+    [canManage, cohorts, settled, resending, resend],
+  );
+
+  const revoking = pending?.kind === "revoke";
+  const deleting = pending?.kind === "delete";
+  const anonymising = pending?.kind === "anonymise";
+  const named = pending ? displayName(pending.trainee) : "";
+
+  return (
+    <div className="min-w-0 space-y-4">
+      {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
+
+      <PlatformFilterBar
+        leading={
+          rows.length > 0 || query ? (
+            <p className={b2bTokens.b2bEyebrow}>
+              {traineeCountLabel(rows.length)}
+              {pages.hasMore ? "+" : ""}
+            </p>
+          ) : null
+        }
+      >
+        <PlatformFilterSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search trainees…"
+          aria-label="Search trainees"
+        />
+      </PlatformFilterBar>
+
+      {pages.state.error ? (
+        <Alert tone="danger">
+          {pages.state.error.message}
+          <button type="button" className="ml-2 underline" onClick={() => pages.state.reload()}>
+            Retry
+          </button>
+        </Alert>
+      ) : null}
+
+      {pages.state.loading && !pages.state.data ? (
+        <p className="text-osce-body text-b2c-text-secondary" role="status">
+          Loading trainees…
+        </p>
+      ) : rows.length === 0 ? (
+        query ? (
+          <p className="text-osce-body text-b2b-mid">No trainees match &ldquo;{query}&rdquo;.</p>
+        ) : (
+          <EmptyState
+            title="No trainees yet"
+            description="Add trainees so you can put them on an exam or training circuit."
+          />
+        )
+      ) : (
+        <Table<Trainee>
+          fetchPage={tableFetchPage}
+          columns={columns}
+          idField="id"
+          nameField="email"
+          showSearch={false}
+          showPagination={false}
+        />
+      )}
+
+      {pages.moreError ? (
+        <Alert tone="danger">Could not load more trainees: {pages.moreError.message}</Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="flex justify-center">
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            disabled={pages.loadingMore}
+            onClick={pages.loadMore}
+          >
+            {pages.loadingMore ? "Loading…" : "Load more trainees"}
+          </Button>
+        </div>
+      ) : null}
+
+      {!canManage ? (
+        <p className="text-osce-caption text-b2b-icon">
+          Contact an owner or admin to change who has access.
+        </p>
+      ) : null}
+
+      <Dialog
+        open={pending != null}
+        title={
+          deleting
+            ? `Delete ${named}?`
+            : anonymising
+              ? `Anonymise ${named}?`
+              : revoking
+                ? "Revoke access"
+                : "Restore access"
+        }
+        lead={
+          pending
+            ? deleting
+              ? "Only a row with no decision recorded can be deleted this way. Anything examined is refused — revoke their access instead."
+              : anonymising
+                ? `${named}'s name and email address will be scrubbed and their access revoked. Any decision already recorded about them is kept — this cannot be undone.`
+                : revoking
+                  ? `${named} will not be able to sign in or sit anything, and stays on the roster with their results intact.`
+                  : `${named} will be able to sign in and sit again.`
+            : ""
+        }
+        error={error}
+        busy={busy}
+        tone={deleting || anonymising || revoking ? "danger" : "commit"}
+        commitLabel={
+          deleting ? "Delete" : anonymising ? "Anonymise" : revoking ? "Revoke access" : "Restore access"
+        }
+        busyLabel={
+          deleting
+            ? "Deleting…"
+            : anonymising
+              ? "Anonymising…"
+              : revoking
+                ? "Revoking…"
+                : "Restoring…"
+        }
+        onClose={() => setPending(null)}
+        onCommit={() => void commit()}
+      />
+
+      <TraineeEditDialog
+        orgSlug={orgSlug}
+        trainee={editing}
+        cohorts={cohorts}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          pages.state.reload();
+          onChanged();
+        }}
+      />
+    </div>
+  );
+}
