@@ -24,6 +24,7 @@ from app.features.attempts import (
     schemas,
     schemas_material,
     service,
+    service_feedback,
     service_material,
     service_reads,
     service_stream,
@@ -148,6 +149,26 @@ async def read_results(
         memberships=principal.memberships,
     )
     return Page(items=assessment_results, next_cursor=None)
+
+
+@router.get(
+    "/attempts/{attempt_id}/feedback",
+    response_model=schemas.AttemptFeedbackRead,
+    responses=error_responses(Unauthenticated, errors.AttemptNotFound, errors.AttemptNotYours),
+)
+async def read_feedback(
+    attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas.AttemptFeedbackRead:
+    """The attempt's marking as a feedback screen draws it: the rubric frozen on
+    the attempt, its resolved display, and each result with the totals that
+    rubric makes of it (total, maximum, pass, critical concerns, per domain)."""
+    return await service_feedback.read_feedback(
+        session,
+        attempt_id,
+        requester_id=principal.user_id,
+        is_admin=principal.is_platform_admin,
+        memberships=principal.memberships,
+    )
 
 
 @router.get(

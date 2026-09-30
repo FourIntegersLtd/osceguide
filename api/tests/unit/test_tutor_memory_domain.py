@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
 
 import pytest
 
+from app.features.rubrics import domain as rubric_domain
+from app.features.rubrics import service_scoring as rubric_scoring
 from app.features.tutor_memory import domain
 
 NOW = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
@@ -110,25 +115,61 @@ def test_a_grant_that_cannot_say_whether_it_is_live_is_refused() -> None:
     assert domain.entitled_exam_ids([Row()]) == frozenset()
 
 
-def test_observations_read_a_marking_as_the_brief_says_it() -> None:
+def _seeded(exam_code: str) -> tuple[Any, dict[str, Any]]:
+    """A seeded exam's parsed rubric structure and resolved display."""
+    seed = json.loads((Path(__file__).resolve().parents[2] / "seeds/platform-starter.json").read_text())
+    raw = next(entry["rubric"]["structure"] for entry in seed["exams"] if entry["code"] == exam_code)
+    structure = rubric_domain.parse_structure(raw)
+    return structure, rubric_domain.resolved_display(structure)
+
+
+def _observe(structure: Any, display: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """The brief's observations of a result, read the way `service_brief` reads it."""
+    return domain.observations_from_result(
+        rubric_scoring.weakest_domain_tones(structure, display, payload),
+        rubric_scoring.texts_by_role(structure, payload, roles=domain.BRIEF_KEY_FOR_ROLE),
+    )
+
+
+def test_observations_read_an_sca_marking_by_role() -> None:
+    structure, display = _seeded("sca")
     payload = {
-        "domains": [{"name": "clinical approach", "rating": "A"}, {"name": "tasks", "grade": "R"}],
-        "strengths": [{"text": "Warm opening"}],
-        "areas_for_improvement": ["No examination offered"],
-        "quotes": ["Come back if it does not improve"],
-        "overall_score": 17,
+        "global_skills": {
+            "structures_consultation": {"score": "G", "supporting_phrase": "Let me summarise"},
+            "avoids_repetition": {"score": "A", "supporting_phrase": "So as I said"},
+        },
+        "tasks": {"opens_consultation": {"score": "R", "supporting_phrase": "What brings you in?"}},
+        "clinical_analysis": {"key_positives": ["Asked about red flags"], "missed_history": ["Smoking"]},
+        "actionable_feedback": {"overall_priorities": ["Signpost"], "tasks_feedback": "not read"},
     }
-    observed = domain.observations_from_result(payload)
-    assert observed["domains"] == {"clinical approach": "A", "tasks": "R"}
-    assert observed["strengths"] == ["Warm opening"]
-    assert observed["improvements"] == ["No examination offered"]
-    assert observed["phrases"] == ["Come back if it does not improve"]
-    assert "overall_score" not in observed
+    observed = _observe(structure, display, payload)
+    # The weakest rating per domain, as the display's word: never a number.
+    assert observed["domains"] == {"Global skills": "fair", "Tasks": "poor"}
+    assert observed["strengths"] == ["Asked about red flags"]
+    assert observed["improvements"] == ["Smoking", "Signpost"]
+    assert observed["phrases"] == ["Let me summarise", "So as I said", "What brings you in?"]
 
 
-def test_observations_accept_domains_as_a_mapping() -> None:
-    observed = domain.observations_from_result({"domains": {"tasks": "G"}})
-    assert observed["domains"] == {"tasks": "G"}
+def test_observations_read_a_scored_exam_and_skip_a_null_domain() -> None:
+    structure, display = _seeded("ortho")
+    payload = {
+        "station_type": "clinical",
+        "clinical_skills": {
+            "technical_knowledge_clinical_expertise": {
+                "score": 8,
+                "completed": ["Examined the knee"],
+                "evidence_points": ["Checked the neurovascular status"],
+                "suggested_actions": ["Name the classification"],
+            },
+            "situational_awareness": {"score": 5},
+        },
+        "communication_skills": None,
+    }
+    observed = _observe(structure, display, payload)
+    assert observed["domains"] == {"Clinical skills": "fair"}
+    assert observed["strengths"] == ["Examined the knee"]
+    assert observed["improvements"] == ["Name the classification"]
+    assert observed["phrases"] == ["Checked the neurovascular status"]
 
 
 SCHEMA = {

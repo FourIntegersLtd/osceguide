@@ -144,13 +144,18 @@ async def score_attempt_now(
         log.warning("evaluation failed", attempt_id=str(attempt_id), error=str(exc))
         raise
 
+    # The model is the row's own column, not a mark: left in the payload it is
+    # a top-level key the rubric's derived schema forbids, so no stored result
+    # validated against the schema it was marked with.
+    marks = dict(marks)
+    model_used = str(marks.pop("model_used", "") or "") or None
     await transcripts.save_result(
         session,
         attempt_id,
         framework_id=str(rubric.get("framework", {}).get("id") or framework_id),
         policy_version=policy_version,
         payload=marks,
-        model_used=str(marks.get("model_used") or "") or None,
+        model_used=model_used,
         at=now,
     )
     if status is domain.Status.INTERACTION_COMPLETE:

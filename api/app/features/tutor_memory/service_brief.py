@@ -18,7 +18,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.attempts import service_feedback as attempts_feedback
 from app.features.attempts import service_reads as attempts
+from app.features.rubrics import service_scoring as rubric_scoring
 from app.features.stations import service_reads as stations
 from app.features.tutor_memory import domain, repository
 from app.features.tutor_memory.tools_catalog import TOOL_ROLES
@@ -70,19 +72,20 @@ async def _consultations(
     tutor knows nothing about beyond that it happened, and saying "how did that
     go?" about it invites an answer the tutor cannot check.
     """
+    marked_refs = [ref for ref in refs if ref.kind != "debrief" and ref.has_result][:MAX_CONSULTATIONS]
+    scored = await attempts_feedback.latest_scored(session, [ref.id for ref in marked_refs])
+    refs_by_id = {ref.id: ref for ref in marked_refs}
     observations: list[dict[str, Any]] = []
-    for ref in refs:
-        if ref.kind == "debrief" or not ref.has_result:
-            continue
-        results = await attempts.read_results(session, ref.id, requester_id=user_id, is_admin=False)
-        if not results:
-            continue
-        observation = domain.observations_from_result(results[0].payload)
+    for scored_result in scored:
+        ref = refs_by_id[scored_result.attempt_id]
+        structure, payload = scored_result.rubric.structure, scored_result.payload
+        observation = domain.observations_from_result(
+            rubric_scoring.weakest_domain_tones(structure, scored_result.rubric.display, payload),
+            rubric_scoring.texts_by_role(structure, payload, roles=domain.BRIEF_KEY_FOR_ROLE),
+        )
         observation["title"] = _title_of(ref, titles)
         observation["days_ago"] = domain.days_ago(ref.completed_at or ref.created_at, now)
         observations.append(observation)
-        if len(observations) == MAX_CONSULTATIONS:
-            break
     return observations
 
 

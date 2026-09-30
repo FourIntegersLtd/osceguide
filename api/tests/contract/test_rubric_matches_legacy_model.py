@@ -1,0 +1,185 @@
+"""Each seeded platform rubric asks for exactly what its legacy b2c model asked for.
+
+The oracle is `tests/fixtures/legacy_schemas/b2c/*.json`: the pydantic models
+the consumer arm marked with for years. A rubric is now authored data, and the
+schema the marker fills is derived from it, so this is the test that the
+derivation and the seed together reproduce every field, every description,
+every required flag, every nullable and every enum or bound of those models,
+for all four exams (plan `docs/plans/rubric-templates.md` §5.2).
+
+Only presentation is normalised away: titles, `$ref` wrapping (both sides are
+inlined), and the strict-mode `additionalProperties: false`. Storage metadata
+the legacy model carried is dropped from the oracle by `marking_content`,
+exactly as the b2b registry dropped it.
+
+One difference is allowed, by path: SCA's competency rating `score` carries the
+R/A/G `enum` where the legacy model had a `^[RAG]$` pattern. An unconstrained
+rating would let a marker return "Green" or "B". The `score` in SCA's
+actionable feedback is not a rating and must match legacy exactly.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from app.features.rubrics.domain import (
+    RubricStructure,
+    derive_display_schema,
+    derive_result_schema,
+    parse_structure,
+)
+from tests.contract.test_feedback_model_parity import leaf_differences, load, marking_content
+
+SEED = Path(__file__).resolve().parents[2] / "seeds" / "platform-starter.json"
+EXAMS = ("sca", "plab", "casc", "ortho")
+
+
+def _inline(node: Any, definitions: dict[str, Any]) -> Any:
+    """The schema with every `$ref` replaced by its target; a sibling key wins over the target's."""
+    if isinstance(node, dict):
+        if "$ref" in node:
+            target = _inline(definitions[node["$ref"].split("/")[-1]], definitions)
+            siblings = {key: _inline(value, definitions) for key, value in node.items() if key != "$ref"}
+            return {**target, **siblings}
+        return {key: _inline(value, definitions) for key, value in node.items() if key != "$defs"}
+    if isinstance(node, list):
+        return [_inline(item, definitions) for item in node]
+    return node
+
+
+def _presentation_free(node: Any) -> Any:
+    """Drop titles and the strict-mode wrapping: they change how a schema reads, not what it asks."""
+    if isinstance(node, dict):
+        return {
+            key: _presentation_free(value)
+            for key, value in node.items()
+            if not (key == "title" and isinstance(value, str))
+            and not (key == "additionalProperties" and value is False)
+        }
+    if isinstance(node, list):
+        return [_presentation_free(item) for item in node]
+    return node
+
+
+def normalised(schema: dict[str, Any]) -> dict[str, Any]:
+    """A schema reduced to what it asks a marker to fill."""
+    content = marking_content(schema)
+    return _presentation_free(_inline(content, content.get("$defs", {})))
+
+
+def seeded_structure(exam: str) -> RubricStructure:
+    """The parsed structure the seed file authors for one exam."""
+    seed = json.loads(SEED.read_text(encoding="utf-8"))
+    (entry,) = [row for row in seed["exams"] if row["code"] == exam]
+    return parse_structure(entry["rubric"]["structure"])
+
+
+def competency_rating_paths(structure: RubricStructure) -> set[str]:
+    """The leaf path of every competency's rating, where the one allowed difference may sit."""
+    return {
+        f"/properties/{domain.id}/properties/{competency.id}/properties/{structure.rating.field}/{keyword}"
+        for domain in structure.domains
+        for competency in domain.competencies
+        for keyword in ("enum", "pattern")
+    }
+
+
+def allowed_difference(exam: str, structure: RubricStructure, path: str) -> bool:
+    """The named exception: SCA's competency rating, and nothing else."""
+    return exam == "sca" and path in competency_rating_paths(structure)
+
+
+@pytest.mark.parametrize("exam", EXAMS)
+def test_the_seeded_rubric_derives_its_legacy_model_exactly(exam: str) -> None:
+    structure = seeded_structure(exam)
+    derived = normalised(derive_display_schema(structure))
+    legacy = normalised(load("b2c", exam))
+
+    differences = [
+        (path, ours, theirs)
+        for path, ours, theirs in leaf_differences(derived, legacy)
+        if not allowed_difference(exam, structure, path)
+    ]
+
+    assert differences == []
+
+
+def test_the_sca_exception_is_exactly_the_rag_enum_on_competency_ratings() -> None:
+    structure = seeded_structure("sca")
+    derived = normalised(derive_display_schema(structure))
+    legacy = normalised(load("b2c", "sca"))
+
+    allowed = [
+        (path, ours, theirs)
+        for path, ours, theirs in leaf_differences(derived, legacy)
+        if allowed_difference("sca", structure, path)
+    ]
+
+    # 7 global skills + 11 tasks + 11 relating-to-others competencies, each an
+    # enum where legacy had a pattern.
+    assert len(allowed) == 2 * 29
+    for path, ours, theirs in allowed:
+        if path.endswith("/enum"):
+            assert (ours, theirs) == (["G", "A", "R"], None), path
+        else:
+            assert (ours, theirs) == (None, "^[RAG]$"), path
+
+
+def test_sca_feedback_scores_are_the_legacy_bare_string() -> None:
+    derived = normalised(derive_display_schema(seeded_structure("sca")))
+
+    feedback = derived["properties"]["actionable_feedback"]["properties"]["global_skills_feedback"]
+
+    assert feedback["properties"]["score"] == {
+        "description": "Overall domain score (R/A/G)",
+        "type": "string",
+    }
+
+
+def _drop_system_fields(schema: dict[str, Any], structure: RubricStructure) -> dict[str, Any]:
+    """The display schema with every system-written top-level or domain field removed."""
+    pruned = json.loads(json.dumps(schema))
+    for part in structure.sections:
+        for spec in part.fields:
+            if spec.source != "system":
+                continue
+            container = pruned if part.kind == "field" else pruned["properties"][part.id]
+            container["properties"].pop(spec.id)
+            container["required"] = [name for name in container["required"] if name != spec.id]
+    return pruned
+
+
+@pytest.mark.parametrize("exam", EXAMS)
+def test_the_marker_schema_is_the_display_schema_without_system_fields(exam: str) -> None:
+    structure = seeded_structure(exam)
+
+    assert derive_result_schema(structure) == _drop_system_fields(derive_display_schema(structure), structure)
+
+
+def _descriptions(node: Any, path: str = "") -> dict[str, str]:
+    """Every description in a normalised schema, by path."""
+    found: dict[str, str] = {}
+    if isinstance(node, dict):
+        if isinstance(node.get("description"), str):
+            found[path] = node["description"]
+        for key, value in node.items():
+            found.update(_descriptions(value, f"{path}/{key}"))
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            found.update(_descriptions(item, f"{path}[{index}]"))
+    return found
+
+
+@pytest.mark.parametrize("exam", EXAMS)
+def test_every_legacy_description_reaches_the_marker(exam: str) -> None:
+    derived = _descriptions(normalised(derive_display_schema(seeded_structure(exam))))
+    legacy = _descriptions(normalised(load("b2c", exam)))
+
+    missing = [path for path, text in legacy.items() if text.strip() not in derived.get(path, "")]
+
+    assert legacy
+    assert missing == []

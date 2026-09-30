@@ -31,6 +31,7 @@ def test_the_seed_covers_the_four_consumer_exams() -> None:
 
 @pytest.mark.parametrize("exam", EXAMS, ids=CODES)
 def test_every_rubric_in_the_seed_can_be_authored(exam: dict) -> None:
+    assert exam["rubric"]["structure"]["schemaVersion"] == 2, exam["code"]
     structure = rubrics.parse_structure(exam["rubric"]["structure"])
     assert structure.domains, f"{exam['code']} would be marked against nothing"
     rubrics.validate_pacing(exam["rubric"]["pacing"])
@@ -51,33 +52,21 @@ def test_every_rubric_carries_the_marking_prompt(exam: dict) -> None:
     assert len(exam["rubric"]["system_prompt"].strip()) > 500, exam["code"]
 
 
-def test_a_competency_id_is_unique_across_its_whole_rubric() -> None:
-    """The failure the generator actually hit.
+def _domains(exam: dict) -> list[dict]:
+    """The domain sections of an exam's seeded rubric."""
+    return [section for section in exam["rubric"]["structure"]["sections"] if section["kind"] == "domain"]
 
-    Ortho reuses fifteen competency names across its four domains, which is
-    legal in the legacy model and refused here, so the generator qualifies
-    the clashing ones and records the original in `legacy_id`.
+
+def test_a_competency_id_is_unique_within_its_domain() -> None:
+    """Ortho reuses fifteen competency names across its four domains, as the legacy model does.
+
+    Version 2 qualifies a competency by its domain, so the names stay as the
+    model wrote them; only a repeat inside one domain would be ambiguous.
     """
     for exam in EXAMS:
-        ids = [
-            competency["id"]
-            for domain in exam["rubric"]["structure"]["domains"]
-            for competency in domain["competencies"]
-        ]
-        assert len(ids) == len(set(ids)), f"{exam['code']} repeats a competency id"
-
-
-def test_a_disambiguated_competency_still_says_what_it_was_called() -> None:
-    qualified = [
-        competency
-        for exam in EXAMS
-        for domain in exam["rubric"]["structure"]["domains"]
-        for competency in domain["competencies"]
-        if "legacy_id" in competency
-    ]
-    assert qualified, "ortho's clashing ids should be recorded, not silently renamed"
-    for competency in qualified:
-        assert competency["id"].endswith(competency["legacy_id"])
+        for domain in _domains(exam):
+            ids = [competency["id"] for competency in domain["competencies"]]
+            assert len(ids) == len(set(ids)), f"{exam['code']}.{domain['id']} repeats a competency id"
 
 
 def test_every_exam_is_marked_with_its_own_prompt() -> None:
@@ -88,3 +77,27 @@ def test_every_exam_is_marked_with_its_own_prompt() -> None:
     assert casc["rubric"]["prompt_source"] == "casc_system.txt"
     assert "Royal College of Psychiatrists CASC examiner" in casc["rubric"]["system_prompt"]
     assert "RCGP" not in casc["rubric"]["system_prompt"]
+
+
+@pytest.mark.parametrize("exam", EXAMS, ids=CODES)
+def test_every_competency_carries_the_legacy_wording(exam: dict) -> None:
+    """The model read each competency's legacy description; a label alone marks blind."""
+    for domain in _domains(exam):
+        assert domain["instructions"], f"{exam['code']}.{domain['id']}"
+        for competency in domain["competencies"]:
+            assert competency["instructions"], f"{exam['code']}.{competency['id']}"
+
+
+def test_sca_keeps_its_score_anchors() -> None:
+    """Only SCA's legacy models said what earns G, A and R; they must survive as descriptors."""
+    sca = next(exam for exam in EXAMS if exam["code"] == "sca")
+    competencies = {
+        competency["id"]: competency for domain in _domains(sca) for competency in domain["competencies"]
+    }
+
+    assert len(competencies) == 29
+    assert all(list(competency["descriptors"]) == ["G", "A", "R"] for competency in competencies.values())
+    assert competencies["discovers_ice"]["descriptors"]["A"] == (
+        "Explores two ICE elements but misses opportunities."
+    )
+    assert "Key aspects:" in competencies["discovers_ice"]["instructions"]

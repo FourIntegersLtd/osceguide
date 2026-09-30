@@ -405,6 +405,39 @@
         "title": "AttemptBriefRead",
         "type": "object"
       },
+      "AttemptFeedbackRead": {
+        "description": "Everything a feedback screen needs: the frozen rubric, and each result with its totals.\n\nResults are oldest first; a re-marked attempt keeps both, and the last is current.",
+        "properties": {
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/MarkedResultRead"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "rubric": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarkingRubricRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "attempt_id",
+          "rubric"
+        ],
+        "title": "AttemptFeedbackRead",
+        "type": "object"
+      },
       "AttemptHistoryItem": {
         "description": "One row of \"what have I sat\", with its station named.\n\n`has_result` rather than a status the client has to interpret: \"is there\nfeedback to open\" is the only question every screen listing these asks.",
         "properties": {
@@ -1506,6 +1539,15 @@
           "overall_rag": {
             "anyOf": [
               {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
                 "type": "string"
               },
               {
@@ -1513,6 +1555,17 @@
               }
             ],
             "title": "Overall Rag"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
           },
           "stations": {
             "items": {
@@ -1523,6 +1576,11 @@
           },
           "stations_marked": {
             "title": "Stations Marked",
+            "type": "integer"
+          },
+          "stations_passed": {
+            "default": 0,
+            "title": "Stations Passed",
             "type": "integer"
           },
           "trainee_id": {
@@ -2088,6 +2146,11 @@
           },
           "stations_completed": {
             "title": "Stations Completed",
+            "type": "integer"
+          },
+          "stations_passed": {
+            "default": 0,
+            "title": "Stations Passed",
             "type": "integer"
           },
           "stations_total": {
@@ -2707,6 +2770,50 @@
         "title": "ConsoleTiming",
         "type": "object"
       },
+      "CopyRubric": {
+        "description": "Start a new rubric of one's own: from a published one, or blank when no source is named.",
+        "properties": {
+          "source_rubric_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Rubric Id"
+          },
+          "source_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Version"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "CopyRubric",
+        "type": "object"
+      },
       "CoverageItemRead": {
         "properties": {
           "competency_id": {
@@ -2920,6 +3027,16 @@
               }
             ],
             "title": "Rubric Version Id"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExamSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "station_attempt_limit": {
             "default": 3,
@@ -3309,18 +3426,6 @@
             "title": "Pacing",
             "type": "object"
           },
-          "result_schema_override": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Result Schema Override"
-          },
           "structure": {
             "additionalProperties": true,
             "title": "Structure",
@@ -3689,6 +3794,16 @@
       "Dashboard": {
         "description": "A trainee's home screen: entitlements, progress, recent attempts and question sets.",
         "properties": {
+          "current_exam": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DashboardExam"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "current_exam_code": {
             "anyOf": [
               {
@@ -3745,6 +3860,29 @@
           "user_id"
         ],
         "title": "Dashboard",
+        "type": "object"
+      },
+      "DashboardExam": {
+        "description": "The exam the screens start on, with the settings that shape them.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/ExamSettings"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "settings"
+        ],
+        "title": "DashboardExam",
         "type": "object"
       },
       "DebriefSummaryRead": {
@@ -4155,7 +4293,7 @@
         "type": "object"
       },
       "DomainComposition": {
-        "description": "How many marked attempts landed red, amber or green on one domain.\n\n83 and above is green, 50 to 83 is amber, below that is red.",
+        "description": "How many marked attempts landed in each tone on one domain.\n\nA domain's tone comes from its value as a share of its maximum, read\nagainst the display's tones. `red`/`amber`/`green` are the poor, fair and\ngood-or-better counts, kept until platform-web reads `tones` (Stage 3).",
         "properties": {
           "amber": {
             "title": "Amber",
@@ -4176,6 +4314,13 @@
           "red": {
             "title": "Red",
             "type": "integer"
+          },
+          "tones": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Tones",
+            "type": "object"
           }
         },
         "required": [
@@ -4189,8 +4334,15 @@
         "type": "object"
       },
       "DomainScore": {
-        "description": "One bar of the radar: a rubric domain, averaged across the attempts.",
+        "description": "One bar of the radar: a rubric domain, averaged across the attempts marked on it.",
         "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -4202,6 +4354,17 @@
           "score": {
             "title": "Score",
             "type": "number"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
           }
         },
         "required": [
@@ -4210,6 +4373,126 @@
           "score"
         ],
         "title": "DomainScore",
+        "type": "object"
+      },
+      "DomainTotalRead": {
+        "description": "One answered domain of a result, in the display's domain aggregate.",
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "value"
+        ],
+        "title": "DomainTotalRead",
+        "type": "object"
+      },
+      "DraftInstructionRead": {
+        "description": "Suggested wording for one place in a structure that carries instructions.",
+        "properties": {
+          "has_instructions": {
+            "title": "Has Instructions",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "domain",
+              "competency",
+              "section",
+              "field"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "rubric",
+              "generic"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "key",
+          "kind",
+          "role",
+          "text",
+          "source",
+          "has_instructions"
+        ],
+        "title": "DraftInstructionRead",
+        "type": "object"
+      },
+      "DraftInstructionsRead": {
+        "description": "Draft instructions for a structure, in authored order.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DraftInstructionRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DraftInstructionsRead",
         "type": "object"
       },
       "EditLock": {
@@ -4261,18 +4544,6 @@
             "additionalProperties": true,
             "title": "Pacing",
             "type": "object"
-          },
-          "result_schema_override": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Result Schema Override"
           },
           "structure": {
             "additionalProperties": true,
@@ -4533,6 +4804,7 @@
               "conflict",
               "content_too_long",
               "cv_not_found",
+              "debrief_not_found",
               "decision_revised",
               "email_taken",
               "empty_content",
@@ -4565,6 +4837,7 @@
               "invalid_date_range",
               "invalid_email",
               "invalid_exam_code",
+              "invalid_exam_settings",
               "invalid_input",
               "invalid_invoice_line",
               "invalid_legacy_token",
@@ -4572,7 +4845,7 @@
               "invalid_message",
               "invalid_mfa_code",
               "invalid_photo",
-              "invalid_rag",
+              "invalid_rating",
               "invalid_refresh_token",
               "invalid_reset_token",
               "invalid_review_status",
@@ -4580,6 +4853,7 @@
               "invalid_saml_connection",
               "invalid_signature",
               "invalid_sso_binding",
+              "invalid_trial_transcript",
               "invalid_webhook",
               "invalid_workflow",
               "invitation_not_pending",
@@ -4588,6 +4862,7 @@
               "knowledge_unavailable",
               "legacy_account_not_imported",
               "legacy_exchange_unavailable",
+              "marker_unavailable",
               "media_already_published",
               "media_not_deletable",
               "media_not_editable",
@@ -4928,6 +5203,9 @@
             ],
             "title": "Rubric Version Id"
           },
+          "settings": {
+            "$ref": "#/components/schemas/ExamSettings"
+          },
           "station_attempt_limit": {
             "title": "Station Attempt Limit",
             "type": "integer"
@@ -4948,6 +5226,62 @@
           "station_attempt_limit"
         ],
         "title": "ExamRead",
+        "type": "object"
+      },
+      "ExamSettings": {
+        "description": "Everything that differs between exams apart from the rubric, as data.\n\nStored in `exams.settings`. Every field has a default, so `{}` is a whole,\nvalid exam: an institution's own exam behaves like the defaults until it\nsays otherwise. Screens and prompts read these instead of branching on an\nexam code. Unknown keys are ignored rather than refused, so a row written\nby a newer release still reads after a rollback.",
+        "properties": {
+          "date_label": {
+            "default": "Exam date",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Date Label",
+            "type": "string"
+          },
+          "generation": {
+            "$ref": "#/components/schemas/GenerationSettings"
+          },
+          "help_modes": {
+            "items": {
+              "enum": [
+                "navigate",
+                "knowledge_base"
+              ],
+              "type": "string"
+            },
+            "title": "Help Modes",
+            "type": "array"
+          },
+          "peer_waiting_email": {
+            "default": false,
+            "title": "Peer Waiting Email",
+            "type": "boolean"
+          },
+          "session_modes": {
+            "items": {
+              "enum": [
+                "debrief",
+                "practice_as_patient"
+              ],
+              "type": "string"
+            },
+            "title": "Session Modes",
+            "type": "array"
+          },
+          "show_tips_while_marking": {
+            "default": false,
+            "title": "Show Tips While Marking",
+            "type": "boolean"
+          },
+          "station_subtypes": {
+            "items": {
+              "$ref": "#/components/schemas/StationSubtype"
+            },
+            "title": "Station Subtypes",
+            "type": "array"
+          }
+        },
+        "title": "ExamSettings",
         "type": "object"
       },
       "ExportedAttempt": {
@@ -5427,6 +5761,7 @@
         "type": "object"
       },
       "GenerateResult": {
+        "description": "The model's draft, normalised to the content type's draft keys.",
         "properties": {
           "content": {
             "additionalProperties": true,
@@ -5441,6 +5776,7 @@
         "type": "object"
       },
       "GenerateStationRequest": {
+        "description": "What to draft a station about, for which exam, and which of its station subtypes.",
         "properties": {
           "exam_code": {
             "maxLength": 32,
@@ -5448,24 +5784,24 @@
             "title": "Exam Code",
             "type": "string"
           },
-          "ortho_station_type": {
+          "prompt": {
+            "maxLength": 4000,
+            "minLength": 8,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "station_subtype": {
             "anyOf": [
               {
-                "maxLength": 32,
+                "maxLength": 40,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "When exam_code is ortho: clinical, communication, prioritisation, or portfolio.",
-            "title": "Ortho Station Type"
-          },
-          "prompt": {
-            "maxLength": 4000,
-            "minLength": 8,
-            "title": "Prompt",
-            "type": "string"
+            "description": "One of the exam's `settings.station_subtypes` keys; ignored if the exam lists none.",
+            "title": "Station Subtype"
           }
         },
         "required": [
@@ -5476,6 +5812,7 @@
         "type": "object"
       },
       "GenerateTextRequest": {
+        "description": "What to draft a summary, blog, deck or podcast about, and optionally for which exam.",
         "properties": {
           "exam_code": {
             "anyOf": [
@@ -5502,6 +5839,33 @@
         "title": "GenerateTextRequest",
         "type": "object"
       },
+      "GenerationSettings": {
+        "description": "Which generation prompts and profile an exam's content is written with.\n\nKeys, not prompt text: the texts live in `generation.exam_prompts`, keyed\nby these. The defaults are the prompts every exam fell back to before this\nwas data.",
+        "properties": {
+          "blog_prompt": {
+            "default": "sca.blog",
+            "title": "Blog Prompt",
+            "type": "string"
+          },
+          "default_profile": {
+            "default": "sca.station",
+            "title": "Default Profile",
+            "type": "string"
+          },
+          "station_prompt": {
+            "default": "sca.station",
+            "title": "Station Prompt",
+            "type": "string"
+          },
+          "summary_prompt": {
+            "default": "sca.summary",
+            "title": "Summary Prompt",
+            "type": "string"
+          }
+        },
+        "title": "GenerationSettings",
+        "type": "object"
+      },
       "GpLeadReviewRead": {
         "properties": {
           "completed_at": {
@@ -5520,6 +5884,16 @@
             "additionalProperties": true,
             "title": "Field Values",
             "type": "object"
+          },
+          "form": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewFormRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "format": "uuid",
@@ -6940,6 +7314,96 @@
           }
         },
         "title": "LogoutRequest",
+        "type": "object"
+      },
+      "MarkedResultRead": {
+        "description": "One marked result, with the numbers its own rubric makes of it.",
+        "properties": {
+          "framework_id": {
+            "title": "Framework Id",
+            "type": "string"
+          },
+          "model_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Used"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "scored_at": {
+            "format": "date-time",
+            "title": "Scored At",
+            "type": "string"
+          },
+          "totals": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultTotalsRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "framework_id",
+          "policy_version",
+          "model_used",
+          "payload",
+          "scored_at"
+        ],
+        "title": "MarkedResultRead",
+        "type": "object"
+      },
+      "MarkingRubricRead": {
+        "description": "The rubric an attempt was marked with, frozen on it: what a feedback screen draws from.",
+        "properties": {
+          "display": {
+            "additionalProperties": true,
+            "title": "Display",
+            "type": "object"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/RatingRead"
+          },
+          "structure": {
+            "additionalProperties": true,
+            "title": "Structure",
+            "type": "object"
+          },
+          "version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Id"
+          }
+        },
+        "required": [
+          "version_id",
+          "structure",
+          "display",
+          "rating"
+        ],
+        "title": "MarkingRubricRead",
         "type": "object"
       },
       "MeEventEnvelope": {
@@ -8572,6 +9036,33 @@
         "title": "Page[MembershipRead]",
         "type": "object"
       },
+      "Page_MessageRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MessageRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[MessageRead]",
+        "type": "object"
+      },
       "Page_OrganizationRead_": {
         "properties": {
           "items": {
@@ -9112,6 +9603,33 @@
         "title": "Page[TraineeRead]",
         "type": "object"
       },
+      "Page_TrialCandidateRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrialCandidateRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[TrialCandidateRead]",
+        "type": "object"
+      },
       "Page_UserSummary_": {
         "properties": {
           "items": {
@@ -9528,6 +10046,18 @@
             "title": "Composition",
             "type": "array"
           },
+          "display": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display"
+          },
           "domains": {
             "items": {
               "$ref": "#/components/schemas/DomainScore"
@@ -9545,6 +10075,26 @@
               }
             ],
             "title": "Exam Code"
+          },
+          "mixed_versions": {
+            "default": false,
+            "title": "Mixed Versions",
+            "type": "boolean"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RatingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rubric_versions": {
+            "default": 0,
+            "title": "Rubric Versions",
+            "type": "integer"
           },
           "summary": {
             "$ref": "#/components/schemas/PerformanceSummary"
@@ -9571,12 +10121,26 @@
             "type": "number"
           },
           "fail_rate": {
-            "title": "Fail Rate",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fail Rate"
           },
           "pass_rate": {
-            "title": "Pass Rate",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
           }
         },
         "required": [
@@ -11218,6 +11782,59 @@
         "title": "QueueStatus",
         "type": "object"
       },
+      "RatingRead": {
+        "description": "How a rubric rates a competency, for a screen that draws a rating control or reads a value.",
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "maximum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum"
+          },
+          "minimum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum"
+          },
+          "scale": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scale",
+            "type": "array"
+          },
+          "step": {
+            "default": "number",
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "field"
+        ],
+        "title": "RatingRead",
+        "type": "object"
+      },
       "ReadoutSitting": {
         "description": "The sitting, as the head of the document states it.",
         "properties": {
@@ -11955,6 +12572,22 @@
         "title": "RemoveStationPhoto",
         "type": "object"
       },
+      "RenameRubric": {
+        "description": "A rubric's new title (R-7): set once at creation, changed later from the builder header.",
+        "properties": {
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "RenameRubric",
+        "type": "object"
+      },
       "RenewContract": {
         "description": "New contract dates, and whether a suspension should lift with them.",
         "properties": {
@@ -12166,6 +12799,161 @@
         "title": "ResultAcknowledgement",
         "type": "object"
       },
+      "ResultTotalsRead": {
+        "description": "One result's numbers: the station total out of its maximum, pass, and critical concerns.",
+        "properties": {
+          "critical_count": {
+            "title": "Critical Count",
+            "type": "integer"
+          },
+          "domains": {
+            "items": {
+              "$ref": "#/components/schemas/DomainTotalRead"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraction"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "total",
+          "max",
+          "fraction",
+          "passed",
+          "critical_count"
+        ],
+        "title": "ResultTotalsRead",
+        "type": "object"
+      },
+      "ReviewFieldRead": {
+        "description": "One rating a reviewer may set, and the flat `field_values` path it is saved under.",
+        "properties": {
+          "competency_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Competency Id"
+          },
+          "descriptors": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Descriptors",
+            "type": "object"
+          },
+          "domain_id": {
+            "title": "Domain Id",
+            "type": "string"
+          },
+          "domain_label": {
+            "title": "Domain Label",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "domain_id",
+          "domain_label",
+          "label"
+        ],
+        "title": "ReviewFieldRead",
+        "type": "object"
+      },
+      "ReviewFormRead": {
+        "description": "What an examiner or GP lead can rate on a slot, generated from the sitting's rubric.",
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFieldRead"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/RatingRead"
+          },
+          "required_domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Domains",
+            "type": "array"
+          },
+          "rubric_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric Version Id"
+          }
+        },
+        "required": [
+          "rubric_version_id",
+          "rating"
+        ],
+        "title": "ReviewFormRead",
+        "type": "object"
+      },
       "RevokeEntitlement": {
         "properties": {
           "reason": {
@@ -12198,6 +12986,120 @@
           "group_id"
         ],
         "title": "RosterWarningRead",
+        "type": "object"
+      },
+      "RubricDraft": {
+        "description": "A structure being written, sent to be checked, previewed or given draft instructions.",
+        "properties": {
+          "structure": {
+            "additionalProperties": true,
+            "title": "Structure",
+            "type": "object"
+          }
+        },
+        "required": [
+          "structure"
+        ],
+        "title": "RubricDraft",
+        "type": "object"
+      },
+      "RubricPreviewRead": {
+        "description": "What a draft structure comes to, whether or not it can be published yet.\n\nWhen it is invalid, only `problems` is filled: nothing can be derived from\na structure that cannot be parsed.",
+        "properties": {
+          "display": {
+            "additionalProperties": true,
+            "title": "Display",
+            "type": "object"
+          },
+          "display_schema": {
+            "additionalProperties": true,
+            "title": "Display Schema",
+            "type": "object"
+          },
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/RubricProblemRead"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RatingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result_schema": {
+            "additionalProperties": true,
+            "title": "Result Schema",
+            "type": "object"
+          },
+          "sample_result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Result"
+          },
+          "sample_totals": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultTotalsRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "structure": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Structure"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid"
+        ],
+        "title": "RubricPreviewRead",
+        "type": "object"
+      },
+      "RubricProblemRead": {
+        "description": "One reason a structure cannot be published yet, at the place it applies.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "message"
+        ],
+        "title": "RubricProblemRead",
         "type": "object"
       },
       "RubricRead": {
@@ -12255,6 +13157,87 @@
         "title": "RubricRead",
         "type": "object"
       },
+      "RubricStartingPointRead": {
+        "description": "One thing a new rubric can start from: blank, a platform rubric or one of the org's own.",
+        "properties": {
+          "competency_count": {
+            "default": 0,
+            "title": "Competency Count",
+            "type": "integer"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "blank",
+              "platform",
+              "own"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "rating_kind": {
+            "title": "Rating Kind",
+            "type": "string"
+          },
+          "rubric_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "rating_kind"
+        ],
+        "title": "RubricStartingPointRead",
+        "type": "object"
+      },
+      "RubricStartingPointsRead": {
+        "description": "Every starting point, blank first, then the platform's rubrics, then the org's own.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RubricStartingPointRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RubricStartingPointsRead",
+        "type": "object"
+      },
       "RubricVersionRead": {
         "properties": {
           "id": {
@@ -12278,6 +13261,13 @@
             "additionalProperties": true,
             "title": "Pacing",
             "type": "object"
+          },
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/RubricProblemRead"
+            },
+            "title": "Problems",
+            "type": "array"
           },
           "published_at": {
             "anyOf": [
@@ -13962,6 +14952,16 @@
             "title": "Candidates",
             "type": "array"
           },
+          "rating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RatingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "sitting": {
             "$ref": "#/components/schemas/ConsoleSitting"
           },
@@ -14037,11 +15037,24 @@
         "type": "object"
       },
       "SlotRagSummary": {
-        "description": "What several reviewers of one slot agreed, or did not.\n\nThe worst rating wins per domain: when reviewers disagree, the lower\nrating is the one that should prompt a conversation.",
+        "description": "What several reviewers of one slot agreed, or did not, in the rubric's own rating.\n\nPer domain, every completed review's ratings in it combine as one\n(`rubrics.scoring.combine_reviewers`: the majority, ties to the worse).\nThe overall is the worst domain: one weak domain is what a reader must see.\nThe name keeps `rag` until platform-web moves to the native fields (Stage 3).",
         "properties": {
           "by_domain": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             },
             "title": "By Domain",
             "type": "object"
@@ -14051,8 +15064,24 @@
             "title": "Completed Reviews",
             "type": "integer"
           },
+          "domain_labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Domain Labels",
+            "type": "object"
+          },
           "overall_rag": {
             "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
               {
                 "type": "string"
               },
@@ -14061,6 +15090,38 @@
               }
             ],
             "title": "Overall Rag"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RatingRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
           },
           "slot_id": {
             "format": "uuid",
@@ -14199,6 +15260,16 @@
             "title": "Field Values",
             "type": "object"
           },
+          "form": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewFormRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -14257,6 +15328,16 @@
       },
       "SlotReviewsRead": {
         "properties": {
+          "form": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewFormRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/SlotReviewRead"
@@ -14957,7 +16038,20 @@
           },
           "by_domain": {
             "additionalProperties": {
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string"
+                }
+              ]
             },
             "title": "By Domain",
             "type": "object"
@@ -14978,6 +16072,15 @@
           "overall_rag": {
             "anyOf": [
               {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
                 "type": "string"
               },
               {
@@ -14985,6 +16088,28 @@
               }
             ],
             "title": "Overall Rag"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
           },
           "slot_id": {
             "format": "uuid",
@@ -15024,6 +16149,36 @@
           "overall_rag"
         ],
         "title": "StationReport",
+        "type": "object"
+      },
+      "StationSubtype": {
+        "description": "One kind of station an exam is written in, when an exam has more than one.\n\nAn author picks one before generating a station, and the generation\nprofile it names steers the prompt.",
+        "properties": {
+          "generation_profile": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Generation Profile",
+            "type": "string"
+          },
+          "key": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "generation_profile"
+        ],
+        "title": "StationSubtype",
         "type": "object"
       },
       "StationTemplateRead": {
@@ -16124,9 +17279,31 @@
             "title": "Date",
             "type": "string"
           },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
           "score": {
             "title": "Score",
             "type": "number"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
           }
         },
         "required": [
@@ -16134,6 +17311,159 @@
           "score"
         ],
         "title": "TrendPoint",
+        "type": "object"
+      },
+      "TrialCandidateRead": {
+        "description": "One row of the trial-attempt picker (rubrics plan \u00a78, R-6): just enough to choose it by.\n\nAnswered by `attempts.service_trial.trial_candidates` and returned by\n`rubrics`' trial-candidates routes \u2014 shared here rather than owned by\neither slice's own `schemas.py`, which `test_schemas_are_not_rows` forbids\nimporting across a slice boundary. Not `AttemptRead`: a picker shows only\nwhat a person recognises an attempt by, never the attempt's own detail.",
+        "properties": {
+          "candidate_label": {
+            "title": "Candidate Label",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "station_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Title"
+          },
+          "turn_count": {
+            "title": "Turn Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "candidate_label",
+          "station_title",
+          "created_at",
+          "turn_count"
+        ],
+        "title": "TrialCandidateRead",
+        "type": "object"
+      },
+      "TrialMarkRead": {
+        "description": "One snapshot of a trial mark: marking, then marked or failed. Nothing is stored.",
+        "properties": {
+          "elapsed_seconds": {
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "marks": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marks"
+          },
+          "model_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Used"
+          },
+          "rubric_version_id": {
+            "format": "uuid",
+            "title": "Rubric Version Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "marking",
+              "marked",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "totals": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResultTotalsRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "turn_count": {
+            "title": "Turn Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "elapsed_seconds",
+          "rubric_version_id",
+          "turn_count"
+        ],
+        "title": "TrialMarkRead",
+        "type": "object"
+      },
+      "TrialMarkRequest": {
+        "description": "What to mark: a pasted transcript, or one of the owner's own finished attempts. Exactly one.",
+        "properties": {
+          "attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Id"
+          },
+          "transcript": {
+            "anyOf": [
+              {
+                "maxLength": 200000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript"
+          }
+        },
+        "title": "TrialMarkRequest",
         "type": "object"
       },
       "TutorMemoryRead": {
@@ -16280,6 +17610,16 @@
               }
             ],
             "title": "Rubric Version Id"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExamSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "station_attempt_limit": {
             "anyOf": [
@@ -18933,6 +20273,95 @@
           }
         ],
         "summary": "Start Debrief"
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/feedback": {
+      "get": {
+        "description": "The attempt's marking as a feedback screen draws it: the rubric frozen on\nthe attempt, its resolved display, and each result with the totals that\nrubric makes of it (total, maximum, pass, critical concerns, per domain).",
+        "operationId": "attempts_read_feedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptFeedbackRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Feedback",
+        "tags": [
+          "attempts"
+        ]
       }
     },
     "/api/v1/attempts/{attempt_id}/result": {
@@ -24937,6 +26366,63 @@
         "operationId": "tutor_memory_list_debriefs",
         "parameters": [
           {
+            "description": "Only debriefs of this consultation (the source attempt).",
+            "in": "query",
+            "name": "attempt_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only debriefs of this consultation (the source attempt).",
+              "title": "Attempt Id"
+            }
+          },
+          {
+            "description": "Only debriefs of consultations on this station version.",
+            "in": "query",
+            "name": "station_version_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only debriefs of consultations on this station version.",
+              "title": "Station Version Id"
+            }
+          },
+          {
+            "description": "Only debriefs of consultations of this question-set entry.",
+            "in": "query",
+            "name": "set_entry_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only debriefs of consultations of this question-set entry.",
+              "title": "Set Entry Id"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -25012,6 +26498,81 @@
           }
         ],
         "summary": "List Debriefs",
+        "tags": [
+          "tutor-memory"
+        ]
+      }
+    },
+    "/api/v1/me/debriefs/{debrief_id}": {
+      "get": {
+        "operationId": "tutor_memory_get_debrief",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "debrief_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Debrief Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DebriefSummaryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "debrief_not_found",
+            "x-codes": [
+              "debrief_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Debrief",
         "tags": [
           "tutor-memory"
         ]
@@ -29203,6 +30764,59 @@
               ],
               "description": "A fragment of a title or a summary.",
               "title": "Q"
+            }
+          },
+          {
+            "description": "Only items filed under this specialty, exactly.",
+            "in": "query",
+            "name": "specialty",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only items filed under this specialty, exactly.",
+              "title": "Specialty"
+            }
+          },
+          {
+            "description": "true: only items with a specialty; false: only items without one.",
+            "in": "query",
+            "name": "has_specialty",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: only items with a specialty; false: only items without one.",
+              "title": "Has Specialty"
+            }
+          },
+          {
+            "description": "created: newest written first. published: newest published first, unpublished left out.",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "created",
+              "description": "created: newest written first. published: newest published first, unpublished left out.",
+              "enum": [
+                "created",
+                "published"
+              ],
+              "title": "Sort",
+              "type": "string"
             }
           },
           {
@@ -33459,9 +35073,10 @@
                 }
               }
             },
-            "description": "invalid_exam_code",
+            "description": "invalid_exam_code, invalid_exam_settings",
             "x-codes": [
-              "invalid_exam_code"
+              "invalid_exam_code",
+              "invalid_exam_settings"
             ]
           }
         },
@@ -33810,11 +35425,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "invalid_exam_settings",
+            "x-codes": [
+              "invalid_exam_settings"
+            ]
           }
         },
         "security": [
@@ -34594,6 +36212,25 @@
               ],
               "description": "A membership's email, role, or user id",
               "title": "Search"
+            }
+          },
+          {
+            "description": "Only memberships in this state.",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(active|revoked)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only memberships in this state.",
+              "title": "Status"
             }
           },
           {
@@ -36373,6 +38010,443 @@
         ]
       }
     },
+    "/api/v1/orgs/{org_slug}/rubrics/copy": {
+      "post": {
+        "operationId": "rubrics_copy_org_rubric",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyRubric"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_not_found, rubric_version_not_found",
+            "x-codes": [
+              "rubric_not_found",
+              "rubric_version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_version_not_published",
+            "x-codes": [
+              "rubric_version_not_published"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Copy Org Rubric",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/rubrics/draft-instructions": {
+      "post": {
+        "operationId": "rubrics_draft_org_rubric_instructions",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RubricDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftInstructionsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_rubric",
+            "x-codes": [
+              "invalid_rubric"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Draft Org Rubric Instructions",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/rubrics/preview": {
+      "post": {
+        "operationId": "rubrics_preview_org_rubric",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RubricDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricPreviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview Org Rubric",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/rubrics/starting-points": {
+      "get": {
+        "operationId": "rubrics_org_rubric_starting_points",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricStartingPointsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Org Rubric Starting Points",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/rubrics/trial-candidates": {
+      "get": {
+        "operationId": "rubrics_list_org_trial_candidates",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TrialCandidateRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Org Trial Candidates",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
     "/api/v1/orgs/{org_slug}/rubrics/{rubric_id}": {
       "get": {
         "operationId": "rubrics_read_org_rubric",
@@ -36455,6 +38529,102 @@
           }
         ],
         "summary": "Read Org Rubric",
+        "tags": [
+          "rubrics"
+        ]
+      },
+      "patch": {
+        "description": "Change this organisation's rubric title. Every version keeps it; nothing about marking changes.",
+        "operationId": "rubrics_rename_org_rubric",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rubric_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rubric Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameRubric"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_not_found, rubric_version_not_found",
+            "x-codes": [
+              "rubric_not_found",
+              "rubric_version_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename Org Rubric",
         "tags": [
           "rubrics"
         ]
@@ -36891,6 +39061,162 @@
           }
         ],
         "summary": "Publish Org Version",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/rubrics/{rubric_id}/versions/{version}/trial": {
+      "post": {
+        "operationId": "rubrics_trial_org_rubric_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rubric_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rubric Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrialMarkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialMarkRead"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialMarkRead"
+                }
+              }
+            },
+            "description": "An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `TrialMarkRead` every five seconds while `marking`, and one last `marked` or `failed` snapshot, then it closes."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_not_found, rubric_version_not_found, attempt_not_found",
+            "x-codes": [
+              "rubric_not_found",
+              "rubric_version_not_found",
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_rubric, invalid_trial_transcript",
+            "x-codes": [
+              "invalid_rubric",
+              "invalid_trial_transcript"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "marker_unavailable",
+            "x-codes": [
+              "marker_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Trial Org Rubric Version",
         "tags": [
           "rubrics"
         ]
@@ -40195,9 +42521,9 @@
                 }
               }
             },
-            "description": "invalid_rag",
+            "description": "invalid_rating",
             "x-codes": [
-              "invalid_rag"
+              "invalid_rating"
             ]
           }
         },
@@ -40468,9 +42794,9 @@
                 }
               }
             },
-            "description": "invalid_rag",
+            "description": "invalid_rating",
             "x-codes": [
-              "invalid_rag"
+              "invalid_rating"
             ]
           }
         },
@@ -43155,6 +45481,24 @@
               ],
               "description": "A trainee's name, email, or cohort",
               "title": "Search"
+            }
+          },
+          {
+            "description": "true: only trainees whose access is revoked; false: only live ones.",
+            "in": "query",
+            "name": "access_revoked",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: only trainees whose access is revoked; false: only live ones.",
+              "title": "Access Revoked"
             }
           },
           {
@@ -45962,9 +48306,10 @@
                 }
               }
             },
-            "description": "invalid_exam_code",
+            "description": "invalid_exam_code, invalid_exam_settings",
             "x-codes": [
-              "invalid_exam_code"
+              "invalid_exam_code",
+              "invalid_exam_settings"
             ]
           }
         },
@@ -46060,11 +48405,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "invalid_exam_settings",
+            "x-codes": [
+              "invalid_exam_settings"
+            ]
           }
         },
         "security": [
@@ -48894,6 +51242,447 @@
         ]
       }
     },
+    "/api/v1/platform/rubrics/copy": {
+      "post": {
+        "operationId": "rubrics_copy_platform_rubric",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyRubric"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_not_found, rubric_version_not_found",
+            "x-codes": [
+              "rubric_not_found",
+              "rubric_version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_version_not_published",
+            "x-codes": [
+              "rubric_version_not_published"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Copy Platform Rubric",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/platform/rubrics/draft-instructions": {
+      "post": {
+        "operationId": "rubrics_draft_platform_rubric_instructions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RubricDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftInstructionsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_rubric",
+            "x-codes": [
+              "invalid_rubric"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Draft Platform Rubric Instructions",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/platform/rubrics/preview": {
+      "post": {
+        "operationId": "rubrics_preview_platform_rubric",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RubricDraft"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricPreviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview Platform Rubric",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/platform/rubrics/starting-points": {
+      "get": {
+        "operationId": "rubrics_platform_rubric_starting_points",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricStartingPointsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Platform Rubric Starting Points",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
+    "/api/v1/platform/rubrics/trial-candidates": {
+      "get": {
+        "operationId": "rubrics_list_platform_trial_candidates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TrialCandidateRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Platform Trial Candidates",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
     "/api/v1/platform/rubrics/{rubric_id}": {
       "get": {
         "operationId": "rubrics_read_platform_rubric",
@@ -48978,6 +51767,104 @@
           }
         ],
         "summary": "Read Platform Rubric",
+        "tags": [
+          "rubrics"
+        ]
+      },
+      "patch": {
+        "description": "Change this platform rubric's title. Every version keeps it; nothing about marking changes.",
+        "operationId": "rubrics_rename_platform_rubric",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rubric_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rubric Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameRubric"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RubricRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_not_found, rubric_version_not_found",
+            "x-codes": [
+              "rubric_not_found",
+              "rubric_version_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename Platform Rubric",
         "tags": [
           "rubrics"
         ]
@@ -49427,9 +52314,153 @@
         ]
       }
     },
+    "/api/v1/platform/rubrics/{rubric_id}/versions/{version}/trial": {
+      "post": {
+        "operationId": "rubrics_trial_platform_rubric_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rubric_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rubric Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrialMarkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialMarkRead"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialMarkRead"
+                }
+              }
+            },
+            "description": "An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `TrialMarkRead` every five seconds while `marking`, and one last `marked` or `failed` snapshot, then it closes."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rubric_not_found, rubric_version_not_found, attempt_not_found",
+            "x-codes": [
+              "rubric_not_found",
+              "rubric_version_not_found",
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_rubric, invalid_trial_transcript",
+            "x-codes": [
+              "invalid_rubric",
+              "invalid_trial_transcript"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "marker_unavailable",
+            "x-codes": [
+              "marker_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Trial Platform Rubric Version",
+        "tags": [
+          "rubrics"
+        ]
+      }
+    },
     "/api/v1/platform/site/messages": {
       "get": {
-        "description": "The inbox. Platform admin, because it is everybody's messages.",
+        "description": "The inbox, paged. Platform admin, because it is everybody's messages.",
         "operationId": "public_site_list_messages",
         "parameters": [
           {
@@ -49451,12 +52482,48 @@
             }
           },
           {
+            "description": "true: only answered messages; false: only the ones still waiting.",
+            "in": "query",
+            "name": "handled",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: only answered messages; false: only the ones still waiting.",
+              "title": "Handled"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 50,
-              "maximum": 200,
+              "default": 25,
+              "maximum": 100,
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
@@ -49468,11 +52535,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/MessageRead"
-                  },
-                  "title": "Response Public Site List Messages",
-                  "type": "array"
+                  "$ref": "#/components/schemas/Page_MessageRead_"
                 }
               }
             },
@@ -49509,11 +52572,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "invalid_input",
+            "x-codes": [
+              "invalid_input"
+            ]
           }
         },
         "security": [
@@ -53471,7 +56537,7 @@
     },
     "/api/v1/stations": {
       "get": {
-        "description": "The published platform library, scoped to what the caller may open.\n\nRows carry no station content \u2014 see `LibraryStationRead`. `search` matches a title fragment in\nSQL. A platform admin browses the whole catalogue; everybody else gets their own exam, and asking\nfor another is refused.",
+        "description": "The published platform library, scoped to what the caller may open.\n\nRows carry no station content \u2014 see `LibraryStationRead`. `search` matches a title fragment in\nSQL; `version_ids` narrows to the stations those versions are current for. A platform admin\nbrowses the whole catalogue; everybody else gets their own exam, and asking for another is\nrefused.",
         "operationId": "stations_browse_library",
         "parameters": [
           {
@@ -53504,6 +56570,29 @@
                 }
               ],
               "title": "Search"
+            }
+          },
+          {
+            "description": "Only stations whose current version is one of these (repeat the param).",
+            "in": "query",
+            "name": "version_ids",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "maxItems": 100,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only stations whose current version is one of these (repeat the param).",
+              "title": "Version Ids"
             }
           },
           {

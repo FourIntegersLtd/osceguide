@@ -70,7 +70,9 @@ async def test_a_completed_transcript_is_scored_and_stored(db_session: AsyncSess
     results = await transcripts.results_for(db_session, attempt_id)
     assert len(results) == 1
     assert results[0].policy_version == PLATFORM_DEFAULT_POLICY
-    assert results[0].payload["overall"] == "G"
+    # The marks alone: the model is the row's column, not a key the rubric's schema forbids.
+    assert results[0].payload == {"overall": "G"}
+    assert results[0].model_used == "fake-model"
     assert evaluator.calls[0]["turns"] == 2
 
 

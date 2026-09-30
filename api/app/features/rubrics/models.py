@@ -75,7 +75,8 @@ class RubricVersion(Base, UUIDPrimaryKey, Timestamps):
     system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
     # The consultation clock: four marks in seconds.
     pacing: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
-    # For a result shape the derivation cannot express. Normally null.
+    # Retired: nothing reads or writes it since rubric structure v2 derives every
+    # shape. Kept only until a migration drops the column (ask first).
     result_schema_override: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # Examiner / structured human marking UI (sections and blocks). Same version
     # as the AI marking model above — not a separate feedback template row.

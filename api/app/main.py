@@ -38,6 +38,7 @@ from app.features.attempts.router import router as attempts_router
 from app.features.attempts.router_coverage import router as attempts_coverage_router
 from app.features.attempts.router_platform import router as platform_attempts_router
 from app.features.attempts.router_roleplay import router as attempts_roleplay_router
+from app.features.attempts.router_trial import router as attempts_trial_router
 from app.features.attempts.router_worker import router as attempts_worker_router
 from app.features.billing.router import router as billing_router
 from app.features.billing.router_invoices import router as invoices_router
@@ -118,6 +119,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(catalog_router)
     router.include_router(rubrics_router)
     router.include_router(org_rubrics_router)
+    router.include_router(attempts_trial_router)
     router.include_router(stations_router)
     router.include_router(station_flags_router)
     router.include_router(station_templates_router)

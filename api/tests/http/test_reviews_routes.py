@@ -141,7 +141,7 @@ async def test_an_invalid_rating_is_refused(
         headers=bearer(admin),
     )
     assert response.status_code == 422
-    assert response.json()["code"] == "invalid_rag"
+    assert response.json()["code"] == "invalid_rating"
 
 
 async def test_a_gp_lead_review_is_revisioned(
@@ -372,6 +372,8 @@ async def test_two_reviewers_who_disagree_are_combined_worst_first(
     # The lower rating wins: it is the one that should prompt a conversation.
     assert summary["by_domain"] == {"communication": "A", "management": "G"}
     assert summary["overall_rag"] == "A"
+    # R-2: a reader is never left to humanise a domain id itself.
+    assert summary["domain_labels"] == {"communication": "Communication", "management": "Management"}
 
 
 async def test_a_draft_review_does_not_count_towards_the_summary(

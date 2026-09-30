@@ -12,13 +12,14 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import case, func, or_, select, text, update
+from sqlalchemy import case, exists, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.pagination import keyset_page
 from app.features.attempts.domain import Status
-from app.features.attempts.models import Attempt, AttemptLiveCoverage
+from app.features.attempts.models import Attempt, AttemptLiveCoverage, TranscriptMessage
 
 # The product's names for `Attempt.kind`, exactly as
 # `platform-web/src/capabilities/transcripts/api.ts`'s `KIND_LABELS` spells
@@ -346,6 +347,34 @@ async def sources_for(
     return {attempt_id: source_id for attempt_id, source_id in debrief_sources.all() if source_id is not None}
 
 
+async def debrief_ids_about(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    source_attempt_id: uuid.UUID | None,
+    station_version_id: uuid.UUID | None,
+    set_entry_id: uuid.UUID | None,
+) -> list[uuid.UUID]:
+    """This person's debrief attempts whose source consultation matches every filter given.
+
+    Filters on the source, not the debrief, because a set entry is recorded only
+    on the consultation a debrief is about.
+    """
+    source = aliased(Attempt)
+    stmt = (
+        select(Attempt.id)
+        .join(source, source.id == Attempt.source_attempt_id)
+        .where(Attempt.user_id == user_id, Attempt.kind == "debrief")
+    )
+    if source_attempt_id is not None:
+        stmt = stmt.where(source.id == source_attempt_id)
+    if station_version_id is not None:
+        stmt = stmt.where(source.station_version_id == station_version_id)
+    if set_entry_id is not None:
+        stmt = stmt.where(source.set_entry_id == set_entry_id)
+    return list((await session.execute(stmt)).scalars())
+
+
 # --- The attempt rows that belong to an exam slot.
 
 
@@ -415,3 +444,44 @@ async def attempt_counts_by_station_version(
         for version_id, count in (await session.execute(stmt)).all()
         if version_id is not None
     }
+
+
+async def trial_candidates(
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    matching_user_ids: Sequence[uuid.UUID] | None = None,
+    matching_station_version_ids: Sequence[uuid.UUID] | None = None,
+    searched: bool = False,
+) -> tuple[list[Attempt], str | None]:
+    """Attempts with a transcript this owner may trial-mark against, newest first (rubrics plan §8, R-6).
+
+    Scoped exactly as `service_trial._attempt_turns` scopes a trial's own
+    `attempt_id`: an org admin sees that organisation's attempts, a platform
+    admin sees only attempts with no organisation at all. Offering a wider
+    list here would only surface picks the trial route then refuses as
+    `attempt_not_found`.
+
+    `matching_user_ids` and `matching_station_version_ids` are ids another
+    slice already resolved a search term against (`identity.service.user_ids_matching`,
+    `stations.service_reads.version_ids_matching_title`); this repository
+    never reaches into another slice's tables to do that matching itself.
+    `searched` distinguishes "no search was asked for" from "the search
+    matched nothing", since an empty pair of id lists must mean the latter.
+    """
+    has_transcript = exists(select(TranscriptMessage.id).where(TranscriptMessage.attempt_id == Attempt.id))
+    stmt = select(Attempt).where(
+        Attempt.org_id == org_id if org_id is not None else Attempt.org_id.is_(None), has_transcript
+    )
+    if searched:
+        conditions = []
+        if matching_user_ids:
+            conditions.append(Attempt.user_id.in_(list(matching_user_ids)))
+        if matching_station_version_ids:
+            conditions.append(Attempt.station_version_id.in_(list(matching_station_version_ids)))
+        stmt = stmt.where(or_(*conditions)) if conditions else stmt.where(text("false"))
+    return await keyset_page(
+        session, stmt, sort_col=Attempt.created_at, id_col=Attempt.id, limit=limit, cursor=cursor
+    )

@@ -69,7 +69,7 @@ async def read_my_review(
     responses=error_responses(
         Forbidden,
         errors.SlotNotFound,
-        errors.InvalidRagError,
+        errors.InvalidRatingError,
         errors.ReviewIncompleteError,
         errors.NothingToReviewError,
     ),
@@ -113,7 +113,7 @@ async def read_gp_lead_review(
         Forbidden,
         errors.SlotNotFound,
         errors.ReviewConflictError,
-        errors.InvalidRagError,
+        errors.InvalidRatingError,
         errors.ReviewIncompleteError,
         errors.NothingToReviewError,
     ),

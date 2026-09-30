@@ -22,7 +22,7 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import PlatformAdmin
-from app.features.rubrics import errors, schemas, service
+from app.features.rubrics import errors, schemas, service, service_authoring
 
 router = APIRouter(tags=["rubrics"])
 
@@ -50,7 +50,6 @@ async def create_platform_rubric(
         structure=body.structure,
         system_prompt=body.system_prompt,
         pacing=body.pacing,
-        result_schema_override=body.result_schema_override,
         marking_layout=body.marking_layout,
     )
 
@@ -76,6 +75,32 @@ async def list_platform_rubrics(
     return Page(items=rubrics, next_cursor=next_cursor)
 
 
+# What a new platform rubric may start from: blank, or one of the platform's published rubrics.
+# Registered before `/rubrics/{rubric_id}`, which would otherwise read "starting-points" as an id.
+@router.get(
+    "/platform/rubrics/starting-points",
+    response_model=schemas.RubricStartingPointsRead,
+    responses=error_responses(Unauthenticated, Forbidden),
+)
+async def platform_rubric_starting_points(
+    admin: PlatformAdmin, session: Session, search: str | None = None
+) -> schemas.RubricStartingPointsRead:
+    return await service_authoring.starting_points(session, None, search=search)
+
+
+# Attempts a platform admin may trial-mark against: the platform's own, outside any organisation.
+# Registered before `/rubrics/{rubric_id}`, which would otherwise read "trial-candidates" as an id.
+@router.get(
+    "/platform/rubrics/trial-candidates",
+    response_model=Page[schemas.TrialCandidateRead],
+    responses=error_responses(Unauthenticated, Forbidden),
+)
+async def list_platform_trial_candidates(
+    admin: PlatformAdmin, session: Session, page: Pager, search: str | None = None
+) -> Page[schemas.TrialCandidateRead]:
+    return await service.trial_candidates(session, None, limit=page.limit, cursor=page.cursor, search=search)
+
+
 @router.get(
     "/platform/rubrics/{rubric_id}",
     response_model=schemas.RubricRead,
@@ -85,6 +110,18 @@ async def read_platform_rubric(
     rubric_id: uuid.UUID, admin: PlatformAdmin, session: Session
 ) -> schemas.RubricRead:
     return await service.read_rubric(session, None, rubric_id)
+
+
+@router.patch(
+    "/platform/rubrics/{rubric_id}",
+    response_model=schemas.RubricRead,
+    responses=error_responses(Unauthenticated, Forbidden, *_NOT_FOUND),
+)
+async def rename_platform_rubric(
+    rubric_id: uuid.UUID, body: schemas.RenameRubric, admin: PlatformAdmin, session: Session
+) -> schemas.RubricRead:
+    """Change this platform rubric's title. Every version keeps it; nothing about marking changes."""
+    return await service.rename_rubric(session, None, rubric_id, title=body.title)
 
 
 @router.post(
@@ -122,7 +159,6 @@ async def edit_platform_version(
         structure=body.structure,
         system_prompt=body.system_prompt,
         pacing=body.pacing,
-        result_schema_override=body.result_schema_override,
         marking_layout=body.marking_layout,
     )
 
@@ -155,3 +191,47 @@ async def archive_platform_version(
     return await service.archive_version(
         session, None, rubric_id, version, actor_id=admin.user_id, now=clock.now()
     )
+
+
+# Check a draft structure and show what it comes to: schemas, resolved display, a sample result.
+# Answers 200 with `valid: false` and every problem while the draft cannot be published.
+@router.post(
+    "/platform/rubrics/preview",
+    response_model=schemas.RubricPreviewRead,
+    responses=error_responses(Unauthenticated, Forbidden),
+)
+async def preview_platform_rubric(
+    body: schemas.RubricDraft, admin: PlatformAdmin
+) -> schemas.RubricPreviewRead:
+    return service_authoring.preview(body.structure)
+
+
+# A new platform rubric: blank, or a draft copy of a published platform rubric.
+@router.post(
+    "/platform/rubrics/copy",
+    response_model=schemas.RubricRead,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(Unauthenticated, Forbidden, *_NOT_FOUND, errors.RubricVersionNotPublished),
+)
+async def copy_platform_rubric(
+    body: schemas.CopyRubric, admin: PlatformAdmin, session: Session
+) -> schemas.RubricRead:
+    return await service_authoring.copy_rubric(
+        session,
+        None,
+        source_rubric_id=body.source_rubric_id,
+        source_version=body.source_version,
+        title=body.title,
+    )
+
+
+# Suggested instructions for every place in a draft structure: the copied rubric's own, else generic.
+@router.post(
+    "/platform/rubrics/draft-instructions",
+    response_model=schemas.DraftInstructionsRead,
+    responses=error_responses(Unauthenticated, Forbidden, errors.InvalidRubricError),
+)
+async def draft_platform_rubric_instructions(
+    body: schemas.RubricDraft, admin: PlatformAdmin, session: Session
+) -> schemas.DraftInstructionsRead:
+    return await service_authoring.draft_instructions(session, None, body.structure)

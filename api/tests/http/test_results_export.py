@@ -51,10 +51,10 @@ async def test_the_csv_is_the_report_with_a_formula_name_quoted(
     assert exported.headers["content-disposition"] == 'attachment; filename="finals-results.csv"'
     assert exported.text == (
         "\ufeff"
-        "name,email,user_id,trainee_id,stations,stations_marked,overall_rag,"
+        "name,email,user_id,trainee_id,stations,stations_marked,overall_rag,score,stations_passed,"
         "decision_workflow_state,decision_assessment_outcome,decision_recruitment_outcome,"
         "decision_signed_off_at,decision_released_at\n"
-        f"'=Ada,equals@example.com,{user_id},{trainee_id},1,0,,,,,,\n"
+        f"'=Ada,equals@example.com,{user_id},{trainee_id},1,0,,,0,,,,,\n"
     )
 
     entries = (
@@ -250,8 +250,8 @@ async def test_a_released_decision_is_a_row_of_the_csv(client: AsyncClient, make
     header, row = exported.text.splitlines()
     assert header == (
         "\ufeff"
-        "name,email,user_id,trainee_id,stations,stations_marked,overall_rag,"
+        "name,email,user_id,trainee_id,stations,stations_marked,overall_rag,score,stations_passed,"
         "decision_workflow_state,decision_assessment_outcome,decision_recruitment_outcome,"
         "decision_signed_off_at,decision_released_at"
     )
-    assert row.startswith(f"Ada,released-csv@example.com,{user_id},{trainee_id},1,0,,released,pass,")
+    assert row.startswith(f"Ada,released-csv@example.com,{user_id},{trainee_id},1,0,,,0,released,pass,")

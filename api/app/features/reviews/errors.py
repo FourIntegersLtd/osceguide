@@ -12,11 +12,11 @@ class ReviewNotFound(NotFound):
     default_message = "No such review"
 
 
-class InvalidRagError(InvalidInput):
-    """A rating field was not R, A or G."""
+class InvalidRatingError(InvalidInput):
+    """A rating was not one the sitting's rubric allows, or a GP lead's verdict was not G, A or R."""
 
-    code = "invalid_rag"
-    default_message = "A rating must be R, A or G"
+    code = "invalid_rating"
+    default_message = "That is not a rating this rubric allows"
 
 
 class InvalidStatusError(InvalidInput):

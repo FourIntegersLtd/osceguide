@@ -20,6 +20,8 @@ from app.features.identity import service as identity
 from app.features.results import service as results
 from app.features.reviews import service_summary as reviews
 from app.features.roster import service as roster
+from app.features.rubrics import service_marking as rubrics
+from app.features.rubrics import service_scoring as scoring
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 
@@ -42,6 +44,10 @@ async def build_sitting_report(
     live = await attempts.live_attempts_for_slots(session, [slot.id for _, slot in slots])
     decisions = await results.decisions_for_sitting(session, org_id, sitting_id)
     summaries = await reviews.summaries_for_slots(session, org_id, [slot.id for _, slot in slots])
+    outcomes = await reviews.outcomes_for_slots(session, org_id, [slot.id for _, slot in slots])
+    scoring_rubric = await rubrics.scoring_rubric_for_version(
+        session, org_id, detail.sitting.rubric_version_id
+    )
 
     candidates: list[CandidateReport] = []
     for user_id in user_ids:
@@ -50,6 +56,7 @@ async def build_sitting_report(
             if slot.trainee_id != user_id:
                 continue
             summary = summaries[slot.id]
+            outcome = outcomes[slot.id]
             attempt = live.get(slot.id)
             title = titles.get(slot.station_version_id)
             station_reports.append(
@@ -65,6 +72,8 @@ async def build_sitting_report(
                     marked=attempt is not None and attempt.status == "evaluated",
                     overall_rag=summary.overall_rag,
                     by_domain=dict(summary.by_domain),
+                    score=outcome.score,
+                    passed=outcome.passed,
                 )
             )
         person = people.get(user_id)
@@ -78,9 +87,12 @@ async def build_sitting_report(
                 email=person.email if person else None,
                 stations=station_reports,
                 stations_marked=sum(1 for station_report in station_reports if station_report.marked),
-                overall_rag=reviews.combine_ratings(
-                    [station_report.overall_rag for station_report in station_reports]
+                overall_rag=scoring.worst_rating(
+                    scoring_rubric.structure,
+                    [station_report.overall_rag for station_report in station_reports],
                 ),
+                score=_mean([station_report.score for station_report in station_reports]),
+                stations_passed=sum(1 for station_report in station_reports if station_report.passed is True),
                 decision=DecisionSummary(
                     workflow_state=decision.workflow_state,
                     assessment_outcome=decision.assessment_outcome,
@@ -103,6 +115,7 @@ async def build_sitting_report(
             scheduled_for=detail.sitting.scheduled_for,
             rubric_version_id=detail.sitting.rubric_version_id,
         ),
+        rating=rubrics.rating_read(scoring_rubric.structure),
         totals=ReportTotals(
             candidates=len(candidates),
             stations=len(slots),
@@ -113,3 +126,9 @@ async def build_sitting_report(
         ),
         candidates=candidates,
     )
+
+
+def _mean(scores: list[float | None]) -> float | None:
+    """The mean of the scores that exist, or None when none do: unmarked is not zero."""
+    present = [score for score in scores if score is not None]
+    return round(sum(present) / len(present), 1) if present else None

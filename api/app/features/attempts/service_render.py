@@ -9,7 +9,6 @@ what they were told they would be marked on, not against today's version.
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from typing import Any
 
@@ -168,6 +167,8 @@ async def render_debrief(
     if not messages:
         raise errors.AttemptNotReady("A debrief needs a recorded consultation.")
     source_results = await repository_transcript.results_for(session, source.id)
+    latest_result = source_results[-1].payload if source_results else None
+    marking = await _marking_for_debrief(session, source, latest_result)
     frozen_context = ((source.definition or {}).get("scenario") or {}).get("examiner_context")
     try:
         from osce_assessment.prompts.debrief_pacing import debrief_pacing_payload
@@ -187,11 +188,7 @@ async def render_debrief(
         "instructions": DebriefPromptFormatter.create_prompt(
             transcript=transcript,
             management_plan=frozen_context or examiner_context,
-            sca_feedback=json.dumps(
-                [source_result.payload for source_result in source_results], ensure_ascii=False
-            )
-            if source_results
-            else None,
+            marking=marking,
         ),
         "greeting": DEBRIEF_GREETING,
         "examiner_context": frozen_context or examiner_context,
@@ -199,3 +196,36 @@ async def render_debrief(
         "tools": ["check_time"],
         "tool_context": {"pacing": debrief_pacing_payload()},
     }
+
+
+async def _marking_for_debrief(
+    session: AsyncSession, source: Attempt, latest_result: dict[str, Any] | None
+) -> str | None:
+    """The source consultation's latest mark, rendered for the tutor by field role.
+
+    One exam-neutral path: the rubric the consultation was marked with (frozen
+    on it, or its exam's rubric for an imported attempt) becomes the engine's
+    framework, and the engine's `render_marking` walks the result by role, so
+    scores, evidence, missed items, actions and flags read the same for every
+    exam. None when nothing was marked, or no rubric can describe the result.
+    """
+    if not latest_result:
+        return None
+    snapshot = domain_definition.rubric_for(source.definition)
+    scoring_rubric = rubrics.frozen_scoring_rubric(snapshot)
+    if scoring_rubric is None:
+        # Only an attempt frozen before Stage 2, or an imported one, reaches the database here.
+        exam = await catalog.exam_for_attempt(session, source.exam_id)
+        scoring_rubric = await rubrics.scoring_rubric(
+            session, snapshot, exam_rubric_version_id=exam.rubric_version_id
+        )
+    if scoring_rubric is None:
+        log.warning("debrief source has no rubric to read its mark by", attempt_id=str(source.id))
+        return None
+    try:
+        from osce_assessment.contracts import CompetencyFramework
+        from osce_assessment.prompts.debrief_feedback import render_marking
+    except ImportError as exc:
+        raise RenderFailed("The assessment engine's marking renderer is unavailable.") from exc
+    framework = CompetencyFramework.model_validate(rubrics.engine_framework(scoring_rubric))
+    return str(render_marking(framework, latest_result))

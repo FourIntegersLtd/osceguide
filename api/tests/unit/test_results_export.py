@@ -58,10 +58,10 @@ def test_a_formula_name_is_quoted_and_the_csv_is_exact() -> None:
     text = render_sitting_results_csv(report).decode("utf-8")
     assert text == (
         "\ufeff"
-        "name,email,user_id,trainee_id,stations,stations_marked,overall_rag,"
+        "name,email,user_id,trainee_id,stations,stations_marked,overall_rag,score,stations_passed,"
         "decision_workflow_state,decision_assessment_outcome,decision_recruitment_outcome,"
         "decision_signed_off_at,decision_released_at\n"
-        "'=cmd,a@example.com,11111111-1111-1111-1111-111111111111,,0,0,,released,pass,,"
+        "'=cmd,a@example.com,11111111-1111-1111-1111-111111111111,,0,0,,,0,released,pass,,"
         "2026-09-01T12:00:00+00:00,2026-09-02T12:00:00+00:00\n"
     )
 

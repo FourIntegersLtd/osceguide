@@ -107,6 +107,10 @@ USER_WRITE = Limit(name="user-write", allowance=60, window_seconds=60)
 # debrief, a tutor session. Thirty in ten minutes is more stations than anybody
 # sits, and a runaway client costs real money every time it loops.
 AI_SPEND = Limit(name="ai-spend", allowance=30, window_seconds=600)
+# A trial mark of a draft rubric: one full marking call each, and nothing to
+# show for it but the preview. Counted per organisation (per person for the
+# platform), so a builder pressing "Trial" in a loop cannot spend without end.
+TRIAL_MARK = Limit(name="trial-mark", allowance=20, window_seconds=3600)
 # Sends an email to somebody other than the caller: an invitation, a resend, a
 # report to support. A bulk upload is one call however many rows it carries;
 # the limit is on a loop of calls, which is how an inbox gets flooded.

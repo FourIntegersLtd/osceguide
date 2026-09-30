@@ -24,7 +24,7 @@ pytestmark = pytest.mark.db
 URL = "/api/v1/me/performance"
 SAT_AT = datetime(2026, 1, 1, tzinfo=UTC)
 
-# The engine's document for one consultation, as `performance.py` reads it:
+# The engine's document for one consultation, as `service_performance` reads it:
 # marks under the rubric's own domain ids, prose beside them.
 GREEN: dict[str, Any] = {
     "global_skills": {
@@ -102,10 +102,15 @@ async def test_nothing_attempted_is_an_empty_answer(client: AsyncClient, make_ac
     body = response.json()
     assert body == {
         "exam_code": None,
-        "summary": {"pass_rate": 0.0, "fail_rate": 0.0, "critical_rate": 0.0},
+        # No exam, so no pass line to judge by: null, not a zero rate.
+        "summary": {"pass_rate": None, "fail_rate": None, "critical_rate": 0.0},
         "domains": [],
         "trend": [],
         "composition": [],
+        "display": None,
+        "rating": None,
+        "mixed_versions": False,
+        "rubric_versions": 0,
     }
 
 
@@ -147,10 +152,12 @@ async def test_the_charts_read_the_marking_back(
 ) -> None:
     """Domains, rates and a trend, from the engine's own documents.
 
-    Two attempts, one all green and one all red: the domains average to an
-    amber, half the attempts pass, and the red one is the critical. Read
-    through the route rather than the service so the shape the frontend
-    generates its types from is the thing asserted.
+    Two attempts, one all green and one all red, on an R/A/G rubric whose
+    display counts greens (`ragCounts`, `ragShare`) and sets no pass line:
+    each domain is half green across the two, nothing is passed or failed,
+    and the red one is the critical. Read through the route rather than the
+    service so the shape the frontend generates its types from is the thing
+    asserted.
     """
     token, user_id = await a_learner(db_session, make_actor, "perf-marked@example.com")
     exam = await ensure_exam(db_session, "sca", structure=FULL_RUBRIC)
@@ -160,12 +167,21 @@ async def test_the_charts_read_the_marking_back(
     body = (await client.get(URL, params={"exam_code": "sca"}, headers=bearer(token))).json()
 
     assert body["exam_code"] == "sca"
-    assert body["summary"] == {"pass_rate": 0.5, "fail_rate": 0.5, "critical_rate": 0.5}
+    assert body["summary"] == {"pass_rate": None, "fail_rate": None, "critical_rate": 0.5}
     assert body["domains"] == [
-        {"id": "global_skills", "label": "Global skills", "score": 66.5},
-        {"id": "tasks", "label": "Tasks", "score": 66.5},
+        {
+            "id": "global_skills",
+            "label": "Global skills",
+            "score": 50.0,
+            "value": 50.0,
+            "counts": {"G": 2, "A": 0, "R": 2},
+        },
+        {"id": "tasks", "label": "Tasks", "score": 50.0, "value": 50.0, "counts": {"G": 1, "A": 0, "R": 1}},
     ]
-    assert [point["score"] for point in body["trend"]] == [33.0, 100.0], "oldest first"
+    assert [point["score"] for point in body["trend"]] == [0.0, 100.0], "oldest first"
+    assert [point["passed"] for point in body["trend"]] == [None, None]
+    assert body["display"]["total"]["aggregate"] == "ragShare"
+    assert body["rating"]["scale"] == ["G", "A", "R"]
     assert body["trend"][0]["date"].startswith("2026-01-01")
 
 
@@ -185,7 +201,7 @@ async def test_the_default_exam_is_the_one_last_attempted(
 
     body = (await client.get(URL, headers=bearer(token))).json()
     assert body["exam_code"] == "plab"
-    assert [point["score"] for point in body["trend"]] == [33.0], "only that exam's attempts"
+    assert [point["score"] for point in body["trend"]] == [0.0], "only that exam's attempts"
 
 
 async def test_performance_is_only_your_own(

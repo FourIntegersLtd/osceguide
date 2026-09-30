@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, Forbidden, NotFound
+from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound, Unavailable
 from app.features.entitlements.errors import NotEntitled
 from app.features.stations.errors import StationNotFound, StationNotPublishedError
 
@@ -108,3 +108,17 @@ class SetEntryAttemptLimitReached(Conflict):
 
     code = "attempt_limit_reached"
     default_message = "You have used every attempt at this station"
+
+
+class TrialTranscriptInvalid(InvalidInput):
+    """A trial mark was given no transcript it could mark: none, both sources, or no candidate turn."""
+
+    code = "invalid_trial_transcript"
+    default_message = "Give one transcript to mark, with at least one line the candidate said."
+
+
+class MarkerUnavailable(Unavailable):
+    """The marking engine is not installed or not configured here, so nothing can be marked."""
+
+    code = "marker_unavailable"
+    default_message = "Marking is not available on this server."

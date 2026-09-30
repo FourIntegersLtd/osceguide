@@ -76,6 +76,7 @@ async def test_an_ordinary_user_cannot_author_a_platform_rubric(client: AsyncCli
 
 
 async def test_a_rubric_that_could_not_be_marked_against_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Saved as a draft that lists what is wrong; publishing it is what is refused."""
     admin = await make_actor("admin@osceguide.com", platform_admin=True)
 
     response = await client.post(
@@ -89,8 +90,17 @@ async def test_a_rubric_that_could_not_be_marked_against_is_refused(client: Asyn
         headers=bearer(admin),
     )
 
-    assert response.status_code == 422
-    assert response.json()["code"] == "invalid_rubric"
+    assert response.status_code == 201, response.text
+    draft = response.json()["versions"][0]
+    assert draft["problems"] == [
+        {"path": "", "message": "A rubric needs a scale: the scores a competency may be given."}
+    ]
+    assert draft["result_schema"] == {}
+    published = await client.post(
+        f"/api/v1/platform/rubrics/{response.json()['id']}/versions/1/publish", headers=bearer(admin)
+    )
+    assert published.status_code == 422
+    assert published.json()["code"] == "invalid_rubric"
 
 
 async def test_a_published_version_cannot_be_edited(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
@@ -251,3 +261,62 @@ async def test_a_trainee_may_not_author_a_rubric(client: AsyncClient, make_actor
     )
 
     assert response.status_code == 403
+
+
+# --- renaming (R-7) ----------------------------------------------------------
+
+
+async def test_a_platform_admin_renames_a_platform_rubric(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    rubric = await create_rubric(client, admin, title="Old title")
+
+    response = await client.patch(
+        f"/api/v1/platform/rubrics/{rubric['id']}", json={"title": "New title"}, headers=bearer(admin)
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["title"] == "New title"
+    reread = await client.get(f"/api/v1/platform/rubrics/{rubric['id']}", headers=bearer(admin))
+    assert reread.json()["title"] == "New title"
+
+
+async def test_an_org_admin_renames_its_own_rubric(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor)
+    org_admin = await member(make_actor, org_id, "kings", "admin")
+    rubric = await create_rubric(client, org_admin, org_slug="kings", title="Ours")
+
+    response = await client.patch(
+        f"/api/v1/orgs/kings/rubrics/{rubric['id']}",
+        json={"title": "Ours, renamed"},
+        headers=bearer(org_admin),
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["title"] == "Ours, renamed"
+
+
+async def test_an_org_admin_cannot_rename_a_platform_rubric(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    platform_rubric = await create_rubric(client, admin, title="Platform rubric")
+    org_id = await seed_org(client, make_actor)
+    org_admin = await member(make_actor, org_id, "kings", "admin")
+
+    response = await client.patch(
+        f"/api/v1/orgs/kings/rubrics/{platform_rubric['id']}",
+        json={"title": "Stolen"},
+        headers=bearer(org_admin),
+    )
+
+    assert response.status_code == 404
+    assert response.json()["code"] == "rubric_not_found"
+
+
+async def test_a_blank_title_is_refused_with_422(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    rubric = await create_rubric(client, admin, title="Keeps its title")
+
+    response = await client.patch(
+        f"/api/v1/platform/rubrics/{rubric['id']}", json={"title": "   "}, headers=bearer(admin)
+    )
+
+    assert response.status_code == 422, response.text

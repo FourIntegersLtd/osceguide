@@ -108,35 +108,38 @@ def entitled_exam_ids(grants: Sequence[Any]) -> frozenset[Any]:
     )
 
 
-def observations_from_result(marking_result: Mapping[str, Any]) -> dict[str, Any]:
+# Which field roles the brief reads, and under which of its own words. A field
+# of any other role (a rating, an explanation, a flag) is not something the
+# tutor says back: ratings arrive summarised per domain, and the rest is the
+# marker's working.
+BRIEF_KEY_FOR_ROLE = {
+    "strength": "strengths",
+    "improvement": "improvements",
+    "action": "improvements",
+    "evidence": "phrases",
+}
+
+
+def observations_from_result(
+    domain_tones: Mapping[str, str], texts_by_role: Mapping[str, Sequence[str]]
+) -> dict[str, Any]:
     """What a marking says about a consultation, in the brief's own vocabulary.
 
-    Extracts domains, strengths, improvements and phrases only — no scores,
-    percentages or identifiers, since the tutor prompt forbids saying those aloud.
+    The service reads the result through the rubric it was marked on
+    (`rubrics.scoring.weakest_domain_tones` and `texts_by_role`), so any
+    authored exam works without a line here naming it. `domain_tones` is each
+    rated domain's title and a word for it ("good", "poor"), never a number,
+    since the tutor prompt forbids saying scores aloud.
     """
-    domains: dict[str, str] = {}
-    for entry in _sequence(marking_result.get("domains")):
-        if not isinstance(entry, Mapping):
-            continue
-        name = str(entry.get("name") or entry.get("domain") or "").strip()
-        rating = str(entry.get("rating") or entry.get("grade") or "").strip()
-        if name and rating:
-            domains[name] = rating
-    if not domains and isinstance(marking_result.get("domains"), Mapping):
-        domains = {
-            str(domain_name): str(rating)
-            for domain_name, rating in marking_result["domains"].items()
-            if str(rating or "").strip()
-        }
-
-    return {
-        "domains": domains,
-        "strengths": _texts(marking_result.get("strengths") or marking_result.get("what_went_well")),
-        "improvements": _texts(
-            marking_result.get("improvements") or marking_result.get("areas_for_improvement")
-        ),
-        "phrases": _texts(marking_result.get("phrases") or marking_result.get("quotes")),
+    observations: dict[str, Any] = {
+        "domains": dict(domain_tones),
+        "strengths": [],
+        "improvements": [],
+        "phrases": [],
     }
+    for role, brief_key in BRIEF_KEY_FOR_ROLE.items():
+        observations[brief_key].extend(texts_by_role.get(role, []))
+    return observations
 
 
 def validate_tool_arguments(schema: Mapping[str, Any], arguments: Mapping[str, Any]) -> dict[str, Any]:
@@ -183,20 +186,3 @@ def _coerce(name: str, value: Any, spec: Mapping[str, Any]) -> Any:
     if limit is not None and len(text) > int(limit):
         text = text[: int(limit) - 1].rstrip() + "…"
     return text
-
-
-def _sequence(value: Any) -> list[Any]:
-    """`value` as a list, or empty if it isn't a sequence (a bare string doesn't count)."""
-    if isinstance(value, Sequence) and not isinstance(value, str):
-        return list(value)
-    return []
-
-
-def _texts(value: Any) -> list[str]:
-    """Plain strings out of a list that may hold bare strings or `{"text": ...}` entries."""
-    texts: list[str] = []
-    for entry in _sequence(value):
-        text = str(entry.get("text") if isinstance(entry, Mapping) else entry or "").strip()
-        if text:
-            texts.append(text)
-    return texts

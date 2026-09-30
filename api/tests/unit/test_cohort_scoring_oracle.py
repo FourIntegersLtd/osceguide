@@ -7,50 +7,65 @@ down a list somebody acts on.
 
 Every case below is the legacy case, with the product vocabulary stripped and
 the shape changed from b2b's nested feedback blobs to this platform's flat
-`domain.skill.score` field values.
+`domain.skill.score` field values. The rubric is the seeded SCA one: its R/A/G
+rating is what the legacy numbers were written against, and since Stage 2 the
+arithmetic reads the rating from the rubric instead of assuming it.
 """
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from app.features.reviews.scoring import (
-    RAG_SCORES,
     apply_review_overrides,
     domain_scores,
-    majority_rag,
     review_priority,
-    score_for,
     station_score,
+)
+from app.features.rubrics import domain as rubric_domain
+from app.features.rubrics import service_scoring as rubric_scoring
+
+_SEED = json.loads((Path(__file__).resolve().parents[2] / "seeds/platform-starter.json").read_text())
+STRUCTURE = rubric_domain.parse_structure(
+    next(entry["rubric"]["structure"] for entry in _SEED["exams"] if entry["code"] == "sca")
 )
 
 
 def test_the_three_ratings_are_worth_what_they_were_worth() -> None:
     """Oracle: `_RAG_SCORES`. Not evenly spaced; an amber sits nearer a green."""
-    assert RAG_SCORES == {"G": 100.0, "A": 66.0, "R": 33.0}
-    assert score_for("g") == 100.0
-    assert score_for(" A ") == 66.0
+    assert [rubric_scoring.rating_percent(STRUCTURE, value) for value in ("G", "A", "R")] == [
+        100.0,
+        66.0,
+        33.0,
+    ]
+    assert rubric_scoring.rating_percent(STRUCTURE, rubric_scoring.normalise_rating(STRUCTURE, "g")) == 100.0
+    assert rubric_scoring.rating_percent(STRUCTURE, rubric_scoring.normalise_rating(STRUCTURE, " A ")) == 66.0
+    assert rubric_scoring.rating_percent(STRUCTURE, "X") is None
 
 
 def test_a_domain_takes_the_majority_of_its_skills() -> None:
     """Oracle: `test_extract_rag_score_from_nested_feedback`, in the new shape."""
     scores = domain_scores(
+        STRUCTURE,
         {
             "global_skills.structures_consultation.score": "G",
             "global_skills.avoids_repetition.score": "G",
             "global_skills.safety_net.score": "R",
-        }
+        },
     )
     assert scores == {"global_skills": 100.0}
 
 
 def test_a_tie_between_reviewers_resolves_downward() -> None:
     """Oracle: `_TIE_BREAK_ORDER`. The worse rating is the one worth a conversation."""
-    assert majority_rag(["G", "R"]) == "R"
-    assert majority_rag(["G", "A"]) == "A"
-    assert majority_rag(["G", "G", "A", "A", "R"]) == "A"
-    assert majority_rag([]) is None
-    assert majority_rag(["not a rating"]) is None
+    assert rubric_scoring.combine_reviewers(STRUCTURE, ["G", "R"]) == "R"
+    assert rubric_scoring.combine_reviewers(STRUCTURE, ["G", "A"]) == "A"
+    assert rubric_scoring.combine_reviewers(STRUCTURE, ["G", "G", "A", "A", "R"]) == "A"
+    assert rubric_scoring.combine_reviewers(STRUCTURE, []) is None
+    assert rubric_scoring.combine_reviewers(STRUCTURE, ["not a rating"]) is None
 
 
 def test_domains_are_equally_weighted_and_the_station_is_their_mean() -> None:
@@ -60,7 +75,7 @@ def test_domains_are_equally_weighted_and_the_station_is_their_mean() -> None:
         "global_skills.rapport.score": "G",
         "tasks.safety_net.score": "R",
     }
-    scores = domain_scores(field_values)
+    scores = domain_scores(STRUCTURE, field_values)
     assert scores == {"global_skills": 100.0, "tasks": 33.0}
     assert station_score(scores) == 66.5
 
@@ -68,7 +83,7 @@ def test_domains_are_equally_weighted_and_the_station_is_their_mean() -> None:
 def test_a_station_nobody_rated_has_no_score_rather_than_a_zero() -> None:
     """A zero would rank an unmarked candidate below a failing one."""
     assert station_score({}) is None
-    assert domain_scores({"notes": "no ratings here"}) == {}
+    assert domain_scores(STRUCTURE, {"notes": "no ratings here"}) == {}
 
 
 def test_a_skill_review_recalculates_the_domain_it_is_in() -> None:
@@ -87,12 +102,13 @@ def test_a_skill_review_recalculates_the_domain_it_is_in() -> None:
     # One skill dropped to amber, and the domain does not move: two greens
     # still outnumber it. A reviewer disagreeing about one skill has not
     # re-rated the domain, and the arithmetic says so.
-    unchanged = apply_review_overrides(marked, {"global_skills.avoids_repetition.score": "A"})
+    unchanged = apply_review_overrides(STRUCTURE, marked, {"global_skills.avoids_repetition.score": "A"})
     assert unchanged["global_skills"] == 100.0
     assert unchanged["tasks"] == 66.0
 
     # Two of the three, and now it does.
     moved = apply_review_overrides(
+        STRUCTURE,
         marked,
         {
             "global_skills.avoids_repetition.score": "R",
@@ -108,18 +124,22 @@ def test_a_domain_review_replaces_the_domain_outright() -> None:
         "global_skills.uses_clear_language.score": "G",
         "global_skills.avoids_repetition.score": "G",
     }
-    assert apply_review_overrides(marked, {"global_skills.score": "R"}) == {"global_skills": 33.0}
+    assert apply_review_overrides(STRUCTURE, marked, {"global_skills.score": "R"}) == {"global_skills": 33.0}
 
 
 def test_a_domain_review_wins_over_a_skill_review_of_the_same_domain() -> None:
     marked = {"tasks.safety_net.score": "G"}
-    overridden = apply_review_overrides(marked, {"tasks.safety_net.score": "G", "tasks.score": "A"})
+    overridden = apply_review_overrides(
+        STRUCTURE, marked, {"tasks.safety_net.score": "G", "tasks.score": "A"}
+    )
     assert overridden == {"tasks": 66.0}
 
 
 def test_reviewing_nothing_leaves_the_marking_alone() -> None:
     marked = {"tasks.safety_net.score": "A"}
-    assert apply_review_overrides(marked, {}) == domain_scores(marked) == {"tasks": 66.0}
+    assert (
+        apply_review_overrides(STRUCTURE, marked, {}) == domain_scores(STRUCTURE, marked) == {"tasks": 66.0}
+    )
 
 
 @pytest.mark.parametrize(

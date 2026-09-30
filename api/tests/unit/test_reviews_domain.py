@@ -1,6 +1,6 @@
 """Human feedback rules, ported from b2b.
 
-Sources: `sessions/slot_review.py:25-26` (RAG and status), `:321-339` (what
+Sources: `sessions/slot_review.py:25-26` (verdict and status), `:321-339` (what
 "completed" requires), `feedback/_shared.py:25-38` (revision handling).
 """
 
@@ -11,35 +11,18 @@ import pytest
 from app.features.reviews import domain
 
 # --------------------------------------------------------------------------
-# RAG
+# A GP lead's overall verdict (a traffic light whatever the rubric rates in)
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("value", ["R", "A", "G"])
-def test_the_three_rag_values(value: str) -> None:
-    assert domain.normalize_rag(value) == value
-
-
-@pytest.mark.parametrize("value", ["r", " g ", "a"])
-def test_rag_is_normalised(value: str) -> None:
-    assert domain.normalize_rag(value) in {"R", "A", "G"}
+@pytest.mark.parametrize(("raw", "verdict"), [("G", "G"), (" a ", "A"), ("r", "R")])
+def test_a_verdict_is_normalised(raw: str, verdict: str) -> None:
+    assert domain.normalize_verdict(raw) == verdict
 
 
 def test_anything_else_is_refused() -> None:
-    with pytest.raises(domain.InvalidRag):
-        domain.normalize_rag("X")
-
-
-def test_the_worst_rating_wins_a_tie() -> None:
-    """Oracle: b2b's majority with a worst-case tie-break. A candidate is not
-    given the benefit of the doubt when two reviewers disagree."""
-    assert domain.combine_rag(["G", "R"]) == "R"
-    assert domain.combine_rag(["G", "A"]) == "A"
-    assert domain.combine_rag(["G", "G"]) == "G"
-
-
-def test_combining_nothing_gives_nothing() -> None:
-    assert domain.combine_rag([]) is None
+    with pytest.raises(domain.InvalidVerdict):
+        domain.normalize_verdict("X")
 
 
 # --------------------------------------------------------------------------

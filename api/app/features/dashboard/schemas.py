@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
+
+from app.core.exam_settings import ExamSettings
+from app.core.schemas import RatingRead
 
 
 class ExamProgress(BaseModel):
@@ -40,6 +44,14 @@ class EntitlementSummary(BaseModel):
     live: bool
 
 
+class DashboardExam(BaseModel):
+    """The exam the screens start on, with the settings that shape them."""
+
+    code: str
+    name: str
+    settings: ExamSettings
+
+
 class Dashboard(BaseModel):
     """A trainee's home screen: entitlements, progress, recent attempts and question sets."""
 
@@ -53,39 +65,56 @@ class Dashboard(BaseModel):
     # `entitlements.domain_access`.
     exam_codes: list[str] = Field(default_factory=list)
     current_exam_code: str | None = None
+    # The same exam as `current_exam_code`, with its name and `settings`, so the
+    # screens can label and shape themselves without branching on its code.
+    current_exam: DashboardExam | None = None
 
 
 class PerformanceSummary(BaseModel):
     """How the marked attempts divide, as rates rather than counts."""
 
-    pass_rate: float
-    fail_rate: float
+    # Null when the exam's rubric sets no pass line: nothing passes or fails.
+    pass_rate: float | None
+    fail_rate: float | None
+    # Attempts that raised at least one critical concern (a flag, or a rating in the poor tone).
     critical_rate: float
 
 
 class DomainScore(BaseModel):
-    """One bar of the radar: a rubric domain, averaged across the attempts."""
+    """One bar of the radar: a rubric domain, averaged across the attempts marked on it."""
 
     id: str
     label: str
+    # 0-100: the domain's value as a share of its maximum, averaged. Comparable across versions.
     score: float
+    # The domain's value in the display's domain aggregate (e.g. 3.2 of 4, 7.5 of 10), averaged.
+    value: float | None = None
+    # Every rating given in it, per scale value (best first); empty unless the rating is a scale.
+    counts: dict[str, int] = Field(default_factory=dict)
 
 
 class TrendPoint(BaseModel):
     """One attempt, in the order it was sat."""
 
     date: datetime
+    # 0-100: the station total as a share of its maximum.
     score: float
+    # The station total in the rubric's units (e.g. 9 of 12, 38 of 50).
+    total: float | None = None
+    passed: bool | None = None
 
 
 class DomainComposition(BaseModel):
-    """How many marked attempts landed red, amber or green on one domain.
+    """How many marked attempts landed in each tone on one domain.
 
-    83 and above is green, 50 to 83 is amber, below that is red.
+    A domain's tone comes from its value as a share of its maximum, read
+    against the display's tones. `red`/`amber`/`green` are the poor, fair and
+    good-or-better counts, kept until platform-web reads `tones` (Stage 3).
     """
 
     id: str
     label: str
+    tones: dict[str, int] = Field(default_factory=dict)
     red: int
     amber: int
     green: int
@@ -100,6 +129,13 @@ class Performance(BaseModel):
     domains: list[DomainScore] = Field(default_factory=list)
     trend: list[TrendPoint] = Field(default_factory=list)
     composition: list[DomainComposition] = Field(default_factory=list)
+    # How the exam's current rubric reads a mark: aggregates, pass lines, tones, bands and
+    # labels (`rubrics.domain.resolved_display`). Pass lines are drawn from this.
+    display: dict[str, Any] | None = None
+    rating: RatingRead | None = None
+    # True when the attempts shown were scored under more than one rubric version.
+    mixed_versions: bool = False
+    rubric_versions: int = 0
 
 
 class MySlot(BaseModel):

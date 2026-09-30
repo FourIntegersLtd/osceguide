@@ -17,16 +17,19 @@ from app.features.attempts import repository_transcript as transcripts
 from app.features.identity import repository as identity_repo
 from app.features.tutor_memory import jobs, repository, service_brief
 from tests.support.catalog import ensure_exam
+from tests.support.rubrics import FULL_RUBRIC
 
 pytestmark = pytest.mark.db
 
 NOW = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
 
+# A mark under `tests.support.rubrics.FULL_RUBRIC` (R/A/G, upgraded from
+# version 1), as the engine stores it. The brief reads it through that
+# rubric's roles: an amber is the display's "fair", never a number.
 RESULT_PAYLOAD = {
-    "domains": [{"name": "clinical approach", "rating": "A"}],
-    "strengths": ["Warm, unhurried opening"],
-    "improvements": ["No focused examination was offered"],
-    "phrases": ["Come back if it does not improve"],
+    "global_skills": {
+        "structures_consultation": {"score": "A", "supporting_phrase": "Come back if it does not improve"},
+    },
     "overall_score": 17,
 }
 
@@ -57,7 +60,7 @@ async def test_a_marked_consultation_arrives_as_observations_not_scores(
     db_session: AsyncSession,
 ) -> None:
     user_id = await a_user(db_session, "brief-marked@example.com")
-    exam = await ensure_exam(db_session, "sca")
+    exam = await ensure_exam(db_session, "sca", structure=FULL_RUBRIC)
     assert exam is not None
     attempt = await attempts_repo.create_attempt(
         db_session, kind="practice", user_id=user_id, exam_id=exam.id
@@ -76,8 +79,7 @@ async def test_a_marked_consultation_arrives_as_observations_not_scores(
 
     assert len(brief["consultations"]) == 1
     consultation = brief["consultations"][0]
-    assert consultation["domains"] == {"clinical approach": "A"}
-    assert consultation["improvements"] == ["No focused examination was offered"]
+    assert consultation["domains"] == {"Global skills": "fair"}
     assert "overall_score" not in consultation
     assert consultation["days_ago"] == 0
 

@@ -191,3 +191,22 @@ async def test_a_trial_account_opens_on_the_exam_it_signed_up_for(
 
     assert body["exam_codes"] == ["plab"]
     assert body["current_exam_code"] == "plab"
+
+
+async def test_the_dashboard_carries_the_current_exam_and_its_settings(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The home screen's date label and modes come from the exam row, so it needs no exam-code switch."""
+    token = await a_learner(db_session, make_actor, "d-settings@example.com")
+    body = (await client.get("/api/v1/me/dashboard", headers=bearer(token))).json()
+    assert body["current_exam_code"] == "sca"
+    assert body["current_exam"]["code"] == "sca"
+    assert body["current_exam"]["name"] == "SCA"
+    assert body["current_exam"]["settings"]["date_label"] == "Exam date"
+    assert body["current_exam"]["settings"]["session_modes"] == ["debrief", "practice_as_patient"]
+
+
+async def test_a_new_account_has_no_current_exam(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("d-no-exam@example.com")
+    body = (await client.get("/api/v1/me/dashboard", headers=bearer(token))).json()
+    assert body["current_exam"] is None

@@ -15,6 +15,7 @@ from app.features.attempts import service_reads as attempts_reads
 from app.features.catalog import service as catalog
 from app.features.dashboard.schemas import (
     Dashboard,
+    DashboardExam,
     EntitlementSummary,
     ExamProgress,
     RecentAttempt,
@@ -68,11 +69,15 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
     # library — so it is asked through that slice's service rather than
     # rebuilt here.
     access = await entitlement_access.exam_access_for(session, user_id, now=now)
+    current_exam = await catalog.exam_read_by_code(session, access.current)
 
     return Dashboard(
         user_id=user_id,
         exam_codes=list(access.codes),
         current_exam_code=access.current,
+        current_exam=None
+        if current_exam is None
+        else DashboardExam(code=current_exam.code, name=current_exam.name, settings=current_exam.settings),
         entitlements=[
             EntitlementSummary(
                 exam_code=grant.exam_code, source=grant.source, ends_at=grant.ends_at, live=grant.live

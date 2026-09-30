@@ -12,6 +12,7 @@ Using a rubric — taking the snapshot an attempt is marked against — is
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -19,11 +20,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import lifecycle
 from app.core.errors import AppError, raise_mapped
+from app.core.pagination import Page
+from app.features.attempts import service_trial
 from app.features.catalog import service as catalog_service
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.rubrics import domain, errors, repository
 from app.features.rubrics.models import Rubric, RubricVersion
-from app.features.rubrics.schemas import RubricRead, RubricVersionRead
+from app.features.rubrics.schemas import (
+    RubricProblemRead,
+    RubricRead,
+    RubricVersionRead,
+    TrialCandidateRead,
+)
 
 REFUSALS: dict[type[Exception], type[AppError]] = {
     lifecycle.NotEditable: errors.NotEditableError,
@@ -41,11 +49,14 @@ async def create_rubric(
     structure: dict[str, Any],
     system_prompt: str,
     pacing: dict[str, Any],
-    result_schema_override: dict[str, Any] | None = None,
     marking_layout: dict[str, Any] | None = None,
 ) -> RubricRead:
-    """A rubric and its first draft version, ready to edit or publish."""
-    parsed, checked_pacing = validated(structure, pacing)
+    """A rubric and its first draft version, ready to edit or publish.
+
+    The structure may still be invalid: a draft is saved half-written and its
+    `problems` say what is left (plan §8). Publishing is what refuses it.
+    """
+    checked_pacing = validated_pacing(pacing)
     validate_marking_layout(marking_layout)
     rubric = await repository.create_rubric(session, org_id, title=title)
     version = await repository.add_version(
@@ -56,7 +67,6 @@ async def create_rubric(
         structure=structure,
         system_prompt=system_prompt,
         pacing=checked_pacing,
-        result_schema_override=result_schema_override,
         marking_layout=marking_layout,
     )
     return rubric_read(rubric, [version])
@@ -106,6 +116,42 @@ async def read_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id
     return rubric_read(rubric, list(versions))
 
 
+async def trial_candidates(
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    search: str | None,
+) -> Page[TrialCandidateRead]:
+    """A page of attempts this owner could trial-mark against (rubrics plan §8, R-6).
+
+    A thin pass-through to `attempts.service_trial`, which owns the transcript
+    table this reads: the rubric slice's router may only name its own
+    `schemas`/`service`/`errors` (`tests/guards/test_routers_are_thin.py`), so
+    this is where the cross-slice call is made rather than in the router.
+    """
+    return await service_trial.trial_candidates(session, org_id, limit=limit, cursor=cursor, search=search)
+
+
+async def rename_rubric(
+    session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID, *, title: str
+) -> RubricRead:
+    """Change a rubric's title (R-7). Every version keeps the same title, so no version is touched.
+
+    `repository.rename_rubric` writes with a bulk `UPDATE`, which leaves the
+    `Rubric` object already loaded by `_own_rubric` holding the old title in
+    memory; `session.refresh` picks up the new value before `rubric_read` reads it
+    (the `Timestamps` trap in `AGENTS.md`, generalised to any column a bulk
+    write changes underneath an already-loaded row).
+    """
+    rubric = await _own_rubric(session, org_id, rubric_id)
+    await repository.rename_rubric(session, org_id, rubric_id, title=title)
+    await session.refresh(rubric)
+    versions = await repository.versions_for_rubric(session, org_id, rubric_id)
+    return rubric_read(rubric, list(versions))
+
+
 async def add_version(
     session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID
 ) -> RubricVersionRead:
@@ -132,9 +178,6 @@ async def add_version(
         structure=dict(source.structure) if source else {},
         system_prompt=source.system_prompt if source else "",
         pacing=dict(source.pacing) if source else {},
-        result_schema_override=dict(source.result_schema_override)
-        if source and source.result_schema_override
-        else None,
         marking_layout=dict(source.marking_layout) if source and source.marking_layout else None,
     )
     return version_read(version)
@@ -149,16 +192,19 @@ async def edit_version(
     structure: dict[str, Any],
     system_prompt: str,
     pacing: dict[str, Any],
-    result_schema_override: dict[str, Any] | None,
     marking_layout: dict[str, Any] | None,
 ) -> RubricVersionRead:
-    """Rewrite a draft's body. Refused as `not_editable` once it has been published."""
+    """Rewrite a draft's body. Refused as `not_editable` once it has been published.
+
+    Saved even while the structure is invalid, like `create_rubric`; pacing and
+    the marking layout are still checked, since nothing in the builder fixes them later.
+    """
     version_row = await _version(session, org_id, rubric_id, version)
     try:
         lifecycle.ensure_editable(
             lifecycle.VersionRef(number=version_row.version, status=lifecycle.Status(version_row.status))
         )
-        parsed, checked_pacing = validated(structure, pacing)
+        checked_pacing = validated_pacing(pacing)
         validate_marking_layout(marking_layout)
     except Exception as exc:  # noqa: BLE001 — mapped to the error carrying its status
         raise_mapped(exc, REFUSALS)
@@ -169,7 +215,6 @@ async def edit_version(
         structure=structure,
         system_prompt=system_prompt,
         pacing=checked_pacing,
-        result_schema_override=result_schema_override,
         marking_layout=marking_layout,
     )
     await session.refresh(version_row)
@@ -197,8 +242,12 @@ async def publish_version(
         )
         # A rubric is only checked as hard as it is about to be used. Publishing
         # is that moment: after this the version is immutable and attempts will
-        # be marked against it.
-        domain.parse_structure(version_row.structure)
+        # be marked against it. Every problem is listed, as a draft's are.
+        _, problems = parsed_or_problems(version_row.structure)
+        if problems:
+            raise errors.InvalidRubricError(
+                problems[0].message, details={"errors": [problem.model_dump() for problem in problems]}
+            )
         domain.validate_pacing(version_row.pacing)
         if not (version_row.system_prompt or "").strip():
             raise domain.InvalidRubric("A rubric cannot be published without marking instructions.")
@@ -258,14 +307,45 @@ async def _version(
 # --- Mapping a rubric row onto the schema the routes return.
 
 
-def validated(
-    structure: dict[str, Any], pacing: dict[str, Any]
-) -> tuple[domain.RubricStructure, dict[str, int]]:
-    """Parse a structure and pacing together, mapping either's refusal to the same error."""
+def domain_titles(structure: Mapping[str, Any] | None) -> list[tuple[str, str]]:
+    """Each rated domain of a stored structure as (id, title), in the order the rubric lists them.
+
+    Read through `upgrade_structure`, so a version 1 rubric (`domains` with a
+    `label`) and a version 2 one (`sections` of kind `domain` with a `title`)
+    name the same domains. Not fully validated: a dashboard reading an old
+    attempt's rubric must still label it. A structure that cannot be read has none.
+    """
     try:
-        return domain.parse_structure(structure), domain.validate_pacing(pacing)
+        upgraded = domain.upgrade_structure(structure or {})
+    except domain.InvalidRubric:
+        return []
+    titles: list[tuple[str, str]] = []
+    for section in upgraded.get("sections") or []:
+        if not isinstance(section, Mapping) or section.get("kind") != "domain":
+            continue
+        domain_id = section.get("id")
+        if isinstance(domain_id, str):
+            title = section.get("title")
+            titles.append((domain_id, title if isinstance(title, str) and title else domain_id))
+    return titles
+
+
+def validated_pacing(pacing: dict[str, Any]) -> dict[str, int]:
+    """Pacing checked for saving, its refusal mapped to the rubric error with its `{path, message}` list."""
+    try:
+        return domain.validate_pacing(pacing)
     except domain.InvalidRubric as exc:
-        raise errors.InvalidRubricError(str(exc)) from exc
+        raise errors.InvalidRubricError(str(exc), details={"errors": domain.validation_errors(exc)}) from exc
+
+
+def parsed_or_problems(
+    structure: Mapping[str, Any] | None,
+) -> tuple[domain.RubricStructure | None, list[RubricProblemRead]]:
+    """A structure parsed, or every reason it cannot be, as `{path, message}` items."""
+    try:
+        return domain.parse_structure(structure), []
+    except domain.InvalidRubric as exc:
+        return None, [RubricProblemRead(**problem) for problem in domain.validation_errors(exc)]
 
 
 def validate_marking_layout(marking_layout: dict[str, Any] | None) -> None:
@@ -290,14 +370,10 @@ def rubric_read(rubric: Rubric, versions: list[RubricVersion]) -> RubricRead:
 
 def version_read(version: RubricVersion) -> RubricVersionRead:
     """Map a stored version onto what a route returns, deriving its result schema."""
-    try:
-        schema = domain.result_schema_for(
-            domain.parse_structure(version.structure), version.result_schema_override
-        )
-    except domain.InvalidRubric:
-        # A draft may be half-written. Showing an empty schema is better than
-        # refusing to show the draft its author is in the middle of writing.
-        schema = {}
+    parsed, problems = parsed_or_problems(version.structure)
+    # A draft may be half-written. Showing an empty schema and what is wrong is
+    # better than refusing to show the draft its author is in the middle of writing.
+    schema = domain.derive_result_schema(parsed) if parsed else {}
     return RubricVersionRead(
         id=version.id,
         rubric_id=version.rubric_id,
@@ -307,6 +383,7 @@ def version_read(version: RubricVersion) -> RubricVersionRead:
         system_prompt=version.system_prompt,
         pacing=dict(version.pacing or {}),
         result_schema=schema,
+        problems=problems,
         marking_layout=dict(version.marking_layout) if version.marking_layout else None,
         published_at=version.published_at,
     )

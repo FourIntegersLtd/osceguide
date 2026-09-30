@@ -11,6 +11,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.core.schemas import RatingRead, RatingValueRead
 from app.features.dashboard.schemas_org import ConsoleSitting
 
 
@@ -29,9 +30,14 @@ class StationReport(BaseModel):
     attempt_status: str | None
     # Marked by the engine: the attempt reached `evaluated`.
     marked: bool
-    # What the completed human reviews agreed, worst wins per domain.
-    overall_rag: str | None
-    by_domain: dict[str, str] = Field(default_factory=dict)
+    # What the completed human reviews agreed, in the rubric's own rating: per
+    # domain the reviewers combined, overall the worst domain. Renamed from
+    # `rag` when platform-web moves to native ratings (Stage 3).
+    overall_rag: RatingValueRead | None
+    by_domain: dict[str, RatingValueRead] = Field(default_factory=dict)
+    # 0-100 after any GP-lead review (the cohort ranking's number), and whether it passes.
+    score: float | None = None
+    passed: bool | None = None
 
 
 class DecisionSummary(BaseModel):
@@ -51,7 +57,10 @@ class CandidateReport(BaseModel):
     stations: list[StationReport] = Field(default_factory=list)
     stations_marked: int
     # Worst wins across the candidate's stations, the same rule as within one.
-    overall_rag: str | None
+    overall_rag: RatingValueRead | None
+    # The mean station score (0-100), and how many stations passed.
+    score: float | None = None
+    stations_passed: int = 0
     # Null until an institution admin has saved a decision.
     decision: DecisionSummary | None
 
@@ -65,5 +74,7 @@ class ReportTotals(BaseModel):
 
 class SittingReport(BaseModel):
     sitting: ConsoleSitting
+    # How the ratings in this report read: the sitting's rubric's rating.
+    rating: RatingRead | None = None
     totals: ReportTotals
     candidates: list[CandidateReport] = Field(default_factory=list)

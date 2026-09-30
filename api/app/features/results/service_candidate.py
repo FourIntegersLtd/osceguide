@@ -108,8 +108,8 @@ async def _assessment_score(
     mine = [slot.id for slot in slots if slot.trainee_id == user_id]
     if not mine:
         return None
-    scores = await reviews.scores_for_slots(session, revision_row.org_id, mine)
-    marked = [score for score in scores.values() if score is not None]
+    outcomes = await reviews.outcomes_for_slots(session, revision_row.org_id, mine)
+    marked = [outcome.score for outcome in outcomes.values() if outcome.score is not None]
     if not marked:
         return None
     return round(sum(marked) / len(marked), 1)

@@ -18,7 +18,7 @@ from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin, OrgReader
-from app.features.rubrics import errors, schemas, service
+from app.features.rubrics import errors, schemas, service, service_authoring
 
 router = APIRouter(tags=["rubrics"])
 
@@ -53,6 +53,34 @@ async def list_org_rubrics(
     return Page(items=rubrics, next_cursor=next_cursor)
 
 
+# What a new rubric may start from: blank, the platform's published rubrics, then the org's own.
+# Registered before `/rubrics/{rubric_id}`, which would otherwise read "starting-points" as an id.
+@router.get(
+    "/orgs/{org_slug}/rubrics/starting-points",
+    response_model=schemas.RubricStartingPointsRead,
+    responses=error_responses(Forbidden),
+)
+async def org_rubric_starting_points(
+    workspace: OrgAdmin, session: Session, search: str | None = None
+) -> schemas.RubricStartingPointsRead:
+    return await service_authoring.starting_points(session, workspace.org_id, search=search)
+
+
+# Attempts this organisation's admin may trial-mark against (rubrics plan §8, R-6): paginated, searchable.
+# Registered before `/rubrics/{rubric_id}`, which would otherwise read "trial-candidates" as an id.
+@router.get(
+    "/orgs/{org_slug}/rubrics/trial-candidates",
+    response_model=Page[schemas.TrialCandidateRead],
+    responses=error_responses(Forbidden),
+)
+async def list_org_trial_candidates(
+    workspace: OrgAdmin, session: Session, page: Pager, search: str | None = None
+) -> Page[schemas.TrialCandidateRead]:
+    return await service.trial_candidates(
+        session, workspace.org_id, limit=page.limit, cursor=page.cursor, search=search
+    )
+
+
 @router.get(
     "/orgs/{org_slug}/rubrics/{rubric_id}",
     response_model=schemas.RubricRead,
@@ -60,6 +88,18 @@ async def list_org_rubrics(
 )
 async def read_org_rubric(rubric_id: uuid.UUID, workspace: OrgReader, session: Session) -> schemas.RubricRead:
     return await service.read_rubric(session, workspace.org_id, rubric_id)
+
+
+@router.patch(
+    "/orgs/{org_slug}/rubrics/{rubric_id}",
+    response_model=schemas.RubricRead,
+    responses=error_responses(Forbidden, *_NOT_FOUND),
+)
+async def rename_org_rubric(
+    rubric_id: uuid.UUID, body: schemas.RenameRubric, workspace: OrgAdmin, session: Session
+) -> schemas.RubricRead:
+    """Change this organisation's rubric title. Every version keeps it; nothing about marking changes."""
+    return await service.rename_rubric(session, workspace.org_id, rubric_id, title=body.title)
 
 
 # A new rubric owned by this organisation, with its first draft version.
@@ -79,7 +119,6 @@ async def create_org_rubric(
         structure=body.structure,
         system_prompt=body.system_prompt,
         pacing=body.pacing,
-        result_schema_override=body.result_schema_override,
         marking_layout=body.marking_layout,
     )
 
@@ -117,7 +156,6 @@ async def edit_org_version(
         structure=body.structure,
         system_prompt=body.system_prompt,
         pacing=body.pacing,
-        result_schema_override=body.result_schema_override,
         marking_layout=body.marking_layout,
     )
 
@@ -158,3 +196,45 @@ async def archive_org_version(
         actor_id=workspace.principal.user_id,
         now=clock.now(),
     )
+
+
+# Check a draft structure and show what it comes to: schemas, resolved display, a sample result.
+# Answers 200 with `valid: false` and every problem while the draft cannot be published.
+@router.post(
+    "/orgs/{org_slug}/rubrics/preview",
+    response_model=schemas.RubricPreviewRead,
+    responses=error_responses(Forbidden),
+)
+async def preview_org_rubric(body: schemas.RubricDraft, workspace: OrgAdmin) -> schemas.RubricPreviewRead:
+    return service_authoring.preview(body.structure)
+
+
+# A new rubric of this organisation's: blank, or a draft copy of a published platform or own rubric.
+@router.post(
+    "/orgs/{org_slug}/rubrics/copy",
+    response_model=schemas.RubricRead,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(Forbidden, *_NOT_FOUND, errors.RubricVersionNotPublished),
+)
+async def copy_org_rubric(
+    body: schemas.CopyRubric, workspace: OrgAdmin, session: Session
+) -> schemas.RubricRead:
+    return await service_authoring.copy_rubric(
+        session,
+        workspace.org_id,
+        source_rubric_id=body.source_rubric_id,
+        source_version=body.source_version,
+        title=body.title,
+    )
+
+
+# Suggested instructions for every place in a draft structure: the copied rubric's own, else generic.
+@router.post(
+    "/orgs/{org_slug}/rubrics/draft-instructions",
+    response_model=schemas.DraftInstructionsRead,
+    responses=error_responses(Forbidden, errors.InvalidRubricError),
+)
+async def draft_org_rubric_instructions(
+    body: schemas.RubricDraft, workspace: OrgAdmin, session: Session
+) -> schemas.DraftInstructionsRead:
+    return await service_authoring.draft_instructions(session, workspace.org_id, body.structure)

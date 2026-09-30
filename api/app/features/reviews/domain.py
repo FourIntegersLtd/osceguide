@@ -9,17 +9,18 @@ Three kinds:
 
 from __future__ import annotations
 
-from collections.abc import Collection, Sequence
+from collections.abc import Collection
 
-RAG_VALUES = ("R", "A", "G")
 REVIEW_STATUSES = ("draft", "completed")
 
-# Worst first, so a tie between reviewers resolves downward.
-_RAG_SEVERITY = {"R": 0, "A": 1, "G": 2}
+# A GP lead's own overall verdict on a slot: a traffic light, whatever the
+# rubric rates competencies in. It is the lead's judgement, not a rubric
+# rating, and is stored in a one-letter column.
+GP_LEAD_VERDICTS = ("G", "A", "R")
 
 
-class InvalidRag(ValueError):
-    """Raised when a rating is not R, A or G."""
+class InvalidVerdict(ValueError):
+    """Raised when a GP lead's overall verdict is not G, A or R."""
 
 
 class InvalidStatus(ValueError):
@@ -38,11 +39,11 @@ class ReviewConflict(Exception):
     """Raised when a GP-lead review is saved against a stale revision."""
 
 
-def normalize_rag(rating: str) -> str:
-    """A rating as R, A or G, whatever case or spacing it arrived in."""
-    key = (rating or "").strip().upper()
-    if key not in RAG_VALUES:
-        raise InvalidRag(f"{rating!r} is not one of {', '.join(RAG_VALUES)}.")
+def normalize_verdict(verdict: str) -> str:
+    """A GP lead's overall verdict as G, A or R, whatever case or spacing it arrived in."""
+    key = (verdict or "").strip().upper()
+    if key not in GP_LEAD_VERDICTS:
+        raise InvalidVerdict(f"{verdict!r} is not one of {', '.join(GP_LEAD_VERDICTS)}.")
     return key
 
 
@@ -52,17 +53,6 @@ def normalize_status(status: str) -> str:
     if key not in REVIEW_STATUSES:
         raise InvalidStatus(f"A review is {' or '.join(REVIEW_STATUSES)}, not {status!r}.")
     return key
-
-
-def combine_rag(ratings: Sequence[str]) -> str | None:
-    """One rating from several: the worst wins.
-
-    When two reviewers disagree, the lower rating is the one that should
-    prompt a conversation.
-    """
-    if not ratings:
-        return None
-    return min((normalize_rag(rating) for rating in ratings), key=lambda rating: _RAG_SEVERITY[rating])
 
 
 def ensure_completable(*, scored: Collection[str], required: Collection[str], status: str) -> None:

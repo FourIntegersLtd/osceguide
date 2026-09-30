@@ -1,0 +1,24 @@
+{
+  "_comment": "What the CASC legacy model does not say (plan section 4.3). No requireEveryDomain: b2c CascFeedback.tsx passes on the overall rate alone.",
+  "name": "CASC",
+  "readingSeconds": 60,
+  "simulationSeconds": 420,
+  "pacing": {"total_seconds": 420, "history_seconds": 210, "introduction_seconds": 30, "safety_net_seconds": 90},
+  "ratingField": "competent",
+  "roles": {},
+  "systemFields": [],
+  "display": {
+    "domain": {"aggregate": "percentAchieved", "passAtLeast": 80},
+    "total": {"aggregate": "percentAchieved", "passAtLeast": 80},
+    "tones": [
+      {"atLeast": 0.8, "tone": "good"},
+      {"atLeast": 0, "tone": "poor"}
+    ],
+    "labels": {
+      "domainSubtitle": "Competency rate by domain",
+      "domainPassLabel": "Pass threshold",
+      "trendSubtitle": "Competency over time",
+      "passLabel": "Pass (80%)"
+    }
+  }
+}

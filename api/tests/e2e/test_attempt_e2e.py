@@ -30,6 +30,7 @@ checkout and a live API. It has still never run against a deployed one.
     export PLATFORM_E2E_BASE_URL=http://127.0.0.1:8002
     export PLATFORM_E2E_TOKEN=<bearer for an entitled user>
     export PLATFORM_E2E_STATION_VERSION_ID=<a published station version>
+    export PLATFORM_E2E_EXAM_CODE=<that station's exam; defaults to sca>
     export WORKER_SECRET=<the same one the API is running with>
     poetry run pytest -m e2e tests/e2e -q                # terminal 2
 """
@@ -145,7 +146,8 @@ async def test_the_real_worker_runs_an_attempt_created_by_this_api(
             "/api/v1/attempts",
             json={
                 "kind": "practice",
-                "exam_code": "sca",
+                # One run marks one exam; loop over the seeded codes to mark each.
+                "exam_code": os.environ.get("PLATFORM_E2E_EXAM_CODE", "sca"),
                 "station_version_id": os.environ["PLATFORM_E2E_STATION_VERSION_ID"],
             },
             headers=auth,

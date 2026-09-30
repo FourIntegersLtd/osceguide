@@ -38,6 +38,16 @@ async def rubric_by_id(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def rename_rubric(
+    session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID, *, title: str
+) -> None:
+    """Change a rubric's title in place. Every version keeps the same title (`README.md`: "a rubric
+    keeps its title across versions"), so this touches the `Rubric` row only, never a version."""
+    await session.execute(
+        update(Rubric).where(owned_by(Rubric, org_id), Rubric.id == rubric_id).values(title=title)
+    )
+
+
 async def readable_rubric(
     session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID
 ) -> Rubric | None:
@@ -90,6 +100,28 @@ async def _rubric_page(
     )
 
 
+async def published_current_versions(
+    session: AsyncSession, org_id: uuid.UUID | None, *, search: str | None = None, limit: int = 200
+) -> list[tuple[Rubric, RubricVersion]]:
+    """Every rubric this owner may read whose current version is published, with that version.
+
+    What a new rubric may be copied from: the platform's first, then the
+    owner's own, each by title. A rubric whose current version was archived is
+    left out, since only a published version is copied.
+    """
+    stmt = (
+        select(Rubric, RubricVersion)
+        .join(RubricVersion, RubricVersion.id == Rubric.current_version_id)
+        .where(visible_to(Rubric, org_id), RubricVersion.status == "published")
+        .order_by(Rubric.org_id.is_not(None), Rubric.title, Rubric.id)
+        .limit(limit)
+    )
+    if search:
+        stmt = stmt.where(Rubric.title.ilike(f"%{search}%"))
+    rows = (await session.execute(stmt)).all()
+    return [(rubric, version) for rubric, version in rows]
+
+
 async def add_version(
     session: AsyncSession,
     org_id: uuid.UUID | None,
@@ -99,7 +131,6 @@ async def add_version(
     structure: dict[str, Any],
     system_prompt: str,
     pacing: dict[str, Any],
-    result_schema_override: dict[str, Any] | None = None,
     marking_layout: dict[str, Any] | None = None,
 ) -> RubricVersion:
     """Insert a new version row, as a draft, under an existing rubric."""
@@ -110,7 +141,6 @@ async def add_version(
         structure=structure,
         system_prompt=system_prompt,
         pacing=pacing,
-        result_schema_override=result_schema_override,
         marking_layout=marking_layout,
     )
     session.add(version_row)
@@ -151,6 +181,37 @@ async def version_by_id(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def version_by_id_for_scoring(session: AsyncSession, version_id: uuid.UUID) -> RubricVersion | None:
+    """A version by id, whoever owns it. Deliberately not org-scoped.
+
+    Only for scoring an attempt that already names this version in its frozen
+    framework (or whose exam does): the caller has authorised the attempt, and
+    the attempt was marked with this wording, so reading it back leaks nothing.
+    """
+    stmt = select(RubricVersion).where(RubricVersion.id == version_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def first_v2_platform_version(session: AsyncSession, rubric_id: uuid.UUID) -> RubricVersion | None:
+    """The oldest published platform version of a rubric written as structure version 2.
+
+    What an imported legacy attempt, which froze no rubric, is read with: the
+    first version whose shape the contract test proves matches the legacy one.
+    """
+    stmt = (
+        select(RubricVersion)
+        .where(
+            RubricVersion.rubric_id == rubric_id,
+            RubricVersion.org_id.is_(None),
+            RubricVersion.status == "published",
+            RubricVersion.structure["schemaVersion"].as_integer() == 2,
+        )
+        .order_by(RubricVersion.version)
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def published_platform_version(session: AsyncSession, version_id: uuid.UUID) -> RubricVersion | None:
     """A published version of a platform rubric. Deliberately not org-scoped.
 
@@ -173,7 +234,6 @@ async def set_version_body(
     structure: dict[str, Any],
     system_prompt: str,
     pacing: dict[str, Any],
-    result_schema_override: dict[str, Any] | None,
     marking_layout: dict[str, Any] | None,
 ) -> None:
     """Overwrite a draft version's whole body in place."""
@@ -184,7 +244,6 @@ async def set_version_body(
             structure=structure,
             system_prompt=system_prompt,
             pacing=pacing,
-            result_schema_override=result_schema_override,
             marking_layout=marking_layout,
         )
     )

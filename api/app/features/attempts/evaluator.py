@@ -14,12 +14,14 @@ instead of storing an empty result.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
 from app.core.logging import get_logger
 from app.core.ports import EvaluationFailed, Evaluator
 from app.core.settings import get_settings
+from app.features.attempts.errors import MarkerUnavailable
 
 log = get_logger(__name__)
 
@@ -143,7 +145,11 @@ class EngineEvaluator:
         )
 
         try:
-            engine_result = self._build(framework).evaluate(attempt, engine_transcript, policy, scenario)
+            # The engine is synchronous and one marking takes a minute: off the
+            # event loop, or every other request (and a trial's stream) waits on it.
+            engine_result = await asyncio.to_thread(
+                self._build(framework).evaluate, attempt, engine_transcript, policy, scenario
+            )
         except Exception as exc:  # noqa: BLE001 - any engine failure is a delivery failure
             log.warning("engine evaluation failed", framework=framework_id, error=str(exc))
             raise EvaluationFailed(str(exc)) from exc
@@ -203,3 +209,15 @@ def build_evaluator() -> Evaluator:
         )
 
     return EngineEvaluator(build)
+
+
+def trial_evaluator() -> Evaluator:
+    """The engine for a trial mark, as a route dependency a test can replace.
+
+    Refuses with `marker_unavailable` (503) when the engine is not installed,
+    before any stream is opened.
+    """
+    try:
+        return build_evaluator()
+    except EvaluationFailed as exc:
+        raise MarkerUnavailable(str(exc)) from exc

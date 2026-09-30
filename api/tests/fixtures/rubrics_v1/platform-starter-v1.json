@@ -1,0 +1,590 @@
+{
+  "_comment": "The version 1 rubric structures seeds/platform-starter.json held at the commit before rubric structure v2 (plan rubric-templates.md Stage 1), as stored rows still hold them. Read by tests/unit/test_rubrics_domain.py to prove every one upgrades on read. Not an oracle: never regenerate it.",
+  "sca": {
+    "scale": [
+      "R",
+      "A",
+      "G"
+    ],
+    "domains": [
+      {
+        "id": "global_skills",
+        "label": "Global skills",
+        "live": false,
+        "competencies": [
+          {
+            "id": "avoids_repetition",
+            "label": "Avoids repetition",
+            "descriptors": {}
+          },
+          {
+            "id": "finishes_data_gathering",
+            "label": "Finishes data gathering",
+            "descriptors": {}
+          },
+          {
+            "id": "progresses_through_tasks",
+            "label": "Progresses through tasks",
+            "descriptors": {}
+          },
+          {
+            "id": "recognises_ethical_implications",
+            "label": "Recognises ethical implications",
+            "descriptors": {}
+          },
+          {
+            "id": "remains_responsive_to_patient",
+            "label": "Remains responsive to patient",
+            "descriptors": {}
+          },
+          {
+            "id": "structures_consultation",
+            "label": "Structures consultation",
+            "descriptors": {}
+          },
+          {
+            "id": "uses_clear_language",
+            "label": "Uses clear language",
+            "descriptors": {}
+          }
+        ]
+      },
+      {
+        "id": "relating_to_others",
+        "label": "Relating to others",
+        "live": false,
+        "competencies": [
+          {
+            "id": "clarifies_cues",
+            "label": "Clarifies cues",
+            "descriptors": {}
+          },
+          {
+            "id": "explains_rationale",
+            "label": "Explains rationale",
+            "descriptors": {}
+          },
+          {
+            "id": "generates_rapport",
+            "label": "Generates rapport",
+            "descriptors": {}
+          },
+          {
+            "id": "listens_curiosity",
+            "label": "Listens curiosity",
+            "descriptors": {}
+          },
+          {
+            "id": "negotiates_psychosocial_plan",
+            "label": "Negotiates psychosocial plan",
+            "descriptors": {}
+          },
+          {
+            "id": "shares_ice_plan",
+            "label": "Shares ice plan",
+            "descriptors": {}
+          },
+          {
+            "id": "shares_risks",
+            "label": "Shares risks",
+            "descriptors": {}
+          },
+          {
+            "id": "supports_decision_making",
+            "label": "Supports decision making",
+            "descriptors": {}
+          },
+          {
+            "id": "uses_closed_questions",
+            "label": "Uses closed questions",
+            "descriptors": {}
+          },
+          {
+            "id": "uses_open_questions",
+            "label": "Uses open questions",
+            "descriptors": {}
+          },
+          {
+            "id": "verbalises_diagnosis",
+            "label": "Verbalises diagnosis",
+            "descriptors": {}
+          }
+        ]
+      },
+      {
+        "id": "tasks",
+        "label": "Tasks",
+        "live": false,
+        "competencies": [
+          {
+            "id": "discovers_ice",
+            "label": "Discovers ice",
+            "descriptors": {}
+          },
+          {
+            "id": "discovers_psychosocial_context",
+            "label": "Discovers psychosocial context",
+            "descriptors": {}
+          },
+          {
+            "id": "generates_hypotheses",
+            "label": "Generates hypotheses",
+            "descriptors": {}
+          },
+          {
+            "id": "identifies_cues",
+            "label": "Identifies cues",
+            "descriptors": {}
+          },
+          {
+            "id": "interprets_tests",
+            "label": "Interprets tests",
+            "descriptors": {}
+          },
+          {
+            "id": "manages_comorbidity",
+            "label": "Manages comorbidity",
+            "descriptors": {}
+          },
+          {
+            "id": "offers_management_plan",
+            "label": "Offers management plan",
+            "descriptors": {}
+          },
+          {
+            "id": "opens_consultation",
+            "label": "Opens consultation",
+            "descriptors": {}
+          },
+          {
+            "id": "provides_safety_net",
+            "label": "Provides safety net",
+            "descriptors": {}
+          },
+          {
+            "id": "reaches_diagnosis",
+            "label": "Reaches diagnosis",
+            "descriptors": {}
+          },
+          {
+            "id": "rules_in_out_disease",
+            "label": "Rules in out disease",
+            "descriptors": {}
+          }
+        ]
+      }
+    ],
+    "sections": [
+      {
+        "id": "actionable_feedback",
+        "label": "Actionable feedback",
+        "kind": "list"
+      },
+      {
+        "id": "clinical_analysis",
+        "label": "Clinical analysis",
+        "kind": "list"
+      }
+    ]
+  },
+  "plab": {
+    "scale": [
+      "R",
+      "A",
+      "G"
+    ],
+    "domains": [
+      {
+        "id": "clinical_management",
+        "label": "Clinical management",
+        "live": false,
+        "competencies": [
+          {
+            "id": "diagnosis",
+            "label": "Diagnosis",
+            "descriptors": {}
+          },
+          {
+            "id": "follow_up",
+            "label": "Follow up",
+            "descriptors": {}
+          },
+          {
+            "id": "management_plan",
+            "label": "Management plan",
+            "descriptors": {}
+          },
+          {
+            "id": "safety_netting",
+            "label": "Safety netting",
+            "descriptors": {}
+          }
+        ]
+      },
+      {
+        "id": "data_gathering",
+        "label": "Data gathering",
+        "live": false,
+        "competencies": [
+          {
+            "id": "examination",
+            "label": "Examination",
+            "descriptors": {}
+          },
+          {
+            "id": "history_taking",
+            "label": "History taking",
+            "descriptors": {}
+          },
+          {
+            "id": "interpretation",
+            "label": "Interpretation",
+            "descriptors": {}
+          },
+          {
+            "id": "investigations",
+            "label": "Investigations",
+            "descriptors": {}
+          }
+        ]
+      },
+      {
+        "id": "interpersonal_skills",
+        "label": "Interpersonal skills",
+        "live": false,
+        "competencies": [
+          {
+            "id": "empathy",
+            "label": "Empathy",
+            "descriptors": {}
+          },
+          {
+            "id": "language",
+            "label": "Language",
+            "descriptors": {}
+          },
+          {
+            "id": "listening",
+            "label": "Listening",
+            "descriptors": {}
+          },
+          {
+            "id": "rapport",
+            "label": "Rapport",
+            "descriptors": {}
+          }
+        ]
+      }
+    ],
+    "sections": [
+      {
+        "id": "actionable_feedback",
+        "label": "Actionable feedback",
+        "kind": "list"
+      }
+    ]
+  },
+  "casc": {
+    "scale": [
+      "R",
+      "A",
+      "G"
+    ],
+    "domains": [
+      {
+        "id": "communication",
+        "label": "Communication",
+        "live": false,
+        "competencies": [
+          {
+            "id": "consultation_structure",
+            "label": "Consultation structure",
+            "descriptors": {}
+          },
+          {
+            "id": "consultation_style",
+            "label": "Consultation style",
+            "descriptors": {}
+          },
+          {
+            "id": "language_use",
+            "label": "Language use",
+            "descriptors": {}
+          },
+          {
+            "id": "listening_skills",
+            "label": "Listening skills",
+            "descriptors": {}
+          },
+          {
+            "id": "professional_behavior",
+            "label": "Professional behavior",
+            "descriptors": {}
+          },
+          {
+            "id": "questioning_technique",
+            "label": "Questioning technique",
+            "descriptors": {}
+          }
+        ]
+      },
+      {
+        "id": "examination",
+        "label": "Examination",
+        "live": false,
+        "competencies": [
+          {
+            "id": "examination_competence",
+            "label": "Examination competence",
+            "descriptors": {}
+          },
+          {
+            "id": "formulates_diagnosis",
+            "label": "Formulates diagnosis",
+            "descriptors": {}
+          },
+          {
+            "id": "identifies_findings",
+            "label": "Identifies findings",
+            "descriptors": {}
+          },
+          {
+            "id": "recognizes_implications",
+            "label": "Recognizes implications",
+            "descriptors": {}
+          }
+        ]
+      },
+      {
+        "id": "history",
+        "label": "History",
+        "live": false,
+        "competencies": [
+          {
+            "id": "assesses_risk",
+            "label": "Assesses risk",
+            "descriptors": {}
+          },
+          {
+            "id": "explores_physical_health",
+            "label": "Explores physical health",
+            "descriptors": {}
+          },
+          {
+            "id": "explores_symptoms",
+            "label": "Explores symptoms",
+            "descriptors": {}
+          },
+          {
+            "id": "identifies_priorities",
+            "label": "Identifies priorities",
+            "descriptors": {}
+          },
+          {
+            "id": "identifies_psychosocial",
+            "label": "Identifies psychosocial",
+            "descriptors": {}
+          },
+          {
+            "id": "recognizes_significance",
+            "label": "Recognizes significance",
+            "descriptors": {}
+          }
+        ]
+      },
+      {
+        "id": "management",
+        "label": "Management",
+        "live": false,
+        "competencies": [
+          {
+            "id": "management_plan",
+            "label": "Management plan",
+            "descriptors": {}
+          },
+          {
+            "id": "problem_formulation",
+            "label": "Problem formulation",
+            "descriptors": {}
+          },
+          {
+            "id": "psychosocial_interventions",
+            "label": "Psychosocial interventions",
+            "descriptors": {}
+          },
+          {
+            "id": "risk_management",
+            "label": "Risk management",
+            "descriptors": {}
+          }
+        ]
+      }
+    ],
+    "sections": [
+      {
+        "id": "actionable_feedback",
+        "label": "Actionable feedback",
+        "kind": "list"
+      }
+    ]
+  },
+  "ortho": {
+    "scale": [
+      "R",
+      "A",
+      "G"
+    ],
+    "domains": [
+      {
+        "id": "clinical_skills",
+        "label": "Clinical skills",
+        "live": false,
+        "competencies": [
+          {
+            "id": "clinical_skills_communication_information_gathering",
+            "label": "Communication information gathering",
+            "descriptors": {},
+            "legacy_id": "communication_information_gathering"
+          },
+          {
+            "id": "clinical_skills_communication_information_giving",
+            "label": "Communication information giving",
+            "descriptors": {},
+            "legacy_id": "communication_information_giving"
+          },
+          {
+            "id": "clinical_skills_problem_solving_decision_making",
+            "label": "Problem solving decision making",
+            "descriptors": {},
+            "legacy_id": "problem_solving_decision_making"
+          },
+          {
+            "id": "clinical_skills_situational_awareness",
+            "label": "Situational awareness",
+            "descriptors": {},
+            "legacy_id": "situational_awareness"
+          },
+          {
+            "id": "clinical_skills_technical_knowledge_clinical_expertise",
+            "label": "Technical knowledge clinical expertise",
+            "descriptors": {},
+            "legacy_id": "technical_knowledge_clinical_expertise"
+          }
+        ]
+      },
+      {
+        "id": "communication_skills",
+        "label": "Communication skills",
+        "live": false,
+        "competencies": [
+          {
+            "id": "communication_skills_communication_information_gathering",
+            "label": "Communication information gathering",
+            "descriptors": {},
+            "legacy_id": "communication_information_gathering"
+          },
+          {
+            "id": "communication_skills_communication_information_giving",
+            "label": "Communication information giving",
+            "descriptors": {},
+            "legacy_id": "communication_information_giving"
+          },
+          {
+            "id": "communication_skills_judgement_under_pressure",
+            "label": "Judgement under pressure",
+            "descriptors": {},
+            "legacy_id": "judgement_under_pressure"
+          },
+          {
+            "id": "communication_skills_situational_awareness",
+            "label": "Situational awareness",
+            "descriptors": {},
+            "legacy_id": "situational_awareness"
+          },
+          {
+            "id": "communication_skills_technical_knowledge_clinical_expertise",
+            "label": "Technical knowledge clinical expertise",
+            "descriptors": {},
+            "legacy_id": "technical_knowledge_clinical_expertise"
+          }
+        ]
+      },
+      {
+        "id": "portfolio_skills",
+        "label": "Portfolio skills",
+        "live": false,
+        "competencies": [
+          {
+            "id": "portfolio_skills_communication_information_giving",
+            "label": "Communication information giving",
+            "descriptors": {},
+            "legacy_id": "communication_information_giving"
+          },
+          {
+            "id": "critical_thinking_justification",
+            "label": "Critical thinking justification",
+            "descriptors": {}
+          },
+          {
+            "id": "person_specifications_cv_articulation",
+            "label": "Person specifications cv articulation",
+            "descriptors": {}
+          },
+          {
+            "id": "portfolio_knowledge",
+            "label": "Portfolio knowledge",
+            "descriptors": {}
+          },
+          {
+            "id": "reflection_professional_conduct",
+            "label": "Reflection professional conduct",
+            "descriptors": {}
+          }
+        ]
+      },
+      {
+        "id": "prioritisation_skills",
+        "label": "Prioritisation skills",
+        "live": false,
+        "competencies": [
+          {
+            "id": "prioritisation_skills_communication_information_gathering",
+            "label": "Communication information gathering",
+            "descriptors": {},
+            "legacy_id": "communication_information_gathering"
+          },
+          {
+            "id": "prioritisation_skills_judgement_under_pressure",
+            "label": "Judgement under pressure",
+            "descriptors": {},
+            "legacy_id": "judgement_under_pressure"
+          },
+          {
+            "id": "organisation_planning",
+            "label": "Organisation planning",
+            "descriptors": {}
+          },
+          {
+            "id": "prioritisation_skills_problem_solving_decision_making",
+            "label": "Problem solving decision making",
+            "descriptors": {},
+            "legacy_id": "problem_solving_decision_making"
+          },
+          {
+            "id": "prioritisation_skills_situational_awareness",
+            "label": "Situational awareness",
+            "descriptors": {},
+            "legacy_id": "situational_awareness"
+          }
+        ]
+      }
+    ],
+    "sections": [
+      {
+        "id": "actionable_feedback",
+        "label": "Actionable feedback",
+        "kind": "list"
+      }
+    ]
+  }
+}

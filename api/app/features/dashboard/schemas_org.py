@@ -190,6 +190,9 @@ class CohortCandidate(BaseModel):
     # Null when nothing of theirs has been marked. Deliberately not zero: a
     # zero would rank an unassessed candidate below a failing one.
     assessment_score: float | None
+    # Stations whose effective ratings meet the rubric's pass rule; a station
+    # with no pass rule or no rating counts as neither passed nor failed.
+    stations_passed: int = 0
     # Which candidates a GP lead should look at first: urgent, high, standard
     # or low. An unfinished examination outranks a poor score.
     review_priority: str

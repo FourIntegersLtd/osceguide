@@ -37,7 +37,7 @@ def spreadsheet_cell(value: str) -> str:
 
 
 def results_csv_columns() -> list[str]:
-    """The header row: identity, how many stations, then every decision field."""
+    """The header row: identity, how many stations, the reviewers' ratings, then every decision field."""
     decision_columns = [f"decision_{field_name}" for field_name in DecisionSummary.model_fields]
     return [
         "name",
@@ -47,6 +47,8 @@ def results_csv_columns() -> list[str]:
         "stations",
         "stations_marked",
         "overall_rag",
+        "score",
+        "stations_passed",
         *decision_columns,
     ]
 
@@ -103,9 +105,22 @@ def _candidate_row(candidate: CandidateReport) -> list[str]:
         spreadsheet_cell("" if candidate.trainee_id is None else str(candidate.trainee_id)),
         spreadsheet_cell(str(len(candidate.stations))),
         spreadsheet_cell(str(candidate.stations_marked)),
-        spreadsheet_cell(candidate.overall_rag or ""),
+        spreadsheet_cell(_cell_value(candidate.overall_rag)),
+        spreadsheet_cell(_cell_value(candidate.score)),
+        spreadsheet_cell(str(candidate.stations_passed)),
         *_decision_cells(candidate.decision),
     ]
+
+
+def _cell_value(value: object) -> str:
+    """A native rating or a score as a cell: "G", "7", "yes"/"no", "66.5", or empty for none."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    return str(value)
 
 
 def _decision_cells(decision: DecisionSummary | None) -> list[str]:

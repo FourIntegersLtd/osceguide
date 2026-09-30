@@ -107,7 +107,6 @@ async def _publish_rubric(
         structure=dict(rubric.get("structure") or {}),
         system_prompt=str(rubric.get("system_prompt") or ""),
         pacing=dict(rubric.get("pacing") or {}),
-        result_schema_override=rubric.get("result_schema_override"),
         marking_layout=dict(layout) if isinstance(layout, Mapping) else dict(_DEFAULT_MARKING_LAYOUT),
     )
     published = await rubrics.publish_version(session, None, created.id, 1, actor_id=None, now=now)

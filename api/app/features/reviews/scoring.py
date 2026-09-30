@@ -1,81 +1,46 @@
-"""Turns R/A/G ratings into the 0-100 scores a cohort is ranked on.
+"""Turns reviewers' ratings into the 0-100 scores a cohort is ranked on.
 
-A review's `field_values` is a flat map of `domain.skill.score` paths; a
-rating is one of R, A or G, and nothing in this platform writes a numeric
-score.
+A review's `field_values` is a flat map of paths ending in the rubric's rating
+field: `domain.competency.score` rates one competency, `domain.score` the
+whole domain (`competent` in place of `score` on a boolean rubric). A rating
+is whatever the sitting's rubric rates in: R/A/G, a number, a yes/no.
+
+The rule is the one institutions have always ranked on (oracle:
+`b2b-api/tests/test_session_cohort_scoring.py`): a domain is its competencies
+combined as one rating (`rubrics.scoring.combine_reviewers`: the majority,
+ties downward, for a scale), worth that rating's fraction of the best one out
+of 100; the station is the mean of its domains, equally weighted. With R/A/G
+that is G 100, A 66 and R 33, exactly as before.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
+from typing import cast
 
-from app.features.reviews.domain import RAG_VALUES, InvalidRag, normalize_rag
-
-# Oracle: `_RAG_SCORES`. Not evenly spaced, and deliberately so — an amber is
-# nearer a green than a red is to an amber.
-RAG_SCORES: Mapping[str, float] = {"G": 100.0, "A": 66.0, "R": 33.0}
-
-# Oracle: `_TIE_BREAK_ORDER`. Worst first: a domain two reviewers split on is
-# reported at the lower rating, because that is the one worth a conversation.
-TIE_BREAK_ORDER = ("R", "A", "G")
-
-SCORE_SUFFIX = ".score"
+from app.features.rubrics import service_scoring as scoring
 
 
-def score_for(rag: str) -> float:
-    """The 0–100 value of one rating. Raises on anything that is not a rating."""
-    return RAG_SCORES[normalize_rag(rag)]
-
-
-def majority_rag(letters: Sequence[str]) -> str | None:
-    """The plurality rating, resolving a tie downward (worst wins).
-
-    Plurality rather than mean: three greens and a red is a green domain with
-    a red skill in it, not an amber that describes neither.
-    """
-    counts = dict.fromkeys(RAG_VALUES, 0)
-    for letter in letters:
-        try:
-            counts[normalize_rag(letter)] += 1
-        except InvalidRag:
-            continue
-    if not any(counts.values()):
-        return None
-    most = max(counts.values())
-    tied = [rag for rag, count in counts.items() if count == most]
-    if len(tied) == 1:
-        return tied[0]
-    return next(rag for rag in TIE_BREAK_ORDER if rag in tied)
-
-
-def _score_path_parts(path: str) -> list[str] | None:
-    """The segments before `.score`, or None if this is not a rating path."""
-    if not isinstance(path, str) or not path.endswith(SCORE_SUFFIX):
-        return None
-    stem = path[: -len(SCORE_SUFFIX)].strip()
-    return [part for part in stem.split(".") if part] or None
-
-
-def domain_scores(field_values: Mapping[str, object]) -> dict[str, float]:
-    """One 0–100 score per domain, from the skill ratings inside it.
-
-    Skills within a domain are equally weighted through the majority; a
-    domain-level rating (`domain.score`, one segment) counts as a rating of
-    that domain like any other.
-    """
-    letters: dict[str, list[str]] = {}
-    for path, rating in field_values.items():
-        parts = _score_path_parts(path)
-        if parts is None or not isinstance(rating, str):
-            continue
-        letters.setdefault(parts[0], []).append(rating)
-
+def scores_by_domain(
+    structure: scoring.RubricStructure, ratings_by_domain: scoring.DomainRatings
+) -> dict[str, float]:
+    """One 0-100 score per domain: its ratings combined as one (`combine_reviewers`), as a percent."""
     scores: dict[str, float] = {}
-    for domain_id, ratings in letters.items():
-        majority = majority_rag(ratings)
-        if majority is not None:
-            scores[domain_id] = RAG_SCORES[majority]
+    for domain_id, ratings in ratings_by_domain.items():
+        percent = scoring.rating_percent(structure, scoring.combine_reviewers(structure, ratings))
+        if percent is not None:
+            scores[domain_id] = percent
     return scores
+
+
+def domain_scores(structure: scoring.RubricStructure, field_values: Mapping[str, object]) -> dict[str, float]:
+    """One 0–100 score per domain, from the ratings a review's paths hold.
+
+    Competencies within a domain are equally weighted through the combined
+    rating; a domain-level rating (`domain.score`, one segment) counts as a
+    rating of that domain like any other.
+    """
+    return scores_by_domain(structure, scoring.ratings_from_paths(structure, field_values))
 
 
 def station_score(scores: Mapping[str, float]) -> float | None:
@@ -88,32 +53,41 @@ def station_score(scores: Mapping[str, float]) -> float | None:
     return sum(scores.values()) / len(scores)
 
 
-def apply_review_overrides(marked: Mapping[str, object], reviewed: Mapping[str, object]) -> dict[str, float]:
-    """The scores after a GP lead has had their say.
+def effective_ratings(
+    structure: scoring.RubricStructure, marked: Mapping[str, object], reviewed: Mapping[str, object]
+) -> dict[str, list[scoring.RatingValue]]:
+    """The ratings left standing once a GP lead has had their say, grouped by domain.
 
-    Two kinds of override: a **skill** rating (`domain.skill.score`) is laid
-    over the marking and the domain's majority is recomputed, so one changed
-    skill may not move the domain at all; a **domain** rating (`domain.score`)
-    replaces the domain outright.
+    Two kinds of override: a **competency** rating (`domain.skill.score`) is
+    laid over the marking, so one changed skill may not move the domain at
+    all; a **domain** rating (`domain.score`) replaces the domain outright and
+    stands for every competency in it, which is what `passed` then counts.
     """
     overlaid: dict[str, object] = dict(marked)
-    domain_level: dict[str, str] = {}
+    domain_level: dict[str, object] = {}
     for path, rating in reviewed.items():
-        parts = _score_path_parts(path)
-        if parts is None or not isinstance(rating, str):
+        parts = scoring.rating_path_parts(structure, path)
+        if parts is None:
             continue
         if len(parts) == 1:
             domain_level[parts[0]] = rating
         else:
             overlaid[path] = rating
 
-    effective = domain_scores(overlaid)
-    for domain_id, rag in domain_level.items():
-        try:
-            effective[domain_id] = score_for(rag)
-        except (InvalidRag, KeyError):
-            continue
+    effective = scoring.ratings_from_paths(structure, overlaid)
+    competency_counts = {section.id: len(section.competencies) for section in structure.domains}
+    for domain_id, rating in domain_level.items():
+        if scoring.is_valid_rating(structure.rating, rating):
+            standing = cast(scoring.RatingValue, rating)
+            effective[domain_id] = [standing] * max(competency_counts.get(domain_id, 0), 1)
     return effective
+
+
+def apply_review_overrides(
+    structure: scoring.RubricStructure, marked: Mapping[str, object], reviewed: Mapping[str, object]
+) -> dict[str, float]:
+    """The domain scores after a GP lead has had their say (see `effective_ratings`)."""
+    return scores_by_domain(structure, effective_ratings(structure, marked, reviewed))
 
 
 def review_priority(*, completion_rate: float, assessment_score: float | None) -> str:

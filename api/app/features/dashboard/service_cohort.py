@@ -39,7 +39,7 @@ async def build_cohort_summary(
         raise NotAnExamSitting()
 
     slots = await sittings.slots_for_sitting(session, org_id, sitting_id)
-    scores = await reviews.scores_for_slots(session, org_id, [slot.id for slot in slots])
+    outcomes = await reviews.outcomes_for_slots(session, org_id, [slot.id for slot in slots])
 
     user_ids = [slot.trainee_id for slot in slots]
     people = await identity.user_refs_by_ids(session, user_ids)
@@ -57,9 +57,10 @@ async def build_cohort_summary(
             if slot.trainee_id == user_id
             and (slot.exam_completed_at is not None or slot.status in COMPLETED_SLOT_STATUSES)
         ]
-        marked = [scores[slot_id] for slot_id in slot_ids if scores.get(slot_id) is not None]
+        candidate_outcomes = [outcomes[slot_id] for slot_id in slot_ids if slot_id in outcomes]
+        marked = [outcome.score for outcome in candidate_outcomes if outcome.score is not None]
         completion = len(finished) / len(slot_ids) if slot_ids else 0.0
-        assessment = sum(marked) / len(marked) if marked else None  # type: ignore[arg-type]
+        assessment = sum(marked) / len(marked) if marked else None
 
         ref = people.get(user_id)
         trainee = trainees.get(user_id)
@@ -76,6 +77,7 @@ async def build_cohort_summary(
                 stations_completed=len(finished),
                 completion_rate=completion,
                 assessment_score=assessment,
+                stations_passed=sum(1 for outcome in candidate_outcomes if outcome.passed is True),
                 review_priority=reviews.review_priority(
                     completion_rate=completion, assessment_score=assessment
                 ),

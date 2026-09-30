@@ -77,6 +77,23 @@ async def chunk_count(session: AsyncSession, attempt_id: uuid.UUID) -> int:
     return int((await session.execute(stmt)).scalar_one())
 
 
+async def chunk_counts_for(session: AsyncSession, attempt_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, int]:
+    """How many turns have been stored for each of a page of attempts, in one query.
+
+    The batched twin of `chunk_count`: the trial-attempt picker (rubrics plan
+    §8, R-6) shows a turn count per row, and asking `chunk_count` once per row
+    would be the same N+1 `attempt_ids_with_results` exists to avoid.
+    """
+    if not attempt_ids:
+        return {}
+    stmt = (
+        select(TranscriptMessage.attempt_id, func.count())
+        .where(TranscriptMessage.attempt_id.in_(list(attempt_ids)))
+        .group_by(TranscriptMessage.attempt_id)
+    )
+    return {attempt_id: count for attempt_id, count in (await session.execute(stmt)).all()}
+
+
 async def mark_transcript_complete(
     session: AsyncSession, attempt_id: uuid.UUID, *, runtime_label: str | None, at: datetime
 ) -> Transcript:
