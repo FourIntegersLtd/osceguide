@@ -20,5 +20,7 @@
     {"kind": "practised", "title": "Low mood after redundancy", "days_ago": 9},
     {"kind": "listened", "title": "Safety netting, episode three", "days_ago": 12}
   ],
-  "tool_names": {"recall": "recall_history", "search": "search_material", "suggest": "suggest_material", "remember": "remember"}
+  "learner": {"name": "Amara Okafor", "exam": "MRCGP SCA"},
+  "screen": {"page": "A to Z", "navigation": [{"label": "Dashboard", "path": "/app/me/dashboard"}, {"label": "AI Practice", "path": "/app/me/stations"}, {"label": "A to Z", "path": "/app/me/summary"}, {"label": "Slides", "path": "/app/me/slides"}]},
+  "tool_names": {"recall": "recall_history", "search": "search_material", "suggest": "suggest_material", "remember": "remember", "mark_done": "mark_done"}
 }

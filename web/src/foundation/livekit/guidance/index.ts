@@ -57,6 +57,8 @@ export type {
 export { UiGuidanceOverlay } from "./UiGuidanceOverlay";
 export { GuidanceProgressPanel } from "./GuidanceProgressPanel";
 export { AssistantCards, AssistantCardSlot } from "./AssistantCards";
+export type { CardLink, CardLinkFor } from "./AssistantCards";
+export type { CardRef } from "./contracts";
 export {
   UI_GUIDANCE_IGNORE_ATTRIBUTE,
   uiGuidanceIgnoreProps,

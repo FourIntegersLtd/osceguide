@@ -107,15 +107,27 @@ async def test_an_exam_the_learner_does_not_hold_is_filtered_out(db_session: Asy
     assert [row.text for row, _ in rows] == ["anxiety"]
 
 
-async def test_holding_no_exam_finds_nothing(db_session: AsyncSession) -> None:
+async def test_holding_no_exam_finds_only_the_shared_help(db_session: AsyncSession) -> None:
+    """No exams reaches the help every exam shares, never paid material or another exam's help."""
     exam = await ensure_exam(db_session, "sca")
     assert exam is not None
     await chunk_in(db_session, exam_id=exam.id, texts=[("chest pain", CHEST_PAIN)])
-
-    assert (
-        await repository_index.nearest(db_session, embedding=CHEST_PAIN, exam_ids=[], corpus=None, limit=5)
-        == []
+    await chunk_in(
+        db_session, exam_id=None, corpus="help", source_id="first-steps", texts=[("start", CHEST_PAIN)]
     )
+    await chunk_in(
+        db_session, exam_id=exam.id, corpus="help", source_id="practice@sca", texts=[("peers", CHEST_PAIN)]
+    )
+
+    nobody = await repository_index.nearest(
+        db_session, embedding=CHEST_PAIN, exam_ids=[], corpus=None, limit=5
+    )
+    holder = await repository_index.nearest(
+        db_session, embedding=CHEST_PAIN, exam_ids=[exam.id], corpus=None, limit=5
+    )
+
+    assert [row.source_id for row, _ in nobody] == ["first-steps"]
+    assert sorted(row.source_id for row, _ in holder) == ["first-steps", "practice@sca", "s1"]
 
 
 async def test_a_corpus_can_be_narrowed(db_session: AsyncSession) -> None:

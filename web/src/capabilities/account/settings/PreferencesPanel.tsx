@@ -17,7 +17,7 @@ import {
 } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
 import { useAsync } from "@/foundation/hooks";
-import { useCurrentExam } from "@/foundation/session";
+import { useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { OnboardingFlow, rememberOnboardingSeen } from "@/capabilities/onboarding";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
@@ -63,7 +63,8 @@ export default function PreferencesPanel() {
 
 function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => void }) {
   const { surface } = useSurface();
-  const { settings } = useCurrentExam();
+  const { settings, code: examCode } = useCurrentExam();
+  const { session } = useSession();
   // Practice-only rows: peer practice and Athena's tour belong to a person's
   // own practice, not to an institution's workspace. The waiting-colleague
   // email is offered only where `settings.peer_waiting_email` says so.
@@ -99,7 +100,7 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
   };
 
   const closeOnboarding = () => {
-    rememberOnboardingSeen();
+    if (examCode && session?.user.id) rememberOnboardingSeen(examCode, session.user.id);
     setShowOnboarding(false);
   };
 
@@ -215,7 +216,7 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
 
       {showOnboarding ? (
         <Modal width="min(95vw, 560px)" height="fit-content" title="Athena onboarding" onClose={closeOnboarding}>
-          <OnboardingFlow onComplete={closeOnboarding} onSkip={closeOnboarding} />
+          <OnboardingFlow onComplete={closeOnboarding} />
         </Modal>
       ) : null}
     </>

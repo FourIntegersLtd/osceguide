@@ -131,7 +131,9 @@ class MaterialChunk(Base, UUIDPrimaryKey):
 
     __tablename__ = "material_chunks"
     __table_args__ = (
-        CheckConstraint("corpus IN ('station', 'summary', 'slide_deck', 'podcast', 'blog')", name="corpus"),
+        CheckConstraint(
+            "corpus IN ('station', 'summary', 'slide_deck', 'podcast', 'blog', 'help')", name="corpus"
+        ),
         # What `upsert` writes against: one row per passage of a source, so
         # re-indexing an edited document replaces rather than duplicates.
         UniqueConstraint("corpus", "source_id", "chunk_index", name="uq_material_chunks_passage"),

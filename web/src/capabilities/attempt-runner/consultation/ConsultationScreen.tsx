@@ -13,15 +13,19 @@ import {
 } from "@/foundation/ui";
 
 /**
- * The consultation, as two columns: the room on the left, the reading on the
- * right.
+ * The consultation as one card of three sections: the room on the left, the
+ * reading in the middle, and live marking ("What you've covered") on the
+ * right, each separated by a hairline divider rather than sitting in its own
+ * card.
  *
- * Two fifths and three fifths, which is the retiring client's split and the
- * reason it works — the left panel holds a microphone, a name and one button,
- * and the right holds everything the candidate is actually reading while they
- * talk. On a narrow screen they stack and the left one sticks to the top
- * during an attempt, so the End button stays reachable while the brief
- * scrolls.
+ * The room holds a microphone, a name and one button; the middle holds
+ * everything the candidate is actually reading while they talk; the right
+ * column shows coverage landing as it is earned, open by default with its own
+ * close button. Without a coverage column (review, where there is no live
+ * room) the card falls back to the two-fifths / three-fifths split the
+ * retiring client used. On a narrow screen the sections stack, dividers turn
+ * horizontal, and the room sticks to the top during an attempt so the End
+ * button stays reachable while the brief scrolls.
  *
  * The aside is the caller's: the brief during an attempt, the transcript
  * afterwards. This component owns the frame and nothing else, which is what
@@ -49,12 +53,13 @@ export function ConsultationScreen({
 }) {
   return (
     <div className="mb-8 lg:h-[75vh]">
-      <div className="flex h-full flex-col gap-6 lg:flex-row lg:gap-8">
-        <B2CPanelCard
+      <B2CPanelCard className="mt-0 flex w-full flex-col lg:h-[60vh] lg:min-h-[420px] lg:flex-row">
+        <section
           className={cn(
-            "mt-0 flex min-h-[min(420px,58vh)] w-full flex-col lg:static lg:h-[60vh] lg:min-h-[420px] lg:w-2/5",
+            "flex min-h-[min(420px,58vh)] w-full flex-col border-b border-b2c-border bg-osce-surface lg:min-h-0 lg:border-b-0 lg:border-r",
+            coverage ? "lg:w-[30%]" : "lg:w-2/5",
             sticky
-              ? "sticky top-0 z-10 max-h-[min(520px,68vh)] lg:max-h-none"
+              ? "sticky top-0 z-10 max-h-[min(520px,68vh)] lg:static lg:max-h-none"
               : "max-h-none",
           )}
         >
@@ -62,15 +67,17 @@ export function ConsultationScreen({
             <B2CPanelCardHeaderIcon icon={HiOutlineMicrophone} tone="violet" />
             Consultation
           </B2CPanelCardHeader>
-          <B2CPanelCardBody className="flex min-h-[min(340px,48vh)] flex-1 flex-col justify-between gap-4 space-y-0 lg:min-h-0 lg:justify-end lg:gap-0">
+          <B2CPanelCardBody className="flex min-h-[min(340px,48vh)] flex-1 flex-col justify-between gap-4 space-y-0 overflow-y-auto lg:min-h-0 lg:justify-end lg:gap-0">
             {panel}
           </B2CPanelCardBody>
-        </B2CPanelCard>
+        </section>
 
-        <B2CPanelCard
+        <section
           className={cn(
-            "mt-0 flex w-full flex-col overflow-hidden lg:h-[60vh] lg:min-h-[420px] lg:w-3/5",
-            sticky && "h-[60vh] min-h-[420px]",
+            "flex min-h-[320px] w-full flex-col overflow-hidden lg:min-h-0",
+            coverage
+              ? "border-b border-b2c-border lg:w-[42%] lg:border-b-0 lg:border-r"
+              : "lg:w-3/5",
           )}
         >
           <B2CPanelCardHeader>
@@ -78,9 +85,14 @@ export function ConsultationScreen({
             {asideTitle}
           </B2CPanelCardHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">{aside}</div>
-          {coverage}
-        </B2CPanelCard>
-      </div>
+        </section>
+
+        {coverage && (
+          <section className="flex w-full flex-col overflow-hidden lg:min-h-0 lg:w-[28%]">
+            {coverage}
+          </section>
+        )}
+      </B2CPanelCard>
 
       {showTerms && (
         <div className="mb-12 mt-6 flex items-start justify-center gap-2 px-2 lg:items-center">

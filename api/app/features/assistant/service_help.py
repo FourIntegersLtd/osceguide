@@ -32,6 +32,11 @@ def _catalogue() -> tuple[list[HelpCategory], list[HelpArticle]]:
     return categories, articles
 
 
+def all_articles() -> list[HelpArticle]:
+    """Every published article, for every exam, for the tutor's material index."""
+    return list(_catalogue()[1])
+
+
 def list_articles(
     exam_code: str, category: str | None = None, search: str | None = None
 ) -> list[HelpArticle]:

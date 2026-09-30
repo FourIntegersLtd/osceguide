@@ -8,11 +8,16 @@ forbids the tutor from saying anything the brief does not carry.
 Read through other slices' services, never their tables: the consultations come
 from `attempts`, the station titles from `stations`, the exam codes from
 `catalog`, and only the notes, events and debrief summaries are ours.
+
+Two blocks are not memory: `learner` (the name and exam on the account) and
+`screen` (the page the browser says it is on, and the menu it can open). The
+engine renders them apart from what the tutor remembers.
 """
 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -20,6 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import service_feedback as attempts_feedback
 from app.features.attempts import service_reads as attempts
+from app.features.catalog import service as catalog
+from app.features.identity import service_platform as identity
 from app.features.rubrics import service_scoring as rubric_scoring
 from app.features.stations import service_reads as stations
 from app.features.tutor_memory import domain, repository
@@ -32,12 +39,29 @@ MAX_FACTS = 5
 MAX_ACTIVITY = 8
 
 
-async def compose(session: AsyncSession, *, user_id: uuid.UUID, now: datetime) -> dict[str, Any]:
-    """Everything the tutor remembers about this person, in the engine's shape."""
+async def compose(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    now: datetime,
+    client: Mapping[str, Any] | None = None,
+    topic: Mapping[str, str] | None = None,
+) -> dict[str, Any]:
+    """Everything the tutor remembers about this person, in the engine's shape.
+
+    `client` is the already-validated client context the browser sent
+    (`assistant.content.parse_client_context`); without it there is no
+    `screen` block and the tutor simply does not know which page is open.
+    `topic` is what they opened the conversation to talk about
+    (`assistant.content.parse_topic`), and is empty for an ordinary call.
+    """
     refs = await attempts.recent_for_user(session, user_id, limit=RECENT_ATTEMPTS)
     titles = await _titles(session, refs)
 
     return {
+        "learner": await _learner(session, user_id),
+        "screen": _screen(client),
+        "topic": {"title": topic["title"], "kind": topic.get("kind", "")} if topic else {},
         "consultations": await _consultations(session, user_id, refs, titles, now=now),
         "debriefs": await _debriefs(session, user_id, refs, titles, now=now),
         "last_conversation": await _last_conversation(session, user_id, now=now),
@@ -45,6 +69,47 @@ async def compose(session: AsyncSession, *, user_id: uuid.UUID, now: datetime) -
         "activity": await _activity(session, user_id, now=now),
         "tool_names": dict(TOOL_ROLES),
     }
+
+
+async def _learner(session: AsyncSession, user_id: uuid.UUID) -> dict[str, str]:
+    """The name and exam on the account, never the browser's claim about them.
+
+    The exam is said by its name ("MRCGP SCA"), falling back to the code when
+    the catalogue has no such exam, and left out when the account has none.
+    """
+    user = await identity.user_by_id(session, user_id)
+    if user is None:
+        return {}
+    exam = await catalog.exam_read_by_code(session, user.exam_code)
+    exam_said = exam.name if exam is not None else (user.exam_code or "").upper()
+    # An account created from an email alone carries the address as its name,
+    # and "Hello, amara@example.com" is worse than no name at all.
+    name = (user.name or "").strip()
+    return {"name": "" if "@" in name else name, "exam": exam_said}
+
+
+def _screen(client: Mapping[str, Any] | None) -> dict[str, Any]:
+    """The page they are on and the menu entries they can open, from the client context.
+
+    The page is the menu entry whose path is the longest prefix of the route,
+    so `/app/me/summary/asthma` reads as the "A to Z" page. A route no entry
+    matches leaves the page out rather than reading a raw path aloud.
+    """
+    if not client:
+        return {}
+    route = str(client.get("route") or "")
+    navigation = [
+        {"label": str(entry.get("label") or ""), "path": str(entry.get("path") or "")}
+        for entry in client.get("navigation") or []
+        if isinstance(entry, Mapping) and entry.get("label")
+    ]
+    matches = [
+        entry
+        for entry in navigation
+        if entry["path"] and (route == entry["path"] or route.startswith(entry["path"].rstrip("/") + "/"))
+    ]
+    current = max(matches, key=lambda entry: len(entry["path"]), default=None)
+    return {"page": current["label"] if current else "", "navigation": navigation}
 
 
 async def _titles(session: AsyncSession, refs: list[attempts.AttemptRef]) -> dict[uuid.UUID, str]:

@@ -27,6 +27,7 @@ import { listExams, readLibraryStation } from "@/capabilities/stations/api";
 import { StationComments } from "@/capabilities/community";
 import { StationNotFound } from "@/capabilities/stations/StationNotFound";
 import { libraryHref, practiseHref } from "@/capabilities/stations/routes";
+import { useRecordView } from "@/capabilities/account/useRecordView";
 
 type DetailTab = "brief" | "discussion";
 
@@ -48,6 +49,18 @@ export function StationDetail({ stationId }: { stationId: string }) {
   const station = useAsync((signal) => readLibraryStation(stationId, signal), [stationId]);
   const exams = useAsync(async (signal) => (await listExams(signal)).items, []);
   const exam = exams.data?.find((item) => item.code === station.data?.exam_code) ?? null;
+  // By version, the id the tutor's notes and its suggestions use for a station.
+  useRecordView(
+    station.data
+      ? {
+          kind: "viewed",
+          ref_kind: "station",
+          ref_id: station.data.version_id,
+          title: station.data.title,
+          exam_code: station.data.exam_code,
+        }
+      : null,
+  );
 
   return (
     <div className="w-full">

@@ -15,7 +15,7 @@ import ChooseExam from "@/capabilities/account/ChooseExam";
 import { LazyB2CHelpDock } from "@/capabilities/help/LazyB2CHelpDock";
 import { PeerPracticeProvider } from "@/capabilities/peer-practice/PeerPracticeProvider";
 import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
-import type { HelpNavItem } from "@/capabilities/help/B2CHelpDock";
+import type { HelpNavItem } from "@/capabilities/help/api";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
 import { TrainSidebar } from "@/surfaces/train/TrainSidebar";
 import type { Workspace } from "@/foundation/routing";

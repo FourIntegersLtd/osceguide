@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   HiOutlineCheckCircle,
   HiOutlineEllipsisHorizontalCircle,
-  HiOutlineEyeSlash,
 } from "react-icons/hi2";
 import type { CoverageItem, CoverageUpdate } from "./api";
 
@@ -13,8 +12,7 @@ interface LiveCoverageFeedProps {
   coverage: CoverageUpdate | null;
   /** Live once the room connects. An empty feed means different things either side of that. */
   isLive?: boolean;
-  onHide?: () => void;
-  /** Fewer rows on the sticky mobile card, where vertical space is scarce. */
+  /** Fewer rows where vertical space is scarce. */
   maxVisible?: number;
 }
 
@@ -47,7 +45,6 @@ const STATE_STYLES: Record<
 const LiveCoverageFeed: React.FC<LiveCoverageFeedProps> = ({
   coverage,
   isLive = false,
-  onHide,
   maxVisible = 4,
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -73,28 +70,6 @@ const LiveCoverageFeed: React.FC<LiveCoverageFeedProps> = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div className="flex shrink-0 items-center justify-between gap-2">
-        <p className="text-osce-meta font-medium uppercase tracking-wide text-b2c-text-muted">
-          What you&apos;ve covered
-        </p>
-        <div className="flex items-center gap-2">
-          {items.length > 0 && (
-            <span className="text-osce-meta tabular-nums text-b2c-text-muted">
-              {items.length}
-            </span>
-          )}
-          {onHide && (
-            <button
-              type="button"
-              onClick={onHide}
-              aria-label="Hide live marking"
-              className="rounded-osce-sm p-1 text-b2c-text-muted transition-colors hover:text-osce-ink-900 focus:outline-none focus:ring-2 focus:ring-osce-accent"
-            >
-              <HiOutlineEyeSlash className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
 
       <div
         ref={listRef}

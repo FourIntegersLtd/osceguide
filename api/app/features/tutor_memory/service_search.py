@@ -37,7 +37,8 @@ log = get_logger(__name__)
 # Three is what a spoken answer can carry. A fourth passage is not read out --
 # it lengthens the prompt and gives the model more to blend into one
 # undifferentiated paragraph with three citations after it.
-SEARCH_LIMIT = 3
+# Enough for a conversation that stays on one subject, not just a quick answer.
+SEARCH_LIMIT = 5
 
 NOT_CONFIGURED = (
     "The material search is not available in this deployment. Say you cannot look that up "
@@ -52,6 +53,10 @@ NOTHING_IN_MATERIAL = (
 # The card envelope the frontend parses. Bumped with the shape, never with the
 # contents: `frontend/src/shared/livekit-ui-guidance/contracts.ts` validates it.
 CARD_SCHEMA_VERSION = 2
+
+# The media kinds whose citations open by slug. Spelled here rather than read
+# from `service_material`, which imports this module's neighbours.
+MEDIA_CORPORA = ("summary", "slide_deck", "podcast", "blog")
 
 
 async def answer_question(
@@ -72,11 +77,9 @@ async def answer_question(
         return ToolResult(result=NOT_CONFIGURED)
 
     grants = await entitlements.list_for_user(session, user_id, now=now)
+    # Holding nothing still searches: the help articles every exam shares need
+    # no entitlement, so an institution admin can ask how the app works.
     exam_ids = [str(exam_id) for exam_id in domain.entitled_exam_ids(grants)]
-    if not exam_ids:
-        # Holding nothing is not an error and not "nothing found": there is
-        # simply no material this person may be read out of.
-        return ToolResult(result=NOTHING_IN_MATERIAL)
 
     try:
         passages = await index.search(query=query, exam_ids=exam_ids, corpus=corpus, limit=SEARCH_LIMIT)
@@ -90,28 +93,70 @@ async def answer_question(
     if not passages:
         return ToolResult(result=NOTHING_IN_MATERIAL)
 
-    return ToolResult(result=_readable(passages), display=_citations(passages))
+    slugs = await _slugs(session, passages)
+    return ToolResult(result=_readable(passages, slugs), display=_citations(passages, slugs))
 
 
-def _readable(passages: Sequence[Passage]) -> str:
+def _readable(passages: Sequence[Passage], slugs: dict[str, str]) -> str:
     """The passages, numbered, with the instruction to cite them as it speaks.
 
     Numbered markers rather than titles inline, since a title read aloud mid-sentence is a
     mouthful; the card carries the titles for the screen instead.
     """
-    body = "\n\n".join(f"[{number}] {passage.text}" for number, passage in enumerate(passages, start=1))
+    body = "\n\n".join(
+        f"[{number}] (ref {slugs.get(passage.source_id) or passage.source_id}) {passage.text}"
+        for number, passage in enumerate(passages, start=1)
+    )
     return (
         "Here is what the material says. Answer from this and nothing else, in two or three "
         "spoken sentences. Refer to a source as 'the first one' or by its title, never by its "
-        f"number, and tell them the sources are on their screen.\n\n{body}"
+        "number, and tell them the sources are on their screen. Never say a ref aloud; it is "
+        f"only for putting one on their screen with a suggestion.\n\n{body}"
     )
 
 
-def _citations(passages: Sequence[Passage]) -> dict[str, Any]:
+def _source_id(passage: Passage) -> str:
+    """The id a citation carries: a help article's slug without its exam suffix."""
+    if passage.corpus == domain.HELP_CORPUS:
+        return help_slug(passage.source_id)
+    return passage.source_id
+
+
+def help_slug(source_id: str) -> str:
+    """The article slug from a help source id (`<slug>` or `<slug>@<exam code>`)."""
+    return source_id.split("@", 1)[0]
+
+
+async def _slugs(session: AsyncSession, passages: Sequence[Passage]) -> dict[str, str]:
+    """The slug each cited source opens by: media items from `media`, help from its id.
+
+    At most `SEARCH_LIMIT` reads, so one per item rather than a bulk call. An
+    item gone since the last re-index keeps its citation, without a link.
+    """
+    from app.features.media import errors as media_errors  # noqa: PLC0415 - avoids an import cycle
+    from app.features.media import service as media  # noqa: PLC0415
+
+    slugs: dict[str, str] = {}
+    for passage in passages:
+        if passage.corpus == domain.HELP_CORPUS:
+            slugs[passage.source_id] = help_slug(passage.source_id)
+        elif passage.corpus in MEDIA_CORPORA and passage.source_id not in slugs:
+            try:
+                media_item = await media.read_by_id(
+                    session, uuid.UUID(passage.source_id), viewer_is_admin=True
+                )
+            except (ValueError, media_errors.ItemNotFound):
+                continue
+            slugs[passage.source_id] = media_item.slug
+    return slugs
+
+
+def _citations(passages: Sequence[Passage], slugs: dict[str, str]) -> dict[str, Any]:
     """What goes on the screen beside the spoken answer.
 
     A ref per passage in the same spelling `suggest_material` uses, since the frontend
-    resolves both through one route resolver.
+    resolves both through one route resolver. A help article and a media item carry the
+    slug their page opens by; a station opens by its id.
     """
     return {
         "type": "assistant_card",
@@ -122,7 +167,11 @@ def _citations(passages: Sequence[Passage]) -> dict[str, Any]:
                 "n": number,
                 "title": passage.title,
                 "section": passage.section,
-                "ref": {"kind": passage.corpus, "id": passage.source_id, "slug": None},
+                "ref": {
+                    "kind": passage.corpus,
+                    "id": _source_id(passage),
+                    "slug": slugs.get(passage.source_id),
+                },
             }
             for number, passage in enumerate(passages, start=1)
         ],

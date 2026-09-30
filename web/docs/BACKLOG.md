@@ -119,6 +119,8 @@ per version, Microsoft Entra SSO, and a gated staging-to-production promotion.
 | B-3 | Referral discounts are built (checkout swaps to the `<plan>_referral` row, the webhook credits £2.50 / £5), but no environment has the 10%-off Stripe prices or `_referral` plan rows yet | Create them per exam after the code deploys; before that, a code at checkout is refused `referral_discount_unavailable` |
 | R-2 | Sign-off requires an outcome and a rationale; the proposal also wanted full "readiness" for a pass or fail, and no readiness concept exists | Decide whether readiness is a real gate or drop it from the invariant |
 | T-2 | A templated station contributes nothing to the tutor's material index: its blocks are all patient-private or expected answers | Needs a template block role that means "reading material" before any code |
+| T-5 | Help articles reach Athena's index only on the nightly reindex (or the admin route), so a help-text deploy is stale until 03:17 | Reindex the help corpus on deploy, or trigger the admin route from the deploy workflow |
+| T-6 | Athena everywhere is unproven in a browser and on staging | After the monorepo deploy (migration `v3w4x5y6z7a8` rides with it), run the admin reindex, then walk the plan's Stage E (consumer and institution admin). Also walk topic mode: "Discuss with Athena" on a summary, a deck, an episode and under a typed knowledge answer opens the call on that subject, she answers from the material, and says so when it has nothing |
 
 ## Not gaps: do not re-report
 

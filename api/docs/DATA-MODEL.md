@@ -1406,8 +1406,10 @@ What a debrief concluded and what was agreed about it.
 | `created_at` | `timestamptz not null default now()` | |
 
 ### `material_chunks`
-The study material cut into passages, with the vector each is retrieved by. Derived
-data entirely: every row is rebuilt from `station_versions` and `media_items` by the
+The study material and the app's help articles cut into passages, with the vector each is
+retrieved by. Derived data entirely: every row is rebuilt from `station_versions`,
+`media_items` and `assistant/help_content.json` (corpus `help`; `exam_id` is null for an
+article every exam shares) by the
 nightly `reindex_material` job, which is why dropping this table loses nothing but
 the time to run it again. Owned by `tutor_memory` rather than by the slices the text
 comes from — a rebuildable index belongs to the reader that needs it, not to the

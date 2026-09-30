@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ports import VoiceTokens
 from app.core.settings import Settings
 from app.features.assistant import domain, errors, repository, service_content
+from app.features.assistant.content import ClientContextError, parse_client_context, parse_topic
 from app.features.assistant.doctor_prompt import consulting_doctor_instructions
 from app.features.assistant.models import AssistantSession
 from app.features.assistant.schemas import RoomGrant, SessionRead
@@ -100,7 +101,12 @@ async def start_session(
     # Asked before the placeholder is used, not instead of it: a slice above
     # this one renders the kinds it knows about and answers `None` for the rest.
     rendered = await service_session.render_dashboard_session(
-        session, session_type=worker_type, user_id=user_id, now=now
+        session,
+        session_type=worker_type,
+        user_id=user_id,
+        now=now,
+        client=_client_context(extras),
+        topic=_topic(extras),
     )
     instructions = str(rendered["instructions"]) if rendered else ""
     greeting = str(rendered["greeting"]) if rendered and rendered.get("greeting") else None
@@ -227,3 +233,27 @@ def _read(assistant_session: AssistantSession) -> SessionRead:
         room_name=assistant_session.room_name,
         created_at=assistant_session.created_at,
     )
+
+
+def _client_context(extras: dict[str, Any]) -> dict[str, Any] | None:
+    """The browser's page and menu, validated; a malformed one is dropped, not fatal.
+
+    The tutor is worse without knowing the screen, but a session that refuses
+    to start over a bad menu entry is no session at all.
+    """
+    try:
+        return parse_client_context(extras.get("client"))
+    except ClientContextError:
+        return None
+
+
+def _topic(extras: dict[str, Any]) -> dict[str, str] | None:
+    """What the person opened this conversation to talk about, or `None`.
+
+    A malformed topic is dropped like a malformed client block: the
+    conversation still starts, it just opens the usual way.
+    """
+    try:
+        return parse_topic(extras.get("topic"))
+    except ClientContextError:
+        return None

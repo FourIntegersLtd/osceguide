@@ -7,6 +7,7 @@ import { bodyMarkdown, contentUpdatedAt, type MediaItem } from "@/capabilities/m
 import { Prose } from "@/capabilities/media/Prose";
 import { formatPublished, leadsWithHeading, readMinutes } from "@/capabilities/media/support/text";
 import { STUDY_KIND_LABEL, studyListPath } from "@/capabilities/media/studyPaths";
+import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 
 /**
  * An article.
@@ -64,6 +65,8 @@ export function ArticleView({
               ) : null}
             </div>
           ) : null}
+
+          <DiscussWithAthena className="mt-5" topic={{ title: item.title, kind: "blog", slug: item.slug }} />
         </header>
 
         <div className="mt-8">

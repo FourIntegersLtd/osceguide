@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { HiOutlineArrowLeft, HiOutlineArrowRight } from "react-icons/hi2";
 import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalSection, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { AgentTile, VoiceRoom } from "@/foundation/livekit";
+import { useSession } from "@/foundation/session";
+import { AgentTile, MicrophoneCheck, VoiceRoom } from "@/foundation/livekit";
 import type { OnboardingScene } from "@/capabilities/onboarding/api";
 import { useOnboardingVoice } from "@/capabilities/onboarding/useOnboardingVoice";
 
@@ -25,14 +26,9 @@ type Step = "meet" | "demo" | "invitation";
  * does not navigate, because where "start practising" goes is the surface's
  * business and a capability may not know the arm it is mounted on.
  */
-export function OnboardingFlow({
-  onComplete,
-  onSkip,
-}: {
-  onComplete: () => void;
-  onSkip?: () => void;
-}) {
+export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const voice = useOnboardingVoice();
+  const { session } = useSession();
   const [step, setStep] = useState<Step>("meet");
   const [sceneIndex, setSceneIndex] = useState(0);
   const scene: OnboardingScene | undefined = voice.scenes[sceneIndex];
@@ -62,6 +58,7 @@ export function OnboardingFlow({
       {step === "meet" && (
         <MeetAthena
           assistantName={voice.assistantName}
+          userName={session?.user.name ?? ""}
           connecting={voice.starting}
           onNext={() => setStep("demo")}
         />
@@ -78,7 +75,7 @@ export function OnboardingFlow({
         <div className={`${b2cCard} ${b2cCardPadding} space-y-4 text-center`}>
           <p className="text-sm text-ink-muted">
             {voice.scenesError
-              ? "We couldn't load the demo right now."
+              ? "We couldn't load the demo right now. Please try again."
               : "The demo is not available for your exam yet."}
           </p>
           <Button onClick={() => setStep("invitation")}>
@@ -104,7 +101,7 @@ export function OnboardingFlow({
         <div className={`${b2cCard} ${b2cCardPadding} space-y-4 text-center`}>
           <AthenaIdentity
             title={voice.assistantName}
-            description="You have seen how a consultation is marked. Ready to have a go, and get feedback on your own?"
+            description="You've seen how Athena analyzes a consultation. Ready to start practicing and get your own personalized feedback?"
           />
           <Button onClick={finish}>Start my first consultation</Button>
         </div>
@@ -127,30 +124,18 @@ export function OnboardingFlow({
         </VoiceRoom>
       )}
 
-      {onSkip && step !== "invitation" && (
-        <div className="text-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              voice.leave();
-              onSkip();
-            }}
-          >
-            Skip the introduction
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
 
 function MeetAthena({
   assistantName,
+  userName,
   connecting,
   onNext,
 }: {
   assistantName: string;
+  userName: string;
   connecting: boolean;
   onNext: () => void;
 }) {
@@ -158,8 +143,9 @@ function MeetAthena({
     <div className={`${b2cCard} ${b2cCardPadding} space-y-4 text-center`}>
       <AthenaIdentity
         title={assistantName}
-        description={`Listen to ${assistantName} introduce herself, then carry on when you are ready.`}
+        description={`Listen to ${assistantName} introduce herself${userName ? `, ${userName}` : ""}, then continue when you are ready.`}
       />
+      <MicrophoneCheck variant="plain" className="text-left" />
       <Button onClick={onNext} isLoading={connecting}>
         Show me how it works <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
       </Button>
@@ -185,7 +171,7 @@ function InteractiveDemo({
       <header className="space-y-1 text-center">
         <h2 className="font-semibold text-ink">See Athena in action</h2>
         <p className="text-sm text-ink-muted">
-          Answer the patient out loud, and Athena will tell you what she made of it.
+          Respond to the patient out loud, and Athena will give instant feedback.
         </p>
       </header>
       <ModalSection title="Patient">

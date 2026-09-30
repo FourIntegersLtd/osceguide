@@ -8,6 +8,7 @@ import MarkdownRenderer from "@/foundation/ui/MarkdownRenderer";
 import mdStyles from "@/foundation/ui/markdown.module.css";
 import { errorMessage } from "@/foundation/hooks";
 import { askKnowledge } from "./api";
+import { DiscussWithAthena } from "./DiscussWithAthena";
 const helpPanelFooter = "shrink-0 border-t border-osce-border-light bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4";
 
 export function KnowledgeBaseChat({
@@ -55,6 +56,11 @@ export function KnowledgeBaseChat({
       setLoading(false);
     }
   };
+
+  // The question a spoken conversation would pick up from: the last one asked,
+  // once it has been answered.
+  const lastQuestion = [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
+  const answered = !loading && messages[messages.length - 1]?.role === "assistant";
 
   const suggestions = [
     "What are the red flags for chest pain?",
@@ -144,6 +150,11 @@ export function KnowledgeBaseChat({
                 <div className="rounded-xl border border-osce-border-light bg-white px-3.5 py-2.5 text-osce-meta text-osce-ink-500 shadow-sm">
                   Searching knowledge base…
                 </div>
+              </div>
+            ) : null}
+            {answered && lastQuestion ? (
+              <div className="flex shrink-0 justify-start">
+                <DiscussWithAthena topic={{ title: lastQuestion }} />
               </div>
             ) : null}
           </div>

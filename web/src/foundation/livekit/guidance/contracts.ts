@@ -203,6 +203,7 @@ const citationsCardSchema = z.object({
   citations: z.array(citationItemSchema).min(1),
 });
 
+export type CardRef = z.infer<typeof cardRefSchema>;
 export type SuggestionCard = z.infer<typeof suggestionCardSchema>;
 export type CitationsCard = z.infer<typeof citationsCardSchema>;
 export type KnownAssistantCard = SuggestionCard | CitationsCard;

@@ -25,7 +25,7 @@ from .models import (
     Persona,
 )
 from .overlay import Overlay, OverlayError, apply
-from .request import ClientContextError, parse_client_context
+from .request import ClientContextError, parse_client_context, parse_topic
 from .resolver import UnsupportedSurfaceError, resolve_client_profile, resolve_content_pack
 
 __all__ = [
@@ -43,6 +43,7 @@ __all__ = [
     "UnsupportedSurfaceError",
     "apply",
     "parse_client_context",
+    "parse_topic",
     "resolve_client_profile",
     "resolve_content_pack",
 ]

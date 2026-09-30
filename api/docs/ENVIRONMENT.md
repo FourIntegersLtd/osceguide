@@ -28,7 +28,7 @@ least 32 characters.
 | `LIVEKIT_API_SECRET` | — | As above. |
 | `STRIPE_WEBHOOK_SECRET` | — | Per endpoint. Without it webhooks are refused, not trusted — a missing value loses purchases rather than granting them falsely. |
 | `RESEND_API_KEY` | — | The only email configuration there is. |
-| `OPENAI_API_KEY` | — | Primary marking model. Jobs fail and retry without it; transcripts are kept. |
+| `OPENAI_API_KEY` | — | Primary marking model. Jobs fail and retry without it; transcripts are kept. Also embeds Athena's material index (reading and help); without it the tutor says it cannot look things up. |
 | `PAYOUT_DETAILS_KEY` | local Fernet key | Encrypts a referrer's bank details. A missing key refuses to encrypt rather than storing plaintext. |
 | `MFA_SECRET_KEY` | local Fernet key | Encrypts a TOTP shared secret at rest, the same way `PAYOUT_DETAILS_KEY` encrypts bank details. Recovery codes are hashed, not encrypted. A missing key refuses to enrol rather than storing the secret in plaintext. |
 

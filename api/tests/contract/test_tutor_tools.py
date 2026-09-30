@@ -91,7 +91,6 @@ async def test_a_first_conversation_is_greeted_differently_from_a_returning_one(
     client: AsyncClient, db_session: AsyncSession, make_actor, tutor_renderer: FakeTutorPromptRenderer
 ) -> None:  # type: ignore[no-untyped-def]
     from app.features.identity import repository as identity_repo
-    from app.features.tutor_memory import service_session
 
     email = "tools-greeting@example.com"
     token = await make_actor(email)
@@ -99,7 +98,7 @@ async def test_a_first_conversation_is_greeted_differently_from_a_returning_one(
     greeting_url = f"/api/worker/assistant-sessions/{first}"
     assert (await client.get(greeting_url, headers=worker_headers())).json()["session"][
         "greeting"
-    ] == service_session.GREETING_FIRST_TIME
+    ] == "Hello. What would you like to work on today?"
 
     user = await identity_repo.user_by_email(db_session, email)
     assert user is not None
@@ -116,7 +115,58 @@ async def test_a_first_conversation_is_greeted_differently_from_a_returning_one(
     payload = (await client.get(f"/api/worker/assistant-sessions/{second}", headers=worker_headers())).json()[
         "session"
     ]
-    assert payload["greeting"] == service_session.GREETING_RETURNING
+    assert payload["greeting"] == "Good to see you again. Shall we pick up where we left off?"
+
+    user.name = "Amara Okafor"
+    await db_session.flush()
+    third = await a_dashboard_session(client, token)
+    payload = (await client.get(f"/api/worker/assistant-sessions/{third}", headers=worker_headers())).json()[
+        "session"
+    ]
+    assert payload["greeting"] == "Good to see you again, Amara. Shall we pick up where we left off?"
+
+
+async def test_the_brief_knows_the_name_the_exam_and_the_open_page(
+    client: AsyncClient, db_session: AsyncSession, make_actor, tutor_renderer: FakeTutorPromptRenderer
+) -> None:  # type: ignore[no-untyped-def]
+    """Who and where come from the account and the browser's menu; an email is never a name."""
+    from app.features.identity import repository as identity_repo
+
+    email = "tools-screen@example.com"
+    token = await make_actor(email)
+    navigation = [
+        {"key": "home", "label": "Dashboard", "path": "/app/me/dashboard"},
+        {"key": "summary", "label": "A to Z", "path": "/app/me/summary"},
+    ]
+    created = await client.post(
+        "/api/v1/assistant/sessions",
+        json={
+            "session_type": "dashboard",
+            "extras": {
+                "client": {"surface": "exam", "route": "/app/me/summary/asthma", "navigation": navigation}
+            },
+        },
+        headers=bearer(token),
+    )
+    assert created.status_code == 201, created.text
+
+    brief = tutor_renderer.briefs[-1]
+    assert brief["learner"] == {"name": "", "exam": brief["learner"]["exam"]}  # type: ignore[index]
+    assert brief["screen"] == {
+        "page": "A to Z",
+        "navigation": [
+            {"label": "Dashboard", "path": "/app/me/dashboard"},
+            {"label": "A to Z", "path": "/app/me/summary"},
+        ],
+    }
+
+    user = await identity_repo.user_by_email(db_session, email)
+    assert user is not None
+    user.name = "Amara Okafor"
+    await db_session.flush()
+    await a_dashboard_session(client, token)
+    assert tutor_renderer.briefs[-1]["learner"]["name"] == "Amara Okafor"  # type: ignore[index]
+    assert tutor_renderer.briefs[-1]["screen"] == {}
 
 
 async def test_remember_writes_a_fact_the_next_brief_carries(
@@ -223,6 +273,27 @@ async def test_suggesting_something_they_cannot_open_names_nothing(
     body = response.json()
     assert body["display"] is None
     assert "could not" in body["result"]
+
+
+async def test_suggesting_a_help_page_puts_it_on_screen(
+    client: AsyncClient, make_actor, tutor_renderer: FakeTutorPromptRenderer
+) -> None:  # type: ignore[no-untyped-def]
+    """A help article every exam shows can be suggested by the ref a search gave it."""
+    token = await make_actor("tools-suggest-help@example.com")
+    session_id = await a_dashboard_session(client, token)
+
+    response = await client.post(
+        f"/api/worker/assistant-sessions/{session_id}/tools/suggest_material",
+        json={
+            "tool": "suggest_material",
+            "arguments": {"ref": "first-steps@sca", "reason": "it shows where everything is"},
+        },
+        headers=worker_headers(),
+    )
+
+    card = response.json()["display"]
+    assert card["card"] == "suggestion"
+    assert card["ref"] == {"kind": "help", "id": "first-steps", "slug": "first-steps"}
 
 
 async def test_an_invented_argument_is_refused(
@@ -378,7 +449,7 @@ async def test_a_search_answers_from_the_material_and_cites_it(
 
     # The passage travels in the spoken half so the tutor can answer from it,
     # numbered so it can refer to one without reading a title aloud.
-    assert "[1] Safety net chest pain in writing." in body["result"]
+    assert "[1] (ref sum-1) Safety net chest pain in writing." in body["result"]
     card = body["display"]
     assert card["card"] == "citations"
     assert card["citations"] == [
@@ -430,22 +501,43 @@ async def test_a_search_never_reaches_material_from_an_exam_they_do_not_hold(
     assert material.searches[-1][1] == (str(held),)
 
 
-async def test_holding_no_exam_at_all_searches_nothing(
+async def test_holding_no_exam_at_all_reaches_the_help_articles_only(
     client: AsyncClient,
     make_actor,  # type: ignore[no-untyped-def]
     tutor_renderer: FakeTutorPromptRenderer,
     material: FakeMaterialIndex,
 ) -> None:
-    """No grants is not an empty filter, which would search everything."""
-    from app.features.tutor_memory import service_search
-
+    """No grants is an empty filter: the shared help, never an exam's paid material."""
+    await material.upsert(
+        corpus="summary",
+        source_id="sum-paid",
+        exam_id=str(uuid.uuid4()),
+        title="Asthma",
+        chunks=[{"index": 0, "section": "", "text": "How to add a trainee to asthma clinic."}],
+    )
+    await material.upsert(
+        corpus="help",
+        source_id="add-a-trainee",
+        exam_id=None,
+        title="Add a trainee",
+        chunks=[{"index": 0, "section": "", "text": "How to add a trainee: open Roster."}],
+    )
     token = await make_actor("tools-nogrant@example.com")
     session_id = await a_dashboard_session(client, token)
 
-    body = await search_for(client, session_id, "asthma")
+    body = await search_for(client, session_id, "how to add a trainee")
 
-    assert body["result"] == service_search.NOTHING_IN_MATERIAL
-    assert material.searches == []
+    assert material.searches == [("how to add a trainee", (), None)]
+    assert "(ref add-a-trainee) How to add a trainee: open Roster." in body["result"]
+    assert "asthma clinic" not in body["result"]
+    assert body["display"]["citations"] == [
+        {
+            "n": 1,
+            "title": "Add a trainee",
+            "section": "",
+            "ref": {"kind": "help", "id": "add-a-trainee", "slug": "add-a-trainee"},
+        }
+    ]
 
 
 async def test_a_search_can_be_narrowed_to_one_kind_of_material(

@@ -14,8 +14,8 @@ import {
   NAV_SECTIONS,
   NAV_SECTION_LABELS,
 } from "@/capabilities";
-import type { HelpNavItem } from "@/capabilities/help/HelpPanel";
-import { LazyHelpPanel } from "@/capabilities/help/LazyHelpPanel";
+import type { HelpNavItem } from "@/capabilities/help/api";
+import { LazyB2CHelpDock } from "@/capabilities/help/LazyB2CHelpDock";
 import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
 import { navFooterFor } from "@/surfaces/navFooters";
@@ -77,6 +77,8 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
   const { session, signOut } = useSession();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [helpExpanded, setHelpExpanded] = useState(false);
+  const [helpWide, setHelpWide] = useState(false);
 
   const href = useCallback((path: string) => `${basePath}${path}`, [basePath]);
 
@@ -273,7 +275,25 @@ export function SurfaceShell({ manifest, workspace, basePath, children }: Surfac
           </main>
         </div>
 
-        <LazyHelpPanel navItems={helpNav} />
+        {/*
+          * Athena, as on the consumer and staff shells: a button until opened,
+          * then a column beside the page on a wide screen and the whole screen
+          * on a phone.
+          */}
+        <div
+          className={cn(
+            "lg:sticky lg:top-0 lg:h-screen lg:shrink-0",
+            helpExpanded && (helpWide ? "lg:w-[36rem]" : "lg:w-[22rem]"),
+          )}
+        >
+          <LazyB2CHelpDock
+            navItems={helpNav}
+            isExpanded={helpExpanded}
+            setIsExpanded={setHelpExpanded}
+            isWide={helpWide}
+            setIsWide={setHelpWide}
+          />
+        </div>
       </div>
     </SurfaceProvider>
   );

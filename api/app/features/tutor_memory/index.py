@@ -74,8 +74,11 @@ class PgVectorMaterialIndex:
     async def search(
         self, *, query: str, exam_ids: Sequence[str], corpus: str | None, limit: int
     ) -> list[Passage]:
-        """The nearest passages to `query`, restricted to exams the caller is entitled to."""
-        if not exam_ids or not query.strip():
+        """The nearest passages to `query`, restricted to exams the caller is entitled to.
+
+        No exams still searches: it reaches the help articles every exam shares.
+        """
+        if not query.strip():
             return []
 
         vectors = await self._embedder.embed([query])

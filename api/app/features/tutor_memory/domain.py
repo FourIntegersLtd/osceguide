@@ -18,6 +18,12 @@ from app.features.tutor_memory.action_plan import mark_action_item_done, open_ac
 
 __all__ = ["mark_action_item_done", "open_action_items"]
 
+# The app's own help articles. Indexed beside the reading so one search answers
+# "how do I book a mock" as well as "how do I manage asthma"; an article for
+# every exam carries no exam, and is the one corpus a person with no
+# entitlement can still be read out of.
+HELP_CORPUS = "help"
+
 DEDUP_WINDOW = timedelta(minutes=10)
 
 # A stated fact is spoken back to the doctor; a long one stops being a fact and

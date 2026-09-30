@@ -10,10 +10,11 @@ import uuid
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from sqlalchemy import Float, String, bindparam, cast, delete, select, text
+from sqlalchemy import Float, String, bindparam, cast, delete, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.tutor_memory.domain import HELP_CORPUS
 from app.features.tutor_memory.models import MaterialChunk
 from app.features.tutor_memory.vector_column import VECTOR, to_literal
 
@@ -97,14 +98,13 @@ async def nearest(
 
     Three states for `exam_ids`, and the difference between the last two is load-bearing:
 
-    - a non-empty sequence filters to those exams;
-    - **an empty sequence returns nothing** — an empty entitled set means this person may
-      read nothing;
+    - a non-empty sequence filters to those exams, plus the help articles every exam shares;
+    - **an empty sequence reaches the shared help articles only** — an empty entitled set
+      means this person may read none of the paid material, but may still ask how the app
+      works;
     - **`None` applies no filter at all**, which only the media search box passes, since it
       searches titles `GET /media` already lists to every signed-in reader.
     """
-    if exam_ids is not None and not exam_ids:
-        return []
 
     # Bound as text and cast, because `<=>` has no `(vector, text)` form and
     # a bare string parameter would reach Postgres as one. The cast is what
@@ -117,7 +117,14 @@ async def nearest(
     distance = MaterialChunk.embedding.op("<=>", return_type=Float)(query_vector)
     stmt = select(MaterialChunk, distance.label("distance")).order_by(distance).limit(limit)
     if exam_ids is not None:
-        stmt = stmt.where(MaterialChunk.exam_id.in_(list(exam_ids)))
+        # An exam-specific help article carries its exam and is caught by the
+        # first arm; one for every exam carries none and only the second finds it.
+        stmt = stmt.where(
+            or_(
+                MaterialChunk.exam_id.in_(list(exam_ids)),
+                (MaterialChunk.corpus == HELP_CORPUS) & MaterialChunk.exam_id.is_(None),
+            )
+        )
     if isinstance(corpus, str):
         stmt = stmt.where(MaterialChunk.corpus == corpus)
     elif corpus is not None:

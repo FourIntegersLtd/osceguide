@@ -10,6 +10,8 @@ import {
   HiOutlinePlay,
 } from "react-icons/hi2";
 import { LuPodcast } from "react-icons/lu";
+import { recordActivity } from "@/capabilities/account/api";
+import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 import {
   ModalContent,
   ModalFooterActions,
@@ -23,6 +25,11 @@ import {
 
 export interface Episode {
   id: string;
+  /**
+   * What the tutor's notes and a suggestion address the episode by. Only a
+   * podcast episode has one; a summary's audio is not a listen to record.
+   */
+  slug?: string;
   title: string;
   url: string | null;
 }
@@ -51,6 +58,9 @@ export function PodcastPlayer({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlaylist, setShowPlaylist] = useState(false);
+  // Episodes already told to the tutor while this player is open; pausing and
+  // playing again is one listen, not two.
+  const listenedTo = useRef(new Set<string>());
 
   const current = episodes[index];
   const hasPlaylist = episodes.length > 1;
@@ -93,6 +103,12 @@ export function PodcastPlayer({
         </p>
       )}
 
+      {current?.slug ? (
+        <div>
+          <DiscussWithAthena topic={{ title: current.title, kind: "podcast", slug: current.slug }} />
+        </div>
+      ) : null}
+
       <ModalSection>
         {current?.url ? (
           // Episodes have no transcript to attach yet; the accessibility
@@ -107,7 +123,14 @@ export function PodcastPlayer({
               if (canGoNext) go(index + 1, true);
               else setIsPlaying(false);
             }}
-            onPlay={() => setIsPlaying(true)}
+            onPlay={() => {
+              setIsPlaying(true);
+              const slug = current?.slug;
+              if (current && slug && !listenedTo.current.has(slug)) {
+                listenedTo.current.add(slug);
+                void recordActivity({ kind: "listened", ref_kind: "podcast", ref_id: slug, title: current.title });
+              }
+            }}
             onPause={() => setIsPlaying(false)}
             className="w-full"
             controls

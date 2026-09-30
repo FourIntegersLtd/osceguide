@@ -370,7 +370,11 @@ class FakeMaterialIndex:
             # The filter the real adapter applies in SQL. Modelled here too,
             # because a fake that returned material the learner does not hold
             # would let an entitlement bug through every test that uses it.
-            and self.exam_of.get((p.corpus, p.source_id)) in wanted
+            and (
+                self.exam_of.get((p.corpus, p.source_id)) in wanted
+                # The help articles every exam shares carry no exam and reach anyone.
+                or (p.corpus == "help" and self.exam_of.get((p.corpus, p.source_id)) is None)
+            )
         ]
         return hits[:limit]
 

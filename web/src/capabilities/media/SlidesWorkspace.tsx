@@ -14,6 +14,8 @@ import { aboutText, type MediaItem } from "@/capabilities/media/api";
 import { DeckList } from "@/capabilities/media/DeckList";
 import { DeckStage } from "@/capabilities/media/DeckStage";
 import { STUDY_KIND_LABEL, studyListPath } from "@/capabilities/media/studyPaths";
+import { useRecordView } from "@/capabilities/account/useRecordView";
+import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 
 export function SlidesWorkspace({
   selected,
@@ -38,6 +40,11 @@ export function SlidesWorkspace({
   specialtyOptions: string[];
   hasUncategorized: boolean;
 }) {
+  useRecordView(
+    selected.locked
+      ? null
+      : { kind: "viewed", ref_kind: "slide_deck", ref_id: selected.slug, title: selected.title, exam_code: selected.exam_code },
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tab, setTab] = useState<"about" | "conversation">("about");
 
@@ -111,7 +118,10 @@ export function SlidesWorkspace({
         </aside>
 
         <B2CPanelCard className="mt-0 flex min-w-0 flex-1 flex-col">
-          <B2CPanelCardHeader className="truncate">{selected.title}</B2CPanelCardHeader>
+          <B2CPanelCardHeader className="flex items-center justify-between gap-3">
+            <span className="min-w-0 truncate">{selected.title}</span>
+            <DiscussWithAthena topic={{ title: selected.title, kind: "slide_deck", slug: selected.slug }} />
+          </B2CPanelCardHeader>
 
           <div className="flex min-h-[280px] items-center justify-center bg-osce-surface p-4 sm:p-6 lg:min-h-[360px]">
             <DeckStage item={selected} />

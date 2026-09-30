@@ -232,7 +232,7 @@ def test_an_overlong_string_is_clipped_rather_than_refused() -> None:
 def test_every_kind_the_model_may_ask_for_names_a_corpus_that_is_indexed() -> None:
     from app.features.tutor_memory import service_material, tools_catalog
 
-    indexed = {service_material.STATION_CORPUS, *service_material.MEDIA_CORPORA}
+    indexed = {service_material.STATION_CORPUS, *service_material.MEDIA_CORPORA, service_material.HELP_CORPUS}
 
     for kind in tools_catalog.CORPUS_BY_KIND:
         assert tools_catalog.corpus_for(kind) in indexed, f"{kind} narrows to nothing"

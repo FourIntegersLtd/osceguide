@@ -1,6 +1,7 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
 import type { RoomGrant } from "@/foundation/livekit";
 import type { AssistantSurface } from "@/capabilities/surface";
+import { isMediaKind, type MediaKind } from "@/capabilities/media/api";
 
 export type AssistantSession = components["schemas"]["SessionRead"];
 
@@ -44,17 +45,64 @@ export function buildClientContext(input: {
   };
 }
 
-export type AssistantSessionType = "help" | "onboarding" | "dashboard" | "demo";
+export type AssistantSessionType = "help" | "onboarding" | "dashboard";
+
+/** One entry of the shell's menu, as Athena is told it: she names pages the way it does. */
+export interface HelpNavItem {
+  key: string;
+  label: string;
+  path: string;
+}
+
+/**
+ * Open Athena from anywhere and start talking. The dock on every signed-in
+ * shell listens for this; `onboarding` starts the guided tour instead.
+ */
+export function openAthena(kind: "athena" | "onboarding" = "athena", topic?: AthenaTopic): void {
+  window.dispatchEvent(new CustomEvent("osce:open-athena", { detail: { kind, topic } }));
+}
+
+/**
+ * What a conversation with Athena is opened on: a question somebody typed, or
+ * the thing they were reading. She greets them with it and starts there. The
+ * backend caps and validates it (`assistant/content/request.py`, `parse_topic`).
+ */
+export interface AthenaTopic {
+  title: string;
+  /** The kind of reading it came from, when it came from one. */
+  kind?: MediaKind;
+  slug?: string;
+}
+
+export interface AthenaLaunch {
+  kind: "athena" | "onboarding";
+  topic: AthenaTopic | null;
+}
+
+/** The `osce:open-athena` event's detail, read without trusting its shape. */
+export function readAthenaLaunch(detail: unknown): AthenaLaunch {
+  const fields = typeof detail === "object" && detail !== null ? (detail as Record<string, unknown>) : {};
+  const kind = fields.kind === "onboarding" ? "onboarding" : "athena";
+  const rawTopic =
+    typeof fields.topic === "object" && fields.topic !== null ? (fields.topic as Record<string, unknown>) : {};
+  const title = typeof rawTopic.title === "string" ? rawTopic.title.trim() : "";
+  if (!title) return { kind, topic: null };
+  const topic: AthenaTopic = { title };
+  if (typeof rawTopic.kind === "string" && isMediaKind(rawTopic.kind)) topic.kind = rawTopic.kind;
+  if (typeof rawTopic.slug === "string" && rawTopic.slug.trim()) topic.slug = rawTopic.slug.trim();
+  return { kind, topic };
+}
 
 export function startAssistantSession(
   sessionType: AssistantSessionType,
   context: AssistantClientContext,
   signal?: AbortSignal,
   helpOptions?: { voice_help_intent: "faq" | "guide"; screen_ui_guidance: boolean },
+  topic?: AthenaTopic | null,
 ): Promise<AssistantSession> {
   return platformRequest<AssistantSession>("/api/v1/assistant/sessions", {
     method: "POST",
-    body: { session_type: sessionType, extras: { client: context, ...helpOptions } },
+    body: { session_type: sessionType, extras: { client: context, ...helpOptions, ...(topic ? { topic } : {}) } },
     signal,
   });
 }

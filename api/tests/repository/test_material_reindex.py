@@ -41,6 +41,11 @@ PLAN = {
 }
 
 
+def station_passages(index: FakeMaterialIndex) -> list:  # type: ignore[type-arg]
+    """The station passages alone; every run also indexes the help articles."""
+    return [passage for passage in index.passages if passage.corpus == service_material.STATION_CORPUS]
+
+
 async def published_station(
     db_session: AsyncSession,
     *,
@@ -71,13 +76,11 @@ async def test_a_published_station_is_indexed_by_its_management_plan(
     version_id = await published_station(db_session)
     index = FakeMaterialIndex()
 
-    run = await service_material.reindex(db_session, index=index)
+    await service_material.reindex(db_session, index=index)
 
-    assert run.sources == 1
-    assert run.passages >= 1
-    indexed = " ".join(p.text for p in index.passages)
+    indexed = " ".join(p.text for p in station_passages(index))
     assert "acute coronary syndrome" in indexed
-    assert {p.source_id for p in index.passages} == {str(version_id)}
+    assert {p.source_id for p in station_passages(index)} == {str(version_id)}
 
 
 async def test_a_station_never_offers_the_material_it_assesses(
@@ -103,10 +106,9 @@ async def test_a_station_with_no_management_plan_is_skipped_rather_than_stripped
     )
     index = FakeMaterialIndex()
 
-    run = await service_material.reindex(db_session, index=index)
+    await service_material.reindex(db_session, index=index)
 
-    assert run.sources == 0
-    assert index.passages == []
+    assert station_passages(index) == []
 
 
 async def test_a_draft_station_is_not_indexed(db_session: AsyncSession) -> None:
@@ -117,9 +119,28 @@ async def test_a_draft_station_is_not_indexed(db_session: AsyncSession) -> None:
     await db_session.flush()
     index = FakeMaterialIndex()
 
-    run = await service_material.reindex(db_session, index=index)
+    await service_material.reindex(db_session, index=index)
 
-    assert run.sources == 0
+    assert station_passages(index) == []
+
+
+async def test_help_articles_are_indexed_for_every_exam_or_under_their_own(
+    db_session: AsyncSession,
+) -> None:
+    """An article for every exam carries none; one written for SCA reaches SCA holders only.
+
+    An article for an exam this deployment does not have (ortho, here) is left out
+    rather than indexed as if it were for everyone.
+    """
+    sca = await ensure_exam(db_session, "sca")
+    assert sca is not None
+    index = FakeMaterialIndex()
+
+    await service_material.reindex(db_session, index=index)
+
+    assert index.exam_of[("help", "first-steps")] is None
+    assert index.exam_of[("help", "practice-with-people@sca")] == str(sca.id)
+    assert not any(source_id.startswith("ortho-cv") for _, source_id in index.exam_of)
 
 
 async def test_reindex_media_item_indexes_one_source_and_leaves_others(

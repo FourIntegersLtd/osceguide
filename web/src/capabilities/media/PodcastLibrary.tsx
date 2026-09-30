@@ -99,6 +99,7 @@ function PodcastLibraryBody({
   const current = series[currentIndex] ?? selected;
   const playerEpisodes: Episode[] = series.map((entry) => ({
     id: entry.id,
+    slug: entry.slug,
     title: entry.title,
     url: audioUrl(entry),
   }));

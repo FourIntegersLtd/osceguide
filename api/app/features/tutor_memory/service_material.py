@@ -15,10 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.core.pagination import decode_cursor
 from app.core.ports import MaterialIndex
+from app.features.assistant.schemas import HelpArticle
 from app.features.media import service as media
 from app.features.media.schemas import MediaRead
 from app.features.stations import service_reads as stations
 from app.features.tutor_memory import chunking
+from app.features.tutor_memory.domain import HELP_CORPUS
 
 log = get_logger(__name__)
 
@@ -73,7 +75,7 @@ async def reindex(session: AsyncSession, *, index: MaterialIndex | None = None) 
     # the log rather than failing a nightly job on every deployment without a key.
     index = index or build_material_index(session) or NoMaterialIndex()
     sources = passages = 0
-    seen: dict[str, set[str]] = {corpus: set() for corpus in (STATION_CORPUS, *MEDIA_CORPORA)}
+    seen: dict[str, set[str]] = {corpus: set() for corpus in (STATION_CORPUS, *MEDIA_CORPORA, HELP_CORPUS)}
 
     for station in await stations.published_material(session):
         source_id = str(station.version_id)
@@ -93,6 +95,18 @@ async def reindex(session: AsyncSession, *, index: MaterialIndex | None = None) 
             continue
         seen[media_item.kind].add(str(media_item.id))
         passages += await _index_published_media_item(index, media_item=media_item, exam_id=exam_id)
+        sources += 1
+
+    for source_id, exam_id, article in await _help_sources(session):
+        seen[HELP_CORPUS].add(source_id)
+        passages += await _index_one(
+            index,
+            corpus=HELP_CORPUS,
+            source_id=source_id,
+            exam_id=exam_id,
+            title=article.title,
+            text=" ".join(part for part in (article.summary, article.body_md) if part),
+        )
         sources += 1
 
     retired = await _retire(index, seen)
@@ -154,6 +168,29 @@ async def _index_one(
         title=title,
         chunks=[{"index": chunk.index, "section": chunk.section, "text": chunk.text} for chunk in chunks],
     )
+
+
+async def _help_sources(session: AsyncSession) -> list[tuple[str, str | None, HelpArticle]]:
+    """Each help article as the sources it is indexed under: `(source_id, exam_id, article)`.
+
+    An article for every exam is one source with no exam, reachable by anyone.
+    One written for particular exams is a source per exam, `<slug>@<code>`, so
+    it reaches only the people who hold that exam — the same article the help
+    browser shows them. An exam this deployment does not have is skipped.
+    """
+    from app.features.assistant import service_help  # noqa: PLC0415 - avoids an import cycle
+    from app.features.catalog import service as catalog  # noqa: PLC0415
+
+    help_sources: list[tuple[str, str | None, HelpArticle]] = []
+    for article in service_help.all_articles():
+        if "all" in article.exam_codes:
+            help_sources.append((article.slug, None, article))
+            continue
+        for exam_code in article.exam_codes:
+            exam = await catalog.exam_read_by_code(session, exam_code)
+            if exam is not None:
+                help_sources.append((f"{article.slug}@{exam_code}", str(exam.id), article))
+    return help_sources
 
 
 async def _retire(index: MaterialIndex, seen: dict[str, set[str]]) -> int:

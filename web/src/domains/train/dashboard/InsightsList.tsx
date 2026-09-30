@@ -1,6 +1,7 @@
 "use client";
 
 import { B2CMonoEyebrow, productTokens } from "@/foundation/ui";
+import { openAthena } from "@/capabilities/help/api";
 
 export interface InsightItem {
   text: string;
@@ -77,7 +78,7 @@ export function InsightsList({
         </ul>
         <button
           type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent("osce:open-athena", { detail: { kind: "help" } }))}
+          onClick={() => openAthena()}
           className="mt-4 text-osce-meta font-medium text-osce-accent hover:underline"
         >
           Practise these with Athena

@@ -56,6 +56,24 @@ interaction completes.
   are worked out from their grants and handed to the index as a filter applied
   *before* the ranking. Today the A to Z and the slides are gated in the
   browser only, so a tutor reading out of them would be a way round that gate.
+- **Help is the one corpus anyone reaches.** The app's help articles are indexed
+  as corpus `help`: an article for every exam carries no exam and is searched
+  for everybody, including someone with no entitlement at all (an institution
+  admin asking how to add a trainee); one written for particular exams is
+  indexed once per exam as `<slug>@<code>` and reaches only its holders.
+- **A conversation can open on a topic.** `extras.topic {title, kind?, slug?}`
+  (validated by `assistant.content.parse_topic`) becomes the brief's `topic`
+  block: the greeting names it and the prompt starts there instead of from the
+  notes. The title is capped and quoted, so it is a subject and never an
+  instruction. Whatever is said about it still comes from `search_material`;
+  when the material has nothing the tutor says so and does not fill the gap.
+- **The brief knows who and where, but neither is memory.** `learner` is the
+  name and exam on the account (an email-shaped name is dropped); `screen` is
+  the page the browser's validated client context names, matched to its menu.
+- **A suggestion is a station, a piece of reading or a help page.** A UUID ref
+  is a station version; a help slug the account's exam shows is help; any other
+  slug is a published media item of an exam they hold. Every refusal is the
+  same sentence.
 - **"I could not look that up" is not "the material does not say".** A
   deployment with no embedding key has no index, and the tutor says the first
   rather than the second — a spoken answer delivers both with equal
@@ -105,6 +123,9 @@ embedding the whole library costs minutes and money — see `web/docs/BACKLOG.md
 - `stations.service_reads` — station titles, and the library a suggestion must
   be in.
 - `entitlements.service` + `catalog.service` — whether a suggestion may be made.
+- `identity.service_platform` — the learner's name and exam for the brief.
+- `media.service` — the slug a media citation or suggestion opens by.
+- `assistant.service_help` — the help articles the index holds.
 - `assistant.service` / `assistant.service_reads` — whose session a tool call
   is on, this session's turns, and discarding them once summarised.
 

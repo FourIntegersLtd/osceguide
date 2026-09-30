@@ -12,7 +12,7 @@ import {
   NAV_SECTION_LABELS,
 } from "@/capabilities";
 import { LazyB2CHelpDock } from "@/capabilities/help/LazyB2CHelpDock";
-import type { HelpNavItem } from "@/capabilities/help/B2CHelpDock";
+import type { HelpNavItem } from "@/capabilities/help/api";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
 import { PlatformSidebar } from "@/surfaces/platform/PlatformSidebar";
 import type { Workspace } from "@/foundation/routing";

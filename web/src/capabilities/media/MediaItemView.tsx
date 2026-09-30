@@ -9,6 +9,7 @@ import { ArticleView } from "@/capabilities/media/ArticleView";
 import { LockedMediaGate } from "@/capabilities/media/LockedMediaGate";
 import { StudyTabRedirect } from "@/capabilities/media/StudyTabRedirect";
 import { podcastEpisodePath, slidesDeckPath } from "@/capabilities/media/studyPaths";
+import { useRecordView } from "@/capabilities/account/useRecordView";
 
 /**
  * One item, read the way its kind is meant to be read.
@@ -22,6 +23,13 @@ import { podcastEpisodePath, slidesDeckPath } from "@/capabilities/media/studyPa
 export function MediaItemView({ slug }: { slug: string }) {
   const { hrefFor } = useSurface();
   const state = useAsync((signal) => readMedia(slug, signal), [slug]);
+  // Decks and episodes redirect to their own tab, which records them there.
+  const read = state.data;
+  useRecordView(
+    read && !read.locked && (read.kind === "summary" || read.kind === "blog")
+      ? { kind: "viewed", ref_kind: read.kind, ref_id: read.slug, title: read.title, exam_code: read.exam_code }
+      : null,
+  );
 
   return (
     <div className="w-full text-left">

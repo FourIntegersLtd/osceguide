@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ports import MaterialIndex
 from app.features.catalog import service as catalog
 from app.features.entitlements import service as entitlements
+from app.features.identity import service_platform as identity
 from app.features.stations import service_library_reads as library_reads
 from app.features.stations import service_reads as stations
 from app.features.tutor_memory import (
@@ -29,6 +30,7 @@ from app.features.tutor_memory import (
     service_search,
     tools_catalog,
 )
+from app.features.tutor_memory.domain import HELP_CORPUS
 from app.features.tutor_memory.index import build_material_index
 from app.features.tutor_memory.schemas import ToolResult
 
@@ -123,14 +125,15 @@ def _suggest_args(cleaned: dict[str, Any]) -> dict[str, Any]:
 async def _suggest(
     session: AsyncSession, *, user_id: uuid.UUID, ref: str, reason: str, now: datetime
 ) -> ToolResult:
-    """Put one station on the doctor's screen, if they may open it.
+    """Put one station, piece of reading or help page on the doctor's screen, if they may open it.
 
-    Only stations for now, the one kind whose entitlement this backend can decide.
+    The ref decides the kind: a UUID is a station version, a help article's slug
+    is help, and any other slug is a media item. Every refusal is the same one.
     """
     try:
         version_id = uuid.UUID(ref)
     except ValueError:
-        return ToolResult(result=_cannot_suggest())
+        return await _suggest_by_slug(session, user_id=user_id, slug=ref.strip(), reason=reason, now=now)
 
     summaries = await stations.summaries_by_version_id(session, None, [version_id])
     summary = summaries.get(version_id)
@@ -141,17 +144,64 @@ async def _suggest(
     if not allowed:
         return ToolResult(result=_cannot_suggest())
 
+    # The version is what was practised; the station id is what its library page is addressed by.
+    return _suggested(
+        kind="station",
+        item_id=str(version_id),
+        slug=str(summary.station_id),
+        title=summary.title,
+        reason=reason,
+    )
+
+
+async def _suggest_by_slug(
+    session: AsyncSession, *, user_id: uuid.UUID, slug: str, reason: str, now: datetime
+) -> ToolResult:
+    """A help page this account's exam shows, or a published media item of an exam they hold."""
+    from app.features.assistant import service_help  # noqa: PLC0415 - avoids an import cycle
+    from app.features.media import errors as media_errors  # noqa: PLC0415
+    from app.features.media import service as media  # noqa: PLC0415
+
+    slug = service_search.help_slug(slug)
+    user = await identity.user_by_id(session, user_id)
+    exam_code = (user.exam_code if user else None) or ""
+    article = next((item for item in service_help.list_articles(exam_code) if item.slug == slug), None)
+    if article is not None:
+        return _suggested(
+            kind=HELP_CORPUS, item_id=article.slug, slug=article.slug, title=article.title, reason=reason
+        )
+
+    try:
+        media_item = await media.read_by_slug(session, slug, viewer_is_admin=False)
+    except media_errors.ItemNotFound:
+        return ToolResult(result=_cannot_suggest())
+    if media_item.exam_code is not None:
+        grants = await entitlements.list_for_user(session, user_id, now=now)
+        codes = await catalog.exam_codes_by_id(session, list(domain.entitled_exam_ids(grants)))
+        if media_item.exam_code not in set(codes.values()):
+            return ToolResult(result=_cannot_suggest())
+    return _suggested(
+        kind=media_item.kind,
+        item_id=str(media_item.id),
+        slug=media_item.slug,
+        title=media_item.title,
+        reason=reason,
+    )
+
+
+def _suggested(*, kind: str, item_id: str, slug: str | None, title: str, reason: str) -> ToolResult:
+    """The spoken confirmation and the suggestion card, the same for every kind."""
     return ToolResult(
         result=(
-            f"Done — {summary.title} is on their screen now. Tell them in one sentence why you "
+            f"Done — {title} is on their screen now. Tell them in one sentence why you "
             "chose it, in your own words."
         ),
         display={
             "type": "assistant_card",
             "schemaVersion": service_search.CARD_SCHEMA_VERSION,
             "card": "suggestion",
-            "ref": {"kind": "station", "id": str(version_id), "slug": None},
-            "title": summary.title,
+            "ref": {"kind": kind, "id": item_id, "slug": slug},
+            "title": title,
             "reason": reason,
         },
     )

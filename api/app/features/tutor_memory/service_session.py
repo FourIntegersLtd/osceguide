@@ -8,6 +8,7 @@ rather than a use case of its own.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
@@ -24,9 +25,13 @@ log = get_logger(__name__)
 DASHBOARD = "dashboard"
 
 # Said before the instructions are read, so it must not depend on them. The
-# returning form is used only when there is a conversation to return to.
-GREETING_FIRST_TIME = "Hello. What would you like to work on today?"
-GREETING_RETURNING = "Good to see you again. Shall we pick up where we left off?"
+# returning form is used only when there is a conversation to return to. The
+# name slot is the first name on the account, or nothing.
+GREETING_FIRST_TIME = "Hello{name}. What would you like to work on today?"
+GREETING_RETURNING = "Good to see you again{name}. Shall we pick up where we left off?"
+# Said when they opened the conversation on a subject: it names the subject back
+# so they know the button they pressed was understood.
+GREETING_TOPIC = "Hello{name}. You wanted to talk about {topic}. Where shall we start?"
 
 
 async def render_dashboard_session(
@@ -35,6 +40,8 @@ async def render_dashboard_session(
     session_type: str,
     user_id: uuid.UUID,
     now: datetime,
+    client: Mapping[str, Any] | None = None,
+    topic: Mapping[str, str] | None = None,
     renderer: TutorPromptRenderer | None = None,
 ) -> dict[str, Any] | None:
     """The tutor's instructions, greeting and tools — or `None` for any other kind.
@@ -46,7 +53,7 @@ async def render_dashboard_session(
     if session_type != DASHBOARD:
         return None
 
-    brief = await service_brief.compose(session, user_id=user_id, now=now)
+    brief = await service_brief.compose(session, user_id=user_id, now=now, client=client, topic=topic)
     try:
         instructions = (renderer or _renderer()).render(brief=brief, labels=LABELS)
     except RenderFailed as exc:
@@ -57,10 +64,21 @@ async def render_dashboard_session(
 
     return {
         "instructions": instructions,
-        "greeting": GREETING_RETURNING if brief.get("last_conversation") else GREETING_FIRST_TIME,
+        "greeting": greeting_for(brief),
         "tools": [dict(tool) for tool in CATALOG],
         "extras": {},
     }
+
+
+def greeting_for(brief: Mapping[str, Any]) -> str:
+    """The opening line: on their topic, returning or first-time, with their first name when known."""
+    full_name = str((brief.get("learner") or {}).get("name") or "").split()
+    name_slot = f", {full_name[0]}" if full_name else ""
+    topic_title = str((brief.get("topic") or {}).get("title") or "").rstrip(" .?!")
+    if topic_title:
+        return GREETING_TOPIC.format(name=name_slot, topic=topic_title)
+    template = GREETING_RETURNING if brief.get("last_conversation") else GREETING_FIRST_TIME
+    return template.format(name=name_slot)
 
 
 def _renderer() -> TutorPromptRenderer:

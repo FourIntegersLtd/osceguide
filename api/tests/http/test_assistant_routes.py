@@ -162,6 +162,38 @@ async def test_a_help_session_is_answered_for_the_screen_the_user_is_on(
     assert "/app/me/practice" in row.instructions
 
 
+async def test_a_dashboard_session_opened_on_a_topic_starts_there(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """The topic reaches the tutor's instructions as a quoted subject; a malformed one is dropped."""
+    from app.features.assistant import repository
+
+    token = await make_actor("assistant-topic@example.com")
+
+    async def instructions_for(topic: object) -> str:
+        created = await client.post(
+            "/api/v1/assistant/sessions",
+            json={"session_type": "dashboard", "extras": {"topic": topic}},
+            headers=bearer(token),
+        )
+        assert created.status_code == 201, created.text
+        row = await repository.by_id(db_session, uuid.UUID(created.json()["id"]))
+        assert row is not None
+        return row.instructions
+
+    on_topic = await instructions_for(
+        {"title": "Red flags for chest pain", "kind": "summary", "slug": "chest-pain"}
+    )
+    assert 'They opened this conversation to talk about "Red flags for chest pain"' in on_topic
+
+    too_long = await instructions_for({"title": "x" * 900})
+    assert "x" * 200 in too_long
+    assert "x" * 201 not in too_long
+
+    malformed = await instructions_for({"title": "Asthma", "kind": "hologram"})
+    assert "They opened this conversation to talk about" not in malformed
+
+
 async def test_an_onboarding_session_carries_the_scenes_it_will_demonstrate(
     client: AsyncClient, make_actor, db_session
 ) -> None:  # type: ignore[no-untyped-def]

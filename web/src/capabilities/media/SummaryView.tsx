@@ -27,6 +27,7 @@ import { ClinicalSections, PsychosocialSections } from "@/capabilities/media/Sum
 import { Prose } from "@/capabilities/media/Prose";
 import { PodcastPlayer, type Episode } from "@/capabilities/media/PodcastPlayer";
 import { STUDY_KIND_LABEL, studyListPath } from "@/capabilities/media/studyPaths";
+import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 
 /**
  * An A-to-Z summary.
@@ -59,6 +60,7 @@ export function SummaryView({
       <B2CPageHeader
         title={item.title}
         back={{ href: hrefFor(studyListPath("summary")), label: STUDY_KIND_LABEL.summary }}
+        action={<DiscussWithAthena topic={{ title: item.title, kind: "summary", slug: item.slug }} />}
         className="mb-6 border-b-0 pb-0 sm:pb-0"
       />
 

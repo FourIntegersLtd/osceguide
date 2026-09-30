@@ -188,6 +188,23 @@ export function issueReferralCode(): Promise<Referral> {
   return platformRequest<Referral>("/api/v1/me/referral-code", { method: "POST" });
 }
 
+export type ActivityIn = components["schemas"]["ActivityIn"];
+
+/**
+ * Tell the tutor what this person just read, watched or listened to.
+ *
+ * Fire and forget: a lost beacon costs one line of "what you have been
+ * reading", never the page, so a failure is swallowed. The backend drops a
+ * repeat of the same item within ten minutes, so a re-render cannot flood it.
+ */
+export async function recordActivity(event: ActivityIn): Promise<void> {
+  try {
+    await platformRequest("/api/v1/me/activity", { method: "POST", body: { events: [event] } });
+  } catch {
+    // The tutor's notes are a nicety; the page the person is on is not.
+  }
+}
+
 export function readTutorMemory(signal?: AbortSignal): Promise<TutorMemory> {
   return platformRequest<TutorMemory>("/api/v1/me/tutor-memory", { signal });
 }

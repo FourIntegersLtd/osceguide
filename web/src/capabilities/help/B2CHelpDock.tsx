@@ -27,12 +27,17 @@ import { useSurface } from "@/capabilities/SurfaceContext";
 import { assistantSurfaceFor } from "@/capabilities/surface";
 import { KnowledgeBaseChat } from "./KnowledgeBaseChat";
 import HelpArticleBrowse from "@/capabilities/help/HelpArticleBrowse";
+import { AthenaFab } from "@/capabilities/help/AthenaFab";
 import {
   assistantVoiceToken,
   buildClientContext,
+  readAthenaLaunch,
   startAssistantSession,
+  type AssistantSessionType,
+  type AthenaLaunch,
+  type AthenaTopic,
+  type HelpNavItem,
 } from "@/capabilities/help/api";
-import type { HelpNavItem } from "@/capabilities/help/HelpPanel";
 
 const helpHeaderIconBtn =
   "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-9 sm:w-9";
@@ -85,7 +90,7 @@ function HelpChoiceScreen({
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
           </div>
-          <span className="font-medium text-white">Need Help?</span>
+          <span className="font-medium text-white">Athena</span>
         </div>
         <div className="flex items-center gap-0.5">
           <HelpWideToggle isWide={isWide} onToggle={onToggleWide} />
@@ -116,10 +121,10 @@ function HelpChoiceScreen({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-osce-body font-medium text-osce-ink-900">
-                    Help navigating the app
+                    Talk to Athena
                   </span>
                   <span className="mt-0.5 block text-osce-meta leading-relaxed text-osce-ink-500">
-                    Browse guides or start a voice chat with Athena
+                    Ask about your practice, a condition or the app, or browse the guides
                   </span>
                 </span>
                 <HiOutlineChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-osce-ink-400" />
@@ -168,7 +173,7 @@ function NavigateHelpPanel({
   onBack: () => void;
   isWide: boolean;
   onToggleWide: () => void;
-  launch: "help" | "onboarding" | null;
+  launch: AthenaLaunch | null;
   onLaunched: () => void;
 }) {
   const { surface } = useSurface();
@@ -179,8 +184,13 @@ function NavigateHelpPanel({
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  // A help article Athena suggested, opened in place above the call.
+  const [helpArticle, setHelpArticle] = useState<string | null>(null);
 
-  const startVoice = useCallback(async (intent: "faq" | "guide" = "faq", sessionType: "help" | "onboarding" | "dashboard" = "help") => {
+  // Talking to Athena is a `dashboard` session wherever it starts: the one
+  // with her memory and the knowledge base. `help` is only the on-screen guide.
+  // A `topic` is what they pressed "Discuss with Athena" on; she opens with it.
+  const startVoice = useCallback(async (intent: "faq" | "guide" = "faq", sessionType: AssistantSessionType = "dashboard", topic: AthenaTopic | null = null) => {
     setVoiceHelpIntent(intent);
     setStarting(true);
     setError(null);
@@ -191,7 +201,7 @@ function NavigateHelpPanel({
         pathname,
         navItems,
       });
-      const session = await startAssistantSession(sessionType, context, undefined, { voice_help_intent: intent, screen_ui_guidance: intent === "guide" && screenGuidanceAvailable });
+      const session = await startAssistantSession(sessionType, context, undefined, { voice_help_intent: intent, screen_ui_guidance: intent === "guide" && screenGuidanceAvailable }, topic);
       setGrant(await assistantVoiceToken(session.id));
     } catch (cause) {
       setGrant(null);
@@ -204,10 +214,14 @@ function NavigateHelpPanel({
   useEffect(() => {
     if (!launch) return;
     onLaunched();
-    void startVoice(launch === "onboarding" ? "guide" : "faq", launch === "onboarding" ? "onboarding" : "dashboard");
+    const onboarding = launch.kind === "onboarding";
+    void startVoice(onboarding ? "guide" : "faq", onboarding ? "onboarding" : "dashboard", onboarding ? null : launch.topic);
   }, [launch, onLaunched, startVoice]);
 
-  const endVoice = useCallback(() => setGrant(null), []);
+  const endVoice = useCallback(() => {
+    setGrant(null);
+    setHelpArticle(null);
+  }, []);
 
   const inCall = Boolean(grant);
 
@@ -221,7 +235,7 @@ function NavigateHelpPanel({
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
           </div>
-          <span className="font-medium text-white">AI Assistant</span>
+          <span className="font-medium text-white">Athena</span>
         </div>
         <div className="flex items-center gap-0.5">
           <HelpWideToggle isWide={isWide} onToggle={onToggleWide} />
@@ -243,13 +257,15 @@ function NavigateHelpPanel({
           </Alert>
         ) : null}
 
-        {!inCall ? <HelpArticleBrowse appType={appType} /> : null}
+        {!inCall || helpArticle ? (
+          <HelpArticleBrowse key={helpArticle ?? "browse"} appType={appType} initialArticle={helpArticle ?? undefined} />
+        ) : null}
 
         {!inCall && <div className="mb-3 hidden shrink-0 flex-col items-center justify-center lg:mt-6 lg:flex"><AthenaIdentity description="Or ask Athena by voice below" /></div>}
 
         {inCall ? (
           <VoiceRoom grant={grant} onDisconnected={() => endVoice()} onError={setError}>
-            <HelpVoiceContent voiceHelpIntent={voiceHelpIntent} />
+            <HelpVoiceContent voiceHelpIntent={voiceHelpIntent} onOpenHelpArticle={setHelpArticle} />
           </VoiceRoom>
         ) : null}
       </div>
@@ -278,7 +294,7 @@ function NavigateHelpPanel({
             ) : (
               <>
                 <FiPhoneCall className="h-4 w-4" />
-                <span>Ask a question</span>
+                <span>Talk to Athena</span>
               </>
             )}
           </Button>
@@ -292,7 +308,7 @@ function NavigateHelpPanel({
             <span>End conversation</span>
           </button>
         )}
-        {!inCall && screenGuidanceAvailable && <Button type="button" variant="secondary" size="md" fullWidth disabled={starting} className="mt-2 gap-1.5" onClick={() => void startVoice("guide")}><LuMousePointer2 className="h-4 w-4" /><span>Guide me on screen</span></Button>}
+        {!inCall && screenGuidanceAvailable && <Button type="button" variant="secondary" size="md" fullWidth disabled={starting} className="mt-2 gap-1.5" onClick={() => void startVoice("guide", "help")}><LuMousePointer2 className="h-4 w-4" /><span>Guide me on screen</span></Button>}
         <div className="mt-2 px-1 text-center sm:px-2">
           <p className="text-osce-meta text-osce-ink-500">
             {inCall
@@ -335,14 +351,13 @@ export function B2CHelpDock({
   // choice screen and opens straight into it.
   const { offersChoice: offersHelpChoice, opensDirectlyOnKnowledge } = helpModeChoice(settings);
   const [helpMode, setHelpMode] = useState<HelpMode>(null);
-  const [athenaLaunch, setAthenaLaunch] = useState<"help" | "onboarding" | null>(null);
+  const [athenaLaunch, setAthenaLaunch] = useState<AthenaLaunch | null>(null);
 
   useEffect(() => {
     const open = (event: Event) => {
-      const kind = (event as CustomEvent<{ kind?: string }>).detail?.kind;
       setIsExpanded(true);
       setHelpMode("navigate");
-      setAthenaLaunch(kind === "onboarding" ? "onboarding" : "help");
+      setAthenaLaunch(readAthenaLaunch((event as CustomEvent<unknown>).detail));
     };
     window.addEventListener("osce:open-athena", open);
     return () => window.removeEventListener("osce:open-athena", open);
@@ -358,29 +373,10 @@ export function B2CHelpDock({
 
   if (!session) return null;
 
-  const panelShell = isExpanded
-    ? "fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] w-full flex-col lg:static lg:z-auto lg:h-full lg:max-h-none lg:w-auto"
-    : "lg:h-full";
+  if (!isExpanded) return <AthenaFab onClick={() => setIsExpanded(true)} />;
 
-  if (!isExpanded) {
-    return (
-      <div className={panelShell}>
-        <div className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] right-4 z-50">
-          <Button
-            type="button"
-            variant="primary"
-            size="lg"
-            onClick={() => setIsExpanded(true)}
-            className="h-11 w-11 px-0 lg:w-auto lg:gap-2 lg:px-4"
-            aria-label="Need Help?"
-          >
-            <LuCircleHelp className="h-5 w-5 shrink-0" aria-hidden />
-            <span className="hidden pr-0.5 font-medium lg:inline">Need Help?</span>
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const panelShell =
+    "fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] w-full flex-col lg:static lg:z-auto lg:h-full lg:max-h-none lg:w-auto";
 
   let panel: ReactNode;
   if (helpMode === null && offersHelpChoice) {
@@ -439,5 +435,4 @@ export function B2CHelpDock({
   return <div className={`min-h-0 ${panelShell}`}>{panel}</div>;
 }
 
-// Re-export nav types for shell
 export type { HelpNavItem };

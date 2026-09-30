@@ -38,6 +38,7 @@ CORPUS_BY_KIND: dict[str, str] = {
     "slide_deck": "slide_deck",
     "podcast": "podcast",
     "blog": "blog",
+    "help": "help",
 }
 
 # `any` is the model's way of saying "no preference". It is not a corpus, and
@@ -88,14 +89,15 @@ CATALOG: tuple[dict[str, Any], ...] = (
         "name": SEARCH_MATERIAL,
         "description": (
             "Search the study material for an answer to a clinical question, and cite where "
-            "it came from. Use it whenever they ask what to do for a condition."
+            "it came from. Use it whenever they ask what to do for a condition. The help kind "
+            "holds how the app works, what a screen does, exam format and account questions."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "The clinical question.",
+                    "description": "The question, clinical or about the app.",
                     "maxLength": 200,
                 },
                 "kind": {
@@ -119,7 +121,10 @@ CATALOG: tuple[dict[str, Any], ...] = (
             "properties": {
                 "ref": {
                     "type": "string",
-                    "description": "The identifier of the thing to suggest, as a lookup gave it to you.",
+                    "description": (
+                        "A station id from your notes or a search result, or the ref a search "
+                        "result gave for a summary, deck, podcast, article or help page."
+                    ),
                     "maxLength": 120,
                 },
                 "reason": {

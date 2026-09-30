@@ -4,8 +4,16 @@ import { AthenaIdentity } from "@/foundation/ui";
 import { HelpTranscriptions } from "@/foundation/livekit/HelpTranscriptions";
 import { isUiGuidanceEnabled, UiGuidanceOverlay, GuidanceProgressPanel, AssistantCards } from "@/foundation/livekit/guidance";
 import { useSurface } from "@/capabilities/SurfaceContext";
+import { cardLinkFor } from "@/capabilities/help/refRoutes";
 import { useHelpGuidance } from "./useHelpGuidance";
-export function HelpVoiceContent({ voiceHelpIntent }: { voiceHelpIntent: "faq" | "guide" }) {
+export function HelpVoiceContent({
+  voiceHelpIntent,
+  onOpenHelpArticle,
+}: {
+  voiceHelpIntent: "faq" | "guide";
+  /** Opens a help article Athena suggested inside the dock. */
+  onOpenHelpArticle: (slug: string) => void;
+}) {
   const { state, screenUiGuidanceSession, isGuidanceToolRunning, navigationMode, navPromptHighlight,
     publishNavigationMode, pointerTarget, progressStep, progressLabel, cards, dismissCard, athenaDescription } = useHelpGuidance(voiceHelpIntent);
   const { hrefFor } = useSurface();
@@ -140,7 +148,7 @@ export function HelpVoiceContent({ voiceHelpIntent }: { voiceHelpIntent: "faq" |
               </div>
             </div>
           )}
-    <AssistantCards cards={cards} onDismiss={dismissCard} hrefFor={hrefFor} />
+    <AssistantCards cards={cards} onDismiss={dismissCard} linkFor={(ref) => cardLinkFor(ref, { hrefFor, openHelpArticle: onOpenHelpArticle })} />
     <UiGuidanceOverlay pointerTarget={pointerTarget} /><GuidanceProgressPanel step={progressStep} label={progressLabel} />
   </>;
 }

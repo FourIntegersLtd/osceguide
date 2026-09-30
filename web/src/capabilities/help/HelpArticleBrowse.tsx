@@ -81,8 +81,17 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-export default function HelpArticleBrowse({ appType }: { appType: string }) {
-  const [view, setView] = useState<BrowseView>({ name: "browse" });
+/** `initialArticle` opens straight on one article, as when Athena suggests it. */
+export default function HelpArticleBrowse({
+  appType,
+  initialArticle,
+}: {
+  appType: string;
+  initialArticle?: string;
+}) {
+  const [view, setView] = useState<BrowseView>(
+    initialArticle ? { name: "article", slug: initialArticle } : { name: "browse" },
+  );
 
   const goBack = () => {
     if (view.name === "article" && view.fromCategory) {

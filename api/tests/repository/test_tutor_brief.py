@@ -56,6 +56,22 @@ async def test_an_empty_history_composes_an_empty_brief(db_session: AsyncSession
     assert brief["tool_names"]["recall"] == "recall_history"
 
 
+async def test_a_topic_they_opened_on_is_in_the_brief_and_the_greeting(db_session: AsyncSession) -> None:
+    """The button they pressed is named back to them; an ordinary call has no topic."""
+    from app.features.tutor_memory import service_session
+
+    user_id = await a_user(db_session, "brief-topic@example.com")
+
+    ordinary = await service_brief.compose(db_session, user_id=user_id, now=NOW)
+    topic = {"title": "Asthma in adults?", "kind": "summary", "slug": "asthma"}
+    on_topic = await service_brief.compose(db_session, user_id=user_id, now=NOW, topic=topic)
+
+    assert ordinary["topic"] == {}
+    assert on_topic["topic"] == {"title": "Asthma in adults?", "kind": "summary"}
+    greeting = service_session.greeting_for(on_topic)
+    assert greeting == "Hello. You wanted to talk about Asthma in adults. Where shall we start?"
+
+
 async def test_a_marked_consultation_arrives_as_observations_not_scores(
     db_session: AsyncSession,
 ) -> None:

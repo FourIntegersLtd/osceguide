@@ -2,11 +2,17 @@
 
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AsyncBoundary, ButtonLink, Modal } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { ExamWishes } from "@/capabilities/account";
+import {
+  OnboardingFlow,
+  needsDashboardOnboarding,
+  rememberOnboardingSeen,
+} from "@/capabilities/onboarding";
 import {
   readDashboard,
   readPerformance,
@@ -20,7 +26,6 @@ import {
   DashboardHeader,
 } from "@/domains/train/dashboard/DashboardLayout";
 import { AboutModal } from "@/domains/train/dashboard/AboutModals";
-import { OnboardingInvite } from "@/domains/train/dashboard/OnboardingInvite";
 import { CompetencyHero } from "@/domains/train/dashboard/CompetencyHero";
 import { DomainPerformanceCard } from "@/domains/train/dashboard/DomainPerformanceCard";
 import { InsightsList } from "@/domains/train/dashboard/InsightsList";
@@ -60,9 +65,11 @@ export function ExamDashboard() {
 function DashboardBody({ data }: { data: DashboardData }) {
   const { session } = useSession();
   const { hrefFor } = useSurface();
+  const router = useRouter();
   const { examCode, attempts } = useDashboardExam(data);
   const [about, setAbout] = useState<AboutKey | null>(null);
   const [showExamWishes, setShowExamWishes] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   /*
    * Wrapped in an object so a 404 — the endpoint is not built yet — is a
@@ -95,6 +102,30 @@ function DashboardBody({ data }: { data: DashboardData }) {
     setShowExamWishes(true);
   }, [examDate, userId]);
 
+  /*
+   * The retiring dashboard opened onboarding as a modal, unprompted, for a
+   * brand-new user: no marked work yet, and never finished or closed it
+   * (remembered in localStorage per exam and per user). Same trigger here;
+   * localStorage is an external store, so it is read in an effect rather than
+   * during render.
+   */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowOnboarding(needsDashboardOnboarding(examCode, userId, attempts));
+  }, [examCode, userId, attempts]);
+
+  const dismissOnboarding = () => {
+    if (userId) rememberOnboardingSeen(examCode, userId);
+    setShowOnboarding(false);
+  };
+
+  // Finishing sends the person to the mocks list, where a first consultation
+  // starts — the same hand-off the retiring dashboard made.
+  const completeOnboarding = () => {
+    dismissOnboarding();
+    router.push(hrefFor("/mocks"));
+  };
+
   const firstName = session?.user.name?.split(" ")[0] ?? "there";
   // The countdown leads when there is one to show; otherwise the exam's own
   // welcome line (SCA has none, matching the old screen).
@@ -119,8 +150,6 @@ function DashboardBody({ data }: { data: DashboardData }) {
         }
       />
 
-      <OnboardingInvite attempts={attempts} />
-
       <AsyncBoundary state={performanceState}>
         {() => (
           <ExamSections
@@ -132,12 +161,17 @@ function DashboardBody({ data }: { data: DashboardData }) {
         )}
       </AsyncBoundary>
 
-      <OnboardingOffer />
       <AboutModal view={view} active={about} onClose={() => setAbout(null)} />
 
-      {showExamWishes && (
+      {showExamWishes && !showOnboarding && (
         <Modal width="min(95vw, 480px)" height="fit-content" onClose={() => setShowExamWishes(false)}>
           <ExamWishes />
+        </Modal>
+      )}
+
+      {showOnboarding && (
+        <Modal width="min(95vw, 560px)" height="fit-content" onClose={dismissOnboarding}>
+          <OnboardingFlow onComplete={completeOnboarding} />
         </Modal>
       )}
     </>
@@ -208,37 +242,3 @@ function ExamSections({
   );
 }
 
-const ONBOARDING_KEY = "osce-onboarding-seen";
-
-function OnboardingOffer() {
-  const { session } = useSession();
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const seen = window.localStorage.getItem(ONBOARDING_KEY) === "1";
-    const replay = session?.user.replay_onboarding === true;
-    setOpen(!seen || replay);
-  }, [session?.user.replay_onboarding]);
-
-  if (!open) return null;
-
-  return (
-    <div className="mb-6 rounded-lg border border-osce-accent-subtle bg-osce-accent-muted px-4 py-4">
-      <p className="text-osce-body font-semibold text-osce-ink-900">A short tour with Athena</p>
-      <p className="mt-1 text-osce-meta text-osce-ink-600">
-        She walks you through a consultation the first time you use OSCE Guide.
-      </p>
-      <button
-        type="button"
-        className="mt-3 text-osce-meta font-medium text-osce-accent hover:underline"
-        onClick={() => {
-          window.localStorage.setItem(ONBOARDING_KEY, "1");
-          setOpen(false);
-          window.dispatchEvent(new CustomEvent("osce:open-athena", { detail: { kind: "onboarding" } }));
-        }}
-      >
-        Start the guided tour
-      </button>
-    </div>
-  );
-}

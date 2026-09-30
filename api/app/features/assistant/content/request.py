@@ -20,6 +20,40 @@ def _text(value: Any, *, field: str, limit: int) -> str:
     return value.strip()[:limit]
 
 
+# The longest topic title kept. It is a question the person typed or the title
+# of something they were reading, and it is read into the tutor's prompt.
+MAX_TOPIC_CHARS = 200
+
+# The kinds of reading a topic can come from, as `media` names them.
+TOPIC_KINDS = ("summary", "slide_deck", "podcast", "blog")
+
+
+def parse_topic(raw: Any) -> dict[str, str] | None:
+    """The ``topic`` a conversation was opened on, or ``None`` when the request named none.
+
+    A topic is `{title, kind?, slug?}`: what to talk about, and the reading it
+    came from when it came from one. A blank title is no topic. The title is
+    length-capped here and quoted by the prompt, so it is only ever a subject.
+    """
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ClientContextError("topic must be an object")
+    # Whitespace is collapsed before the cap, so a padded title is not cut short.
+    raw_title = _text(raw.get("title"), field="topic.title", limit=MAX_TOPIC_CHARS * 4)
+    title = " ".join(raw_title.split())[:MAX_TOPIC_CHARS]
+    if not title:
+        return None
+    kind = _text(raw.get("kind"), field="topic.kind", limit=32).lower()
+    if kind and kind not in TOPIC_KINDS:
+        raise ClientContextError(f"topic.kind must be one of {', '.join(TOPIC_KINDS)}")
+    return {
+        "title": title.strip(),
+        "kind": kind,
+        "slug": _text(raw.get("slug"), field="topic.slug", limit=MAX_ROUTE_CHARS),
+    }
+
+
 def parse_client_context(raw: Any) -> dict[str, Any] | None:
     """The stored ``client`` dict, or ``None`` when the request carried none."""
     if raw is None:
