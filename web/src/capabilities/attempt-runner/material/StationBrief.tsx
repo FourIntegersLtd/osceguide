@@ -18,10 +18,15 @@ export function StationBrief({
   brief: Pick<AttemptBrief, "sections">;
   embedded?: boolean;
 }) {
+  const sections = sectionsFor(brief.sections, "candidate");
+  // The legacy screens headed the panel with the section's own name — SCA's
+  // read "Doctor Information" — so a lone section lends the shell its title.
+  const shellTitle = sections.length === 1 ? sections[0]!.title : "Station information";
   return (
-    <DoctorInfoShell embedded={embedded} title="Station information">
+    <DoctorInfoShell embedded={embedded} title={shellTitle || "Station information"}>
       <AudienceSections
-        sections={sectionsFor(brief.sections, "candidate")}
+        sections={sections}
+        variant="brief"
         emptyMessage="There is no written brief for this station."
       />
     </DoctorInfoShell>

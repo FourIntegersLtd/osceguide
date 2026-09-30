@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Dropdown } from "@/foundation/table";
 import { MarkdownRenderer, Modal } from "@/foundation/ui";
 import { B2CSegmentedTabs } from "@/foundation/ui/B2CSegmentedTabs";
+import { briefBlockEntries } from "./briefBlockMeta";
 import { DoctorInfoBulletList, DoctorInfoSection } from "./DoctorInfoLayout";
 import {
   asText,
@@ -19,10 +20,12 @@ export type { Audience, AudienceBlock, AudienceSection } from "./sectionsByAudie
 export { mediaItems, sectionLines, sectionsFor } from "./sectionsByAudience";
 
 /**
- * How a set of sections is laid out: open cards for a brief, collapsible
- * panels for an examiner's model answer, one tab per section for an actor's script.
+ * How a set of sections is laid out: `brief` is the candidate's reading —
+ * every block its own iconed subsection, in the legacy b2c reading order —
+ * `open` plain cards, `collapsible` panels for an examiner's model answer,
+ * one tab per section for an actor's script.
  */
-export type SectionsVariant = "open" | "collapsible" | "tabs";
+export type SectionsVariant = "brief" | "open" | "collapsible" | "tabs";
 
 /**
  * A station's content, drawn from its template's own sections and block types
@@ -43,6 +46,7 @@ export function AudienceSections({
   if (sections.length === 0) {
     return emptyMessage ? <p className="text-osce-body text-b2c-text-muted">{emptyMessage}</p> : null;
   }
+  if (variant === "brief") return <BriefSections sections={sections} />;
   if (variant === "tabs" && sections.length > 1) return <SectionTabs sections={sections} />;
 
   return (
@@ -58,6 +62,23 @@ export function AudienceSections({
           </DoctorInfoSection>
         ),
       )}
+    </>
+  );
+}
+
+/**
+ * The candidate's reading, matching the legacy b2c doctor screens: sections
+ * flattened, each block a `DoctorInfoSection` with the icon, badge tone and
+ * heading its block id had there, in the legacy reading order.
+ */
+function BriefSections({ sections }: { sections: AudienceSection[] }) {
+  return (
+    <>
+      {briefBlockEntries(sections).map(({ block, title, icon, tone }) => (
+        <DoctorInfoSection key={block.id} title={title} icon={icon} iconTone={tone}>
+          <BlockView block={block} />
+        </DoctorInfoSection>
+      ))}
     </>
   );
 }
@@ -156,7 +177,7 @@ function MediaGallery({ items }: { items: MediaItem[] }) {
         </div>
       ) : null}
       {images.length > 0 ? (
-        <p className="text-center text-osce-body text-b2c-text-muted">Click an image to enlarge</p>
+        <p className="text-center text-osce-body text-b2c-text-muted">Click to enlarge</p>
       ) : null}
       {others.map((item) => (
         <figure key={item.url} className="rounded-osce-md border border-b2c-border bg-osce-surface p-3">
