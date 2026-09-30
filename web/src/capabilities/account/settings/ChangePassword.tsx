@@ -24,7 +24,7 @@ import {
 } from "@/capabilities/account/support/validateAuthForm";
 
 const inputClassName =
-  "w-full rounded-xl border border-osce-border bg-white px-3 py-2.5 text-osce-body text-osce-ink-900 outline-none transition focus:border-osce-accent-subtle focus:ring-2 focus:ring-osce-accent-muted";
+  "w-full rounded-xl border border-osce-border bg-white px-3 py-2.5 text-osce-body text-ink outline-none transition focus:border-osce-accent-subtle focus:ring-2 focus:ring-osce-accent-muted";
 
 const updatePasswordSchema = z
   .object({
@@ -145,15 +145,15 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
                     className="absolute inset-y-0 right-0 flex items-center pr-3"
                   >
                     {shown[name] ? (
-                      <IoIosEyeOff className="h-4 w-4 text-osce-ink-400" />
+                      <IoIosEyeOff className="h-4 w-4 text-ink-subtle" />
                     ) : (
-                      <IoIosEye className="h-4 w-4 text-osce-ink-400" />
+                      <IoIosEye className="h-4 w-4 text-ink-subtle" />
                     )}
                   </button>
                 </div>
                 <B2CInlineError message={fieldErrors[name]} className="mt-1" />
                 {hint && !fieldErrors[name] ? (
-                  <p className="mt-1 text-osce-meta text-b2c-text-muted">{hint}</p>
+                  <p className="mt-1 text-osce-meta text-ink-subtle">{hint}</p>
                 ) : null}
               </ModalField>
             ))}

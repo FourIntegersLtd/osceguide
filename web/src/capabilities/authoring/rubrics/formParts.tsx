@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from "react";
 import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlineTrash } from "react-icons/hi2";
-import { cn, getInputClassName } from "@/foundation/ui";
+import { Checkbox, cn, getInputClassName, Select, Textarea } from "@/foundation/ui";
 import { useRubricBuilder } from "@/capabilities/authoring/rubrics/builderContext";
 import { getAt, moveItem, pathText, removeItem, setAt, type JsonPath } from "@/capabilities/authoring/rubrics/jsonPath";
 import { problemsAt } from "@/capabilities/authoring/rubrics/problems";
@@ -16,8 +16,8 @@ import type { Choice } from "@/capabilities/authoring/rubrics/rubricVocabulary";
  * `data-path` attribute is what the problem list scrolls to.
  */
 
-const labelClass = "block text-osce-meta font-medium text-osce-ink-500";
-const hintClass = "mt-0.5 text-osce-caption text-osce-ink-400";
+const labelClass = "block text-osce-meta font-medium text-ink-muted";
+const hintClass = "mt-0.5 text-osce-caption text-ink-subtle";
 
 /** The backend's messages about one input, in the danger colour under it. */
 export function ProblemNote({ messages }: { messages: readonly string[] }) {
@@ -92,11 +92,15 @@ export function TextAtPath({
       const value = event.target.value;
       edit((current) => setAt(current, path, value));
     },
-    className: cn(getInputClassName({ size: "sm", invalid: messages.length > 0 }), mono && "font-mono"),
   };
+  const invalid = messages.length > 0;
   return (
     <Labelled inputId={inputId} label={label} hint={hint} messages={messages} className={className}>
-      {rows ? <textarea rows={rows} {...shared} className={cn(shared.className, "py-2")} /> : <input type="text" {...shared} />}
+      {rows ? (
+        <Textarea rows={rows} textareaSize="sm" invalid={invalid} {...shared} className={mono ? "font-mono" : undefined} />
+      ) : (
+        <input type="text" {...shared} className={cn(getInputClassName({ size: "sm", invalid }), mono && "font-mono")} />
+      )}
     </Labelled>
   );
 }
@@ -164,8 +168,10 @@ export function SelectAtPath<Value extends string>({
   const selected = choices.find((choice) => choice.value === value);
   return (
     <Labelled inputId={inputId} label={label} hint={hint ?? selected?.hint} messages={messages} className={className}>
-      <select
+      <Select
         id={inputId}
+        selectSize="sm"
+        invalid={messages.length > 0}
         data-path={pathText(path)}
         disabled={readOnly}
         value={typeof value === "string" ? value : ""}
@@ -178,7 +184,6 @@ export function SelectAtPath<Value extends string>({
           if (onPick) onPick(picked as Value);
           else edit((current) => setAt(current, path, picked));
         }}
-        className={getInputClassName({ size: "sm", invalid: messages.length > 0 })}
       >
         {emptyLabel !== undefined || !selected ? <option value="">{emptyLabel ?? "Choose…"}</option> : null}
         {choices.map((choice) => (
@@ -186,7 +191,7 @@ export function SelectAtPath<Value extends string>({
             {choice.label}
           </option>
         ))}
-      </select>
+      </Select>
     </Labelled>
   );
 }
@@ -211,24 +216,18 @@ export function ToggleAtPath({
   const checked = typeof value === "boolean" ? value : defaultOn;
   return (
     <div>
-      <label className="flex items-start gap-2 text-osce-meta text-osce-ink-900">
-        <input
-          type="checkbox"
-          data-path={pathText(path)}
-          disabled={readOnly}
-          checked={checked}
-          onChange={(event) => {
-            const next = event.target.checked;
-            // Store only a value that differs from the backend's default.
-            edit((current) => setAt(current, path, next === defaultOn ? undefined : next));
-          }}
-          className="mt-0.5 h-4 w-4 rounded border-osce-border accent-osce-accent"
-        />
-        <span>
-          <span className="font-medium">{label}</span>
-          {hint ? <span className="block text-osce-caption text-osce-ink-400">{hint}</span> : null}
-        </span>
-      </label>
+      <Checkbox
+        data-path={pathText(path)}
+        disabled={readOnly}
+        checked={checked}
+        onChange={(event) => {
+          const next = event.target.checked;
+          // Store only a value that differs from the backend's default.
+          edit((current) => setAt(current, path, next === defaultOn ? undefined : next));
+        }}
+        label={label}
+        description={hint}
+      />
       <ProblemNote messages={problemsAt(problems, path)} />
     </div>
   );
@@ -239,7 +238,7 @@ export function ItemControls({ listPath, index, count, noun }: { listPath: JsonP
   const { edit, readOnly } = useRubricBuilder();
   if (readOnly) return null;
   const buttonClass =
-    "rounded-osce-sm p-1.5 text-osce-ink-400 hover:bg-osce-canvas hover:text-osce-ink-900 disabled:opacity-30 disabled:hover:bg-transparent";
+    "rounded-osce-sm p-1.5 text-ink-subtle hover:bg-osce-canvas hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent";
   return (
     <div className="flex shrink-0 items-center gap-0.5">
       <button type="button" className={buttonClass} aria-label={`Move ${noun} up`} disabled={index === 0} onClick={() => edit((current) => moveItem(current, [...listPath, index], -1))}>
@@ -263,7 +262,7 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
     <button
       type="button"
       onClick={onClick}
-      className="rounded-osce-sm border border-dashed border-osce-border px-3 py-1.5 text-osce-meta font-medium text-osce-ink-500 hover:border-osce-accent hover:text-osce-accent"
+      className="rounded-osce-sm border border-dashed border-osce-border px-3 py-1.5 text-osce-meta font-medium text-ink-muted hover:border-osce-accent hover:text-osce-accent"
     >
       + {label}
     </button>
@@ -273,9 +272,9 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
 /** A small uppercase heading inside a card. */
 export function GroupHeading({ children, count }: { children: ReactNode; count?: number }) {
   return (
-    <p className="text-osce-caption font-semibold uppercase tracking-wide text-osce-ink-400">
+    <p className="text-osce-caption font-semibold uppercase tracking-wide text-ink-subtle">
       {children}
-      {count !== undefined ? <span className="ml-1 text-osce-ink-400">· {count}</span> : null}
+      {count !== undefined ? <span className="ml-1 text-ink-subtle">· {count}</span> : null}
     </p>
   );
 }

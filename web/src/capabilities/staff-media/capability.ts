@@ -10,5 +10,5 @@ export const staffMediaCapability: CapabilityModule = {
   permission: "administer_platform",
   path: "/media",
   icon: LuBookOpen,
-  section: "content",
+  section: "catalogue",
 };

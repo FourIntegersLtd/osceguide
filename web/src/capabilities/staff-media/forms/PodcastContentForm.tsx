@@ -1,6 +1,6 @@
 "use client";
 
-import { Input } from "@/foundation/ui";
+import { Input, Textarea } from "@/foundation/ui";
 
 export function PodcastContentForm({
   content,
@@ -20,15 +20,12 @@ export function PodcastContentForm({
         onChange={(e) => onChange({ ...content, audio_url: e.target.value })}
         hint="Paste a hosted audio file URL until TTS is wired."
       />
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Script (optional)</span>
-        <textarea
+      <Textarea
+        label="Script (optional)"
           value={script}
           onChange={(e) => onChange({ ...content, script: e.target.value })}
           rows={12}
-          className="rounded-control border border-border-strong bg-surface px-3 py-2 text-sm"
         />
-      </label>
     </div>
   );
 }

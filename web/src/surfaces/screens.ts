@@ -21,7 +21,6 @@ const SCREEN_LOADERS: Partial<Record<Surface, () => Promise<ScreenMap>>> = {
   train: () => import("@/surfaces/train/screens").then((mod) => mod.trainScreens),
   assess: () => import("@/surfaces/assess/screens").then((mod) => mod.assessScreens),
   partner: () => import("@/surfaces/partner/screens").then((mod) => mod.partnerScreens),
-  platform: () => import("@/surfaces/platform/screens").then((mod) => mod.platformScreens),
 };
 
 const screenMapCache = new Map<Surface, Promise<ScreenMap>>();
@@ -52,7 +51,8 @@ export async function loadScreenComponent(
 }
 
 /** @deprecated Prefer `loadScreensFor` — sync lookup forces every arm's map into the bundle. */
-export async function screensFor(manifest: SurfaceManifest): Promise<ScreenMap> {
+export async function screensFor(manifest: SurfaceManifest,
+): Promise<ScreenMap> {
   return loadScreensFor(manifest);
 }
 

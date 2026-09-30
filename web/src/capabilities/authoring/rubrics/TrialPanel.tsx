@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useState } from "react";
-import { Alert, AsyncBoundary, B2CSegmentedTabs, Badge, cn, getInputClassName, SectionSearchField } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CSegmentedTabs, Badge, cn, SectionSearchField, Textarea } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
@@ -61,13 +61,14 @@ export function TrialPanel({
           <label htmlFor={inputId} className="sr-only">
             Transcript
           </label>
-          <textarea
+          <Textarea
             id={inputId}
+            textareaSize="sm"
             rows={6}
             value={transcript}
             placeholder={SAMPLE_TRANSCRIPT}
             onChange={(event) => setTranscript(event.target.value)}
-            className={cn(getInputClassName({ size: "sm" }), "py-2 font-mono")}
+            className="font-mono"
           />
         </>
       ) : (
@@ -90,12 +91,12 @@ export function TrialPanel({
         ) : null}
         {snapshot ? <TrialStatus status={snapshot.status} seconds={snapshot.elapsed_seconds} turns={snapshot.turn_count} /> : null}
       </div>
-      {blockedReason ? <p className="text-osce-caption text-osce-ink-400">{blockedReason}</p> : null}
+      {blockedReason ? <p className="text-osce-caption text-ink-subtle">{blockedReason}</p> : null}
       {trial.error ? <Alert tone="danger">{trial.error}</Alert> : null}
       {snapshot?.status === "failed" ? <Alert tone="danger">{snapshot.error ?? "The trial could not be marked."}</Alert> : null}
       {inputs ? (
         <div className="rounded-osce-md border border-osce-border bg-osce-canvas p-3">
-          <p className="mb-2 text-osce-caption text-osce-ink-400">
+          <p className="mb-2 text-osce-caption text-ink-subtle">
             Marked by {inputs.result.model_used ?? "the marker"}. Not saved anywhere.
           </p>
           <RubricFeedback rubric={inputs.rubric} result={inputs.result} narrow />
@@ -180,12 +181,12 @@ function AttemptRow({
       )}
     >
       <span className="min-w-0">
-        <span className="block truncate font-medium text-osce-ink-900">{candidate.candidate_label}</span>
-        <span className="block truncate text-osce-caption text-osce-ink-400">
+        <span className="block truncate font-medium text-ink">{candidate.candidate_label}</span>
+        <span className="block truncate text-osce-caption text-ink-subtle">
           {candidate.station_title ?? "Station removed"} · {new Date(candidate.created_at).toLocaleDateString()}
         </span>
       </span>
-      <span className="shrink-0 text-osce-caption text-osce-ink-400">
+      <span className="shrink-0 text-osce-caption text-ink-subtle">
         {candidate.turn_count} {candidate.turn_count === 1 ? "turn" : "turns"}
       </span>
     </button>

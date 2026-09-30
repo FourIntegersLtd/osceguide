@@ -7,9 +7,19 @@ import { EmptyState } from "@/foundation/ui/EmptyState";
 import { Spinner } from "@/foundation/ui/Spinner";
 
 export interface AsyncBoundaryProps<T> {
-  state: { data: T | null; error: Error | null; loading: boolean; reload: () => void };
+  state: {
+    data: T | null;
+    error: Error | null;
+    loading: boolean;
+    reload: () => void;
+  };
   /** Shown instead of `children` when the loader returned nothing worth rendering. */
-  empty?: { title: ReactNode; description?: ReactNode; action?: ReactNode };
+  empty?: {
+    title: ReactNode;
+    description?: ReactNode;
+    action?: ReactNode;
+    bare?: boolean;
+  };
   /** Decides emptiness. Defaults to an empty array or a null result. */
   isEmpty?: (data: T) => boolean;
   /** Replaces the default spinner, for a screen whose loading state is part of its design. */
@@ -20,7 +30,9 @@ export interface AsyncBoundaryProps<T> {
 }
 
 function defaultIsEmpty(data: unknown): boolean {
-  return Array.isArray(data) ? data.length === 0 : data === null || data === undefined;
+  return Array.isArray(data)
+    ? data.length === 0
+    : data === null || data === undefined;
 }
 
 /**
@@ -66,7 +78,14 @@ export function AsyncBoundary<T>({
 
   const decideEmpty = isEmpty ?? defaultIsEmpty;
   if (empty && decideEmpty(data)) {
-    return <EmptyState title={empty.title} description={empty.description} action={empty.action} />;
+    return (
+      <EmptyState
+        title={empty.title}
+        description={empty.description}
+        action={empty.action}
+        bare={empty.bare}
+      />
+    );
   }
 
   return <>{children(data)}</>;

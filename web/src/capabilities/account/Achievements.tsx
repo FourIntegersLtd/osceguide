@@ -149,20 +149,20 @@ function BadgeGroupCard({
           {Array.from({ length: count }, (_, index) => (
             <div
               key={`${type}-${index}`}
-              className={`relative flex h-12 w-12 items-center justify-center rounded-md bg-gradient-to-br sm:h-14 sm:w-14 ${gradient} transition-transform duration-200 hover:scale-105 active:scale-100`}
+              className={`relative flex h-12 w-12 items-center justify-center rounded-osce-md bg-gradient-to-br sm:h-14 sm:w-14 ${gradient} transition-transform duration-200 hover:scale-105 active:scale-100`}
             >
               <Icon className="text-osce-title text-white" aria-hidden />
               <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-osce-surface sm:-right-1.5 sm:-top-1.5 sm:h-6 sm:w-6">
-                <span className="text-osce-caption font-bold text-b2c-text-secondary">
+                <span className="text-osce-caption font-bold text-ink-muted">
                   {index + 1}
                 </span>
               </div>
             </div>
           ))}
           {count === 0 ? (
-            <div className="flex w-full items-start gap-2 rounded-md bg-b2c-surface-muted p-3 text-osce-body italic text-b2c-text-muted sm:p-4">
+            <div className="flex w-full items-start gap-2 rounded-osce-md bg-canvas p-3 text-osce-body italic text-ink-subtle sm:p-4">
               <HiOutlinePresentationChartLine
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-b2c-text-muted"
+                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-subtle"
                 aria-hidden
               />
               <span className="min-w-0">{emptyMessage}</span>
@@ -244,7 +244,7 @@ function AchievementStatsCard({
             label="Day streak"
           />
         </div>
-        <p className="mt-4 text-osce-meta leading-relaxed text-b2c-text-muted sm:mt-5">
+        <p className="mt-4 text-osce-meta leading-relaxed text-ink-subtle sm:mt-5">
           Complete more stations and maintain your streak to unlock new achievements!
         </p>
       </B2CPanelCardBody>
@@ -262,12 +262,12 @@ function StatTile({
   label: string;
 }) {
   return (
-    <div className="flex min-w-0 flex-col items-center rounded-md bg-b2c-surface-muted p-3">
+    <div className="flex min-w-0 flex-col items-center rounded-osce-md bg-canvas p-3">
       {icon}
-      <span className="text-osce-title font-semibold tabular-nums text-osce-ink-900">
+      <span className="text-osce-title font-semibold tabular-nums text-ink">
         {value}
       </span>
-      <span className="text-osce-caption text-b2c-text-muted">{label}</span>
+      <span className="text-osce-caption text-ink-subtle">{label}</span>
     </div>
   );
 }

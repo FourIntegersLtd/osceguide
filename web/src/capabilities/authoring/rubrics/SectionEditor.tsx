@@ -25,7 +25,7 @@ export function SectionList() {
     <div className="space-y-4" data-path="sections">
       <ProblemNote messages={problemsAt(problems, ["sections"])} />
       {sections.length === 0 ? (
-        <p className="rounded-osce-md border border-dashed border-osce-border p-6 text-center text-osce-meta text-osce-ink-400">
+        <p className="rounded-osce-md border border-dashed border-osce-border p-6 text-center text-osce-meta text-ink-subtle">
           No parts yet. Add a rated domain to start.
         </p>
       ) : null}

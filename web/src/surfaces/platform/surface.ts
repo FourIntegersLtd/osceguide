@@ -1,4 +1,15 @@
-import { LuActivity, LuBuilding2, LuFlag, LuGauge, LuHandCoins, LuInbox, LuReceipt, LuScrollText, LuShieldCheck, LuUsers } from "react-icons/lu";
+import {
+  LuActivity,
+  LuBuilding2,
+  LuFlag,
+  LuGauge,
+  LuHandCoins,
+  LuInbox,
+  LuReceipt,
+  LuScrollText,
+  LuShieldCheck,
+  LuUsers,
+} from "react-icons/lu";
 import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
 
 /**
@@ -14,40 +25,71 @@ import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
  */
 function nav({ href }: NavContext): NavItem[] {
   return [
-    { key: "overview", label: "Overview", href: href(""), icon: LuGauge, section: "console" },
+    // Ungrouped on purpose: the landing screen sits above the section headings.
+    { key: "overview", label: "Overview", href: href(""), icon: LuGauge },
     {
       key: "orgs",
       label: "Organisations",
       href: href("/organizations"),
       icon: LuBuilding2,
-      section: "console",
+      section: "customers",
     },
-    { key: "users", label: "Users", href: href("/users"), icon: LuUsers, section: "console" },
     {
-      key: "team",
-      label: "Platform team",
-      href: href("/team"),
-      icon: LuShieldCheck,
-      section: "console",
+      key: "users",
+      label: "Users",
+      href: href("/users"),
+      icon: LuUsers,
+      section: "customers",
     },
-    { key: "billing", label: "Billing", href: href("/billing"), icon: LuReceipt, section: "console" },
-    { key: "messages", label: "Messages", href: href("/messages"), icon: LuInbox, section: "console" },
-    { key: "audit", label: "Audit log", href: href("/audit"), icon: LuScrollText, section: "console" },
     {
-      key: "stationFlags",
-      label: "Station reports",
-      href: href("/station-flags"),
-      icon: LuFlag,
-      section: "content",
+      key: "messages",
+      label: "Messages",
+      href: href("/messages"),
+      icon: LuInbox,
+      section: "customers",
+    },
+    {
+      key: "billing",
+      label: "Billing",
+      href: href("/billing"),
+      icon: LuReceipt,
+      section: "revenue",
     },
     {
       key: "referralPayouts",
       label: "Referral payouts",
       href: href("/referral-payouts"),
       icon: LuHandCoins,
-      section: "console",
+      section: "revenue",
     },
-    { key: "ops", label: "Machinery", href: href("/ops"), icon: LuActivity, section: "console" },
+    {
+      key: "stationFlags",
+      label: "Station reports",
+      href: href("/station-flags"),
+      icon: LuFlag,
+      section: "catalogue",
+    },
+    {
+      key: "team",
+      label: "Platform team",
+      href: href("/team"),
+      icon: LuShieldCheck,
+      section: "operations",
+    },
+    {
+      key: "audit",
+      label: "Audit log",
+      href: href("/audit"),
+      icon: LuScrollText,
+      section: "operations",
+    },
+    {
+      key: "ops",
+      label: "Machinery",
+      href: href("/ops"),
+      icon: LuActivity,
+      section: "operations",
+    },
   ];
 }
 
@@ -57,12 +99,15 @@ export const platformSurface: SurfaceManifest = {
   // Reached by permission, not by belonging to a workspace.
   workspaceKinds: [],
   nav,
+  // Every `/staff/*` page is an explicit route file; this list is the
+  // declaration the registry tests check nav destinations against.
   screenNames: [
     "dashboard",
     "organizations",
     "users",
     "team",
     "billing",
+    "messages",
     "audit",
     "ops",
     "stationFlags",

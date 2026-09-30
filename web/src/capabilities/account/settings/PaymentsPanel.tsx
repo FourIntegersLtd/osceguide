@@ -1,12 +1,9 @@
 "use client";
 
-import { HiOutlineCreditCard } from "react-icons/hi2";
 import {
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardHeader,
   ModalHelper,
+  Panel,
   productTokens,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
@@ -23,7 +20,7 @@ import PlanPicker, { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanP
 import ReceiptList from "@/capabilities/account/settings/ReceiptList";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
-const { b2cFieldLabel, b2cFieldValue, b2cLink, b2cSettingsCardHeaderIcon } = productTokens;
+const { b2cFieldLabel, b2cFieldValue, b2cLink } = productTokens;
 
 /**
  * The retiring client's Payments tab: one "Payments" card.
@@ -63,19 +60,15 @@ export default function PaymentsPanel() {
     <SettingsTabShell>
       <AsyncBoundary state={state}>
         {({ live, receipts }) => (
-          <B2CPanelCard className="mt-0 overflow-hidden">
-            <B2CPanelCardHeader>
-              <HiOutlineCreditCard className={b2cSettingsCardHeaderIcon} aria-hidden />
-              Payments
-            </B2CPanelCardHeader>
-            <B2CPanelCardBody className="space-y-5">
+          <Panel title="Payments" className="overflow-hidden">
+            <div className="space-y-5">
               {live.length > 0 ? (
                 <ActivePlan live={live} receipts={receipts} />
               ) : (
                 <Plans />
               )}
-            </B2CPanelCardBody>
-          </B2CPanelCard>
+            </div>
+          </Panel>
         )}
       </AsyncBoundary>
     </SettingsTabShell>
@@ -107,7 +100,7 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
     <>
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-osce-body font-semibold text-osce-ink-900">Premium</p>
+          <p className="text-osce-body font-semibold text-ink">Premium</p>
           <span className="inline-flex items-center gap-1.5 text-osce-meta font-medium text-osce-success-text">
             <span className="h-1.5 w-1.5 rounded-full bg-osce-success-icon" aria-hidden />
             Active
@@ -120,7 +113,7 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
         </ModalHelper>
       </div>
 
-      <dl className="divide-y divide-b2c-border rounded-xl border border-b2c-border">
+      <dl className="divide-y divide-border rounded-xl border border-border">
         {rows.map((row) => (
           <div key={row.label} className="flex items-center justify-between gap-4 px-4 py-3">
             <dt className={b2cFieldLabel}>{row.label}</dt>

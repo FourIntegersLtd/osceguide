@@ -70,7 +70,7 @@ export function StationsTable({
           <button
             type="button"
             onClick={() => onOpen(station)}
-            className={cn(b2cTableCellText, "text-left font-medium text-osce-ink-900 hover:text-osce-accent")}
+            className={cn(b2cTableCellText, "text-left font-medium text-ink hover:text-osce-accent")}
           >
             {station.title}
           </button>
@@ -101,7 +101,7 @@ export function StationsTable({
         className: "hidden lg:table-cell",
         priority: "detail" as const,
         render: (station: Station) => (
-          <span className={cn(b2cTableCellText, "text-b2c-text-muted")}>{stationCreatedAtLabel(station)}</span>
+          <span className={cn(b2cTableCellText, "text-ink-subtle")}>{stationCreatedAtLabel(station)}</span>
         ),
       },
       {
@@ -145,6 +145,11 @@ export function StationsTable({
       nameField="title"
       search={search}
       showSearch={false}
+      empty={
+        search
+          ? { title: "No matching stations", description: "Try a different name, or clear the exam filter." }
+          : { title: "No stations yet", description: "Create one with New station, from a template or straight from a prompt." }
+      }
     />
   );
 }

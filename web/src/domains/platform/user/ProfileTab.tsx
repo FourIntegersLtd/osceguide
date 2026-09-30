@@ -1,24 +1,85 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Button, Card, Input } from "@/foundation/ui";
+import {
+  ActionRail,
+  Alert,
+  AsyncBoundary,
+  Button,
+  Checkbox,
+  DetailLayout,
+  FactList,
+  Input,
+  Panel,
+  Select,
+} from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { listExams } from "@/capabilities/stations/api";
-import { resetUserPassword, updateUser, type PlatformUserDetail } from "@/domains/platform/api";
-import { formatDay } from "@/domains/platform/support";
-
-const selectClass =
-  "w-full rounded-md border border-b2c-border bg-osce-surface px-3 py-2 text-osce-data text-ink focus:outline-none focus:ring-2 focus:ring-osce-accent/20";
+import {
+  resetUserPassword,
+  updateUser,
+  type PlatformUserDetail,
+} from "@/domains/platform/api";
+import { formatDay, formatMoment } from "@/domains/platform/support";
 
 /**
- * The retiring console's "Basic information" card, as a form that saves.
+ * Who the account is: the editable profile on the left, the record and the
+ * password reset on the right. Payment, access and the console live on the
+ * Account tab, so no fact is shown in two places.
  *
  * The exam is a select over the catalogue rather than a free code, because a
- * mistyped code is an account that opens on nothing. The exam date and the
- * reading arrangement are the two fields the old card showed that nothing on
- * the platform wrote until now.
+ * mistyped code is an account that opens on nothing.
  */
 export function ProfileTab({
+  user,
+  onSaved,
+}: {
+  user: PlatformUserDetail;
+  onSaved: (user: PlatformUserDetail) => void;
+}) {
+  return (
+    <DetailLayout
+      main={<ProfileForm user={user} onSaved={onSaved} />}
+      rail={
+        <>
+          <Panel title="Record" padding="sm">
+            <FactList columns={1} items={recordFacts(user)} />
+          </Panel>
+          <PasswordReset userId={user.id} />
+        </>
+      }
+    />
+  );
+}
+
+function recordFacts(
+  user: PlatformUserDetail,
+): { label: string; value: React.ReactNode }[] {
+  const exam = (user.exam_code ?? "sca").toLowerCase();
+  const legacyId =
+    user.legacy_consumer_ids?.[exam] ??
+    Object.values(user.legacy_consumer_ids ?? {})[0];
+  const facts: { label: string; value: React.ReactNode }[] = [
+    { label: "Member since", value: formatDay(user.created_at) },
+    {
+      label: "Last sign-in",
+      value: user.last_login_at ? formatMoment(user.last_login_at) : "Never",
+    },
+    { label: "Role", value: user.consumer_role === "admin" ? "Admin" : "User" },
+  ];
+  if (user.must_change_password) {
+    facts.push({ label: "Password", value: "Must be changed on next sign-in" });
+  }
+  if (legacyId) {
+    facts.push({
+      label: "Legacy id",
+      value: <span className="font-mono">{legacyId}</span>,
+    });
+  }
+  return facts;
+}
+
+function ProfileForm({
   user,
   onSaved,
 }: {
@@ -31,7 +92,9 @@ export function ProfileTab({
   const [examCode, setExamCode] = useState(user.exam_code ?? "");
   const [examDate, setExamDate] = useState(user.exam_date ?? "");
   const [extraTime, setExtraTime] = useState(user.needs_extra_time ?? false);
-  const [readingSeconds, setReadingSeconds] = useState(String(user.custom_reading_seconds ?? ""));
+  const [readingSeconds, setReadingSeconds] = useState(
+    String(user.custom_reading_seconds ?? ""),
+  );
   const [simulationSeconds, setSimulationSeconds] = useState(
     String(user.custom_simulation_seconds ?? ""),
   );
@@ -57,48 +120,50 @@ export function ProfileTab({
     } finally {
       setBusy(false);
     }
-  }, [user.id, name, examCode, examDate, extraTime, readingSeconds, simulationSeconds, onSaved, toast]);
-
-  const reset = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await resetUserPassword(user.id);
-      toast.success("Password reset emailed", "If the account exists, they will receive a link.");
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  }, [user.id, toast]);
+  }, [
+    user.id,
+    name,
+    examCode,
+    examDate,
+    extraTime,
+    readingSeconds,
+    simulationSeconds,
+    onSaved,
+    toast,
+  ]);
 
   return (
-    <Card padding="md">
-      <div className="flex max-w-lg flex-col gap-3">
+    <Panel title="Profile">
+      <div className="flex max-w-lg flex-col gap-4">
         {error ? <Alert tone="danger">{error}</Alert> : null}
-        <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
+        <Input
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={busy}
+        />
         <AsyncBoundary state={exams} isEmpty={() => false}>
           {(page) => (
-            <label className="flex flex-col gap-1 text-osce-data text-ink">
-              <span className="text-osce-meta font-medium text-ink-muted">Exam</span>
-              <select
-                className={selectClass}
-                value={examCode}
-                onChange={(e) => setExamCode(e.target.value)}
-                disabled={busy}
-              >
-                <option value="">No exam chosen</option>
-                {page.items.map((exam) => (
-                  <option key={exam.code} value={exam.code}>
-                    {exam.name} ({exam.code.toUpperCase()})
-                  </option>
-                ))}
-                {examCode && !page.items.some((exam) => exam.code === examCode) ? (
-                  <option value={examCode}>{examCode} (not in the catalogue)</option>
-                ) : null}
-              </select>
-              <span className="text-osce-meta text-ink-subtle">The exam this account opens on. Access is on the Entitlements tab.</span>
-            </label>
+            <Select
+              label="Exam"
+              value={examCode}
+              onChange={(e) => setExamCode(e.target.value)}
+              disabled={busy}
+              hint="The exam this account opens on. Access is on the Entitlements tab."
+            >
+              <option value="">No exam chosen</option>
+              {page.items.map((exam) => (
+                <option key={exam.code} value={exam.code}>
+                  {exam.name} ({exam.code.toUpperCase()})
+                </option>
+              ))}
+              {examCode &&
+              !page.items.some((exam) => exam.code === examCode) ? (
+                <option value={examCode}>
+                  {examCode} (not in the catalogue)
+                </option>
+              ) : null}
+            </Select>
           )}
         </AsyncBoundary>
         <Input
@@ -109,59 +174,79 @@ export function ProfileTab({
           disabled={busy}
           hint="When they sit the real thing. The dashboard counts down to it."
         />
-        <label className="flex items-center gap-2 text-osce-data text-ink">
-          <input
-            type="checkbox"
+
+        <div className="flex flex-col gap-4 border-t border-border pt-4">
+          <Checkbox
+            label="Extra time"
+            description="Uses the custom timers below on their own practice."
             checked={extraTime}
             onChange={(e) => setExtraTime(e.target.checked)}
             disabled={busy}
           />
-          Extra time (uses the custom timers below on their own practice)
-        </label>
-        <Input
-          type="number"
-          min={1}
-          max={3659}
-          inputMode="numeric"
-          label="Custom reading timer (seconds)"
-          value={readingSeconds}
-          onChange={(e) => setReadingSeconds(e.target.value)}
-          disabled={busy}
-          hint="Blank keeps the exam's own reading time."
-        />
-        <Input
-          type="number"
-          min={1}
-          max={3659}
-          inputMode="numeric"
-          label="Custom consultation timer (seconds)"
-          value={simulationSeconds}
-          onChange={(e) => setSimulationSeconds(e.target.value)}
-          disabled={busy}
-          hint="Blank keeps the exam's own consultation time."
-        />
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-osce-meta text-ink-subtle">
-          <dt>Member since</dt>
-          <dd className="text-ink-muted">{formatDay(user.created_at)}</dd>
-          <dt>Last sign-in</dt>
-          <dd className="text-ink-muted">{user.last_login_at ? formatDay(user.last_login_at) : "Never"}</dd>
-          {user.must_change_password ? (
-            <>
-              <dt>Password</dt>
-              <dd className="text-ink-muted">Must be changed on next sign-in</dd>
-            </>
-          ) : null}
-        </dl>
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" disabled={busy} onClick={() => void reset()}>
-            Send password reset
-          </Button>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              type="number"
+              min={1}
+              max={3659}
+              inputMode="numeric"
+              label="Reading (seconds)"
+              value={readingSeconds}
+              onChange={(e) => setReadingSeconds(e.target.value)}
+              disabled={busy}
+              hint="Blank keeps the exam's own."
+            />
+            <Input
+              type="number"
+              min={1}
+              max={3659}
+              inputMode="numeric"
+              label="Consultation (seconds)"
+              value={simulationSeconds}
+              onChange={(e) => setSimulationSeconds(e.target.value)}
+              disabled={busy}
+              hint="Blank keeps the exam's own."
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end">
           <Button disabled={busy} onClick={() => void save()}>
             {busy ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
-    </Card>
+    </Panel>
+  );
+}
+
+function PasswordReset({ userId }: { userId: string }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reset = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await resetUserPassword(userId);
+      toast.success(
+        "Password reset emailed",
+        "If the account exists, they will receive a link.",
+      );
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <ActionRail title="Sign-in">
+      {error ? <Alert tone="danger">{error}</Alert> : null}
+      <Button variant="secondary" disabled={busy} onClick={() => void reset()}>
+        {busy ? "Sending…" : "Send password reset"}
+      </Button>
+    </ActionRail>
   );
 }
 

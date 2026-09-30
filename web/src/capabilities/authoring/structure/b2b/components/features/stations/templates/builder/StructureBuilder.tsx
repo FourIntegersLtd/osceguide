@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/foundation/ui";
 import { useState } from "react";
 import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
 import { InspectorPanel } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/InspectorPanel";
@@ -131,10 +132,12 @@ export function StructureBuilder({
           toolbarActions={
             <>
               {kind === "station" ? (
-                <label className="mr-2 hidden items-center gap-2 text-osce-caption text-osce-ink-500 sm:inline-flex">
+                <label className="mr-2 hidden items-center gap-2 text-osce-caption text-ink-muted sm:inline-flex">
                   Who speaks in the AI role
-                  <select
+                  <Select
                     value={persona}
+                    selectSize="sm"
+                    className="w-auto"
                     onChange={(e) =>
                       builder.applyChange({
                         ...value,
@@ -144,11 +147,10 @@ export function StructureBuilder({
                         },
                       })
                     }
-                    className="rounded-lg border border-osce-border bg-osce-surface px-2 py-1 text-osce-caption font-medium text-osce-ink-700"
                   >
                     <option value="patient">the patient</option>
                     <option value="examiner">the examiner (viva)</option>
-                  </select>
+                  </Select>
                 </label>
               ) : null}
               <BuilderIconButton

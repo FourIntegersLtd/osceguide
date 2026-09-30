@@ -14,7 +14,7 @@ import { getButtonClassName } from "@/capabilities/authoring/structure/shared/ui
  *
  * Deliberately not `b2b-*`: those are CSS variables the institution layout
  * defines under `.b2b-app`, and platform-web never defines them, so a
- * `border-b2b-border` there resolves to `currentColor` — a black hairline.
+ * `border-border` there resolves to `currentColor` — a black hairline.
  * `osce-*` is defined by both apps, so one palette renders the same in each.
  */
 export const builderUi = {
@@ -28,11 +28,11 @@ export const builderUi = {
   canvas: "bg-osce-canvas",
   surface: "bg-osce-surface",
   /** Grey ink, never black: 700 for labels, 500 secondary, 400 meta. */
-  text: "text-osce-ink-700",
-  textSecondary: "text-osce-ink-500",
-  textMuted: "text-osce-ink-400",
+  text: "text-ink-muted",
+  textSecondary: "text-ink-muted",
+  textMuted: "text-ink-subtle",
   eyebrow:
-    "text-osce-micro font-semibold uppercase tracking-[0.08em] text-osce-ink-400",
+    "text-osce-micro font-semibold uppercase tracking-[0.08em] text-ink-subtle",
   selectedRow: "bg-osce-accent-muted ring-1 ring-inset ring-osce-accent-subtle",
   hoverRow: "hover:bg-osce-canvas",
   focusRing:
@@ -117,9 +117,9 @@ export const toneClass: Record<
 };
 
 const badgeSize = {
-  xs: "h-6 w-6 rounded-md [&>svg]:h-3.5 [&>svg]:w-3.5",
-  sm: "h-8 w-8 rounded-lg [&>svg]:h-4 [&>svg]:w-4",
-  md: "h-9 w-9 rounded-lg [&>svg]:h-[18px] [&>svg]:w-[18px]",
+  xs: "h-6 w-6 rounded-osce-md [&>svg]:h-3.5 [&>svg]:w-3.5",
+  sm: "h-8 w-8 rounded-osce-lg [&>svg]:h-4 [&>svg]:w-4",
+  md: "h-9 w-9 rounded-osce-lg [&>svg]:h-[18px] [&>svg]:w-[18px]",
   lg: "h-11 w-11 rounded-xl [&>svg]:h-5 [&>svg]:w-5",
 } as const;
 
@@ -160,7 +160,7 @@ export function TypeBadge({
   return (
     <span
       className={[
-        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-osce-canvas text-osce-ink-500 [&>svg]:h-4 [&>svg]:w-4",
+        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-osce-lg bg-osce-canvas text-ink-muted [&>svg]:h-4 [&>svg]:w-4",
         className,
       ].join(" ")}
     >
@@ -174,9 +174,9 @@ type BuilderButtonVariant = "secondary" | "ghost" | "commit" | "danger";
 /** Commit is the shared black tier; the rest are the builder's quiet chrome. */
 const buttonVariant: Record<Exclude<BuilderButtonVariant, "commit">, string> = {
   secondary:
-    "border border-osce-border bg-osce-surface text-osce-ink-700 hover:bg-osce-canvas",
+    "border border-osce-border bg-osce-surface text-ink-muted hover:bg-osce-canvas",
   ghost:
-    "border border-transparent bg-transparent text-osce-ink-500 hover:bg-osce-canvas hover:text-osce-ink-700",
+    "border border-transparent bg-transparent text-ink-muted hover:bg-osce-canvas hover:text-ink-muted",
   danger:
     "border border-transparent bg-transparent text-osce-danger-text hover:bg-osce-danger-bg",
 };
@@ -200,7 +200,7 @@ export const BuilderButton = forwardRef<
     variant === "commit"
       ? getButtonClassName({ variant: "commit", size, className })
       : [
-          "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-40",
+          "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-osce-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-40",
           buttonVariant[variant],
           buttonSize[size],
           builderUi.focusRing,
@@ -221,7 +221,7 @@ export const BuilderIconButton = forwardRef<
       aria-label={label}
       title={label}
       className={[
-        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-osce-ink-500 transition-colors hover:bg-osce-canvas hover:text-osce-ink-700 disabled:pointer-events-none disabled:opacity-40 [&>svg]:h-4 [&>svg]:w-4",
+        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-osce-lg text-ink-muted transition-colors hover:bg-osce-canvas hover:text-ink-muted disabled:pointer-events-none disabled:opacity-40 [&>svg]:h-4 [&>svg]:w-4",
         builderUi.focusRing,
         className,
       ].join(" ")}

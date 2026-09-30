@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, Card, Input, Panel } from "@/foundation/ui";
+import { Alert, Button, Input, Panel, Select } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import {
   setStaffMfaPolicy,
@@ -50,68 +50,71 @@ export function OrganizationSettings({
     [organization.slug, onChanged, toast],
   );
 
-  const dirty = name.trim() !== organization.name || orgType !== organization.org_type;
+  const dirty =
+    name.trim() !== organization.name || orgType !== organization.org_type;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <Panel title="Details">
-        <Card padding="md">
-          <div className="flex max-w-lg flex-col gap-3">
-            {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+        <div className="flex max-w-lg flex-col gap-3">
+          {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
-            <Input
-              label="Name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              disabled={busy}
-            />
+          <Input
+            label="Name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            disabled={busy}
+          />
 
-            <Input
-              label="Slug"
-              value={organization.slug}
-              readOnly
-              hint="The URL every one of this tenant's screens hangs off. It cannot be changed."
-            />
+          <Input
+            label="Slug"
+            value={organization.slug}
+            readOnly
+            hint="The URL every one of this tenant's screens hangs off. It cannot be changed."
+          />
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-osce-meta font-medium text-osce-ink-700">Type</span>
-              <select
-                value={orgType}
-                onChange={(event) => setOrgType(event.target.value)}
-                disabled={busy}
-                className="h-10 rounded-control border border-border-strong bg-surface px-3 text-osce-data text-ink"
-              >
-                {ORG_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-                {/* A type the backend has and this app has not heard of must
-                    still be selectable, or saving anything else would change it. */}
-                {ORG_TYPES.every((type) => type.value !== organization.org_type) ? (
-                  <option value={organization.org_type}>{organization.org_type}</option>
-                ) : null}
-              </select>
-              <span className="text-osce-meta text-b2c-text-muted">
-                Which console this tenant&rsquo;s members land in.
-              </span>
-            </label>
+          <Select
+            label="Type"
+            value={orgType}
+            onChange={(event) => setOrgType(event.target.value)}
+            disabled={busy}
+            hint="Which console this tenant's members land in."
+          >
+            {ORG_TYPES.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
+            {/* A type the backend has and this app has not heard of must
+                still be selectable, or saving anything else would change it. */}
+            {ORG_TYPES.every((type) => type.value !== organization.org_type) ? (
+              <option value={organization.org_type}>
+                {organization.org_type}
+              </option>
+            ) : null}
+          </Select>
 
-            <div className="flex justify-end">
-              <Button
-                disabled={busy || !dirty || !name.trim()}
-                onClick={() =>
-                  void commit({ name: name.trim(), org_type: orgType }, "Details saved")
-                }
-              >
-                {busy ? "Saving…" : "Save"}
-              </Button>
-            </div>
+          <div className="flex justify-end">
+            <Button
+              disabled={busy || !dirty || !name.trim()}
+              onClick={() =>
+                void commit(
+                  { name: name.trim(), org_type: orgType },
+                  "Details saved",
+                )
+              }
+            >
+              {busy ? "Saving…" : "Save"}
+            </Button>
           </div>
-        </Card>
+        </div>
       </Panel>
 
-      <ContractDates organization={organization} busy={busy} onCommit={commit} />
+      <ContractDates
+        organization={organization}
+        busy={busy}
+        onCommit={commit}
+      />
       <StaffMfaPolicy organization={organization} onChanged={onChanged} />
     </div>
   );
@@ -141,7 +144,11 @@ function StaffMfaPolicy({
     setError(null);
     try {
       onChanged(await setStaffMfaPolicy(organization.slug, !required));
-      toast.success(required ? "Two-factor sign-in no longer required" : "Two-factor sign-in required");
+      toast.success(
+        required
+          ? "Two-factor sign-in no longer required"
+          : "Two-factor sign-in required",
+      );
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error(String(cause)));
     } finally {
@@ -151,25 +158,32 @@ function StaffMfaPolicy({
 
   return (
     <Panel title="Two-factor sign-in">
-      <Card padding="md">
-        <div className="flex max-w-lg flex-col gap-3">
-          {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
-          <p className="text-osce-body text-ink">
-            {required
-              ? "Staff must sign in with a password and an authenticator code."
-              : "Staff may sign in with a password alone. Each person can still turn two-factor sign-in on for themselves."}
-          </p>
-          <p className="text-osce-meta text-ink-muted">
-            Applies at each person&rsquo;s next password sign-in. Anyone without an authenticator
-            sets one up then. Organisation (SSO) sign-in is unaffected.
-          </p>
-          <div className="flex justify-end">
-            <Button variant={required ? "secondary" : "primary"} disabled={busy} onClick={() => void toggle()}>
-              {busy ? "Saving…" : required ? "Stop requiring it" : "Require for staff"}
-            </Button>
-          </div>
+      <div className="flex max-w-lg flex-col gap-3">
+        {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+        <p className="text-osce-body text-ink">
+          {required
+            ? "Staff must sign in with a password and an authenticator code."
+            : "Staff may sign in with a password alone. Each person can still turn two-factor sign-in on for themselves."}
+        </p>
+        <p className="text-osce-meta text-ink-subtle">
+          Applies at each person&rsquo;s next password sign-in. Anyone without
+          an authenticator sets one up then. Organisation (SSO) sign-in is
+          unaffected.
+        </p>
+        <div className="flex justify-end">
+          <Button
+            variant={required ? "secondary" : "primary"}
+            disabled={busy}
+            onClick={() => void toggle()}
+          >
+            {busy
+              ? "Saving…"
+              : required
+                ? "Stop requiring it"
+                : "Require for staff"}
+          </Button>
         </div>
-      </Card>
+      </div>
     </Panel>
   );
 }
@@ -199,7 +213,9 @@ function ContractDates({
   const [startsAt, setStartsAt] = useState(() =>
     contractInputValue(organization.contract_starts_at),
   );
-  const [endsAt, setEndsAt] = useState(() => contractInputValue(organization.contract_ends_at));
+  const [endsAt, setEndsAt] = useState(() =>
+    contractInputValue(organization.contract_ends_at),
+  );
 
   const save = () => {
     const changes: OrganizationChanges = {};
@@ -214,52 +230,50 @@ function ContractDates({
       title="Contract"
       description="When this organisation's access starts, and when it lapses."
     >
-      <Card padding="md">
-        <div className="flex max-w-lg flex-col gap-3">
-          {!organization.contract_starts_at && !organization.contract_ends_at ? (
-            <WriteOnlyNote>
-              Contract dates are not on this organisation record yet. A blank field is left
-              untouched when you save.
-            </WriteOnlyNote>
-          ) : null}
+      <div className="flex max-w-lg flex-col gap-3">
+        {!organization.contract_starts_at && !organization.contract_ends_at ? (
+          <WriteOnlyNote>
+            Contract dates are not on this organisation record yet. A blank
+            field is left untouched when you save.
+          </WriteOnlyNote>
+        ) : null}
 
-          <Input
-            type="date"
-            label="Access starts"
-            value={startsAt}
-            onChange={(event) => setStartsAt(event.target.value)}
+        <Input
+          type="date"
+          label="Access starts"
+          value={startsAt}
+          onChange={(event) => setStartsAt(event.target.value)}
+          disabled={busy}
+        />
+
+        <Input
+          type="date"
+          label="Access ends"
+          value={endsAt}
+          onChange={(event) => setEndsAt(event.target.value)}
+          disabled={busy}
+          hint="Midnight at the start of this day. A lapsed contract suspends the organisation."
+        />
+
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={busy}
-          />
-
-          <Input
-            type="date"
-            label="Access ends"
-            value={endsAt}
-            onChange={(event) => setEndsAt(event.target.value)}
-            disabled={busy}
-            hint="Midnight at the start of this day. A lapsed contract suspends the organisation."
-          />
-
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={busy}
-              onClick={() =>
-                void onCommit(
-                  { contract_starts_at: null, contract_ends_at: null },
-                  "Contract dates cleared",
-                )
-              }
-            >
-              Clear both dates
-            </Button>
-            <Button disabled={busy || (!startsAt && !endsAt)} onClick={save}>
-              {busy ? "Saving…" : "Save dates"}
-            </Button>
-          </div>
+            onClick={() =>
+              void onCommit(
+                { contract_starts_at: null, contract_ends_at: null },
+                "Contract dates cleared",
+              )
+            }
+          >
+            Clear both dates
+          </Button>
+          <Button disabled={busy || (!startsAt && !endsAt)} onClick={save}>
+            {busy ? "Saving…" : "Save dates"}
+          </Button>
         </div>
-      </Card>
+      </div>
     </Panel>
   );
 }

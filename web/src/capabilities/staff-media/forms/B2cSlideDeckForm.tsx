@@ -15,16 +15,26 @@ import {
 } from "@/capabilities/staff-media/content/b2cMediaShapes";
 import { MEDICAL_SPECIALTY_NAMES } from "@/capabilities/staff-media/content/medicalSpecialties";
 import { StringListField } from "@/capabilities/staff-media/forms/StringListField";
-import { Button, Input } from "@/foundation/ui";
-import { cn } from "@/foundation/ui/cn";
-import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { HiOutlineArrowDown, HiOutlineArrowUp, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi2";
+import {
+  Badge,
+  Button,
+  Input,
+  Select,
+  Textarea,
+  type BadgeTone,
+} from "@/foundation/ui";
+import {
+  HiOutlineArrowDown,
+  HiOutlineArrowUp,
+  HiOutlinePlus,
+  HiOutlineTrash,
+} from "react-icons/hi2";
 
-function statusPillClass(status: string): string {
-  if (status === "completed") return "bg-osce-success-bg text-osce-success-text";
-  if (status === "failed") return "bg-osce-danger-bg text-osce-danger-text";
-  if (status.startsWith("generating")) return "bg-osce-accent-subtle text-osce-accent";
-  return "bg-osce-warning-bg text-osce-warning-text";
+function statusTone(status: string): BadgeTone {
+  if (status === "completed") return "success";
+  if (status === "failed") return "danger";
+  if (status.startsWith("generating")) return "accent";
+  return "warning";
 }
 
 export function B2cSlideDeckForm({
@@ -41,9 +51,11 @@ export function B2cSlideDeckForm({
   const slides = slidesFromContent(content);
   const status = avStatus(content) ?? "completed";
 
-  const patch = (partial: Record<string, unknown>) => onChange(mergeContent(content, partial));
+  const patch = (partial: Record<string, unknown>) =>
+    onChange(mergeContent(content, partial));
 
-  const updateSlides = (next: B2cSlide[]) => onChange(setSlides(content, renumberSlidePositions(next)));
+  const updateSlides = (next: B2cSlide[]) =>
+    onChange(setSlides(content, renumberSlidePositions(next)));
 
   const updateSlide = (index: number, partial: Partial<B2cSlide>) => {
     const next = [...slides];
@@ -62,15 +74,7 @@ export function B2cSlideDeckForm({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span
-          className={cn(
-            "rounded-full px-3 py-1 font-medium capitalize",
-            b2cTableCellText,
-            statusPillClass(status),
-          )}
-        >
-          {status.replace(/_/g, " ")}
-        </span>
+        <Badge tone={statusTone(status)}>{status.replace(/_/g, " ")}</Badge>
         {onRegenerateAv ? (
           <Button
             type="button"
@@ -79,7 +83,9 @@ export function B2cSlideDeckForm({
             disabled={avBusy || isAvRunning(status)}
             onClick={onRegenerateAv}
           >
-            {avBusy || isAvRunning(status) ? "Regenerating…" : "Regenerate audio & video"}
+            {avBusy || isAvRunning(status)
+              ? "Regenerating…"
+              : "Regenerate audio & video"}
           </Button>
         ) : null}
       </div>
@@ -89,19 +95,18 @@ export function B2cSlideDeckForm({
         value={typeof content.topic === "string" ? content.topic : ""}
         onChange={(e) => patch({ topic: e.target.value })}
       />
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Specialty</span>
-        <select
-          value={typeof content.specialty === "string" ? content.specialty : ""}
-          onChange={(e) => patch({ specialty: e.target.value })}
-          className="rounded-control border border-border-strong bg-surface px-3 py-2 text-sm"
-        >
-          <option value="">—</option>
-          {MEDICAL_SPECIALTY_NAMES.map((name) => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
-      </label>
+      <Select
+        label="Specialty"
+        value={typeof content.specialty === "string" ? content.specialty : ""}
+        onChange={(e) => patch({ specialty: e.target.value })}
+      >
+        <option value="">—</option>
+        {MEDICAL_SPECIALTY_NAMES.map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </Select>
       <Input
         label="Final video URL"
         value={
@@ -111,17 +116,21 @@ export function B2cSlideDeckForm({
               ? content.video_url
               : ""
         }
-        onChange={(e) => patch({ final_video_url: e.target.value, video_url: e.target.value })}
+        onChange={(e) =>
+          patch({ final_video_url: e.target.value, video_url: e.target.value })
+        }
       />
 
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-ink">Slides</h3>
+        <h3 className="text-osce-subheading font-semibold text-ink">Slides</h3>
         <Button
           type="button"
           size="sm"
           variant="secondary"
           className="gap-1"
-          onClick={() => updateSlides([...slides, emptyB2cSlide(slides.length + 1)])}
+          onClick={() =>
+            updateSlides([...slides, emptyB2cSlide(slides.length + 1)])
+          }
         >
           <HiOutlinePlus className="h-4 w-4" aria-hidden />
           Add slide
@@ -130,9 +139,11 @@ export function B2cSlideDeckForm({
 
       <ul className="flex flex-col gap-4">
         {slides.map((slide, index) => (
-          <li key={index} className="rounded-control border border-border p-4">
+          <li key={index} className="rounded-osce-md border border-border p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm font-medium text-ink">Slide {index + 1}</span>
+              <span className="text-osce-data font-medium text-ink">
+                Slide {index + 1}
+              </span>
               <div className="flex flex-wrap gap-1">
                 <Button
                   type="button"
@@ -159,7 +170,9 @@ export function B2cSlideDeckForm({
                   variant="ghost"
                   size="sm"
                   aria-label="Remove slide"
-                  onClick={() => updateSlides(slides.filter((_, i) => i !== index))}
+                  onClick={() =>
+                    updateSlides(slides.filter((_, i) => i !== index))
+                  }
                 >
                   <HiOutlineTrash className="h-4 w-4" aria-hidden />
                 </Button>
@@ -170,48 +183,47 @@ export function B2cSlideDeckForm({
                 label="Position"
                 type="number"
                 value={String(slide.position ?? index + 1)}
-                onChange={(e) => updateSlide(index, { position: Number(e.target.value) || index + 1 })}
+                onChange={(e) =>
+                  updateSlide(index, {
+                    position: Number(e.target.value) || index + 1,
+                  })
+                }
               />
               <Input
                 label="Title"
                 value={slide.title ?? ""}
                 onChange={(e) => updateSlide(index, { title: e.target.value })}
               />
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="font-medium text-ink">Layout</span>
-                <select
-                  value={slide.layout ?? "text_only"}
-                  onChange={(e) => updateSlide(index, { layout: e.target.value })}
-                  className="rounded-control border border-border-strong bg-surface px-3 py-2 text-sm"
-                >
-                  {SLIDE_LAYOUTS.map((layout) => (
-                    <option key={layout} value={layout}>{layout}</option>
-                  ))}
-                </select>
-              </label>
+              <Select
+                label="Layout"
+                value={slide.layout ?? "text_only"}
+                onChange={(e) => updateSlide(index, { layout: e.target.value })}
+              >
+                {SLIDE_LAYOUTS.map((layout) => (
+                  <option key={layout} value={layout}>
+                    {layout}
+                  </option>
+                ))}
+              </Select>
               <StringListField
                 label="Bullet points"
                 items={bulletsAsStrings(slide)}
                 onChange={(items) => setBullets(index, items)}
               />
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="font-medium text-ink">Explanation / answer</span>
-                <textarea
-                  value={slide.explanation ?? ""}
-                  onChange={(e) => updateSlide(index, { explanation: e.target.value })}
-                  rows={3}
-                  className="rounded-control border border-border-strong bg-surface px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="flex flex-col gap-1.5 text-sm">
-                <span className="font-medium text-ink">Speaker notes (TTS)</span>
-                <textarea
-                  value={slide.speaker_notes ?? ""}
-                  onChange={(e) => updateSlide(index, { speaker_notes: e.target.value })}
-                  rows={3}
-                  className="rounded-control border border-border-strong bg-surface px-3 py-2 text-sm"
-                />
-              </label>
+              <Textarea
+                label="Explanation / answer"
+                value={slide.explanation ?? ""}
+                onChange={(e) =>
+                  updateSlide(index, { explanation: e.target.value })
+                }
+              />
+              <Textarea
+                label="Speaker notes (TTS)"
+                value={slide.speaker_notes ?? ""}
+                onChange={(e) =>
+                  updateSlide(index, { speaker_notes: e.target.value })
+                }
+              />
               <StringListField
                 label="Image URLs"
                 items={

@@ -1,3 +1,4 @@
+import { Checkbox, Select, Textarea } from "@/foundation/ui";
 import type { StationBlock } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { formsLabelForStationBlockType } from "@/capabilities/authoring/structure/b2b/lib/stations/blockTypeLabels";
 import { RagGradePreviewRow } from "@/capabilities/authoring/structure/b2b/components/features/feedback/RagGradeControls";
@@ -13,20 +14,20 @@ export function BlockPreviewContent({
   minimal?: boolean;
 }) {
   const fieldClass = minimal
-    ? "w-full rounded-lg border-0 bg-osce-canvas px-3 py-2 text-osce-meta text-osce-ink-500"
-    : "w-full rounded-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-body text-osce-ink-700";
+    ? "w-full rounded-osce-lg border-0 bg-osce-canvas px-3 py-2 text-osce-meta text-ink-muted"
+    : "w-full rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-body text-ink-muted";
   const chipClass = minimal
-    ? "rounded-md bg-osce-canvas px-2 py-1 text-osce-caption text-osce-ink-500"
-    : "rounded-full border border-osce-border bg-osce-surface px-2 py-1 text-osce-caption font-semibold text-osce-ink-700";
+    ? "rounded-osce-md bg-osce-canvas px-2 py-1 text-osce-caption text-ink-muted"
+    : "rounded-full border border-osce-border bg-osce-surface px-2 py-1 text-osce-caption font-semibold text-ink-muted";
 
   return (
     <>
       {showLabel ? (
         <div className="flex items-center justify-between gap-3">
-          <p className="truncate text-osce-body font-semibold text-osce-ink-700">
+          <p className="truncate text-osce-body font-semibold text-ink-muted">
             {block.label}
           </p>
-          <span className="shrink-0 text-osce-caption font-semibold text-osce-ink-500">
+          <span className="shrink-0 text-osce-caption font-semibold text-ink-muted">
             {formsLabelForStationBlockType(block.type)}
           </span>
         </div>
@@ -35,7 +36,7 @@ export function BlockPreviewContent({
         <span
           className={
             minimal
-              ? "mt-1 inline-block text-osce-caption font-medium text-osce-ink-500"
+              ? "mt-1 inline-block text-osce-caption font-medium text-ink-muted"
               : "mt-1 inline-block rounded-full border border-osce-warning-border bg-osce-warning-bg px-2 py-0.5 text-osce-caption font-semibold text-osce-warning-text"
           }
         >
@@ -51,10 +52,11 @@ export function BlockPreviewContent({
           />
         )}
         {block.type === "longText" && (
-          <textarea
+          <Textarea
             disabled
+            readOnly
+            tabIndex={-1}
             placeholder={block.placeholder || block.label || "Long text"}
-            className={fieldClass}
             rows={2}
           />
         )}
@@ -65,9 +67,10 @@ export function BlockPreviewContent({
         )}
         {block.type === "singleSelect" && (
           <div className="space-y-2">
-            <select
+            <Select
               disabled
-              className={`${fieldClass} max-w-md text-osce-ink-700`}
+              tabIndex={-1}
+              className="max-w-md"
               value={block.options[0] ?? ""}
             >
               {(block.options.length ? block.options : ["Option 1"]).map((o) => (
@@ -75,7 +78,7 @@ export function BlockPreviewContent({
                   {o}
                 </option>
               ))}
-            </select>
+            </Select>
             <div className="flex flex-wrap gap-1.5">
               {block.options.slice(0, 4).map((o) => (
                 <span key={o} className={chipClass}>
@@ -97,17 +100,13 @@ export function BlockPreviewContent({
         {block.type === "checklist" && (
           <div className="space-y-1">
             {block.items.slice(0, 5).map((it) => (
-              <div
+              <Checkbox
                 key={it.id}
-                className={`flex items-center gap-2 ${minimal ? "text-osce-meta text-osce-ink-500" : "text-osce-body text-osce-ink-700"}`}
-              >
-                <input
-                  type="checkbox"
-                  disabled
-                  className="rounded border-osce-border"
-                />
-                <span>{it.label}</span>
-              </div>
+                disabled
+                tabIndex={-1}
+                label={it.label}
+                className="items-center"
+              />
             ))}
           </div>
         )}
@@ -120,8 +119,8 @@ export function BlockPreviewContent({
                   key={n}
                   className={
                     minimal
-                      ? "inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-md bg-osce-canvas text-osce-caption text-osce-ink-500"
-                      : "inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-osce-border bg-osce-surface text-osce-body font-semibold text-osce-ink-700"
+                      ? "inline-flex h-7 min-w-[1.75rem] items-center justify-center rounded-osce-md bg-osce-canvas text-osce-caption text-ink-muted"
+                      : "inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full border border-osce-border bg-osce-surface text-osce-body font-semibold text-ink-muted"
                   }
                 >
                   {n}
@@ -132,7 +131,7 @@ export function BlockPreviewContent({
         {block.type === "media" && (
           <div className="flex gap-2">
             {[0, 1, 2].map((index) => (
-              <span key={index} className={`h-12 w-16 rounded-md ${minimal ? "bg-osce-canvas" : "border border-osce-border bg-osce-canvas"}`} />
+              <span key={index} className={`h-12 w-16 rounded-osce-md ${minimal ? "bg-osce-canvas" : "border border-osce-border bg-osce-canvas"}`} />
             ))}
           </div>
         )}

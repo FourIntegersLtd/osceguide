@@ -64,7 +64,7 @@ export default function AuthQuotePanel() {
                 "h-1.5 rounded-full transition-all duration-300",
                 index === testimonialIndex
                   ? "w-4 bg-osce-accent"
-                  : "w-1.5 bg-b2c-border",
+                  : "w-1.5 bg-border",
               )}
             />
           ))}

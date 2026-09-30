@@ -8,11 +8,10 @@ import {
   HiOutlineDocumentDuplicate,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert, Button, ConfirmModal } from "@/foundation/ui";
+import { Alert, Button, ConfirmModal, Panel } from "@/foundation/ui";
 import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
 import { validateStationContentScoped } from "@/capabilities/authoring/lib/b2cStationContentScope";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import { StationVersionHistory } from "@/capabilities/authoring/sections/StationVersionHistory";
 import { StationUsedBy } from "@/capabilities/authoring/sections/StationUsedBy";
 import {
@@ -131,7 +130,7 @@ export function StationDetail({
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-osce-body font-medium text-b2b-accent hover:underline"
+        className="inline-flex items-center gap-1.5 text-osce-body font-medium text-accent hover:underline"
       >
         <HiOutlineArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
         Stations
@@ -139,11 +138,11 @@ export function StationDetail({
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
 
-      <AuthoringCard padding="md">
+      <Panel padding="md">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-osce-body font-semibold text-b2b-headline">{station.title}</h2>
-            <p className="mt-0.5 text-osce-caption text-b2b-mid">
+            <h2 className="text-osce-body font-semibold text-ink">{station.title}</h2>
+            <p className="mt-0.5 text-osce-caption text-ink-muted">
               {station.exam_code} · working on v{version}
             </p>
           </div>
@@ -205,23 +204,23 @@ export function StationDetail({
         </div>
 
         {!structure && templateVersionId ? (
-          <p className="mt-3 text-osce-caption text-b2b-mid">
+          <p className="mt-3 text-osce-caption text-ink-muted">
             Template structure is not available in the catalogue — reload templates or edit from the
             template list.
           </p>
         ) : null}
         {!structure && !templateVersionId ? (
-          <p className="mt-3 text-osce-caption text-b2b-mid">
+          <p className="mt-3 text-osce-caption text-ink-muted">
             No layout is defined for exam {station.exam_code}. Import uses the B2C library shapes
             for sca, plab, casc and ortho only.
           </p>
         ) : null}
 
-        <p className="mt-3 text-osce-caption text-b2b-mid">
+        <p className="mt-3 text-osce-caption text-ink-muted">
           A published version is what an attempt was assessed against, so it is archived rather
           than deleted.
         </p>
-      </AuthoringCard>
+      </Panel>
 
       <ConfirmModal
         isOpen={confirming !== null}
@@ -273,8 +272,8 @@ export function StationDetail({
       ) : null}
 
       {structure ? (
-        <AuthoringCard padding="md">
-          <p className="mb-4 text-osce-caption text-b2b-mid">
+        <Panel padding="md">
+          <p className="mb-4 text-osce-caption text-ink-muted">
             Version {version}.
             {isDraft
               ? " Edit sections below, then save or publish."
@@ -289,7 +288,7 @@ export function StationDetail({
             media={media}
           />
           {isDraft ? (
-            <div className="mt-6 flex justify-end border-t border-b2b-border pt-4">
+            <div className="mt-6 flex justify-end border-t border-border pt-4">
               <Button
                 type="button"
                 variant="commit"
@@ -310,7 +309,7 @@ export function StationDetail({
               </Button>
             </div>
           ) : null}
-        </AuthoringCard>
+        </Panel>
       ) : null}
 
       <StationVersionHistory stationId={station.id} />
@@ -338,16 +337,16 @@ function LegacyStationMeta({
       : stationTitle;
   if (!legacyId && !name) return null;
   return (
-    <div className="mb-6 grid gap-4 rounded-lg border border-b2b-border bg-b2b-cream/40 p-4 md:grid-cols-2">
+    <div className="mb-6 grid gap-4 rounded-osce-lg border border-border bg-surface-raised/40 p-4 md:grid-cols-2">
       {legacyId ? (
         <div>
-          <p className="text-osce-caption font-medium text-b2b-mid">Station ID</p>
-          <p className="mt-1 font-mono text-osce-body text-b2b-headline">{legacyId}</p>
+          <p className="text-osce-caption font-medium text-ink-muted">Station ID</p>
+          <p className="mt-1 font-mono text-osce-body text-ink">{legacyId}</p>
         </div>
       ) : null}
       <div>
-        <p className="text-osce-caption font-medium text-b2b-mid">Station name</p>
-        <p className="mt-1 text-osce-body text-b2b-headline">{name}</p>
+        <p className="text-osce-caption font-medium text-ink-muted">Station name</p>
+        <p className="mt-1 text-osce-body text-ink">{name}</p>
       </div>
     </div>
   );

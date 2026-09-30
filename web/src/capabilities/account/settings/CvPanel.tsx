@@ -5,7 +5,6 @@ import { useDropzone } from "react-dropzone";
 import {
   HiOutlineAcademicCap,
   HiOutlineBeaker,
-  HiOutlineDocument,
   HiOutlineBriefcase,
   HiOutlineClipboardDocumentCheck,
   HiOutlineCloudArrowUp,
@@ -21,13 +20,10 @@ import type { ComponentType } from "react";
 import {
   Alert,
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
   Button,
   ConfirmModal,
   ModalHelper,
+  Panel,
   Spinner,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useMeEvents } from "@/foundation/hooks";
@@ -147,19 +143,15 @@ export function CvPanel() {
         // which is what shows the sections the moment the job writes them.
         const latest: CvRead | undefined = watched.data ?? list.cvs?.[0];
         return (
-          <B2CPanelCard className="mt-0">
-            <B2CPanelCardHeader>
-              <HiOutlineDocument className="h-4 w-4 shrink-0 text-b2c-text-muted" aria-hidden />
-              Your CV
-            </B2CPanelCardHeader>
-            <B2CPanelCardBody className="space-y-4">
+          <Panel title="Your CV">
+            <div className="space-y-4">
               <ModalHelper className="mt-0">
                 Upload the CV you will bring to the interview. We read it into
                 sections and base your practice questions on what is in it.
               </ModalHelper>
               <Upload onUploaded={(cvId) => setWatching(cvId)} />
               {latest?.status === "processing" ? (
-                <p className="flex items-center gap-2 text-osce-meta text-b2c-text-muted">
+                <p className="flex items-center gap-2 text-osce-meta text-ink-subtle">
                   <Spinner label="Reading" /> Reading {latest.original_filename} — this takes about
                   a minute.
                 </p>
@@ -170,10 +162,10 @@ export function CvPanel() {
                 </Alert>
               ) : null}
               {latest?.structured ? <Sections structured={latest.structured} /> : null}
-            </B2CPanelCardBody>
+            </div>
             {latest ? (
-              <B2CPanelCardFooter>
-                <p className="text-osce-meta text-b2c-text-muted">
+              <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
+                <p className="text-osce-meta text-ink-subtle">
                   {latest.original_filename}
                   {latest.status === "completed"
                     ? ` · uploaded ${new Date(latest.uploaded_at).toLocaleDateString("en-GB")}`
@@ -189,9 +181,9 @@ export function CvPanel() {
                   <HiOutlineTrash className="h-4 w-4" aria-hidden />
                   Delete
                 </Button>
-              </B2CPanelCardFooter>
+              </div>
             ) : null}
-          </B2CPanelCard>
+          </Panel>
         );
       }}
     </AsyncBoundary>
@@ -280,11 +272,11 @@ function Upload({ onUploaded }: { onUploaded: (cvId: string) => void }) {
         }`}
       >
         <input {...getInputProps()} />
-        <HiOutlineCloudArrowUp className="mx-auto h-7 w-7 text-b2c-text-muted" />
-        <p className="mt-2 text-osce-body font-medium text-osce-ink-900">
+        <HiOutlineCloudArrowUp className="mx-auto h-7 w-7 text-ink-subtle" />
+        <p className="mt-2 text-osce-body font-medium text-ink">
           {file ? file.name : isDragActive ? "Drop the PDF here" : "Drop your CV, or click to choose"}
         </p>
-        <p className="mt-1 text-osce-meta text-b2c-text-muted">A PDF, up to 10MB.</p>
+        <p className="mt-1 text-osce-meta text-ink-subtle">A PDF, up to 10MB.</p>
       </div>
 
       {error ? <Alert tone="danger">{error}</Alert> : null}
@@ -319,7 +311,7 @@ function Sections({ structured }: { structured: StructuredCv }) {
   const filled = SECTIONS.filter((section) => structured[section.key]);
   if (filled.length === 0) {
     return (
-      <p className="mt-4 text-osce-meta text-b2c-text-muted">
+      <p className="mt-4 text-osce-meta text-ink-subtle">
         Nothing has been read from this CV yet.
       </p>
     );
@@ -328,10 +320,10 @@ function Sections({ structured }: { structured: StructuredCv }) {
     <dl className="mt-5 grid gap-4 sm:grid-cols-2">
       {filled.map(({ key, title, icon: Icon }) => (
         <div key={key} className="rounded-panel border border-osce-border bg-white p-4">
-          <dt className="flex items-center gap-2 text-osce-meta font-semibold uppercase tracking-wide text-b2c-text-muted">
+          <dt className="flex items-center gap-2 text-osce-meta font-semibold uppercase tracking-wide text-ink-subtle">
             <Icon className="h-4 w-4" /> {title}
           </dt>
-          <dd className="mt-2 whitespace-pre-wrap text-osce-body text-osce-ink-900">
+          <dd className="mt-2 whitespace-pre-wrap text-osce-body text-ink">
             {structured[key]}
           </dd>
         </div>

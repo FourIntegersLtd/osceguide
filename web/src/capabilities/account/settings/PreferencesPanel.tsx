@@ -2,19 +2,16 @@
 
 import { useState, type FormEvent } from "react";
 import {
-  HiOutlineAdjustmentsHorizontal,
   HiOutlineArrowPath,
   HiOutlineCheckCircle,
   HiOutlineMicrophone,
 } from "react-icons/hi2";
 import {
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
+  Checkbox,
   Modal,
   ModalPrimaryButton,
+  Panel,
   cn,
   productTokens,
 } from "@/foundation/ui";
@@ -29,10 +26,7 @@ import TimerSettingsModal from "@/capabilities/account/settings/TimerSettingsMod
 
 const {
   b2cLink,
-  b2cSettingsCardHeaderIcon,
   b2cSettingsCheckboxHelper,
-  b2cSettingsCheckboxInput,
-  b2cSettingsCheckboxRow,
   b2cSettingsCheckboxTitle,
   b2cSettingsIntro,
   b2cSettingsOptionRow,
@@ -112,12 +106,8 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
   return (
     <>
       <form onSubmit={(event) => void save(event)}>
-        <B2CPanelCard className="mt-0">
-          <B2CPanelCardHeader>
-            <HiOutlineAdjustmentsHorizontal className={b2cSettingsCardHeaderIcon} aria-hidden />
-            Preferences
-          </B2CPanelCardHeader>
-          <B2CPanelCardBody className="space-y-6 p-4 sm:p-6">
+        <Panel title="Preferences">
+          <div className="space-y-6">
             <p className={b2cSettingsIntro}>
               Accessibility, AI consent, and notification settings for your account.
             </p>
@@ -126,68 +116,44 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
             {error ? <Alert message={error} type="error" /> : null}
 
             <div className="space-y-4">
-              <label className={cn(b2cSettingsOptionRow, b2cSettingsCheckboxRow)}>
-                <input
-                  id="pref-dataConsentAI"
-                  name="dataConsentAI"
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(event) => setConsent(event.target.checked)}
-                  className={b2cSettingsCheckboxInput}
-                />
-                <span className="min-w-0">
-                  <span className={b2cSettingsCheckboxTitle}>AI training consent</span>
-                  <span className={b2cSettingsCheckboxHelper}>
-                    Allow your data to be used for AI training to provide better personalized
-                    recommendations and feedback.
-                  </span>
-                </span>
-              </label>
+              <Checkbox
+                id="pref-dataConsentAI"
+                name="dataConsentAI"
+                checked={consent}
+                onChange={(event) => setConsent(event.target.checked)}
+                label="AI training consent"
+                description="Allow your data to be used for AI training to provide better personalized recommendations and feedback."
+              />
 
-              <div className={cn(b2cSettingsOptionRow, b2cSettingsCheckboxRow)}>
-                <input
-                  id="pref-needsExtraReadingTime"
-                  name="needsExtraReadingTime"
-                  type="checkbox"
-                  checked={extraTime}
-                  onChange={(event) => setExtraTime(event.target.checked)}
-                  className={b2cSettingsCheckboxInput}
-                />
-                <div className="min-w-0 flex-1">
-                  <label htmlFor="pref-needsExtraReadingTime" className={b2cSettingsCheckboxTitle}>
-                    Extra reading time
-                  </label>
-                  <p className={b2cSettingsCheckboxHelper}>
+              <Checkbox
+                id="pref-needsExtraReadingTime"
+                name="needsExtraReadingTime"
+                checked={extraTime}
+                onChange={(event) => setExtraTime(event.target.checked)}
+                label="Extra reading time"
+                description={
+                  <>
                     I need extra time to support my neurodiverse learning needs.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowTimerSettings(true)}
-                    className={cn("mt-3 text-osce-body", b2cLink, "underline")}
-                  >
-                    Configure your reading and simulation timers
-                  </button>
-                </div>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowTimerSettings(true)}
+                      className={cn("mt-3 block text-osce-body", b2cLink, "underline")}
+                    >
+                      Configure your reading and simulation timers
+                    </button>
+                  </>
+                }
+              />
 
               {offersWaitingEmail ? (
-                <label className={cn(b2cSettingsOptionRow, b2cSettingsCheckboxRow)}>
-                  <input
-                    id="pref-notifyWhenPartnerWaiting"
-                    name="notifyWhenPartnerWaiting"
-                    type="checkbox"
-                    checked={waitingEmail}
-                    onChange={(event) => setWaitingEmail(event.target.checked)}
-                    className={b2cSettingsCheckboxInput}
-                  />
-                  <span className="min-w-0">
-                    <span className={b2cSettingsCheckboxTitle}>Email me when a colleague is waiting</span>
-                    <span className={b2cSettingsCheckboxHelper}>
-                      When a colleague&apos;s partner doesn&apos;t show for a marketplace session,
-                      we&apos;ll email you so you can log in and join Live practice within 10 minutes.
-                    </span>
-                  </span>
-                </label>
+                <Checkbox
+                  id="pref-notifyWhenPartnerWaiting"
+                  name="notifyWhenPartnerWaiting"
+                  checked={waitingEmail}
+                  onChange={(event) => setWaitingEmail(event.target.checked)}
+                  label="Email me when a colleague is waiting"
+                  description="When a colleague's partner doesn't show for a marketplace session, we'll email you so you can log in and join Live practice within 10 minutes."
+                />
               ) : null}
 
               {practising ? (
@@ -195,7 +161,7 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
                   <div className="min-w-0 flex-1">
                     <p className={b2cSettingsCheckboxTitle}>
                       <HiOutlineMicrophone
-                        className="h-[18px] w-[18px] shrink-0 text-b2c-text-muted"
+                        className="h-[18px] w-[18px] shrink-0 text-ink-subtle"
                         aria-hidden
                       />
                       Athena onboarding
@@ -214,8 +180,8 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
                 </div>
               ) : null}
             </div>
-          </B2CPanelCardBody>
-          <B2CPanelCardFooter className="px-4 pb-4 pt-8 sm:px-6 sm:pb-6">
+          </div>
+          <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
             <ModalPrimaryButton type="submit" disabled={saving} className="gap-2">
               {saving ? (
                 <>
@@ -229,8 +195,8 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
                 </>
               )}
             </ModalPrimaryButton>
-          </B2CPanelCardFooter>
-        </B2CPanelCard>
+          </div>
+        </Panel>
       </form>
 
       {showTimerSettings ? (

@@ -1,33 +1,28 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { B2CPageHeader, platformStaffPanel } from "@/foundation/ui";
+import { PlatformPageHeader, platformStaffPanel } from "@/foundation/ui";
 
-/** Staff template wizards — light gray panel (B2C borders). */
+/** Staff authoring wizards: the console header with a back link, then one panel holding the form. */
 export function PlatformTemplateWizardPageLayout({
-  eyebrow,
   title,
   subtitle,
   backHref,
   backLabel = "Templates",
   children,
 }: {
-  eyebrow: string;
   title: string;
   subtitle?: string;
   backHref: string;
   backLabel?: string;
   children: ReactNode;
 }) {
-  const description = subtitle ? `${eyebrow} — ${subtitle}` : eyebrow;
-
   return (
-    <div className="flex w-full flex-col gap-4 pb-8">
-      <B2CPageHeader
+    <div className="flex w-full flex-col gap-6 pb-8">
+      <PlatformPageHeader
         title={title}
-        subtitle={description}
+        description={subtitle}
         back={{ href: backHref, label: backLabel }}
-        className="mb-0"
       />
       <div className={platformStaffPanel}>{children}</div>
     </div>

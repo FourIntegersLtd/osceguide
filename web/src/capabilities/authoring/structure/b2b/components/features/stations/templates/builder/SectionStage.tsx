@@ -91,10 +91,10 @@ export function SectionStage({
           <ToneBadge tone="primary" size="lg">
             <HiOutlineSquares2X2 aria-hidden />
           </ToneBadge>
-          <p className="mt-4 text-osce-subheading font-semibold text-osce-ink-700">
+          <p className="mt-4 text-osce-subheading font-semibold text-ink-muted">
             Start with a section
           </p>
-          <p className="mt-1.5 max-w-sm text-osce-body text-osce-ink-500">
+          <p className="mt-1.5 max-w-sm text-osce-body text-ink-muted">
             {kind === "station"
               ? "A section is written for the patient, the candidate or the examiner. Add one, then add the fields it needs."
               : "Sections group related fields. Add one, then add the fields it needs one at a time."}
@@ -151,7 +151,7 @@ export function SectionStage({
               value={section.title}
               onChange={(e) => onSectionTitleChange(section.id, e.target.value)}
               onClick={(e) => e.stopPropagation()}
-              className="mt-1 w-full border-0 bg-transparent p-0 text-osce-subheading font-semibold text-osce-ink-800 outline-none placeholder:text-osce-ink-400"
+              className="mt-1 w-full border-0 bg-transparent p-0 text-osce-subheading font-semibold text-ink outline-none placeholder:text-ink-subtle"
               placeholder="Section title"
               aria-label="Section title"
             />
@@ -161,7 +161,7 @@ export function SectionStage({
                 onSectionDescriptionChange(section.id, e.target.value)
               }
               onClick={(e) => e.stopPropagation()}
-              className="mt-1 w-full border-0 bg-transparent p-0 text-osce-body text-osce-ink-500 outline-none placeholder:text-osce-ink-400/80"
+              className="mt-1 w-full border-0 bg-transparent p-0 text-osce-body text-ink-muted outline-none placeholder:text-ink-subtle/80"
               placeholder="Add a short description (optional)"
               aria-label="Section description"
             />
@@ -188,7 +188,7 @@ export function SectionStage({
           ].join(" ")}
         >
           {count === 0 ? (
-            <p className="px-5 py-8 text-center text-osce-body text-osce-ink-400">
+            <p className="px-5 py-8 text-center text-osce-body text-ink-subtle">
               No fields yet. Add the first one below.
             </p>
           ) : (

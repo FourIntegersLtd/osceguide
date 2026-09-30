@@ -1,6 +1,6 @@
 "use client";
 
-import { getInputClassName } from "@/foundation/ui";
+import { Select } from "@/foundation/ui";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 
 export function AuthoringExamSelect({
@@ -23,12 +23,12 @@ export function AuthoringExamSelect({
   const { options, loading } = useAuthoringExamCatalog();
 
   return (
-    <select
+    <Select
       id={id}
       value={value}
       required={required}
       onChange={(event) => onChange(event.target.value)}
-      className={className ?? `mt-1 w-full ${getInputClassName()}`}
+      className={className ?? "mt-1"}
     >
       {allowEmpty ? (
         <option value="">{loading ? "Loading exams…" : emptyLabel}</option>
@@ -38,6 +38,6 @@ export function AuthoringExamSelect({
           {exam.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

@@ -57,7 +57,7 @@ export function AuthoringDialog({
         ? ModalPrimaryButton
         : ModalCommitButton;
   const leadClass =
-    surface === "platform" ? "text-b2c-text-muted" : "text-b2b-mid";
+    surface === "platform" ? "text-ink-subtle" : "text-ink-muted";
 
   return (
     <Modal onClose={busy ? undefined : onClose} title={title} width={width}>

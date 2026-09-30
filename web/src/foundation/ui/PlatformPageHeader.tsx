@@ -33,7 +33,7 @@ export function PlatformPageHeader({
       {back ? (
         <Link
           href={back.href}
-          className="mb-3 inline-flex items-center gap-1 text-osce-meta font-medium text-b2c-text-muted transition-colors hover:text-osce-ink-900 focus:outline-none focus:ring-2 focus:ring-osce-accent/20"
+          className="mb-3 inline-flex items-center gap-1 text-osce-meta font-medium text-ink-subtle transition-colors hover:text-ink focus:outline-none focus:ring-2 focus:ring-accent/20"
         >
           <HiOutlineChevronLeft className="h-4 w-4" aria-hidden />
           {back.label ?? "Back"}
@@ -42,16 +42,16 @@ export function PlatformPageHeader({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {Icon ? (
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-osce-md bg-osce-accent-subtle text-osce-accent">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-osce-md bg-accent-subtle text-accent">
               <Icon className="h-4 w-4" aria-hidden />
             </span>
           ) : null}
           <div className="min-w-0">
-            <h1 className="truncate font-heading text-osce-title font-semibold tracking-tight text-osce-ink-900">
+            <h1 className="truncate font-heading text-osce-title font-semibold tracking-tight text-ink">
               {title}
             </h1>
             {description ? (
-              <p className="mt-1 max-w-prose text-osce-meta leading-relaxed text-b2c-text-muted">
+              <p className="mt-1 max-w-prose text-osce-meta leading-relaxed text-ink-subtle">
                 {description}
               </p>
             ) : null}

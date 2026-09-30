@@ -1,21 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineArrowDownTray, HiOutlineDocumentText } from "react-icons/hi2";
+import { HiOutlineArrowDownTray } from "react-icons/hi2";
 import {
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
   ModalHelper,
   ModalSecondaryButton,
-  productTokens,
+  Panel,
 } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { exportMyData } from "@/capabilities/account/api";
-
-const { b2cSettingsCardHeaderIcon } = productTokens;
 
 /**
  * The self-serve subject access request (E-5): everything this account owns,
@@ -47,25 +41,21 @@ export function DownloadMyData() {
   };
 
   return (
-    <B2CPanelCard className="mt-0">
-      <B2CPanelCardHeader>
-        <HiOutlineDocumentText className={b2cSettingsCardHeaderIcon} aria-hidden />
-        Your data
-      </B2CPanelCardHeader>
-      <B2CPanelCardBody className="space-y-3">
+    <Panel title="Your data">
+      <div className="space-y-3">
         <ModalHelper className="mt-0">
           Download everything this account owns: your profile, your attempts with their
           transcripts and marks, and your payments — one file, ready to keep or hand to
           anyone who asks what we hold about you.
         </ModalHelper>
         {error ? <p className="text-osce-meta text-osce-danger">{error}</p> : null}
-      </B2CPanelCardBody>
-      <B2CPanelCardFooter>
+      </div>
+      <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
         <ModalSecondaryButton type="button" onClick={() => void download()} disabled={busy} className="gap-2">
           <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
           {busy ? "Preparing…" : "Download my data"}
         </ModalSecondaryButton>
-      </B2CPanelCardFooter>
-    </B2CPanelCard>
+      </div>
+    </Panel>
   );
 }

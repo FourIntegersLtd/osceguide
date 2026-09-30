@@ -43,7 +43,7 @@ export function ProblemList({
 }) {
   if (problems.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-meta text-osce-ink-500">
+      <div className="flex items-center gap-2 rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-meta text-ink-muted">
         <HiOutlineCheckCircle className="h-4 w-4 shrink-0 text-osce-accent" aria-hidden />
         {checking ? "Checking…" : "No problems. This rubric can be published."}
       </div>
@@ -63,8 +63,8 @@ export function ProblemList({
               onClick={() => onPick(problem)}
               className="w-full rounded-osce-sm px-2 py-1 text-left hover:bg-osce-surface"
             >
-              <span className="block text-osce-caption font-medium text-osce-ink-500">{placeLabel(structure, problem.path)}</span>
-              <span className="block text-osce-meta text-osce-ink-900">{problem.message}</span>
+              <span className="block text-osce-caption font-medium text-ink-muted">{placeLabel(structure, problem.path)}</span>
+              <span className="block text-osce-meta text-ink">{problem.message}</span>
             </button>
           </li>
         ))}

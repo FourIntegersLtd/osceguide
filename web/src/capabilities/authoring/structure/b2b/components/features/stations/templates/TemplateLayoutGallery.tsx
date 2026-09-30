@@ -92,17 +92,17 @@ function GalleryCard({
       <B2BIconChip icon={CardIcon} hue={START_POINT_HUES[option.id]} size="sm" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-osce-body font-medium text-osce-ink-900">
+          <span className="min-w-0 flex-1 truncate text-osce-body font-medium text-ink">
             {option.title}
           </span>
           {selected ? (
             <HiCheck className="h-4 w-4 shrink-0 text-osce-accent" aria-hidden />
           ) : null}
         </div>
-        <p className="mt-0.5 truncate text-osce-caption text-osce-ink-500">
+        <p className="mt-0.5 truncate text-osce-caption text-ink-muted">
           {option.description}
         </p>
-        <p className="mt-1 text-osce-caption text-osce-ink-400">
+        <p className="mt-1 text-osce-caption text-ink-subtle">
           {sectionCount} {sectionCount === 1 ? "section" : "sections"}
         </p>
       </div>
@@ -183,7 +183,7 @@ export function TemplateStartPanel({
     <div className="space-y-1">
       <label
         htmlFor="b2b-template-start-title"
-        className="text-osce-caption font-medium text-osce-ink-500"
+        className="text-osce-caption font-medium text-ink-muted"
       >
         Template title
       </label>
@@ -209,7 +209,7 @@ export function TemplateStartPanel({
         titleField
       )}
       {layoutHint ? (
-        <p className="text-osce-caption text-osce-ink-500">{layoutHint}</p>
+        <p className="text-osce-caption text-ink-muted">{layoutHint}</p>
       ) : null}
       <TemplateLayoutGallery
         orgSlug={orgSlug}

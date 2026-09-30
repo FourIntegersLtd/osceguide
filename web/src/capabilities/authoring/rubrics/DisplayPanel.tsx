@@ -83,8 +83,8 @@ function Block({ title, description, children }: { title: string; description: s
   return (
     <section className="space-y-3 rounded-osce-lg border border-osce-border bg-osce-surface p-4">
       <div>
-        <h3 className="text-osce-body font-semibold text-osce-ink-900">{title}</h3>
-        <p className="text-osce-caption text-osce-ink-500">{description}</p>
+        <h3 className="text-osce-body font-semibold text-ink">{title}</h3>
+        <p className="text-osce-caption text-ink-muted">{description}</p>
       </div>
       {children}
     </section>
@@ -108,7 +108,7 @@ function ToneList() {
           <ItemControls listPath={listPath} index={index} count={tones.length} noun="tone" />
         </div>
       ))}
-      {tones.length === 0 ? <p className="text-osce-caption text-osce-ink-400">No tones: the default colours apply.</p> : null}
+      {tones.length === 0 ? <p className="text-osce-caption text-ink-subtle">No tones: the default colours apply.</p> : null}
       <AddButton label="Add tone" onClick={() => edit((current) => appendAt(current, listPath, { atLeast: 0.5, tone: "good" }))} />
     </div>
   );

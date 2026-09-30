@@ -4,6 +4,7 @@ import { useState } from "react";
 import { HiOutlineArrowPath } from "react-icons/hi2";
 import { PiSparkle } from "react-icons/pi";
 import {
+  Checkbox,
   ModalContent,
   ModalHelper,
   ModalPrimaryButton,
@@ -117,7 +118,7 @@ export default function PlanPicker({
     <ModalContent className="w-full">
       <ModalHelper className="mb-5 mt-0">Choose the option that suits you best</ModalHelper>
 
-      <div className={cn("divide-y divide-b2c-border", planListBleed)}>
+      <div className={cn("divide-y divide-border", planListBleed)}>
         {plans.map((plan) => {
           const isSelected = selected === plan.code;
           return (
@@ -131,19 +132,19 @@ export default function PlanPicker({
                 planRowPadding,
                 isSelected
                   ? "bg-osce-accent-muted hover:bg-osce-accent-subtle"
-                  : "hover:bg-b2c-surface-muted",
+                  : "hover:bg-canvas",
               )}
             >
               <span className="min-w-0">
                 <span
                   className={cn(
                     "block text-osce-body font-medium",
-                    isSelected ? "text-osce-accent-hover" : "text-osce-ink-900",
+                    isSelected ? "text-osce-accent-hover" : "text-ink",
                   )}
                 >
                   {planTitle(plan)}
                 </span>
-                <span className="mt-0.5 block text-osce-meta leading-relaxed text-b2c-text-muted">
+                <span className="mt-0.5 block text-osce-meta leading-relaxed text-ink-subtle">
                   {planDescription(plan)}
                 </span>
               </span>
@@ -175,27 +176,26 @@ export default function PlanPicker({
         />
       </div>
 
-      <div className="mt-6 flex items-start gap-3">
-        <input
-          id="policies"
-          type="checkbox"
-          checked={agreedToPolicies}
-          onChange={() => setAgreedToPolicies(!agreedToPolicies)}
-          className="mt-1 h-4 w-4 shrink-0 rounded border-b2c-border text-osce-accent focus:ring-osce-accent/20"
-        />
-        <label htmlFor="policies" className="text-osce-meta text-b2c-text-muted">
-          I agree to the{" "}
-          <a
-            href="/compliances/terms-of-service"
-            target="_blank"
-            rel="noreferrer"
-            className={b2cLink}
-          >
-            Terms of Service
-          </a>{" "}
-          (including our No Refund Policy)
-        </label>
-      </div>
+      <Checkbox
+        id="policies"
+        className="mt-6"
+        checked={agreedToPolicies}
+        onChange={() => setAgreedToPolicies(!agreedToPolicies)}
+        label={
+          <>
+            I agree to the{" "}
+            <a
+              href="/compliances/terms-of-service"
+              target="_blank"
+              rel="noreferrer"
+              className={b2cLink}
+            >
+              Terms of Service
+            </a>{" "}
+            (including our No Refund Policy)
+          </>
+        }
+      />
 
       <div className="mt-6 space-y-3">
         <div className="flex sm:justify-end">
@@ -238,7 +238,7 @@ function PlanPrice({ plan, hasReferralCode }: { plan: Plan; hasReferralCode: boo
   if (discountedPence == null) return <>{formatMoney(plan.amount_pence, plan.currency)}</>;
   return (
     <>
-      <s className="font-normal text-b2c-text-muted">{formatMoney(plan.amount_pence, plan.currency)}</s>
+      <s className="font-normal text-ink-subtle">{formatMoney(plan.amount_pence, plan.currency)}</s>
       {formatMoney(discountedPence, plan.currency)}
     </>
   );

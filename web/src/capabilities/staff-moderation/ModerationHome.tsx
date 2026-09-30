@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { LuShield } from "react-icons/lu";
-import { AsyncBoundary, Button, Card, ConfirmModal, PlatformPageHeader } from "@/foundation/ui";
+import {
+  AsyncBoundary,
+  Button,
+  ConfirmModal,
+  Panel,
+  PlatformPageHeader,
+  Row,
+  RowList,
+} from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   deleteModerationPost,
@@ -13,11 +21,18 @@ import {
 function formatDay(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export function ModerationHome() {
-  const state = useAsync((signal) => listModerationPosts({ days: 7 }, signal), []);
+  const state = useAsync(
+    (signal) => listModerationPosts({ days: 7 }, signal),
+    [],
+  );
   const toast = useToast();
   const [target, setTarget] = useState<ModerationPost | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,43 +55,57 @@ export function ModerationHome() {
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Moderation"
         description="Recent community posts. Remove anything that should not stay public."
         icon={LuShield}
       />
 
-      <AsyncBoundary
-        state={state}
-        isEmpty={(page) => page.items.length === 0}
-        empty={{ title: "Queue is empty", description: "No posts in the last seven days." }}
-      >
-        {(page) => (
-          <Card>
-            <ul className="divide-y divide-border">
+      <Panel title="Last seven days" padding="none">
+        <AsyncBoundary
+          state={state}
+          isEmpty={(page) => page.items.length === 0}
+          empty={{
+            title: "Queue is empty",
+            description: "No posts in the last seven days.",
+            bare: true,
+          }}
+        >
+          {(page) => (
+            <RowList flush>
               {page.items.map((post) => (
-                <li key={post.id} className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-start sm:justify-between">
+                <Row key={post.id} className="items-start">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-ink">
-                      {"title" in post && typeof post.title === "string" && post.title
+                    <p className="text-osce-data font-medium text-ink">
+                      {"title" in post &&
+                      typeof post.title === "string" &&
+                      post.title
                         ? post.title
                         : post.kind === "reply"
                           ? "Reply"
                           : "Post"}
                     </p>
-                    <p className="mt-1 line-clamp-3 text-sm text-ink-muted">{post.body}</p>
-                    <p className="mt-1 text-xs text-ink-subtle">{formatDay(post.created_at)}</p>
+                    <p className="mt-0.5 text-osce-meta text-ink-subtle">
+                      {formatDay(post.created_at)}
+                    </p>
+                    <p className="mt-2 line-clamp-3 text-osce-body text-ink-muted">
+                      {post.body}
+                    </p>
                   </div>
-                  <Button variant="danger" size="sm" onClick={() => setTarget(post)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setTarget(post)}
+                  >
                     Delete
                   </Button>
-                </li>
+                </Row>
               ))}
-            </ul>
-          </Card>
-        )}
-      </AsyncBoundary>
+            </RowList>
+          )}
+        </AsyncBoundary>
+      </Panel>
 
       <ConfirmModal
         isOpen={target !== null}

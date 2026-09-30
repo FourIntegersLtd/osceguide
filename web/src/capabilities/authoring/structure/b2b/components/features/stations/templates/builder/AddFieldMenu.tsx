@@ -189,7 +189,7 @@ export function AddFieldMenu({
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto p-1.5">
                 {groups.length === 0 ? (
-                  <p className="px-3 py-4 text-center text-osce-caption text-osce-ink-400">
+                  <p className="px-3 py-4 text-center text-osce-caption text-ink-subtle">
                     No field type matches “{query}”.
                   </p>
                 ) : (
@@ -213,10 +213,10 @@ export function AddFieldMenu({
                               <Icon aria-hidden />
                             </ToneBadge>
                             <span className="min-w-0 flex-1">
-                              <span className="block text-osce-body font-medium text-osce-ink-700">
+                              <span className="block text-osce-body font-medium text-ink-muted">
                                 {meta.formsLabel}
                               </span>
-                              <span className="block truncate text-osce-caption text-osce-ink-400">
+                              <span className="block truncate text-osce-caption text-ink-subtle">
                                 {meta.description}
                               </span>
                             </span>
@@ -233,7 +233,7 @@ export function AddFieldMenu({
                   close();
                   onOpenFieldTypesInfo();
                 }}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-left text-osce-caption font-medium text-osce-ink-500 transition-colors hover:bg-osce-canvas hover:text-osce-ink-700 ${builderUi.t}`}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-left text-osce-caption font-medium text-ink-muted transition-colors hover:bg-osce-canvas hover:text-ink-muted ${builderUi.t}`}
               >
                 <HiOutlineInformationCircle className="h-4 w-4" aria-hidden />
                 Field type guide
@@ -273,7 +273,7 @@ export function AddFieldButton({
           className={`flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-3 py-3 text-osce-body font-medium transition-colors ${builderUi.focusRing} ${
             open
               ? "border-osce-accent bg-osce-accent-muted text-osce-accent"
-              : "border-osce-border text-osce-ink-500 hover:border-osce-accent-subtle hover:bg-osce-accent-muted/60 hover:text-osce-accent"
+              : "border-osce-border text-ink-muted hover:border-osce-accent-subtle hover:bg-osce-accent-muted/60 hover:text-osce-accent"
           }`}
         >
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-osce-accent text-white">

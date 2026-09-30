@@ -1,5 +1,6 @@
 "use client";
 
+import { Select, Textarea } from "@/foundation/ui";
 import { useEffect, useState } from "react";
 import {
   listStationGenerationProfiles,
@@ -8,11 +9,8 @@ import {
 import { profileKeyForExamCode } from "@/capabilities/authoring/structure/b2b/lib/stations/generationProfileKeys";
 import { structureFromGenerationProfileKey } from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplatePresets";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import { b2bInputBase } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { inspectorHint, inspectorLabel } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/inspector/MoreOptions";
 
-const inputClass = `${b2bInputBase} py-2 text-osce-body`;
-const readOnlyGuideClass = `${b2bInputBase} min-h-[5rem] resize-y bg-osce-canvas py-2 text-osce-body text-osce-ink-600`;
 
 export function TemplateGenerationPanel({
   value,
@@ -82,7 +80,7 @@ export function TemplateGenerationPanel({
 
   return (
     <div className="border-b border-osce-border bg-osce-canvas/60 px-5 py-4">
-      <p className="text-osce-body font-semibold text-osce-ink-700">Draft writing with AI</p>
+      <p className="text-osce-body font-semibold text-ink-muted">Draft writing with AI</p>
       <p className={inspectorHint}>
         When someone clicks Generate draft on a station from this template, the AI uses the exam
         type below plus built-in guidance for each field. You only need to add extra notes here or
@@ -94,11 +92,10 @@ export function TemplateGenerationPanel({
       ) : null}
       <div className="mt-3 max-w-md">
         <label htmlFor="template-generation-panel-exam-type" className={inspectorLabel}>Exam type</label>
-        <select
+        <Select
           id="template-generation-panel-exam-type"
           value={profileKey}
           onChange={(e) => applyExamType(e.target.value)}
-          className={inputClass}
         >
           {profiles.length === 0 ? (
             <option value={profileKey}>{profileKey}</option>
@@ -109,25 +106,25 @@ export function TemplateGenerationPanel({
               </option>
             ))
           )}
-        </select>
+        </Select>
         <p className={`mt-1.5 ${inspectorHint}`}>
           Changing exam type replaces sections and fields below with that exam&apos;s default
           layout. Your optional AI notes above are kept.
         </p>
       </div>
       {profileKey !== "custom" && (systemPrompt?.trim() || profileGuidesLoading) ? (
-        <details className="mt-3 max-w-2xl rounded-lg border border-osce-border bg-osce-surface">
-          <summary className="cursor-pointer px-3 py-2 text-osce-caption font-medium text-osce-ink-700">
+        <details className="mt-3 max-w-2xl rounded-osce-lg border border-osce-border bg-osce-surface">
+          <summary className="cursor-pointer px-3 py-2 text-osce-caption font-medium text-ink-muted">
             Built-in instructions for this exam (read-only)
           </summary>
           <div className="border-t border-osce-border px-3 py-3">
             {profileGuidesLoading ? (
               <p className={inspectorHint}>Loading…</p>
             ) : (
-              <textarea
+              <Textarea
                 readOnly
                 value={systemPrompt ?? ""}
-                className={`${readOnlyGuideClass} w-full`}
+                className="min-h-[5rem] resize-y bg-osce-canvas text-ink-muted"
                 rows={6}
                 aria-label="Built-in exam instructions for Generate draft"
               />
@@ -137,11 +134,11 @@ export function TemplateGenerationPanel({
       ) : null}
       <div className="mt-3">
         <label htmlFor="template-generation-panel-extra-notes" className={inspectorLabel}>Extra notes for the AI (optional)</label>
-        <textarea
+        <Textarea
           id="template-generation-panel-extra-notes"
           value={value.generation?.systemPromptAppend ?? ""}
           onChange={(e) => patchGeneration({ systemPromptAppend: e.target.value })}
-          className={`${inputClass} min-h-[4rem] resize-y`}
+          className="min-h-[4rem] resize-y"
           rows={2}
           placeholder="Anything you want the AI to always keep in mind for this template"
         />
@@ -149,11 +146,11 @@ export function TemplateGenerationPanel({
       {allowCustomSystemPrompt && profileKey === "custom" ? (
         <div className="mt-3">
           <label htmlFor="template-generation-panel-your-own-main-instructions" className={inspectorLabel}>Your own main instructions</label>
-          <textarea
+          <Textarea
             id="template-generation-panel-your-own-main-instructions"
             value={value.generation?.systemPromptOverride ?? ""}
             onChange={(e) => patchGeneration({ systemPromptOverride: e.target.value })}
-            className={`${inputClass} min-h-[6rem] resize-y`}
+            className="min-h-[6rem] resize-y"
             rows={4}
             placeholder="Replaces the usual exam instructions when exam type is Custom"
           />

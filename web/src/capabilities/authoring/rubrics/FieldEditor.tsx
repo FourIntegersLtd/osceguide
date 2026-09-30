@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
-import { cn, getInputClassName } from "@/foundation/ui";
+import { cn, Select, Textarea } from "@/foundation/ui";
 import { useRubricBuilder } from "@/capabilities/authoring/rubrics/builderContext";
 import {
   GroupHeading,
@@ -78,13 +78,14 @@ function AddFieldPicker({ types, onAdd }: { types: { value: FieldType; label: st
       <label htmlFor={pickerId} className="sr-only">
         Add a field
       </label>
-      <select
+      <Select
         id={pickerId}
+        selectSize="sm"
         value=""
         onChange={(event) => {
           if (event.target.value) onAdd(event.target.value as FieldType);
         }}
-        className={cn(getInputClassName({ size: "sm" }), "w-auto border-dashed text-osce-ink-500")}
+        className="w-auto"
       >
         <option value="">+ Add a field…</option>
         {types.map((type) => (
@@ -92,7 +93,7 @@ function AddFieldPicker({ types, onAdd }: { types: { value: FieldType; label: st
             {type.label}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 }
@@ -168,11 +169,13 @@ function OptionsEditor({ path }: { path: JsonPath }) {
   const messages = problemsAt(problems, path);
   return (
     <div>
-      <label htmlFor={inputId} className="block text-osce-meta font-medium text-osce-ink-500">
+      <label htmlFor={inputId} className="block text-osce-meta font-medium text-ink-muted">
         Options, one per line
       </label>
-      <textarea
+      <Textarea
         id={inputId}
+        textareaSize="sm"
+        invalid={messages.length > 0}
         data-path={pathText(path)}
         rows={Math.max(2, options.length)}
         readOnly={readOnly}
@@ -182,7 +185,7 @@ function OptionsEditor({ path }: { path: JsonPath }) {
           edit((current) => setAt(current, path, lines));
         }}
         onBlur={() => edit((current) => setAt(current, path, listAt(current, path).map(String).filter((line) => line.trim() !== "")))}
-        className={cn(getInputClassName({ size: "sm", invalid: messages.length > 0 }), "mt-1 py-2")}
+        className="mt-1"
       />
       <ProblemNote messages={messages} />
     </div>

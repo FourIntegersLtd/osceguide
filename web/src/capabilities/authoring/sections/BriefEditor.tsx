@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Alert } from "@/foundation/ui";
+import { Alert, Textarea, Panel } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
-import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import { editStationBrief, type StationVersion } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
@@ -37,19 +36,19 @@ export function BriefEditor({
   const action = useAction();
 
   return (
-    <AuthoringCard padding="md">
-      <h3 className="text-osce-body font-semibold text-b2b-headline">Reading brief</h3>
-      <p className="mt-0.5 text-osce-caption text-b2b-mid">
+    <Panel padding="md">
+      <h3 className="text-osce-body font-semibold text-ink">Reading brief</h3>
+      <p className="mt-0.5 text-osce-caption text-ink-muted">
         What the candidate reads before the station starts. Saving this does not cut a new version.
       </p>
-      <textarea
+      <Textarea
         value={brief}
         rows={8}
         onChange={(e) => {
           setBrief(e.target.value);
           setSaved(false);
         }}
-        className="mt-3 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline focus:border-osce-accent focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle"
+        className="mt-3"
       />
       {action.error ? (
         <Alert tone="danger" className="mt-3">
@@ -70,8 +69,8 @@ export function BriefEditor({
         >
           {action.busy === "brief" ? "Saving…" : "Save brief"}
         </AuthoringButton>
-        {saved ? <span className="text-osce-caption text-b2b-success-text">Saved.</span> : null}
+        {saved ? <span className="text-osce-caption text-osce-success-text">Saved.</span> : null}
       </div>
-    </AuthoringCard>
+    </Panel>
   );
 }

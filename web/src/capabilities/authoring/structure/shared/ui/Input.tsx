@@ -32,9 +32,9 @@ export function getInputClassName({
   invalid = false,
 }: { size?: InputSize; invalid?: boolean } = {}) {
   return cn(
-    "w-full rounded-osce-sm border bg-osce-surface text-osce-ink-900",
-    "placeholder:text-osce-ink-400",
-    "disabled:cursor-not-allowed disabled:bg-osce-canvas disabled:text-osce-ink-500",
+    "w-full rounded-osce-sm border bg-osce-surface text-ink",
+    "placeholder:text-ink-subtle",
+    "disabled:cursor-not-allowed disabled:bg-osce-canvas disabled:text-ink-muted",
     "focus:outline-none",
     invalid
       ? "border-osce-danger-border focus:border-osce-danger"

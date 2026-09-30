@@ -29,7 +29,11 @@ describe("surface registry", () => {
     // The compiler already enforces this through Record<Surface, …>; the test
     // says so out loud, and catches a manifest quietly aliased to another arm.
     for (const id of SURFACES) {
-      assert.equal(SURFACE_MANIFESTS[id].id, id, `${id}'s manifest reports a different id`);
+      assert.equal(
+        SURFACE_MANIFESTS[id].id,
+        id,
+        `${id}'s manifest reports a different id`,
+      );
     }
   });
 
@@ -47,7 +51,11 @@ describe("surface registry", () => {
     for (const manifest of ALL_SURFACES) {
       for (const kind of manifest.workspaceKinds) {
         const existing = seen.get(kind);
-        assert.equal(existing, undefined, `${kind} is claimed by both ${existing} and ${manifest.id}`);
+        assert.equal(
+          existing,
+          undefined,
+          `${kind} is claimed by both ${existing} and ${manifest.id}`,
+        );
         seen.set(kind, manifest.id);
       }
     }
@@ -82,7 +90,11 @@ describe("surface registry", () => {
         SURFACES.includes(manifest.screensFrom),
         `${manifest.id} borrows screens from "${manifest.screensFrom}", which is not an arm`,
       );
-      assert.notEqual(manifest.screensFrom, manifest.id, `${manifest.id} borrows from itself`);
+      assert.notEqual(
+        manifest.screensFrom,
+        manifest.id,
+        `${manifest.id} borrows from itself`,
+      );
     }
   });
 
@@ -124,7 +136,11 @@ describe("surface registry", () => {
         );
       }
       const keys = items.map((item) => item.key);
-      assert.equal(new Set(keys).size, keys.length, `${manifest.id} has duplicate nav keys`);
+      assert.equal(
+        new Set(keys).size,
+        keys.length,
+        `${manifest.id} has duplicate nav keys`,
+      );
     }
   });
 
@@ -132,7 +148,9 @@ describe("surface registry", () => {
     // A menu item that leads to a 404 is the failure this catches. Capability
     // destinations are excluded: those are mounted from the capability
     // registry, which has its own test.
-    const capabilityPaths = new Set(CAPABILITIES.map((capability) => capability.path));
+    const capabilityPaths = new Set(
+      CAPABILITIES.map((capability) => capability.path),
+    );
     for (const manifest of ALL_SURFACES) {
       const items = manifest.nav({
         workspace: PERSONAL_WORKSPACE,
@@ -169,28 +187,38 @@ describe("surface registry", () => {
       })),
     ];
 
-    const bySection = NAV_SECTIONS.map((section) =>
-      labelled.filter((item) => item.section === section).map((item) => item.label),
-    );
+    const bySection = (section: (typeof NAV_SECTIONS)[number]) =>
+      labelled
+        .filter((item) => item.section === section)
+        .map((item) => item.label);
 
-    assert.deepEqual(bySection[0], [
-      "Overview",
+    // Overview is ungrouped on purpose: it renders above the section headings.
+    assert.deepEqual(
+      labelled.filter((item) => !item.section).map((item) => item.label),
+      ["Overview"],
+    );
+    assert.deepEqual(bySection("customers"), [
       "Organisations",
       "Users",
-      "Platform team",
-      "Billing",
       "Messages",
-      "Audit log",
-      "Referral payouts",
-      "Machinery",
     ]);
-    assert.deepEqual(bySection[1], ["Authoring"]);
-    assert.deepEqual(bySection[2], [
-      "Station reports",
-      "Study material",
+    assert.deepEqual(bySection("revenue"), [
+      "Billing",
+      "Referral payouts",
       "Growth",
+    ]);
+    assert.deepEqual(bySection("catalogue"), [
+      "Station reports",
+      "Authoring",
+      "Study material",
       "Moderation",
     ]);
+    assert.deepEqual(bySection("operations"), [
+      "Platform team",
+      "Audit log",
+      "Machinery",
+    ]);
+    assert.deepEqual(bySection("general"), ["Settings"]);
   });
 
   it("groups the consumer navigation the way the product does", () => {
@@ -216,7 +244,9 @@ describe("surface registry", () => {
     ];
 
     const bySection = (section: (typeof NAV_SECTIONS)[number]) =>
-      labelled.filter((item) => item.section === section).map((item) => item.label);
+      labelled
+        .filter((item) => item.section === section)
+        .map((item) => item.label);
 
     assert.deepEqual(bySection("practice"), [
       "Dashboard",
@@ -228,7 +258,11 @@ describe("surface registry", () => {
     ]);
     // Contact & Feedback leads Connect: the retiring sidebar carried it too,
     // ahead of the community, and a capability mounts it on this arm only.
-    assert.deepEqual(bySection("connect"), ["Contact & Feedback", "Community", "Marketplace"]);
+    assert.deepEqual(bySection("connect"), [
+      "Contact & Feedback",
+      "Community",
+      "Marketplace",
+    ]);
     assert.deepEqual(bySection("general"), ["Settings", "Achievements"]);
     // Nothing ungrouped: an item with no section would render above the
     // headings, which on this arm means somebody forgot to name one.
@@ -264,7 +298,11 @@ describe("surface registry", () => {
     // and an admin must not see the same items.
     const href = (path: string) => `/app/kings${path}`;
     const workspace = org("institution");
-    const admin = SURFACE_MANIFESTS.assess.nav({ workspace, can: () => true, href });
+    const admin = SURFACE_MANIFESTS.assess.nav({
+      workspace,
+      can: () => true,
+      href,
+    });
     const supervisor = SURFACE_MANIFESTS.assess.nav({
       workspace,
       can: (permission) => permission === "read_org",

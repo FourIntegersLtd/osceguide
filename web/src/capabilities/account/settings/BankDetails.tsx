@@ -1,17 +1,14 @@
 "use client";
 
 import { useState, type ChangeEvent, type FormEvent } from "react";
-import { HiOutlineArrowPath, HiOutlineBanknotes } from "react-icons/hi2";
+import { HiOutlineArrowPath } from "react-icons/hi2";
 import {
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
   ModalField,
   ModalHelper,
   ModalPrimaryButton,
   ModalTitle,
+  Panel,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import {
@@ -22,7 +19,7 @@ import {
 
 /** The old card's own input class, kept verbatim so the four fields look as they did. */
 const inputClassName =
-  "w-full rounded-md border border-b2c-border bg-osce-surface px-3 py-2.5 text-osce-body text-osce-ink-900 outline-none transition focus:border-osce-accent focus:ring-2 focus:ring-osce-accent-subtle disabled:cursor-not-allowed disabled:bg-b2c-secondary disabled:opacity-50";
+  "w-full rounded-osce-md border border-border bg-surface px-3 py-2.5 text-osce-body text-ink outline-none transition focus:border-osce-accent focus:ring-2 focus:ring-osce-accent-subtle disabled:cursor-not-allowed disabled:bg-surface-raised disabled:opacity-50";
 
 /** How a saved account number is shown while the field is not being edited. */
 function maskedAccountNumber(lastFour: string): string {
@@ -51,26 +48,14 @@ export default function BankDetails() {
   );
 }
 
-function BankDetailsHeader() {
-  return (
-    <B2CPanelCardHeader>
-      <HiOutlineBanknotes className="h-3.5 w-3.5 shrink-0 text-osce-accent" aria-hidden />
-      Bank details
-    </B2CPanelCardHeader>
-  );
-}
-
 function BankDetailsLoading() {
   return (
-    <B2CPanelCard className="mt-0 h-full">
-      <BankDetailsHeader />
-      <B2CPanelCardBody>
-        <div className="flex items-center justify-center gap-2 py-8 text-osce-body text-b2c-text-muted">
-          <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
-          Loading bank details…
-        </div>
-      </B2CPanelCardBody>
-    </B2CPanelCard>
+    <Panel title="Bank details" className="h-full">
+      <div className="flex items-center justify-center gap-2 py-8 text-osce-body text-ink-subtle">
+        <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
+        Loading bank details…
+      </div>
+    </Panel>
   );
 }
 
@@ -134,9 +119,8 @@ function BankDetailsForm({ saved }: { saved: PayoutDetails | null }) {
 
   return (
     <form onSubmit={(event) => void handleSubmit(event)} className="h-full">
-      <B2CPanelCard className="mt-0 h-full">
-        <BankDetailsHeader />
-        <B2CPanelCardBody className="space-y-4">
+      <Panel title="Bank details" className="h-full">
+        <div className="space-y-4">
           <div>
             <ModalTitle className="text-osce-body">Account information</ModalTitle>
             <ModalHelper>Add your bank details to receive referral payouts.</ModalHelper>
@@ -144,7 +128,7 @@ function BankDetailsForm({ saved }: { saved: PayoutDetails | null }) {
 
           {successMessage ? (
             <div
-              className="rounded-md border border-osce-success-border bg-osce-success-bg px-3 py-2.5 text-osce-meta text-osce-success-text"
+              className="rounded-osce-md border border-osce-success-border bg-osce-success-bg px-3 py-2.5 text-osce-meta text-osce-success-text"
               role="alert"
             >
               {successMessage}
@@ -152,7 +136,7 @@ function BankDetailsForm({ saved }: { saved: PayoutDetails | null }) {
           ) : null}
           {submitError ? (
             <div
-              className="rounded-md border border-osce-danger-border bg-osce-danger-bg px-3 py-2.5 text-osce-meta text-osce-danger-text"
+              className="rounded-osce-md border border-osce-danger-border bg-osce-danger-bg px-3 py-2.5 text-osce-meta text-osce-danger-text"
               role="alert"
             >
               {submitError}
@@ -217,13 +201,13 @@ function BankDetailsForm({ saved }: { saved: PayoutDetails | null }) {
               disabled={isSaving}
             />
           </ModalField>
-        </B2CPanelCardBody>
-        <B2CPanelCardFooter>
+        </div>
+        <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
           <ModalPrimaryButton type="submit" disabled={isSaving}>
             {isSaving ? "Saving…" : "Save bank details"}
           </ModalPrimaryButton>
-        </B2CPanelCardFooter>
-      </B2CPanelCard>
+        </div>
+      </Panel>
     </form>
   );
 }

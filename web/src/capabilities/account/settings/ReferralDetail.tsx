@@ -13,13 +13,11 @@ import {
 } from "react-icons/hi2";
 import {
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardHeader,
   Back,
   LoadingSpinner,
   ModalHelper,
   ModalTitle,
+  Panel,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
@@ -56,10 +54,10 @@ async function findReferral(
 function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="mt-0.5 shrink-0 text-b2c-text-muted">{icon}</span>
+      <span className="mt-0.5 shrink-0 text-ink-subtle">{icon}</span>
       <div className="min-w-0">
-        <p className="text-osce-caption font-medium text-b2c-text-muted">{label}</p>
-        <p className="text-osce-body font-medium text-osce-ink-900">{value}</p>
+        <p className="text-osce-caption font-medium text-ink-subtle">{label}</p>
+        <p className="text-osce-body font-medium text-ink">{value}</p>
       </div>
     </div>
   );
@@ -114,12 +112,9 @@ function ReferralMissing() {
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-4">
       <Back />
-      <B2CPanelCard className="mt-0">
-        <B2CPanelCardHeader>Referral details</B2CPanelCardHeader>
-        <B2CPanelCardBody>
-          <ModalHelper className="mt-0">Referral not found.</ModalHelper>
-        </B2CPanelCardBody>
-      </B2CPanelCard>
+      <Panel title="Referral details">
+        <ModalHelper className="mt-0">Referral not found.</ModalHelper>
+      </Panel>
     </div>
   );
 }
@@ -131,9 +126,8 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
     <div className="space-y-4">
       <Back />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <B2CPanelCard className="mt-0">
-          <B2CPanelCardHeader>Core information</B2CPanelCardHeader>
-          <B2CPanelCardBody className="space-y-4">
+        <Panel title="Core information">
+          <div className="space-y-4">
             <div>
               <ModalTitle className="text-osce-body">Referral details</ModalTitle>
               <ModalHelper>When this referral was created and how.</ModalHelper>
@@ -153,12 +147,11 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
               label="App type"
               value={examCode}
             />
-          </B2CPanelCardBody>
-        </B2CPanelCard>
+          </div>
+        </Panel>
 
-        <B2CPanelCard className="mt-0">
-          <B2CPanelCardHeader>Financials &amp; payout</B2CPanelCardHeader>
-          <B2CPanelCardBody className="space-y-4">
+        <Panel title="Financials &amp; payout">
+          <div className="space-y-4">
             <DetailRow
               icon={<HiOutlineBanknotes className="h-4 w-4" />}
               label="Amount earned"
@@ -174,19 +167,16 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
               label="Subscription type (referee)"
               value={(referral.plan_code ?? "").replace("_", " ")}
             />
-          </B2CPanelCardBody>
-        </B2CPanelCard>
+          </div>
+        </Panel>
 
-        <B2CPanelCard className="mt-0 md:col-span-2">
-          <B2CPanelCardHeader>Referee details</B2CPanelCardHeader>
-          <B2CPanelCardBody>
-            <DetailRow
-              icon={<HiOutlineEnvelope className="h-4 w-4" />}
-              label="Referee email"
-              value={referral.referee_email}
-            />
-          </B2CPanelCardBody>
-        </B2CPanelCard>
+        <Panel title="Referee details" className="md:col-span-2">
+          <DetailRow
+            icon={<HiOutlineEnvelope className="h-4 w-4" />}
+            label="Referee email"
+            value={referral.referee_email}
+          />
+        </Panel>
       </div>
     </div>
   );

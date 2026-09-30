@@ -2,22 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { HiOutlineArrowPath, HiOutlineExclamationTriangle, HiOutlineTrash } from "react-icons/hi2";
+import { HiOutlineArrowPath, HiOutlineTrash } from "react-icons/hi2";
 import {
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
   ConfirmModal,
   ModalDangerButton,
   ModalHelper,
+  Panel,
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { closeAccount } from "@/capabilities/account/api";
 
-const { b2cInputBase, b2cSettingsCardHeaderIcon } = productTokens;
+const { b2cInputBase } = productTokens;
 
 /**
  * The retiring screen's "Danger zone": close the signed-in account.
@@ -60,19 +57,15 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <>
-      <B2CPanelCard className="mt-0">
-        <B2CPanelCardHeader>
-          <HiOutlineExclamationTriangle className={b2cSettingsCardHeaderIcon} aria-hidden />
-          Danger zone
-        </B2CPanelCardHeader>
-        <B2CPanelCardBody className="space-y-3">
+      <Panel title="Danger zone">
+        <div className="space-y-3">
           <p className="text-osce-body font-semibold text-osce-danger">Delete your account</p>
           <ModalHelper className="mt-0">
             This action cannot be undone and you will not be able to restore your account.
           </ModalHelper>
           {isAdmin ? <ModalHelper>Admin accounts cannot be deleted from Settings.</ModalHelper> : null}
-        </B2CPanelCardBody>
-        <B2CPanelCardFooter>
+        </div>
+        <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
           <ModalDangerButton
             type="button"
             onClick={() => setOpen(true)}
@@ -91,8 +84,8 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
               </>
             )}
           </ModalDangerButton>
-        </B2CPanelCardFooter>
-      </B2CPanelCard>
+        </div>
+      </Panel>
 
       <ConfirmModal
         isOpen={open}
@@ -109,7 +102,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
       >
         <div className="space-y-3 text-left">
           <label className="block">
-            <span className="mb-1 block text-osce-meta text-b2c-text-muted">
+            <span className="mb-1 block text-osce-meta text-ink-subtle">
               Type <span className="font-mono font-semibold">DELETE</span> to confirm
             </span>
             <input
@@ -121,7 +114,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-osce-meta text-b2c-text-muted">
+            <span className="mb-1 block text-osce-meta text-ink-subtle">
               Password (leave blank if you sign in through your organisation)
             </span>
             <input

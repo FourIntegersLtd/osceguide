@@ -1,7 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Badge, Button, Card, Input, Modal } from "@/foundation/ui";
+import {
+  Alert,
+  AsyncBoundary,
+  Badge,
+  Button,
+  Input,
+  Modal,
+  Panel,
+  Row,
+  RowList,
+  Select,
+} from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { listExams } from "@/capabilities/stations";
 import {
@@ -41,11 +52,8 @@ export function PlansPanel() {
     }
   };
 
-  const items = plans.data?.items ?? [];
-
   return (
-    <Card
-      padding="md"
+    <Panel
       title="Prices"
       description="Each plan is sold at full price and, with a referral code, at 10% off. Stripe prices are created for you."
       actions={
@@ -53,57 +61,61 @@ export function PlansPanel() {
           New price
         </Button>
       }
+      padding="none"
     >
-      {error ? <Alert tone="danger">{error}</Alert> : null}
-      {plans.error ? (
-        <Alert tone="danger">{errorMessage(plans.error)}</Alert>
-      ) : plans.loading && !plans.data ? (
-        <p className="text-osce-data text-b2c-text-muted">Loading prices…</p>
-      ) : items.length === 0 ? (
-        <p className="text-osce-data text-b2c-text-muted">
-          Nothing is on sale yet. Add a price for a published exam.
-        </p>
-      ) : (
-        <ul className="divide-y divide-b2c-border">
-          {items.map((plan) => (
-            <li
-              key={plan.code}
-              className="flex flex-wrap items-center justify-between gap-3 py-3"
-            >
-              <div className="min-w-0">
-                <p className="font-medium text-osce-ink-900">
-                  {plan.exam_code} · {pounds(plan.amount_pence)} for{" "}
-                  {plan.duration_days} days
-                </p>
-                <p className="truncate text-osce-meta text-b2c-text-muted">
-                  {plan.code}
-                  {plan.referral_amount_pence != null
-                    ? ` · ${pounds(plan.referral_amount_pence)} with a referral code`
-                    : ""}
-                  {` · ${plan.stripe_price_id}`}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge tone={plan.active ? "success" : "neutral"}>
-                  {plan.active ? "On sale" : "Retired"}
-                </Badge>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={busyCode !== null}
-                  onClick={() => void toggle(plan)}
-                >
-                  {busyCode === plan.code
-                    ? "Saving…"
-                    : plan.active
-                      ? "Retire"
-                      : "Put on sale"}
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      {error ? (
+        <div className="px-5 pt-4 sm:px-6">
+          <Alert tone="danger">{error}</Alert>
+        </div>
+      ) : null}
+      <AsyncBoundary
+        state={plans}
+        isEmpty={(page) => page.items.length === 0}
+        empty={{
+          title: "Nothing is on sale",
+          description: "Add a price for a published exam.",
+          bare: true,
+        }}
+      >
+        {(page) => (
+          <RowList flush>
+            {page.items.map((plan) => (
+              <Row key={plan.code}>
+                <div className="min-w-0">
+                  <p className="text-osce-data font-medium text-ink">
+                    {plan.exam_code} · {pounds(plan.amount_pence)} for{" "}
+                    {plan.duration_days} days
+                  </p>
+                  <p className="truncate text-osce-meta text-ink-subtle">
+                    {plan.code}
+                    {plan.referral_amount_pence != null
+                      ? ` · ${pounds(plan.referral_amount_pence)} with a referral code`
+                      : ""}
+                    {` · ${plan.stripe_price_id}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge tone={plan.active ? "success" : "neutral"}>
+                    {plan.active ? "On sale" : "Retired"}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={busyCode !== null}
+                    onClick={() => void toggle(plan)}
+                  >
+                    {busyCode === plan.code
+                      ? "Saving…"
+                      : plan.active
+                        ? "Retire"
+                        : "Put on sale"}
+                  </Button>
+                </div>
+              </Row>
+            ))}
+          </RowList>
+        )}
+      </AsyncBoundary>
       {creating ? (
         <NewPlanModal
           onClose={() => setCreating(false)}
@@ -117,7 +129,7 @@ export function PlansPanel() {
           }}
         />
       ) : null}
-    </Card>
+    </Panel>
   );
 }
 
@@ -173,28 +185,25 @@ function NewPlanModal({
             Could not load the exams: {errorMessage(exams.error)}
           </Alert>
         ) : null}
-        <label className="flex flex-col gap-1 text-osce-meta font-medium text-osce-ink-700">
-          Exam
-          <select
-            value={examCode}
-            onChange={(event) => {
-              setExamCode(event.target.value);
-              if (!code)
-                setCode(
-                  `${event.target.value}_${Math.round(Number(days) / 30) || 1}m`,
-                );
-            }}
-            disabled={busy}
-            className="rounded-md border border-b2c-border bg-white px-3 py-2 text-osce-body text-osce-ink-900"
-          >
-            <option value="">Choose a published exam</option>
-            {(exams.data?.items ?? []).map((exam) => (
-              <option key={exam.code} value={exam.code}>
-                {exam.name} ({exam.code})
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label="Exam"
+          value={examCode}
+          onChange={(event) => {
+            setExamCode(event.target.value);
+            if (!code)
+              setCode(
+                `${event.target.value}_${Math.round(Number(days) / 30) || 1}m`,
+              );
+          }}
+          disabled={busy}
+        >
+          <option value="">Choose a published exam</option>
+          {(exams.data?.items ?? []).map((exam) => (
+            <option key={exam.code} value={exam.code}>
+              {exam.name} ({exam.code})
+            </option>
+          ))}
+        </Select>
         <Input
           label="Price (£)"
           type="number"

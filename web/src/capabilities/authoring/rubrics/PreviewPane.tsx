@@ -33,14 +33,16 @@ export function PreviewPane({
     <div className="space-y-3">
       {items.length > 1 ? <B2CSegmentedTabs items={items} value={shown} onChange={setView} compact aria-label="Preview" /> : null}
       {!inputs ? (
-        <p className="rounded-osce-md border border-dashed border-osce-border p-6 text-center text-osce-meta text-osce-ink-400">
+        <p className="rounded-osce-md border border-dashed border-osce-border p-6 text-center text-osce-meta text-ink-subtle">
           {emptyMessage}
         </p>
       ) : shown === "dashboard" && Dashboard ? (
-        <Dashboard rating={inputs.rating} display={inputs.display} totals={inputs.totals} />
+        <div className="max-h-[70vh] overflow-y-auto">
+          <Dashboard rating={inputs.rating} display={inputs.display} totals={inputs.totals} />
+        </div>
       ) : (
-        <div className="rounded-osce-md border border-osce-border bg-osce-canvas p-3">
-          <p className="mb-2 text-osce-caption text-osce-ink-400">A made-up result, to show the layout.</p>
+        <div className="max-h-[70vh] overflow-y-auto rounded-osce-md border border-osce-border bg-osce-canvas p-3">
+          <p className="mb-2 text-osce-caption text-ink-subtle">A made-up result, to show the layout.</p>
           <RubricFeedback rubric={inputs.rubric} result={inputs.result} narrow />
         </div>
       )}

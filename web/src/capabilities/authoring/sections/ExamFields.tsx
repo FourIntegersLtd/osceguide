@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { getInputClassName } from "@/foundation/ui";
+import { Checkbox, getInputClassName, Select } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { listRubrics, type ExamSettings } from "@/capabilities/authoring/api";
 import {
@@ -129,10 +129,10 @@ export function ExamFields({
           />
         </Field>
         <Field label="Rubric version">
-          <select
+          <Select
             value={value.rubricVersionId}
             onChange={(e) => set({ rubricVersionId: e.target.value })}
-            className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
+            className="mt-1"
           >
             <option value="">None yet</option>
             {versions.map((v) => (
@@ -140,7 +140,7 @@ export function ExamFields({
                 {v.label}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <ExamSettingsFields value={value.settings} onChange={setSettings} />
@@ -153,17 +153,14 @@ export function ExamFields({
        * where the write actually takes.
        */}
       {scope.kind === "platform" ? (
-        <label className="flex cursor-pointer items-center gap-2 text-osce-body text-b2b-graphite">
-          <input
-            type="checkbox"
-            checked={value.partnerPilot}
-            onChange={(e) => set({ partnerPilot: e.target.checked })}
-            className="h-4 w-4 rounded border-b2b-border"
-          />
-          Partner pilot
-        </label>
+        <Checkbox
+          checked={value.partnerPilot}
+          onChange={(e) => set({ partnerPilot: e.target.checked })}
+          label="Partner pilot"
+          className="items-center"
+        />
       ) : (
-        <p className="text-osce-caption text-b2b-mid">
+        <p className="text-osce-caption text-ink-muted">
           Partner-pilot status is set by OSCE Guide staff, not from here.
         </p>
       )}

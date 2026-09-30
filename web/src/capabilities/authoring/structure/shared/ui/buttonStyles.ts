@@ -48,41 +48,41 @@ const baseButtonStyles =
  * not a focus state.
  */
 const commitStyles =
-  "bg-osce-ink-800 !text-white hover:bg-osce-ink-900 focus:ring-osce-accent/40 border border-transparent";
+  "bg-ink !text-white hover:bg-ink focus:ring-osce-accent/40 border border-transparent";
 
 const b2cVariants: Record<ButtonVariant, string> = {
   primary:
     "bg-osce-accent !text-white hover:bg-osce-accent-hover focus:ring-osce-accent/30 border border-transparent",
   commit: commitStyles,
   secondary:
-    "bg-osce-surface border border-b2c-border text-osce-ink-900 hover:bg-b2c-secondary focus:ring-osce-accent/20",
+    "bg-osce-surface border border-border text-ink hover:bg-surface-raised focus:ring-osce-accent/20",
   danger:
     // !bg / !text beat LiveKit `.lk-disconnect-button` Theme vars (otherwise invisible on white)
     "!bg-osce-danger !text-white hover:!bg-osce-danger-hover focus:ring-osce-danger border border-transparent",
   dangerSolid:
     "!bg-osce-danger !text-white hover:!bg-osce-danger-hover focus:ring-osce-danger-border border border-transparent",
   outline:
-    "border border-b2c-border text-osce-ink-900 hover:bg-b2c-secondary focus:ring-osce-accent/20 bg-osce-surface",
+    "border border-border text-ink hover:bg-surface-raised focus:ring-osce-accent/20 bg-osce-surface",
   ghost:
-    "text-b2c-text-muted hover:bg-b2c-secondary hover:text-osce-ink-900 focus:ring-osce-accent/20 bg-transparent border border-transparent",
+    "text-ink-subtle hover:bg-surface-raised hover:text-ink focus:ring-osce-accent/20 bg-transparent border border-transparent",
 };
 
 const b2bPrimaryStyles =
-  "bg-b2b-accent text-white hover:bg-b2b-accent-hover focus:ring-b2b-accent/30 border border-transparent";
+  "bg-accent text-white hover:bg-accent-hover focus:ring-accent/30 border border-transparent";
 
 const b2bVariants: Record<ButtonVariant, string> = {
   primary: b2bPrimaryStyles,
   commit: commitStyles,
   secondary:
-    "bg-white border border-b2b-border text-b2b-headline hover:bg-b2b-cream focus:ring-b2b-headline/10",
+    "bg-white border border-border text-ink hover:bg-surface-raised focus:ring-ink/10",
   danger:
-    "bg-white border border-b2b-danger/30 text-b2b-danger hover:bg-osce-danger-bg focus:ring-b2b-danger/30",
+    "bg-white border border-danger/30 text-danger hover:bg-osce-danger-bg focus:ring-danger/30",
   dangerSolid:
     "bg-osce-danger text-white hover:bg-osce-danger-hover focus:ring-osce-danger-border border border-transparent",
   outline:
-    "bg-white border border-b2b-border text-b2b-headline hover:bg-b2b-cream focus:ring-b2b-headline/10",
+    "bg-white border border-border text-ink hover:bg-surface-raised focus:ring-ink/10",
   ghost:
-    "text-b2b-mid hover:bg-b2b-cream hover:text-b2b-headline focus:ring-b2b-headline/10 bg-transparent border border-transparent",
+    "text-ink-muted hover:bg-surface-raised hover:text-ink focus:ring-ink/10 bg-transparent border border-transparent",
 };
 
 /*
@@ -93,19 +93,19 @@ const b2bVariants: Record<ButtonVariant, string> = {
  * is one nobody notices breaking.
  */
 const b2cSizes: Record<ButtonSize, string> = {
-  xs: "h-9 sm:h-7 px-2.5 text-osce-caption rounded-md",
-  sm: "h-10 sm:h-8 px-3 text-osce-body rounded-md",
-  md: "h-11 sm:h-9 px-4 text-osce-body rounded-md",
-  lg: "h-11 sm:h-10 px-5 text-osce-body rounded-md",
-  hero: "h-12 sm:h-11 px-6 text-osce-body font-medium rounded-md w-full gap-2",
+  xs: "h-9 sm:h-7 px-2.5 text-osce-caption rounded-osce-md",
+  sm: "h-10 sm:h-8 px-3 text-osce-body rounded-osce-md",
+  md: "h-11 sm:h-9 px-4 text-osce-body rounded-osce-md",
+  lg: "h-11 sm:h-10 px-5 text-osce-body rounded-osce-md",
+  hero: "h-12 sm:h-11 px-6 text-osce-body font-medium rounded-osce-md w-full gap-2",
 };
 
 const b2bSizes: Record<ButtonSize, string> = {
-  xs: "h-9 sm:h-7 px-2.5 text-osce-caption rounded-md",
-  sm: "h-10 sm:h-8 px-3 text-osce-body rounded-md",
-  md: "h-11 sm:h-9 px-4 text-osce-body rounded-md",
-  lg: "h-11 sm:h-10 px-5 text-osce-body rounded-md",
-  hero: "h-12 sm:h-11 px-6 text-osce-body font-medium rounded-md w-full gap-2",
+  xs: "h-9 sm:h-7 px-2.5 text-osce-caption rounded-osce-md",
+  sm: "h-10 sm:h-8 px-3 text-osce-body rounded-osce-md",
+  md: "h-11 sm:h-9 px-4 text-osce-body rounded-osce-md",
+  lg: "h-11 sm:h-10 px-5 text-osce-body rounded-osce-md",
+  hero: "h-12 sm:h-11 px-6 text-osce-body font-medium rounded-osce-md w-full gap-2",
 };
 
 export function getButtonClassName({

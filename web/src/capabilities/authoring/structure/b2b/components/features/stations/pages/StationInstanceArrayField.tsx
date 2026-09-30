@@ -1,11 +1,9 @@
 "use client";
 
+import { Textarea } from "@/foundation/ui";
 import { useState } from "react";
 import { HiOutlinePencilSquare, HiOutlineXMark } from "react-icons/hi2";
 import { B2BButton } from "@/capabilities/authoring/structure/b2b/components/ui/B2BButton";
-import { b2bInputBase } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
-
-const multilineInputClass = `${b2bInputBase} min-h-[4.5rem] resize-y`;
 
 /** List block editor — matches B2C admin station update (items + Add new item). */
 export function StationInstanceArrayField({
@@ -44,20 +42,20 @@ export function StationInstanceArrayField({
 
   return (
     <div className="min-w-0 md:col-span-2 space-y-1.5">
-      <label className="block text-osce-body font-medium text-b2b-headline">
+      <label className="block text-osce-body font-medium text-ink">
         {label}
-        {required ? <span className="text-b2b-danger-text"> *</span> : null}
+        {required ? <span className="text-osce-danger-text"> *</span> : null}
       </label>
       <div className="space-y-1.5">
         {items.length === 0 && !ro ? (
-          <p className="rounded-md border border-b2b-border px-3 py-2 text-osce-body text-b2b-mid">
+          <p className="rounded-osce-md border border-border px-3 py-2 text-osce-body text-ink-muted">
             None
           </p>
         ) : null}
         {items.map((item, index) => (
           <div key={`${index}-${item.slice(0, 24)}`} className="group flex gap-1.5">
             {editingIndex === index ? (
-              <textarea
+              <Textarea
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 onBlur={() => commitEdit(index)}
@@ -68,7 +66,7 @@ export function StationInstanceArrayField({
                   }
                 }}
                 rows={Math.max(3, Math.min(8, editValue.split("\n").length + 1))}
-                className={`flex-1 ${multilineInputClass}`}
+                className="min-h-[4.5rem] flex-1 resize-y"
                 // Opened by the Edit action, so focus moves into what it opened.
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
@@ -76,7 +74,7 @@ export function StationInstanceArrayField({
               />
             ) : (
               <span
-                className="flex-1 whitespace-pre-wrap rounded-md border border-b2b-border px-3 py-2 text-osce-body text-b2b-headline transition-colors group-hover:border-b2b-accent/40"
+                className="flex-1 whitespace-pre-wrap rounded-osce-md border border-border px-3 py-2 text-osce-body text-ink transition-colors group-hover:border-accent/40"
               >
                 {item}
               </span>
@@ -93,10 +91,10 @@ export function StationInstanceArrayField({
                       setEditValue(item);
                     }
                   }}
-                  className={`rounded-md p-1.5 text-osce-body transition-colors ${
+                  className={`rounded-osce-md p-1.5 text-osce-body transition-colors ${
                     editingIndex === index
-                      ? "text-b2b-accent hover:bg-b2b-cream"
-                      : "text-b2b-accent hover:bg-b2b-cream"
+                      ? "text-accent hover:bg-surface-raised"
+                      : "text-accent hover:bg-surface-raised"
                   }`}
                   aria-label="Edit item"
                 >
@@ -105,7 +103,7 @@ export function StationInstanceArrayField({
                 <button
                   type="button"
                   onClick={() => onChange(items.filter((_, i) => i !== index))}
-                  className="rounded-md p-1.5 text-b2b-danger transition-colors hover:bg-b2b-danger-bg"
+                  className="rounded-osce-md p-1.5 text-danger transition-colors hover:bg-osce-danger-bg"
                   aria-label="Remove item"
                 >
                   <HiOutlineXMark className="h-3.5 w-3.5" />
@@ -116,11 +114,11 @@ export function StationInstanceArrayField({
         ))}
         {!ro ? (
           <div className="flex gap-1.5">
-            <textarea
+            <Textarea
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
               rows={3}
-              className={`flex-1 ${multilineInputClass}`}
+              className="min-h-[4.5rem] flex-1 resize-y"
               placeholder="Add new item"
             />
             <B2BButton type="button" variant="commit" className="self-end" onClick={addItem}>

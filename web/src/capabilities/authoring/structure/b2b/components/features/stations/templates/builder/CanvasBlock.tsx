@@ -80,7 +80,7 @@ export function CanvasBlock({
           aria-label="Drag to reorder field"
           title="Drag to reorder"
           onClick={(e) => e.stopPropagation()}
-          className={`-ml-1 inline-flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded-md text-osce-ink-400 opacity-0 transition-opacity hover:text-osce-ink-700 active:cursor-grabbing group-hover/row:opacity-100 focus-visible:opacity-100 ${builderUi.focusRing}`}
+          className={`-ml-1 inline-flex h-7 w-5 shrink-0 cursor-grab items-center justify-center rounded-osce-md text-ink-subtle opacity-0 transition-opacity hover:text-ink-muted active:cursor-grabbing group-hover/row:opacity-100 focus-visible:opacity-100 ${builderUi.focusRing}`}
           {...attributes}
           {...listeners}
         >
@@ -90,9 +90,9 @@ export function CanvasBlock({
           <TypeIcon aria-hidden />
         </TypeBadge>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-osce-body font-medium text-osce-ink-700">
+          <span className="block truncate text-osce-body font-medium text-ink-muted">
             {block.label || (
-              <span className="font-normal italic text-osce-ink-400">
+              <span className="font-normal italic text-ink-subtle">
                 Untitled field
               </span>
             )}
@@ -106,13 +106,13 @@ export function CanvasBlock({
               </span>
             ) : null}
           </span>
-          <span className="block truncate text-osce-caption text-osce-ink-400">
+          <span className="block truncate text-osce-caption text-ink-subtle">
             {caption}
           </span>
         </span>
         <HiChevronRight
           className={`h-4 w-4 shrink-0 transition-colors ${
-            selected ? "text-osce-accent" : "text-osce-ink-400/60 group-hover/row:text-osce-ink-400"
+            selected ? "text-osce-accent" : "text-ink-subtle/60 group-hover/row:text-ink-subtle"
           }`}
           aria-hidden
         />

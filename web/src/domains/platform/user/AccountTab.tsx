@@ -1,20 +1,42 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Badge, Button, Card, ConfirmModal } from "@/foundation/ui";
+import {
+  ActionRail,
+  Alert,
+  Badge,
+  Button,
+  ConfirmModal,
+  DetailLayout,
+  EmptyPanel,
+  FactList,
+  Panel,
+  Row,
+  RowList,
+} from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
-import { setPlatformAdmin, updateUser, type DirectoryUser, type PlatformUserDetail } from "@/domains/platform/api";
+import {
+  setPlatformAdmin,
+  updateUser,
+  type DirectoryUser,
+  type PlatformUserDetail,
+} from "@/domains/platform/api";
 import { formatDay } from "@/domains/platform/support";
-import { accessLabel, accessOf, accessTone, planLabel } from "@/domains/platform/users/vocabulary";
+import {
+  accessLabel,
+  accessOf,
+  accessTone,
+  planLabel,
+} from "@/domains/platform/users/vocabulary";
 
 /**
- * The retiring console's "Account status" card.
+ * The account itself: what it paid for and can open, where it belongs, and
+ * the two switches — the console and the account.
  *
- * Its Paid / Unpaid and Active / Inactive buttons flipped flags on the user
- * document, and a flag with nothing behind it is how "paid" and "has access"
- * came apart. Here both are read from what actually happened — a payment, a
- * live grant — and changed where they are recorded: Billing and Entitlements.
- * What this tab does change is the account itself: off, and the console.
+ * Paid and access are read from what actually happened — a payment, a live
+ * grant — and changed where they are recorded: Billing and Entitlements. A
+ * flag with nothing behind it is how "paid" and "has access" came apart in the
+ * retiring console.
  */
 export function AccountTab({
   user,
@@ -41,7 +63,9 @@ export function AccountTab({
       try {
         onChanged(await updateUser(user.id, { status }));
         toast.success(
-          status === "deactivated" ? "Account deactivated" : "Account reactivated",
+          status === "deactivated"
+            ? "Account deactivated"
+            : "Account reactivated",
           status === "deactivated"
             ? "Their sessions have ended and their token is refused from now on."
             : "They can sign in again.",
@@ -63,7 +87,9 @@ export function AccountTab({
     try {
       await setPlatformAdmin(user.id, pending);
       onChanged({ ...user, is_platform_admin: pending });
-      toast.success(pending ? "Console access granted" : "Console access revoked");
+      toast.success(
+        pending ? "Console access granted" : "Console access revoked",
+      );
       setPending(null);
     } catch (cause) {
       setError(errorMessage(cause));
@@ -73,77 +99,151 @@ export function AccountTab({
   }, [pending, user, onChanged, toast]);
 
   const access = facts ? accessOf(facts) : null;
+  const liveCodes = facts?.live_exam_codes ?? [];
+  const memberships = user.memberships ?? [];
 
   return (
-    <div className="flex flex-col gap-4">
-      {error ? <Alert tone="danger">{error}</Alert> : null}
+    <>
+      <DetailLayout
+        main={
+          <>
+            {error && !confirmOff && pending === null ? (
+              <Alert tone="danger">{error}</Alert>
+            ) : null}
+            <Panel
+              title="Payment and access"
+              description="Read from what happened. Changed where it is recorded."
+              actions={
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onOpenTab("entitlements")}
+                  >
+                    Entitlements
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onOpenTab("billing")}
+                  >
+                    Billing
+                  </Button>
+                </>
+              }
+            >
+              <FactList
+                items={[
+                  {
+                    label: "Payment",
+                    value: access ? (
+                      <Badge tone={accessTone(access)}>
+                        {accessLabel(access)}
+                      </Badge>
+                    ) : (
+                      "—"
+                    ),
+                  },
+                  { label: "Last paid", value: formatDay(facts?.last_paid_at) },
+                  {
+                    label: "Plan",
+                    value: facts?.has_paid
+                      ? planLabel(facts.plan_code)
+                      : "None bought",
+                  },
+                  {
+                    label: "Access",
+                    value:
+                      liveCodes.length > 0
+                        ? `${liveCodes.map((code) => code.toUpperCase()).join(", ")} · ${
+                            facts?.access_ends_at
+                              ? `until ${formatDay(facts.access_ends_at)}`
+                              : "open-ended"
+                          }`
+                        : "No live access",
+                  },
+                  {
+                    label: "Signed in",
+                    value: facts ? (facts.signed_in ? "Now" : "No") : "—",
+                  },
+                ]}
+              />
+            </Panel>
 
-      <Card padding="md" title="Payment and access" description="Read from what happened. Changed where it is recorded.">
-        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-osce-data">
-          <dt className="text-ink-muted">Payment</dt>
-          <dd>
-            {access ? <Badge tone={accessTone(access)}>{accessLabel(access)}</Badge> : <span className="text-ink-subtle">—</span>}
-            {facts?.last_paid_at ? <span className="ml-2 text-osce-meta text-ink-subtle">last paid {formatDay(facts.last_paid_at)}</span> : null}
-          </dd>
-          <dt className="text-ink-muted">Plan</dt>
-          <dd className="text-ink">{facts?.has_paid ? planLabel(facts.plan_code) : "None bought"}</dd>
-          <dt className="text-ink-muted">Access</dt>
-          <dd className="text-ink">
-            {facts && (facts.live_exam_codes ?? []).length > 0
-              ? `${(facts.live_exam_codes ?? []).map((code) => code.toUpperCase()).join(", ")} · ${
-                  facts.access_ends_at ? `until ${formatDay(facts.access_ends_at)}` : "open-ended"
-                }`
-              : "No live access"}
-          </dd>
-          <dt className="text-ink-muted">Signed in</dt>
-          <dd className="text-ink">{facts ? (facts.signed_in ? "Now" : "No") : "—"}</dd>
-        </dl>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={() => onOpenTab("entitlements")}>
-            Grant, extend or revoke access
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => onOpenTab("billing")}>
-            Record a payment or refund
-          </Button>
-        </div>
-      </Card>
-
-      <Card padding="md">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="min-w-0 text-osce-data text-ink-muted">
-            {deactivated
-              ? "This account is deactivated. Its sessions have ended and its token is refused."
-              : "This account is active."}
-          </p>
-          <Button
-            variant={deactivated ? "primary" : "danger"}
-            size="sm"
-            disabled={busy}
-            onClick={() => (deactivated ? void setStatus("active") : setConfirmOff(true))}
+            <Panel title="Memberships" padding="none">
+              {memberships.length === 0 ? (
+                <EmptyPanel
+                  bare
+                  title="No memberships"
+                  description="This account belongs to no organisation."
+                />
+              ) : (
+                <RowList flush>
+                  {memberships.map((membership) => (
+                    <Row key={membership.id}>
+                      <div className="min-w-0">
+                        <p className="truncate text-osce-data font-medium capitalize text-ink">
+                          {membership.role}
+                        </p>
+                        <p className="truncate text-osce-meta text-ink-subtle">
+                          {membership.product_surface ?? "Organisation"}
+                          {membership.invited ? " · invited" : ""}
+                        </p>
+                      </div>
+                      <Badge
+                        tone={
+                          membership.status === "active" ? "success" : "neutral"
+                        }
+                      >
+                        {membership.status}
+                      </Badge>
+                    </Row>
+                  ))}
+                </RowList>
+              )}
+            </Panel>
+          </>
+        }
+        rail={
+          <ActionRail
+            title="Account"
+            danger={
+              <>
+                <Button
+                  variant={deactivated ? "primary" : "danger"}
+                  disabled={busy}
+                  onClick={() =>
+                    deactivated ? void setStatus("active") : setConfirmOff(true)
+                  }
+                >
+                  {busy
+                    ? "Working…"
+                    : deactivated
+                      ? "Reactivate account"
+                      : "Deactivate account"}
+                </Button>
+                <p className="text-osce-meta text-ink-subtle">
+                  {deactivated
+                    ? "Deactivated. Its sessions have ended and its token is refused."
+                    : "Signs them out everywhere. Nothing is deleted."}
+                </p>
+              </>
+            }
           >
-            {busy ? "Working…" : deactivated ? "Reactivate" : "Deactivate"}
-          </Button>
-        </div>
-      </Card>
-
-      <Card padding="md">
-        <p className="text-osce-data text-ink-muted">
-          {user.is_platform_admin
-            ? `${user.email} may open every organisation in this console.`
-            : `${user.email} does not have platform administrator access.`}
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {user.is_platform_admin ? (
-            <Button variant="secondary" size="sm" onClick={() => setPending(false)}>
-              Revoke console
+            <p className="text-osce-meta text-ink-subtle">
+              {user.is_platform_admin
+                ? "May open every organisation in this console."
+                : "No platform administrator access."}
+            </p>
+            <Button
+              variant="secondary"
+              onClick={() => setPending(!user.is_platform_admin)}
+            >
+              {user.is_platform_admin ? "Revoke console" : "Grant console"}
             </Button>
-          ) : (
-            <Button variant="secondary" size="sm" onClick={() => setPending(true)}>
-              Grant console
-            </Button>
-          )}
-        </div>
-      </Card>
+          </ActionRail>
+        }
+      />
 
       <ConfirmModal
         isOpen={confirmOff}
@@ -166,7 +266,9 @@ export function AccountTab({
         isLoading={busy}
         error={error}
         tone={pending === false ? "danger" : "default"}
-        title={pending ? "Grant the staff console?" : "Revoke the staff console?"}
+        title={
+          pending ? "Grant the staff console?" : "Revoke the staff console?"
+        }
         confirmText={pending ? "Grant" : "Revoke"}
         message={
           pending
@@ -174,6 +276,6 @@ export function AccountTab({
             : `${user.email} will lose this console. Their organisation memberships are untouched.`
         }
       />
-    </div>
+    </>
   );
 }

@@ -145,7 +145,7 @@ function Drawer({
         type="button"
         aria-label="Close settings"
         onClick={onClose}
-        className="absolute inset-0 z-20 bg-osce-ink-900/15 backdrop-blur-[1px] lg:hidden"
+        className="absolute inset-0 z-20 bg-ink/15 backdrop-blur-[1px] lg:hidden"
       />
       {/* Stops a click inside reaching the canvas's deselect; not an action. */}
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */}
@@ -163,11 +163,11 @@ function Drawer({
         <div className={`flex items-center gap-3 px-4 py-3.5 ${builderUi.b}`}>
           {icon}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-osce-body font-semibold text-osce-ink-700">
+            <p className="truncate text-osce-body font-semibold text-ink-muted">
               {title}
             </p>
             {subtitle ? (
-              <p className="truncate text-osce-caption text-osce-ink-400">
+              <p className="truncate text-osce-caption text-ink-subtle">
                 {subtitle}
               </p>
             ) : null}

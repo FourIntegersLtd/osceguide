@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AsyncBoundary, Badge, Button, ConfirmModal, Panel, Row, RowList } from "@/foundation/ui";
+import {
+  AsyncBoundary,
+  Badge,
+  Button,
+  ConfirmModal,
+  Panel,
+  Row,
+  RowList,
+} from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
@@ -12,7 +20,11 @@ import {
   resetStationAttempts,
   type StationProgress,
 } from "@/domains/platform/support/api";
-import { attemptStatusLabel, attemptStatusTone, formatMoment } from "@/domains/platform/support";
+import {
+  attemptStatusLabel,
+  attemptStatusTone,
+  formatMoment,
+} from "@/domains/platform/support";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
 
 /**
@@ -25,20 +37,33 @@ import { InlineAction } from "@/domains/platform/user/InlineAction";
  * and that difference is the whole explanation of what reset did.
  */
 export function StationsTab({ userId }: { userId: string }) {
-  const state = useAsync((signal) => listUserStations(userId, signal), [userId]);
+  const state = useAsync(
+    (signal) => listUserStations(userId, signal),
+    [userId],
+  );
   return (
     <Panel
       title="Station progress"
       description="Every station this person has sat. The counter is what the attempt limit counts."
+      padding="none"
     >
       <AsyncBoundary
         state={state}
-        empty={{ title: "No stations yet", description: "This person has not sat anything." }}
+        empty={{
+          title: "No stations yet",
+          description: "This person has not sat anything.",
+          bare: true,
+        }}
       >
         {(rows) => (
-          <RowList>
+          <RowList flush>
             {rows.map((row) => (
-              <StationRow key={row.station_id} userId={userId} row={row} onChanged={state.reload} />
+              <StationRow
+                key={row.station_id}
+                userId={userId}
+                row={row}
+                onChanged={state.reload}
+              />
             ))}
           </RowList>
         )}
@@ -84,7 +109,11 @@ function StationRow({
 
   const remove = async (reason: string) => {
     try {
-      const change = await deleteStationProgress(userId, row.station_id, reason);
+      const change = await deleteStationProgress(
+        userId,
+        row.station_id,
+        reason,
+      );
       toast.success(
         `${row.title} deleted from their history`,
         `${change.attempts_deleted} attempt${change.attempts_deleted === 1 ? "" : "s"} and ${
@@ -94,7 +123,9 @@ function StationRow({
       onChanged();
     } catch (cause) {
       if (hasCode(cause, "attempt_in_progress")) {
-        throw new Error("One attempt at this station is still running. Wait for it to end, or fail it from Attempts, then try again.");
+        throw new Error(
+          "One attempt at this station is still running. Wait for it to end, or fail it from Attempts, then try again.",
+        );
       }
       throw cause;
     }
@@ -105,21 +136,42 @@ function StationRow({
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="truncate text-osce-data font-medium text-ink">
-            {row.title} <span className="text-osce-meta font-normal text-ink-subtle">· {row.exam_code.toUpperCase()}</span>
+            {row.title}{" "}
+            <span className="text-osce-meta font-normal text-ink-subtle">
+              · {row.exam_code.toUpperCase()}
+            </span>
           </p>
           <p className="truncate text-osce-meta text-ink-subtle">
-            {row.attempts} attempt{row.attempts === 1 ? "" : "s"} · {row.evaluated} marked · counter {row.entry_attempts}
-            {row.last_attempt_at ? ` · last ${formatMoment(row.last_attempt_at)}` : ""}
+            {row.attempts} attempt{row.attempts === 1 ? "" : "s"} ·{" "}
+            {row.evaluated} marked · counter {row.entry_attempts}
+            {row.last_attempt_at
+              ? ` · last ${formatMoment(row.last_attempt_at)}`
+              : ""}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          {row.last_status ? <Badge tone={attemptStatusTone(row.last_status)}>{attemptStatusLabel(row.last_status)}</Badge> : null}
+          {row.last_status ? (
+            <Badge tone={attemptStatusTone(row.last_status)}>
+              {attemptStatusLabel(row.last_status)}
+            </Badge>
+          ) : null}
           {row.last_attempt_id ? (
-            <Link href={hrefFor(`/attempts/${encodeURIComponent(row.last_attempt_id)}`)}>
-              <Button variant="ghost" size="sm">Newest attempt</Button>
+            <Link
+              href={hrefFor(
+                `/attempts/${encodeURIComponent(row.last_attempt_id)}`,
+              )}
+            >
+              <Button variant="ghost" size="sm">
+                Newest attempt
+              </Button>
             </Link>
           ) : null}
-          <Button variant="secondary" size="sm" disabled={busy} onClick={() => setConfirmReset(true)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={busy}
+            onClick={() => setConfirmReset(true)}
+          >
             Reset attempts
           </Button>
           <InlineAction

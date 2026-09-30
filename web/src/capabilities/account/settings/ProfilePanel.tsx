@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import { LuUserCog } from "react-icons/lu";
 import {
   HiOutlineArrowPath,
   HiOutlineCheckCircle,
@@ -10,14 +9,11 @@ import {
 } from "react-icons/hi2";
 import {
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
   Modal,
   ModalHelper,
   ModalPrimaryButton,
   ModalSecondaryButton,
+  Panel,
   productTokens,
 } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
@@ -34,12 +30,7 @@ import { DownloadMyData } from "@/capabilities/account/settings/DownloadMyData";
 // import { TwoFactorPanel } from "@/capabilities/account/settings/TwoFactorPanel";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
-const {
-  b2cFieldLabel,
-  b2cSettingsCardHeaderIcon,
-  b2cSettingsFieldInput,
-  b2cSettingsFieldInputDisabled,
-} = productTokens;
+const { b2cFieldLabel, b2cSettingsFieldInput, b2cSettingsFieldInputDisabled } = productTokens;
 
 /** The retiring client's `profileSchema`, kept as numbers so the copy is one string. */
 const NAME_MIN = 3;
@@ -180,12 +171,8 @@ function AccountForm({
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <B2CPanelCard className="mt-0">
-        <B2CPanelCardHeader>
-          <LuUserCog className={b2cSettingsCardHeaderIcon} aria-hidden />
-          Account
-        </B2CPanelCardHeader>
-        <B2CPanelCardBody className="space-y-4">
+      <Panel title="Account">
+        <div className="space-y-4">
           <ModalHelper className="mt-0">Your sign-in details and account actions.</ModalHelper>
 
           {successMessage ? <Alert message={successMessage} type="success" /> : null}
@@ -199,11 +186,11 @@ function AccountForm({
               <img
                 src={avatarUrl}
                 alt=""
-                className="h-14 w-14 rounded-full border border-b2c-border object-cover"
+                className="h-14 w-14 rounded-full border border-border object-cover"
               />
             ) : (
               <div
-                className="flex h-14 w-14 items-center justify-center rounded-full border border-b2c-border bg-b2c-surface-muted text-osce-body text-b2c-text-muted"
+                className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-canvas text-osce-body text-ink-subtle"
                 aria-hidden
               >
                 {(user.name || user.email).slice(0, 1).toUpperCase()}
@@ -212,7 +199,7 @@ function AccountForm({
             <div>
               <label
                 htmlFor="avatar-upload"
-                className="inline-block cursor-pointer text-osce-meta font-medium text-b2c-link"
+                className="inline-block cursor-pointer text-osce-meta font-medium text-accent"
               >
                 {avatarBusy ? "Uploading…" : "Change photo"}
               </label>
@@ -271,8 +258,8 @@ function AccountForm({
           </div>
 
           <WorkspaceList user={user} />
-        </B2CPanelCardBody>
-        <B2CPanelCardFooter>
+        </div>
+        <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
           <ModalSecondaryButton
             type="button"
             onClick={() => setIsPasswordModalOpen(true)}
@@ -294,8 +281,8 @@ function AccountForm({
               </>
             )}
           </ModalPrimaryButton>
-        </B2CPanelCardFooter>
-      </B2CPanelCard>
+        </div>
+      </Panel>
 
       {isPasswordModalOpen ? (
         <Modal width="400px" title="Update password" onClose={() => setIsPasswordModalOpen(false)}>
@@ -321,20 +308,20 @@ function WorkspaceList({ user }: { user: Me }) {
   return (
     <div>
       <p className={b2cFieldLabel}>Workspaces</p>
-      <ul className="mt-1.5 divide-y divide-b2c-border rounded-xl border border-b2c-border">
+      <ul className="mt-1.5 divide-y divide-border rounded-xl border border-border">
         {memberships.map((membership) => (
           <li
             key={membership.org_slug}
             className="flex items-center justify-between gap-4 px-4 py-3"
           >
-            <span className="flex min-w-0 items-center gap-2 text-osce-body text-osce-ink-900">
+            <span className="flex min-w-0 items-center gap-2 text-osce-body text-ink">
               <HiOutlineIdentification
-                className="h-4 w-4 shrink-0 text-b2c-text-muted"
+                className="h-4 w-4 shrink-0 text-ink-subtle"
                 aria-hidden
               />
               <span className="truncate">{membership.org_name ?? membership.org_slug}</span>
             </span>
-            <span className="shrink-0 text-osce-meta capitalize text-b2c-text-muted">
+            <span className="shrink-0 text-osce-meta capitalize text-ink-subtle">
               {membership.role.replace(/_/g, " ")}
             </span>
           </li>

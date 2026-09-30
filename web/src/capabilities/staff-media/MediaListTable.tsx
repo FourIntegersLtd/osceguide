@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { HiOutlineChevronRight, HiOutlineTrash } from "react-icons/hi2";
 import Table, { type FetchPageResult } from "@/foundation/table/Table";
+import { Badge } from "@/foundation/ui";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import {
@@ -16,21 +17,6 @@ function mediaDateLabel(iso: string | null | undefined): string {
   const date = new Date(iso);
   if (!Number.isFinite(date.getTime())) return "—";
   return date.toLocaleString("en-GB");
-}
-
-function StatusPill({ status }: { status: string }) {
-  const published = status === "published";
-  return (
-    <span
-      className={cn(
-        "rounded-full px-3 py-1 font-medium",
-        b2cTableCellText,
-        published ? "bg-osce-success-bg text-osce-success-text" : "bg-osce-warning-bg text-osce-warning-text",
-      )}
-    >
-      {published ? "Published" : "Draft"}
-    </span>
-  );
 }
 
 export function MediaListTable({
@@ -49,7 +35,10 @@ export function MediaListTable({
   // Every row loaded so far, with the table's own pager off: paging is the
   // server's cursor (Load more), and filtering already happened in SQL.
   const fetchPage = useCallback(
-    async (): Promise<FetchPageResult<MediaItem>> => ({ items: items, totalCount: items.length }),
+    async (): Promise<FetchPageResult<MediaItem>> => ({
+      items: items,
+      totalCount: items.length,
+    }),
     [items],
   );
 
@@ -63,7 +52,10 @@ export function MediaListTable({
           <button
             type="button"
             onClick={() => onOpen(item)}
-            className={cn(b2cTableCellText, "text-left font-medium text-osce-ink-900 hover:text-osce-accent")}
+            className={cn(
+              b2cTableCellText,
+              "text-left font-medium text-ink hover:text-accent",
+            )}
           >
             {item.title}
           </button>
@@ -73,15 +65,17 @@ export function MediaListTable({
         header: "Exam",
         key: "exam_code" as keyof MediaItem,
         render: (item: MediaItem) => (
-          <span className={cn(b2cTableCellText, "rounded-full bg-osce-accent-subtle px-3 py-1 text-osce-accent-hover")}>
-            {(item.exam_code ?? "—").toUpperCase()}
-          </span>
+          <Badge tone="accent">{(item.exam_code ?? "—").toUpperCase()}</Badge>
         ),
       },
       {
         header: "Status",
         key: "status" as keyof MediaItem,
-        render: (item: MediaItem) => <StatusPill status={item.status} />,
+        render: (item: MediaItem) => (
+          <Badge tone={item.status === "published" ? "success" : "warning"}>
+            {item.status === "published" ? "Published" : "Draft"}
+          </Badge>
+        ),
       },
       {
         header: "Created",
@@ -89,7 +83,7 @@ export function MediaListTable({
         className: "hidden lg:table-cell",
         priority: "detail" as const,
         render: (item: MediaItem) => (
-          <span className={cn(b2cTableCellText, "text-b2c-text-muted")}>
+          <span className={cn(b2cTableCellText, "text-ink-subtle")}>
             {mediaDateLabel(item.created_at)}
           </span>
         ),
@@ -126,7 +120,11 @@ export function MediaListTable({
                   Publish
                 </AuthoringIconAction>
               ) : null}
-              <AuthoringIconAction variant="ghost" label="Edit" onClick={() => onOpen(item)}>
+              <AuthoringIconAction
+                variant="ghost"
+                label="Edit"
+                onClick={() => onOpen(item)}
+              >
                 <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
               </AuthoringIconAction>
             </AuthoringRowActions>

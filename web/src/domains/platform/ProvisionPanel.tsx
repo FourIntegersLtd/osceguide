@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Button, Input, Modal } from "@/foundation/ui";
+import { Alert, Button, Input, Modal, Select } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { provisionOrganization, type Organization } from "@/domains/platform/api";
 import { ORG_TYPES, slugify } from "@/domains/platform/support";
@@ -82,23 +82,18 @@ export function ProvisionForm({
         hint="Appears in every URL for this workspace. It cannot be changed afterwards."
       />
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-osce-meta font-medium text-osce-ink-700">Type</span>
-        <select
+      <Select
+        label="Type"
           value={orgType}
           onChange={(event) => setOrgType(event.target.value)}
-          className="h-10 rounded-control border border-border-strong bg-surface px-3 text-osce-data text-ink"
+          hint="An employer is an institution running exam-mode sittings, not a third kind."
         >
           {ORG_TYPES.map((type) => (
             <option key={type.value} value={type.value}>
               {type.label}
             </option>
           ))}
-        </select>
-        <span className="text-osce-meta text-b2c-text-muted">
-          An employer is an institution running exam-mode sittings, not a third kind.
-        </span>
-      </label>
+        </Select>
 
       <div className="flex justify-end gap-2 pt-1">
         {onCancel ? (

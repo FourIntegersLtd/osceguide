@@ -46,7 +46,7 @@ export function AuthenticatorSetup({
         </li>
         <li>
           Or add an account by hand with this setup key:
-          <code className="mt-2 block select-all break-all rounded-lg border border-border bg-canvas px-3 py-2 font-mono text-osce-data text-ink">
+          <code className="mt-2 block select-all break-all rounded-osce-lg border border-border bg-canvas px-3 py-2 font-mono text-osce-data text-ink">
             {groupSecret(secret)}
           </code>
         </li>

@@ -109,7 +109,7 @@ export default function ResetPassword() {
     <button
       type="button"
       onClick={() => setFormData((prev) => ({ ...prev, showPassword: !prev.showPassword }))}
-      className="absolute inset-y-0 right-0 flex items-center pr-3 text-b2c-text-muted hover:text-b2c-text-secondary"
+      className="absolute inset-y-0 right-0 flex items-center pr-3 text-ink-subtle hover:text-ink-muted"
       aria-label={formData.showPassword ? "Hide password" : "Show password"}
     >
       {formData.showPassword ? <IoIosEyeOff className="h-5 w-5" /> : <IoIosEye className="h-5 w-5" />}

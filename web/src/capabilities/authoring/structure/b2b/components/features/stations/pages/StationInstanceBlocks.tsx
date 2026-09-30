@@ -1,5 +1,6 @@
 "use client";
 
+import { Checkbox, Select, Textarea } from "@/foundation/ui";
 import type { MediaUploads } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/MediaBlockEditor";
 import { RichBlockEditor } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/RichBlockEditors";
 import { StationInstanceArrayField } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/StationInstanceArrayField";
@@ -36,12 +37,12 @@ export function StationInstanceBlocks({
   function fieldLabel(label: string, required: boolean, blockId: string) {
     return (
       <div className="flex items-center justify-between gap-3">
-        <label className="block text-osce-body font-medium text-b2b-headline">
+        <label className="block text-osce-body font-medium text-ink">
           {label}
-          {required ? <span className="text-b2b-danger-text"> *</span> : null}
+          {required ? <span className="text-osce-danger-text"> *</span> : null}
         </label>
         {showBlockIds ? (
-          <span className="text-osce-caption font-semibold text-b2b-mid">ID: {blockId}</span>
+          <span className="text-osce-caption font-semibold text-ink-muted">ID: {blockId}</span>
         ) : null}
       </div>
     );
@@ -76,7 +77,7 @@ export function StationInstanceBlocks({
                 disabled={ro}
                 value={typeof content[key] === "string" ? content[key] : ""}
                 onChange={(e) => patch(key, e.target.value)}
-                className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline read-only:bg-b2b-cream/60 disabled:opacity-90"
+                className="mt-1 read-only:bg-surface-raised/60 disabled:opacity-90"
               />
             </div>
           );
@@ -85,12 +86,12 @@ export function StationInstanceBlocks({
           return (
             <div key={b.id} className="min-w-0 md:col-span-2">
               {fieldLabel(label, required, key)}
-              <textarea
+              <Textarea
                 readOnly={ro}
                 disabled={ro}
                 value={typeof content[key] === "string" ? content[key] : ""}
                 onChange={(e) => patch(key, e.target.value)}
-                className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline read-only:bg-b2b-cream/60 disabled:opacity-90"
+                className="mt-1 read-only:bg-surface-raised/60 disabled:opacity-90"
                 rows={4}
               />
             </div>
@@ -115,15 +116,15 @@ export function StationInstanceBlocks({
           return (
             <div key={b.id} className="min-w-0 md:col-span-2">
               {fieldLabel(label, required, key)}
-              <textarea
+              <Textarea
                 readOnly={ro}
                 disabled={ro}
                 value={items.join("\n")}
                 onChange={(e) => patch(key, splitMultilineToTrimmedLines(e.target.value))}
-                className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline read-only:bg-b2b-cream/60 disabled:opacity-90"
+                className="mt-1 read-only:bg-surface-raised/60 disabled:opacity-90"
                 rows={4}
               />
-              <p className="mt-1 text-osce-caption text-b2b-mid">One item per line.</p>
+              <p className="mt-1 text-osce-caption text-ink-muted">One item per line.</p>
             </div>
           );
         }
@@ -132,17 +133,17 @@ export function StationInstanceBlocks({
           return (
             <div key={b.id} className="min-w-0">
               {fieldLabel(label, required, key)}
-              <select
+              <Select
                 disabled={ro}
                 value={typeof content[key] === "string" ? content[key] : ""}
                 onChange={(e) => patch(key, e.target.value)}
-                className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline disabled:bg-b2b-cream/60"
+                className="mt-1"
               >
                 <option value="">Select…</option>
                 {opts.map((o: string) => (
                   <option key={o} value={o}>{o}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           );
         }
@@ -164,10 +165,10 @@ export function StationInstanceBlocks({
                         patch(key, on ? selected.filter((x) => x !== o) : [...selected, o])
                       }
                       className={[
-                        "rounded-md border px-3 py-1.5 text-osce-caption font-semibold",
+                        "rounded-osce-md border px-3 py-1.5 text-osce-caption font-semibold",
                         on
-                          ? "border-b2b-accent bg-b2b-cream text-b2b-accent"
-                          : "border-b2b-border bg-white text-b2b-graphite hover:bg-b2b-cream",
+                          ? "border-accent bg-surface-raised text-accent"
+                          : "border-border bg-white text-ink-muted hover:bg-surface-raised",
                         ro ? "cursor-default opacity-90" : "",
                       ].join(" ")}
                     >
@@ -188,25 +189,21 @@ export function StationInstanceBlocks({
               {fieldLabel(label, required, key)}
               <div className="mt-2 space-y-2">
                 {checklistItems.map((it) => (
-                  <label
+                  <Checkbox
                     key={it.id}
-                    className="flex items-center gap-2 text-osce-body text-b2b-headline"
-                  >
-                    <input
-                      type="checkbox"
-                      disabled={ro}
-                      checked={selected.includes(it.id)}
-                      onChange={(e) =>
-                        patch(
-                          key,
-                          e.target.checked
-                            ? [...selected, it.id]
-                            : selected.filter((x) => x !== it.id),
-                        )
-                      }
-                    />
-                    <span>{it.label}</span>
-                  </label>
+                    label={it.label}
+                    className="items-center"
+                    disabled={ro}
+                    checked={selected.includes(it.id)}
+                    onChange={(e) =>
+                      patch(
+                        key,
+                        e.target.checked
+                          ? [...selected, it.id]
+                          : selected.filter((x) => x !== it.id),
+                      )
+                    }
+                  />
                 ))}
               </div>
             </div>
@@ -229,8 +226,8 @@ export function StationInstanceBlocks({
                     className={[
                       "inline-flex h-9 w-9 items-center justify-center rounded-full border text-osce-body font-semibold",
                       val === n
-                        ? "border-b2b-accent bg-b2b-cream text-b2b-accent"
-                        : "border-b2b-border bg-white text-b2b-graphite hover:bg-b2b-cream",
+                        ? "border-accent bg-surface-raised text-accent"
+                        : "border-border bg-white text-ink-muted hover:bg-surface-raised",
                       ro ? "cursor-default" : "",
                     ].join(" ")}
                   >

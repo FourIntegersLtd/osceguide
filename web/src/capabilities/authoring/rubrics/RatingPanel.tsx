@@ -35,7 +35,7 @@ export function RatingPanel() {
   return (
     <div className="space-y-6">
       <div data-path="rating.kind">
-        <p className="text-osce-meta font-medium text-osce-ink-500">Rated as</p>
+        <p className="text-osce-meta font-medium text-ink-muted">Rated as</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           {RATING_KINDS.map((kind) => {
             const active = rating.kind === kind.value;
@@ -51,8 +51,8 @@ export function RatingPanel() {
                   active ? "border-osce-accent bg-osce-accent-subtle" : "border-osce-border bg-osce-surface hover:border-osce-accent",
                 )}
               >
-                <span className="block text-osce-body font-semibold text-osce-ink-900">{kind.label}</span>
-                <span className="mt-0.5 block text-osce-caption text-osce-ink-500">{kind.hint}</span>
+                <span className="block text-osce-body font-semibold text-ink">{kind.label}</span>
+                <span className="mt-0.5 block text-osce-caption text-ink-muted">{kind.hint}</span>
               </button>
             );
           })}
@@ -61,7 +61,7 @@ export function RatingPanel() {
       </div>
 
       <div className="max-w-sm">
-        <label htmlFor={fieldId} className="block text-osce-meta font-medium text-osce-ink-500">
+        <label htmlFor={fieldId} className="block text-osce-meta font-medium text-ink-muted">
           Field name
         </label>
         <input
@@ -76,14 +76,14 @@ export function RatingPanel() {
           onBlur={() => edit((current) => withRatingField(current, identifierFrom(readRating(current).field, "score")))}
           className={cn("mt-1 font-mono", getInputClassName({ size: "sm", invalid: fieldMessages.length > 0 }))}
         />
-        <p className="mt-0.5 text-osce-caption text-osce-ink-400">
+        <p className="mt-0.5 text-osce-caption text-ink-subtle">
           What each competency&apos;s grade is stored as, e.g. <code>score</code>. Renamed in every domain.
         </p>
         <ProblemNote messages={fieldMessages} />
       </div>
 
       {rating.kind === "rag" ? (
-        <p className="text-osce-meta text-osce-ink-500">Grades G, A and R, best first. Coloured green, amber and red.</p>
+        <p className="text-osce-meta text-ink-muted">Grades G, A and R, best first. Coloured green, amber and red.</p>
       ) : null}
       {rating.kind === "scale" ? <ScaleEditor scale={rating.scale} /> : null}
       {rating.kind === "range" ? (
@@ -94,7 +94,7 @@ export function RatingPanel() {
         </div>
       ) : null}
       {rating.kind === "boolean" ? (
-        <p className="text-osce-meta text-osce-ink-500">Each competency is met or not met. Colour it on the Results tab with tones.</p>
+        <p className="text-osce-meta text-ink-muted">Each competency is met or not met. Colour it on the Results tab with tones.</p>
       ) : null}
     </div>
   );
@@ -106,10 +106,10 @@ function ScaleEditor({ scale }: { scale: readonly string[] }) {
   const replace = (next: string[]) => edit((current) => withScale(current, next));
   return (
     <div className="max-w-md space-y-2" data-path="rating.scale">
-      <p className="text-osce-meta font-medium text-osce-ink-500">Grades, best first</p>
+      <p className="text-osce-meta font-medium text-ink-muted">Grades, best first</p>
       {scale.map((grade, position) => (
         <div key={position} className="flex items-center gap-2">
-          <span className="w-6 text-right text-osce-caption text-osce-ink-400">{position + 1}</span>
+          <span className="w-6 text-right text-osce-caption text-ink-subtle">{position + 1}</span>
           <input
             aria-label={`Grade ${position + 1}`}
             readOnly={readOnly}
@@ -122,7 +122,7 @@ function ScaleEditor({ scale }: { scale: readonly string[] }) {
               type="button"
               aria-label={`Remove grade ${grade}`}
               onClick={() => replace(scale.filter((_existing, index) => index !== position))}
-              className="rounded-osce-sm px-2 py-1 text-osce-caption text-osce-ink-400 hover:text-osce-danger"
+              className="rounded-osce-sm px-2 py-1 text-osce-caption text-ink-subtle hover:text-osce-danger"
             >
               Remove
             </button>

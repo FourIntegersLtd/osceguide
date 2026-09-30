@@ -10,5 +10,5 @@ export const staffGrowthCapability: CapabilityModule = {
   permission: "administer_platform",
   path: "/growth",
   icon: LuTrendingUp,
-  section: "content",
+  section: "revenue",
 };

@@ -7,9 +7,8 @@ import {
   HiOutlineArrowUpTray,
   HiOutlinePencilSquare,
 } from "react-icons/hi2";
-import { Alert, AsyncBoundary } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Panel } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
-import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import {
   AuthoringIconAction,
   AuthoringRowActions,
@@ -41,7 +40,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-osce-body font-medium text-b2b-accent hover:underline"
+        className="inline-flex items-center gap-1.5 text-osce-body font-medium text-accent hover:underline"
       >
         <HiOutlineArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
         Rubrics
@@ -53,7 +52,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
         {(data: Rubric) => (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-osce-body font-semibold text-b2b-headline">{data.title}</h2>
+              <h2 className="text-osce-body font-semibold text-ink">{data.title}</h2>
               <AuthoringButton
                 variant="secondary"
                 size="sm"
@@ -65,23 +64,23 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
             </div>
 
             {(data.versions ?? []).length === 0 ? (
-              <AuthoringCard padding="md">
-                <p className="text-osce-body text-b2b-mid">
+              <Panel padding="md">
+                <p className="text-osce-body text-ink-muted">
                   This rubric has no versions yet. Cut a draft to start writing it.
                 </p>
-              </AuthoringCard>
+              </Panel>
             ) : null}
 
             {[...(data.versions ?? [])]
               .sort((a, b) => b.version - a.version)
               .map((version) => (
-                <AuthoringCard key={version.id} padding="md">
+                <Panel key={version.id} padding="md">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-osce-body font-medium text-b2b-headline">
+                      <p className="text-osce-body font-medium text-ink">
                         Version {version.version}
                       </p>
-                      <p className="mt-0.5 line-clamp-2 text-osce-caption text-b2b-mid">
+                      <p className="mt-0.5 line-clamp-2 text-osce-caption text-ink-muted">
                         {version.system_prompt || "No system prompt."}
                       </p>
                     </div>
@@ -129,7 +128,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                       ) : null}
                     </AuthoringRowActions>
                   </div>
-                </AuthoringCard>
+                </Panel>
               ))}
 
           </div>

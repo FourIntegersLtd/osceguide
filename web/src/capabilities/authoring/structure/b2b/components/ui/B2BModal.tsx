@@ -31,7 +31,7 @@ const sizeClasses = {
 
 function ModalBody({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-osce-surface px-4 py-4 text-osce-body text-osce-ink-500 sm:px-6">
+    <div className="bg-osce-surface px-4 py-4 text-osce-body text-ink-muted sm:px-6">
       {children}
     </div>
   );
@@ -154,7 +154,7 @@ export function B2BModal({
   const widthClass = sizeClasses[size];
   const dialogA11y = { "aria-labelledby": titleId };
   const closeButtonClass =
-    "inline-flex h-8 w-8 items-center justify-center rounded text-osce-ink-500 hover:bg-osce-canvas hover:text-osce-ink-700 focus:outline-none focus:ring-2 focus:ring-osce-accent/25";
+    "inline-flex h-8 w-8 items-center justify-center rounded text-ink-muted hover:bg-osce-canvas hover:text-ink-muted focus:outline-none focus:ring-2 focus:ring-osce-accent/25";
 
   function renderCloseButton() {
     return (
@@ -180,7 +180,7 @@ export function B2BModal({
       onClick={handleBackdropClick}
       className={[
         "b2b-app b2b-portal b2b-modal",
-        "m-auto w-full rounded-lg border border-osce-border bg-osce-surface p-0",
+        "m-auto w-full rounded-osce-lg border border-osce-border bg-osce-surface p-0",
         widthClass,
         chrome === "plain" ? "max-h-[min(90vh,900px)] overflow-hidden" : "",
         className,
@@ -193,7 +193,7 @@ export function B2BModal({
           <div className="flex items-start justify-between gap-3 border-b border-osce-border bg-osce-surface px-4 py-4 sm:items-center sm:px-6">
             <h2
               id={titleId}
-              className="text-osce-subheading font-semibold text-osce-ink-800"
+              className="text-osce-subheading font-semibold text-ink"
             >
               {title}
             </h2>
@@ -207,7 +207,7 @@ export function B2BModal({
             <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2
                 id={titleId}
-                className="text-osce-subheading font-semibold text-osce-ink-800"
+                className="text-osce-subheading font-semibold text-ink"
               >
                 {title}
               </h2>

@@ -90,7 +90,7 @@ function OutlineItem({
           aria-label="Drag to reorder section"
           title="Drag to reorder"
           onClick={(e) => e.stopPropagation()}
-          className={`inline-flex h-7 w-4 shrink-0 cursor-grab items-center justify-center rounded-md text-osce-ink-400 opacity-0 transition-opacity active:cursor-grabbing group-hover/item:opacity-100 focus-visible:opacity-100 ${builderUi.focusRing}`}
+          className={`inline-flex h-7 w-4 shrink-0 cursor-grab items-center justify-center rounded-osce-md text-ink-subtle opacity-0 transition-opacity active:cursor-grabbing group-hover/item:opacity-100 focus-visible:opacity-100 ${builderUi.focusRing}`}
           {...attributes}
           {...listeners}
         >
@@ -103,12 +103,12 @@ function OutlineItem({
           <span
             className={[
               "block truncate text-osce-body",
-              active ? "font-semibold text-osce-ink-800" : "font-medium text-osce-ink-700",
+              active ? "font-semibold text-ink" : "font-medium text-ink-muted",
             ].join(" ")}
           >
             {section.title || "Untitled section"}
           </span>
-          <span className="block text-osce-caption text-osce-ink-400">
+          <span className="block text-osce-caption text-ink-subtle">
             {fieldCount === 1 ? "1 field" : `${fieldCount} fields`}
             {fieldCount === 0 && isOver ? " · drop here" : ""}
           </span>
@@ -145,7 +145,7 @@ export function SectionOutline({
     >
       <div className="flex items-center justify-between px-4 pb-2 pt-4">
         <p className={builderUi.eyebrow}>Sections</p>
-        <span className="rounded-full bg-osce-surface px-2 py-0.5 text-osce-micro font-semibold tabular-nums text-osce-ink-500 ring-1 ring-inset ring-osce-border">
+        <span className="rounded-full bg-osce-surface px-2 py-0.5 text-osce-micro font-semibold tabular-nums text-ink-muted ring-1 ring-inset ring-osce-border">
           {sections.length}
         </span>
       </div>
@@ -155,7 +155,7 @@ export function SectionOutline({
         aria-orientation="vertical"
       >
         {sections.length === 0 ? (
-          <p className="px-2 py-2 text-osce-caption text-osce-ink-400">
+          <p className="px-2 py-2 text-osce-caption text-ink-subtle">
             No sections yet.
           </p>
         ) : (
@@ -181,7 +181,7 @@ export function SectionOutline({
       {kind === "station" ? (
         <div className="mx-3 mb-1 flex flex-wrap gap-x-3 gap-y-1 border-t border-osce-border-light pt-3">
           {STATION_AUDIENCES.map((a) => (
-            <span key={a.id} className="inline-flex items-center gap-1.5 text-osce-micro text-osce-ink-400">
+            <span key={a.id} className="inline-flex items-center gap-1.5 text-osce-micro text-ink-subtle">
               <span className={`h-2 w-2 rounded-full ${toneClass[toneForAudience[a.id]].dot}`} aria-hidden />
               {a.label}
             </span>
@@ -238,7 +238,7 @@ export function SectionChipStrip({
               builderUi.focusRing,
               active
                 ? `${toneClass[tone].badge} font-semibold ring-1 ring-inset ${toneClass[tone].ring}`
-                : "bg-osce-surface font-medium text-osce-ink-500 ring-1 ring-inset ring-osce-border hover:text-osce-ink-700",
+                : "bg-osce-surface font-medium text-ink-muted ring-1 ring-inset ring-osce-border hover:text-ink-muted",
             ].join(" ")}
           >
             <span
@@ -255,7 +255,7 @@ export function SectionChipStrip({
       <button
         type="button"
         onClick={onAddSection}
-        className={`inline-flex items-center gap-1 rounded-full border border-dashed border-osce-border px-3 py-1 text-osce-caption font-medium text-osce-ink-500 hover:bg-osce-surface hover:text-osce-ink-700 ${builderUi.focusRing}`}
+        className={`inline-flex items-center gap-1 rounded-full border border-dashed border-osce-border px-3 py-1 text-osce-caption font-medium text-ink-muted hover:bg-osce-surface hover:text-ink-muted ${builderUi.focusRing}`}
       >
         <HiPlus className="h-3.5 w-3.5" aria-hidden />
         Section

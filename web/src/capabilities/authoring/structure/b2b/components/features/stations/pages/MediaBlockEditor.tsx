@@ -66,23 +66,23 @@ export function MediaBlockEditor({
 
   return (
     <div className="min-w-0 space-y-3 md:col-span-2">
-      <p className="text-osce-body font-medium text-b2b-headline">
+      <p className="text-osce-body font-medium text-ink">
         {label}
-        {required ? <span className="text-b2b-danger-text"> *</span> : null}
+        {required ? <span className="text-osce-danger-text"> *</span> : null}
       </p>
       {error ? <Alert tone="danger">{error}</Alert> : null}
       {items.map((item, index) => (
-        <div key={item.url} className="flex items-start gap-3 rounded-md border border-b2b-border bg-b2b-cream/30 p-3">
+        <div key={item.url} className="flex items-start gap-3 rounded-osce-md border border-border bg-surface-raised/30 p-3">
           {item.kind === "image" ? (
             // eslint-disable-next-line @next/next/no-img-element -- an author-supplied URL on any host
-            <img src={item.url} alt="" className="h-20 w-20 shrink-0 rounded-md border border-b2b-border object-cover" />
+            <img src={item.url} alt="" className="h-20 w-20 shrink-0 rounded-osce-md border border-border object-cover" />
           ) : (
-            <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-md border border-b2b-border text-osce-caption font-semibold uppercase text-b2b-mid">
+            <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-osce-md border border-border text-osce-caption font-semibold uppercase text-ink-muted">
               {item.kind}
             </span>
           )}
           <div className="min-w-0 flex-1 space-y-2">
-            <p className="truncate text-osce-caption text-b2b-mid" title={item.url}>
+            <p className="truncate text-osce-caption text-ink-muted" title={item.url}>
               {item.url}
             </p>
             <input
@@ -102,7 +102,7 @@ export function MediaBlockEditor({
               aria-label={`Remove item ${index + 1}`}
               disabled={busy !== null}
               onClick={() => void remove(item.url)}
-              className="shrink-0 rounded-md p-1 text-b2b-mid hover:bg-b2b-cream hover:text-b2b-danger-text disabled:opacity-60"
+              className="shrink-0 rounded-osce-md p-1 text-ink-muted hover:bg-surface-raised hover:text-osce-danger-text disabled:opacity-60"
             >
               <HiOutlineXMark className="h-4 w-4" aria-hidden />
             </button>
@@ -125,7 +125,7 @@ export function MediaBlockEditor({
               write([...items, ...mediaItems(newUrl)]);
               setNewUrl("");
             }}
-            className="inline-flex shrink-0 items-center gap-1 text-osce-caption font-semibold text-b2b-accent hover:underline disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1 text-osce-caption font-semibold text-accent hover:underline disabled:opacity-50"
           >
             <HiOutlinePlus className="h-4 w-4" aria-hidden />
             Add

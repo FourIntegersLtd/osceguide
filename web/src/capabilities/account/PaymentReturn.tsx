@@ -93,10 +93,10 @@ export default function PaymentReturn() {
               className="mx-auto mb-4 h-12 w-12 animate-spin text-osce-accent"
               aria-hidden
             />
-            <h1 className="mb-2 text-osce-title font-semibold text-osce-ink-900">
+            <h1 className="mb-2 text-osce-title font-semibold text-ink">
               Confirming your payment
             </h1>
-            <p className="text-osce-body text-b2c-text-muted">
+            <p className="text-osce-body text-ink-subtle">
               This takes a few seconds. Please keep this page open.
             </p>
           </>
@@ -106,10 +106,10 @@ export default function PaymentReturn() {
               className="mx-auto mb-4 h-12 w-12 text-osce-success-text"
               aria-hidden
             />
-            <h1 className="mb-2 text-osce-title font-semibold text-osce-ink-900">
+            <h1 className="mb-2 text-osce-title font-semibold text-ink">
               You&apos;re all set
             </h1>
-            <p className="mb-8 text-osce-body text-b2c-text-muted">
+            <p className="mb-8 text-osce-body text-ink-subtle">
               {endsAt
                 ? `Your plan is active until ${formatDay(endsAt)}.`
                 : "Your plan is active. All stations are unlocked."}
@@ -124,10 +124,10 @@ export default function PaymentReturn() {
               className="mx-auto mb-4 h-12 w-12 text-osce-warning-icon"
               aria-hidden
             />
-            <h1 className="mb-2 text-osce-title font-semibold text-osce-ink-900">
+            <h1 className="mb-2 text-osce-title font-semibold text-ink">
               Payment received
             </h1>
-            <p className="mb-6 text-osce-body text-b2c-text-muted">
+            <p className="mb-6 text-osce-body text-ink-subtle">
               Your access is being activated. This can take a minute. If it isn&apos;t
               active shortly, email{" "}
               <a href={`mailto:${SUPPORT_EMAIL}`} className="text-osce-accent underline">
@@ -160,11 +160,11 @@ export function CheckoutCancelled() {
   return (
     <div className="flex min-h-[70dvh] items-center justify-center px-4">
       <div className={`${b2cCardPlain} w-full max-w-md p-8 text-center`}>
-        <HiOutlineXCircle className="mx-auto mb-4 h-12 w-12 text-b2c-text-muted" aria-hidden />
-        <h1 className="mb-2 text-osce-title font-semibold text-osce-ink-900">
+        <HiOutlineXCircle className="mx-auto mb-4 h-12 w-12 text-ink-subtle" aria-hidden />
+        <h1 className="mb-2 text-osce-title font-semibold text-ink">
           Checkout cancelled
         </h1>
-        <p className="mb-8 text-osce-body text-b2c-text-muted">
+        <p className="mb-8 text-osce-body text-ink-subtle">
           No payment was taken. You can pick a plan again whenever you&apos;re ready.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
@@ -175,7 +175,7 @@ export function CheckoutCancelled() {
             Go to dashboard
           </Link>
         </div>
-        <p className="mt-6 text-osce-meta text-b2c-text-muted">
+        <p className="mt-6 text-osce-meta text-ink-subtle">
           Had a problem paying?{" "}
           <a href={`mailto:${SUPPORT_EMAIL}`} className="text-osce-accent underline">
             Email us

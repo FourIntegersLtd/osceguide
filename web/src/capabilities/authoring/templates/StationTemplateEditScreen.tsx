@@ -56,23 +56,22 @@ export function StationTemplateEditScreen({
 
   return (
     <PlatformTemplateWizardPageLayout
-      eyebrow="Station template"
       title={match?.title || "Edit draft"}
       subtitle={`Version ${version}. Published versions cannot be edited — cut a new draft from the list first.`}
       backHref={listHref}
       backLabel="Station templates"
     >
       {loading ? (
-        <p className="px-5 py-8 text-osce-body text-osce-ink-500">Loading template…</p>
+        <p className="px-5 py-8 text-osce-body text-ink-muted">Loading template…</p>
       ) : missing ? (
-        <p className="px-5 py-8 text-osce-body text-osce-ink-500">
+        <p className="px-5 py-8 text-osce-body text-ink-muted">
           Template not found. It may have been removed.
         </p>
       ) : structure ? (
         <>
           <div className="px-5 py-6 sm:px-6">
             <label className="mb-5 block">
-              <span className="mb-1.5 block text-osce-meta font-medium text-b2b-mid">Title</span>
+              <span className="mb-1.5 block text-osce-meta font-medium text-ink-muted">Title</span>
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}

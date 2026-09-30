@@ -21,7 +21,7 @@ export function StationBlockTypesInfoModal({
       {" "}
       <B2BModal.Body>
         {" "}
-        <p className="text-osce-body text-osce-ink-500 leading-relaxed">
+        <p className="text-osce-body text-ink-muted leading-relaxed">
           {" "}
           These are the building blocks for station and feedback templates.
           Pick the type that best matches what you want trainees or examiners
@@ -37,16 +37,16 @@ export function StationBlockTypesInfoModal({
                 className="flex gap-3 border-b border-osce-border pb-5 last:border-0 last:pb-0"
               >
                 {" "}
-                <span className="mt-0.5 shrink-0 text-osce-ink-500">
+                <span className="mt-0.5 shrink-0 text-ink-muted">
                   {" "}
                   <Icon className="h-6 w-6" aria-hidden />{" "}
                 </span>{" "}
                 <div className="min-w-0">
                   {" "}
-                  <p className="font-semibold text-osce-ink-700">
+                  <p className="font-semibold text-ink-muted">
                     {m.formsLabel}
                   </p>{" "}
-                  <p className="mt-1 text-osce-body text-osce-ink-500 leading-relaxed">
+                  <p className="mt-1 text-osce-body text-ink-muted leading-relaxed">
                     {m.description}
                   </p>{" "}
                 </div>{" "}

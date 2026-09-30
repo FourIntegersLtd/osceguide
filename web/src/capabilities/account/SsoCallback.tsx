@@ -70,7 +70,7 @@ export function SsoCallback() {
           <button
             type="button"
             onClick={() => router.replace(`/login`)}
-            className="text-sm font-medium text-osce-accent underline"
+            className="text-osce-data font-medium text-osce-accent underline"
           >
             Back to sign in
           </button>

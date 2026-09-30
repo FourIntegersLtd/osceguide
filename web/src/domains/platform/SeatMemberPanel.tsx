@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, Card, Input, Panel } from "@/foundation/ui";
+import { Alert, Button, Input, Panel, Select } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { seatMembership } from "@/domains/platform/api";
 import { SEAT_ROLES } from "@/domains/platform/support";
@@ -52,8 +52,7 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
       title="Seat an administrator"
       description="For a new organisation with nobody in it yet."
     >
-      <Card padding="md">
-        <form onSubmit={submit} className="flex max-w-lg flex-col gap-3">
+      <form onSubmit={submit} className="flex max-w-lg flex-col gap-3">
           {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
           <Input
@@ -66,21 +65,18 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
             hint="An address with no account is invited: the backend emails a link to set a password. No password passes through this console."
           />
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-osce-meta font-medium text-osce-ink-700">Role</span>
-            <select
+          <Select
+          label="Role"
               value={role}
               onChange={(event) => setRole(event.target.value)}
               disabled={busy}
-              className="h-10 rounded-control border border-border-strong bg-surface px-3 text-osce-data text-ink"
             >
               {SEAT_ROLES.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
 
           <div className="flex justify-end">
             <Button type="submit" disabled={busy || !email.trim()}>
@@ -88,7 +84,6 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
             </Button>
           </div>
         </form>
-      </Card>
-    </Panel>
+      </Panel>
   );
 }

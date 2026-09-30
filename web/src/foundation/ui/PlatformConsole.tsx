@@ -5,6 +5,7 @@ import type { IconType } from "react-icons";
 import { HiOutlineChevronRight } from "react-icons/hi2";
 import { cn } from "@/foundation/ui/cn";
 import { Button } from "@/foundation/ui/Button";
+import { EmptyState } from "@/foundation/ui/EmptyState";
 
 /**
  * Staff console layout primitives.
@@ -12,8 +13,10 @@ import { Button } from "@/foundation/ui/Button";
  * The console used to borrow the consumer B2C card chrome directly — a bare
  * title floating over a `Card`, cramped rows, one long column on a detail
  * screen. This is the console's own kit: panels with the header inside them,
- * a KPI grid, a sticky action rail on detail screens. Tokens only
- * (`text-osce-*`, `osce-*`/`b2c-*` colours) — no raw sizes, no black.
+ * a KPI grid, a sticky action rail on detail screens. Tokens only — the
+ * `text-osce-*` type scale for sizes and semantic colours (`text-ink`,
+ * `border-border`, `bg-surface`), so the platform skin owns the palette.
+ * No raw sizes, no black.
  */
 
 /** A titled surface. The console is a stack of these on every screen. */
@@ -33,25 +36,30 @@ export function Panel({
   className?: string;
   children: React.ReactNode;
 }) {
-  const bodyPadding = padding === "none" ? "" : padding === "sm" ? "p-4" : "p-5 sm:p-6";
+  const bodyPadding =
+    padding === "none" ? "" : padding === "sm" ? "p-4" : "p-5 sm:p-6";
   return (
     <section
       className={cn(
-        "rounded-osce-lg border border-b2c-border bg-osce-surface",
+        "rounded-osce-lg border border-border bg-surface",
         className,
       )}
     >
       {title ? (
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-b2c-border px-5 py-4 sm:px-6">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2 className="font-heading text-osce-subheading font-semibold text-osce-ink-900">
+            <h2 className="font-heading text-osce-subheading font-semibold text-ink">
               {title}
             </h2>
             {description ? (
-              <p className="mt-0.5 text-osce-meta text-b2c-text-muted">{description}</p>
+              <p className="mt-0.5 text-osce-meta text-ink-subtle">
+                {description}
+              </p>
             ) : null}
           </div>
-          {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+          {actions ? (
+            <div className="flex shrink-0 items-center gap-2">{actions}</div>
+          ) : null}
         </header>
       ) : null}
       <div className={bodyPadding}>{children}</div>
@@ -59,18 +67,50 @@ export function Panel({
   );
 }
 
-/** A card holding a divided list. Every listing on the console is one. */
-export function RowList({ children, className }: { children: React.ReactNode; className?: string }) {
+/**
+ * A card holding a divided list. Every listing on the console is one.
+ *
+ * `flush` drops the outer border for a list living inside a `Panel
+ * padding="none"` body — a bordered list inside a bordered panel reads as a
+ * box in a box, which is the exact clutter this kit exists to remove.
+ */
+export function RowList({
+  children,
+  flush = false,
+  className,
+}: {
+  children: React.ReactNode;
+  flush?: boolean;
+  className?: string;
+}) {
   return (
-    <div className={cn("overflow-hidden rounded-osce-lg border border-b2c-border bg-osce-surface", className)}>
-      <ul className="divide-y divide-b2c-border">{children}</ul>
+    <div
+      className={cn(
+        flush
+          ? ""
+          : "overflow-hidden rounded-osce-lg border border-border bg-surface",
+        className,
+      )}
+    >
+      <ul className="divide-y divide-border">{children}</ul>
     </div>
   );
 }
 
-export function Row({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Row({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <li className={cn("flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 sm:px-6", className)}>
+    <li
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 sm:px-6",
+        className,
+      )}
+    >
       {children}
     </li>
   );
@@ -94,45 +134,67 @@ export function RowLink({
     <li>
       <Link
         href={href}
-        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-b2c-surface-muted sm:px-6"
+        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised sm:px-6"
       >
-        {Icon ? <Icon className="h-4 w-4 shrink-0 text-b2c-text-muted" aria-hidden /> : null}
+        {Icon ? (
+          <Icon className="h-4 w-4 shrink-0 text-ink-subtle" aria-hidden />
+        ) : null}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-osce-data font-medium text-osce-ink-900">{title}</span>
+          <span className="block truncate text-osce-data font-medium text-ink">
+            {title}
+          </span>
           {subtitle ? (
-            <span className="block truncate text-osce-meta text-b2c-text-muted">{subtitle}</span>
+            <span className="block truncate text-osce-meta text-ink-subtle">
+              {subtitle}
+            </span>
           ) : null}
         </span>
         {trailing}
-        <HiOutlineChevronRight className="h-4 w-4 shrink-0 text-b2c-text-muted" aria-hidden />
+        <HiOutlineChevronRight
+          className="h-4 w-4 shrink-0 text-ink-subtle"
+          aria-hidden
+        />
       </Link>
     </li>
   );
 }
 
-/** Cursor paging, as the one button every listing here uses. */
+/** Cursor paging: the footer of a `padding="none"` panel's list, with the failure beside the button. */
 export function LoadMore({
-  cursor,
+  hasMore,
   busy,
   onLoad,
+  error,
 }: {
-  cursor: string | null | undefined;
+  hasMore: boolean;
   busy: boolean;
   onLoad: () => void;
+  error?: Error | null;
 }) {
-  if (!cursor) return null;
+  if (!hasMore && !error) return null;
   return (
-    <div className="flex justify-center">
-      <Button variant="secondary" size="sm" onClick={onLoad} disabled={busy}>
-        {busy ? "Loading…" : "Load more"}
-      </Button>
+    <div className="flex flex-col items-center gap-2 border-t border-border px-5 py-3 sm:px-6">
+      {error ? (
+        <p className="text-osce-meta text-osce-danger-text">
+          Could not load more: {error.message}
+        </p>
+      ) : null}
+      {hasMore ? (
+        <Button variant="secondary" size="sm" onClick={onLoad} disabled={busy}>
+          {busy ? "Loading…" : error ? "Try again" : "Load more"}
+        </Button>
+      ) : null}
     </div>
   );
 }
 
-/** A 2/4-up grid of `StatTile`. */
+/** A grid of `StatTile` that fills the row whatever the count — three tiles never leave a hole. */
 export function StatGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{children}</div>;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+      {children}
+    </div>
+  );
 }
 
 export function StatTile({
@@ -145,40 +207,27 @@ export function StatTile({
   icon: IconType;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 rounded-osce-lg border border-b2c-border bg-osce-surface p-4">
+    <div className="flex items-start justify-between gap-3 rounded-osce-lg border border-border bg-surface p-4">
       <div className="min-w-0">
-        <p className="text-osce-caption font-semibold uppercase tracking-wide text-b2c-text-muted">
+        <p className="text-osce-caption font-semibold uppercase tracking-wide text-ink-subtle">
           {label}
         </p>
-        <p className="mt-1 truncate font-heading text-osce-heading font-semibold tabular-nums text-osce-ink-900">
+        <p className="mt-1 truncate font-heading text-osce-heading font-semibold tabular-nums text-ink">
           {value}
         </p>
       </div>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-osce-md bg-osce-accent-subtle text-osce-accent">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-osce-md bg-accent-subtle text-accent">
         <Icon className="h-4 w-4" aria-hidden />
       </span>
     </div>
   );
 }
 
-/** A dashed empty state, sized to sit where a `RowList` or `Table` would. */
-export function EmptyPanel({
-  title,
-  description,
-  action,
-}: {
-  title: string;
-  description?: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col items-center gap-2 rounded-osce-lg border border-dashed border-b2c-border px-6 py-10 text-center">
-      <p className="text-osce-data font-semibold text-osce-ink-900">{title}</p>
-      {description ? <p className="max-w-sm text-osce-meta text-b2c-text-muted">{description}</p> : null}
-      {action}
-    </div>
-  );
-}
+/**
+ * The console's empty state — the same one `AsyncBoundary` draws, so a list
+ * that is empty looks identical whether the screen or the boundary noticed.
+ */
+export const EmptyPanel = EmptyState;
 
 /**
  * A detail screen's two-column body — main facts left, a sticky action rail
@@ -215,23 +264,35 @@ export function ActionRail({
       <div className="flex flex-col gap-3">
         {children}
         {danger ? (
-          <div className="flex flex-col gap-3 border-t border-b2c-border pt-3">{danger}</div>
+          <div className="flex flex-col gap-3 border-t border-border pt-3">
+            {danger}
+          </div>
         ) : null}
       </div>
     </Panel>
   );
 }
 
-/** A key/value definition grid, two columns from `sm`, for facts on a detail screen. */
-export function FactList({ items }: { items: { label: string; value: React.ReactNode }[] }) {
+/** A key/value definition grid for facts on a detail screen — two columns from `sm`, or one in a rail. */
+export function FactList({
+  items,
+  columns = 2,
+}: {
+  items: { label: string; value: React.ReactNode }[];
+  columns?: 1 | 2;
+}) {
   return (
-    <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+    <dl
+      className={cn("grid gap-x-6 gap-y-4", columns === 2 && "sm:grid-cols-2")}
+    >
       {items.map((item) => (
         <div key={item.label} className="min-w-0">
-          <dt className="text-osce-caption font-semibold uppercase tracking-wide text-b2c-text-muted">
+          <dt className="text-osce-caption font-semibold uppercase tracking-wide text-ink-subtle">
             {item.label}
           </dt>
-          <dd className="mt-0.5 truncate text-osce-data text-osce-ink-900">{item.value}</dd>
+          <dd className="mt-0.5 truncate text-osce-data text-ink">
+            {item.value}
+          </dd>
         </div>
       ))}
     </dl>

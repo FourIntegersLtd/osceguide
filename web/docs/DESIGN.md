@@ -115,6 +115,13 @@ adapted structurally from eventtz's legacy admin — same colours and fonts,
 different spacing and arrangement. Same tokens as everywhere else; no new
 palette.
 
+The kit paints with **semantic colours** (`text-ink`, `text-ink-subtle`,
+`border-border`, `bg-surface`, `bg-accent-subtle`) and the **`text-osce-*` type
+scale**; staff screens compose the kit and carry no raw colour or radius
+classes of their own. One card primitive on the console: `Panel` — never the
+generic `Card` or a ported `B2C*` card. Tabs are `B2CSegmentedTabs` directly
+under a `PlatformPageHeader` (or via `PlatformTabbedScreen`).
+
 - **Shell** (`surfaces/platform/PlatformStaffShell.tsx`, `PlatformSidebar.tsx`):
   a fixed-width sidebar (no user-collapse — that mode stayed on the consumer
   rail, `TrainSidebar.tsx`, because it is a different shell). Content is capped

@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { LuCreditCard, LuUserRound, LuUsers } from "react-icons/lu";
-import { AsyncBoundary, Card, PlatformPageHeader, StatGrid, StatTile } from "@/foundation/ui";
+import {
+  AsyncBoundary,
+  PlatformPageHeader,
+  StatGrid,
+  StatTile,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listPlans } from "@/capabilities/account/api";
@@ -13,9 +18,18 @@ import {
 } from "@/domains/platform/api";
 import { DirectoryFilters } from "@/domains/platform/users/DirectoryFilters";
 import { UserGroup } from "@/domains/platform/users/UserGroup";
-import { directoryListingTotal, groupTitle } from "@/domains/platform/users/vocabulary";
+import {
+  directoryListingTotal,
+  groupTitle,
+} from "@/domains/platform/users/vocabulary";
 
-const NONE: Filters = { q: null, examCode: null, status: null, access: null, planCode: null };
+const NONE: Filters = {
+  q: null,
+  examCode: null,
+  status: null,
+  access: null,
+  planCode: null,
+};
 
 /**
  * The account directory: everyone, grouped by exam, with the retiring B2C
@@ -61,7 +75,12 @@ export function Users() {
               onTerm={setTerm}
               onChange={setFilters}
             />
-            <Groups summary={counts} filters={filters} hrefFor={hrefFor} onClear={clear} />
+            <Groups
+              summary={counts}
+              filters={filters}
+              hrefFor={hrefFor}
+              onClear={clear}
+            />
           </>
         )}
       </AsyncBoundary>
@@ -84,7 +103,11 @@ function Groups({
     const exam = summary.exams.find((entry) => entry.code === filters.examCode);
     return (
       <UserGroup
-        title={exam ? groupTitle(exam.code, exam.name, exam.users) : filters.examCode.toUpperCase()}
+        title={
+          exam
+            ? groupTitle(exam.code, exam.name, exam.users)
+            : filters.examCode.toUpperCase()
+        }
         filters={filters}
         hrefFor={hrefFor}
         totalCount={directoryListingTotal(summary, filters)}
@@ -94,7 +117,9 @@ function Groups({
   }
   // Busiest exam first, and the exams nobody is on yet as one line rather
   // than a run of empty cards above the people who are actually here.
-  const populated = summary.exams.filter((exam) => exam.users > 0).sort((a, b) => b.users - a.users);
+  const populated = summary.exams
+    .filter((exam) => exam.users > 0)
+    .sort((a, b) => b.users - a.users);
   const empty = summary.exams.filter((exam) => exam.users === 0);
   return (
     <>
@@ -105,7 +130,10 @@ function Groups({
           description={`${exam.paid} paid · ${exam.trial} on trial · ${exam.not_started} not started`}
           filters={{ ...filters, examCode: exam.code }}
           hrefFor={hrefFor}
-          totalCount={directoryListingTotal(summary, { ...filters, examCode: exam.code })}
+          totalCount={directoryListingTotal(summary, {
+            ...filters,
+            examCode: exam.code,
+          })}
           onClear={onClear}
         />
       ))}
@@ -114,15 +142,19 @@ function Groups({
         description="Accounts naming no exam and holding no live access. Staff accounts sit here too."
         filters={{ ...filters, examCode: null, unassigned: true }}
         hrefFor={hrefFor}
-        totalCount={directoryListingTotal(summary, { ...filters, examCode: null, unassigned: true })}
+        totalCount={directoryListingTotal(summary, {
+          ...filters,
+          examCode: null,
+          unassigned: true,
+        })}
         onClear={onClear}
       />
       {empty.length > 0 ? (
-        <Card padding="md">
-          <p className="text-osce-data text-b2c-text-muted">
-            Nobody yet on {empty.map((exam) => exam.name || exam.code.toUpperCase()).join(", ")}.
-          </p>
-        </Card>
+        <p className="px-1 text-osce-meta text-ink-subtle">
+          Nobody yet on{" "}
+          {empty.map((exam) => exam.name || exam.code.toUpperCase()).join(", ")}
+          .
+        </p>
       ) : null}
     </>
   );

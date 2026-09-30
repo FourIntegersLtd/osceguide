@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncBoundary } from "@/foundation/ui";
+import { AsyncBoundary, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { listStationVersions, type StationVersion } from "@/capabilities/stations";
-import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { usedByLabel } from "@/capabilities/authoring/sections/StationUsedBy";
 
@@ -32,13 +31,13 @@ export function StationVersionHistory({ stationId }: { stationId: string }) {
   );
 
   return (
-    <AuthoringCard padding="md">
+    <Panel padding="md">
       <details
         onToggle={(event) => {
           if (!asked && event.currentTarget.open) setAsked(true);
         }}
       >
-        <summary className="cursor-pointer text-osce-body font-medium text-b2b-headline">
+        <summary className="cursor-pointer text-osce-body font-medium text-ink">
           Revision history
         </summary>
 
@@ -53,14 +52,14 @@ export function StationVersionHistory({ stationId }: { stationId: string }) {
               }}
             >
               {(rows) => (
-                <ul className="divide-y divide-b2b-border border-y border-b2b-border">
+                <ul className="divide-y divide-border border-y border-border">
                   {rows.map((item) => (
                     <li key={item.id} className="flex items-center gap-3 py-2">
-                      <span className="w-14 shrink-0 text-osce-body text-b2b-headline">
+                      <span className="w-14 shrink-0 text-osce-body text-ink">
                         v{item.version}
                       </span>
                       <StatusBadge status={item.status} />
-                      <span className="min-w-0 flex-1 text-osce-caption text-b2b-mid">
+                      <span className="min-w-0 flex-1 text-osce-caption text-ink-muted">
                         {stamp(item)}
                         {typeof item.used_by_count === "number"
                           ? ` · ${usedByLabel(item.used_by_count)}`
@@ -74,7 +73,7 @@ export function StationVersionHistory({ stationId }: { stationId: string }) {
           </div>
         ) : null}
       </details>
-    </AuthoringCard>
+    </Panel>
   );
 }
 

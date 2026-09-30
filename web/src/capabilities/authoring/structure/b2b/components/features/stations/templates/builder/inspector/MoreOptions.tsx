@@ -21,7 +21,7 @@ export function MoreOptions({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-osce-caption font-semibold text-osce-ink-500 transition-colors hover:bg-osce-canvas hover:text-osce-ink-700 ${builderUi.focusRing}`}
+        className={`flex w-full items-center justify-between rounded-osce-lg px-2 py-2 text-left text-osce-caption font-semibold text-ink-muted transition-colors hover:bg-osce-canvas hover:text-ink-muted ${builderUi.focusRing}`}
       >
         {label}
         <HiChevronDown
@@ -35,4 +35,4 @@ export function MoreOptions({
 }
 
 export const inspectorLabel = `mb-1.5 block ${builderUi.eyebrow}`;
-export const inspectorHint = "mt-1.5 text-osce-caption leading-snug text-osce-ink-400";
+export const inspectorHint = "mt-1.5 text-osce-caption leading-snug text-ink-subtle";

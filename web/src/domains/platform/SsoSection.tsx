@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Button, Card, Input, Panel } from "@/foundation/ui";
+import {
+  Alert,
+  AsyncBoundary,
+  Button,
+  Checkbox,
+  Input,
+  Panel,
+  Select,
+  Textarea,
+} from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import {
@@ -27,6 +36,9 @@ interface SsoFormState {
   hosts: string;
   email_domains: string;
 }
+
+const SSO_DESCRIPTION =
+  "Single sign-on for this organisation's members. When enabled, the sign-in page shows the organisation's button alongside the password form.";
 
 function linesToList(text: string): string[] {
   return text
@@ -56,8 +68,14 @@ function configToForm(config: SsoConfig | null): SsoFormState {
     sso_only: config.sso_only,
     sign_in_label: config.sign_in_label,
     default_exam_code: config.default_exam_code ?? "",
-    hosts: bindings.filter((b) => b.kind === "host").map((b) => b.value).join("\n"),
-    email_domains: bindings.filter((b) => b.kind === "email_domain").map((b) => b.value).join("\n"),
+    hosts: bindings
+      .filter((b) => b.kind === "host")
+      .map((b) => b.value)
+      .join("\n"),
+    email_domains: bindings
+      .filter((b) => b.kind === "email_domain")
+      .map((b) => b.value)
+      .join("\n"),
   };
 }
 
@@ -74,16 +92,18 @@ export function SsoSection({ slug }: { slug: string }) {
 
   if (hasCode(state.error, "sso_not_configured")) {
     return (
-      <Panel title="SSO" description="Single sign-on for this organisation's members. When enabled, the sign-in page shows the organisation's button alongside the password form.">
+      <Panel title="SSO" description={SSO_DESCRIPTION}>
         <SsoForm slug={slug} config={null} onSaved={state.reload} />
       </Panel>
     );
   }
 
   return (
-    <Panel title="SSO" description="Single sign-on for this organisation's members. When enabled, the sign-in page shows the organisation's button alongside the password form.">
+    <Panel title="SSO" description={SSO_DESCRIPTION}>
       <AsyncBoundary state={state}>
-        {(config) => <SsoForm slug={slug} config={config} onSaved={state.reload} />}
+        {(config) => (
+          <SsoForm slug={slug} config={config} onSaved={state.reload} />
+        )}
       </AsyncBoundary>
     </Panel>
   );
@@ -136,127 +156,104 @@ function SsoForm({
     }
   }, [form, slug, onSaved, toast]);
 
-  const update = <K extends keyof SsoFormState>(key: K, value: SsoFormState[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const update = <K extends keyof SsoFormState>(
+    key: K,
+    value: SsoFormState[K],
+  ) => setForm((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <Card padding="md">
-      <div className="flex max-w-lg flex-col gap-4">
-        {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+    <div className="flex max-w-lg flex-col gap-4">
+      {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
-        {config === null ? (
-          <WriteOnlyNote>
-            SSO is not configured for this organisation yet. Fill in the fields below to set it up.
-          </WriteOnlyNote>
+      {config === null ? (
+        <WriteOnlyNote>
+          SSO is not configured for this organisation yet. Fill in the fields
+          below to set it up.
+        </WriteOnlyNote>
+      ) : null}
+
+      <Select
+        label="Provider"
+        value={form.provider}
+        onChange={(e) => update("provider", e.target.value)}
+        disabled={busy}
+      >
+        {PROVIDERS.map((p) => (
+          <option key={p.value} value={p.value}>
+            {p.label}
+          </option>
+        ))}
+        {PROVIDERS.every((p) => p.value !== form.provider) ? (
+          <option value={form.provider}>{form.provider}</option>
         ) : null}
+      </Select>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-osce-meta font-medium text-osce-ink-700">Provider</span>
-          <select
-            value={form.provider}
-            onChange={(e) => update("provider", e.target.value)}
-            disabled={busy}
-            className="h-10 rounded-control border border-border-strong bg-surface px-3 text-osce-data text-ink"
-          >
-            {PROVIDERS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-            {PROVIDERS.every((p) => p.value !== form.provider) ? (
-              <option value={form.provider}>{form.provider}</option>
-            ) : null}
-          </select>
-        </label>
+      <Input
+        label="Issuer"
+        value={form.issuer}
+        onChange={(e) => update("issuer", e.target.value)}
+        disabled={busy}
+        placeholder="https://login.microsoftonline.com/…"
+        hint="The OIDC issuer URL. Required when SSO is enabled."
+      />
 
-        <Input
-          label="Issuer"
-          value={form.issuer}
-          onChange={(e) => update("issuer", e.target.value)}
+      <Input
+        label="Sign-in label"
+        value={form.sign_in_label}
+        onChange={(e) => update("sign_in_label", e.target.value)}
+        disabled={busy}
+        placeholder="Sign in with Kings"
+        hint="The button text shown on the sign-in page."
+      />
+
+      <Input
+        label="Default exam code"
+        value={form.default_exam_code}
+        onChange={(e) => update("default_exam_code", e.target.value)}
+        disabled={busy}
+        hint="Pre-filled for new accounts created through SSO. Optional."
+      />
+
+      <Textarea
+        label="Hosts"
+        value={form.hosts}
+        onChange={(e) => update("hosts", e.target.value)}
+        disabled={busy}
+        placeholder="kings.edu"
+        hint="One host per line. A sign-in from one of these hosts shows the SSO button."
+      />
+
+      <Textarea
+        label="Email domains"
+        value={form.email_domains}
+        onChange={(e) => update("email_domains", e.target.value)}
+        disabled={busy}
+        placeholder="kings.edu"
+        hint="One domain per line. A user whose email matches one of these is offered SSO."
+      />
+
+      <div className="flex flex-col gap-3 border-t border-border pt-4">
+        <Checkbox
+          label="Enabled"
+          description="Show this organisation's sign-in button."
+          checked={form.enabled}
+          onChange={(e) => update("enabled", e.target.checked)}
           disabled={busy}
-          placeholder="https://login.microsoftonline.com/…"
-          hint="The OIDC issuer URL. Required when SSO is enabled."
         />
-
-        <Input
-          label="Sign-in label"
-          value={form.sign_in_label}
-          onChange={(e) => update("sign_in_label", e.target.value)}
+        <Checkbox
+          label="SSO only"
+          description="Hide the password form entirely."
+          checked={form.sso_only}
+          onChange={(e) => update("sso_only", e.target.checked)}
           disabled={busy}
-          placeholder="Sign in with Kings"
-          hint="The button text shown on the sign-in page."
         />
-
-        <Input
-          label="Default exam code"
-          value={form.default_exam_code}
-          onChange={(e) => update("default_exam_code", e.target.value)}
-          disabled={busy}
-          hint="Pre-filled for new accounts created through SSO. Optional."
-        />
-
-        <label className="flex flex-col gap-1">
-          <span className="text-osce-meta font-medium text-osce-ink-700">Hosts</span>
-          <textarea
-            value={form.hosts}
-            onChange={(e) => update("hosts", e.target.value)}
-            disabled={busy}
-            rows={3}
-            placeholder="kings.edu"
-            className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-osce-data text-ink"
-          />
-          <span className="text-osce-meta text-b2c-text-muted">
-            One host per line. A sign-in from one of these hosts shows the SSO button.
-          </span>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-osce-meta font-medium text-osce-ink-700">Email domains</span>
-          <textarea
-            value={form.email_domains}
-            onChange={(e) => update("email_domains", e.target.value)}
-            disabled={busy}
-            rows={3}
-            placeholder="kings.edu"
-            className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-osce-data text-ink"
-          />
-          <span className="text-osce-meta text-b2c-text-muted">
-            One domain per line. A user whose email matches one of these is offered SSO.
-          </span>
-        </label>
-
-        <div className="flex flex-col gap-2">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.enabled}
-              onChange={(e) => update("enabled", e.target.checked)}
-              disabled={busy}
-              className="h-4 w-4 rounded border-border-strong"
-            />
-            <span className="text-osce-data text-ink">Enabled</span>
-          </label>
-
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={form.sso_only}
-              onChange={(e) => update("sso_only", e.target.checked)}
-              disabled={busy}
-              className="h-4 w-4 rounded border-border-strong"
-            />
-            <span className="text-osce-data text-ink">
-              SSO only — hide the password form entirely
-            </span>
-          </label>
-        </div>
-
-        <div className="flex justify-end">
-          <Button disabled={busy} onClick={() => void commit()}>
-            {busy ? "Saving…" : "Save"}
-          </Button>
-        </div>
       </div>
-    </Card>
+
+      <div className="flex justify-end">
+        <Button disabled={busy} onClick={() => void commit()}>
+          {busy ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
   );
 }

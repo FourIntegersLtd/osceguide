@@ -47,7 +47,8 @@ export function DirectoryUsersTable({
   };
 }) {
   const fetchPage = useCallback(
-    async (params: FetchPageParams): Promise<FetchPageResult<DirectoryUser>> => {
+    async (params: FetchPageParams,
+    ): Promise<FetchPageResult<DirectoryUser>> => {
       const page = await readDirectory({
         ...filters,
         limit: params.perPage,
@@ -74,11 +75,12 @@ export function DirectoryUsersTable({
           <div className="min-w-0">
             <Link
               href={hrefFor(`/users/${user.id}`)}
-              className={cn(b2cTableCellText, "font-medium text-osce-ink-900 hover:text-osce-accent")}
+              className={cn(b2cTableCellText, "font-medium text-ink hover:text-accent")}
             >
               {user.email}
             </Link>
-            <p className={cn("mt-0.5 truncate text-osce-meta text-b2c-text-muted", b2cTableCellText)}>
+            <p className={cn("mt-0.5 truncate text-osce-meta text-ink-subtle", b2cTableCellText,
+              )}>
               {user.name || "No name"} · joined {formatDay(user.created_at)}
               {user.last_login_at
                 ? ` · last sign-in ${formatDay(user.last_login_at)}`
@@ -109,7 +111,9 @@ export function DirectoryUsersTable({
                 {user.signed_in ? "Signed in" : "Signed out"}
               </Badge>
               <Badge tone={accessTone(access)}>{accessLabel(access)}</Badge>
-              {user.has_paid ? <Badge tone="info">{planLabel(user.plan_code)}</Badge> : null}
+              {user.has_paid ? (
+                <Badge tone="info">{planLabel(user.plan_code)}</Badge>
+              ) : null}
               <Badge tone={userStatusTone(user.status)}>
                 {user.status === "deactivated" ? "Deactivated" : "Active"}
               </Badge>
@@ -125,7 +129,7 @@ export function DirectoryUsersTable({
         render: (user: DirectoryUser) => (
           <Link
             href={hrefFor(`/users/${user.id}`)}
-            className="inline-flex text-b2c-text-muted hover:text-osce-accent"
+            className="inline-flex text-ink-subtle hover:text-accent"
             aria-label={`Open ${user.email}`}
           >
             <LuChevronRight className="h-4 w-4" aria-hidden />

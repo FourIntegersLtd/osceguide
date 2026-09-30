@@ -61,14 +61,14 @@ function Descriptors({ path, grades }: { path: JsonPath; grades: readonly string
   const { structure, edit, problems, readOnly } = useRubricBuilder();
   return (
     <div className="space-y-1.5">
-      <p className="text-osce-meta font-medium text-osce-ink-500">What earns each grade (optional)</p>
+      <p className="text-osce-meta font-medium text-ink-muted">What earns each grade (optional)</p>
       <ProblemNote messages={problemsAt(problems, path)} />
       {grades.map((grade) => {
         const gradePath = [...path, grade];
         const messages = problemsAt(problems, gradePath);
         return (
           <div key={grade} className="flex items-start gap-2">
-            <span className="mt-1.5 w-20 shrink-0 truncate text-osce-caption font-semibold text-osce-ink-500" title={grade}>
+            <span className="mt-1.5 w-20 shrink-0 truncate text-osce-caption font-semibold text-ink-muted" title={grade}>
               {grade}
             </span>
             <div className="min-w-0 flex-1">
@@ -82,7 +82,7 @@ function Descriptors({ path, grades }: { path: JsonPath; grades: readonly string
                   const text = event.target.value;
                   edit((current) => setAt(current, gradePath, text === "" ? undefined : text));
                 }}
-                className="w-full rounded-osce-sm border border-osce-border bg-osce-surface px-2 py-1 text-osce-meta text-osce-ink-900 placeholder:text-osce-ink-400 focus:border-osce-accent focus:outline-none"
+                className="w-full rounded-osce-sm border border-osce-border bg-osce-surface px-2 py-1 text-osce-meta text-ink placeholder:text-ink-subtle focus:border-osce-accent focus:outline-none"
                 placeholder={`A ${grade} looks like…`}
               />
               <ProblemNote messages={messages} />

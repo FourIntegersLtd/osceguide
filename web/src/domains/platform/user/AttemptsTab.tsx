@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
-import { AsyncBoundary, Badge, Button, Card, LoadMore, Row, RowList } from "@/foundation/ui";
-import { useAsync, useToast } from "@/foundation/hooks";
+import { useState } from "react";
+import {
+  AsyncBoundary,
+  Badge,
+  LoadMore,
+  Panel,
+  Row,
+  RowList,
+  Select,
+} from "@/foundation/ui";
+import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { kindLabel } from "@/capabilities/transcripts/api";
-import { listUserAttempts, type PlatformAttempt } from "@/domains/platform/support/api";
+import {
+  listUserAttempts,
+  type PlatformAttempt,
+} from "@/domains/platform/support/api";
 import {
   ATTEMPT_STATUSES,
   attemptStatusLabel,
@@ -14,6 +25,8 @@ import {
   diagnoseAttempt,
   formatMoment,
 } from "@/domains/platform/support";
+
+const ATTEMPTS_PAGE_LIMIT = 25;
 
 /**
  * One person's attempts, each saying whether anything is wrong with it.
@@ -24,58 +37,58 @@ import {
  */
 export function AttemptsTab({ userId }: { userId: string }) {
   const { hrefFor } = useSurface();
-  const toast = useToast();
-  const [status, setStatus] = useState<string>("");
-  const state = useAsync((signal) => listUserAttempts(userId, { status: status || null }, signal), [userId, status]);
-  const [extra, setExtra] = useState<PlatformAttempt[]>([]);
-  const [cursor, setCursor] = useState<string | null | undefined>(undefined);
-  const [busy, setBusy] = useState(false);
-
-  const loadMore = useCallback(async () => {
-    const next = cursor === undefined ? state.data?.next_cursor : cursor;
-    if (!next) return;
-    setBusy(true);
-    try {
-      const page = await listUserAttempts(userId, { status: status || null, cursor: next });
-      setExtra((rows) => [...rows, ...page.items]);
-      setCursor(page.next_cursor ?? null);
-    } catch {
-      toast.error("Could not load more attempts");
-    } finally {
-      setBusy(false);
-    }
-  }, [cursor, state.data, userId, status, toast]);
+  const [status, setStatus] = useState("");
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listUserAttempts(
+        userId,
+        {
+          status: status || null,
+          cursor: cursor ?? undefined,
+          limit: ATTEMPTS_PAGE_LIMIT,
+        },
+        signal,
+      ),
+    [userId, status],
+  );
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant={status ? "secondary" : "primary"} size="sm" onClick={() => setStatus("")}>
-          All
-        </Button>
-        {ATTEMPT_STATUSES.map((value) => (
-          <Button
-            key={value}
-            variant={status === value ? "primary" : "secondary"}
-            size="sm"
-            onClick={() => {
-              setStatus(value);
-              setExtra([]);
-              setCursor(undefined);
-            }}
-          >
-            {attemptStatusLabel(value)}
-          </Button>
-        ))}
-      </div>
+    <Panel
+      title="Attempts"
+      description="Newest first. Each row says what, if anything, is wrong with it."
+      actions={
+        <Select
+          selectSize="sm"
+          aria-label="Attempt status"
+          className="w-44"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+        >
+          <option value="">Every status</option>
+          {ATTEMPT_STATUSES.map((value) => (
+            <option key={value} value={value}>
+              {attemptStatusLabel(value)}
+            </option>
+          ))}
+        </Select>
+      }
+      padding="none"
+    >
       <AsyncBoundary
-        state={state}
-        isEmpty={(page) => page.items.length === 0}
-        empty={{ title: "No attempts", description: "This person has not sat anything yet." }}
+        state={pages.state}
+        isEmpty={(items) => items.length === 0}
+        empty={{
+          title: "No attempts",
+          description: status
+            ? "None with that status."
+            : "This person has not sat anything yet.",
+          bare: true,
+        }}
       >
-        {(page) => (
+        {(items) => (
           <>
-            <RowList>
-              {[...page.items, ...extra].map((attempt) => (
+            <RowList flush>
+              {items.map((attempt) => (
                 <AttemptRow
                   key={attempt.id}
                   attempt={attempt}
@@ -84,18 +97,25 @@ export function AttemptsTab({ userId }: { userId: string }) {
               ))}
             </RowList>
             <LoadMore
-              cursor={cursor === undefined ? page.next_cursor : cursor}
-              busy={busy}
-              onLoad={() => void loadMore()}
+              hasMore={pages.hasMore}
+              busy={pages.loadingMore}
+              onLoad={pages.loadMore}
+              error={pages.moreError}
             />
           </>
         )}
       </AsyncBoundary>
-    </div>
+    </Panel>
   );
 }
 
-function AttemptRow({ attempt, href }: { attempt: PlatformAttempt; href: string }) {
+function AttemptRow({
+  attempt,
+  href,
+}: {
+  attempt: PlatformAttempt;
+  href: string;
+}) {
   const diagnosis = diagnoseAttempt(attempt);
   return (
     <Row className="flex-col items-stretch sm:flex-row sm:items-center">
@@ -117,16 +137,10 @@ function AttemptRow({ attempt, href }: { attempt: PlatformAttempt; href: string 
       </Link>
       <div className="flex shrink-0 items-center gap-2">
         {diagnosis ? <Badge tone="danger">Needs attention</Badge> : null}
-        <Badge tone={attemptStatusTone(attempt.status)}>{attemptStatusLabel(attempt.status)}</Badge>
+        <Badge tone={attemptStatusTone(attempt.status)}>
+          {attemptStatusLabel(attempt.status)}
+        </Badge>
       </div>
     </Row>
-  );
-}
-
-export function AttemptsEmpty() {
-  return (
-    <Card padding="md">
-      <p className="text-osce-data text-ink-muted">No attempts.</p>
-    </Card>
   );
 }

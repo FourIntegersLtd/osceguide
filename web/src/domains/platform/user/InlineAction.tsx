@@ -67,8 +67,10 @@ export function InlineAction({
   }
 
   return (
-    <div className="flex w-full flex-col gap-2 rounded-md border border-b2c-border bg-surface-raised p-3">
-      {description ? <p className="text-osce-meta text-ink-muted">{description}</p> : null}
+    <div className="flex w-full flex-col gap-2 rounded-osce-md border border-border bg-surface-raised p-3">
+      {description ? (
+        <p className="text-osce-meta text-ink-muted">{description}</p>
+      ) : null}
       {error ? <Alert tone="danger">{error}</Alert> : null}
       {children}
       <Input

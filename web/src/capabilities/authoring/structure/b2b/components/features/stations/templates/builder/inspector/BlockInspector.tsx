@@ -1,3 +1,4 @@
+import { Checkbox, Select, Textarea } from "@/foundation/ui";
 import { columnsFromLabels } from "@/capabilities/authoring/structure/b2b/lib/stations/richBlockValues";
 import { newId } from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplatePresets";
 import { formsOrderForKind, type TemplateKind } from "@/capabilities/authoring/structure/b2b/lib/stations/blockTypeLabels";
@@ -89,18 +90,17 @@ export function BlockInspector({
       </div>
       <div>
         <label htmlFor="block-inspector-answer-format" className={inspectorLabel}>Answer format</label>
-        <select
+        <Select
           id="block-inspector-answer-format"
           value={block.type}
           onChange={(e) => onChangeType(e.target.value as StationBlockType)}
-          className={inspectorInput}
         >
           {formsOrderForKind(kind).map((m) => (
             <option key={m.type} value={m.type}>
               {m.formsLabel}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       {kind === "station" ? (
         <div>
@@ -113,45 +113,37 @@ export function BlockInspector({
             <p className={inspectorLabel}>Used in the station as</p>
           )}
           {roleIsChoice ? (
-            <select
+            <Select
               id="block-inspector-role"
               value={role}
               onChange={(e) => onPatch({ role: e.target.value as StationBlockRole })}
-              className={inspectorInput}
             >
               {roleOptions.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.label}
                 </option>
               ))}
-            </select>
+            </Select>
           ) : (
-            <p className="rounded-lg bg-osce-canvas px-3 py-2 text-osce-body text-osce-ink-700">
+            <p className="rounded-osce-lg bg-osce-canvas px-3 py-2 text-osce-body text-ink-muted">
               {roleMeta(role).label}
             </p>
           )}
           <p className={inspectorHint}>{roleMeta(role).description}</p>
         </div>
       ) : null}
-      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-osce-border bg-osce-surface px-3 py-2.5 text-osce-body text-osce-ink-700">
-        <span>
-          <span className="block font-medium">Required</span>
-          <span className="block text-osce-caption text-osce-ink-400">
-            Authors must fill this in
-          </span>
-        </span>
-        <input
-          type="checkbox"
-          checked={!!block.required}
-          onChange={(e) => onPatch({ required: e.target.checked })}
-          className="h-4 w-4 rounded border-osce-border text-osce-accent focus:ring-osce-accent/25"
-        />
-      </label>
+      <Checkbox
+        label="Required"
+        description="Authors must fill this in"
+        checked={!!block.required}
+        onChange={(e) => onPatch({ required: e.target.checked })}
+        className="rounded-osce-lg border border-osce-border bg-osce-surface px-3 py-2.5"
+      />
 
       {(block.type === "singleSelect" || block.type === "multiSelect") && (
         <div>
           <label htmlFor="block-inspector-options-one-per-line" className={inspectorLabel}>Options (one per line)</label>
-          <textarea
+          <Textarea
             id="block-inspector-options-one-per-line"
             value={block.options.join("\n")}
             onChange={(e) =>
@@ -159,7 +151,6 @@ export function BlockInspector({
                 options: splitMultilineToTrimmedLinesKeepEmpty(e.target.value),
               } as Partial<StationBlock>)
             }
-            className={inspectorInput}
             rows={4}
           />
         </div>
@@ -167,7 +158,7 @@ export function BlockInspector({
       {block.type === "checklist" && (
         <div>
           <label htmlFor="block-inspector-items-one-per-line" className={inspectorLabel}>Items (one per line)</label>
-          <textarea
+          <Textarea
             id="block-inspector-items-one-per-line"
             value={block.items.map((it) => it.label).join("\n")}
             onChange={(e) => {
@@ -181,7 +172,6 @@ export function BlockInspector({
                 })),
               } as Partial<StationBlock>);
             }}
-            className={inspectorInput}
             rows={4}
           />
         </div>
@@ -189,7 +179,7 @@ export function BlockInspector({
       {block.type === "records" && (
         <div>
           <label htmlFor="block-inspector-columns" className={inspectorLabel}>Columns (one per line)</label>
-          <textarea
+          <Textarea
             id="block-inspector-columns"
             value={(block.fields ?? []).map((field) => field.label).join("\n")}
             onChange={(e) =>
@@ -197,7 +187,6 @@ export function BlockInspector({
                 fields: columnsFromLabels(splitMultilineToTrimmedLinesKeepEmpty(e.target.value), block.fields ?? []),
               } as Partial<StationBlock>)
             }
-            className={inspectorInput}
             rows={5}
           />
           <p className={inspectorHint}>
@@ -256,13 +245,13 @@ export function BlockInspector({
             <p className={inspectorHint}>Loading exam model instructions…</p>
           ) : (
             <>
-              <textarea
+              <Textarea
                 id="block-inspector-generate-draft-instructions"
                 value={generationGuideInField(block, catalogHint)}
                 onChange={(e) =>
                   patchGenerationGuide(onPatch, catalogHint.trim(), e.target.value)
                 }
-                className={`${inspectorInput} mt-1 w-full`}
+                className="mt-1"
                 rows={6}
                 placeholder={
                   catalogHint

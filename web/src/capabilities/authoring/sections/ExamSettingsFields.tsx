@@ -1,6 +1,6 @@
 "use client";
 
-import { getInputClassName } from "@/foundation/ui";
+import { Checkbox, getInputClassName, Textarea } from "@/foundation/ui";
 import type { ExamSettings } from "@/capabilities/authoring/api";
 
 type SessionMode = NonNullable<ExamSettings["session_modes"]>[number];
@@ -63,8 +63,8 @@ export function ExamSettingsFields({
     });
 
   return (
-    <details className="rounded-md border border-b2b-border px-4 py-3">
-      <summary className="cursor-pointer text-osce-body font-semibold text-b2b-headline">
+    <details className="rounded-osce-md border border-border px-4 py-3">
+      <summary className="cursor-pointer text-osce-body font-semibold text-ink">
         Exam settings
       </summary>
       <div className="mt-4 space-y-4">
@@ -115,12 +115,12 @@ export function ExamSettingsFields({
         />
         {PROMPTS.map(({ field, label, keyOf }) => (
           <Field key={field} label={label}>
-            <textarea
+            <Textarea
               value={generation[field] ?? ""}
               maxLength={20000}
               rows={4}
               onChange={(e) => setPrompt(field, e.target.value)}
-              className={`mt-1 ${getInputClassName()}`}
+              className="mt-1"
               placeholder={`Blank uses the built-in prompt (${generation[keyOf] ?? `generic.${keyOf.replace("_prompt", "")}`}).`}
             />
           </Field>
@@ -143,23 +143,18 @@ function CheckboxGroup({
 }) {
   return (
     <fieldset>
-      <legend className="text-osce-body font-semibold text-b2b-headline">
+      <legend className="text-osce-body font-semibold text-ink">
         {label}
       </legend>
       <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
         {options.map((option) => (
-          <label
+          <Checkbox
             key={option.label}
-            className="flex cursor-pointer items-center gap-2 text-osce-body text-b2b-graphite"
-          >
-            <input
-              type="checkbox"
-              checked={option.checked}
-              onChange={(e) => option.onChange(e.target.checked)}
-              className="h-4 w-4 rounded border-b2b-border"
-            />
-            {option.label}
-          </label>
+            checked={option.checked}
+            onChange={(e) => option.onChange(e.target.checked)}
+            label={option.label}
+            className="items-center"
+          />
         ))}
       </div>
     </fieldset>
@@ -175,7 +170,7 @@ export function Field({
 }) {
   return (
     <div>
-      <label className="block text-osce-body font-semibold text-b2b-headline">
+      <label className="block text-osce-body font-semibold text-ink">
         {label}
       </label>
       {children}

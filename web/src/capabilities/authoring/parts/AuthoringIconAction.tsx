@@ -14,11 +14,11 @@ import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringC
 const iconFocus =
   "focus:outline-none focus:ring-2 focus:ring-osce-accent/20 focus:ring-offset-1";
 
-const b2cIconSm = `inline-flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-md border border-b2c-border bg-osce-surface text-b2c-text-secondary hover:bg-b2c-secondary disabled:pointer-events-none disabled:opacity-50 ${iconFocus}`;
-const b2cIconPrimary = `inline-flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-md border border-transparent bg-osce-accent text-white hover:bg-osce-accent-hover disabled:pointer-events-none disabled:opacity-50 ${iconFocus}`;
-const b2cIconGhost = `inline-flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-md border-0 bg-transparent text-b2c-text-muted hover:bg-b2c-secondary hover:text-osce-ink-900 disabled:pointer-events-none disabled:opacity-50 ${iconFocus}`;
+const b2cIconSm = `inline-flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-osce-md border border-border bg-osce-surface text-ink-muted hover:bg-surface-raised disabled:pointer-events-none disabled:opacity-50 ${iconFocus}`;
+const b2cIconPrimary = `inline-flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-osce-md border border-transparent bg-osce-accent text-white hover:bg-osce-accent-hover disabled:pointer-events-none disabled:opacity-50 ${iconFocus}`;
+const b2cIconGhost = `inline-flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-osce-md border-0 bg-transparent text-ink-subtle hover:bg-surface-raised hover:text-ink disabled:pointer-events-none disabled:opacity-50 ${iconFocus}`;
 const b2cTooltipChip =
-  "pointer-events-none z-[200] w-max max-w-[220px] rounded-md bg-osce-ink-900 px-3 py-1.5 text-osce-caption text-white";
+  "pointer-events-none z-[200] w-max max-w-[220px] rounded-osce-md bg-ink px-3 py-1.5 text-osce-caption text-white";
 
 export type AuthoringIconActionVariant =
   | "default"
@@ -61,9 +61,9 @@ function variantClass(variant: AuthoringIconActionVariant, b2c: boolean): string
     case "primary":
       return b2bIconButtonPrimarySm;
     case "danger":
-      return `${b2bIconButtonSm} text-b2b-danger-text hover:bg-b2b-danger-bg`;
+      return `${b2bIconButtonSm} text-osce-danger-text hover:bg-osce-danger-bg`;
     case "warning":
-      return `${b2bIconButtonSm} text-b2b-warning-text hover:bg-b2b-warning-bg`;
+      return `${b2bIconButtonSm} text-osce-warning-text hover:bg-osce-warning-bg`;
     case "ghost":
       return b2bIconButtonGhost;
     default:

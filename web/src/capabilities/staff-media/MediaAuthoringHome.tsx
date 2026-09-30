@@ -3,13 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Button, PlatformTabbedScreen, type B2CSegmentedTabItem } from "@/foundation/ui";
-import { useCursorPages, useToast } from "@/foundation/hooks";
-import { isMediaKind, MEDIA_KIND_LABELS, type MediaKind } from "@/capabilities/media/api";
-import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
 import {
-  AUTHORING_ALL_EXAMS,
-} from "@/capabilities/authoring/parts/examCatalogFilter";
+  Alert,
+  AsyncBoundary,
+  Button,
+  PlatformTabbedScreen,
+  type B2CSegmentedTabItem,
+} from "@/foundation/ui";
+import { useCursorPages, useToast } from "@/foundation/hooks";
+import {
+  isMediaKind,
+  MEDIA_KIND_LABELS,
+  type MediaKind,
+} from "@/capabilities/media/api";
+import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
+import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
 import {
   AUTHORING_MEDIA_PAGE_LIMIT,
   deleteMedia,
@@ -50,7 +58,12 @@ export function MediaAuthoringHome() {
     (cursor, signal) =>
       listMediaForAuthoring(
         kind,
-        { cursor, limit: AUTHORING_MEDIA_PAGE_LIMIT, examCode: examFilter || null, q: query || null },
+        {
+          cursor,
+          limit: AUTHORING_MEDIA_PAGE_LIMIT,
+          examCode: examFilter || null,
+          q: query || null,
+        },
         signal,
       ),
     [kind, examFilter, query],
@@ -100,13 +113,18 @@ export function MediaAuthoringHome() {
         searchPlaceholder="Search by title or slug…"
         searchAriaLabel="Search study material by title or slug"
         leading={
-          <p className="text-osce-body text-b2c-text-muted">
+          <p className="text-osce-body text-ink-muted">
             {visibleCount}
-            {pages.hasMore ? "+" : ""} {MEDIA_KIND_LABELS[kind].many.toLowerCase()} in the catalogue.
+            {pages.hasMore ? "+" : ""}{" "}
+            {MEDIA_KIND_LABELS[kind].many.toLowerCase()} in the catalogue.
           </p>
         }
         trailing={
-          <Button size="sm" className="gap-2" onClick={() => setCreateOpen(true)}>
+          <Button
+            size="sm"
+            className="gap-2"
+            onClick={() => setCreateOpen(true)}
+          >
             <HiOutlinePlusCircle className="h-4 w-4" aria-hidden />
             New {kindLabel.toLowerCase()}
           </Button>
@@ -139,7 +157,9 @@ export function MediaAuthoringHome() {
             <MediaListTable
               items={list.data ?? []}
               busy={action.busy}
-              onOpen={(item: MediaItem) => router.push(staffMediaDetailPath(item.id))}
+              onOpen={(item: MediaItem) =>
+                router.push(staffMediaDetailPath(item.id))
+              }
               onPublish={(item) =>
                 void action.run(`publish:${item.id}`, async () => {
                   await publishMedia(item.id);
@@ -155,7 +175,9 @@ export function MediaAuthoringHome() {
             />
 
             {pages.moreError ? (
-              <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+              <Alert tone="danger">
+                Could not load more: {pages.moreError.message}
+              </Alert>
             ) : null}
             {pages.hasMore ? (
               <div className="flex justify-center">

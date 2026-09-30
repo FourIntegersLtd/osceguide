@@ -12,7 +12,7 @@ export default function ExamWishes() {
       <ModalHelper className="mt-2">
         We&apos;re rooting for you. Get in touch if we can help before your exam.
       </ModalHelper>
-      <p className="mt-4 text-osce-meta text-b2c-text-secondary">
+      <p className="mt-4 text-osce-meta text-ink-muted">
         You&apos;ve put the work in. Go show what you can do.
       </p>
     </ModalContent>

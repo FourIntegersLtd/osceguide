@@ -33,7 +33,7 @@ export function StationInstanceContentPanel({
           defaultOpen={sectionIndex === 0}
         >
           {sec.description ? (
-            <p className="mb-4 text-osce-body text-b2c-text-muted">{sec.description}</p>
+            <p className="mb-4 text-osce-body text-ink-subtle">{sec.description}</p>
           ) : null}
           <StationInstanceBlocks
             blocks={sec.blocks}

@@ -5,7 +5,7 @@ import {
   PlatformFilterDivider,
   PlatformFilterSearch,
   PlatformFilterSelect,
-} from "@/domains/platform/PlatformFilterBar";
+} from "@/foundation/ui";
 import type { DirectoryFilters as Filters, ExamDirectorySummary } from "@/domains/platform/api";
 import { ACCESS_FILTERS, USER_STATUSES, planLabel } from "@/domains/platform/users/vocabulary";
 

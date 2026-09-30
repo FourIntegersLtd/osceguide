@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, getInputClassName } from "@/foundation/ui";
+import { Alert, getInputClassName, Select } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -127,12 +127,12 @@ export function ProgrammesSection() {
         }
       >
         <div>
-          <label htmlFor="programmes-section-exam" className="block text-osce-body font-semibold text-b2b-headline">Exam</label>
-          <select
+          <label htmlFor="programmes-section-exam" className="block text-osce-body font-semibold text-ink">Exam</label>
+          <Select
             id="programmes-section-exam"
             value={examCode}
             onChange={(e) => setExamCode(e.target.value)}
-            className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
+            className="mt-1"
           >
             <option value="">Select an exam…</option>
             {(exams.data?.items ?? []).map((exam) => (
@@ -140,7 +140,7 @@ export function ProgrammesSection() {
                 {exam.name} ({exam.code})
               </option>
             ))}
-          </select>
+          </Select>
           <input
             value={examCode}
             onChange={(e) => setExamCode(e.target.value)}

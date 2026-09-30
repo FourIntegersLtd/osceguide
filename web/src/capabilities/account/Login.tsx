@@ -192,7 +192,7 @@ export default function Login() {
     <button
       type="button"
       onClick={handleTogglePassword}
-      className="absolute inset-y-0 right-0 flex items-center pr-3 text-b2c-text-muted hover:text-b2c-text-secondary"
+      className="absolute inset-y-0 right-0 flex items-center pr-3 text-ink-subtle hover:text-ink-muted"
       aria-label={formData.showPassword ? "Hide password" : "Show password"}
     >
       {formData.showPassword ? (

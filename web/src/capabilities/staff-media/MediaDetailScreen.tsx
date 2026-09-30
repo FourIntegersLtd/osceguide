@@ -3,11 +3,20 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HiOutlineArrowLeft } from "react-icons/hi2";
-import { Alert, Button, Card, Input } from "@/foundation/ui";
-import { errorMessage, useAsync, useMeEvents, useToast } from "@/foundation/hooks";
+import { Alert, Badge, Button, Input, Panel, Textarea } from "@/foundation/ui";
+import {
+  errorMessage,
+  useAsync,
+  useMeEvents,
+  useToast,
+} from "@/foundation/hooks";
 import { MEDIA_KIND_LABELS, isMediaKind } from "@/capabilities/media/api";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
-import { avStatus, isAvRunning, mergeContent } from "@/capabilities/staff-media/content/b2cMediaShapes";
+import {
+  avStatus,
+  isAvRunning,
+  mergeContent,
+} from "@/capabilities/staff-media/content/b2cMediaShapes";
 import { BlogContentForm } from "@/capabilities/staff-media/forms/BlogContentForm";
 import { B2cSlideDeckForm } from "@/capabilities/staff-media/forms/B2cSlideDeckForm";
 import { PodcastContentForm } from "@/capabilities/staff-media/forms/PodcastContentForm";
@@ -30,11 +39,22 @@ import {
 import { learnerMediaPreviewPath } from "@/capabilities/staff-media/paths";
 
 function contentRecord(item: MediaItem | null): Record<string, unknown> {
-  if (!item?.content || typeof item.content !== "object" || Array.isArray(item.content)) return {};
+  if (
+    !item?.content ||
+    typeof item.content !== "object" ||
+    Array.isArray(item.content)
+  )
+    return {};
   return item.content as Record<string, unknown>;
 }
 
-export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: () => void }) {
+export function MediaDetailScreen({
+  itemId,
+  onBack,
+}: {
+  itemId: string;
+  onBack: () => void;
+}) {
   const load = useAsync((signal) => readMediaById(itemId, signal), [itemId]);
   const action = useAction(load.reload);
   const toast = useToast();
@@ -150,7 +170,10 @@ export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: 
               void action.run("regenerate-av", async () => {
                 await regenerateSlideAv(itemId);
                 setPollAv(true);
-                toast.success("Regeneration started", "This may take several minutes.");
+                toast.success(
+                  "Regeneration started",
+                  "This may take several minutes.",
+                );
                 load.reload();
               })
             }
@@ -164,7 +187,10 @@ export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: 
               type="button"
               size="sm"
               variant="secondary"
-              disabled={action.busy === "generate-audio" || isAvRunning(avStatus(content))}
+              disabled={
+                action.busy === "generate-audio" ||
+                isAvRunning(avStatus(content))
+              }
               onClick={() =>
                 void action.run("generate-audio", async () => {
                   await generatePodcastAudio(itemId);
@@ -184,12 +210,12 @@ export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: 
   };
 
   if (load.loading && !load.data) {
-    return <p className="text-sm text-ink-subtle">Loading…</p>;
+    return <p className="text-osce-meta text-ink-subtle">Loading…</p>;
   }
 
   if (load.error) {
     return (
-      <div className="space-y-3">
+      <div className="flex flex-col gap-4">
         <Button variant="ghost" size="sm" className="gap-2" onClick={onBack}>
           <HiOutlineArrowLeft className="h-4 w-4" aria-hidden />
           Back
@@ -205,24 +231,36 @@ export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: 
   const isDraft = item.status === "draft";
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" size="sm" className="gap-2" onClick={onBack}>
           <HiOutlineArrowLeft className="h-4 w-4" aria-hidden />
           Back to list
         </Button>
         <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setJsonOpen(true)}>Edit JSON</Button>
+          <Button variant="ghost" size="sm" onClick={() => setJsonOpen(true)}>
+            Edit JSON
+          </Button>
           {previewHref && item.status === "published" ? (
-            <Link href={previewHref} target="_blank" rel="noreferrer" className="inline-flex">
-              <Button variant="secondary" size="sm">Preview as learner</Button>
+            <Link
+              href={previewHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex"
+            >
+              <Button variant="secondary" size="sm">
+                Preview as learner
+              </Button>
             </Link>
           ) : null}
           {kind === "summary" ? (
             <Button
               size="sm"
               variant="secondary"
-              disabled={action.busy === "generate-podcast" || isAvRunning(avStatus(content))}
+              disabled={
+                action.busy === "generate-podcast" ||
+                isAvRunning(avStatus(content))
+              }
               onClick={() =>
                 void action.run("generate-podcast", async () => {
                   await generateSummaryPodcast(itemId);
@@ -275,7 +313,11 @@ export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: 
               Delete draft
             </Button>
           ) : null}
-          <Button size="sm" disabled={!title.trim() || action.busy === "save"} onClick={() => void save()}>
+          <Button
+            size="sm"
+            disabled={!title.trim() || action.busy === "save"}
+            onClick={() => void save()}
+          >
             Save
           </Button>
         </div>
@@ -283,7 +325,9 @@ export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: 
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
       {pollAv ? (
-        <Alert tone="info">Production in progress… status updates every few seconds.</Alert>
+        <Alert tone="info">
+          Production in progress… status updates every few seconds.
+        </Alert>
       ) : null}
 
       <ContentJsonEditor
@@ -293,40 +337,63 @@ export function MediaDetailScreen({ itemId, onBack }: { itemId: string; onBack: 
         onSave={(parsed) => setContent((prev) => mergeContent(prev, parsed))}
       />
 
-      <Card padding="md" className="flex max-w-3xl flex-col gap-4">
-        <div>
-          <h1 className="text-lg font-semibold text-ink">{kindLabel}</h1>
-          <p className="text-xs text-ink-subtle">
-            {item.slug}
-            {item.exam_code ? ` · ${item.exam_code}` : ""}
-            {` · ${item.status}`}
-          </p>
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-osce-title font-semibold text-ink">
+            {title.trim() || kindLabel}
+          </h1>
+          <Badge tone={item.status === "published" ? "success" : "warning"}>
+            {item.status}
+          </Badge>
         </div>
-        <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Input label="Summary (list card)" value={summary} onChange={(e) => setSummary(e.target.value)} />
-        <p className="text-sm text-ink-subtle">
-          Exam: {examCode.trim() ? examCode.toUpperCase() : "Any"} (set at create time)
+        <p className="mt-1 text-osce-meta text-ink-subtle">
+          {kindLabel} · {item.slug} ·{" "}
+          {examCode.trim() ? examCode.toUpperCase() : "Any exam"}
         </p>
-      </Card>
+      </div>
 
-      <Card padding="md" className="flex max-w-3xl flex-col gap-3">
-        <h2 className="text-sm font-semibold text-ink">Generate from prompt</h2>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          rows={3}
-          className="rounded-control border border-border-strong bg-surface px-3 py-2 text-sm"
-          placeholder="Describe the topic…"
-        />
-        <Button variant="secondary" size="sm" disabled={!prompt.trim()} onClick={() => void runGenerate()}>
-          Generate {kindLabel.toLowerCase()}
-        </Button>
-      </Card>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <Panel
+          title="Details"
+          description="The exam is fixed when the item is created."
+        >
+          <div className="flex flex-col gap-4">
+            <Input
+              label="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <Input
+              label="Summary"
+              hint="Shown on the list card."
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+            />
+          </div>
+        </Panel>
 
-      <Card padding="md" className="max-w-5xl">
-        <h2 className="mb-4 text-sm font-semibold text-ink">Content</h2>
-        {contentForm()}
-      </Card>
+        <Panel title="Generate from a prompt" padding="sm">
+          <div className="flex flex-col gap-3">
+            <Textarea
+              aria-label="Prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              rows={4}
+              placeholder="Describe the topic…"
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={!prompt.trim()}
+              onClick={() => void runGenerate()}
+            >
+              Generate {kindLabel.toLowerCase()}
+            </Button>
+          </div>
+        </Panel>
+      </div>
+
+      <Panel title="Content">{contentForm()}</Panel>
     </div>
   );
 }

@@ -59,7 +59,6 @@ export function RubricStartScreen() {
 
   return (
     <PlatformTemplateWizardPageLayout
-      eyebrow="Rubric"
       title="New rubric"
       subtitle="Start blank or from a published rubric. You get a draft to edit; nothing is used until you publish it."
       backHref={rubricsListPath(hrefFor)}
@@ -67,7 +66,7 @@ export function RubricStartScreen() {
     >
       <div className="space-y-5">
         <div className="max-w-lg">
-          <label htmlFor={titleId} className="block text-osce-meta font-medium text-osce-ink-500">
+          <label htmlFor={titleId} className="block text-osce-meta font-medium text-ink-muted">
             Title
           </label>
           <input
@@ -77,7 +76,7 @@ export function RubricStartScreen() {
             placeholder={picked && picked.kind !== "blank" ? `Copy of ${picked.title}` : "e.g. Consultation skills"}
             className={cn(getInputClassName(), "mt-1")}
           />
-          <p className="mt-0.5 text-osce-caption text-osce-ink-400">Set here; a rubric keeps its title across versions.</p>
+          <p className="mt-0.5 text-osce-caption text-ink-subtle">Set here; a rubric keeps its title across versions.</p>
         </div>
 
         <div className="space-y-3">
@@ -120,15 +119,15 @@ function StartCard({ point, selected, onSelect }: { point: RubricStartingPoint; 
         <Badge tone={point.kind === "blank" ? "neutral" : point.kind === "platform" ? "accent" : "info"} size="sm">
           {KIND_WORDS[point.kind]}
         </Badge>
-        {point.kind !== "blank" ? <span className="text-osce-caption text-osce-ink-400">v{point.version}</span> : null}
+        {point.kind !== "blank" ? <span className="text-osce-caption text-ink-subtle">v{point.version}</span> : null}
       </div>
-      <span className="text-osce-body font-semibold text-osce-ink-900">{point.title}</span>
-      <span className="text-osce-caption text-osce-ink-500">
+      <span className="text-osce-body font-semibold text-ink">{point.title}</span>
+      <span className="text-osce-caption text-ink-muted">
         {labelFor(RATING_KINDS, point.rating_kind)}
         {point.competency_count > 0 ? ` · ${point.competency_count} competencies` : ""}
       </span>
       {point.domains && point.domains.length > 0 ? (
-        <span className="line-clamp-2 text-osce-caption text-osce-ink-400">{point.domains.join(" · ")}</span>
+        <span className="line-clamp-2 text-osce-caption text-ink-subtle">{point.domains.join(" · ")}</span>
       ) : null}
     </button>
   );

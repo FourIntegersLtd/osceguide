@@ -36,18 +36,18 @@ export function PlatformTemplateWizardStepStrip({
               onStepChange(s.id);
             }}
             className={[
-              "inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-osce-body font-medium transition-colors",
+              "inline-flex items-center gap-2 rounded-osce-md px-2 py-1.5 text-osce-body font-medium transition-colors",
               !enabled
-                ? "cursor-not-allowed text-b2c-text-muted"
+                ? "cursor-not-allowed text-ink-subtle"
                 : active
-                  ? "bg-b2c-surface-muted text-osce-ink-900"
-                  : "text-b2c-text-muted hover:bg-b2c-surface-muted/80 hover:text-osce-ink-900",
+                  ? "bg-canvas text-ink"
+                  : "text-ink-subtle hover:bg-canvas/80 hover:text-ink",
             ].join(" ")}
           >
             <span
               className={[
                 "flex h-6 w-6 items-center justify-center rounded-full text-osce-caption font-semibold",
-                active ? "bg-osce-accent text-white" : "bg-b2c-surface-muted text-b2c-text-secondary",
+                active ? "bg-osce-accent text-white" : "bg-canvas text-ink-muted",
               ].join(" ")}
             >
               {s.id}

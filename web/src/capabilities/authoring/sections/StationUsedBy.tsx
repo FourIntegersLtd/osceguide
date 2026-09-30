@@ -23,9 +23,9 @@ export function StationUsedBy({ stationId, version }: { stationId: string; versi
   return (
     <AsyncBoundary
       state={versions}
-      loading={<span className="block text-osce-caption text-b2b-mid">Checking what uses it…</span>}
+      loading={<span className="block text-osce-caption text-ink-muted">Checking what uses it…</span>}
       failure={(_error, retry) => (
-        <span className="block text-osce-caption text-b2b-mid">
+        <span className="block text-osce-caption text-ink-muted">
           Could not check what uses this version.{" "}
           <button type="button" className="underline" onClick={retry}>
             Try again
@@ -40,8 +40,8 @@ export function StationUsedBy({ stationId, version }: { stationId: string; versi
           <span
             className={
               count > 0
-                ? "block font-medium text-b2b-headline"
-                : "block text-osce-caption text-b2b-mid"
+                ? "block font-medium text-ink"
+                : "block text-osce-caption text-ink-muted"
             }
           >
             v{version}: {usedByLabel(count)}.

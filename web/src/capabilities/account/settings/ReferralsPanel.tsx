@@ -4,18 +4,14 @@ import { useState } from "react";
 import {
   HiOutlineCheck,
   HiOutlineDocumentDuplicate,
-  HiOutlineGift,
   HiOutlineInformationCircle,
 } from "react-icons/hi2";
 import {
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
   Modal,
   ModalHelper,
   ModalPrimaryButton,
+  Panel,
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
@@ -29,7 +25,7 @@ import ReferralHistory from "@/capabilities/account/settings/ReferralHistory";
 import ReferralsInfo from "@/capabilities/account/settings/ReferralsInfo";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
-const { b2cFieldLabel, b2cSettingsCardHeaderIcon, b2cSettingsFieldInput } = productTokens;
+const { b2cFieldLabel, b2cSettingsFieldInput } = productTokens;
 
 /**
  * Share your referral code, and see what it has earned.
@@ -114,27 +110,27 @@ function ReferralCodeCard({
   };
 
   return (
-    <B2CPanelCard className="mt-0">
-      <B2CPanelCardHeader>
-        <HiOutlineGift className={b2cSettingsCardHeaderIcon} aria-hidden />
-        Referral program
+    <Panel
+      title="Referral program"
+      actions={
         <button
           type="button"
           onClick={onShowInfo}
-          className="ml-auto rounded-md p-1 text-b2c-text-muted transition-colors hover:bg-osce-surface hover:text-osce-accent-hover"
+          className="rounded-osce-md p-1 text-ink-subtle transition-colors hover:bg-surface-raised hover:text-accent"
           aria-label="Show referral information"
         >
           <HiOutlineInformationCircle className="h-4 w-4" />
         </button>
-      </B2CPanelCardHeader>
-      <B2CPanelCardBody className="space-y-4">
+      }
+    >
+      <div className="space-y-4">
         <ModalHelper className="mt-0">
           Share your referral code and earn rewards paid to your bank account.
         </ModalHelper>
 
-        <div className="rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-2.5">
+        <div className="rounded-osce-md border border-border bg-canvas px-3 py-2.5">
           <p className={b2cFieldLabel}>Total referral earnings</p>
-          <p className="mt-0.5 text-osce-body font-semibold tabular-nums text-osce-ink-900">
+          <p className="mt-0.5 text-osce-body font-semibold tabular-nums text-ink">
             £{(referral.earned_pence / 100).toFixed(2)}
           </p>
         </div>
@@ -152,8 +148,8 @@ function ReferralCodeCard({
           />
           {error ? <p className="mt-1 text-osce-meta text-osce-danger">{error}</p> : null}
         </div>
-      </B2CPanelCardBody>
-      <B2CPanelCardFooter>
+      </div>
+      <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
         {!referral.code ? (
           <ModalPrimaryButton type="button" onClick={handleGenerate} disabled={busy}>
             {busy ? "Generating…" : "Generate code"}
@@ -162,7 +158,7 @@ function ReferralCodeCard({
           <ModalPrimaryButton
             type="button"
             onClick={handleCopy}
-            className={`gap-2 ${copied ? "bg-osce-success-solid hover:bg-osce-success-solid-hover" : ""}`}
+            className={`gap-2 ${copied ? "bg-success" : ""}`}
           >
             {copied ? (
               <>
@@ -177,7 +173,7 @@ function ReferralCodeCard({
             )}
           </ModalPrimaryButton>
         )}
-      </B2CPanelCardFooter>
-    </B2CPanelCard>
+      </div>
+    </Panel>
   );
 }

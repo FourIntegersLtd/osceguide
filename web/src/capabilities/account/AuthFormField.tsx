@@ -100,7 +100,7 @@ export default function AuthFormField({
           {error}
         </p>
       ) : hint ? (
-        <p id={hintId} className="text-osce-meta text-b2c-text-muted">
+        <p id={hintId} className="text-osce-meta text-ink-subtle">
           {hint}
         </p>
       ) : null}

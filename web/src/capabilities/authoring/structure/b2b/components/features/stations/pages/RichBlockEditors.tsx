@@ -1,5 +1,6 @@
 "use client";
 
+import { Textarea } from "@/foundation/ui";
 import { useState, type ReactNode } from "react";
 import { HiOutlinePlus, HiOutlineXMark } from "react-icons/hi2";
 import {
@@ -20,7 +21,7 @@ import { b2bInputBase } from "@/capabilities/authoring/structure/b2b/theme/b2bUi
 type RichBlock = Extract<StationBlock, { type: "media" | "records" | "qaList" | "groupedList" }>;
 
 const input = `${b2bInputBase} py-2 text-osce-body`;
-const card = "rounded-md border border-b2b-border bg-b2b-cream/30 p-3";
+const card = "rounded-osce-md border border-border bg-surface-raised/30 p-3";
 
 function text(value: unknown): string {
   return typeof value === "string" ? value : value === undefined || value === null ? "" : String(value);
@@ -84,9 +85,9 @@ export function RichBlockEditor({
 function Field({ label, required, children }: { label: string; required: boolean; children: ReactNode }) {
   return (
     <div className="min-w-0 space-y-2 md:col-span-2">
-      <p className="text-osce-body font-medium text-b2b-headline">
+      <p className="text-osce-body font-medium text-ink">
         {label}
-        {required ? <span className="text-b2b-danger-text"> *</span> : null}
+        {required ? <span className="text-osce-danger-text"> *</span> : null}
       </p>
       {children}
     </div>
@@ -99,7 +100,7 @@ function RowActions({ addLabel, onAdd, readOnly }: { addLabel: string; onAdd: ()
     <button
       type="button"
       onClick={onAdd}
-      className="inline-flex items-center gap-1 text-osce-caption font-semibold text-b2b-accent hover:underline"
+      className="inline-flex items-center gap-1 text-osce-caption font-semibold text-accent hover:underline"
     >
       <HiOutlinePlus className="h-4 w-4" aria-hidden />
       {addLabel}
@@ -114,7 +115,7 @@ function RemoveButton({ label, onRemove, readOnly }: { label: string; onRemove: 
       type="button"
       aria-label={label}
       onClick={onRemove}
-      className="shrink-0 rounded-md p-1 text-b2b-mid hover:bg-b2b-cream hover:text-b2b-danger-text"
+      className="shrink-0 rounded-osce-md p-1 text-ink-muted hover:bg-surface-raised hover:text-osce-danger-text"
     >
       <HiOutlineXMark className="h-4 w-4" aria-hidden />
     </button>
@@ -141,7 +142,7 @@ function RecordsEditor({
       {records.map((record, index) => (
         <div key={index} className={card}>
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-osce-caption font-semibold text-b2b-mid">Record {index + 1}</span>
+            <span className="text-osce-caption font-semibold text-ink-muted">Record {index + 1}</span>
             <RemoveButton
               label={`Remove record ${index + 1}`}
               readOnly={readOnly}
@@ -152,14 +153,14 @@ function RecordsEditor({
             {columns.map(({ key, label }) => {
               const cell = record[key];
               return (
-                <label key={key} className="block min-w-0 text-osce-caption font-medium text-b2b-mid">
+                <label key={key} className="block min-w-0 text-osce-caption font-medium text-ink-muted">
                   {label}
                   {Array.isArray(cell) ? (
-                    <textarea
+                    <Textarea
                       readOnly={readOnly}
                       value={cell.map(text).join("\n")}
                       onChange={(event) => patch(index, key, splitMultilineToTrimmedLines(event.target.value))}
-                      className={`${input} mt-1`}
+                      className="mt-1"
                       rows={3}
                     />
                   ) : (
@@ -197,7 +198,7 @@ function QaEditor({
       {pairs.map((pair, index) => (
         <div key={index} className={card}>
           <div className="flex items-start gap-2">
-            <span className="pt-2 text-osce-body font-semibold text-b2b-mid">{index + 1}.</span>
+            <span className="pt-2 text-osce-body font-semibold text-ink-muted">{index + 1}.</span>
             <div className="min-w-0 flex-1 space-y-2">
               <input
                 readOnly={readOnly}
@@ -207,13 +208,12 @@ function QaEditor({
                 onChange={(event) => patch(index, { question: event.target.value })}
                 className={input}
               />
-              <textarea
+              <Textarea
                 readOnly={readOnly}
                 aria-label={`Answer ${index + 1}`}
                 placeholder="Model answer"
                 value={pair.answer}
                 onChange={(event) => patch(index, { answer: event.target.value })}
-                className={input}
                 rows={3}
               />
             </div>
@@ -273,7 +273,7 @@ function GroupsEditor({
           />
         </div>
       ))}
-      <p className="text-osce-caption text-b2b-mid">
+      <p className="text-osce-caption text-ink-muted">
         One item per line. Start a line with &quot;- &quot; to add a reason under the item above.
       </p>
       <RowActions
@@ -297,14 +297,13 @@ function GroupItemsText({
 }) {
   const [draft, setDraft] = useState(() => groupedItemsToText(items));
   return (
-    <textarea
+    <Textarea
       readOnly={readOnly}
       value={draft}
       onChange={(event) => {
         setDraft(event.target.value);
         onChange(groupedItemsFromText(event.target.value));
       }}
-      className={input}
       rows={5}
     />
   );

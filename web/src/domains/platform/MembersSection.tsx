@@ -1,9 +1,24 @@
 "use client";
 
-import { AsyncBoundary, Badge, Button, Panel, Row, RowList } from "@/foundation/ui";
+import {
+  AsyncBoundary,
+  Badge,
+  Button,
+  Panel,
+  Row,
+  RowList,
+  Select,
+} from "@/foundation/ui";
 import { useAsync, useToast } from "@/foundation/hooks";
-import { listOrgMembershipsForSupport, type Membership } from "@/domains/platform/api";
-import { changeMembershipRole, restoreMembership, revokeMembership } from "@/domains/platform/support/api";
+import {
+  listOrgMembershipsForSupport,
+  type Membership,
+} from "@/domains/platform/api";
+import {
+  changeMembershipRole,
+  restoreMembership,
+  revokeMembership,
+} from "@/domains/platform/support/api";
 import { SEAT_ROLES } from "@/domains/platform/support";
 
 export function MembersSection({ slug }: { slug: string }) {
@@ -13,16 +28,29 @@ export function MembersSection({ slug }: { slug: string }) {
   );
 
   return (
-    <Panel title="Members" description="Move a role, revoke, or restore — the same audited service the organisation's own admins use.">
+    <Panel
+      title="Members"
+      description="Move a role, revoke, or restore — the same audited service the organisation's own admins use."
+      padding="none"
+    >
       <AsyncBoundary
         state={state}
         isEmpty={(page) => page.items.length === 0}
-        empty={{ title: "No members", description: "This organisation has no memberships yet." }}
+        empty={{
+          title: "No members",
+          description: "This organisation has no memberships yet.",
+          bare: true,
+        }}
       >
         {(page) => (
-          <RowList>
+          <RowList flush>
             {page.items.map((membership) => (
-              <MemberRow key={membership.id} membership={membership} slug={slug} onChanged={state.reload} />
+              <MemberRow
+                key={membership.id}
+                membership={membership}
+                slug={slug}
+                onChanged={state.reload}
+              />
             ))}
           </RowList>
         )}
@@ -31,7 +59,15 @@ export function MembersSection({ slug }: { slug: string }) {
   );
 }
 
-function MemberRow({ membership, slug, onChanged }: { membership: Membership; slug: string; onChanged: () => void }) {
+function MemberRow({
+  membership,
+  slug,
+  onChanged,
+}: {
+  membership: Membership;
+  slug: string;
+  onChanged: () => void;
+}) {
   const toast = useToast();
   const run = async (work: () => Promise<unknown>, done: string) => {
     try {
@@ -55,28 +91,42 @@ function MemberRow({ membership, slug, onChanged }: { membership: Membership; sl
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={revoked ? "neutral" : "success"}>{membership.status}</Badge>
-        <select
+        <Badge tone={revoked ? "neutral" : "success"}>
+          {membership.status}
+        </Badge>
+        <Select
           aria-label="Role"
+          selectSize="sm"
+          className="w-auto"
           value={membership.role}
-          onChange={(e) => void run(() => changeMembershipRole(slug, membership.id, e.target.value), "Role changed")}
-          className="h-8 rounded-control border border-border-strong bg-surface px-2 text-osce-meta text-ink"
+          onChange={(e) =>
+            void run(
+              () => changeMembershipRole(slug, membership.id, e.target.value),
+              "Role changed",
+            )
+          }
         >
           {[...SEAT_ROLES.map((r) => r.value), "supervisor", "trainee"]
             .filter((v, i, a) => a.indexOf(v) === i)
             .map((value) => (
-              <option key={value} value={value}>{value}</option>
+              <option key={value} value={value}>
+                {value}
+              </option>
             ))}
-          {SEAT_ROLES.every((r) => r.value !== membership.role) && !["supervisor", "trainee"].includes(membership.role) ? (
+          {SEAT_ROLES.every((r) => r.value !== membership.role) &&
+          !["supervisor", "trainee"].includes(membership.role) ? (
             <option value={membership.role}>{membership.role}</option>
           ) : null}
-        </select>
+        </Select>
         <Button
           variant={revoked ? "primary" : "danger"}
           size="sm"
           onClick={() =>
             void run(
-              () => (revoked ? restoreMembership(slug, membership.id) : revokeMembership(slug, membership.id)),
+              () =>
+                revoked
+                  ? restoreMembership(slug, membership.id)
+                  : revokeMembership(slug, membership.id),
               revoked ? "Access restored" : "Access revoked",
             )
           }

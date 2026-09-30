@@ -126,13 +126,13 @@ export function RubricBuilder({
     <RubricBuilderProvider value={{ structure: draft.structure, edit: draft.edit, problems: draft.problems, readOnly }}>
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-osce-lg border border-osce-border bg-osce-surface px-4 py-3">
-          <p className="text-osce-meta text-osce-ink-500">
+          <p className="text-osce-meta text-ink-muted">
             {readOnly
               ? "This version is read-only. Start a new draft to change it."
               : draft.dirty
                 ? "Unsaved changes."
                 : "All changes saved."}
-            {publishBlocked && !readOnly ? <span className="ml-2 text-osce-ink-400">{publishBlocked}</span> : null}
+            {publishBlocked && !readOnly ? <span className="ml-2 text-ink-subtle">{publishBlocked}</span> : null}
           </p>
           {readOnly ? null : (
             <div className="flex flex-wrap gap-2">

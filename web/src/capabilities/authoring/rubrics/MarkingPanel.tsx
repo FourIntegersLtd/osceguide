@@ -3,7 +3,7 @@
 import { useId } from "react";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import { cn, getInputClassName } from "@/foundation/ui";
+import { cn, getInputClassName, Textarea } from "@/foundation/ui";
 
 /** The four pacing numbers a rubric's station runs on, in seconds. */
 export const PACING_KEYS = [
@@ -48,28 +48,30 @@ export function MarkingPanel({
   return (
     <div className="space-y-6">
       <div>
-        <label htmlFor={promptId} className="block text-osce-meta font-medium text-osce-ink-500">
+        <label htmlFor={promptId} className="block text-osce-meta font-medium text-ink-muted">
           Marking instructions (system prompt)
         </label>
-        <textarea
+        <Textarea
           id={promptId}
+          textareaSize="sm"
+          invalid={systemPrompt.trim() === ""}
           rows={10}
           readOnly={readOnly}
           value={systemPrompt}
           onChange={(event) => onSystemPrompt(event.target.value)}
-          className={cn(getInputClassName({ size: "sm", invalid: systemPrompt.trim() === "" }), "mt-1 py-2 font-mono")}
+          className="mt-1 font-mono"
         />
-        <p className="mt-0.5 text-osce-caption text-osce-ink-400">
+        <p className="mt-0.5 text-osce-caption text-ink-subtle">
           What the marking model reads before the transcript. A version cannot be published without it.
         </p>
       </div>
 
       <div>
-        <p className="text-osce-meta font-medium text-osce-ink-500">Pacing, in seconds</p>
+        <p className="text-osce-meta font-medium text-ink-muted">Pacing, in seconds</p>
         <div className="mt-2 grid gap-3 sm:grid-cols-4">
           {PACING_KEYS.map((item) => (
             <label key={item.key} className="block">
-              <span className="block text-osce-caption font-medium text-osce-ink-500">{item.label}</span>
+              <span className="block text-osce-caption font-medium text-ink-muted">{item.label}</span>
               <input
                 type="number"
                 min={0}
@@ -82,15 +84,15 @@ export function MarkingPanel({
                 }}
                 className={cn(getInputClassName({ size: "sm" }), "mt-1")}
               />
-              <span className="mt-0.5 block text-osce-caption text-osce-ink-400">{item.hint}</span>
+              <span className="mt-0.5 block text-osce-caption text-ink-subtle">{item.hint}</span>
             </label>
           ))}
         </div>
       </div>
 
       <div>
-        <p className="text-osce-meta font-medium text-osce-ink-500">Examiner layout</p>
-        <p className="mt-0.5 text-osce-caption text-osce-ink-400">
+        <p className="text-osce-meta font-medium text-ink-muted">Examiner layout</p>
+        <p className="mt-0.5 text-osce-caption text-ink-subtle">
           The form a human reviewer fills in for a slot.
           {layoutRequired ? " Platform catalogue rubrics need one before they can be published." : ""}
         </p>

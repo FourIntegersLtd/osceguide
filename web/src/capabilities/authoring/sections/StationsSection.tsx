@@ -113,7 +113,7 @@ export function StationsSection() {
       >
         Published station cases for sessions and practice.
         {stations.data ? (
-          <span className="block text-sm font-normal text-b2c-text-secondary">
+          <span className="block text-osce-data font-normal text-ink-muted">
             {visibleCount}
             {pages.hasMore ? "+" : ""} station{visibleCount === 1 && !pages.hasMore ? "" : "s"}
             {published.length > 0 ? ` · ${published.length} template(s) available` : ""}
@@ -141,7 +141,7 @@ export function StationsSection() {
       ) : null}
 
       {stations.loading && !stations.data ? (
-        <p className="text-osce-body text-b2c-text-secondary" role="status">Loading stations…</p>
+        <p className="text-osce-body text-ink-muted" role="status">Loading stations…</p>
       ) : (
         <StationsTable
           stations={stations.data ?? []}

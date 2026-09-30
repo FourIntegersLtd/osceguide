@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@/foundation/ui";
+import { Checkbox, Input, Textarea } from "@/foundation/ui";
 import {
   mergeContent,
   setSpecialties,
@@ -72,41 +72,35 @@ export function SummaryContentForm({
         onChange={(items) => setList("psychosocial_aspects", items)}
       />
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink">Specialties</span>
-        <div className="max-h-48 overflow-y-auto rounded-control border border-border-strong p-3">
+        <span className="text-osce-meta font-medium text-ink-muted">Specialties</span>
+        <div className="max-h-48 overflow-y-auto rounded-osce-md border border-border p-3">
           <ul className="grid gap-2 sm:grid-cols-2">
             {MEDICAL_SPECIALTY_NAMES.map((name) => (
               <li key={name}>
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
+                <Checkbox
+                  label={name}
                     checked={selected.includes(name)}
                     onChange={() => toggleSpecialty(name)}
-                    className="rounded border-border-strong"
                   />
-                  {name}
-                </label>
               </li>
             ))}
           </ul>
         </div>
       </div>
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Body (markdown, optional)</span>
-        <textarea
+      <Textarea
+        label="Body (markdown, optional)"
           value={bodyMd}
           onChange={(e) => patch({ body_md: e.target.value })}
           rows={8}
-          className="rounded-control border border-border-strong bg-surface px-3 py-2 font-mono text-sm"
+          className="font-mono"
         />
-      </label>
       <Input
         label="Podcast URL"
         value={typeof content.podcast_url === "string" ? content.podcast_url : ""}
         onChange={(e) => patch({ podcast_url: e.target.value })}
       />
       {podcastUrl ? (
-        <div className="rounded-control border border-border p-4">
+        <div className="rounded-osce-md border border-border p-4">
           <PodcastPlayer
             episodes={episodes}
             index={episodeIndex}

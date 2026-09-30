@@ -41,7 +41,6 @@ export function StationTemplateNewScreen() {
 
   return (
     <PlatformTemplateWizardPageLayout
-      eyebrow="Station template"
       title="New template"
       subtitle="Choose the exam, name the template, pick a starting layout, then save a draft. Only saved (and published) templates appear in the catalogue list."
       backHref={listHref}
@@ -133,7 +132,7 @@ function CreateStationTemplateWizardBody({
               <div className="space-y-1">
                 <label
                   htmlFor="station-template-exam"
-                  className="text-osce-caption font-medium text-b2b-mid"
+                  className="text-osce-caption font-medium text-ink-muted"
                 >
                   Exam
                 </label>
@@ -159,7 +158,7 @@ function CreateStationTemplateWizardBody({
           />
         )}
         {error ? (
-          <div className="mt-4 rounded-md border border-osce-danger-border bg-osce-danger-bg px-3 py-2 text-osce-body text-osce-danger-text">
+          <div className="mt-4 rounded-osce-md border border-osce-danger-border bg-osce-danger-bg px-3 py-2 text-osce-body text-osce-danger-text">
             {error}
           </div>
         ) : null}

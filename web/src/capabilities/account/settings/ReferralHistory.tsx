@@ -6,10 +6,8 @@ import { HiInformationCircle, HiOutlineArrowPath, HiOutlineMagnifyingGlass } fro
 import Table, { type Column, type FetchPageResult } from "@/foundation/table/Table";
 import {
   Alert,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardHeader,
   Button,
+  Panel,
 } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
@@ -47,43 +45,34 @@ export default function ReferralHistory() {
 
   if (pages.state.loading && pages.state.data === null) {
     return (
-      <B2CPanelCard className="mt-0 mb-24">
-        <B2CPanelCardHeader>Referral history</B2CPanelCardHeader>
-        <B2CPanelCardBody>
+      <Panel title="Referral history" className="mb-24">
           <div className="flex items-center justify-center py-8">
             <HiOutlineArrowPath className="h-8 w-8 animate-spin text-osce-accent" />
           </div>
-        </B2CPanelCardBody>
-      </B2CPanelCard>
+      </Panel>
     );
   }
 
   if (pages.state.error) {
     return (
-      <B2CPanelCard className="mt-0 mb-24">
-        <B2CPanelCardHeader>Referral history</B2CPanelCardHeader>
-        <B2CPanelCardBody>
-          <p className="text-osce-body text-b2c-text-secondary">
+      <Panel title="Referral history" className="mb-24">
+          <p className="text-osce-body text-ink-muted">
             We could not read your referral history. Try again in a moment.
           </p>
-        </B2CPanelCardBody>
-      </B2CPanelCard>
+      </Panel>
     );
   }
 
   if (rows.length === 0 && !query) {
     return (
-      <B2CPanelCard className="mt-0 mb-24">
-        <B2CPanelCardHeader>Referral history</B2CPanelCardHeader>
-        <B2CPanelCardBody>
-          <div className="flex items-start gap-3 rounded-md border border-b2c-border bg-b2c-surface-muted p-3 sm:p-4">
+      <Panel title="Referral history" className="mb-24">
+          <div className="flex items-start gap-3 rounded-osce-md border border-border bg-canvas p-3 sm:p-4">
             <HiInformationCircle className="mt-0.5 h-5 w-5 shrink-0 text-osce-accent" />
-            <p className="text-osce-body text-b2c-text-secondary">
+            <p className="text-osce-body text-ink-muted">
               You currently have no referral history. Share your code to start earning!
             </p>
           </div>
-        </B2CPanelCardBody>
-      </B2CPanelCard>
+      </Panel>
     );
   }
 
@@ -93,7 +82,7 @@ export default function ReferralHistory() {
         <label className="relative block w-full max-w-md">
           <span className="sr-only">Search by referee email</span>
           <HiOutlineMagnifyingGlass
-            className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-b2c-text-muted"
+            className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-subtle"
             aria-hidden
           />
           <input
@@ -101,7 +90,7 @@ export default function ReferralHistory() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by referee email..."
-            className="w-full appearance-none rounded-lg border border-b2c-border bg-b2c-surface-muted py-2.5 pl-10 pr-3 text-osce-body text-osce-ink-900 outline-none placeholder:text-osce-ink-400 focus:border-osce-accent focus:bg-osce-surface focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+            className="w-full appearance-none rounded-osce-lg border border-border bg-canvas py-2.5 pl-10 pr-3 text-osce-body text-ink outline-none placeholder:text-ink-subtle focus:border-osce-accent focus:bg-osce-surface focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
           />
         </label>
       </div>
@@ -137,7 +126,7 @@ function ReferralHistoryTable({ rows }: { rows: ReferralHistoryRow[] }) {
       render: (row) => (
         <Link
           href={hrefFor(referralDetailPath(row.id))}
-          className="cursor-pointer text-osce-ink-900 hover:text-osce-accent-hover hover:underline"
+          className="cursor-pointer text-ink hover:text-osce-accent-hover hover:underline"
         >
           {row.referee_email}
         </Link>
@@ -164,12 +153,12 @@ function ReferralHistoryTable({ rows }: { rows: ReferralHistoryRow[] }) {
       key: "payout_status",
       render: (row) => (
         <span
-          className={`rounded-md px-2.5 py-1 text-osce-caption font-medium capitalize ${
+          className={`rounded-osce-md px-2.5 py-1 text-osce-caption font-medium capitalize ${
             row.payout_status === "paid"
               ? "bg-osce-success-bg text-osce-success-text"
               : row.payout_status === "unpaid"
                 ? "bg-osce-warning-bg text-osce-warning-text"
-                : "bg-b2c-secondary text-b2c-text-secondary"
+                : "bg-surface-raised text-ink-muted"
           }`}
         >
           {row.payout_status}

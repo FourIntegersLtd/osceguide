@@ -1,6 +1,7 @@
 "use client";
 
 import { Prose } from "@/capabilities/media/Prose";
+import { Textarea } from "@/foundation/ui";
 
 export function BlogContentForm({
   content,
@@ -13,19 +14,23 @@ export function BlogContentForm({
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Article body (markdown)</span>
-        <textarea
-          value={bodyMd}
-          onChange={(e) => onChange({ ...content, body_md: e.target.value })}
-          rows={18}
-          className="rounded-control border border-border-strong bg-surface px-3 py-2 font-mono text-sm"
-        />
-      </label>
-      <div className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Preview</span>
-        <div className="min-h-[12rem] rounded-control border border-border bg-surface-raised p-4">
-          {bodyMd.trim() ? <Prose content={bodyMd} /> : <p className="text-ink-subtle">Nothing to preview yet.</p>}
+      <Textarea
+        label="Article body (markdown)"
+        value={bodyMd}
+        onChange={(e) => onChange({ ...content, body_md: e.target.value })}
+        rows={18}
+        className="font-mono"
+      />
+      <div className="flex flex-col gap-1.5">
+        <span className="text-osce-meta font-medium text-ink-muted">
+          Preview
+        </span>
+        <div className="min-h-[12rem] rounded-osce-md bg-surface-raised p-4 text-osce-body">
+          {bodyMd.trim() ? (
+            <Prose content={bodyMd} />
+          ) : (
+            <p className="text-ink-subtle">Nothing to preview yet.</p>
+          )}
         </div>
       </div>
     </div>

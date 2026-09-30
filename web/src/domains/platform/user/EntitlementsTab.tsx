@@ -1,7 +1,17 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, Card, Input, Panel, Row, RowList } from "@/foundation/ui";
+import {
+  Alert,
+  AsyncBoundary,
+  Badge,
+  Button,
+  DetailLayout,
+  Input,
+  Panel,
+  Row,
+  RowList,
+} from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   extendEntitlement,
@@ -21,34 +31,71 @@ import { asContractDate, formatDay } from "@/domains/platform/support";
  * source `admin`, which the backend has always allowed and no screen ever
  * wrote; the reason goes in the audit row, not in a chat somewhere.
  */
-export function EntitlementsTab({ userId, examCode }: { userId: string; examCode?: string | null }) {
-  const state = useAsync((signal) => listUserEntitlements(userId, signal), [userId]);
+export function EntitlementsTab({
+  userId,
+  examCode,
+}: {
+  userId: string;
+  examCode?: string | null;
+}) {
+  const state = useAsync(
+    (signal) => listUserEntitlements(userId, signal),
+    [userId],
+  );
 
   return (
-    <div className="flex flex-col gap-8">
-      <Panel title="Access" description="Every grant, live or not, newest last.">
-        <AsyncBoundary
-          state={state}
-          isEmpty={(page) => page.items.length === 0}
-          empty={{ title: "No grants", description: "Only the free trial, if any of it is left." }}
+    <DetailLayout
+      main={
+        <Panel
+          title="Access"
+          description="Every grant, live or not, newest last."
+          padding="none"
         >
-          {(page) => (
-            <RowList>
-              {page.items.map((grant) => (
-                <EntitlementRow key={grant.id} grant={grant} onChanged={state.reload} />
-              ))}
-            </RowList>
-          )}
-        </AsyncBoundary>
-      </Panel>
-      <GrantPanel userId={userId} examCode={examCode} onGranted={state.reload} />
-    </div>
+          <AsyncBoundary
+            state={state}
+            isEmpty={(page) => page.items.length === 0}
+            empty={{
+              title: "No grants",
+              description: "Only the free trial, if any of it is left.",
+              bare: true,
+            }}
+          >
+            {(page) => (
+              <RowList flush>
+                {page.items.map((grant) => (
+                  <EntitlementRow
+                    key={grant.id}
+                    grant={grant}
+                    onChanged={state.reload}
+                  />
+                ))}
+              </RowList>
+            )}
+          </AsyncBoundary>
+        </Panel>
+      }
+      rail={
+        <GrantPanel
+          userId={userId}
+          examCode={examCode}
+          onGranted={state.reload}
+        />
+      }
+    />
   );
 }
 
-function EntitlementRow({ grant, onChanged }: { grant: PlatformEntitlement; onChanged: () => void }) {
+function EntitlementRow({
+  grant,
+  onChanged,
+}: {
+  grant: PlatformEntitlement;
+  onChanged: () => void;
+}) {
   const toast = useToast();
-  const [endsAt, setEndsAt] = useState(grant.ends_at ? grant.ends_at.slice(0, 10) : "");
+  const [endsAt, setEndsAt] = useState(
+    grant.ends_at ? grant.ends_at.slice(0, 10) : "",
+  );
 
   return (
     <Row className="flex-col items-stretch sm:flex-row sm:items-center">
@@ -57,13 +104,16 @@ function EntitlementRow({ grant, onChanged }: { grant: PlatformEntitlement; onCh
           {grant.exam_code} · {grant.source.replace(/_/g, " ")}
         </p>
         <p className="text-osce-meta text-ink-subtle">
-          {formatDay(grant.starts_at)} → {grant.ends_at ? formatDay(grant.ends_at) : "open-ended"}
+          {formatDay(grant.starts_at)} →{" "}
+          {grant.ends_at ? formatDay(grant.ends_at) : "open-ended"}
           {grant.revoked_at ? ` · revoked ${formatDay(grant.revoked_at)}` : ""}
           {grant.source_ref ? ` · ${grant.source_ref}` : ""}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={grant.live ? "success" : "neutral"}>{grant.live ? "Live" : grant.revoked_at ? "Revoked" : "Not live"}</Badge>
+        <Badge tone={grant.live ? "success" : "neutral"}>
+          {grant.live ? "Live" : grant.revoked_at ? "Revoked" : "Not live"}
+        </Badge>
         {grant.revoked_at ? null : (
           <>
             <InlineAction
@@ -72,7 +122,10 @@ function EntitlementRow({ grant, onChanged }: { grant: PlatformEntitlement; onCh
               requireReason={false}
               reasonLabel="Note"
               onConfirm={async (note) => {
-                await extendEntitlement(grant.id, { endsAt: asContractDate(endsAt), note: note || null });
+                await extendEntitlement(grant.id, {
+                  endsAt: asContractDate(endsAt),
+                  note: note || null,
+                });
                 toast.success("End date saved");
                 onChanged();
               }}
@@ -123,7 +176,11 @@ function GrantPanel({
       setBusy(true);
       setError(null);
       try {
-        await grantEntitlement(userId, { examCode: code.trim(), endsAt: asContractDate(endsAt), note: note.trim() });
+        await grantEntitlement(userId, {
+          examCode: code.trim(),
+          endsAt: asContractDate(endsAt),
+          note: note.trim(),
+        });
         toast.success(`${code.trim()} granted`);
         setNote("");
         onGranted();
@@ -140,27 +197,39 @@ function GrantPanel({
     <Panel
       title="Grant access"
       description="For a payment taken under another address, a sponsor's seat, or a goodwill month. A purchase that failed to apply is replayed from Billing instead."
+      padding="sm"
     >
-      <Card padding="md">
-        <form onSubmit={submit} className="flex max-w-lg flex-col gap-3">
-          {error ? <Alert tone="danger">{error}</Alert> : null}
-          <Input label="Exam code" value={code} onChange={(event) => setCode(event.target.value)} disabled={busy} required />
-          <Input
-            type="date"
-            label="Access ends"
-            value={endsAt}
-            onChange={(event) => setEndsAt(event.target.value)}
-            disabled={busy}
-            hint="Leave empty for open-ended."
-          />
-          <Input label="Why" value={note} onChange={(event) => setNote(event.target.value)} disabled={busy} required hint="Goes in the audit log." />
-          <div className="flex justify-end">
-            <Button type="submit" disabled={busy || !code.trim() || !note.trim()}>
-              {busy ? "Granting…" : "Grant"}
-            </Button>
-          </div>
-        </form>
-      </Card>
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        {error ? <Alert tone="danger">{error}</Alert> : null}
+        <Input
+          label="Exam code"
+          value={code}
+          onChange={(event) => setCode(event.target.value)}
+          disabled={busy}
+          required
+        />
+        <Input
+          type="date"
+          label="Access ends"
+          value={endsAt}
+          onChange={(event) => setEndsAt(event.target.value)}
+          disabled={busy}
+          hint="Leave empty for open-ended."
+        />
+        <Input
+          label="Why"
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
+          disabled={busy}
+          required
+          hint="Goes in the audit log."
+        />
+        <div className="flex justify-end">
+          <Button type="submit" disabled={busy || !code.trim() || !note.trim()}>
+            {busy ? "Granting…" : "Grant"}
+          </Button>
+        </div>
+      </form>
     </Panel>
   );
 }

@@ -49,7 +49,7 @@ export function AuthoringListRow({
         <button
           type="button"
           onClick={onOpen}
-          className="min-w-0 flex-1 rounded-md text-left focus:outline-none focus:ring-2 focus:ring-osce-accent/20 focus:ring-offset-1"
+          className="min-w-0 flex-1 rounded-osce-md text-left focus:outline-none focus:ring-2 focus:ring-osce-accent/20 focus:ring-offset-1"
         >
           {identity}
         </button>

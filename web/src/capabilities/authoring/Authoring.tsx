@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { LuPencilRuler } from "react-icons/lu";
 import { B2CSegmentedTabs, PageHeader, PlatformTabbedScreen } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { supportsProgrammes } from "@/capabilities/authoring/api";
@@ -61,6 +62,8 @@ export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
     return (
       <PlatformTabbedScreen
         title="Authoring"
+        description="Stations, templates, rubrics, exams and programmes."
+        icon={LuPencilRuler}
         tabs={items}
         value={active}
         onChange={onTabChange}

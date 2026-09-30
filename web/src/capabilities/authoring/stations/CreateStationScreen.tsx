@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, getInputClassName } from "@/foundation/ui";
+import { Alert, Button, Checkbox, getInputClassName, Select, Textarea } from "@/foundation/ui";
 import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { useSurface } from "@/capabilities";
 import { listStationTemplates } from "@/capabilities/authoring/api";
@@ -75,7 +75,6 @@ export function CreateStationScreen() {
 
   return (
     <PlatformTemplateWizardPageLayout
-      eyebrow="Station"
       title="New station"
       subtitle="Choose a published template, fill in content manually or with AI, then save as draft or publish."
       backHref={listHref}
@@ -100,7 +99,7 @@ export function CreateStationScreen() {
       {form.error ? <Alert tone="danger">{form.error}</Alert> : null}
 
       <div className="space-y-6 p-5 sm:p-6">
-        <div className="border-b border-b2b-border">
+        <div className="border-b border-border">
           <div className="flex items-center gap-2">
             {(
               [
@@ -132,7 +131,7 @@ export function CreateStationScreen() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="create-station-screen-station-title" className="block text-osce-body font-semibold text-b2b-headline">
+            <label htmlFor="create-station-screen-station-title" className="block text-osce-body font-semibold text-ink">
               Station title
             </label>
             <input
@@ -144,13 +143,13 @@ export function CreateStationScreen() {
             />
           </div>
           <div>
-            <label htmlFor="create-station-screen-template" className="block text-osce-body font-semibold text-b2b-headline">Template</label>
-            <select
+            <label htmlFor="create-station-screen-template" className="block text-osce-body font-semibold text-ink">Template</label>
+            <Select
               id="create-station-screen-template"
               value={form.templateVersionId}
               onChange={(e) => form.handleTemplateSelect(e.target.value)}
               disabled={templates.loading}
-              className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline disabled:opacity-60"
+              className="mt-1"
             >
               <option value="">No template — write it from a prompt</option>
               {choices.map((choice) => (
@@ -158,8 +157,8 @@ export function CreateStationScreen() {
                   {choice.label}
                 </option>
               ))}
-            </select>
-            <p className="mt-1 text-osce-caption text-b2b-mid">
+            </Select>
+            <p className="mt-1 text-osce-caption text-ink-muted">
               Only published templates can be used for stations. A station with no template is
               still a real station — it just borrows the exam&apos;s own shape rather than a reusable
               one.
@@ -175,12 +174,12 @@ export function CreateStationScreen() {
           */}
           {!form.templateVersionId ? (
             <div>
-              <label htmlFor="create-station-screen-exam" className="block text-osce-body font-semibold text-b2b-headline">Exam</label>
-              <select
+              <label htmlFor="create-station-screen-exam" className="block text-osce-body font-semibold text-ink">Exam</label>
+              <Select
                 id="create-station-screen-exam"
                 value={form.examCode}
                 onChange={(e) => form.setExamCode(e.target.value)}
-                className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
+                className="mt-1"
               >
                 <option value="">Select an exam…</option>
                 {examCatalog.exams.map((exam) => (
@@ -188,20 +187,20 @@ export function CreateStationScreen() {
                     {exam.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           ) : null}
 
           {!form.templateVersionId && stationSubtypes.length > 0 ? (
             <div>
-              <label htmlFor="create-station-screen-station-type" className="block text-osce-body font-semibold text-b2b-headline">
+              <label htmlFor="create-station-screen-station-type" className="block text-osce-body font-semibold text-ink">
                 Station type
               </label>
-              <select
+              <Select
                 id="create-station-screen-station-type"
                 value={form.stationSubtype}
                 onChange={(e) => form.setStationSubtype(e.target.value)}
-                className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
+                className="mt-1"
               >
                 <option value="">Choose the kind of station…</option>
                 {stationSubtypes.map((subtype) => (
@@ -209,8 +208,8 @@ export function CreateStationScreen() {
                     {subtype.label}
                   </option>
                 ))}
-              </select>
-              <p className="mt-1 text-osce-caption text-b2b-mid">
+              </Select>
+              <p className="mt-1 text-osce-caption text-ink-muted">
                 These stations are scored differently, so the prompt is steered by the type rather
                 than left to guess.
               </p>
@@ -233,17 +232,17 @@ export function CreateStationScreen() {
         ) : null}
 
         {form.mode === "ai" && (form.structure || (form.examCode && promptGeneration)) ? (
-          <div className="rounded-lg border border-b2b-border bg-white p-4">
-            <p className="text-osce-body font-semibold text-b2b-headline">Generate draft</p>
-            <p className="mt-1 text-osce-body text-b2b-mid">
+          <div className="rounded-osce-lg border border-border bg-white p-4">
+            <p className="text-osce-body font-semibold text-ink">Generate draft</p>
+            <p className="mt-1 text-osce-body text-ink-muted">
               Paste a short prompt (a few lines). We’ll auto-fill the template fields below; you can
               edit anything afterward.
             </p>
-            <textarea
+            <Textarea
               value={form.prompt}
               onChange={(e) => form.setPrompt(e.target.value)}
               rows={6}
-              className="mt-3 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
+              className="mt-3"
               placeholder="e.g. 72F falls at home, hip pain, shortened externally rotated leg. Candidate to assess and plan management including peri-op considerations."
             />
             <div className="mt-3 flex items-center justify-end gap-2">
@@ -274,11 +273,11 @@ export function CreateStationScreen() {
         ) : hasDraftContent(form.content) ? (
           <GeneratedDraft content={form.content} />
         ) : (
-          <div className="rounded-lg border border-dashed border-b2b-border bg-b2b-cream/40 px-4 py-8 text-center">
-            <p className="text-osce-body font-medium text-b2b-headline">
+          <div className="rounded-osce-lg border border-dashed border-border bg-surface-raised/40 px-4 py-8 text-center">
+            <p className="text-osce-body font-medium text-ink">
               {form.needsTemplateForLayout ? "This exam needs a template" : "Choose a template or an exam"}
             </p>
-            <p className="mt-1 text-osce-body text-b2b-mid">
+            <p className="mt-1 text-osce-body text-ink-muted">
               {form.needsTemplateForLayout
                 ? "This exam has no built-in station layout, so pick a published template to write against."
                 : "The full station form appears here as soon as you pick a published template, or say which exam this station is for."}
@@ -286,18 +285,15 @@ export function CreateStationScreen() {
           </div>
         )}
 
-        <label className="flex cursor-pointer items-center gap-2 text-osce-body text-b2b-graphite">
-          <input
-            type="checkbox"
-            checked={publishAllowed && form.publishNow}
-            disabled={!publishAllowed || form.generating}
-            onChange={(e) => form.setPublishNow(e.target.checked)}
-            className="h-4 w-4 rounded border-b2b-border text-b2b-accent disabled:cursor-not-allowed disabled:opacity-50"
-          />
-          Publish immediately (makes station selectable in circuits)
-        </label>
+        <Checkbox
+          checked={publishAllowed && form.publishNow}
+          disabled={!publishAllowed || form.generating}
+          onChange={(e) => form.setPublishNow(e.target.checked)}
+          label="Publish immediately (makes station selectable in circuits)"
+          className="items-center"
+        />
         {!publishAllowed ? (
-          <p className="text-osce-meta text-b2b-mid">
+          <p className="text-osce-meta text-ink-muted">
             Generate a draft, or pick a template, before publishing. The text has to be on screen first.
           </p>
         ) : null}
@@ -332,16 +328,16 @@ function hasDraftContent(content: Record<string, unknown>): boolean {
 
 function GeneratedDraft({ content }: { content: Record<string, unknown> }) {
   return (
-    <div className="rounded-lg border border-b2b-border bg-white p-4">
-      <p className="text-osce-body font-semibold text-b2b-headline">Generated draft</p>
-      <p className="mt-1 text-osce-body text-b2b-mid">
+    <div className="rounded-osce-lg border border-border bg-white p-4">
+      <p className="text-osce-body font-semibold text-ink">Generated draft</p>
+      <p className="mt-1 text-osce-body text-ink-muted">
         Read this before you publish. It is not live until you save.
       </p>
       <dl className="mt-4 space-y-3">
         {Object.entries(content).map(([key, value]) => (
           <div key={key}>
-            <dt className="text-osce-meta font-medium text-b2b-mid">{key}</dt>
-            <dd className="mt-1 whitespace-pre-wrap text-osce-body text-b2b-headline">
+            <dt className="text-osce-meta font-medium text-ink-muted">{key}</dt>
+            <dd className="mt-1 whitespace-pre-wrap text-osce-body text-ink">
               {typeof value === "string" || typeof value === "number"
                 ? String(value)
                 : JSON.stringify(value, null, 2)}

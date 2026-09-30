@@ -8,7 +8,7 @@ import {
   HiOutlinePlusCircle,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert, ConfirmModal } from "@/foundation/ui";
+import { Alert, Checkbox, ConfirmModal } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -60,15 +60,12 @@ export function ExamsSection() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="inline-flex cursor-pointer items-center gap-2 text-osce-body text-b2b-mid">
-          <input
-            type="checkbox"
-            checked={draftsOnly}
-            onChange={(e) => setDraftsOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-b2b-border"
-          />
-          Drafts only
-        </label>
+        <Checkbox
+          checked={draftsOnly}
+          onChange={(e) => setDraftsOnly(e.target.checked)}
+          label="Drafts only"
+          className="items-center"
+        />
         <AuthoringButton
           variant="commit"
           size="sm"

@@ -1,15 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineCalendarDays } from "react-icons/hi2";
 import {
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
   ModalHelper,
   ModalPrimaryButton,
+  Panel,
   productTokens,
 } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
@@ -18,12 +14,7 @@ import { useCurrentExam } from "@/foundation/session";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
-const {
-  b2cFieldLabel,
-  b2cSettingsCardHeaderIcon,
-  b2cSettingsFieldInput,
-  b2cSettingsFieldInputDisabled,
-} = productTokens;
+const { b2cFieldLabel, b2cSettingsFieldInput, b2cSettingsFieldInputDisabled } = productTokens;
 
 /**
  * How an exam reads on the settings screen.
@@ -68,12 +59,8 @@ function ExamCards({ me }: { me: Me }) {
 
   return (
     <>
-      <B2CPanelCard className="mt-0">
-        <B2CPanelCardHeader>
-          <HiOutlineCalendarDays className={b2cSettingsCardHeaderIcon} aria-hidden />
-          Exam
-        </B2CPanelCardHeader>
-        <B2CPanelCardBody className="space-y-4">
+      <Panel title="Exam">
+        <div className="space-y-4">
           <ModalHelper className="mt-0">
             Your exam type and date — the same options available from your dashboard.
           </ModalHelper>
@@ -88,12 +75,12 @@ function ExamCards({ me }: { me: Me }) {
               disabled
               className={b2cSettingsFieldInputDisabled}
             />
-            <p className="mt-1.5 text-osce-meta text-b2c-text-muted">
+            <p className="mt-1.5 text-osce-meta text-ink-subtle">
               Exam type is set when you signed up. Contact support if you need to switch exams.
             </p>
           </div>
-        </B2CPanelCardBody>
-      </B2CPanelCard>
+        </div>
+      </Panel>
 
       <ExamDateCard
         initialDate={me.exam_date ?? ""}
@@ -142,9 +129,8 @@ function ExamDateCard({
   const timeLabel = dateLabel.replace(/date$/i, "time");
 
   return (
-    <B2CPanelCard className="mt-0">
-      <B2CPanelCardHeader className="text-osce-accent-hover">{dateLabel}</B2CPanelCardHeader>
-      <B2CPanelCardBody className="space-y-4">
+    <Panel title={dateLabel}>
+      <div className="space-y-4">
         <ModalHelper className="mt-0">
           Adding your {dateLabel.toLowerCase()} helps us personalize your study plan and track your
           progress more effectively.
@@ -173,12 +159,12 @@ function ExamDateCard({
             className={`${b2cSettingsFieldInput} sm:w-32`}
           />
         </div>
-      </B2CPanelCardBody>
-      <B2CPanelCardFooter>
+      </div>
+      <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
         <ModalPrimaryButton type="button" onClick={() => void save()} disabled={saving}>
           {saving ? "Saving…" : "Save date"}
         </ModalPrimaryButton>
-      </B2CPanelCardFooter>
-    </B2CPanelCard>
+      </div>
+    </Panel>
   );
 }

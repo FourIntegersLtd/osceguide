@@ -39,7 +39,7 @@ export default function ChooseExam() {
   const exams = useAsync((signal) => listExams(signal), []);
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-b2c-surface-muted px-4 py-10">
+    <div className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
       <B2CPanelCard className="mt-0 w-full max-w-lg overflow-hidden">
         <B2CPanelCardHeader>
           <HiOutlineAcademicCap className={b2cSettingsCardHeaderIcon} aria-hidden />
@@ -98,7 +98,7 @@ function ExamChoice({ exams }: { exams: Exam[] }) {
         only by contacting support.
       </ModalHelper>
 
-      <div className="-mx-3 divide-y divide-b2c-border sm:-mx-4" role="radiogroup" aria-label="Exam">
+      <div className="-mx-3 divide-y divide-border sm:-mx-4" role="radiogroup" aria-label="Exam">
         {exams.map((exam) => {
           const isSelected = selected === exam.code;
           return (
@@ -112,19 +112,19 @@ function ExamChoice({ exams }: { exams: Exam[] }) {
                 "flex w-full flex-col items-start gap-0.5 px-3 py-4 text-left transition sm:px-4",
                 isSelected
                   ? "bg-osce-accent-muted hover:bg-osce-accent-subtle"
-                  : "hover:bg-b2c-surface-muted",
+                  : "hover:bg-canvas",
               )}
             >
               <span
                 className={cn(
                   "text-osce-body font-medium",
-                  isSelected ? "text-osce-accent-hover" : "text-osce-ink-900",
+                  isSelected ? "text-osce-accent-hover" : "text-ink",
                 )}
               >
                 {exam.code.toUpperCase()}
               </span>
               {exam.name.toUpperCase() !== exam.code.toUpperCase() ? (
-                <span className="text-osce-meta text-b2c-text-muted">{exam.name}</span>
+                <span className="text-osce-meta text-ink-subtle">{exam.name}</span>
               ) : null}
             </button>
           );

@@ -2,11 +2,23 @@
 
 import { useCallback, useState } from "react";
 import { LuShieldCheck } from "react-icons/lu";
-import { AsyncBoundary, Badge, Button, ConfirmModal, Panel, Row, RowList } from "@/foundation/ui";
-import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
+import {
+  AsyncBoundary,
+  Badge,
+  Button,
+  ConfirmModal,
+  Panel,
+  PlatformPageHeader,
+  Row,
+  RowList,
+} from "@/foundation/ui";
 import { InvitePlatformAdminModal } from "@/domains/platform/InvitePlatformAdminModal";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
-import { listPlatformAdmins, setPlatformAdmin, type User } from "@/domains/platform/api";
+import {
+  listPlatformAdmins,
+  setPlatformAdmin,
+  type User,
+} from "@/domains/platform/api";
 import { formatDay } from "@/domains/platform/support";
 import { useSession } from "@/foundation/session";
 
@@ -39,7 +51,7 @@ export function PlatformTeam() {
   }, [revokeTarget, state, toast]);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Platform team"
         description="Everyone who may open this staff console."
@@ -57,30 +69,39 @@ export function PlatformTeam() {
         onInvited={() => state.reload()}
       />
 
-      <Panel title="Administrators">
+      <Panel title="Administrators" padding="none">
         <AsyncBoundary
           state={state}
           isEmpty={(rows) => rows.length === 0}
           empty={{
             title: "No platform administrators",
-            description: "Add someone by email. They will be invited to set a password if they are new.",
+            description:
+              "Add someone by email. They will be invited to set a password if they are new.",
             action: (
-              <Button variant="secondary" size="sm" onClick={() => setInviteOpen(true)}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setInviteOpen(true)}
+              >
                 Add team member
               </Button>
             ),
+            bare: true,
           }}
         >
           {(admins) => (
-            <RowList>
+            <RowList flush>
               {admins.map((user) => {
                 const isSelf = selfId !== null && user.id === selfId;
                 return (
                   <Row key={user.id}>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-osce-data font-medium text-ink">{user.email}</p>
+                      <p className="truncate text-osce-data font-medium text-ink">
+                        {user.email}
+                      </p>
                       <p className="truncate text-osce-meta text-ink-subtle">
-                        {user.name || "No name"} · joined {formatDay(user.created_at)}
+                        {user.name || "No name"} · joined{" "}
+                        {formatDay(user.created_at)}
                         {isSelf ? " · you" : ""}
                       </p>
                     </div>
@@ -90,7 +111,11 @@ export function PlatformTeam() {
                         Console
                       </Badge>
                       {isSelf ? null : (
-                        <Button variant="ghost" size="sm" onClick={() => setRevokeTarget(user)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setRevokeTarget(user)}
+                        >
                           Revoke
                         </Button>
                       )}

@@ -22,7 +22,7 @@ export function StringListField({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-ink">{label}</span>
+      <span className="text-osce-meta font-medium text-ink-muted">{label}</span>
       <ul className="flex flex-col gap-2">
         {items.map((line, index) => (
           <li key={index} className="flex gap-2">

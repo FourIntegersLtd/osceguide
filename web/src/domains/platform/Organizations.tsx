@@ -5,7 +5,7 @@ import { LuBuilding2 } from "react-icons/lu";
 import {
   AsyncBoundary,
   Button,
-  Card,
+  EmptyPanel,
   Panel,
   PlatformFilterBar,
   PlatformFilterDivider,
@@ -13,10 +13,14 @@ import {
   PlatformFilterSelect,
   PlatformPageHeader,
   RowLink,
+  RowList,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { listAllOrganizations, type Organization } from "@/domains/platform/api";
+import {
+  listAllOrganizations,
+  type Organization,
+} from "@/domains/platform/api";
 import { StatusBadge } from "@/domains/platform/chrome";
 import { ProvisionModal } from "@/domains/platform/ProvisionPanel";
 import { ORG_STATUSES, ORG_TYPES } from "@/domains/platform/support";
@@ -97,7 +101,11 @@ export function Organizations() {
           ))}
         </PlatformFilterSelect>
         <PlatformFilterDivider />
-        <PlatformFilterSelect aria-label="Status" value={status} onChange={setStatus}>
+        <PlatformFilterSelect
+          aria-label="Status"
+          value={status}
+          onChange={setStatus}
+        >
           <option value="">All statuses</option>
           {ORG_STATUSES.map((value) => (
             <option key={value} value={value}>
@@ -131,22 +139,30 @@ export function Organizations() {
                 description: "Try a different name, or clear the type filter.",
               }
             : status
-            ? {
-                title: `No organisation is ${status}`,
-                description: "Clear the status filter to see the rest of the directory.",
-                action: (
-                  <Button variant="secondary" size="sm" onClick={() => setStatus("")}>
-                    Clear the filter
-                  </Button>
-                ),
-              }
-            : {
-                title: "No organisations yet",
-                description: "Provision one to give a customer its workspace.",
-              }
+              ? {
+                  title: `No organisation is ${status}`,
+                  description:
+                    "Clear the status filter to see the rest of the directory.",
+                  action: (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setStatus("")}
+                    >
+                      Clear the filter
+                    </Button>
+                  ),
+                }
+              : {
+                  title: "No organisations yet",
+                  description:
+                    "Provision one to give a customer its workspace.",
+                }
         }
       >
-        {(rows) => <Directory rows={rows} typeFilter={typeFilter} hrefFor={hrefFor} />}
+        {(rows) => (
+          <Directory rows={rows} typeFilter={typeFilter} hrefFor={hrefFor} />
+        )}
       </AsyncBoundary>
     </div>
   );
@@ -169,19 +185,26 @@ function Directory({
       rows: visible.filter((row) => row.org_type === type.value),
       // An org_type the frontend has not heard of still has to appear
       // somewhere, and the first group is where the odd one out goes.
-      extra: type.value === ORG_TYPES[0].value
-        ? visible.filter((row) => !ORG_TYPES.some((t) => t.value === row.org_type))
-        : [],
+      extra:
+        type.value === ORG_TYPES[0].value
+          ? visible.filter(
+              (row) => !ORG_TYPES.some((t) => t.value === row.org_type),
+            )
+          : [],
     })).filter((group) => typeFilter === "all" || group.value === typeFilter);
   }, [rows, typeFilter]);
 
-  const total = groups.reduce((sum, group) => sum + group.rows.length + group.extra.length, 0);
+  const total = groups.reduce(
+    (sum, group) => sum + group.rows.length + group.extra.length,
+    0,
+  );
 
   if (total === 0) {
     return (
-      <Card padding="md">
-        <p className="text-osce-data text-b2c-text-muted">Nothing matches those filters.</p>
-      </Card>
+      <EmptyPanel
+        title="Nothing matches those filters"
+        description="Try a different name, or clear the type filter."
+      />
     );
   }
 
@@ -191,18 +214,24 @@ function Directory({
         const groupRows = [...group.rows, ...group.extra];
         if (groupRows.length === 0) return null;
         return (
-          <Panel key={group.value} title={`${group.label}s · ${groupRows.length}`} padding="none">
-            <ul className="divide-y divide-b2c-border">
+          <Panel
+            key={group.value}
+            title={`${group.label}s · ${groupRows.length}`}
+            padding="none"
+          >
+            <RowList flush>
               {groupRows.map((organization) => (
                 <RowLink
                   key={organization.id}
-                  href={hrefFor(`/organizations/${encodeURIComponent(organization.slug)}`)}
+                  href={hrefFor(
+                    `/organizations/${encodeURIComponent(organization.slug)}`,
+                  )}
                   title={organization.name}
                   subtitle={`/${organization.slug} · ${organization.org_type}`}
                   trailing={<StatusBadge status={organization.status} />}
                 />
               ))}
-            </ul>
+            </RowList>
           </Panel>
         );
       })}

@@ -3,7 +3,7 @@ import { extendTailwindMerge } from "tailwind-merge";
 
 /**
  * Semantic size tokens must not be confused with text colors (and vice
- * versa) — `text-osce-body` is a size, `text-osce-ink-900` is a color, and
+ * versa) — `text-osce-body` is a size, `text-ink` is a color, and
  * tailwind-merge cannot tell them apart without being told.
  */
 const twMerge = extendTailwindMerge({
@@ -24,15 +24,15 @@ const twMerge = extendTailwindMerge({
       "text-color": [
         {
           text: [
-            "osce-ink-900",
-            "osce-ink-800",
-            "osce-ink-700",
-            "osce-ink-600",
-            "osce-ink-500",
-            "osce-ink-400",
-            "b2c-text-primary",
-            "b2c-text-secondary",
-            "b2c-text-muted",
+            "ink",
+            "ink",
+            "ink-muted",
+            "ink-muted",
+            "ink-muted",
+            "ink-subtle",
+            "ink",
+            "ink-muted",
+            "ink-subtle",
           ],
         },
       ],

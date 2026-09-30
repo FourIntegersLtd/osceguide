@@ -21,7 +21,7 @@ export default function ReceiptList({ receipts }: { receipts: Receipt[] }) {
   if (receipts.length === 1 && single) return <ReceiptLink receipt={single} />;
 
   return (
-    <ul className="divide-y divide-b2c-border rounded-xl border border-b2c-border">
+    <ul className="divide-y divide-border rounded-xl border border-border">
       {receipts.map((receipt) => (
         <ReceiptRow key={receipt.receipt_id} receipt={receipt} />
       ))}

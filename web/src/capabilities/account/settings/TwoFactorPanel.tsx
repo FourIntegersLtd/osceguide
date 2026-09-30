@@ -1,20 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineShieldCheck } from "react-icons/hi2";
 import { hasCode } from "@/foundation/platform-client";
 import {
   AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
   Button,
   Input,
   Modal,
   ModalHelper,
   ModalSecondaryButton,
-  productTokens,
+  Panel,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import {
@@ -29,8 +24,6 @@ import {
 import { AuthenticatorSetup } from "@/capabilities/account/mfa/AuthenticatorSetup";
 import { RecoveryCodes } from "@/capabilities/account/mfa/RecoveryCodes";
 import { isCompleteTotp, normaliseTotp } from "@/capabilities/account/mfa/codes";
-
-const { b2cSettingsCardHeaderIcon } = productTokens;
 
 /** Which dialog is open. Each one needs a current code, so each is its own step. */
 type Dialog =
@@ -85,15 +78,11 @@ export function TwoFactorPanel() {
   };
 
   return (
-    <B2CPanelCard className="mt-0">
-      <B2CPanelCardHeader>
-        <HiOutlineShieldCheck className={b2cSettingsCardHeaderIcon} aria-hidden />
-        Two-factor sign-in
-      </B2CPanelCardHeader>
+    <Panel title="Two-factor sign-in">
       <AsyncBoundary state={status}>
         {(mfa: MfaStatus) => (
           <>
-            <B2CPanelCardBody className="space-y-3">
+            <div className="space-y-3">
               <ModalHelper className="mt-0">
                 {mfa.enabled
                   ? `On. You sign in with your password and a code from your authenticator app. ${mfa.recovery_codes_remaining} recovery ${mfa.recovery_codes_remaining === 1 ? "code" : "codes"} left.`
@@ -107,8 +96,8 @@ export function TwoFactorPanel() {
                   {startError}
                 </p>
               ) : null}
-            </B2CPanelCardBody>
-            <B2CPanelCardFooter>
+            </div>
+            <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
               {mfa.enabled ? (
                 <>
                   <ModalSecondaryButton type="button" onClick={() => setDialog({ kind: "regenerate" })}>
@@ -125,7 +114,7 @@ export function TwoFactorPanel() {
                   {starting ? "Starting…" : "Set up"}
                 </ModalSecondaryButton>
               )}
-            </B2CPanelCardFooter>
+            </div>
           </>
         )}
       </AsyncBoundary>
@@ -165,7 +154,7 @@ export function TwoFactorPanel() {
           </div>
         </Modal>
       ) : null}
-    </B2CPanelCard>
+    </Panel>
   );
 }
 

@@ -170,6 +170,8 @@ function SettingsFrame({
     return (
       <PlatformTabbedScreen
         title="Settings"
+        description="Your own account: profile, sign-in and preferences."
+        icon={HiOutlineCog6Tooth}
         tabs={items}
         value={tab}
         onChange={handleTabChange}

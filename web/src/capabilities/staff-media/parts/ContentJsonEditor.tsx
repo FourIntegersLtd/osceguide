@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Modal } from "@/foundation/ui";
+import { Button, Modal, Textarea } from "@/foundation/ui";
 
 export function ContentJsonEditor({
   open,
@@ -43,12 +43,15 @@ export function ContentJsonEditor({
   return (
     <Modal onClose={onClose} title="Edit content JSON" width="min(42rem, 96vw)">
       <div className="flex max-h-[70vh] flex-col gap-3 p-4">
-        {error ? <p className="text-sm text-osce-danger-text">{error}</p> : null}
-        <textarea
+        {error ? (
+          <p className="text-osce-meta text-osce-danger-text">{error}</p>
+        ) : null}
+        <Textarea
+          aria-label="Content JSON"
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={20}
-          className="min-h-[240px] flex-1 rounded-control border border-border-strong bg-surface px-3 py-2 font-mono text-xs"
+          className="min-h-[240px] flex-1 font-mono"
           spellCheck={false}
         />
         <div className="flex justify-end gap-2">

@@ -10,5 +10,5 @@ export const staffModerationCapability: CapabilityModule = {
   permission: "administer_platform",
   path: "/moderation",
   icon: LuShield,
-  section: "content",
+  section: "catalogue",
 };

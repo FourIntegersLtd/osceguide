@@ -28,8 +28,8 @@ export function getCardSurfaceClasses({
   themeType?: "b2c" | "b2b";
 } = {}) {
   return themeType === "b2b"
-    ? "rounded-lg border border-b2b-border bg-b2b-surface"
-    : "rounded-osce-lg border border-b2c-border bg-osce-surface";
+    ? "rounded-osce-lg border border-border bg-surface"
+    : "rounded-osce-lg border border-border bg-osce-surface";
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
@@ -43,7 +43,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     ref,
   ) => {
     const surface = getCardSurfaceClasses({ themeType });
-    const ink = themeType === "b2b" ? "text-b2b-headline" : "text-osce-ink-900";
+    const ink = themeType === "b2b" ? "text-ink" : "text-ink";
 
     return (
       <div

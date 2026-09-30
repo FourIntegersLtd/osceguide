@@ -1,9 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Alert, B2CSkeleton, Button, EmptyState } from "@/foundation/ui";
+import { Alert, B2CSkeleton, Button, EmptyState, Panel } from "@/foundation/ui";
 import { cn } from "@/foundation/ui/cn";
-import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
 
 /**
@@ -32,7 +31,7 @@ export function ListCard({
   const chrome = useAuthoringChrome();
 
   return (
-    <AuthoringCard padding="none" className="overflow-hidden">
+    <Panel padding="none" className="overflow-hidden">
       <div
         className={cn(
           "flex flex-col gap-1 px-4 pt-3 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-5",
@@ -77,6 +76,6 @@ export function ListCard({
       ) : (
         <div className={cn(`divide-y ${chrome.listDivide}`)}>{children}</div>
       )}
-    </AuthoringCard>
+    </Panel>
   );
 }

@@ -6,11 +6,11 @@ import {
   Alert,
   AsyncBoundary,
   Button,
-  Card,
   Input,
   PlatformPageHeader,
   PlatformFilterBar,
   PlatformFilterSearch,
+  Panel,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
@@ -64,54 +64,47 @@ export function GrowthDashboard() {
         />
       </PlatformFilterBar>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-ink">Funnel</h2>
+      <Panel title="Funnel" padding="none">
         <AsyncBoundary state={funnel}>
           {(data) => <FunnelCard funnel={data} />}
         </AsyncBoundary>
-      </section>
+      </Panel>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-ink">Tracking references</h2>
+      <Panel title="Tracking references" padding="none">
         <AsyncBoundary
           state={refs}
           isEmpty={(page) => page.items.length === 0}
           empty={{ title: "No ref ids", description: "This partner has no tracking links yet." }}
         >
           {(page) => (
-            <Card>
-              <ul className="divide-y divide-border">
-                {page.items.map((ref) => (
-                  <li key={ref.ref_id} className="px-5 py-3">
-                    <p className="truncate text-sm font-medium text-ink">{ref.ref_id}</p>
-                    <p className="truncate text-xs text-ink-subtle">
-                      {ref.exam_code} · {ref.landing_path}
-                    </p>
-                  </li>
-                ))}
+          <ul className="divide-y divide-border">
+              {page.items.map((ref) => (
+                <li key={ref.ref_id} className="px-5 py-3">
+                  <p className="truncate text-osce-data font-medium text-ink">{ref.ref_id}</p>
+                  <p className="truncate text-osce-caption text-ink-subtle">
+                    {ref.exam_code} · {ref.landing_path}
+                  </p>
+                </li>
+              ))}
               </ul>
-            </Card>
           )}
         </AsyncBoundary>
-      </section>
+      </Panel>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-ink">Reporters</h2>
-        <Card padding="md">
-          <div className="flex max-w-md flex-col gap-3">
-            {reporterError ? <Alert tone="danger">{reporterError}</Alert> : null}
-            <Input
-              type="email"
-              label="Reporter email"
-              value={reporterEmail}
-              onChange={(e) => setReporterEmail(e.target.value)}
-            />
-            <Button disabled={reporterBusy || !reporterEmail.trim()} onClick={() => void addReporter()}>
-              {reporterBusy ? "Adding…" : "Add reporter"}
-            </Button>
-          </div>
-        </Card>
-      </section>
+      <Panel title="Reporters" padding="none">
+        <div className="flex max-w-md flex-col gap-3 p-5">
+          {reporterError ? <Alert tone="danger">{reporterError}</Alert> : null}
+          <Input
+            type="email"
+            label="Reporter email"
+            value={reporterEmail}
+            onChange={(e) => setReporterEmail(e.target.value)}
+          />
+          <Button disabled={reporterBusy || !reporterEmail.trim()} onClick={() => void addReporter()}>
+            {reporterBusy ? "Adding…" : "Add reporter"}
+          </Button>
+        </div>
+      </Panel>
     </div>
   );
 }
@@ -126,15 +119,13 @@ function FunnelCard({ funnel }: { funnel: FunnelRead }) {
   ];
 
   return (
-    <Card padding="md">
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid p-5 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {rows.map((row) => (
-          <li key={row.label} className="rounded-control border border-border px-4 py-3">
-            <p className="text-xs text-ink-subtle">{row.label}</p>
-            <p className="text-lg font-semibold text-ink">{row.value}</p>
+          <li key={row.label} className="rounded-osce-md border border-border px-4 py-3">
+            <p className="text-osce-caption text-ink-subtle">{row.label}</p>
+            <p className="text-osce-subheading font-semibold text-ink">{row.value}</p>
           </li>
         ))}
       </ul>
-    </Card>
   );
 }

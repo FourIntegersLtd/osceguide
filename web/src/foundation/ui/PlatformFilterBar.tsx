@@ -10,10 +10,10 @@ import {
 } from "@/foundation/ui/platformStaffChrome";
 
 const ghostSelectClass =
-  "w-full min-w-0 appearance-none rounded-md border-0 bg-transparent py-1.5 pl-2 pr-7 text-osce-meta font-medium text-osce-ink-900 hover:bg-b2c-surface-muted focus:outline-none focus:ring-2 focus:ring-osce-accent/20";
+  "w-full min-w-0 appearance-none rounded-osce-md border-0 bg-transparent py-1.5 pl-2 pr-7 text-osce-meta font-medium text-ink hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-accent/20";
 
 const ghostSearchClass =
-  "w-full min-w-0 border-0 bg-transparent py-1.5 pl-2 pr-2 text-osce-meta font-medium text-osce-ink-900 placeholder:text-b2c-text-muted focus:outline-none focus:ring-0";
+  "w-full min-w-0 border-0 bg-transparent py-1.5 pl-2 pr-2 text-osce-meta font-medium text-ink placeholder:text-ink-subtle focus:outline-none focus:ring-0";
 
 /** Right-aligned filter row — matches BMJ partner dashboard `DashboardFilterBar`. */
 export function PlatformFilterBar({
@@ -47,7 +47,9 @@ export function PlatformFilterBar({
           )}
         >
           <div className={cn(platformStaffFilterBox, "sm:max-w-3xl", boxClassName)}>{children}</div>
-          {trailing ? <div className="flex shrink-0 items-center justify-end">{trailing}</div> : null}
+          {trailing ? (
+            <div className="flex shrink-0 items-center justify-end">{trailing}</div>
+          ) : null}
         </div>
       </div>
     </section>
@@ -72,7 +74,8 @@ export function PlatformFilterSelect({
   className?: string;
 }) {
   return (
-    <label className={cn("relative flex min-w-0 flex-1 basis-0 items-center px-1 py-0.5", className)}>
+    <label className={cn("relative flex min-w-0 flex-1 basis-0 items-center px-1 py-0.5", className,
+      )}>
       <select
         aria-label={ariaLabel}
         className={ghostSelectClass}
@@ -82,7 +85,7 @@ export function PlatformFilterSelect({
         {children}
       </select>
       <HiOutlineChevronDown
-        className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-b2c-text-muted"
+        className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-ink-subtle"
         aria-hidden
       />
     </label>
@@ -112,7 +115,7 @@ export function PlatformFilterSearch({
     >
       <span className="sr-only">{label}</span>
       <HiOutlineMagnifyingGlass
-        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-b2c-text-muted"
+        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-subtle"
         aria-hidden
       />
       <input

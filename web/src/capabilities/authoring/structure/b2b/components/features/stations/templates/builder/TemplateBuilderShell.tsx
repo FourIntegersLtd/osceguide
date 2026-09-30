@@ -44,17 +44,17 @@ export function TemplateBuilderShell({
             <input
               value={title}
               onChange={(e) => onTitleChange(e.target.value)}
-              className="min-w-0 flex-1 rounded-md border-0 bg-transparent px-1 py-1 text-osce-body font-semibold text-osce-ink-700 outline-none transition-colors placeholder:text-osce-ink-400 hover:bg-osce-canvas focus:bg-osce-canvas"
+              className="min-w-0 flex-1 rounded-osce-md border-0 bg-transparent px-1 py-1 text-osce-body font-semibold text-ink-muted outline-none transition-colors placeholder:text-ink-subtle hover:bg-osce-canvas focus:bg-osce-canvas"
               placeholder={titlePlaceholder}
               aria-label="Template title"
             />
           ) : (
-            <p className="text-osce-body font-semibold text-osce-ink-700">
+            <p className="text-osce-body font-semibold text-ink-muted">
               Template structure
             </p>
           )}
           {meta ? (
-            <span className="hidden shrink-0 text-osce-caption text-osce-ink-400 sm:inline">
+            <span className="hidden shrink-0 text-osce-caption text-ink-subtle sm:inline">
               {meta}
             </span>
           ) : null}

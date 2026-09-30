@@ -60,10 +60,10 @@ export function SectionInspector({
                     <Icon aria-hidden />
                   </ToneBadge>
                   <span className="min-w-0">
-                    <span className="block text-osce-body font-medium text-osce-ink-700">
+                    <span className="block text-osce-body font-medium text-ink-muted">
                       {a.label}
                     </span>
-                    <span className="block text-osce-caption leading-snug text-osce-ink-400">
+                    <span className="block text-osce-caption leading-snug text-ink-subtle">
                       {a.description}
                     </span>
                   </span>

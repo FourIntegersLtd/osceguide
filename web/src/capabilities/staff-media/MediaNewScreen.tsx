@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Alert, Button, Input, Modal } from "@/foundation/ui";
+import { Alert, Button, Input, Modal,
+  Select,
+  getInputClassName,
+} from "@/foundation/ui";
 import { MEDIA_KIND_LABELS, MEDIA_KINDS, isMediaKind, type MediaKind } from "@/capabilities/media/api";
 import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
@@ -35,30 +38,27 @@ export function MediaNewForm({
     <div className="flex flex-col gap-4">
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
 
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Kind</span>
-        <select
+      <Select
+        label="Kind"
           value={kind}
           onChange={(e) => {
             const next = e.target.value;
             if (isMediaKind(next)) setKind(next);
           }}
-          className="rounded-control border border-border-strong bg-surface px-3 py-2 text-sm"
         >
           {MEDIA_KINDS.map((k) => (
             <option key={k} value={k}>{MEDIA_KIND_LABELS[k].one}</option>
           ))}
-        </select>
-      </label>
+        </Select>
       <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-ink">Exam</span>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-osce-meta font-medium text-ink-muted">Exam</span>
         <AuthoringExamSelect
           value={examCode}
           onChange={setExamCode}
           allowEmpty
           emptyLabel="Any exam"
-          className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-sm"
+          className={getInputClassName()}
         />
       </label>
       <Input label="Summary (optional)" value={summary} onChange={(e) => setSummary(e.target.value)} />

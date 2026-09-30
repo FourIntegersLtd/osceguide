@@ -1,8 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { LuBuilding2, LuGauge, LuPencilRuler, LuTriangleAlert, LuUserCog, LuUsers } from "react-icons/lu";
-import { AsyncBoundary, Panel, PlatformPageHeader, RowLink, StatGrid, StatTile } from "@/foundation/ui";
+import {
+  LuBuilding2,
+  LuGauge,
+  LuPencilRuler,
+  LuTriangleAlert,
+  LuUserCog,
+  LuUsers,
+} from "react-icons/lu";
+import {
+  AsyncBoundary,
+  EmptyPanel,
+  Panel,
+  PlatformPageHeader,
+  RowLink,
+  RowList,
+  StatGrid,
+  StatTile,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
@@ -51,14 +67,20 @@ export function PlatformOverview() {
 
       <AsyncBoundary state={state}>
         {({ overview, organizations }) => {
-          const partners = organizations.filter((o) => o.org_type === "partner").length;
+          const partners = organizations.filter(
+            (o) => o.org_type === "partner",
+          ).length;
           const institutions = organizations.length - partners;
           const attention = overview.at_risk ?? [];
 
           return (
             <>
               <StatGrid>
-                <StatTile label="Organisations" value={overview.organizations} icon={LuBuilding2} />
+                <StatTile
+                  label="Organisations"
+                  value={overview.organizations}
+                  icon={LuBuilding2}
+                />
                 <StatTile
                   label="Partners / institutions"
                   value={`${partners} / ${institutions}`}
@@ -74,24 +96,28 @@ export function PlatformOverview() {
                   padding="none"
                 >
                   {attention.length === 0 ? (
-                    <p className="px-5 py-4 text-osce-data text-b2c-text-muted sm:px-6">
-                      Every organisation is active or on trial.
-                    </p>
+                    <EmptyPanel
+                      bare
+                      title="All clear"
+                      description="Every organisation is active or on trial."
+                    />
                   ) : (
-                    <ul className="divide-y divide-b2c-border">
+                    <RowList flush>
                       {attention.map((risk) => (
                         <AttentionRow
                           key={risk.slug}
                           organization={risk}
-                          href={hrefFor(`/organizations/${encodeURIComponent(risk.slug)}`)}
+                          href={hrefFor(
+                            `/organizations/${encodeURIComponent(risk.slug)}`,
+                          )}
                         />
                       ))}
-                    </ul>
+                    </RowList>
                   )}
                 </Panel>
 
                 <Panel title="Go to" padding="none">
-                  <ul className="divide-y divide-b2c-border">
+                  <RowList flush>
                     <RowLink
                       href={hrefFor("/organizations")}
                       title="Organisations"
@@ -116,7 +142,7 @@ export function PlatformOverview() {
                       subtitle="Your own profile and password"
                       icon={LuUserCog}
                     />
-                  </ul>
+                  </RowList>
                 </Panel>
               </div>
             </>
@@ -127,19 +153,28 @@ export function PlatformOverview() {
   );
 }
 
-function AttentionRow({ organization, href }: { organization: OrgAtRisk; href: string }) {
+function AttentionRow({
+  organization,
+  href,
+}: {
+  organization: OrgAtRisk;
+  href: string;
+}) {
   return (
     <li>
       <Link
         href={href}
-        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-b2c-surface-muted sm:px-6"
+        className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-surface-raised sm:px-6"
       >
-        <LuTriangleAlert className="h-4 w-4 shrink-0 text-osce-warning-icon" aria-hidden />
+        <LuTriangleAlert
+          className="h-4 w-4 shrink-0 text-osce-warning-icon"
+          aria-hidden
+        />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-osce-data font-medium text-osce-ink-900">
+          <span className="block truncate text-osce-data font-medium text-ink">
             {organization.name}
           </span>
-          <span className="block truncate text-osce-meta text-b2c-text-muted">
+          <span className="block truncate text-osce-meta text-ink-subtle">
             /{organization.slug} · {atRiskLabel(organization.reason)}
           </span>
         </span>
@@ -150,7 +185,10 @@ function AttentionRow({ organization, href }: { organization: OrgAtRisk; href: s
 }
 
 /** "Hello, Sam." — the first word of a name, or the local part of an address. */
-function greetingName(name: string | undefined, email: string | undefined): string | undefined {
+function greetingName(
+  name: string | undefined,
+  email: string | undefined,
+): string | undefined {
   const trimmed = name?.trim();
   if (trimmed) return trimmed.split(/\s+/)[0];
   return email?.split("@")[0]?.trim() || undefined;

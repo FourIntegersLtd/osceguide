@@ -53,7 +53,7 @@ export function RecoveryCodes({
       </p>
       <ul
         aria-label="Recovery codes"
-        className="grid grid-cols-2 gap-2 rounded-lg border border-border bg-canvas p-4 font-mono text-osce-data text-ink"
+        className="grid grid-cols-2 gap-2 rounded-osce-lg border border-border bg-canvas p-4 font-mono text-osce-data text-ink"
       >
         {codes.map((code) => (
           <li key={code}>{code}</li>

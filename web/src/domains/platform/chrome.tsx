@@ -22,5 +22,5 @@ export function StatusBadge({ status }: { status: string }) {
  * whether the save worked.
  */
 export function WriteOnlyNote({ children }: { children: ReactNode }) {
-  return <p className="text-osce-meta text-b2c-text-muted">{children}</p>;
+  return <p className="text-osce-meta text-ink-subtle">{children}</p>;
 }
