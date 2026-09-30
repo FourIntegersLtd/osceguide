@@ -1,0 +1,13 @@
+DELETE FROM gp_lead_reviews WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3');
+DELETE FROM slot_reviews WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3');
+DELETE FROM slots WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3');
+DELETE FROM circuit_trainees WHERE circuit_id IN (SELECT id FROM circuits WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3'));
+DELETE FROM circuit_stations WHERE circuit_id IN (SELECT id FROM circuits WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3'));
+DELETE FROM circuits WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3');
+DELETE FROM sittings WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3');
+DELETE FROM rubric_versions WHERE rubric_id IN (SELECT id FROM rubrics WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3'));
+DELETE FROM rubrics WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3');
+DELETE FROM station_versions WHERE station_id IN (SELECT id FROM stations WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3'));
+DELETE FROM stations WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3');
+DELETE FROM memberships WHERE org_id = (SELECT id FROM organizations WHERE slug='verify-r3');
+DELETE FROM organizations WHERE slug='verify-r3';

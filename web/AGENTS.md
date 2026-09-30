@@ -129,6 +129,21 @@ you touch an `api.ts`, and regenerate with `npm run platform:types`.
 
 Owner agents live in the workspace root's `.claude/`.
 
+## Traps a browser run has hit
+
+- `/app/me/**` shows the exam picker, not the page, while `users.exam_code` is
+  null. Set it for a local test account before you drive a consumer screen.
+- A slot's attempt must be `kind = 'exam_slot'` (the `kind_matches_reference`
+  check). To put marked work in front of an examiner locally, copy a marked
+  attempt as an exam-slot attempt: `.claude/skills/verify/features/feedback-fixture.sql`.
+- A node test cannot import a `.tsx` file (the loader strips types, not JSX). Put a pure helper a test
+  needs in a `.ts` file beside the component.
+- A local database can hold exams and rubrics but no stations or marked attempts. A review screen still
+  renders for a slot with no attempt; `features/rubric-builder.md` has a fixture that needs neither.
+- Feedback and forms are drawn from the rubric (`capabilities/feedback/rubric.ts`,
+  `domains/assess/results/reviewForm.ts`). Never branch on an exam code; a rating
+  is coloured by its position in the scale, not by its letter.
+
 ## Ask first
 
 New npm dependencies. Anything that writes to a deployed environment.

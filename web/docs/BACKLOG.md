@@ -30,6 +30,15 @@ Checked against the code on 2026-09-29.
 - Drafting a station from a prompt with no template is platform-only (`POST /platform/generate/station`). An organisation generates through its autogenerate-draft route, which needs a published template.
 - A platform exam cannot be deleted; it is retired. An organisation's exam can (`DELETE /orgs/{org_slug}/exams/{exam_id}`, refused with `exam_in_use`). A template is removed only when its last draft version is deleted.
 
+### Rubric templates (Stage 3 leftovers, 2026-09-30)
+
+| # | Item | State |
+|---|---|---|
+| R-1 | Republish the 4 platform rubrics on staging, then production | `seed_platform.py --republish --env staging`, check the four feedback pages and dashboards, then `--env production`. A deployed write: owner's go-ahead |
+| R-4 | `dashboard/` still sends legacy red/amber/green | The screens no longer read it. Removing it is optional platform-api cleanup |
+| R-8 | Stage 4's staging exit | As a staging institution admin: copy PLAB 2, change the pass mark, add a field, publish, run an exam, see the candidate feedback and dashboard follow the edits |
+| R-5 | `rubricView.ts` (328 lines) and `testRubrics.ts` (359) warn on max-lines | Split the view model by block kind if it grows |
+
 ### Backend and workers
 
 | # | Item | State |
