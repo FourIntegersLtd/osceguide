@@ -250,6 +250,8 @@ export function StationScreen(props: StationScreenProps) {
   );
 
   const endActiveConsultation = useCallback(async () => {
+    // Moving on while in line gives the place up for whoever is behind.
+    if (session.phase === "queued") await session.leaveQueue();
     if (live) {
       endReasonRef.current = "manual";
       await session.end();
@@ -398,6 +400,7 @@ export function StationScreen(props: StationScreenProps) {
                 duration={simulationSeconds}
                 stationId={attempt.attemptId}
                 timerType="simulation"
+                running={session.patientJoined}
                 onTimeUp={() => void handleSimulationTimeUp()}
                 onFinalCountdown={session.warnTimeRemaining}
               />
@@ -531,7 +534,7 @@ export function StationScreen(props: StationScreenProps) {
         }}
         onConfirm={enterConsultation}
         closeOnBack={false}
-        message="Start the consultation now? Reading time ends and the consultation timer starts immediately."
+        message="Start the consultation now? Reading time ends now, and the consultation timer starts when the patient joins."
       />
 
       <ConfirmModal

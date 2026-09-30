@@ -13,6 +13,8 @@ interface TimerProps {
   onTimeUp?: () => void; // Callback function called when timer reaches 0
   /** Called once when FINAL_COUNTDOWN_SECONDS remain — the "wrap up" bell. */
   onFinalCountdown?: (secondsLeft: number) => void;
+  /** False holds the clock where it is, e.g. until the patient joins. Defaults to true. */
+  running?: boolean;
 }
 
 /** Last stretch of the countdown, shown in red so the user isn't cut off unawares. */
@@ -29,6 +31,7 @@ export default function Timer({
   timerType,
   onTimeUp,
   onFinalCountdown,
+  running = true,
 }: TimerProps) {
   // Parents pass inline callbacks; reading them through refs keeps the countdown
   // effect from re-registering (and restarting its interval) on every render.
@@ -191,6 +194,10 @@ export default function Timer({
    * Runs whenever timeRemaining changes (every second during countdown).
    */
   useEffect(() => {
+    // A held clock neither ticks nor saves, so a reload while held restores
+    // the time left rather than counting the wait against it.
+    if (!running) return;
+
     // Show warning modal when timer reaches warning threshold
     if (timerType === "doctor" && timeRemaining === DOCTOR_TIME_WARNING) {
       setShowWarning(true);
@@ -253,7 +260,7 @@ export default function Timer({
 
     // Cleanup: clear interval when component unmounts or dependencies change
     return () => clearInterval(countdownInterval);
-  }, [timeRemaining, stationId, timerType, hasCalledTimeUp]);
+  }, [timeRemaining, stationId, timerType, hasCalledTimeUp, running]);
 
   // Calculate minutes and seconds for display
   const minutes = Math.floor(timeRemaining / 60);
@@ -284,22 +291,26 @@ export default function Timer({
                   : "text-b2c-text-muted"
               }`}
             >
-              {isFinalCountdown
-                ? timerType === "simulation"
-                  ? "ending soon"
-                  : "almost up"
-                : "remaining"}
+              {!running
+                ? "starts with patient"
+                : isFinalCountdown
+                  ? timerType === "simulation"
+                    ? "ending soon"
+                    : "almost up"
+                  : "remaining"}
             </span>
             {/* Reset button - resets timer to effective duration */}
-            <button
-              type="button"
-              onClick={() => setConfirmResetOpen(true)}
-              className="flex cursor-pointer items-center justify-center text-b2c-text-muted transition-all hover:scale-110 hover:text-osce-accent"
-              title="Reset timer"
-              aria-label="Reset timer"
-            >
-              <FiRotateCcw className="h-5 w-5" aria-hidden />
-            </button>
+            {running && (
+              <button
+                type="button"
+                onClick={() => setConfirmResetOpen(true)}
+                className="flex cursor-pointer items-center justify-center text-b2c-text-muted transition-all hover:scale-110 hover:text-osce-accent"
+                title="Reset timer"
+                aria-label="Reset timer"
+              >
+                <FiRotateCcw className="h-5 w-5" aria-hidden />
+              </button>
+            )}
           </div>
           <div className="flex items-baseline space-x-1">
             {/* Minutes display */}
@@ -308,9 +319,7 @@ export default function Timer({
             </span>
             <span className="text-osce-caption text-b2c-text-muted">min</span>
             {/* Seconds display (padded with leading zero) */}
-            <span
-              className={`ml-1 text-osce-title font-bold ${digitClass}`}
-            >
+            <span className={`ml-1 text-osce-title font-bold ${digitClass}`}>
               {seconds.toString().padStart(2, "0")}
             </span>
             <span className="text-osce-caption text-b2c-text-muted">sec</span>

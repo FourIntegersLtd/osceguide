@@ -12,6 +12,7 @@ export type CandidateScenario = components["schemas"]["CandidateScenarioRead"];
 export type ManagementPlan = components["schemas"]["ManagementPlanRead"];
 export type PatientReview = components["schemas"]["PatientReviewRead"];
 export type StationTeaching = components["schemas"]["StationTeachingRead"];
+export type VoiceQueueStanding = components["schemas"]["VoiceQueueStanding"];
 
 /**
  * The kinds of attempt, which are all one row in one table.
@@ -45,12 +46,40 @@ export function readAttempt(attemptId: string, signal?: AbortSignal): Promise<At
   return platformRequest<Attempt>(`/api/v1/attempts/${encodeURIComponent(attemptId)}`, { signal });
 }
 
-/** Mint the room token. `voice` decides Cloud or self-hosted; the browser never does. */
-export function attemptVoiceToken(attemptId: string, signal?: AbortSignal): Promise<RoomGrant> {
-  return platformRequest<RoomGrant>(
+/**
+ * Mint the room token, or learn the candidate's place in line.
+ *
+ * `voice` decides Cloud or self-hosted; the browser never does. When every
+ * seat is taken it answers 202 with a place instead: a token then would join a
+ * room no patient ever enters. Watch `voiceQueuePath` and ask again on `ready`.
+ */
+export function attemptVoiceToken(
+  attemptId: string,
+  signal?: AbortSignal,
+): Promise<RoomGrant | VoiceQueueStanding> {
+  return platformRequest<RoomGrant | VoiceQueueStanding>(
     `/api/v1/attempts/${encodeURIComponent(attemptId)}/voice-token`,
     { method: "POST", signal },
   );
+}
+
+/** The candidate's place in line, pushed until a seat is theirs. For `useEventStream`. */
+export function voiceQueuePath(attemptId: string): string {
+  return `/api/v1/attempts/${encodeURIComponent(attemptId)}/voice-queue`;
+}
+
+/** Give up a place in line, so the candidate behind moves up now rather than when it lapses. */
+export function leaveVoiceQueue(attemptId: string): Promise<void> {
+  return platformRequest<void>(voiceQueuePath(attemptId), { method: "DELETE" });
+}
+
+/**
+ * Close the attempt's room once the candidate has ended. The patient would
+ * otherwise wait out LiveKit's ~20s empty-room timeout before its worker
+ * frees the seat, and the next person in line waits with it.
+ */
+export function closeVoiceRoom(attemptId: string): Promise<void> {
+  return platformRequest<void>(`/api/v1/attempts/${encodeURIComponent(attemptId)}/voice-room`, { method: "DELETE" });
 }
 
 /** Give up on an attempt that was never really run. */

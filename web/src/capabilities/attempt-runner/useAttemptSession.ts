@@ -1,9 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Room } from "livekit-client";
+import { RoomEvent, type Room } from "livekit-client";
+import { useEventStream } from "@/foundation/hooks/useEventStream";
 import { publishToAgent, type RoomGrant } from "@/foundation/livekit";
-import { abandonAttempt, attemptVoiceToken } from "@/capabilities/attempt-runner/api";
+import {
+  abandonAttempt,
+  attemptVoiceToken,
+  closeVoiceRoom,
+  leaveVoiceQueue,
+  voiceQueuePath,
+  type VoiceQueueStanding,
+} from "@/capabilities/attempt-runner/api";
 
 /** The minimum the runner needs back from whatever created the attempt. */
 export interface StartedAttemptRef {
@@ -16,13 +24,32 @@ export interface StartedAttemptRef {
  * `reading` exists as a phase because the brief is part of the exam, not a
  * loading screen: the clock for it is separate and the patient must not be
  * dispatched until it ends.
+ *
+ * `queued` means every patient is busy: the candidate has a place in line and
+ * is connected on their own once a seat is free.
  */
-export type AttemptPhase = "idle" | "reading" | "connecting" | "live" | "ending" | "ended" | "failed";
+export type AttemptPhase =
+  | "idle"
+  | "reading"
+  | "connecting"
+  | "queued"
+  | "live"
+  | "ending"
+  | "ended"
+  | "failed";
 
 export interface AttemptSession {
   phase: AttemptPhase;
   attempt: StartedAttemptRef | null;
   grant: RoomGrant | null;
+  /** 1 for the front of the line. Set only while `queued`. */
+  queuePosition: number | null;
+  /**
+   * The patient has joined the room. The consultation clock starts here, not
+   * when the screen opens: waiting in line and connecting are not the
+   * candidate's time.
+   */
+  patientJoined: boolean;
   error: Error | null;
   /** Begin the reading period. */
   begin: () => void;
@@ -32,6 +59,8 @@ export interface AttemptSession {
   end: () => Promise<void>;
   /** Give up before the consultation began. */
   abandon: () => Promise<void>;
+  /** Stop waiting for a patient. The attempt stays, so starting again rejoins the line at the back. */
+  leaveQueue: () => Promise<void>;
   attachRoom: (room: Room | null) => void;
   reportError: (cause: unknown) => void;
   /** Tell the agent to wind down. Sent once, near the end. */
@@ -78,12 +107,16 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
   const [phase, setPhase] = useState<AttemptPhase>("idle");
   const [attempt, setAttempt] = useState<StartedAttemptRef | null>(null);
   const [grant, setGrant] = useState<RoomGrant | null>(null);
+  const [answeredPosition, setAnsweredPosition] = useState<number | null>(null);
+  const [patientJoined, setPatientJoined] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const stopWatchingRoomRef = useRef<(() => void) | null>(null);
   const attemptRef = useRef<StartedAttemptRef | null>(null);
   const startingRef = useRef(false);
   const endingRef = useRef(false);
   const warned = useRef<Set<number>>(new Set());
+  const handledStandingRef = useRef<VoiceQueueStanding | null>(null);
   const inputRef = useRef(input);
   inputRef.current = input;
 
@@ -101,6 +134,7 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
   const startConsultation = useCallback(async () => {
     if (startingRef.current || endingRef.current) return;
     startingRef.current = true;
+    setPatientJoined(false);
     setPhase("connecting");
     setError(null);
     try {
@@ -118,7 +152,15 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
       if (!running) throw new Error("This station has no attempt to run.");
       attemptRef.current = running;
       setAttempt(running);
-      setGrant(await attemptVoiceToken(running.id));
+      const answer = await attemptVoiceToken(running.id);
+      if ("ready" in answer) {
+        // Every patient is busy. The stream below says when a seat is ours.
+        setAnsweredPosition(answer.position);
+        setPhase("queued");
+        return;
+      }
+      setAnsweredPosition(null);
+      setGrant(answer);
       setPhase("live");
     } catch (cause) {
       fail(cause);
@@ -126,6 +168,38 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
       startingRef.current = false;
     }
   }, [fail]);
+
+  // Pushed, never polled: the server re-reads the line when a seat frees up.
+  const standing = useEventStream<VoiceQueueStanding>(
+    phase === "queued" && attempt ? voiceQueuePath(attempt.id) : null,
+  ).data;
+
+  useEffect(() => {
+    // The hook keeps its last payload across streams, so a `ready` already
+    // acted on must not send the candidate straight back for another token.
+    if (phase !== "queued" || !standing || standing === handledStandingRef.current) return;
+    handledStandingRef.current = standing;
+    if (standing.ready) void startConsultation();
+  }, [phase, standing, startConsultation]);
+
+  // The stream's latest place once it has one; until then, the token route's.
+  const queuePosition =
+    phase !== "queued" ? null : standing && !standing.ready ? standing.position : answeredPosition;
+
+  const leaveQueue = useCallback(async () => {
+    const running = attemptRef.current;
+    // Leaving the phase closes the stream at once; the call only frees the
+    // place sooner for whoever is behind.
+    setAnsweredPosition(null);
+    setPhase("idle");
+    if (!running) return;
+    try {
+      await leaveVoiceQueue(running.id);
+    } catch {
+      // An unwatched place lapses on its own, so a failed call only delays
+      // the line; it is no reason to keep the candidate here.
+    }
+  }, []);
 
   const end = useCallback(async () => {
     if (endingRef.current) return;
@@ -140,6 +214,11 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
     } catch {
       // Already gone. The server ends the session from its side regardless.
     }
+    if (attempt) {
+      // Frees the seat for whoever is next in line now. Best effort: if it
+      // fails, LiveKit still closes the empty room itself, just later.
+      await closeVoiceRoom(attempt.id).catch(() => undefined);
+    }
     setPhase("ended");
     if (attempt) inputRef.current.onEnded?.(attempt.id);
   }, [attempt]);
@@ -153,6 +232,8 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
       // An attempt that cannot be abandoned is left for the backend to expire;
       // blocking the candidate on it would be worse than a stale row.
     }
+    setAnsweredPosition(null);
+    setPatientJoined(false);
     setPhase("idle");
     setAttempt(null);
     attemptRef.current = null;
@@ -161,6 +242,18 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
 
   const attachRoom = useCallback((room: Room | null) => {
     roomRef.current = room;
+    stopWatchingRoomRef.current?.();
+    stopWatchingRoomRef.current = null;
+    if (!room) return;
+    // The patient is the worker's agent participant. It may already be in the
+    // room by the time we are connected, so look once before listening.
+    const noticePatient = () => {
+      const participants = [...room.remoteParticipants.values()];
+      if (participants.some((participant) => participant.isAgent)) setPatientJoined(true);
+    };
+    noticePatient();
+    room.on(RoomEvent.ParticipantConnected, noticePatient);
+    stopWatchingRoomRef.current = () => room.off(RoomEvent.ParticipantConnected, noticePatient);
   }, []);
 
   const warnTimeRemaining = useCallback((secondsLeft: number) => {
@@ -184,11 +277,14 @@ export function useAttemptSession(input: AttemptSessionInput): AttemptSession {
     phase,
     attempt,
     grant,
+    queuePosition,
+    patientJoined,
     error,
     begin,
     startConsultation,
     end,
     abandon,
+    leaveQueue,
     attachRoom,
     reportError: fail,
     warnTimeRemaining,
