@@ -1,0 +1,50 @@
+# Secrets & credentials (repo root has no .gitignore today)
+**/.env
+**/.env.*
+**/*.pem
+**/serviceAccountKey.json
+**/credentials.json
+**/secrets.json
+**/*.key
+
+# Dependencies & build artifacts (belt-and-suspenders)
+**/node_modules/**
+**/.next/**
+**/dist/**
+**/build/**
+**/__pycache__/**
+**/.pytest_cache/**
+**/.venv/**
+**/.poetry/**
+**/.ruff_cache/**
+**/.mypy_cache/**
+
+# Large runtime logs
+**/logs/**
+
+# Slide/podcast media (code lives outside these trees)
+backend/b2c-api/b2c/slides/**/audio/**
+backend/b2c-api/b2c/podcast/**
+
+# Binary / media extensions anywhere in repo
+**/*.wav
+**/*.mp3
+**/*.mp4
+**/*.pdf
+**/*.docx
+**/*.xlsx
+**/*.png
+**/*.jpg
+**/*.webp
+**/*.woff
+**/*.woff2
+
+# Non-app root clutter (investor/proposal artifacts)
+Asterix-*
+BMJ-*
+OSCE Guide - *
+generate_*.py
+
+# Huge lockfiles (low signal for most tasks; @mention if needed)
+**/package-lock.json
+**/poetry.lock

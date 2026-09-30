@@ -1,0 +1,9 @@
+# Large asset trees — use explicit @paths when needed
+backend/b2c-api/b2c/slides/**
+frontend/public/**
+
+# Fonts (binary, rarely needed in search)
+backend/b2c-api/b2c/fonts/**
+
+# Livekit logs already hard-blocked; this is backup for any log paths
+**/logs/**

@@ -1,0 +1,208 @@
+# OSCE Guide — AGENTS.md
+
+Instructions for AI coding agents working anywhere in this workspace. Claude
+Code and Cursor both load this file from the root. Each repo below has its own
+`AGENTS.md`: read it before editing that repo.
+
+## Project overview
+
+Medical exam-practice platform with three arms: consumers practising for an
+exam (train), institutions running and marking exams (assess), and employers
+(hire, which is institution exam mode). Stack: Next.js (App Router),
+TypeScript, Tailwind, FastAPI, SQLAlchemy, Postgres, Python 3, Poetry, pytest,
+LiveKit.
+
+## Repo map
+
+This root is a **workspace repo** (local git) holding only agent files. Every
+folder below is its own git repo.
+
+**Live**
+
+| Repo | What it is |
+|---|---|
+| `backend/platform-api/` (repo: `backend/`) | The one backend, FastAPI. Replaces b2c-api and b2b-api |
+| `platform-web/` | The one frontend, Next.js |
+| `assessment-platform/` | Assessment engine + the LiveKit assessment and assistant workers. A push to main deploys to K3s |
+
+**Retiring**: do not start new work here.
+
+| Repo | Status |
+|---|---|
+| `backend/b2c-api/`, `backend/b2b-api/` | Legacy backends, still serving the live site until the switch |
+| `livekit/` | Frozen legacy workers, no traffic. Never edit or push. Retirement: `livekit/README.md` |
+
+## Where agent files live
+
+**The rule:**
+
+- Anything that spans repos or is about how agents work goes in this workspace
+  repo: owner agents, cross-repo verify skills, shared Cursor rules, and this
+  map.
+- Anything describing one repo's code goes in that repo's `AGENTS.md` or
+  `.claude/skills/`. It then changes in the same commit as the code, and a
+  single-repo clone still has it.
+
+| File | Scope |
+|---|---|
+| `AGENTS.md` (this file) | Workspace map, principles, cost discipline |
+| `.claude/agents/voice-station-owner.md` | Owner: live voice station, across assessment-platform and platform-api |
+| `.claude/skills/verify-voice-station/` | How to prove a voice change works (unit → e2e → deployed) |
+| `.claude/agents/*-owner.md` | The other owners (see Owners) |
+| `.claude/skills/verify-{marking,institution,access,content}/` | Their proof recipes; platform-web's is its own `verify` skill |
+| `.cursor/rules/critical-thinking-partner.mdc` | Always on: push back on risk, plan first for large work |
+| `backend/platform-api/AGENTS.md` | Backend rules, commands, traps, ownership |
+| `platform-web/AGENTS.md` (+ `docs/DESIGN.md`) | Frontend tiers, non-negotiables, design language |
+| `platform-web/.claude/skills/verify/` | Prove a platform-web change in a real browser |
+| `assessment-platform/AGENTS.md` | Engine and worker boundaries (test-enforced) |
+| `backend/b2b-api/AGENTS.md`, `livekit/k8s/AGENTS.md` | Legacy. Retire with their code, don't extend |
+
+`CLAUDE.md` files contain only `@AGENTS.md`, so Claude Code and Cursor read
+the same text.
+
+**Committing here:** only the files above that sit at the root. A pre-commit
+hook refuses anything else, so `misc/`, `docs/`, secrets and child repos can
+never land here. `git status` hides untracked files on purpose.
+
+## Owners
+
+An owner is a subagent that starts from one area's notes and proves its work
+before calling it done.
+
+| Owner | Area | Proof recipe |
+|---|---|---|
+| `voice-station-owner` | assessment-platform workers + platform-api voice, assistant, tutor memory, room start, transcript intake | `verify-voice-station` |
+| `marking-owner` | Scoring, rubrics, authored exams, engine marking prompts, legacy oracles, outcome computation | `verify-marking` |
+| `institution-owner` | Exam mode (incl. hire), circuits, roster, tenancy, review and decision workflow, programmes, `domains/assess` + `domains/platform` | `verify-institution` |
+| `access-owner` | Sign-in, sessions, SSO, invitations, entitlements, billing, referrals and partners, the email outbox | `verify-access` |
+| `content-owner` | Station library and templates, authoring, generation, media, practice sets, community, marketplace, peer practice | `verify-content` |
+| `platform-web-owner` | The frontend codebase: tiers, foundation, design system, learner home and performance, marketing site | platform-web `verify` |
+
+Every platform-api slice but `health` has one owner. Where two claim a file: voice starts
+rooms, marking computes scores, institution runs the workflow, and a screen's
+behaviour belongs to its area's owner while platform-web owns how it is built.
+
+To add one:
+
+1. Agent file: `.claude/agents/<area>-owner.md`. Give it what it owns, what it
+   must read first, how it works, and what to update after a change.
+2. Proof recipe: `.claude/skills/verify-<area>/SKILL.md`. Map each kind of
+   change to a level of proof, then list the exact commands and the traps.
+3. Notes: in the owned repo's `AGENTS.md`, plus a row in its Owners table.
+4. Add a row here.
+
+## Commands
+
+```bash
+# platform-api (from backend/platform-api)
+docker compose up -d && poetry run alembic upgrade head
+poetry run python scripts/seed_platform.py   # an unseeded DB refuses every attempt
+make start                                   # :8002
+make ci
+
+# platform-web (from platform-web)
+npm run dev
+npm run ci
+
+# assessment-platform (from assessment-platform)
+poetry run pytest -q
+```
+
+Node is not on the default PATH here:
+`export PATH="$HOME/.nvm/versions/node/v22.22.3/bin:$PATH"`.
+
+Retiring stack, only while it still serves the live site:
+
+```bash
+cd backend/b2c-api && make start && poetry run pytest -q
+cd backend/b2b-api && make start && poetry run pytest -q
+```
+
+## Boundaries
+
+### Always do
+
+- Read the nested `AGENTS.md` when editing that repo.
+- Keep diffs focused. Split files by responsibility, not line count, and merge
+  micro-files when you touch them.
+- Use strict types, no `any`.
+- Fix the lint and type errors you introduce.
+
+### Ask first
+
+- New npm or Poetry dependencies, DB migrations, deleting routes, auth or
+  features, and force-push.
+
+### Never do
+
+- Commit secrets (`.env`, `*.pem`, `serviceAccountKey.json`).
+- Commit or open PRs unless asked.
+- Edit or push `livekit/`.
+
+## Engineering principles
+
+Borrowed from [pstack](https://github.com/cursor/plugins/tree/main/pstack). When you apply one, say which decision it changed.
+
+- **Laziness protocol.** Prefer deletion and the smallest change that solves the problem. No new layer, wrapper, seam or abstraction without a second real caller.
+- **Subtract before you add.** Remove dead code and obsolete paths first, then build on the simpler base.
+- **Migrate callers, then delete.** A new internal API replaces the old one in the same change; no compatibility shims left behind.
+- **Fix root causes.** Reproduce first, trace to the cause, fix it there. No guards that only silence the symptom.
+- **Test behaviour, not implementation.** Call code the way its users do and assert a literal expected value. A test that would pass with every import stubbed out is deleted.
+- **Prove it works.** Done means the real artifact was checked (the running app, the stored row, the rendered screen), not that CI or the compiler passed. Green CI has hidden a sign-out-on-reload bug and 20 unwired domain rules here.
+
+## Git workflow
+
+Do not commit or push unless explicitly requested. Never force-push `main`/`master`.
+
+## Cursor token usage
+
+Repo ignore files reduce indexing noise (~800MB slides/audio blocked):
+
+| File | Role |
+|------|------|
+| `.cursorignore` | Hard block — secrets, logs, slide audio, podcast, binaries, lockfiles |
+| `.cursorindexingignore` | Excludes slides tree, public assets, fonts from `@codebase` search |
+
+After changing ignore files: **Command Palette → Cursor: Resync Index**.
+
+**Settings (all projects):** Cursor Settings → Indexing → Ignore Files — add `**/.env`, `**/*.pem`, `**/serviceAccountKey.json`. Disable include open tabs / recent edits if you `@` files manually. Default to Composer/Sonnet; reserve premium models for hard bugs.
+
+**Habits:** new chat per task; `@file` over `@codebase`; Agent only for multi-file work; Tab/Cmd+K for small edits.
+
+## Token discipline (measured, not guessed)
+
+Cost = **context size x request count**. Every tool call replays the whole
+context, so a call that costs 5k early in a session costs 76k late. Measured on
+2026-09-24: one session reached 758k context and moved 575M tokens over 2,346
+requests; 41% of that landed in an 18-minute window of 16 concurrent agents.
+
+A warn-only `PreToolUse` hook (`~/.claude/hooks/cost-guard.sh`) reminds you of
+these at the moment you break them. It never blocks -- heed it anyway.
+
+### Subagents
+
+- **`Explore` for anything read-only** -- audits, parity checks, "find where X
+  lives". It is read-only and reads excerpts, not whole files.
+- **Never `general-purpose` for a read-only sweep.** It boots with the full tool
+  schema plus every skill description (~24k tokens before it does any work).
+- **Always set `model`** on an Agent call: `haiku` or `sonnet` for sweeps and
+  greps. Unset means it inherits the parent's premium model.
+- **Cap fan-out at 3-4 concurrent.** 16 at once finished no sooner than a
+  smaller batch and cost 39% of the day's usage.
+- Subagent transcripts live in `<session-id>/subagents/*.jsonl`. Any per-session
+  cost tally that ignores that directory undercounts by ~40%.
+
+### Main thread
+
+- **Batch tool calls.** Combine related greps/reads into one `Bash` call; call
+  count is the multiplier, not command size.
+- **Long output goes to a file**, then read the tail -- never pipe a large dump
+  straight into context.
+- Sessions auto-compact at 200k (`autoCompactWindow` in `~/.claude/settings.json`)
+  even on a 1M model. Do not raise it without a reason.
+- `/clear` at task boundaries; one writing session per repository at a time.
+
+## Updating this file
+
+Update it when a repo goes live or retires, when an owner is added, or when an
+agent file moves.
