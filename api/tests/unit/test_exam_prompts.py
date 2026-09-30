@@ -49,11 +49,11 @@ def test_an_unlisted_subtype_falls_back_to_the_exam_prompt() -> None:
 
 
 def test_empty_settings_generate_like_a_plain_exam() -> None:
-    """`{}` is a whole exam: the SCA-shaped defaults every exam used to fall back to."""
+    """`{}` is a whole exam, written with neutral prompts rather than another exam's."""
     empty = ExamSettings.model_validate({})
-    assert exam_prompts.station_system_prompt(empty) == exam_prompts.SCA_STATION_GENERATION_PROMPT
-    assert exam_prompts.summary_system_prompt(empty) == exam_prompts.SCA_SUMMARY_GENERATION_PROMPT
-    assert exam_prompts.blog_system_prompt(empty) == exam_prompts.SCA_BLOG_PROMPT
+    assert exam_prompts.station_system_prompt(empty) == exam_prompts.GENERIC_STATION_GENERATION_PROMPT
+    assert exam_prompts.summary_system_prompt(empty) == exam_prompts.GENERIC_SUMMARY_GENERATION_PROMPT
+    assert exam_prompts.blog_system_prompt(empty) == exam_prompts.GENERIC_BLOG_PROMPT
     assert exam_prompts.unknown_prompt_keys(empty) == []
 
 

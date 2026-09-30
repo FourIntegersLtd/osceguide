@@ -310,10 +310,13 @@ DEFAULT_SETTINGS = {
     "help_modes": ["navigate"],
     "peer_waiting_email": False,
     "generation": {
-        "station_prompt": "sca.station",
-        "summary_prompt": "sca.summary",
-        "blog_prompt": "sca.blog",
-        "default_profile": "sca.station",
+        "station_prompt": "generic.station",
+        "summary_prompt": "generic.summary",
+        "blog_prompt": "generic.blog",
+        "default_profile": "generic.station",
+        "station_prompt_text": None,
+        "summary_prompt_text": None,
+        "blog_prompt_text": None,
     },
 }
 
@@ -342,7 +345,11 @@ async def test_an_exam_carries_the_settings_it_was_written_with(client: AsyncCli
                 "station_subtypes": [
                     {"key": "clinical", "label": "Clinical", "generation_profile": "ortho.clinical"}
                 ],
-                "generation": {"station_prompt": "ortho.clinical", "default_profile": "ortho.clinical"},
+                "generation": {
+                    "station_prompt": "ortho.clinical",
+                    "default_profile": "ortho.clinical",
+                    "summary_prompt_text": "Summarise for the FRCS Orth viva.",
+                },
             },
         },
         headers=bearer(admin),
@@ -356,9 +363,12 @@ async def test_an_exam_carries_the_settings_it_was_written_with(client: AsyncCli
     ]
     assert settings["generation"] == {
         "station_prompt": "ortho.clinical",
-        "summary_prompt": "sca.summary",
-        "blog_prompt": "sca.blog",
+        "summary_prompt": "generic.summary",
+        "blog_prompt": "generic.blog",
         "default_profile": "ortho.clinical",
+        "station_prompt_text": None,
+        "summary_prompt_text": "Summarise for the FRCS Orth viva.",
+        "blog_prompt_text": None,
     }
 
     changed = await client.patch(

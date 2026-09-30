@@ -36,6 +36,15 @@ def is_referral_plan(plan_code: str) -> bool:
     return plan_code.endswith(REFERRAL_PLAN_SUFFIX)
 
 
+REFERRAL_DISCOUNT_PERCENT = 10
+
+
+def referral_amount_pence(amount_pence: int) -> int:
+    """What a plan costs with a referral code: 10% off, rounded down to the penny, as b2c priced
+    it (£24.99 becomes £22.49)."""
+    return amount_pence * (100 - REFERRAL_DISCOUNT_PERCENT) // 100
+
+
 class UnknownPlan(LookupError):
     """A price id with no plan. Reached only after the customer has been charged, so it must
     fail loudly and leave the payment recoverable rather than granting a guessed duration."""

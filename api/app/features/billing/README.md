@@ -52,6 +52,9 @@ service and never grants access itself.
 | GET | `/api/v1/platform/users/{id}/payments` | platform admin | this person's payments with what each bought; `user_not_found` (404) |
 | GET | `/api/v1/platform/users/{id}/billing-events` | platform admin | every webhook delivery naming their address, applied or refused |
 | GET | `/api/v1/platform/billing/events` | platform admin | the ledger, newest first; `?failed_only=true` is the reconcile queue |
+| GET | `/api/v1/platform/billing/plans` | platform admin | every plan priced, on sale or retired, with its referral price |
+| POST | `/api/v1/platform/billing/plans` | platform admin | price a published platform exam: creates both Stripe prices and the plan plus its 10%-off `_referral` twin; `plan_code_taken` (409), `unknown_exam` (404), `price_creation_failed` (503) |
+| PATCH | `/api/v1/platform/billing/plans/{plan_code}` | platform admin | `active` on or off for the plan and its twin. Retiring stops new checkouts only: the webhook resolves prices across every plan, so a payment under way still grants. Back on sale only for a published exam (`unknown_exam`) |
 | POST | `/api/v1/platform/organizations/{org_slug}/invoices` | platform admin | raise an invoice; `invalid_invoice_line` (422) |
 | PATCH | `/api/v1/platform/invoices/{invoice_id}` | platform admin | `status` `paid`/`void`, `po_number`; `invoice_not_editable` (409) |
 | GET | `/api/v1/orgs/{org_slug}/invoices` | org admin | newest first, with lines |

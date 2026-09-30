@@ -32,12 +32,12 @@ from app.features.stations.station_validator import (
 )
 
 
-def _ensure_valid_structure(structure: dict[str, Any], *, org_id: uuid.UUID | None) -> None:
+def _ensure_valid_structure(structure: dict[str, Any]) -> None:
     """Refuse a template structure whose fields, or generation settings, do not hold up."""
     is_valid, structure_errors = validate_station_structure(structure)
     if not is_valid:
         raise InvalidInput(f"Template structure invalid: {structure_errors}")
-    policy_errors = validate_generation_policy(structure, org_id=org_id)
+    policy_errors = validate_generation_policy(structure)
     if policy_errors:
         raise InvalidInput(f"Template generation settings invalid: {policy_errors}")
 
@@ -51,7 +51,7 @@ async def create_template(
     structure: dict[str, Any],
 ) -> StationTemplateRead:
     """A template and its first draft version, ready to edit or publish."""
-    _ensure_valid_structure(structure, org_id=org_id)
+    _ensure_valid_structure(structure)
     exam_id = None
     code = None
     if exam_code:
@@ -147,7 +147,7 @@ async def edit_version(
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    _ensure_valid_structure(structure, org_id=org_id)
+    _ensure_valid_structure(structure)
     if title is not None:
         await repository.set_template_title(session, org_id, template_id, title=title)
     await repository.set_template_version_structure(session, org_id, template_version.id, structure=structure)

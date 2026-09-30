@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # The ways a debrief can be had once a consultation is marked: talking it
 # through with the tutor, or sitting the consultation again as the patient
@@ -50,20 +50,37 @@ class StationSubtype(BaseModel):
     generation_profile: str = Field(min_length=1, max_length=80)
 
 
+# The longest prompt an exam may carry, the same limit a station template's prompt has.
+MAX_PROMPT_TEXT = 20_000
+
+
 class GenerationSettings(BaseModel):
     """Which generation prompts and profile an exam's content is written with.
 
-    Keys, not prompt text: the texts live in `generation.exam_prompts`, keyed
-    by these. The defaults are the prompts every exam fell back to before this
-    was data.
+    Each prompt is a key naming a built-in prompt in `generation.exam_prompts`,
+    or the exam's own text, which wins over the key when it is set. So a new
+    exam gets its own prompts from the console with no release. The defaults
+    are exam-neutral: an exam that says nothing is not written as SCA.
     """
 
     model_config = ConfigDict(extra="ignore")
 
-    station_prompt: str = "sca.station"
-    summary_prompt: str = "sca.summary"
-    blog_prompt: str = "sca.blog"
-    default_profile: str = "sca.station"
+    station_prompt: str = "generic.station"
+    summary_prompt: str = "generic.summary"
+    blog_prompt: str = "generic.blog"
+    # The generation profile a station template uses when it names none.
+    default_profile: str = "generic.station"
+    # The exam's own prompt texts. Empty or `None` means use the key above.
+    station_prompt_text: str | None = Field(default=None, max_length=MAX_PROMPT_TEXT)
+    summary_prompt_text: str | None = Field(default=None, max_length=MAX_PROMPT_TEXT)
+    blog_prompt_text: str | None = Field(default=None, max_length=MAX_PROMPT_TEXT)
+
+    @field_validator("station_prompt_text", "summary_prompt_text", "blog_prompt_text")
+    @classmethod
+    def _blank_is_none(cls, text: str | None) -> str | None:
+        """A prompt of only whitespace is no prompt, so the key applies rather than an empty one."""
+        stripped = (text or "").strip()
+        return stripped or None
 
 
 class ExamSettings(BaseModel):

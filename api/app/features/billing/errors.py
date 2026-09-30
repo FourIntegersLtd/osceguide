@@ -77,6 +77,30 @@ class PlanNotAvailable(NotFound):
     default_message = "That plan is not available"
 
 
+class PlanNotFound(NotFound):
+    """No full-price plan with that code, on sale or not. A referral twin is managed through
+    the plan it discounts, so its own code is not found here either."""
+
+    code = "plan_not_found"
+    default_message = "No such plan"
+
+
+class PlanCodeTaken(Conflict):
+    """A plan, or its referral twin, already has this code. Codes are never reused: a payment
+    names its plan by code for good."""
+
+    code = "plan_code_taken"
+    default_message = "A plan already has that code"
+
+
+class PriceCreationFailed(Unavailable):
+    """Stripe could not create the price, so no plan was written. 503: usually transient, or
+    this deployment has no Stripe key."""
+
+    code = "price_creation_failed"
+    default_message = "Stripe could not create that price. Try again in a moment."
+
+
 class ReferralDiscountUnavailable(NotFound):
     """The code is fine, but this plan has no referral price to switch to. Refused rather than
     charged in full: the customer typed a code expecting 10% off."""

@@ -21,6 +21,26 @@ async def active_plans(session: AsyncSession) -> list[Plan]:
     return list((await session.execute(stmt)).scalars())
 
 
+async def all_plans(session: AsyncSession) -> list[Plan]:
+    """Every plan ever priced, on sale or retired, by exam and then cheapest first.
+
+    What the webhook resolves a price against: a plan retired while a customer sat on its
+    checkout page must still grant what they paid for.
+    """
+    stmt = select(Plan).order_by(Plan.exam_code, Plan.amount_pence, Plan.code)
+    return list((await session.execute(stmt)).scalars())
+
+
+async def any_plan_by_code(session: AsyncSession, code: str) -> Plan | None:
+    """The plan with this code whether or not it is on sale, for staff managing it."""
+    return (await session.execute(select(Plan).where(Plan.code == code))).scalar_one_or_none()
+
+
+async def set_plans_active(session: AsyncSession, codes: Collection[str], *, active: bool) -> None:
+    """Put these plans on sale or take them off it. Nothing else about a plan ever changes."""
+    await session.execute(update(Plan).where(Plan.code.in_(list(codes))).values(active=active))
+
+
 async def create_plan(
     session: AsyncSession,
     *,
@@ -31,7 +51,7 @@ async def create_plan(
     exam_code: str,
     currency: str = "gbp",
 ) -> Plan:
-    """Insert a new plan row for a Stripe price. Used by seeding, not by any customer path."""
+    """Insert a new plan row for a Stripe price. Staff pricing and seeding; no customer path."""
     plan = Plan(
         code=code,
         stripe_price_id=stripe_price_id,

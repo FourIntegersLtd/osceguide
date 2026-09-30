@@ -3292,6 +3292,44 @@
         "title": "CreateOrganization",
         "type": "object"
       },
+      "CreatePlan": {
+        "description": "A new price for an exam. The Stripe prices, and the 10%-off referral twin, are made for it.\n\nThe code is at most 23 characters so the twin's code, the code plus `_referral`, still fits.",
+        "properties": {
+          "amount_pence": {
+            "maximum": 1000000.0,
+            "minimum": 100.0,
+            "title": "Amount Pence",
+            "type": "integer"
+          },
+          "code": {
+            "maxLength": 23,
+            "minLength": 2,
+            "pattern": "^[a-z0-9][a-z0-9_]*$",
+            "title": "Code",
+            "type": "string"
+          },
+          "duration_days": {
+            "maximum": 730.0,
+            "minimum": 1.0,
+            "title": "Duration Days",
+            "type": "integer"
+          },
+          "exam_code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Exam Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exam_code",
+          "code",
+          "amount_pence",
+          "duration_days"
+        ],
+        "title": "CreatePlan",
+        "type": "object"
+      },
       "CreatePost": {
         "properties": {
           "audience": {
@@ -4904,7 +4942,9 @@
               "peer_session_not_open",
               "photo_not_on_station",
               "photo_storage_unavailable",
+              "plan_code_taken",
               "plan_not_available",
+              "plan_not_found",
               "platform_admin_exists",
               "post_not_found",
               "post_not_yours",
@@ -4914,6 +4954,7 @@
               "practice_session_ended",
               "practice_session_not_accepted",
               "practice_session_not_found",
+              "price_creation_failed",
               "programme_exists",
               "programme_not_found",
               "programme_required",
@@ -5840,27 +5881,63 @@
         "type": "object"
       },
       "GenerationSettings": {
-        "description": "Which generation prompts and profile an exam's content is written with.\n\nKeys, not prompt text: the texts live in `generation.exam_prompts`, keyed\nby these. The defaults are the prompts every exam fell back to before this\nwas data.",
+        "description": "Which generation prompts and profile an exam's content is written with.\n\nEach prompt is a key naming a built-in prompt in `generation.exam_prompts`,\nor the exam's own text, which wins over the key when it is set. So a new\nexam gets its own prompts from the console with no release. The defaults\nare exam-neutral: an exam that says nothing is not written as SCA.",
         "properties": {
           "blog_prompt": {
-            "default": "sca.blog",
+            "default": "generic.blog",
             "title": "Blog Prompt",
             "type": "string"
           },
+          "blog_prompt_text": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blog Prompt Text"
+          },
           "default_profile": {
-            "default": "sca.station",
+            "default": "generic.station",
             "title": "Default Profile",
             "type": "string"
           },
           "station_prompt": {
-            "default": "sca.station",
+            "default": "generic.station",
             "title": "Station Prompt",
             "type": "string"
           },
+          "station_prompt_text": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Prompt Text"
+          },
           "summary_prompt": {
-            "default": "sca.summary",
+            "default": "generic.summary",
             "title": "Summary Prompt",
             "type": "string"
+          },
+          "summary_prompt_text": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary Prompt Text"
           }
         },
         "title": "GenerationSettings",
@@ -9252,6 +9329,33 @@
         "title": "Page[PlatformPaymentRead]",
         "type": "object"
       },
+      "Page_PlatformPlanRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformPlanRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[PlatformPlanRead]",
+        "type": "object"
+      },
       "Page_PracticeSessionRead_": {
         "properties": {
           "items": {
@@ -11161,6 +11265,67 @@
           "customer_email"
         ],
         "title": "PlatformPaymentRead",
+        "type": "object"
+      },
+      "PlatformPlanRead": {
+        "description": "A full-price plan as staff manage it, on sale or retired, with its referral twin's price.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "amount_pence": {
+            "title": "Amount Pence",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "duration_days": {
+            "title": "Duration Days",
+            "type": "integer"
+          },
+          "exam_code": {
+            "title": "Exam Code",
+            "type": "string"
+          },
+          "referral_amount_pence": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Amount Pence"
+          },
+          "stripe_price_id": {
+            "title": "Stripe Price Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "exam_code",
+          "amount_pence",
+          "currency",
+          "duration_days",
+          "active",
+          "stripe_price_id",
+          "created_at"
+        ],
+        "title": "PlatformPlanRead",
         "type": "object"
       },
       "PlatformUserDetail": {
@@ -14619,6 +14784,20 @@
           "trainee_ids"
         ],
         "title": "SetGroupMembers",
+        "type": "object"
+      },
+      "SetPlanActive": {
+        "description": "Put a plan, and its referral twin, on sale or take them off it.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active"
+        ],
+        "title": "SetPlanActive",
         "type": "object"
       },
       "SetPlatformAdmin": {
@@ -47632,6 +47811,228 @@
           }
         ],
         "summary": "Replay Billing Event",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/platform/billing/plans": {
+      "get": {
+        "description": "Every plan the platform has priced, on sale or retired. A small table, so not paged.",
+        "operationId": "billing_list_platform_plans",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_PlatformPlanRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Platform Plans",
+        "tags": [
+          "billing"
+        ]
+      },
+      "post": {
+        "description": "Price an exam: creates the Stripe prices and the plan with its 10%-off referral twin.",
+        "operationId": "billing_create_platform_plan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlan"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformPlanRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_exam",
+            "x-codes": [
+              "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "plan_code_taken",
+            "x-codes": [
+              "plan_code_taken"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "price_creation_failed",
+            "x-codes": [
+              "price_creation_failed"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Platform Plan",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
+    "/api/v1/platform/billing/plans/{plan_code}": {
+      "patch": {
+        "description": "Put a plan and its referral twin on sale, or retire them. Payments under way still grant.",
+        "operationId": "billing_set_platform_plan_active",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_code",
+            "required": true,
+            "schema": {
+              "title": "Plan Code",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPlanActive"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformPlanRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "plan_not_found, unknown_exam",
+            "x-codes": [
+              "plan_not_found",
+              "unknown_exam"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set Platform Plan Active",
         "tags": [
           "billing"
         ]

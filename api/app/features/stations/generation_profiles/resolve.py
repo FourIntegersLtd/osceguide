@@ -17,25 +17,31 @@ from app.features.stations.generation_profiles.template_block_hint_supplements i
 )
 
 
-def resolve_system_prompt(
-    structure: dict[str, Any],
-    *,
-    exam_settings: ExamSettings,
-    allow_custom_override: bool,
-) -> str:
-    """The system prompt autogeneration runs with, for this template's structure and exam."""
-    profile_key = resolve_profile_key_from_structure(structure, exam_settings)
+def resolve_system_prompt(structure: dict[str, Any], *, exam_settings: ExamSettings) -> str:
+    """The system prompt autogeneration runs with, for this template's structure and exam.
+
+    In order, the first that applies:
+    1. the template's own prompt (`profileKey: "custom"` with `systemPromptOverride`),
+    2. a built-in profile the template names,
+    3. the exam's own station prompt text,
+    4. the built-in profile or prompt the exam names by key.
+    `systemPromptAppend` is then added to whichever it was.
+    """
     raw_generation = structure.get("generation")
     generation: dict[str, Any] = raw_generation if isinstance(raw_generation, dict) else {}
+    named_key = generation.get("profileKey")
+    template_profile_key = named_key.strip() if isinstance(named_key, str) and named_key.strip() else None
+    override = generation.get("systemPromptOverride")
 
-    if allow_custom_override and profile_key == "custom":
-        override = generation.get("systemPromptOverride")
+    if template_profile_key == "custom":
         if isinstance(override, str) and override.strip():
             base = override.strip()
         else:
             base = "You generate OSCE station content for the given template."
+    elif template_profile_key is None and exam_settings.generation.station_prompt_text:
+        base = exam_settings.generation.station_prompt_text
     else:
-        profile = get_profile(profile_key)
+        profile = get_profile(resolve_profile_key_from_structure(structure, exam_settings))
         if profile is not None and profile.meta.profile_key != "custom":
             base = profile.system_prompt().strip()
         else:

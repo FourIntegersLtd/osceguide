@@ -388,6 +388,7 @@ class FakeCheckoutSessions:
         self.url = url
         self.fails = fails
         self.calls: list[dict[str, str]] = []
+        self.prices: list[dict[str, str | int]] = []
 
     async def create(
         self,
@@ -414,6 +415,23 @@ class FakeCheckoutSessions:
         if self.fails:
             raise CheckoutUnavailable("stripe is down")
         return self.url
+
+    async def create_price(
+        self, *, amount_pence: int, currency: str, product_name: str, plan_code: str
+    ) -> str:
+        from app.core.ports import CheckoutUnavailable
+
+        if self.fails:
+            raise CheckoutUnavailable("stripe is down")
+        self.prices.append(
+            {
+                "amount_pence": amount_pence,
+                "currency": currency,
+                "product_name": product_name,
+                "plan_code": plan_code,
+            }
+        )
+        return f"price_fake_{plan_code}"
 
 
 @dataclass

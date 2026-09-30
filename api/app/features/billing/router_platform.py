@@ -16,9 +16,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
-from app.core.ports import ClockDep
+from app.core.ports import CheckoutSessions, ClockDep
 from app.core.tenancy import PlatformAdmin
-from app.features.billing import errors, schemas, service_platform, service_platform_actions
+from app.features.billing import (
+    errors,
+    schemas,
+    service_plans,
+    service_platform,
+    service_platform_actions,
+)
 
 router = APIRouter(tags=["billing"])
 
@@ -141,4 +147,51 @@ async def record_refund(
     """Withdraw what a refunded payment bought. The money moves in Stripe; the row stays."""
     return await service_platform_actions.refund(
         session, payment_id, reason=body.reason, actor=admin, now=clock.now()
+    )
+
+
+@router.get(
+    "/platform/billing/plans",
+    response_model=Page[schemas.PlatformPlanRead],
+    responses=error_responses(Forbidden),
+)
+async def list_platform_plans(admin: PlatformAdmin, session: Session) -> Page[schemas.PlatformPlanRead]:
+    """Every plan the platform has priced, on sale or retired. A small table, so not paged."""
+    _ = admin
+    return Page(items=await service_plans.list_plans(session), next_cursor=None)
+
+
+@router.post(
+    "/platform/billing/plans",
+    response_model=schemas.PlatformPlanRead,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(
+        Forbidden, errors.PlanCodeTaken, errors.UnknownExamError, errors.PriceCreationFailed
+    ),
+)
+async def create_platform_plan(
+    body: schemas.CreatePlan,
+    admin: PlatformAdmin,
+    session: Session,
+    checkout: Annotated[CheckoutSessions, Depends(service_plans.get_stripe_prices)],
+) -> schemas.PlatformPlanRead:
+    """Price an exam: creates the Stripe prices and the plan with its 10%-off referral twin."""
+    return await service_plans.create_plan(session, body, checkout=checkout, actor=admin)
+
+
+@router.patch(
+    "/platform/billing/plans/{plan_code}",
+    response_model=schemas.PlatformPlanRead,
+    responses=error_responses(Forbidden, errors.PlanNotFound, errors.UnknownExamError),
+)
+async def set_platform_plan_active(
+    plan_code: str,
+    body: schemas.SetPlanActive,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.PlatformPlanRead:
+    """Put a plan and its referral twin on sale, or retire them. Payments under way still grant."""
+    return await service_plans.set_plan_active(
+        session, plan_code, active=body.active, actor=admin, now=clock.now()
     )

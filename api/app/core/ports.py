@@ -68,6 +68,17 @@ class CheckoutSessions(Protocol):
         """
         ...
 
+    async def create_price(
+        self, *, amount_pence: int, currency: str, product_name: str, plan_code: str
+    ) -> str:
+        """Create a one-off price with the card processor and return its id.
+
+        On this port rather than one of its own because it is the same processor, key and
+        failure: staff pricing a plan and a customer buying one both need Stripe to answer.
+        Raises `CheckoutUnavailable` on any failure; never returns an id it is not sure of.
+        """
+        ...
+
 
 class CheckoutUnavailable(Exception):
     """The card processor could not start a checkout."""

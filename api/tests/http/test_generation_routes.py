@@ -12,7 +12,9 @@ from tests.support.tokens import bearer
 pytestmark = pytest.mark.db
 
 
-async def test_generate_blog_uses_b2c_system_prompt(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+async def test_generate_blog_for_an_exam_with_no_settings_uses_the_neutral_prompt(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("gen-admin@osceguide.com", platform_admin=True)
     captured: dict[str, str] = {}
 
@@ -32,7 +34,11 @@ async def test_generate_blog_uses_b2c_system_prompt(client: AsyncClient, make_ac
         )
 
     assert res.status_code == 200, res.text
-    assert "RCGP" in captured["system"] or "healthcare professionals" in captured["system"]
+    # No `sca` exam row in this database, so its settings are the defaults: the
+    # exam-neutral blog prompt, not SCA's. The seeded SCA exam names `sca.blog`.
+    from app.features.generation.exam_prompts import GENERIC_BLOG_PROMPT
+
+    assert captured["system"].startswith(GENERIC_BLOG_PROMPT)
     assert res.json()["content"]["body_md"] == "Body"
 
 

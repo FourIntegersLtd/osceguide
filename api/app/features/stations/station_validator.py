@@ -133,12 +133,12 @@ def validate_station_structure(structure: Any) -> tuple[bool, list[str]]:
     return len(errors) == 0, errors
 
 
-def validate_generation_policy(
-    structure: dict[str, Any],
-    *,
-    org_id: object,
-) -> list[str]:
-    """Org vs platform rules for custom system prompts."""
+def validate_generation_policy(structure: dict[str, Any]) -> list[str]:
+    """The rule for a template's own system prompt: it is only read under `profileKey: "custom"`.
+
+    Platform and institution templates alike may carry one. A published template
+    version is frozen, so its prompt cannot change under the stations written from it.
+    """
     errors: list[str] = []
     generation = structure.get("generation")
     if not isinstance(generation, dict):
@@ -146,9 +146,6 @@ def validate_generation_policy(
     override = generation.get("systemPromptOverride")
     if not isinstance(override, str) or not override.strip():
         return errors
-    profile_key = generation.get("profileKey")
-    if profile_key != "custom":
+    if generation.get("profileKey") != "custom":
         errors.append("structure.generation.systemPromptOverride is only allowed when profileKey is 'custom'")
-    if org_id is None and override.strip():
-        errors.append("structure.generation.systemPromptOverride is not allowed on platform-owned templates")
     return errors

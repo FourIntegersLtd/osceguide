@@ -16,7 +16,7 @@ sources, and nothing has to read another product's database.
 Station **Generate draft** uses:
 
 - `structure.generation.profileKey` — exam profile (`sca.station`, `plab.station`, …) with system prompt from B2C `shared_prompts` and per-block hints exported from B2C Pydantic `Field(description=…)` (`generation_profiles/_generated/`).
-- Optional `structure.generation.systemPromptAppend` and org-only `systemPromptOverride` when `profileKey` is `custom`.
+- Optional `structure.generation.systemPromptAppend`, and `systemPromptOverride` (platform or org) when `profileKey` is `custom`; a published version is frozen, so the prompt it generates with cannot change under it. With no `profileKey`, the exam's `settings.generation.station_prompt_text` applies, then the prompt its key names; an exam that names none uses the neutral `generic.*` prompts, never SCA's.
 - Per-block `generationHint` (LLM-only) and author `placeholder` (appended to profile hints when `generationHint` is empty).
 
 Catalog: `GET /api/v1/station-generation-profiles`. Detail responses return **effective** `blockHints` (exported profile JSON + `template_block_hint_supplements.py` for template-only field ids + `platform_overrides.py` where stricter). Re-export hints after B2C model changes: `poetry run python scripts/export_station_generation_profiles.py`.

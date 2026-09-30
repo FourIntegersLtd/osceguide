@@ -18,6 +18,7 @@ from app.core.settings import Settings
 log = get_logger(__name__)
 
 STRIPE_CHECKOUT_URL = "https://api.stripe.com/v1/checkout/sessions"
+STRIPE_PRICES_URL = "https://api.stripe.com/v1/prices"
 TIMEOUT_SECONDS = 15.0
 
 
@@ -82,6 +83,43 @@ class StripeCheckout:
         if not url:
             raise CheckoutUnavailable("Stripe returned a checkout with no URL")
         return str(url)
+
+    async def create_price(
+        self, *, amount_pence: int, currency: str, product_name: str, plan_code: str
+    ) -> str:
+        """Create a Stripe price, with its product inline, and return the price id.
+
+        `product_data` makes a product per price rather than reusing one: a plan's price never
+        changes (a new price is a new plan), so there is nothing to share, and the name shown on
+        the checkout page and the receipt is exactly what staff typed.
+        """
+        form = {
+            "unit_amount": str(amount_pence),
+            "currency": currency,
+            "product_data[name]": product_name,
+            # So a price found in the Stripe dashboard says which plan row sells it.
+            "metadata[plan_code]": plan_code,
+        }
+        try:
+            async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
+                response = await client.post(
+                    STRIPE_PRICES_URL,
+                    data=form,
+                    auth=(self._secret_key, ""),
+                    # A retry after a timeout returns the price Stripe already made, not a second.
+                    headers={"Idempotency-Key": f"plan-price:{plan_code}:{amount_pence}:{currency}"},
+                )
+        except httpx.HTTPError as exc:
+            raise CheckoutUnavailable(f"could not reach Stripe: {exc}") from exc
+
+        if response.status_code >= 400:
+            log.warning("stripe refused a price", status=response.status_code, body=response.text[:500])
+            raise CheckoutUnavailable(f"Stripe refused the price ({response.status_code})")
+
+        price_id = response.json().get("id")
+        if not price_id:
+            raise CheckoutUnavailable("Stripe returned a price with no id")
+        return str(price_id)
 
 
 def build_checkout(settings: Settings) -> StripeCheckout:

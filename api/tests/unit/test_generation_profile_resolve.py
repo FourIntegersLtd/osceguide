@@ -129,5 +129,78 @@ def test_resolve_system_prompt_uses_profile() -> None:
     from app.features.stations.generation_profiles.resolve import resolve_system_prompt
 
     structure = {"generation": {"profileKey": "sca.station"}}
-    prompt = resolve_system_prompt(structure, exam_settings=ExamSettings(), allow_custom_override=False)
+    prompt = resolve_system_prompt(structure, exam_settings=ExamSettings())
     assert "UK primary care" in prompt
+
+
+def test_an_exam_that_names_no_prompt_is_not_written_as_sca() -> None:
+    """A new exam's `{}` settings get the exam-neutral prompt, not SCA's GP consultation."""
+    from app.features.stations.generation_profiles.resolve import resolve_system_prompt
+
+    prompt = resolve_system_prompt({}, exam_settings=ExamSettings())
+    assert prompt.startswith("You are an experienced clinical examiner writing an OSCE station")
+    assert "UK primary care" not in prompt
+
+
+def test_the_exams_own_station_prompt_applies_when_the_template_names_none() -> None:
+    from app.features.stations.generation_profiles.resolve import resolve_system_prompt
+
+    settings = ExamSettings.model_validate(
+        {
+            "generation": {
+                "default_profile": "sca.station",
+                "station_prompt_text": "  Write a PACES station.  ",
+            }
+        }
+    )
+    assert resolve_system_prompt({}, exam_settings=settings) == "Write a PACES station."
+
+
+def test_a_profile_the_template_names_beats_the_exams_own_prompt() -> None:
+    from app.features.stations.generation_profiles.resolve import resolve_system_prompt
+
+    settings = ExamSettings.model_validate({"generation": {"station_prompt_text": "Write a PACES station."}})
+    prompt = resolve_system_prompt({"generation": {"profileKey": "plab.station"}}, exam_settings=settings)
+    assert "PLAB" in prompt
+    assert "Write a PACES station." not in prompt
+
+
+def test_a_templates_own_prompt_beats_everything_and_takes_the_append() -> None:
+    from app.features.stations.generation_profiles.resolve import resolve_system_prompt
+
+    settings = ExamSettings.model_validate({"generation": {"station_prompt_text": "Write a PACES station."}})
+    structure = {
+        "generation": {
+            "profileKey": "custom",
+            "systemPromptOverride": "Write a cardiology station.",
+            "systemPromptAppend": "Use British spelling.",
+        }
+    }
+    assert resolve_system_prompt(structure, exam_settings=settings) == (
+        "Write a cardiology station.\n\nUse British spelling."
+    )
+
+
+def test_a_platform_template_may_carry_its_own_prompt() -> None:
+    """Refused before 2026-09-30; a published template version is frozen, which is the safety."""
+    from app.features.stations.station_validator import validate_generation_policy
+
+    structure = {"generation": {"profileKey": "custom", "systemPromptOverride": "Write a PACES station."}}
+    assert validate_generation_policy(structure) == []
+    misplaced = {
+        "generation": {"profileKey": "sca.station", "systemPromptOverride": "Write a PACES station."}
+    }
+    assert validate_generation_policy(misplaced) == [
+        "structure.generation.systemPromptOverride is only allowed when profileKey is 'custom'"
+    ]
+
+
+def test_an_exams_own_summary_and_blog_text_win_over_their_keys() -> None:
+    from app.features.generation import exam_prompts
+
+    settings = ExamSettings.model_validate(
+        {"generation": {"summary_prompt_text": "Summarise for PACES.", "blog_prompt_text": "   "}}
+    )
+    assert exam_prompts.summary_system_prompt(settings) == "Summarise for PACES."
+    # Whitespace is no prompt: the key's built-in prompt applies.
+    assert exam_prompts.blog_system_prompt(settings) == exam_prompts.GENERIC_BLOG_PROMPT

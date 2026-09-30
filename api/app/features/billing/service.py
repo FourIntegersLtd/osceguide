@@ -133,7 +133,9 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
         log.warning("payment for an unknown address", event_id=event.get("id"))
         raise errors.InvalidWebhook("No account for that email address.")
 
-    plans = await repository.active_plans(session)
+    # Every plan, retired ones too: taking a plan off sale must not refuse a payment for it
+    # that was already under way.
+    plans = await repository.all_plans(session)
     try:
         plan = domain.plan_for_price(_as_plans(plans), price_id)
     except domain.UnknownPlan as exc:

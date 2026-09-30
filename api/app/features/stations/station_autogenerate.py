@@ -130,15 +130,8 @@ async def autogenerate_station_draft(
     )
 
     generation_started = time.monotonic()
-    allow_custom = org_id is not None
     system = (
-        resolve_system_prompt(
-            structure,
-            exam_settings=exam_settings,
-            allow_custom_override=allow_custom,
-        )
-        + "\n\n"
-        + _TEMPLATE_AUTOGENERATE_RULES
+        resolve_system_prompt(structure, exam_settings=exam_settings) + "\n\n" + _TEMPLATE_AUTOGENERATE_RULES
     )
     user = json.dumps(
         {

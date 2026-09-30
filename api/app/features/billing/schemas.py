@@ -19,6 +19,39 @@ class PlanRead(BaseModel):
     referral_amount_pence: int | None = None
 
 
+class PlatformPlanRead(BaseModel):
+    """A full-price plan as staff manage it, on sale or retired, with its referral twin's price."""
+
+    code: str
+    exam_code: str
+    amount_pence: int
+    currency: str
+    duration_days: int
+    active: bool
+    stripe_price_id: str
+    referral_amount_pence: int | None = None
+    created_at: datetime
+
+
+class CreatePlan(BaseModel):
+    """A new price for an exam. The Stripe prices, and the 10%-off referral twin, are made for it.
+
+    The code is at most 23 characters so the twin's code, the code plus `_referral`, still fits.
+    """
+
+    exam_code: str = Field(min_length=1, max_length=32)
+    code: str = Field(pattern=r"^[a-z0-9][a-z0-9_]*$", min_length=2, max_length=23)
+    # Stripe's own floor for GBP is 30p; nothing real is priced under a pound.
+    amount_pence: int = Field(ge=100, le=1_000_000)
+    duration_days: int = Field(ge=1, le=730)
+
+
+class SetPlanActive(BaseModel):
+    """Put a plan, and its referral twin, on sale or take them off it."""
+
+    active: bool
+
+
 class WebhookResult(BaseModel):
     status: str
 
