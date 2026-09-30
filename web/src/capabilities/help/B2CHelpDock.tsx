@@ -22,7 +22,7 @@ import { VoiceRoom, useMicPreflight, type RoomGrant } from "@/foundation/livekit
 import { HelpVoiceContent } from "./HelpVoiceContent";
 import { useScreenUiGuidance, uiGuidanceIgnoreProps } from "@/foundation/livekit/guidance";
 import { errorMessage } from "@/foundation/hooks";
-import { useSession, useCurrentExam } from "@/foundation/session";
+import { useSession, useCurrentExam, helpModeChoice } from "@/foundation/session";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { assistantSurfaceFor } from "@/capabilities/surface";
 import { KnowledgeBaseChat } from "./KnowledgeBaseChat";
@@ -328,8 +328,12 @@ export function B2CHelpDock({
   appType: appTypeOverride,
 }: B2CHelpDockProps) {
   const { session } = useSession();
-  const { code } = useCurrentExam();
+  const { code, settings } = useCurrentExam();
   const appType = (appTypeOverride ?? code ?? "sca").toLowerCase();
+  // Whether there is a choice to offer at all (`settings.help_modes`,
+  // `app/core/exam_settings.py`). An exam that only lists one mode skips the
+  // choice screen and opens straight into it.
+  const { offersChoice: offersHelpChoice, opensDirectlyOnKnowledge } = helpModeChoice(settings);
   const [helpMode, setHelpMode] = useState<HelpMode>(null);
   const [athenaLaunch, setAthenaLaunch] = useState<"help" | "onboarding" | null>(null);
 
@@ -379,7 +383,7 @@ export function B2CHelpDock({
   }
 
   let panel: ReactNode;
-  if (helpMode === null && appType === "sca") {
+  if (helpMode === null && offersHelpChoice) {
     panel = (
       <HelpChoiceScreen
         onClose={handleClose}
@@ -389,7 +393,7 @@ export function B2CHelpDock({
         onToggleWide={toggleWide}
       />
     );
-  } else if (helpMode === "knowledge") {
+  } else if (helpMode === "knowledge" || (helpMode === null && opensDirectlyOnKnowledge)) {
     panel = (
       <div {...uiGuidanceIgnoreProps} className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-white text-osce-body shadow-lg lg:max-h-none">
         <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
@@ -423,7 +427,7 @@ export function B2CHelpDock({
         appType={appType}
         navItems={navItems}
         onClose={handleClose}
-        onBack={appType === "sca" ? () => setHelpMode(null) : handleClose}
+        onBack={offersHelpChoice ? () => setHelpMode(null) : handleClose}
         isWide={isWide}
         onToggleWide={toggleWide}
         launch={athenaLaunch}

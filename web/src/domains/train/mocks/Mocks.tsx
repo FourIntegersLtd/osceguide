@@ -11,7 +11,7 @@ import { PiSparkle } from "react-icons/pi";
 import { RiSpeakLine } from "react-icons/ri";
 import { AsyncBoundary, B2CPageHeader, B2CSegmentedTabs } from "@/foundation/ui";
 import type { B2CSegmentedTabItem } from "@/foundation/ui";
-import { useCurrentExam } from "@/foundation/session";
+import { useCurrentExam, showsMarkingTips } from "@/foundation/session";
 import TipContent from "@/capabilities/station-runner/tips/TipContent";
 import { CombineStations } from "@/domains/train/mocks/CombineStations";
 import { FlaggedStations } from "@/domains/train/mocks/FlaggedStations";
@@ -40,7 +40,7 @@ export function Mocks() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<MockTab>(tabFromParam(searchParams.get("tab")));
   const workspace = useMockWorkspace();
-  const { code: examCode } = useCurrentExam();
+  const { settings } = useCurrentExam();
 
   const handleTabChange = (tab: MockTab) => {
     setActiveTab(tab);
@@ -58,7 +58,7 @@ export function Mocks() {
       ),
     },
   ];
-  if (examCode === "sca") {
+  if (showsMarkingTips(settings)) {
     items.push({
       id: "tips",
       label: (

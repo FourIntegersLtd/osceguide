@@ -1,12 +1,17 @@
-export { FeedbackView } from "@/capabilities/feedback/FeedbackView";
 export { AttemptFeedback } from "@/capabilities/feedback/AttemptFeedback";
-export { FeedbackDomains } from "@/capabilities/feedback/FeedbackDomains";
-export { FeedbackCategories } from "@/capabilities/feedback/FeedbackCategories";
-export { FeedbackClinicalAnalysis } from "@/capabilities/feedback/FeedbackClinicalAnalysis";
+export { RubricFeedback } from "@/capabilities/feedback/RubricFeedback";
 export { FeedbackLiveCoverage } from "@/capabilities/feedback/FeedbackLiveCoverage";
-export { FeedbackPriorityAreas } from "@/capabilities/feedback/FeedbackPriorityAreas";
+export type { CoverageEntry } from "@/capabilities/feedback/FeedbackLiveCoverage";
 export { GradeCircle } from "@/capabilities/feedback/GradeCircle";
 export { TranscriptView } from "@/capabilities/feedback/TranscriptView";
-export * from "@/capabilities/feedback/model";
-export { attemptStreamPath, isTerminal, readResults, readTranscript, scoredAtLabel } from "@/capabilities/feedback/api";
-export type { AssessmentResult, Transcript } from "@/capabilities/feedback/api";
+export * from "@/capabilities/feedback/rubric";
+export { feedbackModel } from "@/capabilities/feedback/rubricView";
+export {
+  attemptStreamPath,
+  isTerminal,
+  readFeedback,
+  readResults,
+  readTranscript,
+  scoredAtLabel,
+} from "@/capabilities/feedback/api";
+export type { AssessmentResult, AttemptFeedbackRead, Transcript } from "@/capabilities/feedback/api";

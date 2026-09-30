@@ -3,8 +3,7 @@
 import { HiOutlineInformationCircle } from "react-icons/hi2";
 import { ChartCard, ScoreTrendChart, chartColors } from "@/foundation/charts";
 import { NoDataMessage } from "@/domains/train/dashboard/DashboardLayout";
-import { formatScore, type ExamConfig } from "@/domains/train/dashboard/examConfig";
-import type { PerformanceTrendPoint } from "@/domains/train/api";
+import type { DashboardView } from "@/domains/train/dashboard/dashboardView";
 
 /**
  * Score over time.
@@ -14,17 +13,16 @@ import type { PerformanceTrendPoint } from "@/domains/train/api";
  * a point marked at 23:40 UTC must not appear on the following day.
  */
 export function TrendCard({
-  config,
-  trend,
+  scale,
   loading,
   onAbout,
 }: {
-  config: ExamConfig;
-  trend: PerformanceTrendPoint[] | null;
+  scale: DashboardView["trend"];
   loading: boolean;
-  onAbout: () => void;
+  /** Opens the explainer; left out where there is none (the rubric builder's preview). */
+  onAbout?: () => void;
 }) {
-  const scale = config.trend;
+  const trend = scale.points;
 
   return (
     <ChartCard
@@ -32,16 +30,18 @@ export function TrendCard({
       subtitle={scale.subtitle}
       loading={loading}
       action={
-        <button
-          type="button"
-          onClick={onAbout}
-          className="text-osce-ink-400 transition-colors hover:text-osce-accent"
-        >
-          <HiOutlineInformationCircle className="h-5 w-5" title="Performance trend" />
-        </button>
+        onAbout ? (
+          <button
+            type="button"
+            onClick={onAbout}
+            className="text-osce-ink-400 transition-colors hover:text-osce-accent"
+          >
+            <HiOutlineInformationCircle className="h-5 w-5" title="Performance trend" />
+          </button>
+        ) : undefined
       }
     >
-      {!trend || trend.length === 0 ? (
+      {trend.length === 0 ? (
         <NoDataMessage />
       ) : (
         <ScoreTrendChart
@@ -52,7 +52,7 @@ export function TrendCard({
           maxScore={scale.maxScore}
           threshold={scale.threshold}
           thresholdLabel={scale.thresholdLabel}
-          formatValue={(value) => formatScore(scale, value)}
+          formatValue={scale.format}
           ticks={scale.ticks}
           stroke={chartColors.primary}
         />

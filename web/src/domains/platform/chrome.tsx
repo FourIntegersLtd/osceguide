@@ -2,21 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Badge } from "@/foundation/ui";
-import { Panel, Row, RowList, LoadMore } from "@/foundation/ui/PlatformConsole";
 import { statusTone } from "@/domains/platform/support";
-
-/**
- * Console layout primitives — re-exported from the shared staff-console kit
- * (`foundation/ui/PlatformConsole`), where every staff page's `Section`,
- * `RowList`, `Row` and `LoadMore` now live, so every caller here picks up the
- * console's spacing and panel styling without a page-by-page migration.
- * `StatusBadge` and `WriteOnlyNote` stay here: they read domain vocabulary
- * (`statusTone`) that does not belong in a generic layout kit.
- */
-export { Row, RowList, LoadMore };
-
-/** A titled block. Kept as `Section` for existing callers — same shape as `Panel`. */
-export const Section = Panel;
 
 /**
  * An organisation's status, coloured by whether its members can sign in.

@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, Card, Input } from "@/foundation/ui";
+import { Alert, Button, Card, Input, Panel } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { recordManualPayment } from "@/domains/platform/support/api";
-import { Section } from "@/domains/platform/chrome";
 import { UserBillingEventsTable } from "@/domains/platform/billing/BillingEventsTable";
 import { UserBillingPaymentsTable } from "@/domains/platform/billing/BillingPaymentsTable";
 
@@ -21,7 +20,7 @@ export function BillingTab({ userId }: { userId: string }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <Section title="Payments" description="What was paid, and what each payment bought.">
+      <Panel title="Payments" description="What was paid, and what each payment bought.">
         <UserBillingPaymentsTable
           key={`payments-${reloadKey}`}
           userId={userId}
@@ -31,9 +30,9 @@ export function BillingTab({ userId }: { userId: string }) {
             description: "Nothing has been recorded against this account.",
           }}
         />
-      </Section>
+      </Panel>
 
-      <Section
+      <Panel
         title="Webhook deliveries"
         description="Every Stripe delivery naming this address. A refused one with a reason is the 'paid but no access' case: fix the cause, then replay."
       >
@@ -46,7 +45,7 @@ export function BillingTab({ userId }: { userId: string }) {
             description: "Stripe has sent nothing for this address.",
           }}
         />
-      </Section>
+      </Panel>
 
       <ManualPaymentPanel userId={userId} onRecorded={reload} />
     </div>
@@ -88,7 +87,7 @@ function ManualPaymentPanel({ userId, onRecorded }: { userId: string; onRecorded
   );
 
   return (
-    <Section
+    <Panel
       title="Record a payment"
       description="For money that did not come through Stripe — a bank transfer, a sponsor, a comped seat. Takes the same steps a checkout does."
     >
@@ -106,6 +105,6 @@ function ManualPaymentPanel({ userId, onRecorded }: { userId: string; onRecorded
           </div>
         </form>
       </Card>
-    </Section>
+    </Panel>
   );
 }

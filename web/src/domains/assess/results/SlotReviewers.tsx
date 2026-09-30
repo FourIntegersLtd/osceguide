@@ -1,8 +1,9 @@
 "use client";
 
 import { Badge, EmptyState, b2bTokens } from "@/foundation/ui";
-import { RAG_LABEL, type Rag } from "@/capabilities/feedback";
+import { passWord, ratingLabel } from "@/capabilities/feedback/rubric";
 import type { SlotReviews } from "@/domains/assess/results/api";
+import { ratingVariant, summaryDomains } from "@/domains/assess/results/reviewForm";
 
 /**
  * What everybody who watched this station made of it.
@@ -12,23 +13,25 @@ import type { SlotReviews } from "@/domains/assess/results/api";
  * rating wins per domain, deliberately: when two reviewers disagree about a
  * candidate, the lower rating is the one that should prompt a conversation.
  *
+ * Ratings are written in the rubric's own kind (`summary.rating`): a letter,
+ * "3/4", or met / not met. Domains are named by the summary's own `domain_labels`.
+ *
  * Drafts are counted and not shown. A half-written judgement of somebody is
  * not something to put in front of the next reviewer.
  */
 export function SlotReviewers({
   reviews,
-  labelFor,
 }: {
   /** Read by the screen that owns the slot, so this is not a second request. */
   reviews: SlotReviews;
-  /** Domain keys to the words the rest of the screen uses for them. */
-  labelFor?: (key: string) => string;
 }) {
   const data = reviews;
   const summary = data.summary;
+  const rating = summary.rating ?? data.form?.rating ?? null;
+  const outcome = passWord(summary.passed);
   const completed = summary.completed_reviews;
   const drafts = (data.items ?? []).filter((item) => item.status !== "completed").length;
-  const byDomain = Object.entries(summary.by_domain ?? {});
+  const byDomain = summaryDomains(summary);
 
   if (completed === 0) {
     return (
@@ -46,21 +49,22 @@ export function SlotReviewers({
           {completed} completed review{completed === 1 ? "" : "s"}
           {drafts > 0 ? ` · ${drafts} still in progress` : ""}
         </span>
-        {summary.overall_rag ? (
-          <Badge variant={ragTone(summary.overall_rag)}>
-            Agreed: {RAG_LABEL[summary.overall_rag as Rag] ?? summary.overall_rag}
+        {summary.overall_rag !== null && summary.overall_rag !== undefined ? (
+          <Badge variant={ratingVariant(rating, summary.overall_rag)}>
+            Agreed: {ratingLabel(rating, summary.overall_rag)}
           </Badge>
         ) : null}
+        {outcome ? <Badge variant={summary.passed ? "success" : "danger"}>{outcome}</Badge> : null}
       </div>
 
       {byDomain.length > 0 ? (
         <ul className="divide-y divide-b2b-border rounded-lg border border-b2b-border">
-          {byDomain.map(([key, rag]) => (
-            <li key={key} className="flex items-center justify-between gap-3 px-3 py-2.5">
+          {byDomain.map((domain) => (
+            <li key={domain.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
               <span className="min-w-0 truncate text-osce-caption font-medium text-b2b-headline">
-                {labelFor ? labelFor(key) : key}
+                {domain.label}
               </span>
-              <Badge variant={ragTone(rag)}>{RAG_LABEL[rag as Rag] ?? rag}</Badge>
+              <Badge variant={ratingVariant(rating, domain.value)}>{ratingLabel(rating, domain.value)}</Badge>
             </li>
           ))}
         </ul>
@@ -71,11 +75,4 @@ export function SlotReviewers({
       </p>
     </div>
   );
-}
-
-function ragTone(rag: string): "success" | "warning" | "danger" | "neutral" {
-  if (rag === "G") return "success";
-  if (rag === "A") return "warning";
-  if (rag === "R") return "danger";
-  return "neutral";
 }

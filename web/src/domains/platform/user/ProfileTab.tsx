@@ -8,7 +8,7 @@ import { resetUserPassword, updateUser, type PlatformUserDetail } from "@/domain
 import { formatDay } from "@/domains/platform/support";
 
 const selectClass =
-  "w-full rounded-md border border-b2c-border bg-osce-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-osce-accent/20";
+  "w-full rounded-md border border-b2c-border bg-osce-surface px-3 py-2 text-osce-data text-ink focus:outline-none focus:ring-2 focus:ring-osce-accent/20";
 
 /**
  * The retiring console's "Basic information" card, as a form that saves.
@@ -79,8 +79,8 @@ export function ProfileTab({
         <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
         <AsyncBoundary state={exams} isEmpty={() => false}>
           {(page) => (
-            <label className="flex flex-col gap-1 text-sm text-ink">
-              <span className="text-xs font-medium text-ink-muted">Exam</span>
+            <label className="flex flex-col gap-1 text-osce-data text-ink">
+              <span className="text-osce-meta font-medium text-ink-muted">Exam</span>
               <select
                 className={selectClass}
                 value={examCode}
@@ -97,7 +97,7 @@ export function ProfileTab({
                   <option value={examCode}>{examCode} (not in the catalogue)</option>
                 ) : null}
               </select>
-              <span className="text-xs text-ink-subtle">The exam this account opens on. Access is on the Entitlements tab.</span>
+              <span className="text-osce-meta text-ink-subtle">The exam this account opens on. Access is on the Entitlements tab.</span>
             </label>
           )}
         </AsyncBoundary>
@@ -109,7 +109,7 @@ export function ProfileTab({
           disabled={busy}
           hint="When they sit the real thing. The dashboard counts down to it."
         />
-        <label className="flex items-center gap-2 text-sm text-ink">
+        <label className="flex items-center gap-2 text-osce-data text-ink">
           <input
             type="checkbox"
             checked={extraTime}
@@ -140,7 +140,7 @@ export function ProfileTab({
           disabled={busy}
           hint="Blank keeps the exam's own consultation time."
         />
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink-subtle">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-osce-meta text-ink-subtle">
           <dt>Member since</dt>
           <dd className="text-ink-muted">{formatDay(user.created_at)}</dd>
           <dt>Last sign-in</dt>

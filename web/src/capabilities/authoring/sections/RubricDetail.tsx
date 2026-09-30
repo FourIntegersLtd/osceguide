@@ -1,14 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   HiOutlineArchiveBox,
   HiOutlineArrowLeft,
   HiOutlineArrowUpTray,
   HiOutlinePencilSquare,
 } from "react-icons/hi2";
-import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
-import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { Alert, AsyncBoundary } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { AuthoringCard } from "@/capabilities/authoring/parts/AuthoringCard";
@@ -20,39 +18,23 @@ import { useAsync } from "@/foundation/hooks";
 import {
   addRubricVersion,
   archiveRubricVersion,
-  editRubricVersion,
   publishRubricVersion,
   readRubric,
   type Rubric,
-  type RubricVersion,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
-import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
-import {
-  JsonField,
-  formatJson,
-  jsonProblem,
-  parseJson,
-} from "@/capabilities/authoring/parts/JsonField";
-import {
-  emptyMarkingLayout,
-  markingLayoutFromVersion,
-  markingLayoutToJson,
-} from "@/capabilities/authoring/templates/rubricMarkingLayout";
+import { useSurface } from "@/capabilities";
+import { rubricEditPath } from "@/capabilities/authoring/templates/paths";
 
 /** A rubric's versions, and the writes against each one. */
 export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: () => void }) {
   const scope = useAuthoringScope();
   const rubric = useAsync((signal) => readRubric(scope, rubricId, signal), [scope.base, rubricId]);
   const action = useAction(rubric.reload);
-
-  const [editing, setEditing] = useState<RubricVersion | null>(null);
-  const [prompt, setPrompt] = useState("");
-  const [structure, setStructure] = useState("{}");
-  const [pacing, setPacing] = useState("{}");
-  const [markingLayout, setMarkingLayout] = useState<StationStructure>(emptyMarkingLayout());
+  const { hrefFor } = useSurface();
+  const router = useRouter();
 
   return (
     <div className="space-y-4">
@@ -107,23 +89,12 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                   </div>
                   <div className="mt-3">
                     <AuthoringRowActions>
-                      {version.status !== "published" ? (
-                        <AuthoringIconAction
-                          label="Edit"
-                          onClick={() => {
-                            setEditing(version);
-                            setPrompt(version.system_prompt);
-                            setStructure(formatJson(version.structure));
-                            setPacing(formatJson(version.pacing));
-                            setMarkingLayout(
-                              markingLayoutFromVersion(version.marking_layout) ??
-                                emptyMarkingLayout(),
-                            );
-                          }}
-                        >
-                          <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
-                        </AuthoringIconAction>
-                      ) : null}
+                      <AuthoringIconAction
+                        label={version.status === "draft" ? "Edit in the builder" : "Open in the builder"}
+                        onClick={() => router.push(rubricEditPath(hrefFor, data.id, version.version))}
+                      >
+                        <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
+                      </AuthoringIconAction>
                       {version.status !== "published" ? (
                         <AuthoringIconAction
                           variant="primary"
@@ -161,63 +132,6 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                 </AuthoringCard>
               ))}
 
-            <AuthoringDialog
-              open={editing !== null}
-              title={editing ? `Edit version ${editing.version}` : "Edit version"}
-              lead="A published version is what attempts were marked against, so it cannot be edited."
-              busy={action.busy === "edit"}
-              busyLabel="Saving…"
-              commitLabel="Save"
-              commitDisabled={
-                prompt.trim() === "" ||
-                jsonProblem(structure) !== null ||
-                jsonProblem(pacing) !== null
-              }
-              onClose={() => setEditing(null)}
-              onCommit={() =>
-                void action.run("edit", async () => {
-                  if (!editing) return;
-                  await editRubricVersion(scope, data.id, editing.version, {
-                    system_prompt: prompt,
-                    structure: parseJson(structure),
-                    pacing: parseJson(pacing),
-                    marking_layout: markingLayoutToJson(markingLayout),
-                  });
-                  setEditing(null);
-                })
-              }
-            >
-              <div>
-                <label htmlFor="rubric-detail-system-prompt" className="block text-osce-body font-semibold text-b2b-headline">
-                  System prompt
-                </label>
-                <textarea
-                  id="rubric-detail-system-prompt"
-                  value={prompt}
-                  rows={6}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline focus:border-osce-accent focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle"
-                />
-              </div>
-              <JsonField label="Structure" value={structure} onChange={setStructure} />
-              <JsonField label="Pacing" rows={6} value={pacing} onChange={setPacing} />
-              <div>
-                <p className="text-osce-body font-semibold text-b2b-headline">Examiner layout</p>
-                <p className="mt-0.5 text-osce-caption text-b2b-mid">
-                  Structured fields human reviewers see in slot review. Platform catalogue rubrics
-                  need a layout before publish.
-                </p>
-                <div className="mt-3 rounded-md border border-b2b-border bg-white p-3">
-                  <StructureBuilder
-                    kind="feedback"
-                    value={markingLayout}
-                    onChange={setMarkingLayout}
-                    title={data.title}
-                    flatChrome
-                  />
-                </div>
-              </div>
-            </AuthoringDialog>
           </div>
         )}
       </AsyncBoundary>

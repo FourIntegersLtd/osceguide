@@ -2,12 +2,14 @@
 
 import { useCallback, useState } from "react";
 import { LuInbox } from "react-icons/lu";
-import { AsyncBoundary, Badge, Button, Card } from "@/foundation/ui";
-import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { Alert, AsyncBoundary, Badge, Button, Card, RowList } from "@/foundation/ui";
+import { errorMessage, useCursorPages, useToast } from "@/foundation/hooks";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
-import { RowList } from "@/domains/platform/chrome";
 import { listSiteMessages, markMessageHandled, type SiteMessage } from "@/domains/platform/api";
 import { formatDay } from "@/domains/platform/support";
+
+/** A page at a time from the server. */
+const MESSAGES_PAGE_LIMIT = 25;
 
 /**
  * The contact and feedback inbox.
@@ -26,8 +28,19 @@ import { formatDay } from "@/domains/platform/support";
  */
 export function MessagesInbox() {
   const [kind, setKind] = useState<"" | "contact" | "product_feedback">("");
+  // "Show handled" asks the server for both states; unticked, it asks only for
+  // the open ones — the toggle used to hide handled rows in the browser after
+  // a fixed `limit: 200` fetch, which stopped being the whole inbox past 200.
   const [showHandled, setShowHandled] = useState(false);
-  const state = useAsync((signal) => listSiteMessages({ kind }, signal), [kind]);
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listSiteMessages(
+        { kind, handled: showHandled ? null : false, cursor, limit: MESSAGES_PAGE_LIMIT },
+        signal,
+      ),
+    [kind, showHandled],
+  );
+  const state = pages.state;
 
   const tabs: { id: "" | "contact" | "product_feedback"; label: string }[] = [
     { id: "", label: "All" },
@@ -54,7 +67,7 @@ export function MessagesInbox() {
             {tab.label}
           </Button>
         ))}
-        <label className="ml-auto flex items-center gap-2 text-sm text-ink-muted">
+        <label className="ml-auto flex items-center gap-2 text-osce-data text-ink-muted">
           <input
             type="checkbox"
             checked={showHandled}
@@ -73,13 +86,28 @@ export function MessagesInbox() {
         }}
       >
         {(items) => (
-          <RowList>
-            {items
-              .filter((message) => showHandled || !message.handled_at)
-              .map((message) => (
+          <>
+            <RowList>
+              {items.map((message) => (
                 <MessageRow key={message.id} message={message} onReload={state.reload} />
               ))}
-          </RowList>
+            </RowList>
+            {pages.moreError ? (
+              <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+            ) : null}
+            {pages.hasMore ? (
+              <div className="flex justify-center">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={pages.loadingMore}
+                  onClick={pages.loadMore}
+                >
+                  {pages.loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            ) : null}
+          </>
         )}
       </AsyncBoundary>
     </div>
@@ -123,9 +151,9 @@ function MessageRow({ message, onReload }: { message: SiteMessage; onReload: () 
         )
       }
     >
-      <p className="whitespace-pre-wrap text-sm text-ink">{message.body}</p>
+      <p className="whitespace-pre-wrap text-osce-data text-ink">{message.body}</p>
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-osce-danger">
+        <p role="alert" className="mt-2 text-osce-data text-osce-danger">
           {error}
         </p>
       ) : null}

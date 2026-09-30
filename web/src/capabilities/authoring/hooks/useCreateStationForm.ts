@@ -52,8 +52,8 @@ export function useCreateStationForm({
   const [templateVersionId, setTemplateVersionId] = useState("");
   const [structure, setStructure] = useState<StationStructure | null>(null);
   const [examCode, setExamCode] = useState("");
-  /** Only sent when `examCode` is ortho, which is the one exam that asks. */
-  const [orthoStationType, setOrthoStationType] = useState("");
+  /** Only sent when the chosen exam's settings declare `station_subtypes`. */
+  const [stationSubtype, setStationSubtype] = useState("");
   const [content, setContent] = useState<Record<string, unknown>>({});
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -79,7 +79,7 @@ export function useCreateStationForm({
     (examCode
       ? legacyB2cStationStructure(examCode, {
           ...content,
-          station_type: content.station_type ?? orthoStationType,
+          station_type: content.station_type ?? stationSubtype,
         })
       : null);
 
@@ -89,7 +89,7 @@ export function useCreateStationForm({
     setTemplateVersionId("");
     setStructure(null);
     setExamCode("");
-    setOrthoStationType("");
+    setStationSubtype("");
     setContent({});
     setPrompt("");
     setGenerating(false);
@@ -177,7 +177,7 @@ export function useCreateStationForm({
         const r = await generateStation({
           prompt: promptParsed.data.prompt,
           examCode,
-          orthoStationType: examCode === "ortho" ? orthoStationType : null,
+          stationSubtype: stationSubtype || null,
         });
         setContent(r.content ?? {});
         setPublishNow(false);
@@ -243,8 +243,8 @@ export function useCreateStationForm({
     setMode,
     examCode,
     setExamCode,
-    orthoStationType,
-    setOrthoStationType,
+    stationSubtype,
+    setStationSubtype,
     title,
     setTitle,
     templateVersionId,

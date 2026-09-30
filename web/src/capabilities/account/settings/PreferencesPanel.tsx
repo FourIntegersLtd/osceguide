@@ -69,12 +69,12 @@ export default function PreferencesPanel() {
 
 function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => void }) {
   const { surface } = useSurface();
-  const { code: examCode } = useCurrentExam();
+  const { settings } = useCurrentExam();
   // Practice-only rows: peer practice and Athena's tour belong to a person's
   // own practice, not to an institution's workspace. The waiting-colleague
-  // email was SCA-only in the old client (`appType === "sca"`).
+  // email is offered only where `settings.peer_waiting_email` says so.
   const practising = surface === "train";
-  const isSca = practising && (me.exam_code ?? examCode) === "sca";
+  const offersWaitingEmail = practising && settings.peer_waiting_email;
 
   const [consent, setConsent] = useState(me.ai_training_consent ?? false);
   const [waitingEmail, setWaitingEmail] = useState(me.colleague_waiting_email ?? false);
@@ -170,7 +170,7 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
                 </div>
               </div>
 
-              {isSca ? (
+              {offersWaitingEmail ? (
                 <label className={cn(b2cSettingsOptionRow, b2cSettingsCheckboxRow)}>
                   <input
                     id="pref-notifyWhenPartnerWaiting"

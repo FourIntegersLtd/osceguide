@@ -4,15 +4,31 @@ import { useCallback, useState } from "react";
 import { Alert, Badge, Button, Spinner, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
-import { RAG_LABEL, type Rag } from "@/capabilities/feedback";
+import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { readGpLeadReview, saveGpLeadReview, type GpLeadReview as Review } from "@/domains/assess/results/api";
+import { ReviewFields } from "@/domains/assess/results/ReviewFields";
+import {
+  fieldValuesFor,
+  initialComments,
+  leadSaveNote,
+  initialRatings,
+  type ReviewForm,
+} from "@/domains/assess/results/reviewForm";
 
-const GRADES: Rag[] = ["R", "A", "G"];
+/**
+ * The lead's overall verdict. Unlike the per-domain ratings, which take
+ * whatever the rubric rates in, this is always green, amber or red: the
+ * backend stores it as one of the three letters for every exam.
+ */
+const VERDICTS = [
+  { value: "G", label: "Green" },
+  { value: "A", label: "Amber" },
+  { value: "R", label: "Red" },
+] as const;
+type Verdict = (typeof VERDICTS)[number]["value"];
 
-export interface ReviewDomain {
-  key: string;
-  label: string;
-  machine?: Rag | null;
+function asVerdict(value: string | null | undefined): Verdict | "" {
+  return VERDICTS.find((verdict) => verdict.value === value)?.value ?? "";
 }
 
 /**
@@ -24,19 +40,25 @@ export interface ReviewDomain {
  * same station open cannot silently overwrite each other — the second is told
  * to reload rather than quietly winning.
  *
- * Each domain has its own note, stored beside the rating as `domain.comment`.
- * The overall note stays. Autosave and an AI prefill of the ratings are not
- * here: a lead still saves when they mean to, and the machine rating is shown
- * so they can agree or disagree with it.
+ * The fields to rate come from the rubric (`ReviewFormRead`): the review's
+ * own form once one exists, else the slot's, which is what the screen passes
+ * in for a first review. Each domain has its own note, stored beside the
+ * ratings as `<domain>.comment`. Autosave and an AI prefill are not here: a
+ * lead still saves when they mean to, and the machine's rating is shown at
+ * each field so they can agree or disagree with it.
  */
 export function GpLeadReview({
   orgSlug,
   slotId,
-  domains,
+  form,
+  payload,
 }: {
   orgSlug: string;
   slotId: string;
-  domains: ReviewDomain[];
+  /** The slot's review form, for a lead writing the first review. */
+  form: ReviewForm | null;
+  /** The machine's marked payload, shown beside each field. */
+  payload: Record<string, unknown> | null;
 }) {
   const state = useAsync(async (signal) => {
     try {
@@ -52,34 +74,36 @@ export function GpLeadReview({
   if (state.loading) return <Spinner />;
   if (state.error) return <Alert tone="danger">{errorMessage(state.error)}</Alert>;
 
-  return (
-    <Editor
-      key={state.data?.revision ?? 0}
-      orgSlug={orgSlug}
-      slotId={slotId}
-      domains={domains}
-      review={state.data}
-      onSaved={state.reload}
-    />
-  );
+  // Loaded once. A save answers with the stored review, which the editor keeps;
+  // reloading here would remount the editor and wipe its "saved" note (R-3).
+  return <Editor orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} loaded={state.data} />;
 }
 
 function Editor({
   orgSlug,
   slotId,
-  domains,
-  review,
-  onSaved,
+  form,
+  payload,
+  loaded,
 }: {
   orgSlug: string;
   slotId: string;
-  domains: ReviewDomain[];
-  review: Review | null;
-  onSaved: () => void;
+  /** The slot's form, used until the review has one of its own. */
+  form: ReviewForm | null;
+  payload: Record<string, unknown> | null;
+  /** The review as first read, or null before anyone has saved one. */
+  loaded: Review | null;
 }) {
-  const [scores, setScores] = useState<Record<string, Rag>>(() => readScores(review));
-  const [comments, setComments] = useState<Record<string, string>>(() => readComments(review));
-  const [overall, setOverall] = useState<Rag | "">((review?.overall_rag as Rag) ?? "");
+  // The latest stored review: what was read, then each save's answer. Its
+  // revision is what the next save must carry.
+  const [review, setReview] = useState<Review | null>(loaded);
+  const [ratings, setRatings] = useState<Record<string, RatingValue>>(() =>
+    initialRatings(loaded?.form ?? form, loaded?.field_values),
+  );
+  const [comments, setComments] = useState<Record<string, string>>(() =>
+    initialComments(loaded?.form ?? form, loaded?.field_values),
+  );
+  const [overall, setOverall] = useState<Verdict | "">(asVerdict(review?.overall_rag));
   const [notes, setNotes] = useState(review?.notes ?? "");
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -94,15 +118,15 @@ function Editor({
       setFailure(null);
       setNote(null);
       try {
-        await saveGpLeadReview(orgSlug, slotId, {
+        const saved = await saveGpLeadReview(orgSlug, slotId, {
           revision: review?.revision ?? 0,
-          fieldValues: fieldValuesFor(scores, comments),
+          fieldValues: fieldValuesFor(ratings, comments),
           notes: notes.trim() || null,
           overallRag: overall || null,
           status,
         });
-        setNote(status === "draft" ? "Draft saved." : "Review completed.");
-        onSaved();
+        setReview(saved);
+        setNote(leadSaveNote(saved.status));
       } catch (cause) {
         // A conflict is not a failure to retry: somebody else's words are in
         // there now, and saving over them is exactly what this prevents.
@@ -112,7 +136,7 @@ function Editor({
         setBusy(null);
       }
     },
-    [orgSlug, slotId, review, scores, comments, notes, overall, onSaved],
+    [orgSlug, slotId, review, ratings, comments, notes, overall],
   );
 
   return (
@@ -137,50 +161,18 @@ function Editor({
         <Alert tone="success">{note}</Alert>
       ) : null}
 
-      {domains.length === 0 ? (
-        <p className="text-osce-body text-b2b-mid">
-          This station has no marked domains yet, so there is nothing to agree or disagree with.
-          Notes are still recorded.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {domains.map((domain) => (
-            <li key={domain.key} className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-osce-caption font-medium text-b2b-headline">
-                  {domain.label}
-                </span>
-                {domain.machine ? (
-                  <span className="text-osce-caption text-b2b-mid">
-                    machine: {RAG_LABEL[domain.machine]}
-                  </span>
-                ) : null}
-              </div>
-              <RagRow
-                label={domain.label}
-                value={scores[domain.key] ?? null}
-                onPick={(grade) => setScores((current) => ({ ...current, [domain.key]: grade }))}
-              />
-              <label className="block">
-                <span className="sr-only">Note on {domain.label}</span>
-                <textarea
-                  rows={2}
-                  value={comments[domain.key] ?? ""}
-                  onChange={(event) =>
-                    setComments((current) => ({ ...current, [domain.key]: event.target.value }))
-                  }
-                  placeholder={`Why this rating for ${domain.label}`}
-                  className={`${b2bTokens.b2bInputBase} w-full`}
-                />
-              </label>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ReviewFields
+        form={review?.form ?? form}
+        ratings={ratings}
+        onRate={(path, value) => setRatings((current) => ({ ...current, [path]: value }))}
+        payload={payload}
+        comments={comments}
+        onComment={(domainId, text) => setComments((current) => ({ ...current, [domainId]: text }))}
+      />
 
       <div className="space-y-1.5">
         <span className="text-osce-caption font-medium text-b2b-headline">Overall</span>
-        <RagRow label="Overall" value={overall || null} onPick={setOverall} />
+        <VerdictRow value={overall || null} onPick={setOverall} />
       </div>
 
       <label className="block">
@@ -216,70 +208,31 @@ function Editor({
       </div>
 
       <p className="text-osce-caption text-b2b-mid">
-        Completing needs every domain scored — a half-marked review shown to a candidate is worse
+        Completing needs every required domain rated — a half-marked review shown to a candidate is worse
         than one openly still in progress.
       </p>
     </div>
   );
 }
 
-function RagRow({
-  label,
-  value,
-  onPick,
-}: {
-  label: string;
-  value: Rag | null;
-  onPick: (grade: Rag) => void;
-}) {
+function VerdictRow({ value, onPick }: { value: Verdict | null; onPick: (verdict: Verdict) => void }) {
   return (
-    <div className="flex gap-1.5" role="group" aria-label={label}>
-      {GRADES.map((grade) => (
+    <div className="flex gap-1.5" role="group" aria-label="Overall">
+      {VERDICTS.map((verdict) => (
         <button
-          key={grade}
+          key={verdict.value}
           type="button"
-          aria-pressed={value === grade}
-          onClick={() => onPick(grade)}
+          aria-pressed={value === verdict.value}
+          onClick={() => onPick(verdict.value)}
           className={
-            value === grade
+            value === verdict.value
               ? "flex-1 rounded-md border border-b2b-accent bg-b2b-accent px-3 py-1.5 text-osce-caption font-medium text-white"
               : "flex-1 rounded-md border border-b2b-border bg-white px-3 py-1.5 text-osce-caption font-medium text-b2b-mid hover:bg-b2b-cream"
           }
         >
-          {RAG_LABEL[grade]}
+          {verdict.label}
         </button>
       ))}
     </div>
   );
-}
-
-function readScores(review: Review | null): Record<string, Rag> {
-  const out: Record<string, Rag> = {};
-  for (const [key, value] of Object.entries(review?.field_values ?? {})) {
-    if (key.endsWith(".comment")) continue;
-    if (value === "R" || value === "A" || value === "G") out[key] = value;
-  }
-  return out;
-}
-
-/** Per-domain notes ride in `field_values` as `domain.comment`, beside the rating. */
-function readComments(review: Review | null): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [key, value] of Object.entries(review?.field_values ?? {})) {
-    if (!key.endsWith(".comment") || typeof value !== "string") continue;
-    out[key.slice(0, -".comment".length)] = value;
-  }
-  return out;
-}
-
-function fieldValuesFor(
-  scores: Record<string, Rag>,
-  comments: Record<string, string>,
-): Record<string, string> {
-  const values: Record<string, string> = { ...scores };
-  for (const [key, text] of Object.entries(comments)) {
-    const trimmed = text.trim();
-    if (trimmed) values[`${key}.comment`] = trimmed;
-  }
-  return values;
 }

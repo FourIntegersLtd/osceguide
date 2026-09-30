@@ -11,6 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import ChartEmptyState from "./ChartEmptyState";
+import { percentSplit } from "./ragSplit";
 import {
   chartAxisTick,
   chartColors,
@@ -80,9 +81,7 @@ export default function RagCompositionBars({
       return {
         name: truncateLabel(row.name, 18),
         fullName: row.name,
-        red: Math.round((r / total) * 1000) / 10,
-        amber: Math.round((a / total) * 1000) / 10,
-        green: Math.round((g / total) * 1000) / 10,
+        ...percentSplit(r, a, g),
       };
     })
     .filter((row): row is ChartRow => row !== null);

@@ -1,6 +1,14 @@
 import { HiOutlineCheckCircle, HiOutlineEllipsisHorizontalCircle } from "react-icons/hi2";
 import { productTokens } from "@/foundation/ui";
-import type { CoverageEntry } from "@/capabilities/feedback/model";
+
+/** One checklist item the live examiner watched for, and whether it was heard. */
+export interface CoverageEntry {
+  id: string;
+  label: string;
+  covered: boolean;
+  quote: string | null;
+  seq: number;
+}
 
 const { b2cCard, b2cSectionTitle } = productTokens;
 

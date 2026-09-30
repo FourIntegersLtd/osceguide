@@ -63,22 +63,27 @@ export async function collectPages<T>(
 export type TraineePage = components["schemas"]["Page_TraineeRead_"];
 export type MembershipPage = components["schemas"]["Page_MembershipRead_"];
 
+/** `accessRevoked: false` narrows to trainees who still have access, in SQL. */
 export function listTrainees(
   slug: string,
   signal?: AbortSignal,
-  page?: PageParams,
+  page?: PageParams & { accessRevoked?: boolean | null },
 ): Promise<TraineePage> {
-  return platformRequest<TraineePage>(`${org(slug)}/trainees`, { signal, query: pageQuery(page) });
+  return platformRequest<TraineePage>(`${org(slug)}/trainees`, {
+    signal,
+    query: { ...pageQuery(page), access_revoked: page?.accessRevoked ?? undefined },
+  });
 }
 
+/** `status: "active"` narrows to staff who have not been revoked, in SQL. */
 export function listMemberships(
   slug: string,
   signal?: AbortSignal,
-  page?: PageParams,
+  page?: PageParams & { status?: string | null },
 ): Promise<MembershipPage> {
   return platformRequest<MembershipPage>(`${org(slug)}/memberships`, {
     signal,
-    query: pageQuery(page),
+    query: { ...pageQuery(page), status: page?.status ?? undefined },
   });
 }
 

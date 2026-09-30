@@ -1,12 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Organization } from "@/domains/platform/api";
 import {
   ORG_STATUSES,
   ORG_TYPES,
   STATUS_HELP,
   asContractDate,
-  matchesSearch,
   permitsSignIn,
   slugify,
   statusTone,
@@ -15,17 +13,6 @@ import {
   formatMoney,
   jobStatusTone,
 } from "@/domains/platform/support";
-
-const org = (over: Partial<Organization> = {}): Organization => ({
-  id: "11111111-1111-1111-1111-111111111111",
-  slug: "kings",
-  name: "King's College",
-  org_type: "institution",
-  status: "active",
-  require_staff_mfa: false,
-  created_at: "2026-01-04T09:00:00Z",
-  ...over,
-});
 
 describe("staff console vocabulary", () => {
   it("agrees with the backend about who may sign in", () => {
@@ -69,19 +56,6 @@ describe("slugify", () => {
     // The backend's pattern is ^[a-zA-Z0-9][a-zA-Z0-9-]*$, so a name starting
     // with punctuation would otherwise produce a slug it refuses.
     assert.equal(slugify("—Acme—"), "acme");
-  });
-});
-
-describe("matchesSearch", () => {
-  it("matches the name and the slug, ignoring case", () => {
-    assert.ok(matchesSearch(org(), "king"));
-    assert.ok(matchesSearch(org(), "KINGS"));
-    assert.ok(!matchesSearch(org(), "bmj"));
-  });
-
-  it("matches everything when nothing has been typed", () => {
-    assert.ok(matchesSearch(org(), ""));
-    assert.ok(matchesSearch(org(), "   "));
   });
 });
 

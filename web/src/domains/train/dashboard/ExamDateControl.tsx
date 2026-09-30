@@ -21,7 +21,7 @@ import { EXAM_PASSED, examMoment, examTimeRemaining } from "@/domains/train/dash
  */
 export function ExamDateControl() {
   const { session, refresh } = useSession();
-  const { code: examCode } = useCurrentExam();
+  const { settings } = useCurrentExam();
   const examDate = examMoment(session?.user.exam_date, session?.user.exam_time);
   const [open, setOpen] = useState(false);
 
@@ -64,7 +64,7 @@ export function ExamDateControl() {
           <AddExamDate
             examDate={session?.user.exam_date ?? null}
             examTime={session?.user.exam_time ?? null}
-            isOrtho={examCode === "ortho"}
+            dateLabel={settings.date_label}
             onSaved={() => void refresh()}
           />
         </Modal>

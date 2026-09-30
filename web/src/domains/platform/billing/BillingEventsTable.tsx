@@ -31,7 +31,7 @@ function useBillingEventColumns(onChanged: () => void) {
             <p className={cn(b2cTableCellText, "truncate font-medium text-osce-ink-900")}>
               {event.event_type} · {event.customer_email ?? "no address"}
             </p>
-            <p className={cn("truncate text-xs text-b2c-text-muted", b2cTableCellText)}>
+            <p className={cn("truncate text-osce-meta text-b2c-text-muted", b2cTableCellText)}>
               {formatMoment(event.received_at)} · {event.event_id}
               {event.price_id ? ` · ${event.price_id}` : ""}
               {event.failure ? ` · ${event.failure}` : ""}

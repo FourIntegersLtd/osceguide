@@ -37,6 +37,8 @@ export function browseLibrary(
   params: {
     examCode?: string | null;
     search?: string | null;
+    /** Narrow to these station versions only, e.g. the incomplete ones a mock offers to combine. */
+    versionIds?: string[] | null;
     cursor?: string | null;
     limit?: number;
   },
@@ -47,6 +49,7 @@ export function browseLibrary(
     query: {
       exam_code: params.examCode ?? undefined,
       search: search ? search : undefined,
+      version_ids: params.versionIds?.length ? params.versionIds : undefined,
       cursor: params.cursor ?? undefined,
       limit: params.limit,
     },

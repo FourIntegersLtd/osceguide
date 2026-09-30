@@ -15,26 +15,7 @@ import { useCreateStationForm } from "@/capabilities/authoring/hooks/useCreateSt
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/PlatformTemplateWizardStepStrip";
 import { stationsListPath } from "@/capabilities/authoring/stations/paths";
-import { EXAM_CODES } from "@/foundation/session/examSelection";
-
-/**
- * What each exam is called, for a selector that has to say it.
- *
- * The codes themselves come from `EXAM_CODES`, which is the one list the rest of
- * the app normalises against — spelling them out again here is how a fifth exam
- * ends up generatable but not selectable.
- */
-const EXAM_LABELS: Record<(typeof EXAM_CODES)[number], string> = {
-  sca: "RCGP SCA",
-  plab: "GMC PLAB 2",
-  casc: "RCPsych CASC",
-  ortho: "Orthopaedic interviews",
-};
-
-const EXAMS = EXAM_CODES.map((code) => ({ code, label: EXAM_LABELS[code] }));
-
-/** The four ortho station kinds, as the generation route names them. */
-const ORTHO_STATION_TYPES = ["clinical", "communication", "prioritisation", "portfolio"] as const;
+import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 
 export function CreateStationScreen() {
   const scope = useAuthoringScope();
@@ -59,6 +40,17 @@ export function CreateStationScreen() {
       router.refresh();
     },
   });
+
+  // Which sub-types the template-less exam offers, if any. Sourced from the
+  // exam's own settings rather than a hardcoded list, so a new exam that
+  // declares `station_subtypes` gets the picker for free.
+  const examCatalog = useAuthoringExamCatalog();
+  const stationSubtypes = useMemo(
+    () =>
+      examCatalog.exams.find((exam) => exam.code === form.examCode)?.settings?.station_subtypes ??
+      [],
+    [examCatalog.exams, form.examCode],
+  );
 
   const choices = useMemo(
     () =>
@@ -191,36 +183,36 @@ export function CreateStationScreen() {
                 className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
               >
                 <option value="">Select an exam…</option>
-                {EXAMS.map((exam) => (
+                {examCatalog.exams.map((exam) => (
                   <option key={exam.code} value={exam.code}>
-                    {exam.label}
+                    {exam.name}
                   </option>
                 ))}
               </select>
             </div>
           ) : null}
 
-          {!form.templateVersionId && form.examCode === "ortho" ? (
+          {!form.templateVersionId && stationSubtypes.length > 0 ? (
             <div>
               <label htmlFor="create-station-screen-station-type" className="block text-osce-body font-semibold text-b2b-headline">
                 Station type
               </label>
               <select
                 id="create-station-screen-station-type"
-                value={form.orthoStationType}
-                onChange={(e) => form.setOrthoStationType(e.target.value)}
+                value={form.stationSubtype}
+                onChange={(e) => form.setStationSubtype(e.target.value)}
                 className="mt-1 w-full rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline"
               >
-                <option value="">Choose the kind of ortho station…</option>
-                {ORTHO_STATION_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                <option value="">Choose the kind of station…</option>
+                {stationSubtypes.map((subtype) => (
+                  <option key={subtype.key} value={subtype.key}>
+                    {subtype.label}
                   </option>
                 ))}
               </select>
               <p className="mt-1 text-osce-caption text-b2b-mid">
-                The four interview stations are scored differently, so the prompt is steered by the
-                type rather than left to guess.
+                These stations are scored differently, so the prompt is steered by the type rather
+                than left to guess.
               </p>
             </div>
           ) : null}
@@ -261,7 +253,7 @@ export function CreateStationScreen() {
                 disabled={
                   form.generating ||
                   (!form.templateVersionId && !form.examCode) ||
-                  (form.examCode === "ortho" && !form.templateVersionId && !form.orthoStationType) ||
+                  (!form.templateVersionId && stationSubtypes.length > 0 && !form.stationSubtype) ||
                   !form.prompt.trim() ||
                   form.saving
                 }

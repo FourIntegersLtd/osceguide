@@ -1,4 +1,4 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import { isPlatformError, platformRequest, type components } from "@/foundation/platform-client";
 import type { StartedAttemptRef } from "@/capabilities/attempt-runner";
 import type { RoomGrant } from "@/foundation/livekit";
 import type { AssistantSurface } from "@/capabilities/surface";
@@ -106,32 +106,56 @@ export function athenaDoctorVoiceToken(sessionId: string, signal?: AbortSignal):
   );
 }
 
-/**
- * What past debriefs concluded.
- *
- * Read the complete paginated history rather than the tutor's recent-memory
- * window. Each summary names its source consultation for station filtering.
- */
-export async function listDebriefs(signal?: AbortSignal): Promise<DebriefSummary[]> {
-  const items: DebriefSummary[] = [];
-  let cursor: string | null = null;
-  do {
-    const page: { items: DebriefSummary[]; next_cursor?: string | null } = await platformRequest(
-      "/api/v1/me/debriefs", { signal, query: { limit: 100, cursor: cursor ?? undefined } },
-    );
-    items.push(...page.items);
-    cursor = page.next_cursor ?? null;
-  } while (cursor && !signal?.aborted);
-  return items;
+export interface DebriefPage {
+  items: DebriefSummary[];
+  next_cursor?: string | null;
 }
 
-/** One summary, found across all pages of the learner's private history. */
+/**
+ * A page of past debriefs, filtered by the server.
+ *
+ * `attemptId`, `stationVersionId` and `setEntryId` narrow to one source
+ * consultation, one station's history, or one set entry's — each summary
+ * names its source consultation, and the server does that matching in SQL
+ * rather than the caller walking its whole history and filtering in the
+ * browser.
+ */
+export function listDebriefs(
+  params: {
+    attemptId?: string | null;
+    stationVersionId?: string | null;
+    setEntryId?: string | null;
+    cursor?: string | null;
+    limit?: number;
+  } = {},
+  signal?: AbortSignal,
+): Promise<DebriefPage> {
+  return platformRequest<DebriefPage>("/api/v1/me/debriefs", {
+    signal,
+    query: {
+      attempt_id: params.attemptId ?? undefined,
+      station_version_id: params.stationVersionId ?? undefined,
+      set_entry_id: params.setEntryId ?? undefined,
+      cursor: params.cursor ?? undefined,
+      limit: params.limit,
+    },
+  });
+}
+
+/** One summary, read directly rather than found by walking the whole history. */
 export async function readDebrief(
   id: string,
   signal?: AbortSignal,
 ): Promise<DebriefSummary | null> {
-  const debriefs = await listDebriefs(signal);
-  return debriefs.find((debrief) => debrief.id === id) ?? null;
+  try {
+    return await platformRequest<DebriefSummary>(
+      `/api/v1/me/debriefs/${encodeURIComponent(id)}`,
+      { signal },
+    );
+  } catch (error) {
+    if (isPlatformError(error) && error.status === 404) return null;
+    throw error;
+  }
 }
 
 /** The insights and the plan are open JSON on the wire; a reader narrows them. */

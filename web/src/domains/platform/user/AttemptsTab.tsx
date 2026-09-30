@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import { AsyncBoundary, Badge, Button, Card } from "@/foundation/ui";
+import { AsyncBoundary, Badge, Button, Card, LoadMore, Row, RowList } from "@/foundation/ui";
 import { useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { kindLabel } from "@/capabilities/transcripts/api";
 import { listUserAttempts, type PlatformAttempt } from "@/domains/platform/support/api";
-import { LoadMore, Row, RowList } from "@/domains/platform/chrome";
 import {
   ATTEMPT_STATUSES,
   attemptStatusLabel,
@@ -101,10 +100,10 @@ function AttemptRow({ attempt, href }: { attempt: PlatformAttempt; href: string 
   return (
     <Row className="flex-col items-stretch sm:flex-row sm:items-center">
       <Link href={href} className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-ink">
+        <p className="truncate text-osce-data font-medium text-ink">
           {kindLabel(attempt.kind)} · {formatMoment(attempt.created_at)}
         </p>
-        <p className="truncate text-xs text-ink-subtle">
+        <p className="truncate text-osce-meta text-ink-subtle">
           {diagnosis
             ? diagnosis.problem
             : attempt.result_policy_versions.length > 0
@@ -127,7 +126,7 @@ function AttemptRow({ attempt, href }: { attempt: PlatformAttempt; href: string 
 export function AttemptsEmpty() {
   return (
     <Card padding="md">
-      <p className="text-sm text-ink-muted">No attempts.</p>
+      <p className="text-osce-data text-ink-muted">No attempts.</p>
     </Card>
   );
 }

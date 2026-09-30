@@ -68,7 +68,7 @@ export function MockSetup({
   const router = useRouter();
   const { hrefFor } = useSurface();
   const { session, refresh } = useSession();
-  const { code: currentExam } = useCurrentExam();
+  const { code: currentExam, settings } = useCurrentExam();
   const examCode = defaultExamCode(workspace, currentExam);
   // The old client counted and scanned this exam's sessions only.
   const examSets = useMemo(
@@ -256,7 +256,7 @@ export function MockSetup({
           <AddExamDate
             examDate={null}
             examTime={null}
-            isOrtho={examCode === "ortho"}
+            dateLabel={settings.date_label}
             onSaved={() => {
               void refresh();
               setExamDateSkipped(true);

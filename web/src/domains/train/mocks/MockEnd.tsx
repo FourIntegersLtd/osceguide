@@ -18,7 +18,7 @@ import {
 import { useAsync, useMeEvents } from "@/foundation/hooks";
 import { MilestoneCelebration } from "@/domains/train/mocks/MilestoneCelebration";
 import { StationOutcomes } from "@/domains/train/mocks/StationOutcomes";
-import { useCurrentExam } from "@/foundation/session";
+import { useCurrentExam, offersPatientPractice } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { listMyAttempts, type AttemptHistoryItem } from "@/capabilities/attempt-runner";
 import { PracticeOptionCards } from "@/capabilities/peer-practice/PracticeOptions";
@@ -48,7 +48,8 @@ import {
 export function MockEnd({ setId }: { setId: string }) {
   const router = useRouter();
   const { hrefFor } = useSurface();
-  const { code: examCode } = useCurrentExam();
+  const { code: examCode, settings } = useCurrentExam();
+  const offersPeerPractice = offersPatientPractice(settings);
   const peers = usePeerPractice();
 
   const state = useAsync(
@@ -241,7 +242,7 @@ export function MockEnd({ setId }: { setId: string }) {
                   </B2CPanelCardFooter>
                 </B2CPanelCard>
 
-                {examCode === "sca" && peers ? (
+                {offersPeerPractice && peers ? (
                   <B2CPanelCard className="mt-0">
                     <B2CPanelCardHeader>
                       <HiOutlineUsers className="h-4 w-4 text-osce-accent" aria-hidden />

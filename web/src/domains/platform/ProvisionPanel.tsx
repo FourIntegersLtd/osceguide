@@ -87,7 +87,7 @@ export function ProvisionForm({
         <select
           value={orgType}
           onChange={(event) => setOrgType(event.target.value)}
-          className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
+          className="h-10 rounded-control border border-border-strong bg-surface px-3 text-osce-data text-ink"
         >
           {ORG_TYPES.map((type) => (
             <option key={type.value} value={type.value}>

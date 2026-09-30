@@ -175,17 +175,17 @@ export function FeedbackStep({
       )}
 
       {explaining && (
-        <DebriefAboutModal examCode={examCode} onClose={() => setExplaining(false)} />
+        <DebriefAboutModal onClose={() => setExplaining(false)} />
       )}
     </div>
   );
 }
 
-function DebriefAboutModal({ examCode, onClose }: { examCode: string; onClose: () => void }) {
+function DebriefAboutModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal width="900px" height="fit-content" onClose={onClose} title="How debrief works">
       <ModalContent>
-        <DebriefTips examCode={examCode} />
+        <DebriefTips />
       </ModalContent>
     </Modal>
   );

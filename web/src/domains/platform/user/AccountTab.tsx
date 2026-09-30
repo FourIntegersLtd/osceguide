@@ -79,11 +79,11 @@ export function AccountTab({
       {error ? <Alert tone="danger">{error}</Alert> : null}
 
       <Card padding="md" title="Payment and access" description="Read from what happened. Changed where it is recorded.">
-        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-osce-data">
           <dt className="text-ink-muted">Payment</dt>
           <dd>
             {access ? <Badge tone={accessTone(access)}>{accessLabel(access)}</Badge> : <span className="text-ink-subtle">—</span>}
-            {facts?.last_paid_at ? <span className="ml-2 text-xs text-ink-subtle">last paid {formatDay(facts.last_paid_at)}</span> : null}
+            {facts?.last_paid_at ? <span className="ml-2 text-osce-meta text-ink-subtle">last paid {formatDay(facts.last_paid_at)}</span> : null}
           </dd>
           <dt className="text-ink-muted">Plan</dt>
           <dd className="text-ink">{facts?.has_paid ? planLabel(facts.plan_code) : "None bought"}</dd>
@@ -110,7 +110,7 @@ export function AccountTab({
 
       <Card padding="md">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="min-w-0 text-sm text-ink-muted">
+          <p className="min-w-0 text-osce-data text-ink-muted">
             {deactivated
               ? "This account is deactivated. Its sessions have ended and its token is refused."
               : "This account is active."}
@@ -127,7 +127,7 @@ export function AccountTab({
       </Card>
 
       <Card padding="md">
-        <p className="text-sm text-ink-muted">
+        <p className="text-osce-data text-ink-muted">
           {user.is_platform_admin
             ? `${user.email} may open every organisation in this console.`
             : `${user.email} does not have platform administrator access.`}

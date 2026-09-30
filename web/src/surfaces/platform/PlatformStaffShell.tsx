@@ -27,7 +27,6 @@ export interface PlatformStaffShellProps {
 export function PlatformStaffShell({ manifest, basePath, children }: PlatformStaffShellProps) {
   const { session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [navCollapsed, setNavCollapsed] = useState(false);
   const [helpExpanded, setHelpExpanded] = useState(false);
   const [helpWide, setHelpWide] = useState(false);
 
@@ -75,10 +74,11 @@ export function PlatformStaffShell({ manifest, basePath, children }: PlatformSta
         className={cn(
           "flex h-dvh max-h-dvh flex-col overflow-hidden bg-b2c-surface-muted font-sans text-osce-body text-osce-ink-900 antialiased",
           "md:grid md:grid-cols-[5rem_1fr_0fr] md:transition-[grid-template-columns] md:duration-300 md:ease-in-out",
-          helpExpanded && !navCollapsed && (helpWide ? "lg:grid-cols-[14.5rem_1fr_36rem]" : "lg:grid-cols-[14.5rem_1fr_22rem]"),
-          helpExpanded && navCollapsed && (helpWide ? "lg:grid-cols-[5rem_1fr_36rem]" : "lg:grid-cols-[5rem_1fr_22rem]"),
-          !helpExpanded && !navCollapsed && "lg:grid-cols-[14.5rem_1fr_0fr]",
-          !helpExpanded && navCollapsed && "lg:grid-cols-[5rem_1fr_0fr]",
+          helpExpanded
+            ? helpWide
+              ? "lg:grid-cols-[15rem_1fr_36rem]"
+              : "lg:grid-cols-[15rem_1fr_22rem]"
+            : "lg:grid-cols-[15rem_1fr_0fr]",
         )}
       >
         <a
@@ -93,8 +93,6 @@ export function PlatformStaffShell({ manifest, basePath, children }: PlatformSta
             title={manifest.label}
             basePath={basePath}
             groups={groups}
-            navCollapsed={navCollapsed}
-            onNavCollapsedChange={setNavCollapsed}
             menuOpen={menuOpen}
             onMenuOpenChange={setMenuOpen}
           />
@@ -105,7 +103,9 @@ export function PlatformStaffShell({ manifest, basePath, children }: PlatformSta
           data-b2c-scroll=""
           className={cn(b2cShellMain, "flex min-h-0 min-w-0 flex-1 flex-col md:col-span-1")}
         >
-          <div className={b2cPageColumn}>{children}</div>
+          <div className={b2cPageColumn}>
+            <div className="mx-auto max-w-[80rem]">{children}</div>
+          </div>
         </main>
 
         <LazyB2CHelpDock

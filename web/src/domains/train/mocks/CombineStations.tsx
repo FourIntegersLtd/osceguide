@@ -13,6 +13,7 @@ import {
   B2CPanelCardBody,
   B2CPanelCardFooter,
   B2CPanelCardHeader,
+  Button,
   ModalCallout,
   ModalContent,
   ModalHelper,
@@ -23,7 +24,8 @@ import {
 } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { useCurrentExam } from "@/foundation/session";
-import type { LibraryStation } from "@/capabilities/stations";
+import { useCursorPages } from "@/foundation/hooks";
+import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
 import { createSet } from "@/domains/train/api";
 import { incompleteVersionIds } from "@/domains/train/mocks/model";
 import {
@@ -31,6 +33,9 @@ import {
   examByCode,
   type MockWorkspace,
 } from "@/domains/train/mocks/useMockWorkspace";
+
+/** A page at a time from the server, once typing pauses. */
+const COMBINE_STATIONS_PAGE_LIMIT = 25;
 
 /**
  * Build a focused session out of stations you started and did not finish, in
@@ -56,14 +61,22 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
   const [errorText, setErrorText] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const availableStations = useMemo(() => {
-    const byVersion = new Map(workspace.stations.map((station) => [station.version_id, station]));
+  // The station versions worth combining: started, not yet exhausted, in the
+  // exam the person is sitting. A set carries every entry with its attempt
+  // count already, so this is a filter over what `workspace` loaded rather
+  // than a round trip.
+  const incompleteIds = useMemo(() => {
     const limit = examByCode(workspace, examCode)?.station_attempt_limit ?? 3;
     const examSets = workspace.sets.filter((set) => set.exam_code === examCode);
-    return incompleteVersionIds(examSets, limit)
-      .map((id) => byVersion.get(id))
-      .filter((item): item is LibraryStation => !!item);
+    return incompleteVersionIds(examSets, limit);
   }, [workspace, examCode]);
+
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(stationSearch.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [stationSearch]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -75,11 +88,24 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredStations = availableStations.filter((station) => {
-    const notSelected = !selected.some((item) => item.version_id === station.version_id);
-    const matches = station.title.toLowerCase().includes(stationSearch.toLowerCase());
-    return notSelected && matches;
-  });
+  // Narrowed to the incomplete version ids and searched in SQL. An empty
+  // `incompleteIds` is never sent as a filter — `browseLibrary` reads that as
+  // "no restriction" and would hand back the whole library — so the dropdown
+  // simply has nothing to page while there is nothing to combine.
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      incompleteIds.length > 0
+        ? browseLibrary(
+            { examCode, versionIds: incompleteIds, search: query, cursor, limit: COMBINE_STATIONS_PAGE_LIMIT },
+            signal,
+          )
+        : Promise.resolve({ items: [], next_cursor: null }),
+    [examCode, incompleteIds.join(","), query],
+  );
+  const stationResults = pages.state.data ?? [];
+  const filteredStations = stationResults.filter(
+    (station) => !selected.some((item) => item.version_id === station.version_id),
+  );
 
   const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -118,7 +144,7 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
         </ModalHelper>
       </div>
 
-      {availableStations.length === 0 ? (
+      {incompleteIds.length === 0 ? (
         <ModalCallout label="Note" className="mt-0">
           This feature becomes available after you attempt some mocks. You can then create a custom
           session from stations you have already tried.
@@ -172,6 +198,22 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
                         {station.title}
                       </button>
                     ))}
+                    {pages.moreError ? (
+                      <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+                    ) : null}
+                    {pages.hasMore ? (
+                      <div className="flex justify-center p-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={pages.loadingMore}
+                          onClick={pages.loadMore}
+                        >
+                          {pages.loadingMore ? "Loading…" : "Load more"}
+                        </Button>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

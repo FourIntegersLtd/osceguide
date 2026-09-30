@@ -78,7 +78,7 @@ export function DirectoryUsersTable({
             >
               {user.email}
             </Link>
-            <p className={cn("mt-0.5 truncate text-xs text-b2c-text-muted", b2cTableCellText)}>
+            <p className={cn("mt-0.5 truncate text-osce-meta text-b2c-text-muted", b2cTableCellText)}>
               {user.name || "No name"} · joined {formatDay(user.created_at)}
               {user.last_login_at
                 ? ` · last sign-in ${formatDay(user.last_login_at)}`

@@ -9,7 +9,8 @@ type BackProp = { href?: string; label?: string; onClick?: () => void };
 
 export type B2CPageHeaderProps = {
   eyebrow?: string;
-  title: string;
+  /** Almost always a string; a screen with its own inline-rename control (the rubric builder) passes a node instead. */
+  title: ReactNode;
   subtitle?: string;
   icon?: ElementType<{ className?: string }>;
   variant?: "compact" | "hero";

@@ -36,6 +36,12 @@ export function listMedia(
     examCode?: string | null;
     /** Matched against title and summary, in SQL rather than in the browser. */
     q?: string | null;
+    /** One specialty tag, filtered server-side rather than over a loaded page. */
+    specialty?: string | null;
+    /** True narrows to items with no specialty tag at all ("Other / Uncategorized"). */
+    hasSpecialty?: boolean | null;
+    /** `published` orders newest-published first; the server default is creation order. */
+    sort?: "published" | "created" | null;
   },
   signal?: AbortSignal,
 ): Promise<MediaPage> {
@@ -46,6 +52,9 @@ export function listMedia(
       limit: params.limit,
       exam_code: params.examCode ?? undefined,
       q: params.q ?? undefined,
+      specialty: params.specialty ?? undefined,
+      has_specialty: params.hasSpecialty ?? undefined,
+      sort: params.sort ?? undefined,
     },
     signal,
   });

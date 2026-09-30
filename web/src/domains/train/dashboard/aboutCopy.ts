@@ -1,301 +1,137 @@
-import {
-  type AboutContent,
-  type AboutItem,
-  type AboutKey,
-  type ExamAbout,
-  LEARNING_JOURNEY,
-} from "@/domains/train/dashboard/aboutTypes";
+import { chartColors } from "@/foundation/charts/chartTheme";
+import type { DashboardView } from "@/domains/train/dashboard/dashboardView";
+import type { AboutContent, AboutItem, AboutKey, ExamAbout } from "@/domains/train/dashboard/aboutTypes";
 
 /**
- * What the three "about" modals say, per exam.
+ * What the three "about" modals say, written from the dashboard's own view.
  *
- * The old dashboards each shipped their own `SummaryCardInfo`, `DomainInfo`
- * and `TrendInfo` — three components times four exams, identical in structure
- * and different only in the sentences. They are sentences, so they live in a
- * table; `AboutModals` renders them with the same `AboutInfo` primitives the
- * originals used.
+ * The retiring client shipped a copy per exam, and the wording drifted from
+ * the numbers: SCA's modal described a chart the screen no longer drew. Here
+ * the sentences quote the same scale, pass line and labels the charts use, so
+ * they cannot disagree, and a new exam's modals are right on day one.
  */
 
 export type { AboutContent, AboutItem, AboutKey, ExamAbout };
 
-const PLAB_ABOUT: ExamAbout = {
-  summary: LEARNING_JOURNEY(
-    "PLAB",
-    "Stations where you demonstrated confident competency (≥7/12 with ≥2/4 in each domain). These show your strengths and areas where you're exam-ready.",
-  ),
-  domain: {
-    title: "Domain performance",
-    description:
-      "This chart shows your average performance across the three PLAB assessment domains.",
-    sectionTitle: "Assessment domains",
-    sectionTone: "sky",
-    items: [
-      {
-        marker: "swatch",
-        swatchFor: "Data Gathering",
-        title: "Data Gathering",
-        description:
-          "Includes history taking, examination skills, ordering appropriate investigations, and clinical interpretation.",
-      },
-      {
-        marker: "swatch",
-        swatchFor: "Clinical Management",
-        title: "Clinical Management",
-        description:
-          "Includes diagnosis accuracy, treatment plans, safety netting, and follow-up arrangements.",
-      },
-      {
-        marker: "swatch",
-        swatchFor: "Interpersonal Skills",
-        title: "Interpersonal Skills",
-        description:
-          "Includes language clarity, listening skills, rapport building, and empathy demonstration.",
-      },
-    ],
-    callout: {
-      label: "Note",
-      text: "The amber line at score 2.0 indicates the minimum threshold required in each domain to pass a station.",
-    },
-  },
-  trend: {
-    title: "Performance trend",
-    description:
-      "This chart tracks your total station scores over time, allowing you to monitor your progress.",
-    sectionTitle: "How to read the chart",
-    sectionTone: "amber",
-    items: [
-      {
-        marker: "plain",
-        title: "Station scores",
-        description: "Each point represents your total score (out of 12) for a completed station.",
-      },
-      {
-        marker: "threshold",
-        title: "Pass threshold",
-        description:
-          "The green line at score 7.0 indicates the minimum total threshold required to pass a station.",
-      },
-    ],
-    callout: {
-      label: "Tip",
-      text: "Look for upward trends that indicate improvement. If your scores are consistently near or above the green line, you're on track for success in the PLAB exam.",
-    },
-  },
+const REMEMBER = {
+  label: "Remember",
+  text: "Every expert was once a beginner. Your performance today is the foundation for tomorrow's success. Focus on progress, not perfection.",
 };
 
-const CASC_ABOUT: ExamAbout = {
-  summary: {
-    title: "Performance summary",
-    description:
-      "This section shows your overall performance across all completed CASC stations.",
-    sectionTitle: "What the rates mean",
-    sectionTone: "sky",
-    items: [
-      {
-        marker: "success",
-        title: "Pass rate",
-        description:
-          "Percentage of stations where you achieved at least 80% competency in each domain (History Taking, Examination, Management, and Communication).",
-      },
-      {
-        marker: "danger",
-        title: "Fail rate",
-        description:
-          "Percentage of stations where competency requirements were not met in one or more domains.",
-      },
-    ],
-  },
-  domain: {
-    title: "Domain performance",
-    description:
-      "This chart shows your average competency rate across the four CASC assessment domains.",
-    sectionTitle: "Assessment domains",
-    sectionTone: "sky",
-    items: ["History Taking", "Examination", "Management", "Communication"].map((domain) => ({
-      marker: "swatch" as const,
-      swatchFor: domain,
-      title: domain,
-      description:
-        "Shows the percentage of competencies achieved within this domain across all stations.",
-    })),
-    callout: {
-      label: "Note",
-      text: "The amber line at 80% indicates the minimum competency threshold required in each domain to pass a station.",
-    },
-  },
-  trend: {
-    title: "Performance trend",
-    description:
-      "This chart tracks your overall competency rate over time across all domains.",
-    sectionTitle: "How to read the chart",
-    sectionTone: "amber",
-    items: [
-      {
-        marker: "plain",
-        title: "Competency rate",
-        description:
-          "Each point represents your overall competency rate for a completed station.",
-      },
-      {
-        marker: "threshold",
-        title: "Pass threshold",
-        description:
-          "The green line at 80% indicates the minimum competency rate required to pass.",
-      },
-    ],
-  },
-};
-
-const ORTHO_ABOUT: ExamAbout = {
-  summary: {
-    ...LEARNING_JOURNEY(
-      "orthopaedic ST3 interview",
-      "Stations where you demonstrated confident competency (≥35/50). These show your strengths and where you're interview-ready.",
-    ),
-    callout: {
-      label: "Remember",
-      text: "Every expert was once a beginner. Focus on progress, not perfection.",
-    },
-  },
-  domain: {
-    title: "Domain performance",
-    description:
-      "This chart groups your performance by station type, showing average scores across core competency domains.",
-    sectionTitle: "Station types",
-    sectionTone: "sky",
-    items: [
-      {
-        marker: "plain",
-        title: "Clinical stations",
-        description: "Technical knowledge, clinical reasoning, patient assessment.",
-      },
-      {
-        marker: "plain",
-        title: "Prioritisation stations",
-        description: "Organisation, time management, decision-making under pressure.",
-      },
-      {
-        marker: "plain",
-        title: "Communication stations",
-        description:
-          "Information exchange, situational awareness, professional communication.",
-      },
-    ],
-    callout: {
-      label: "How to read",
-      text: "Each station type shows grouped bars for different competency areas. Higher bars indicate stronger performance. Aim for scores above 7/10 across all domains for confident interview performance.",
-    },
-  },
-  trend: {
-    title: "Performance trend",
-    description:
-      "This chart tracks your total station scores over time across different station types so you can monitor progress.",
-    sectionTitle: "How to read the chart",
-    sectionTone: "amber",
-    items: [
-      {
-        marker: "plain",
-        title: "Station scores",
-        description: "Each point is your total score (out of 50) for a completed station.",
-      },
-      {
-        marker: "threshold",
-        title: "Pass threshold",
-        description:
-          "The green line at score 35 is the minimum total threshold (70%) to pass a station in the ST3 interview.",
-      },
-    ],
-    callout: {
-      label: "Tip",
-      text: "Look for upward trends. Consistently scoring above the green line across station types shows you're ready for your ST3 interview.",
-    },
-  },
-};
-
-const SCA_ABOUT: ExamAbout = {
-  summary: {
+/** The competency mix, for an exam counted by grade. */
+function mixAbout(): AboutContent {
+  return {
     title: "Your competency mix",
-    description:
-      "How your assessed marks split across the three levels, across every SCA station you have completed.",
+    description: "How your assessed marks split across the three levels, across every station you have completed.",
     sectionTitle: "The three levels",
     sectionTone: "sky",
     items: [
-      {
-        marker: "success",
-        title: "Competent",
-        description: "Marks that meet the standard expected in the exam.",
-      },
-      {
-        marker: "plain",
-        title: "Developing",
-        description: "Marks on their way there — the quickest ground to make up.",
-      },
-      {
-        marker: "danger",
-        title: "Development",
-        description: "Marks that need work. Practise these areas next.",
-      },
+      { marker: "success", title: "Competent", description: "Marks at the best grade: the standard expected in the exam." },
+      { marker: "plain", title: "Developing", description: "Marks on their way there — the quickest ground to make up." },
+      { marker: "danger", title: "Development", description: "Marks at the lowest grade. Practise these areas next." },
     ],
-  },
-  domain: {
-    title: "Domains",
-    description: "Each bar shows how much of your work in that area met the competent standard.",
-    sectionTitle: "The three areas",
+  };
+}
+
+/** Pass and fail rates, for an exam with a pass line. */
+function ratesAbout(view: DashboardView): AboutContent {
+  const passLabel = view.display?.labels.passLabel;
+  return {
+    title: "Your learning journey",
+    description:
+      "This section shows your progress across all completed stations. Remember, every station is a learning opportunity on your path to success.",
+    sectionTitle: "What the scores mean",
     sectionTone: "sky",
     items: [
       {
-        marker: "swatch",
-        swatchFor: "Global skills",
-        title: "Global skills",
-        description: "How you run the consultation: structure, timing, ethics, and clarity.",
+        marker: "success",
+        title: "Strong performance",
+        description: passLabel
+          ? `Stations at or above the pass line (${passLabel}). These show where you are exam-ready.`
+          : "Stations where you met the pass line. These show where you are exam-ready.",
       },
       {
-        marker: "swatch",
-        swatchFor: "Tasks",
-        title: "Tasks",
-        description: "The clinical work: history, examination, diagnosis, and plan.",
-      },
-      {
-        marker: "swatch",
-        swatchFor: "Relating to others",
-        title: "Relating to others",
+        marker: "danger",
+        title: "Growth opportunities",
         description:
-          "How you connect with the patient: listening, empathy, and shared decisions.",
+          "Stations with room for development. These are valuable learning experiences that guide your focused preparation.",
       },
     ],
-    callout: {
-      label: "Note",
-      text: "A good consultation needs all three areas. Look at your weakest bar and practise that next.",
-    },
-  },
-  trend: {
+    callout: REMEMBER,
+  };
+}
+
+function domainAbout(view: DashboardView): AboutContent {
+  const chart = view.domainChart;
+  if (chart.kind === "counts") {
+    return {
+      title: "Domain performance",
+      description: `${chart.subtitle}. Each bar splits one domain's marks by grade.`,
+      sectionTitle: "The three colours",
+      sectionTone: "sky",
+      items: [
+        { marker: "swatch", color: chartColors.green, title: "Competent", description: "Marks at the best grade." },
+        { marker: "swatch", color: chartColors.amber, title: "Developing", description: "Marks in between." },
+        { marker: "swatch", color: chartColors.red, title: "Requires development", description: "Marks at the lowest grade." },
+      ],
+      callout: { label: "Note", text: "A good consultation needs every domain. Look at your weakest bar and practise that next." },
+    };
+  }
+  return {
+    title: "Domain performance",
+    description: `${chart.subtitle}, across every station you have completed.`,
+    sectionTitle: "Assessment domains",
+    sectionTone: "sky",
+    items: chart.bars.map((bar) => ({
+      marker: "swatch",
+      color: bar.color,
+      title: bar.name,
+      description: `Your score so far: ${chart.format(bar.score)}.`,
+    })),
+    callout:
+      chart.threshold !== undefined
+        ? {
+            label: "Note",
+            text: `The line at ${chart.format(chart.threshold)} (${chart.thresholdLabel ?? "pass line"}) is the minimum each domain needs.`,
+          }
+        : undefined,
+  };
+}
+
+function trendAbout(view: DashboardView): AboutContent {
+  const trend = view.trend;
+  const items: AboutItem[] = [
+    view.counted
+      ? { marker: "plain", title: "Competency rate", description: "Each point is one station's share of marks at the best grade." }
+      : { marker: "plain", title: "Station scores", description: `Each point is one station's total, out of ${trend.format(trend.maxScore)}.` },
+  ];
+  if (trend.threshold !== undefined) {
+    items.push({
+      marker: "threshold",
+      title: trend.thresholdLabel ?? "Pass line",
+      description: `The line at ${trend.format(trend.threshold)} is the total a station needs to pass.`,
+    });
+  } else {
+    items.push({
+      marker: "plain",
+      title: "Direction matters",
+      description: "A rising line is what to aim for; a single low station is not a verdict.",
+    });
+  }
+  return {
     title: "Performance trend",
-    description: "This chart tracks the share of your marks meeting the competent standard.",
+    description: trend.subtitle,
     sectionTitle: "How to read the chart",
     sectionTone: "amber",
-    items: [
-      {
-        marker: "plain",
-        title: "Competency rate",
-        description: "Each point is one station's share of competent marks.",
-      },
-      {
-        marker: "plain",
-        title: "Direction matters",
-        description:
-          "A rising line is what to aim for; a single low station is not a verdict.",
-      },
-    ],
-  },
-};
+    items,
+    callout: view.bands.length ? { label: "Bands", text: view.bands.join(" · ") } : undefined,
+  };
+}
 
-export const EXAM_ABOUT: Record<string, ExamAbout> = {
-  sca: SCA_ABOUT,
-  plab: PLAB_ABOUT,
-  casc: CASC_ABOUT,
-  ortho: ORTHO_ABOUT,
-};
-
-export function aboutFor(examCode: string): ExamAbout {
-  return EXAM_ABOUT[examCode.toLowerCase()] ?? PLAB_ABOUT;
+export function aboutFor(view: DashboardView): ExamAbout {
+  return {
+    summary: view.counted ? mixAbout() : ratesAbout(view),
+    domain: domainAbout(view),
+    trend: trendAbout(view),
+  };
 }

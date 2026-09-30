@@ -15,6 +15,7 @@ import { DebriefSession } from "@/capabilities/debrief/DebriefSession";
 import { DebriefSuggestedPrompts } from "@/capabilities/debrief/DebriefInformation";
 import { PatientPracticePanel } from "@/capabilities/debrief/PatientPracticePanel";
 import type { AttemptBrief, AttemptReview } from "@/capabilities/attempt-runner";
+import { useCurrentExam, offersPatientPractice } from "@/foundation/session";
 
 type Service = "debrief" | "doctor" | null;
 
@@ -38,9 +39,11 @@ export function DebriefChooseModal({
   review: AttemptReview | null;
   onClose: () => void;
 }) {
+  const { settings } = useCurrentExam();
+  const sessionModes = settings.session_modes ?? ["debrief", "practice_as_patient"];
   const [active, setActive] = useState<Service>(null);
   const [showTips, setShowTips] = useState(false);
-  const showPatientPractice = examCode.toLowerCase() !== "ortho";
+  const showPatientPractice = offersPatientPractice(settings);
 
   const handleClose = () => {
     setActive(null);
@@ -84,7 +87,7 @@ export function DebriefChooseModal({
 
         {showTips && active === "debrief" ? (
           <div className="overflow-hidden rounded-lg border border-b2c-border bg-b2c-surface-muted/50 p-3">
-            <DebriefSuggestedPrompts examCode={examCode} />
+            <DebriefSuggestedPrompts />
           </div>
         ) : null}
 
@@ -98,30 +101,32 @@ export function DebriefChooseModal({
             </div>
             <div
               className={
-                examCode === "ortho"
-                  ? "mx-auto mt-4 max-w-md"
-                  : "mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"
+                sessionModes.length > 1
+                  ? "mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2"
+                  : "mx-auto mt-4 max-w-md"
               }
             >
-              <button
-                type="button"
-                onClick={() => setActive("debrief")}
-                className="flex w-full items-start gap-3 rounded-xl border border-b2c-border bg-osce-surface px-4 py-4 text-left transition hover:border-osce-accent/30 hover:bg-b2c-surface-muted active:scale-[0.99]"
-              >
-                <ModalIconWell>
-                  <HiChatAlt2 className="h-4 w-4" aria-hidden />
-                </ModalIconWell>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-osce-body font-medium text-osce-ink-900">
-                    Debrief Session
+              {sessionModes.includes("debrief") ? (
+                <button
+                  type="button"
+                  onClick={() => setActive("debrief")}
+                  className="flex w-full items-start gap-3 rounded-xl border border-b2c-border bg-osce-surface px-4 py-4 text-left transition hover:border-osce-accent/30 hover:bg-b2c-surface-muted active:scale-[0.99]"
+                >
+                  <ModalIconWell>
+                    <HiChatAlt2 className="h-4 w-4" aria-hidden />
+                  </ModalIconWell>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-osce-body font-medium text-osce-ink-900">
+                      Debrief Session
+                    </span>
+                    <span className="mt-0.5 block text-osce-body leading-relaxed text-b2c-text-muted">
+                      Review your consultation with Athena and get detailed feedback on your
+                      performance.
+                    </span>
                   </span>
-                  <span className="mt-0.5 block text-osce-body leading-relaxed text-b2c-text-muted">
-                    Review your consultation with Athena and get detailed feedback on your
-                    performance.
-                  </span>
-                </span>
-                <HiOutlineChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-b2c-text-muted" />
-              </button>
+                  <HiOutlineChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-b2c-text-muted" />
+                </button>
+              ) : null}
               {showPatientPractice ? (
                 <button
                   type="button"

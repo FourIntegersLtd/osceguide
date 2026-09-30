@@ -3,20 +3,24 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { HiChevronRight, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
-import { AsyncBoundary, productTokens } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { AsyncBoundary, Alert, Button, productTokens } from "@/foundation/ui";
+import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { listMyAttempts } from "@/capabilities/attempt-runner";
 import { debriefDate, listDebriefs } from "@/capabilities/debrief/api";
 
 const { b2cCard, b2cGroupedRow, b2cGroupedRowSubtitle, b2cGroupedRowTitle } = productTokens;
 
+/** A page at a time. The backend's page cap on `GET /me/debriefs` is 100. */
+const DEBRIEF_HISTORY_PAGE_LIMIT = 25;
+
 /**
  * The debriefs someone has had.
  *
- * Station/set scope includes every source consultation, not just the latest
- * attempt. Without that scope, attemptId narrows to one consultation; with
- * neither it shows the learner's complete history.
+ * `stationVersionId`/`entryId` scope to every source consultation for a
+ * station or a set entry, `attemptId` to one consultation, and neither shows
+ * the learner's complete history — all three filters run in SQL on
+ * `GET /me/debriefs` rather than being reconstructed here from a walk of
+ * `listMyAttempts`.
  */
 export function DebriefHistory({ attemptId, stationVersionId, entryId }: {
   attemptId?: string;
@@ -24,23 +28,21 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId }: {
   entryId?: string | null;
 } = {}) {
   const { hrefFor } = useSurface();
-  const state = useAsync(
-    async (signal) => {
-      const debriefs = await listDebriefs(signal);
-      if (stationVersionId || entryId) {
-        const sources = new Set<string>();
-        let cursor: string | null | undefined;
-        do {
-          const page = await listMyAttempts({ stationVersionId, setEntryId: entryId, limit: 100, cursor }, signal);
-          page.items.forEach((item) => sources.add(item.id));
-          cursor = page.next_cursor;
-        } while (cursor && !signal.aborted);
-        return debriefs.filter((debrief) => debrief.source_attempt_id && sources.has(debrief.source_attempt_id));
-      }
-      return attemptId ? debriefs.filter((debrief) => debrief.source_attempt_id === attemptId) : debriefs;
-    },
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listDebriefs(
+        {
+          attemptId: attemptId ?? null,
+          stationVersionId: stationVersionId ?? null,
+          setEntryId: entryId ?? null,
+          cursor,
+          limit: DEBRIEF_HISTORY_PAGE_LIMIT,
+        },
+        signal,
+      ),
     [attemptId, stationVersionId, entryId],
   );
+  const state = pages.state;
 
   return (
     <AsyncBoundary
@@ -52,29 +54,46 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId }: {
       }}
     >
       {(debriefs) => (
-        <div className={`${b2cCard} overflow-hidden`}>
-          {debriefs.map((debrief) => {
-            const created = debriefDate(debrief.created_at);
-            return (
-              <Link
-                href={hrefFor(`/debriefs/${debrief.id}`)}
-                key={debrief.id}
-                className={b2cGroupedRow}
+        <>
+          <div className={`${b2cCard} overflow-hidden`}>
+            {debriefs.map((debrief) => {
+              const created = debriefDate(debrief.created_at);
+              return (
+                <Link
+                  href={hrefFor(`/debriefs/${debrief.id}`)}
+                  key={debrief.id}
+                  className={b2cGroupedRow}
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-osce-accent-subtle">
+                    <HiOutlineChatBubbleLeftRight className="h-5 w-5 text-osce-accent" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={b2cGroupedRowTitle}>Debrief Session</p>
+                    <p className={b2cGroupedRowSubtitle}>
+                      {created ? format(created, "PPP p") : ""}
+                    </p>
+                  </div>
+                  <HiChevronRight className="h-5 w-5 shrink-0 text-b2c-text-muted" />
+                </Link>
+              );
+            })}
+          </div>
+          {pages.moreError ? (
+            <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+          ) : null}
+          {pages.hasMore ? (
+            <div className="mt-4 flex justify-center">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={pages.loadingMore}
+                onClick={pages.loadMore}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-osce-accent-subtle">
-                  <HiOutlineChatBubbleLeftRight className="h-5 w-5 text-osce-accent" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className={b2cGroupedRowTitle}>Debrief Session</p>
-                  <p className={b2cGroupedRowSubtitle}>
-                    {created ? format(created, "PPP p") : ""}
-                  </p>
-                </div>
-                <HiChevronRight className="h-5 w-5 shrink-0 text-b2c-text-muted" />
-              </Link>
-            );
-          })}
-        </div>
+                {pages.loadingMore ? "Loading…" : "Load more"}
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
     </AsyncBoundary>
   );

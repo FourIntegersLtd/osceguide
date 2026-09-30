@@ -56,7 +56,7 @@ export function InvitePlatformAdminModal({
       <form key={formKey} onSubmit={submit} className="flex flex-col gap-3 p-4 lg:p-6">
         {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
-        <p className="text-sm text-b2c-text-muted">
+        <p className="text-osce-data text-b2c-text-muted">
           Same flow as seating the first administrator of a new organisation: no password is typed
           here. New addresses receive an email with a link to choose a password and must do that
           before signing in.

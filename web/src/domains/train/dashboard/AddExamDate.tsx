@@ -25,13 +25,14 @@ import { updateMe } from "@/capabilities/account/api";
 export function AddExamDate({
   examDate: savedDate,
   examTime: savedTime,
-  isOrtho,
+  dateLabel,
   onSaved,
   onSkip,
 }: {
   examDate: string | null;
   examTime: string | null;
-  isOrtho: boolean;
+  /** The exam's own noun for this date (`settings.date_label`), e.g. "Interview date". */
+  dateLabel: string;
   onSaved?: () => void;
   /** Shown as "I don't have a date yet" when the prompt is optional. */
   onSkip?: () => void;
@@ -41,6 +42,8 @@ export function AddExamDate({
   const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  // "Exam date" -> "Exam time", "Interview date" -> "Interview time".
+  const timeLabel = dateLabel.replace(/date$/i, "time");
 
   const handleSave = async () => {
     if (!examDate) {
@@ -63,14 +66,11 @@ export function AddExamDate({
 
   return (
     <B2CPanelCard className="mt-0">
-      <B2CPanelCardHeader className="text-osce-accent-hover">
-        {isOrtho ? "Interview date" : "Exam date"}
-      </B2CPanelCardHeader>
+      <B2CPanelCardHeader className="text-osce-accent-hover">{dateLabel}</B2CPanelCardHeader>
       <B2CPanelCardBody className="space-y-4">
         <ModalHelper className="mt-0">
-          {isOrtho
-            ? "Adding your interview date helps us personalize your study plan and track your progress more effectively."
-            : "Adding your exam date helps us personalize your study plan and track your progress more effectively."}
+          Adding your {dateLabel.toLowerCase()} helps us personalize your study plan and track your
+          progress more effectively.
         </ModalHelper>
         {successMessage ? <Alert message={successMessage} type="success" /> : null}
         {errorMessage ? <Alert message={errorMessage} type="error" /> : null}
@@ -78,7 +78,7 @@ export function AddExamDate({
           <input
             type="date"
             id="examDate"
-            aria-label={isOrtho ? "Interview date" : "Exam date"}
+            aria-label={dateLabel}
             value={examDate}
             onChange={(event) => setExamDate(event.target.value)}
             className={`${productTokens.b2cSettingsFieldInput} flex-1`}
@@ -86,7 +86,7 @@ export function AddExamDate({
           <input
             type="time"
             id="examTime"
-            aria-label={isOrtho ? "Interview time" : "Exam time"}
+            aria-label={timeLabel}
             value={examTime}
             onChange={(event) => setExamTime(event.target.value)}
             className={`${productTokens.b2cSettingsFieldInput} sm:w-32`}

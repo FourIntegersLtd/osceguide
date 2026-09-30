@@ -1,26 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { HiOutlineArrowRight, HiOutlineNewspaper } from "react-icons/hi2";
 import {
   B2CEmptyState,
-  Pagination,
   cn,
   productTokens as t,
 } from "@/foundation/ui";
 import { bodyMarkdown, type MediaItem } from "@/capabilities/media/api";
 import { excerpt, formatPublished, readMinutes } from "@/capabilities/media/support/text";
-
-const PAGE_SIZE = 15;
-
-function sortByPublished(items: MediaItem[]): MediaItem[] {
-  return [...items].sort((a, b) => {
-    const ta = a.published_at ? Date.parse(a.published_at) : 0;
-    const tb = b.published_at ? Date.parse(b.published_at) : 0;
-    return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
-  });
-}
 
 function dateStack(iso: string | null | undefined): { month: string; day: string } {
   const formatted = formatPublished(iso, { month: "short" });
@@ -36,8 +24,9 @@ export function ArticlesLibrary({
   items: MediaItem[];
   hrefFor: (path: string) => string;
 }) {
-  const [page, setPage] = useState(1);
-  const sorted = sortByPublished(items);
+  // The server hands these back newest-published-first (`sort=published`), so
+  // the first item is the featured one and the rest are the timeline as-is.
+  const sorted = items;
 
   if (sorted.length === 0) {
     return (
@@ -52,9 +41,7 @@ export function ArticlesLibrary({
   const featured = sorted[0];
   if (!featured) return null;
   const rest = sorted.slice(1);
-  const start = (page - 1) * PAGE_SIZE;
-  const timeline = rest.slice(start, start + PAGE_SIZE);
-  const showPagination = rest.length > PAGE_SIZE;
+  const timeline = rest;
 
   const featuredBody = bodyMarkdown(featured);
   const featuredBlurb =
@@ -131,19 +118,6 @@ export function ArticlesLibrary({
               );
             })}
           </ul>
-
-          {showPagination ? (
-            <div className="mt-8">
-              <Pagination
-                currentPage={page}
-                totalItems={rest.length}
-                itemsPerPage={PAGE_SIZE}
-                knownTotal
-                onPageChange={setPage}
-                onItemsPerPageChange={() => setPage(1)}
-              />
-            </div>
-          ) : null}
         </section>
       ) : null}
     </div>

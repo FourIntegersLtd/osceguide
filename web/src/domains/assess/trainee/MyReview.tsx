@@ -2,12 +2,18 @@
 
 import { AsyncBoundary, Badge, b2bTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
+import { passWord, ratingLabel } from "@/capabilities/feedback/rubric";
+import { ratingVariant, summaryDomains } from "@/domains/assess/results/reviewForm";
 import { readMyReview } from "@/domains/assess/trainee/api";
 
 /**
  * A candidate's own review of one station, once the GP lead has completed
  * one and not before. Mirrors `MyResult`'s release gate: the server decides
  * whether there is anything to show, this screen only renders what came back.
+ *
+ * Ratings are written in the rubric's own kind (`summary.rating`), so a
+ * G / A / R station, a 0-4 station and a met / not met station all read right;
+ * domains carry the rubric's own titles (`summary.domain_labels`).
  */
 export function MyReview({ slotId }: { slotId: string }) {
   const state = useAsync((signal) => readMyReview(slotId, signal), [slotId]);
@@ -20,33 +26,34 @@ export function MyReview({ slotId }: { slotId: string }) {
       </header>
 
       <AsyncBoundary state={state}>
-        {(review) => (
+        {(review) => {
+          const rating = review.summary.rating ?? null;
+          const overall = review.summary.overall_rag;
+          const outcome = passWord(review.summary.passed);
+          const domains = summaryDomains(review.summary);
+          return (
           <section className="space-y-5 rounded-lg border border-b2b-border bg-b2b-surface p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className={b2bTokens.b2bEyebrow}>Overall</p>
                 <p className="mt-1 text-osce-title font-semibold text-b2b-headline">
-                  {ragLabel(review.summary.overall_rag)}
+                  {ratingLabel(rating, overall)}
                 </p>
               </div>
-              {review.summary.overall_rag ? (
-                <Badge tone={ragTone(review.summary.overall_rag)}>
-                  {ragLabel(review.summary.overall_rag)}
-                </Badge>
-              ) : null}
+              {outcome ? <Badge tone={review.summary.passed ? "success" : "danger"}>{outcome}</Badge> : null}
             </div>
 
-            {Object.keys(review.summary.by_domain).length > 0 ? (
+            {domains.length > 0 ? (
               <div>
                 <h2 className={b2bTokens.b2bSectionTitle}>By domain</h2>
                 <ul className="mt-2 divide-y divide-b2b-border rounded-lg border border-b2b-border">
-                  {Object.entries(review.summary.by_domain).map(([domainName, rating]) => (
+                  {domains.map((domain) => (
                     <li
-                      key={domainName}
+                      key={domain.id}
                       className="flex items-center justify-between gap-3 px-4 py-2.5"
                     >
-                      <span className="text-osce-body text-b2b-graphite">{domainName}</span>
-                      <Badge tone={ragTone(rating)}>{ragLabel(rating)}</Badge>
+                      <span className="text-osce-body text-b2b-graphite">{domain.label}</span>
+                      <Badge tone={ratingVariant(rating, domain.value)}>{ratingLabel(rating, domain.value)}</Badge>
                     </li>
                   ))}
                 </ul>
@@ -68,22 +75,10 @@ export function MyReview({ slotId }: { slotId: string }) {
               </p>
             ) : null}
           </section>
-        )}
+          );
+        }}
       </AsyncBoundary>
     </div>
   );
 }
 
-function ragLabel(rag: string | null | undefined): string {
-  if (!rag) return "Not rated";
-  const labels: Record<string, string> = { red: "Needs work", amber: "Borderline", green: "Good" };
-  return labels[rag.toLowerCase()] ?? rag;
-}
-
-function ragTone(rag: string | null | undefined): "success" | "danger" | "warning" | "neutral" {
-  const value = rag?.toLowerCase();
-  if (value === "green") return "success";
-  if (value === "red") return "danger";
-  if (value === "amber") return "warning";
-  return "neutral";
-}

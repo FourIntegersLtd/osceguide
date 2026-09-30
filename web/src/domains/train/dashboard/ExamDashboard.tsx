@@ -24,13 +24,12 @@ import { OnboardingInvite } from "@/domains/train/dashboard/OnboardingInvite";
 import { CompetencyHero } from "@/domains/train/dashboard/CompetencyHero";
 import { DomainPerformanceCard } from "@/domains/train/dashboard/DomainPerformanceCard";
 import { InsightsList } from "@/domains/train/dashboard/InsightsList";
-import { weakestInsights } from "@/domains/train/dashboard/insights";
 import RagCompositionBars from "@/foundation/charts/RagCompositionBars";
 import CategoryVolumeList from "@/foundation/charts/CategoryVolumeList";
 import { PerformanceSummary } from "@/domains/train/dashboard/PerformanceSummary";
 import { TrendCard } from "@/domains/train/dashboard/TrendCard";
 import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
-import { configFor } from "@/domains/train/dashboard/examConfig";
+import { dashboardView, type DashboardView } from "@/domains/train/dashboard/dashboardView";
 import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
 import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
 import { examCountdownSubtitle, examMoment, isExamWeek } from "@/domains/train/dashboard/examDate";
@@ -40,10 +39,12 @@ import type { AboutKey } from "@/domains/train/dashboard/aboutTypes";
  * Home for someone practising on their own — one screen for every exam.
  *
  * It replaces four: `sca/dashboard`, `plab/dashboard`, `casc/dashboard` and
- * `ortho/dashboard`, 8.4k lines whose differences were domain names, bar
- * colours, a maximum score, a threshold and the wording around them. Those are
- * rows in `examConfig` now. SCA is the one that is genuinely richer, and its
- * hero, weekly column and insights list are switched on by the same table.
+ * `ortho/dashboard`, 8.4k lines whose differences were domain names, a maximum
+ * score, a threshold and the wording around them. All of that is the rubric's
+ * display now, sent with `/me/performance` and read by `dashboardView`; no
+ * line here names an exam. A rubric that counts grades (SCA) gets the
+ * competency hero, weekly column and "what to work on" list because of how it
+ * sums, not because of its code.
  *
  * Two requests, not the old seven: `/me/dashboard` for who the person is and
  * what they hold, `/me/performance` for the marked work behind the charts.
@@ -60,7 +61,6 @@ function DashboardBody({ data }: { data: DashboardData }) {
   const { session } = useSession();
   const { hrefFor } = useSurface();
   const { examCode, attempts } = useDashboardExam(data);
-  const config = configFor(examCode);
   const [about, setAbout] = useState<AboutKey | null>(null);
   const [showExamWishes, setShowExamWishes] = useState(false);
 
@@ -98,17 +98,15 @@ function DashboardBody({ data }: { data: DashboardData }) {
   const firstName = session?.user.name?.split(" ")[0] ?? "there";
   // The countdown leads when there is one to show; otherwise the exam's own
   // welcome line (SCA has none, matching the old screen).
-  const subtitle =
-    examCountdownSubtitle(examDate) ??
-    (config.subtitle ? `Welcome back, ${firstName}. ${config.subtitle}` : undefined);
-  const eyebrow = config.sections.hero
-    ? `${attempts} station${attempts === 1 ? "" : "s"} attempted`
-    : undefined;
+  const subtitle = examCountdownSubtitle(examDate) ?? `Welcome back, ${firstName}.`;
+  const eyebrow = `${attempts} station${attempts === 1 ? "" : "s"} attempted`;
+  const performance = performanceState.data?.performance ?? null;
+  const view = dashboardView(performance);
 
   return (
     <>
       <DashboardHeader
-        title={config.title}
+        title={view.title}
         eyebrow={eyebrow}
         subtitle={subtitle}
         actions={
@@ -124,9 +122,9 @@ function DashboardBody({ data }: { data: DashboardData }) {
       <OnboardingInvite attempts={attempts} />
 
       <AsyncBoundary state={performanceState}>
-        {({ performance }) => (
+        {() => (
           <ExamSections
-            config={config}
+            view={view}
             performance={performance}
             loading={performanceState.loading}
             onAbout={setAbout}
@@ -135,7 +133,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
       </AsyncBoundary>
 
       <OnboardingOffer />
-      <AboutModal config={config} active={about} onClose={() => setAbout(null)} />
+      <AboutModal view={view} active={about} onClose={() => setAbout(null)} />
 
       {showExamWishes && (
         <Modal width="min(95vw, 480px)" height="fit-content" onClose={() => setShowExamWishes(false)}>
@@ -147,89 +145,64 @@ function DashboardBody({ data }: { data: DashboardData }) {
 }
 
 function ExamSections({
-  config,
+  view,
   performance,
   loading,
   onAbout,
 }: {
-  config: ReturnType<typeof configFor>;
+  view: DashboardView;
   performance: Performance | null;
   loading: boolean;
   onAbout: (key: AboutKey) => void;
 }) {
-  const summary = performance?.summary ?? null;
-  const composition = performance?.composition ?? [];
-
   return (
     <div className="mb-6 space-y-5 sm:mb-8">
-      {config.sections.hero ? (
+      {view.versionNotice ? (
+        <p className="rounded-lg border border-b2c-border-light bg-b2c-surface-muted px-4 py-2 text-osce-meta text-b2c-text-secondary">
+          {view.versionNotice}. Totals are compared as each version defines them.
+        </p>
+      ) : null}
+
+      {view.counted ? (
         <div className="flex flex-col gap-5 xl:flex-row xl:items-stretch">
           <div className="min-w-0 flex-1">
-            <CompetencyHero className="h-full" summary={summary} loading={loading} />
+            <CompetencyHero className="h-full" mix={performance ? view.hero : null} loading={loading} />
           </div>
-          {config.sections.weeklyTrend ? (
-            <WeeklyTrendCard
-              className="h-full"
-              trend={performance?.trend ?? null}
-              loading={loading}
-            />
-          ) : null}
+          <WeeklyTrendCard className="h-full" trend={performance?.trend ?? null} loading={loading} />
         </div>
-      ) : (
-        <PerformanceSummary
-          config={config}
-          summary={summary}
-          loading={loading}
-          onAbout={() => onAbout("summary")}
-        />
-      )}
+      ) : view.summaryCards.length > 0 ? (
+        <PerformanceSummary cards={view.summaryCards} loading={loading} onAbout={() => onAbout("summary")} />
+      ) : null}
 
       <DashboardChartGrid>
         <DashboardChartWide>
-          <DomainPerformanceCard
-            config={config}
-            domains={performance?.domains ?? null}
-            loading={loading}
-            onAbout={() => onAbout("domain")}
-          />
+          <DomainPerformanceCard chart={view.domainChart} loading={loading} onAbout={() => onAbout("domain")} />
         </DashboardChartWide>
         <DashboardChartSide>
-          <TrendCard
-            config={config}
-            trend={performance?.trend ?? null}
-            loading={loading}
-            onAbout={() => onAbout("trend")}
-          />
+          <TrendCard scale={view.trend} loading={loading} onAbout={() => onAbout("trend")} />
         </DashboardChartSide>
       </DashboardChartGrid>
 
-      {composition.length > 0 ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <RagCompositionBars
-            data={composition.map((row) => ({
-              name: row.label,
-              "Requires Development": row.red,
-              "Developing Competency": row.amber,
-              Competent: row.green,
-            }))}
-          />
-          <CategoryVolumeList
-            data={composition.map((row) => ({
-              name: row.label,
-              "Requires Development": row.red,
-              "Developing Competency": row.amber,
-              Competent: row.green,
-            }))}
-          />
+      {view.bands.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 text-osce-meta text-b2c-text-secondary">
+          <span className="font-medium text-osce-ink-700">Station bands</span>
+          {view.bands.map((band) => (
+            <span key={band} className="rounded-full border border-b2c-border-light bg-b2c-surface-muted px-2.5 py-0.5">
+              {band}
+            </span>
+          ))}
         </div>
       ) : null}
 
-      {config.sections.insights ? (
-        <InsightsList
-          items={weakestInsights(performance?.domains, config.domains)}
-          loading={loading}
-          onAbout={() => onAbout("summary")}
-        />
+      {view.composition.length > 0 ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <RagCompositionBars data={view.composition} emptyHint="Complete a station to see how each domain went." />
+          <CategoryVolumeList data={view.composition} />
+        </div>
+      ) : null}
+
+      {view.counted ? (
+        <InsightsList items={view.insights} loading={loading} onAbout={() => onAbout("summary")} />
       ) : null}
     </div>
   );

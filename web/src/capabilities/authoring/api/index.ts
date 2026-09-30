@@ -54,11 +54,24 @@ export {
 export {
   listRubrics,
   readRubric,
-  createRubric,
   addRubricVersion,
   editRubricVersion,
+  renameRubric,
   archiveRubricVersion,
   publishRubricVersion,
+  listRubricStartingPoints,
+  previewRubric,
+  copyRubric,
+  draftRubricInstructions,
+  trialMarkRubricVersion,
+  listTrialCandidates,
+  type RubricProblem,
+  type RubricPreview,
+  type RubricStartingPoint,
+  type DraftInstruction,
+  type TrialMark,
+  type TrialMarkRequest,
+  type TrialCandidate,
 } from "@/capabilities/authoring/api/rubrics";
 
 export {

@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import { LuHandCoins } from "react-icons/lu";
-import { Alert, AsyncBoundary, Badge, Button, Input } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, Input, Panel, Row, RowList } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import {
@@ -10,7 +10,6 @@ import {
   setReferralPayout,
   type ReferralPayout,
 } from "@/domains/platform/api";
-import { Row, RowList, Section } from "@/domains/platform/chrome";
 import { formatMoment } from "@/domains/platform/support";
 
 const FILTERS = [
@@ -32,7 +31,7 @@ type PayoutDetails = NonNullable<ReferralPayout["payout_details"]>;
  */
 function PayTo({ details, onCopyFailed }: { details: PayoutDetails; onCopyFailed: () => void }) {
   return (
-    <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-md bg-b2c-surface-muted px-3 py-2 text-xs">
+    <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-md bg-b2c-surface-muted px-3 py-2 text-osce-meta">
       <dt className="text-ink-subtle">Account holder</dt>
       <dd className="text-ink">{details.account_holder_name}</dd>
       <dt className="text-ink-subtle">Bank</dt>
@@ -69,7 +68,7 @@ function CopyValue({ value, label, onCopyFailed }: { value: string; label: strin
 /** A redeemed referral whose referrer never saved bank details: nowhere to send it yet. */
 function NoBankDetails() {
   return (
-    <p className="mt-2 text-xs text-ink-muted">
+    <p className="mt-2 text-osce-meta text-ink-muted">
       No bank details saved. Ask the referrer to add them in Settings → Referrals.
     </p>
   );
@@ -127,7 +126,7 @@ export function ReferralPayouts() {
         icon={LuHandCoins}
       />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
-      <Section
+      <Panel
         title="The queue"
         description="Settled outside the product. This is the record of whether a transfer was made, not a way to make one."
         actions={
@@ -162,16 +161,16 @@ export function ReferralPayouts() {
                 <Fragment key={referral.id}>
                   <Row>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink">
+                      <p className="text-osce-data font-medium text-ink">
                         {referral.referrer_email} · {pounds(referral.earned_pence)}
                       </p>
-                      <p className="truncate text-xs text-ink-subtle">
+                      <p className="truncate text-osce-meta text-ink-subtle">
                         referred {referral.referred_email ?? "someone"} ·{" "}
                         {referral.redeemed_at ? formatMoment(referral.redeemed_at) : "not redeemed"}
                         {referral.paid_at ? ` · paid ${formatMoment(referral.paid_at)}` : ""}
                       </p>
                       {referral.payout_reference ? (
-                        <p className="mt-1 text-xs text-ink-muted">
+                        <p className="mt-1 text-osce-meta text-ink-muted">
                           Reference {referral.payout_reference}
                         </p>
                       ) : null}
@@ -219,10 +218,10 @@ export function ReferralPayouts() {
                   {settling?.id === referral.id ? (
                     <Row className="flex-col items-stretch gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-ink">
+                        <p className="text-osce-data font-medium text-ink">
                           Mark {pounds(settling.earned_pence)} to {settling.referrer_email} as paid
                         </p>
-                        <p className="mt-2 text-xs text-ink-subtle">
+                        <p className="mt-2 text-osce-meta text-ink-subtle">
                           The transfer&rsquo;s own reference, so this row can be found on a statement
                           later. Optional.
                         </p>
@@ -265,7 +264,7 @@ export function ReferralPayouts() {
             </RowList>
           )}
         </AsyncBoundary>
-      </Section>
+      </Panel>
     </div>
   );
 }

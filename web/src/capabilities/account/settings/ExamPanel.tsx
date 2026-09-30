@@ -25,17 +25,17 @@ const {
   b2cSettingsFieldInputDisabled,
 } = productTokens;
 
-/** The retiring client's names for each exam; anything else is its code in capitals. */
-const EXAM_LABELS: Record<string, string> = {
-  sca: "SCA",
-  plab: "PLAB",
-  ortho: "Orthopaedic interview",
-};
-
-/** How an exam code reads on the settings screen. Empty when there is none. */
-export function examLabel(code: string | null | undefined): string {
+/**
+ * How an exam reads on the settings screen.
+ *
+ * The backend names every exam (`DashboardExam.name` / `ExamRead.name`), an
+ * institution's own included, so this is a fallback for the moment before
+ * that name has loaded rather than a second source of exam names.
+ */
+export function examLabel(name: string | null | undefined, code: string | null | undefined): string {
+  if (name) return name;
   if (!code) return "";
-  return EXAM_LABELS[code] ?? code.toUpperCase();
+  return code.toUpperCase();
 }
 
 /**
@@ -61,11 +61,10 @@ export default function ExamPanel() {
 }
 
 function ExamCards({ me }: { me: Me }) {
-  const { codes } = useCurrentExam();
+  const { codes, name, settings } = useCurrentExam();
   // What they signed up to sit, or — if they have since bought others — what
   // they hold. The old screen fell back to "sca" when nothing was set.
   const code = me.exam_code ?? codes[0] ?? "sca";
-  const isOrtho = code === "ortho";
 
   return (
     <>
@@ -85,7 +84,7 @@ function ExamCards({ me }: { me: Me }) {
             <input
               id="settings-exam-type"
               type="text"
-              value={examLabel(code)}
+              value={examLabel(name, code)}
               disabled
               className={b2cSettingsFieldInputDisabled}
             />
@@ -99,7 +98,7 @@ function ExamCards({ me }: { me: Me }) {
       <ExamDateCard
         initialDate={me.exam_date ?? ""}
         initialTime={(me.exam_time ?? "").slice(0, 5)}
-        isOrtho={isOrtho}
+        dateLabel={settings.date_label}
       />
     </>
   );
@@ -109,11 +108,11 @@ function ExamCards({ me }: { me: Me }) {
 function ExamDateCard({
   initialDate,
   initialTime,
-  isOrtho,
+  dateLabel,
 }: {
   initialDate: string;
   initialTime: string;
-  isOrtho: boolean;
+  dateLabel: string;
 }) {
   const [examDate, setExamDate] = useState(initialDate);
   const [examTime, setExamTime] = useState(initialTime);
@@ -139,23 +138,22 @@ function ExamDateCard({
     }
   };
 
-  const noun = isOrtho ? "interview" : "exam";
+  // "Exam date" -> "Exam time", "Interview date" -> "Interview time".
+  const timeLabel = dateLabel.replace(/date$/i, "time");
 
   return (
     <B2CPanelCard className="mt-0">
-      <B2CPanelCardHeader className="text-osce-accent-hover">
-        {isOrtho ? "Interview date" : "Exam date"}
-      </B2CPanelCardHeader>
+      <B2CPanelCardHeader className="text-osce-accent-hover">{dateLabel}</B2CPanelCardHeader>
       <B2CPanelCardBody className="space-y-4">
         <ModalHelper className="mt-0">
-          Adding your {noun} date helps us personalize your study plan and track your progress more
-          effectively.
+          Adding your {dateLabel.toLowerCase()} helps us personalize your study plan and track your
+          progress more effectively.
         </ModalHelper>
         {successMessage ? <Alert message={successMessage} type="success" /> : null}
         {error ? <Alert message={error} type="error" /> : null}
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <label htmlFor="settings-exam-date" className="sr-only">
-            {isOrtho ? "Interview date" : "Exam date"}
+            {dateLabel}
           </label>
           <input
             id="settings-exam-date"
@@ -165,7 +163,7 @@ function ExamDateCard({
             className={`${b2cSettingsFieldInput} flex-1`}
           />
           <label htmlFor="settings-exam-time" className="sr-only">
-            {isOrtho ? "Interview time" : "Exam time"}
+            {timeLabel}
           </label>
           <input
             id="settings-exam-time"

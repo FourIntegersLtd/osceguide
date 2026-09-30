@@ -31,3 +31,16 @@ export function feedbackTemplateEditPath(
 ): string {
   return `${feedbackTemplatesListPath(hrefFor)}/${encodeURIComponent(templateId)}/versions/${version}`;
 }
+
+/** The rubric builder: a start screen, then one version at a time. */
+export function rubricsListPath(hrefFor: (path: string) => string): string {
+  return `${hrefFor("/authoring")}/rubrics`;
+}
+
+export function rubricNewPath(hrefFor: (path: string) => string): string {
+  return `${rubricsListPath(hrefFor)}/new`;
+}
+
+export function rubricEditPath(hrefFor: (path: string) => string, rubricId: string, version: number): string {
+  return `${rubricsListPath(hrefFor)}/${encodeURIComponent(rubricId)}/versions/${version}`;
+}

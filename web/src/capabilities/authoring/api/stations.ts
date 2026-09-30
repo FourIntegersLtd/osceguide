@@ -139,16 +139,17 @@ export function editStationBrief(
 export function generateStation(input: {
   prompt: string;
   examCode: string;
-  orthoStationType?: string | null;
+  stationSubtype?: string | null;
 }): Promise<{ content: Json }> {
   return platformRequest<{ content: Json }>("/api/v1/platform/generate/station", {
     method: "POST",
     body: {
       prompt: input.prompt,
       exam_code: input.examCode,
-      // Only meaningful for ortho, and the backend ignores it otherwise; sent
-      // as null rather than omitted so the absence is explicit.
-      ortho_station_type: input.orthoStationType ?? null,
+      // Only meaningful for exams whose settings declare station subtypes; the
+      // backend ignores it otherwise. Sent as null rather than omitted so the
+      // absence is explicit.
+      station_subtype: input.stationSubtype ?? null,
     },
   });
 }

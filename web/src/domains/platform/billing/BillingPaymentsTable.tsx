@@ -55,7 +55,7 @@ export function UserBillingPaymentsTable({
               {formatMoney(payment.amount_total_pence, payment.currency)} ·{" "}
               {payment.plan_code ?? "no plan"}
             </p>
-            <p className={cn("truncate text-xs text-b2c-text-muted", b2cTableCellText)}>
+            <p className={cn("truncate text-osce-meta text-b2c-text-muted", b2cTableCellText)}>
               {formatMoment(payment.paid_at)} · {payment.receipt_id ?? "no receipt"} ·{" "}
               {payment.stripe_payment_intent_id}
             </p>

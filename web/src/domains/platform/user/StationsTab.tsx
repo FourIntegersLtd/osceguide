@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AsyncBoundary, Badge, Button, ConfirmModal } from "@/foundation/ui";
+import { AsyncBoundary, Badge, Button, ConfirmModal, Panel, Row, RowList } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
@@ -12,7 +12,6 @@ import {
   resetStationAttempts,
   type StationProgress,
 } from "@/domains/platform/support/api";
-import { Row, RowList, Section } from "@/domains/platform/chrome";
 import { attemptStatusLabel, attemptStatusTone, formatMoment } from "@/domains/platform/support";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
 
@@ -28,7 +27,7 @@ import { InlineAction } from "@/domains/platform/user/InlineAction";
 export function StationsTab({ userId }: { userId: string }) {
   const state = useAsync((signal) => listUserStations(userId, signal), [userId]);
   return (
-    <Section
+    <Panel
       title="Station progress"
       description="Every station this person has sat. The counter is what the attempt limit counts."
     >
@@ -44,7 +43,7 @@ export function StationsTab({ userId }: { userId: string }) {
           </RowList>
         )}
       </AsyncBoundary>
-    </Section>
+    </Panel>
   );
 }
 
@@ -105,10 +104,10 @@ function StationRow({
     <Row className="flex-col items-stretch gap-3">
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-ink">
-            {row.title} <span className="text-xs font-normal text-ink-subtle">· {row.exam_code.toUpperCase()}</span>
+          <p className="truncate text-osce-data font-medium text-ink">
+            {row.title} <span className="text-osce-meta font-normal text-ink-subtle">· {row.exam_code.toUpperCase()}</span>
           </p>
-          <p className="truncate text-xs text-ink-subtle">
+          <p className="truncate text-osce-meta text-ink-subtle">
             {row.attempts} attempt{row.attempts === 1 ? "" : "s"} · {row.evaluated} marked · counter {row.entry_attempts}
             {row.last_attempt_at ? ` · last ${formatMoment(row.last_attempt_at)}` : ""}
           </p>

@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import { LuArrowLeft } from "react-icons/lu";
-import { Alert, AsyncBoundary, Button, Card } from "@/foundation/ui";
-import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
+import { Alert, AsyncBoundary, Button, Input, Panel, PlatformPageHeader } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
@@ -14,7 +12,7 @@ import {
   suspendOrganization,
   type Organization,
 } from "@/domains/platform/api";
-import { Section, StatusBadge } from "@/domains/platform/chrome";
+import { StatusBadge } from "@/domains/platform/chrome";
 import { OrganizationSettings } from "@/domains/platform/OrganizationSettings";
 import { SeatMemberPanel } from "@/domains/platform/SeatMemberPanel";
 import { MembersSection } from "@/domains/platform/MembersSection";
@@ -22,7 +20,6 @@ import { AuditSection } from "@/domains/platform/AuditSection";
 import { SsoSection } from "@/domains/platform/SsoSection";
 import { renewContract } from "@/domains/platform/support/api";
 import { asContractDate } from "@/domains/platform/support";
-import { Input } from "@/foundation/ui";
 import { STATUS_HELP, formatDay, permitsSignIn } from "@/domains/platform/support";
 
 /**
@@ -47,16 +44,7 @@ export function OrganizationDetail({ slug }: { slug: string }) {
   const organization = fresh ?? state.data;
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <Link
-          href={hrefFor("/organizations")}
-          className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
-        >
-          <LuArrowLeft className="h-4 w-4" aria-hidden /> Organisations
-        </Link>
-      </div>
-
+    <div className="flex flex-col gap-6">
       <AsyncBoundary state={state}>
         {(loaded) => {
           const current = organization ?? loaded;
@@ -65,6 +53,7 @@ export function OrganizationDetail({ slug }: { slug: string }) {
               <PlatformPageHeader
                 title={current.name}
                 description={`/${current.slug} · ${current.org_type} · created ${formatDay(current.created_at)}`}
+                back={{ href: hrefFor("/organizations"), label: "Organisations" }}
                 actions={<StatusBadge status={current.status} />}
               />
 
@@ -112,7 +101,7 @@ function ParentOrganization({ parentId }: { parentId: string }) {
       {(organizations) => {
         const parent = organizations.find((item) => item.id === parentId);
         return (
-          <p className="-mt-4 text-sm text-ink-muted">
+          <p className="-mt-4 text-osce-meta text-b2c-text-muted">
             Part of{" "}
             {parent ? (
               <Link
@@ -167,31 +156,29 @@ function Lifecycle({
   }, [suspended, organization.slug, onChanged, toast]);
 
   return (
-    <Section title="Access">
-      <Card padding="md">
-        <div className="flex flex-col gap-3">
-          {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="min-w-0 text-sm text-ink-muted">
-              {STATUS_HELP[organization.status] ??
-                `Status "${organization.status}". Members cannot sign in.`}
-            </p>
-            <Button
-              variant={suspended ? "primary" : "danger"}
-              disabled={busy}
-              onClick={() => void toggle()}
-            >
-              {busy ? "Working…" : suspended ? "Restore access" : "Suspend access"}
-            </Button>
-          </div>
-          {suspended ? (
-            <p className="text-xs text-ink-subtle">
-              Restoring sets the status to <strong>active</strong>, not back to what it was before.
-            </p>
-          ) : null}
+    <Panel title="Access">
+      <div className="flex flex-col gap-3">
+        {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="min-w-0 text-osce-data text-b2c-text-muted">
+            {STATUS_HELP[organization.status] ??
+              `Status "${organization.status}". Members cannot sign in.`}
+          </p>
+          <Button
+            variant={suspended ? "primary" : "danger"}
+            disabled={busy}
+            onClick={() => void toggle()}
+          >
+            {busy ? "Working…" : suspended ? "Restore access" : "Suspend access"}
+          </Button>
         </div>
-      </Card>
-    </Section>
+        {suspended ? (
+          <p className="text-osce-meta text-b2c-text-subtle">
+            Restoring sets the status to <strong>active</strong>, not back to what it was before.
+          </p>
+        ) : null}
+      </div>
+    </Panel>
   );
 }
 
@@ -217,16 +204,14 @@ function RenewPanel({ organization, onChanged }: { organization: Organization; o
     }
   }, [endsAt, organization.slug, onChanged, toast]);
   return (
-    <Section title="Renew" description="New end date, and access restored with it — one step, so the second is not forgotten.">
-      <Card padding="md">
-        <div className="flex max-w-lg flex-col gap-3">
-          {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
-          <Input type="date" label="Contract now ends" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} disabled={busy} />
-          <div className="flex justify-end">
-            <Button disabled={busy || !endsAt} onClick={() => void renew()}>{busy ? "Renewing…" : "Renew"}</Button>
-          </div>
+    <Panel title="Renew" description="New end date, and access restored with it — one step, so the second is not forgotten.">
+      <div className="flex max-w-lg flex-col gap-3">
+        {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+        <Input type="date" label="Contract now ends" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} disabled={busy} />
+        <div className="flex justify-end">
+          <Button disabled={busy || !endsAt} onClick={() => void renew()}>{busy ? "Renewing…" : "Renew"}</Button>
         </div>
-      </Card>
-    </Section>
+      </div>
+    </Panel>
   );
 }

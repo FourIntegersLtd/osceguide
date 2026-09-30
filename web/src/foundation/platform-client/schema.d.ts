@@ -201,6 +201,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/attempts/{attempt_id}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Feedback
+         * @description The attempt's marking as a feedback screen draws it: the rubric frozen on
+         *     the attempt, its resolved display, and each result with the totals that
+         *     rubric makes of it (total, maximum, pass, critical concerns, per domain).
+         */
+        get: operations["attempts_read_feedback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/attempts/{attempt_id}/result": {
         parameters: {
             query?: never;
@@ -1473,6 +1495,23 @@ export interface paths {
         };
         /** List Debriefs */
         get: operations["tutor_memory_list_debriefs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/debriefs/{debrief_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Debrief */
+        get: operations["tutor_memory_get_debrief"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3729,6 +3768,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/rubrics/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy Org Rubric */
+        post: operations["rubrics_copy_org_rubric"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/rubrics/draft-instructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Draft Org Rubric Instructions */
+        post: operations["rubrics_draft_org_rubric_instructions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/rubrics/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Org Rubric */
+        post: operations["rubrics_preview_org_rubric"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/rubrics/starting-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Org Rubric Starting Points */
+        get: operations["rubrics_org_rubric_starting_points"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/rubrics/trial-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Org Trial Candidates */
+        get: operations["rubrics_list_org_trial_candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/rubrics/{rubric_id}": {
         parameters: {
             query?: never;
@@ -3743,7 +3867,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Rename Org Rubric
+         * @description Change this organisation's rubric title. Every version keeps it; nothing about marking changes.
+         */
+        patch: operations["rubrics_rename_org_rubric"];
         trace?: never;
     };
     "/api/v1/orgs/{org_slug}/rubrics/{rubric_id}/versions": {
@@ -3808,6 +3936,23 @@ export interface paths {
         put?: never;
         /** Publish Org Version */
         post: operations["rubrics_publish_org_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orgs/{org_slug}/rubrics/{rubric_id}/versions/{version}/trial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trial Org Rubric Version */
+        post: operations["rubrics_trial_org_rubric_version"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5716,6 +5861,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/rubrics/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy Platform Rubric */
+        post: operations["rubrics_copy_platform_rubric"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/rubrics/draft-instructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Draft Platform Rubric Instructions */
+        post: operations["rubrics_draft_platform_rubric_instructions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/rubrics/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Platform Rubric */
+        post: operations["rubrics_preview_platform_rubric"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/rubrics/starting-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Platform Rubric Starting Points */
+        get: operations["rubrics_platform_rubric_starting_points"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/rubrics/trial-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Platform Trial Candidates */
+        get: operations["rubrics_list_platform_trial_candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/rubrics/{rubric_id}": {
         parameters: {
             query?: never;
@@ -5730,7 +5960,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Rename Platform Rubric
+         * @description Change this platform rubric's title. Every version keeps it; nothing about marking changes.
+         */
+        patch: operations["rubrics_rename_platform_rubric"];
         trace?: never;
     };
     "/api/v1/platform/rubrics/{rubric_id}/versions": {
@@ -5801,6 +6035,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/rubrics/{rubric_id}/versions/{version}/trial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trial Platform Rubric Version */
+        post: operations["rubrics_trial_platform_rubric_version"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/site/messages": {
         parameters: {
             query?: never;
@@ -5810,7 +6061,7 @@ export interface paths {
         };
         /**
          * List Messages
-         * @description The inbox. Platform admin, because it is everybody's messages.
+         * @description The inbox, paged. Platform admin, because it is everybody's messages.
          */
         get: operations["public_site_list_messages"];
         put?: never;
@@ -6546,8 +6797,9 @@ export interface paths {
          * @description The published platform library, scoped to what the caller may open.
          *
          *     Rows carry no station content — see `LibraryStationRead`. `search` matches a title fragment in
-         *     SQL. A platform admin browses the whole catalogue; everybody else gets their own exam, and asking
-         *     for another is refused.
+         *     SQL; `version_ids` narrows to the stations those versions are current for. A platform admin
+         *     browses the whole catalogue; everybody else gets their own exam, and asking for another is
+         *     refused.
          */
         get: operations["stations_browse_library"];
         put?: never;
@@ -7011,6 +7263,22 @@ export interface components {
             station_version_id: string;
             /** Status */
             status: string;
+        };
+        /**
+         * AttemptFeedbackRead
+         * @description Everything a feedback screen needs: the frozen rubric, and each result with its totals.
+         *
+         *     Results are oldest first; a re-marked attempt keeps both, and the last is current.
+         */
+        AttemptFeedbackRead: {
+            /**
+             * Attempt Id
+             * Format: uuid
+             */
+            attempt_id: string;
+            /** Results */
+            results?: components["schemas"]["MarkedResultRead"][];
+            rubric: components["schemas"]["MarkingRubricRead"] | null;
         };
         /**
          * AttemptHistoryItem
@@ -7503,11 +7771,18 @@ export interface components {
             /** Name */
             name: string | null;
             /** Overall Rag */
-            overall_rag: string | null;
+            overall_rag: boolean | number | string | null;
+            /** Score */
+            score?: number | null;
             /** Stations */
             stations?: components["schemas"]["StationReport"][];
             /** Stations Marked */
             stations_marked: number;
+            /**
+             * Stations Passed
+             * @default 0
+             */
+            stations_passed: number;
             /** Trainee Id */
             trainee_id: string | null;
             /**
@@ -7714,6 +7989,11 @@ export interface components {
             review_priority: string;
             /** Stations Completed */
             stations_completed: number;
+            /**
+             * Stations Passed
+             * @default 0
+             */
+            stations_passed: number;
             /** Stations Total */
             stations_total: number;
             trainee: components["schemas"]["ConsolePerson"];
@@ -7909,6 +8189,18 @@ export interface components {
             /** Simulation Minutes */
             simulation_minutes: number;
         };
+        /**
+         * CopyRubric
+         * @description Start a new rubric of one's own: from a published one, or blank when no source is named.
+         */
+        CopyRubric: {
+            /** Source Rubric Id */
+            source_rubric_id?: string | null;
+            /** Source Version */
+            source_version?: number | null;
+            /** Title */
+            title?: string | null;
+        };
         /** CoverageItemRead */
         CoverageItemRead: {
             /** Competency Id */
@@ -7993,6 +8285,7 @@ export interface components {
             partner_pilot: boolean;
             /** Rubric Version Id */
             rubric_version_id?: string | null;
+            settings?: components["schemas"]["ExamSettings"] | null;
             /**
              * Station Attempt Limit
              * @default 3
@@ -8132,10 +8425,6 @@ export interface components {
             pacing: {
                 [key: string]: unknown;
             };
-            /** Result Schema Override */
-            result_schema_override?: {
-                [key: string]: unknown;
-            } | null;
             /** Structure */
             structure: {
                 [key: string]: unknown;
@@ -8283,6 +8572,7 @@ export interface components {
          * @description A trainee's home screen: entitlements, progress, recent attempts and question sets.
          */
         Dashboard: {
+            current_exam?: components["schemas"]["DashboardExam"] | null;
             /** Current Exam Code */
             current_exam_code?: string | null;
             /** Entitlements */
@@ -8300,6 +8590,17 @@ export interface components {
              * Format: uuid
              */
             user_id: string;
+        };
+        /**
+         * DashboardExam
+         * @description The exam the screens start on, with the settings that shape them.
+         */
+        DashboardExam: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            settings: components["schemas"]["ExamSettings"];
         };
         /** DebriefSummaryRead */
         DebriefSummaryRead: {
@@ -8434,9 +8735,11 @@ export interface components {
         };
         /**
          * DomainComposition
-         * @description How many marked attempts landed red, amber or green on one domain.
+         * @description How many marked attempts landed in each tone on one domain.
          *
-         *     83 and above is green, 50 to 83 is amber, below that is red.
+         *     A domain's tone comes from its value as a share of its maximum, read
+         *     against the display's tones. `red`/`amber`/`green` are the poor, fair and
+         *     good-or-better counts, kept until platform-web reads `tones` (Stage 3).
          */
         DomainComposition: {
             /** Amber */
@@ -8449,18 +8752,80 @@ export interface components {
             label: string;
             /** Red */
             red: number;
+            /** Tones */
+            tones?: {
+                [key: string]: number;
+            };
         };
         /**
          * DomainScore
-         * @description One bar of the radar: a rubric domain, averaged across the attempts.
+         * @description One bar of the radar: a rubric domain, averaged across the attempts marked on it.
          */
         DomainScore: {
+            /** Counts */
+            counts?: {
+                [key: string]: number;
+            };
             /** Id */
             id: string;
             /** Label */
             label: string;
             /** Score */
             score: number;
+            /** Value */
+            value?: number | null;
+        };
+        /**
+         * DomainTotalRead
+         * @description One answered domain of a result, in the display's domain aggregate.
+         */
+        DomainTotalRead: {
+            /** Counts */
+            counts?: {
+                [key: string]: number;
+            };
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Passed */
+            passed?: boolean | null;
+            /** Value */
+            value: number | null;
+        };
+        /**
+         * DraftInstructionRead
+         * @description Suggested wording for one place in a structure that carries instructions.
+         */
+        DraftInstructionRead: {
+            /** Has Instructions */
+            has_instructions: boolean;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "domain" | "competency" | "section" | "field";
+            /** Path */
+            path: string;
+            /** Role */
+            role: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "rubric" | "generic";
+            /** Text */
+            text: string;
+        };
+        /**
+         * DraftInstructionsRead
+         * @description Draft instructions for a structure, in authored order.
+         */
+        DraftInstructionsRead: {
+            /** Items */
+            items: components["schemas"]["DraftInstructionRead"][];
         };
         /** EditLock */
         EditLock: {
@@ -8484,10 +8849,6 @@ export interface components {
             pacing: {
                 [key: string]: unknown;
             };
-            /** Result Schema Override */
-            result_schema_override?: {
-                [key: string]: unknown;
-            } | null;
             /** Structure */
             structure: {
                 [key: string]: unknown;
@@ -8580,7 +8941,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_exam_code" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rag" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invoice_not_editable" | "invoice_not_found" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "not_a_media_block" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "payout_details_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "debrief_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_exam_code" | "invalid_exam_settings" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rating" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_trial_transcript" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invoice_not_editable" | "invoice_not_found" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "marker_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "not_a_media_block" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "payout_details_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_not_available" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -8671,10 +9032,45 @@ export interface components {
             partner_pilot: boolean;
             /** Rubric Version Id */
             rubric_version_id?: string | null;
+            settings?: components["schemas"]["ExamSettings"];
             /** Station Attempt Limit */
             station_attempt_limit: number;
             /** Status */
             status: string;
+        };
+        /**
+         * ExamSettings
+         * @description Everything that differs between exams apart from the rubric, as data.
+         *
+         *     Stored in `exams.settings`. Every field has a default, so `{}` is a whole,
+         *     valid exam: an institution's own exam behaves like the defaults until it
+         *     says otherwise. Screens and prompts read these instead of branching on an
+         *     exam code. Unknown keys are ignored rather than refused, so a row written
+         *     by a newer release still reads after a rollback.
+         */
+        ExamSettings: {
+            /**
+             * Date Label
+             * @default Exam date
+             */
+            date_label: string;
+            generation?: components["schemas"]["GenerationSettings"];
+            /** Help Modes */
+            help_modes?: ("navigate" | "knowledge_base")[];
+            /**
+             * Peer Waiting Email
+             * @default false
+             */
+            peer_waiting_email: boolean;
+            /** Session Modes */
+            session_modes?: ("debrief" | "practice_as_patient")[];
+            /**
+             * Show Tips While Marking
+             * @default false
+             */
+            show_tips_while_marking: boolean;
+            /** Station Subtypes */
+            station_subtypes?: components["schemas"]["StationSubtype"][];
         };
         /**
          * ExportedAttempt
@@ -8886,31 +9282,70 @@ export interface components {
             /** Signups */
             signups: number;
         };
-        /** GenerateResult */
+        /**
+         * GenerateResult
+         * @description The model's draft, normalised to the content type's draft keys.
+         */
         GenerateResult: {
             /** Content */
             content: {
                 [key: string]: unknown;
             };
         };
-        /** GenerateStationRequest */
+        /**
+         * GenerateStationRequest
+         * @description What to draft a station about, for which exam, and which of its station subtypes.
+         */
         GenerateStationRequest: {
             /** Exam Code */
             exam_code: string;
-            /**
-             * Ortho Station Type
-             * @description When exam_code is ortho: clinical, communication, prioritisation, or portfolio.
-             */
-            ortho_station_type?: string | null;
             /** Prompt */
             prompt: string;
+            /**
+             * Station Subtype
+             * @description One of the exam's `settings.station_subtypes` keys; ignored if the exam lists none.
+             */
+            station_subtype?: string | null;
         };
-        /** GenerateTextRequest */
+        /**
+         * GenerateTextRequest
+         * @description What to draft a summary, blog, deck or podcast about, and optionally for which exam.
+         */
         GenerateTextRequest: {
             /** Exam Code */
             exam_code?: string | null;
             /** Prompt */
             prompt: string;
+        };
+        /**
+         * GenerationSettings
+         * @description Which generation prompts and profile an exam's content is written with.
+         *
+         *     Keys, not prompt text: the texts live in `generation.exam_prompts`, keyed
+         *     by these. The defaults are the prompts every exam fell back to before this
+         *     was data.
+         */
+        GenerationSettings: {
+            /**
+             * Blog Prompt
+             * @default sca.blog
+             */
+            blog_prompt: string;
+            /**
+             * Default Profile
+             * @default sca.station
+             */
+            default_profile: string;
+            /**
+             * Station Prompt
+             * @default sca.station
+             */
+            station_prompt: string;
+            /**
+             * Summary Prompt
+             * @default sca.summary
+             */
+            summary_prompt: string;
         };
         /** GpLeadReviewRead */
         GpLeadReviewRead: {
@@ -8920,6 +9355,7 @@ export interface components {
             field_values: {
                 [key: string]: unknown;
             };
+            form?: components["schemas"]["ReviewFormRead"] | null;
             /**
              * Id
              * Format: uuid
@@ -9517,6 +9953,45 @@ export interface components {
         LogoutRequest: {
             /** Refresh Token */
             refresh_token?: string | null;
+        };
+        /**
+         * MarkedResultRead
+         * @description One marked result, with the numbers its own rubric makes of it.
+         */
+        MarkedResultRead: {
+            /** Framework Id */
+            framework_id: string;
+            /** Model Used */
+            model_used: string | null;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Policy Version */
+            policy_version: string;
+            /**
+             * Scored At
+             * Format: date-time
+             */
+            scored_at: string;
+            totals?: components["schemas"]["ResultTotalsRead"] | null;
+        };
+        /**
+         * MarkingRubricRead
+         * @description The rubric an attempt was marked with, frozen on it: what a feedback screen draws from.
+         */
+        MarkingRubricRead: {
+            /** Display */
+            display: {
+                [key: string]: unknown;
+            };
+            rating: components["schemas"]["RatingRead"];
+            /** Structure */
+            structure: {
+                [key: string]: unknown;
+            };
+            /** Version Id */
+            version_id: string | null;
         };
         /**
          * MeEventEnvelope
@@ -10129,6 +10604,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** Page[MessageRead] */
+        Page_MessageRead_: {
+            /** Items */
+            items: components["schemas"]["MessageRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** Page[OrganizationRead] */
         Page_OrganizationRead_: {
             /** Items */
@@ -10266,6 +10748,13 @@ export interface components {
         Page_TraineeRead_: {
             /** Items */
             items: components["schemas"]["TraineeRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[TrialCandidateRead] */
+        Page_TrialCandidateRead_: {
+            /** Items */
+            items: components["schemas"]["TrialCandidateRead"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -10469,10 +10958,25 @@ export interface components {
         Performance: {
             /** Composition */
             composition?: components["schemas"]["DomainComposition"][];
+            /** Display */
+            display?: {
+                [key: string]: unknown;
+            } | null;
             /** Domains */
             domains?: components["schemas"]["DomainScore"][];
             /** Exam Code */
             exam_code?: string | null;
+            /**
+             * Mixed Versions
+             * @default false
+             */
+            mixed_versions: boolean;
+            rating?: components["schemas"]["RatingRead"] | null;
+            /**
+             * Rubric Versions
+             * @default 0
+             */
+            rubric_versions: number;
             summary: components["schemas"]["PerformanceSummary"];
             /** Trend */
             trend?: components["schemas"]["TrendPoint"][];
@@ -10485,9 +10989,9 @@ export interface components {
             /** Critical Rate */
             critical_rate: number;
             /** Fail Rate */
-            fail_rate: number;
+            fail_rate: number | null;
             /** Pass Rate */
-            pass_rate: number;
+            pass_rate: number | null;
         };
         /** PhotoUploadFailure */
         PhotoUploadFailure: {
@@ -11125,6 +11629,27 @@ export interface components {
             waiting_count: number;
         };
         /**
+         * RatingRead
+         * @description How a rubric rates a competency, for a screen that draws a rating control or reads a value.
+         */
+        RatingRead: {
+            /** Field */
+            field: string;
+            /** Kind */
+            kind: string;
+            /** Maximum */
+            maximum?: number | null;
+            /** Minimum */
+            minimum?: number | null;
+            /** Scale */
+            scale?: string[];
+            /**
+             * Step
+             * @default number
+             */
+            step: string;
+        };
+        /**
          * ReadoutSitting
          * @description The sitting, as the head of the document states it.
          */
@@ -11414,6 +11939,14 @@ export interface components {
             photo_url: string;
         };
         /**
+         * RenameRubric
+         * @description A rubric's new title (R-7): set once at creation, changed later from the builder header.
+         */
+        RenameRubric: {
+            /** Title */
+            title: string;
+        };
+        /**
          * RenewContract
          * @description New contract dates, and whether a suspension should lift with them.
          */
@@ -11509,6 +12042,57 @@ export interface components {
              */
             sitting_id: string;
         };
+        /**
+         * ResultTotalsRead
+         * @description One result's numbers: the station total out of its maximum, pass, and critical concerns.
+         */
+        ResultTotalsRead: {
+            /** Critical Count */
+            critical_count: number;
+            /** Domains */
+            domains?: components["schemas"]["DomainTotalRead"][];
+            /** Fraction */
+            fraction: number | null;
+            /** Max */
+            max: number | null;
+            /** Passed */
+            passed: boolean | null;
+            /** Total */
+            total: number | null;
+        };
+        /**
+         * ReviewFieldRead
+         * @description One rating a reviewer may set, and the flat `field_values` path it is saved under.
+         */
+        ReviewFieldRead: {
+            /** Competency Id */
+            competency_id?: string | null;
+            /** Descriptors */
+            descriptors?: {
+                [key: string]: string;
+            };
+            /** Domain Id */
+            domain_id: string;
+            /** Domain Label */
+            domain_label: string;
+            /** Label */
+            label: string;
+            /** Path */
+            path: string;
+        };
+        /**
+         * ReviewFormRead
+         * @description What an examiner or GP lead can rate on a slot, generated from the sitting's rubric.
+         */
+        ReviewFormRead: {
+            /** Fields */
+            fields?: components["schemas"]["ReviewFieldRead"][];
+            rating: components["schemas"]["RatingRead"];
+            /** Required Domains */
+            required_domains?: string[];
+            /** Rubric Version Id */
+            rubric_version_id: string | null;
+        };
         /** RevokeEntitlement */
         RevokeEntitlement: {
             /** Reason */
@@ -11523,6 +12107,61 @@ export interface components {
              * Format: uuid
              */
             group_id: string;
+        };
+        /**
+         * RubricDraft
+         * @description A structure being written, sent to be checked, previewed or given draft instructions.
+         */
+        RubricDraft: {
+            /** Structure */
+            structure: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * RubricPreviewRead
+         * @description What a draft structure comes to, whether or not it can be published yet.
+         *
+         *     When it is invalid, only `problems` is filled: nothing can be derived from
+         *     a structure that cannot be parsed.
+         */
+        RubricPreviewRead: {
+            /** Display */
+            display?: {
+                [key: string]: unknown;
+            };
+            /** Display Schema */
+            display_schema?: {
+                [key: string]: unknown;
+            };
+            /** Problems */
+            problems?: components["schemas"]["RubricProblemRead"][];
+            rating?: components["schemas"]["RatingRead"] | null;
+            /** Result Schema */
+            result_schema?: {
+                [key: string]: unknown;
+            };
+            /** Sample Result */
+            sample_result?: {
+                [key: string]: unknown;
+            } | null;
+            sample_totals?: components["schemas"]["ResultTotalsRead"] | null;
+            /** Structure */
+            structure?: {
+                [key: string]: unknown;
+            } | null;
+            /** Valid */
+            valid: boolean;
+        };
+        /**
+         * RubricProblemRead
+         * @description One reason a structure cannot be published yet, at the place it applies.
+         */
+        RubricProblemRead: {
+            /** Message */
+            message: string;
+            /** Path */
+            path: string;
         };
         /** RubricRead */
         RubricRead: {
@@ -11542,6 +12181,40 @@ export interface components {
             /** Versions */
             versions?: components["schemas"]["RubricVersionRead"][];
         };
+        /**
+         * RubricStartingPointRead
+         * @description One thing a new rubric can start from: blank, a platform rubric or one of the org's own.
+         */
+        RubricStartingPointRead: {
+            /**
+             * Competency Count
+             * @default 0
+             */
+            competency_count: number;
+            /** Domains */
+            domains?: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "blank" | "platform" | "own";
+            /** Rating Kind */
+            rating_kind: string;
+            /** Rubric Id */
+            rubric_id?: string | null;
+            /** Title */
+            title: string;
+            /** Version */
+            version?: number | null;
+        };
+        /**
+         * RubricStartingPointsRead
+         * @description Every starting point, blank first, then the platform's rubrics, then the org's own.
+         */
+        RubricStartingPointsRead: {
+            /** Items */
+            items: components["schemas"]["RubricStartingPointRead"][];
+        };
         /** RubricVersionRead */
         RubricVersionRead: {
             /**
@@ -11557,6 +12230,8 @@ export interface components {
             pacing: {
                 [key: string]: unknown;
             };
+            /** Problems */
+            problems?: components["schemas"]["RubricProblemRead"][];
             /** Published At */
             published_at?: string | null;
             /** Result Schema */
@@ -12209,6 +12884,7 @@ export interface components {
         SittingReport: {
             /** Candidates */
             candidates?: components["schemas"]["CandidateReport"][];
+            rating?: components["schemas"]["RatingRead"] | null;
             sitting: components["schemas"]["ConsoleSitting"];
             totals: components["schemas"]["ReportTotals"];
         };
@@ -12240,23 +12916,34 @@ export interface components {
         };
         /**
          * SlotRagSummary
-         * @description What several reviewers of one slot agreed, or did not.
+         * @description What several reviewers of one slot agreed, or did not, in the rubric's own rating.
          *
-         *     The worst rating wins per domain: when reviewers disagree, the lower
-         *     rating is the one that should prompt a conversation.
+         *     Per domain, every completed review's ratings in it combine as one
+         *     (`rubrics.scoring.combine_reviewers`: the majority, ties to the worse).
+         *     The overall is the worst domain: one weak domain is what a reader must see.
+         *     The name keeps `rag` until platform-web moves to the native fields (Stage 3).
          */
         SlotRagSummary: {
             /** By Domain */
             by_domain?: {
-                [key: string]: string;
+                [key: string]: boolean | number | string;
             };
             /**
              * Completed Reviews
              * @default 0
              */
             completed_reviews: number;
+            /** Domain Labels */
+            domain_labels?: {
+                [key: string]: string;
+            };
             /** Overall Rag */
-            overall_rag?: string | null;
+            overall_rag?: boolean | number | string | null;
+            /** Passed */
+            passed?: boolean | null;
+            rating?: components["schemas"]["RatingRead"] | null;
+            /** Score */
+            score?: number | null;
             /**
              * Slot Id
              * Format: uuid
@@ -12305,6 +12992,7 @@ export interface components {
             field_values: {
                 [key: string]: unknown;
             };
+            form?: components["schemas"]["ReviewFormRead"] | null;
             /**
              * Id
              * Format: uuid
@@ -12329,6 +13017,7 @@ export interface components {
         };
         /** SlotReviewsRead */
         SlotReviewsRead: {
+            form?: components["schemas"]["ReviewFormRead"] | null;
             /** Items */
             items?: components["schemas"]["SlotReviewRead"][];
             summary: components["schemas"]["SlotRagSummary"];
@@ -12649,7 +13338,7 @@ export interface components {
             attempt_status: string | null;
             /** By Domain */
             by_domain?: {
-                [key: string]: string;
+                [key: string]: boolean | number | string;
             };
             /**
              * Circuit Id
@@ -12661,7 +13350,11 @@ export interface components {
             /** Marked */
             marked: boolean;
             /** Overall Rag */
-            overall_rag: string | null;
+            overall_rag: boolean | number | string | null;
+            /** Passed */
+            passed?: boolean | null;
+            /** Score */
+            score?: number | null;
             /**
              * Slot Id
              * Format: uuid
@@ -12673,6 +13366,21 @@ export interface components {
             slot_status: string;
             /** Station Title */
             station_title: string | null;
+        };
+        /**
+         * StationSubtype
+         * @description One kind of station an exam is written in, when an exam has more than one.
+         *
+         *     An author picks one before generating a station, and the generation
+         *     profile it names steers the prompt.
+         */
+        StationSubtype: {
+            /** Generation Profile */
+            generation_profile: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
         };
         /** StationTemplateRead */
         StationTemplateRead: {
@@ -13129,8 +13837,79 @@ export interface components {
              * Format: date-time
              */
             date: string;
+            /** Passed */
+            passed?: boolean | null;
             /** Score */
             score: number;
+            /** Total */
+            total?: number | null;
+        };
+        /**
+         * TrialCandidateRead
+         * @description One row of the trial-attempt picker (rubrics plan §8, R-6): just enough to choose it by.
+         *
+         *     Answered by `attempts.service_trial.trial_candidates` and returned by
+         *     `rubrics`' trial-candidates routes — shared here rather than owned by
+         *     either slice's own `schemas.py`, which `test_schemas_are_not_rows` forbids
+         *     importing across a slice boundary. Not `AttemptRead`: a picker shows only
+         *     what a person recognises an attempt by, never the attempt's own detail.
+         */
+        TrialCandidateRead: {
+            /** Candidate Label */
+            candidate_label: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Station Title */
+            station_title: string | null;
+            /** Turn Count */
+            turn_count: number;
+        };
+        /**
+         * TrialMarkRead
+         * @description One snapshot of a trial mark: marking, then marked or failed. Nothing is stored.
+         */
+        TrialMarkRead: {
+            /** Elapsed Seconds */
+            elapsed_seconds: number;
+            /** Error */
+            error?: string | null;
+            /** Marks */
+            marks?: {
+                [key: string]: unknown;
+            } | null;
+            /** Model Used */
+            model_used?: string | null;
+            /**
+             * Rubric Version Id
+             * Format: uuid
+             */
+            rubric_version_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "marking" | "marked" | "failed";
+            totals?: components["schemas"]["ResultTotalsRead"] | null;
+            /** Turn Count */
+            turn_count: number;
+        };
+        /**
+         * TrialMarkRequest
+         * @description What to mark: a pasted transcript, or one of the owner's own finished attempts. Exactly one.
+         */
+        TrialMarkRequest: {
+            /** Attempt Id */
+            attempt_id?: string | null;
+            /** Transcript */
+            transcript?: string | null;
         };
         /**
          * TutorMemoryRead
@@ -13181,6 +13960,7 @@ export interface components {
             partner_pilot?: boolean | null;
             /** Rubric Version Id */
             rubric_version_id?: string | null;
+            settings?: components["schemas"]["ExamSettings"] | null;
             /** Station Attempt Limit */
             station_attempt_limit?: number | null;
         };
@@ -14475,6 +15255,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    attempts_read_feedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptFeedbackRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_yours */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -18165,6 +19003,12 @@ export interface operations {
     tutor_memory_list_debriefs: {
         parameters: {
             query?: {
+                /** @description Only debriefs of this consultation (the source attempt). */
+                attempt_id?: string | null;
+                /** @description Only debriefs of consultations on this station version. */
+                station_version_id?: string | null;
+                /** @description Only debriefs of consultations of this question-set entry. */
+                set_entry_id?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -18200,6 +19044,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    tutor_memory_get_debrief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                debrief_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DebriefSummaryRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description debrief_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -20800,6 +21693,12 @@ export interface operations {
                 exam_code?: string | null;
                 /** @description A fragment of a title or a summary. */
                 q?: string | null;
+                /** @description Only items filed under this specialty, exactly. */
+                specialty?: string | null;
+                /** @description true: only items with a specialty; false: only items without one. */
+                has_specialty?: boolean | null;
+                /** @description created: newest written first. published: newest published first, unpublished left out. */
+                sort?: "created" | "published";
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -23290,7 +24189,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid_exam_code */
+            /** @description invalid_exam_code, invalid_exam_settings */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -23507,13 +24406,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description invalid_exam_settings */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -23934,6 +24833,8 @@ export interface operations {
             query?: {
                 /** @description A membership's email, role, or user id */
                 search?: string | null;
+                /** @description Only memberships in this state. */
+                status?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -24972,6 +25873,248 @@ export interface operations {
             };
         };
     };
+    rubrics_copy_org_rubric: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyRubric"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rubric_not_found, rubric_version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rubric_version_not_published */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rubrics_draft_org_rubric_instructions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RubricDraft"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftInstructionsRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_rubric */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rubrics_preview_org_rubric: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RubricDraft"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricPreviewRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rubrics_org_rubric_starting_points: {
+        parameters: {
+            query?: {
+                search?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricStartingPointsRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rubrics_list_org_trial_candidates: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TrialCandidateRead_"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rubrics_read_org_rubric: {
         parameters: {
             query?: never;
@@ -24984,6 +26127,61 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricRead"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rubric_not_found, rubric_version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rubrics_rename_org_rubric: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rubric_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameRubric"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -25252,6 +26450,90 @@ export interface operations {
             };
             /** @description invalid_rubric */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rubrics_trial_org_rubric_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rubric_id: string;
+                version: number;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrialMarkRequest"];
+            };
+        };
+        responses: {
+            /** @description An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `TrialMarkRead` every five seconds while `marking`, and one last `marked` or `failed` snapshot, then it closes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrialMarkRead"];
+                    "text/event-stream": components["schemas"]["TrialMarkRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rubric_not_found, rubric_version_not_found, attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_rubric, invalid_trial_transcript */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description marker_unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -27094,7 +28376,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid_rag */
+            /** @description invalid_rating */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -27251,7 +28533,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid_rag */
+            /** @description invalid_rating */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -28729,6 +30011,8 @@ export interface operations {
             query?: {
                 /** @description A trainee's name, email, or cohort */
                 search?: string | null;
+                /** @description true: only trainees whose access is revoked; false: only live ones. */
+                access_revoked?: boolean | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -30348,7 +31632,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description invalid_exam_code */
+            /** @description invalid_exam_code, invalid_exam_settings */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -30410,13 +31694,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description invalid_exam_settings */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -32110,6 +33394,278 @@ export interface operations {
             };
         };
     };
+    rubrics_copy_platform_rubric: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyRubric"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rubric_not_found, rubric_version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rubric_version_not_published */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rubrics_draft_platform_rubric_instructions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RubricDraft"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftInstructionsRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_rubric */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rubrics_preview_platform_rubric: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RubricDraft"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricPreviewRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rubrics_platform_rubric_starting_points: {
+        parameters: {
+            query?: {
+                search?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricStartingPointsRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rubrics_list_platform_trial_candidates: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TrialCandidateRead_"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rubrics_read_platform_rubric: {
         parameters: {
             query?: never;
@@ -32120,6 +33676,68 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RubricRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description rubric_not_found, rubric_version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rubrics_rename_platform_rubric: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rubric_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameRubric"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -32434,26 +34052,30 @@ export interface operations {
             };
         };
     };
-    public_site_list_messages: {
+    rubrics_trial_platform_rubric_version: {
         parameters: {
-            query?: {
-                /** @description contact or product_feedback */
-                kind?: string | null;
-                limit?: number;
-            };
+            query?: never;
             header?: never;
-            path?: never;
+            path: {
+                rubric_id: string;
+                version: number;
+            };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrialMarkRequest"];
+            };
+        };
         responses: {
-            /** @description Successful Response */
+            /** @description An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `TrialMarkRead` every five seconds while `marking`, and one last `marked` or `failed` snapshot, then it closes. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MessageRead"][];
+                    "application/json": components["schemas"]["TrialMarkRead"];
+                    "text/event-stream": components["schemas"]["TrialMarkRead"];
                 };
             };
             /** @description unauthenticated, account_suspended */
@@ -32474,13 +34096,95 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description rubric_not_found, rubric_version_not_found, attempt_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_rubric, invalid_trial_transcript */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description marker_unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    public_site_list_messages: {
+        parameters: {
+            query?: {
+                /** @description contact or product_feedback */
+                kind?: string | null;
+                /** @description true: only answered messages; false: only the ones still waiting. */
+                handled?: boolean | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MessageRead_"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_input */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -34848,6 +36552,8 @@ export interface operations {
             query?: {
                 exam_code?: string | null;
                 search?: string | null;
+                /** @description Only stations whose current version is one of these (repeat the param). */
+                version_ids?: string[] | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;

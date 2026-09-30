@@ -1,8 +1,7 @@
 "use client";
 
-import { Button } from "@/foundation/ui";
+import { Button, Panel } from "@/foundation/ui";
 import type { DirectoryFilters } from "@/domains/platform/api";
-import { Section } from "@/domains/platform/chrome";
 import { DirectoryUsersTable } from "@/domains/platform/users/DirectoryUsersTable";
 
 /**
@@ -31,7 +30,7 @@ export function UserGroup({
   const narrowed = Boolean(filters.q || filters.access || filters.status || filters.planCode);
 
   return (
-    <Section title={title} description={description}>
+    <Panel title={title} description={description}>
       <DirectoryUsersTable
         filters={filters}
         hrefFor={hrefFor}
@@ -53,6 +52,6 @@ export function UserGroup({
               }
         }
       />
-    </Section>
+    </Panel>
   );
 }

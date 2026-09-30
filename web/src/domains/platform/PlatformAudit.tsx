@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { LuScrollText } from "react-icons/lu";
-import { AsyncBoundary, Input } from "@/foundation/ui";
+import { AsyncBoundary, Input, RowList } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import { listPlatformAudit } from "@/domains/platform/support/api";
-import { RowList } from "@/domains/platform/chrome";
 import { PlatformAuditRow } from "@/domains/platform/user/HistoryTab";
 
 /** Who changed what, across every organisation and the platform itself. */

@@ -7,6 +7,24 @@ import { EXAM_SELECTION_EVENT, readExamSelection, rememberExamSelection, normali
 import { useSession } from "@/foundation/session/SessionProvider";
 
 type Dashboard = components["schemas"]["Dashboard"];
+type DashboardExam = components["schemas"]["DashboardExam"];
+export type ExamSettings = components["schemas"]["ExamSettings"];
+
+/**
+ * What every screen gets before the dashboard answers, and what an exam this
+ * hook cannot describe (a `chosen` override the dashboard never priced in)
+ * falls back to. Matches the backend's own field defaults
+ * (`app/core/exam_settings.py`), so a screen reading this before the real
+ * settings land behaves exactly as an exam with `{}` stored would.
+ */
+export const DEFAULT_EXAM_SETTINGS: ExamSettings = {
+  date_label: "Exam date",
+  help_modes: ["navigate"],
+  peer_waiting_email: false,
+  session_modes: ["debrief", "practice_as_patient"],
+  show_tips_while_marking: false,
+  station_subtypes: [],
+};
 
 /** How long one answer is shared: long enough to cover one page load's mounts, short enough that a later screen reads fresh. */
 const SHARE_FOR_MS = 10_000;
@@ -40,6 +58,16 @@ export interface CurrentExam {
   codes: string[];
   /** The one every screen is showing. `null` before it resolves, or if they hold none. */
   code: string | null;
+  /** That exam's display name, from the backend. `null` until it resolves. */
+  name: string | null;
+  /**
+   * Everything that differs between exams apart from the rubric — date label,
+   * session modes, station sub-types, help modes and the rest
+   * (`app/core/exam_settings.py`). Always a whole object, defaulted to match
+   * an exam stored as `{}`, so a screen never has to null-check it while the
+   * dashboard is still loading.
+   */
+  settings: ExamSettings;
   /** True while it is still being fetched, so a screen can wait rather than guess. */
   loading: boolean;
   /** Switch exams. Remembered per person, in this browser. */
@@ -70,6 +98,7 @@ export function useCurrentExam(): CurrentExam {
 
   const [codes, setCodes] = useState<string[]>([]);
   const [serverCurrent, setServerCurrent] = useState<string | null>(null);
+  const [dashboardExam, setDashboardExam] = useState<DashboardExam | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -78,6 +107,7 @@ export function useCurrentExam(): CurrentExam {
       setCodes([]);
       setChosen(null);
       setServerCurrent(null);
+      setDashboardExam(null);
       setLoading(status === "loading");
       return;
     }
@@ -88,6 +118,7 @@ export function useCurrentExam(): CurrentExam {
         if (!live) return;
         setCodes(data.exam_codes ?? []);
         setServerCurrent(data.current_exam_code ?? null);
+        setDashboardExam(data.current_exam ?? null);
         setChosen(readExamSelection(userId));
       })
       .catch(() => {
@@ -98,6 +129,7 @@ export function useCurrentExam(): CurrentExam {
         if (live) {
           setCodes([]);
           setServerCurrent(null);
+          setDashboardExam(null);
         }
       })
       .finally(() => {
@@ -132,5 +164,13 @@ export function useCurrentExam(): CurrentExam {
   // The API checks access whenever a practice session is started.
   const code = chosen ?? serverCurrent ?? normalizeExamCode(session?.user.exam_code) ?? codes[0] ?? null;
 
-  return { codes, code, loading, setCode };
+  // The dashboard only ever describes its own `current_exam_code`. Someone
+  // who has switched away from it locally (the rare multi-exam holder) sees
+  // safe defaults rather than another exam's settings misapplied to this
+  // one — the same "nothing invented" rule as the code above.
+  const onDashboardExam = dashboardExam !== null && dashboardExam.code === code;
+  const name = onDashboardExam ? dashboardExam.name : null;
+  const settings = onDashboardExam ? dashboardExam.settings : DEFAULT_EXAM_SETTINGS;
+
+  return { codes, code, name, settings, loading, setCode };
 }

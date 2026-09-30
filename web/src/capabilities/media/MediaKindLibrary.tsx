@@ -12,9 +12,9 @@ import {
   cn,
   productTokens as t,
 } from "@/foundation/ui";
-import { useCursorPages } from "@/foundation/hooks";
+import { useCursorPages, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
-import { listMedia, type MediaKind } from "@/capabilities/media/api";
+import { listMedia, listAllMedia, specialtiesOf, type MediaKind } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
 import { MEDIA_KIND_ICON } from "@/capabilities/media/MediaCard";
 import { ArticlesLibrary } from "@/capabilities/media/ArticlesLibrary";
@@ -77,13 +77,44 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
   const urlQuery = searchParams.get("q")?.trim() ?? "";
   const [term, setTerm] = useState(urlQuery);
 
+  // Slide decks alone offer a specialty filter, applied in SQL rather than
+  // over an already-loaded page.
+  const [specialty, setSpecialty] = useState("all");
+  const specialtyFilter =
+    specialty === "all" ? {} : specialty === "other" ? { hasSpecialty: false } : { specialty };
+
   // A page at a time, scoped by exam in SQL. This used to walk every cursor
   // up front and then filter the whole catalogue by exam in the browser.
   const pages = useCursorPages(
-    (cursor, signal) => listMedia({ kind, cursor, limit: MEDIA_KIND_PAGE_LIMIT, examCode }, signal),
-    [kind, examCode],
+    (cursor, signal) =>
+      listMedia(
+        {
+          kind,
+          cursor,
+          limit: MEDIA_KIND_PAGE_LIMIT,
+          examCode,
+          // Articles read newest-published-first; the server default is
+          // creation order, which drifted from publish order once drafts
+          // could sit unpublished for a while before going live.
+          sort: kind === "blog" ? "published" : undefined,
+          ...specialtyFilter,
+        },
+        signal,
+      ),
+    [kind, examCode, specialty],
   );
   const state = pages.state;
+
+  // The specialty picker's own option list, from a wider unfiltered fetch —
+  // an already-filtered page can't tell you what else was on offer.
+  const specialtyOptions = useAsync(
+    (signal) => (kind === "slide_deck" ? listAllMedia(kind, signal, examCode) : Promise.resolve([])),
+    [kind, examCode],
+  );
+  const deckSpecialties = [...new Set((specialtyOptions.data ?? []).flatMap(specialtiesOf))].sort();
+  const deckHasUncategorized = (specialtyOptions.data ?? []).some(
+    (deck) => specialtiesOf(deck).length === 0,
+  );
   const searchEnabled = kind !== "slide_deck";
   const showSearchResults = searchEnabled && urlQuery.length > 0;
 
@@ -171,7 +202,14 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
                 ) : kind === "summary" ? (
                   <SummaryIndex items={items} hrefFor={hrefFor} />
                 ) : kind === "slide_deck" ? (
-                  <SlidesLibrary items={items} allItemsCount={items.length} />
+                  <SlidesLibrary
+                    items={items}
+                    allItemsCount={items.length}
+                    specialty={specialty}
+                    onSpecialtyChange={setSpecialty}
+                    specialtyOptions={deckSpecialties}
+                    hasUncategorized={deckHasUncategorized}
+                  />
                 ) : kind === "podcast" ? (
                   <PodcastLibrary items={items} allItemsCount={items.length} />
                 ) : (

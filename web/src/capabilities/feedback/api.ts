@@ -3,6 +3,7 @@ import { readTranscript, type Transcript } from "@/capabilities/attempt-runner";
 
 export type AssessmentResult = components["schemas"]["AssessmentResultRead"];
 type ResultPage = components["schemas"]["Page_AssessmentResultRead_"];
+export type AttemptFeedbackRead = components["schemas"]["AttemptFeedbackRead"];
 
 export type { Transcript };
 /** The transcript is `/attempts/{id}/transcript`, which the runner already owns. */
@@ -31,6 +32,22 @@ export async function readResults(
 }
 
 /**
+ * Every marking of this attempt, with the rubric that says how to read it.
+ *
+ * `/attempts/{id}/feedback` pairs the results with the attempt's marking
+ * rubric (its structure and resolved display) and each result's computed
+ * totals, so the screen renders every exam the same way. `rubric` is null only
+ * for an attempt marked before rubrics existed. Results arrive oldest first,
+ * and an empty list is the normal state while marking is still running.
+ */
+export async function readFeedback(attemptId: string, signal?: AbortSignal): Promise<AttemptFeedbackRead> {
+  return platformRequest<AttemptFeedbackRead>(
+    `/api/v1/attempts/${encodeURIComponent(attemptId)}/feedback`,
+    { signal },
+  );
+}
+
+/**
  * The attempt's own stream, for a result that is still being marked.
  *
  * Marking is a background job of a minute or two. The retiring client met that
@@ -48,7 +65,7 @@ export function isTerminal(status: string): boolean {
 }
 
 /** A marking's date, for the picker that appears when an attempt has several. */
-export function scoredAtLabel(result: AssessmentResult): string {
+export function scoredAtLabel(result: { scored_at: string }): string {
   const date = new Date(result.scored_at);
   if (!Number.isFinite(date.getTime())) return "Unknown date";
   return date.toLocaleDateString("en-GB", {

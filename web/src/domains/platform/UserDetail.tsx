@@ -1,14 +1,20 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { LuShieldCheck } from "react-icons/lu";
-import { AsyncBoundary, Badge, B2CSegmentedTabs, Card, type B2CSegmentedTabItem } from "@/foundation/ui";
-import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
+import {
+  AsyncBoundary,
+  Badge,
+  B2CSegmentedTabs,
+  EmptyPanel,
+  PlatformPageHeader,
+  Row,
+  RowList,
+  type B2CSegmentedTabItem,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { readDirectoryUser, readUser, type PlatformUserDetail } from "@/domains/platform/api";
-import { Row, RowList } from "@/domains/platform/chrome";
 import { formatDay } from "@/domains/platform/support";
 import { accessLabel, accessOf, accessTone, userStatusTone } from "@/domains/platform/users/vocabulary";
 import { AccountTab } from "@/domains/platform/user/AccountTab";
@@ -55,14 +61,7 @@ export function UserDetail({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <Link
-        href={hrefFor("/users")}
-        className="inline-flex items-center gap-1 rounded-md text-osce-meta font-medium text-b2c-text-muted hover:text-osce-ink-900 focus:outline-none focus:ring-2 focus:ring-osce-accent/20"
-      >
-        ← Users
-      </Link>
-
+    <div className="flex flex-col gap-6">
       <AsyncBoundary state={state}>
         {(loaded) => {
           const current = user ?? loaded;
@@ -74,6 +73,7 @@ export function UserDetail({ userId }: { userId: string }) {
                 description={`${current.name || "No name"} · joined ${formatDay(current.created_at)}${
                   current.exam_code ? ` · ${current.exam_code.toUpperCase()}` : ""
                 }`}
+                back={{ href: hrefFor("/users"), label: "Users" }}
                 actions={
                   <span className="flex flex-wrap items-center gap-1.5">
                     <Badge tone={userStatusTone(current.status)}>
@@ -123,16 +123,16 @@ function MembershipsTab({ user }: { user: PlatformUserDetail }) {
   const memberships = user.memberships ?? [];
 
   return memberships.length === 0 ? (
-    <Card padding="md">
-      <p className="text-osce-body text-b2c-text-muted">This account belongs to no organisation.</p>
-    </Card>
+    <EmptyPanel title="No memberships" description="This account belongs to no organisation." />
   ) : (
     <RowList>
       {memberships.map((membership) => (
         <Row key={membership.id}>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-ink">{membership.email ?? membership.user_id}</p>
-            <p className="truncate text-xs text-ink-subtle">{membership.role}</p>
+            <p className="truncate text-osce-data font-medium text-osce-ink-900">
+              {membership.email ?? membership.user_id}
+            </p>
+            <p className="truncate text-osce-meta text-b2c-text-muted">{membership.role}</p>
           </div>
         </Row>
       ))}

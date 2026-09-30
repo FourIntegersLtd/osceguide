@@ -1,34 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { cn, productTokens as t } from "@/foundation/ui";
-import { deckSlidesCount, deckVideoUrl, specialtiesOf, type MediaItem } from "@/capabilities/media/api";
+import { deckSlidesCount, deckVideoUrl, type MediaItem } from "@/capabilities/media/api";
 
+/**
+ * The specialty picker and its list, both filtered server-side.
+ *
+ * `items` is already the specialty-filtered page from the server — the parent
+ * fetches a separate, unfiltered sample to build `specialtyOptions`, since an
+ * already-filtered result can't tell you what else was on offer.
+ */
 export function DeckList({
   items,
   currentSlug,
   deckHref,
   onPick,
+  specialty,
+  onSpecialtyChange,
+  specialtyOptions,
+  hasUncategorized,
 }: {
   items: MediaItem[];
   currentSlug: string;
   deckHref: (slug: string) => string;
   onPick: () => void;
+  specialty: string;
+  onSpecialtyChange: (specialty: string) => void;
+  specialtyOptions: string[];
+  hasUncategorized: boolean;
 }) {
-  const [specialty, setSpecialty] = useState("all");
-  const options = [...new Set(items.flatMap(specialtiesOf))].sort();
-  const hasUncategorized = items.some((deck) => specialtiesOf(deck).length === 0);
-  const visible =
-    specialty === "all"
-      ? items
-      : specialty === "other"
-        ? items.filter((deck) => specialtiesOf(deck).length === 0)
-        : items.filter((deck) => specialtiesOf(deck).includes(specialty));
-
   return (
     <>
-      {options.length > 0 || hasUncategorized ? (
+      {specialtyOptions.length > 0 || hasUncategorized ? (
         <div className="shrink-0 border-b border-b2c-border px-4 py-4 sm:px-5">
           <label htmlFor="deck-specialty-filter" className={t.b2cFieldLabel}>
             Filter by specialty
@@ -36,11 +40,11 @@ export function DeckList({
           <select
             id="deck-specialty-filter"
             value={specialty}
-            onChange={(event) => setSpecialty(event.target.value)}
+            onChange={(event) => onSpecialtyChange(event.target.value)}
             className={cn(t.b2cInputBase, "mt-1.5")}
           >
             <option value="all">All specialties</option>
-            {options.map((option) => (
+            {specialtyOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>
@@ -51,7 +55,7 @@ export function DeckList({
       ) : null}
 
       <div className={cn("min-h-0 flex-1", t.b2cScrollY)}>
-        {visible.map((deck) => {
+        {items.map((deck) => {
           const selected = deck.slug === currentSlug;
           return (
             <Link

@@ -395,13 +395,28 @@ export type SiteMessage = components["schemas"]["MessageRead"];
  * candidate may name their employer, and an organisation's own admin has no
  * business reading the messages that arrived at the platform.
  */
+export type SiteMessagePage = { items: SiteMessage[]; next_cursor?: string | null };
+
+/**
+ * A page of the inbox, filtered by the server.
+ *
+ * `handled` narrows to open (`false`) or answered (`true`) messages; omitting
+ * it reads both. This used to ask for `limit: 200` and let the "Show handled"
+ * toggle hide rows in the browser, which stopped being the whole inbox as
+ * soon as it passed two hundred messages.
+ */
 export function listSiteMessages(
-  query: { kind?: string } = {},
+  query: { kind?: string; handled?: boolean | null; cursor?: string | null; limit?: number } = {},
   signal?: AbortSignal,
-): Promise<SiteMessage[]> {
-  return platformRequest<SiteMessage[]>(`${PLATFORM}/site/messages`, {
+): Promise<SiteMessagePage> {
+  return platformRequest<SiteMessagePage>(`${PLATFORM}/site/messages`, {
     signal,
-    query: { kind: query.kind || undefined, limit: 200 },
+    query: {
+      kind: query.kind || undefined,
+      handled: query.handled ?? undefined,
+      cursor: query.cursor ?? undefined,
+      limit: query.limit ?? 25,
+    },
   });
 }
 

@@ -5,7 +5,6 @@
  * vocabulary and the contract-date conversion can be tested without rendering
  * anything — the retiring console had all three inline in a 589-line page.
  */
-import type { Organization } from "@/domains/platform/api";
 
 /**
  * The statuses an organisation can be in, and what each one means for signing in.
@@ -64,16 +63,6 @@ export function slugify(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-/** Name or slug, case-insensitively. An empty term matches everything. */
-export function matchesSearch(organization: Organization, term: string): boolean {
-  const needle = term.trim().toLowerCase();
-  if (!needle) return true;
-  return (
-    organization.name.toLowerCase().includes(needle) ||
-    organization.slug.toLowerCase().includes(needle)
-  );
 }
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, Card, Input } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, Card, Input, Panel, Row, RowList } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   extendEntitlement,
@@ -10,7 +10,6 @@ import {
   revokeEntitlement,
   type PlatformEntitlement,
 } from "@/domains/platform/support/api";
-import { Row, RowList, Section } from "@/domains/platform/chrome";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
 import { asContractDate, formatDay } from "@/domains/platform/support";
 
@@ -27,7 +26,7 @@ export function EntitlementsTab({ userId, examCode }: { userId: string; examCode
 
   return (
     <div className="flex flex-col gap-8">
-      <Section title="Access" description="Every grant, live or not, newest last.">
+      <Panel title="Access" description="Every grant, live or not, newest last.">
         <AsyncBoundary
           state={state}
           isEmpty={(page) => page.items.length === 0}
@@ -41,7 +40,7 @@ export function EntitlementsTab({ userId, examCode }: { userId: string; examCode
             </RowList>
           )}
         </AsyncBoundary>
-      </Section>
+      </Panel>
       <GrantPanel userId={userId} examCode={examCode} onGranted={state.reload} />
     </div>
   );
@@ -54,10 +53,10 @@ function EntitlementRow({ grant, onChanged }: { grant: PlatformEntitlement; onCh
   return (
     <Row className="flex-col items-stretch sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-ink">
+        <p className="text-osce-data font-medium text-ink">
           {grant.exam_code} · {grant.source.replace(/_/g, " ")}
         </p>
-        <p className="text-xs text-ink-subtle">
+        <p className="text-osce-meta text-ink-subtle">
           {formatDay(grant.starts_at)} → {grant.ends_at ? formatDay(grant.ends_at) : "open-ended"}
           {grant.revoked_at ? ` · revoked ${formatDay(grant.revoked_at)}` : ""}
           {grant.source_ref ? ` · ${grant.source_ref}` : ""}
@@ -138,7 +137,7 @@ function GrantPanel({
   );
 
   return (
-    <Section
+    <Panel
       title="Grant access"
       description="For a payment taken under another address, a sponsor's seat, or a goodwill month. A purchase that failed to apply is replayed from Billing instead."
     >
@@ -162,6 +161,6 @@ function GrantPanel({
           </div>
         </form>
       </Card>
-    </Section>
+    </Panel>
   );
 }

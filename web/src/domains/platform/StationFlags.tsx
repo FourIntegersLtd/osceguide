@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { LuFlag } from "react-icons/lu";
-import { Alert, AsyncBoundary, Badge, Button, Input } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, Input, Panel, Row, RowList } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import { decideStationFlag, listStationFlags, type StationFlag } from "@/domains/platform/api";
-import { Row, RowList, Section } from "@/domains/platform/chrome";
 import { formatMoment } from "@/domains/platform/support";
 
 const FILTERS = [
@@ -63,7 +62,7 @@ export function StationFlags() {
         icon={LuFlag}
       />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
-      <Section
+      <Panel
         title="The queue"
         description="A closed report stays listed: that we looked, and it was deliberate, is the answer the next reader's report needs."
         actions={
@@ -97,15 +96,15 @@ export function StationFlags() {
               {page.items.map((flag) => (
                 <Row key={flag.id}>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink">
+                    <p className="text-osce-data font-medium text-ink">
                       {flag.station_title ?? "A station we no longer have"}
                     </p>
-                    <p className="truncate text-xs text-ink-subtle">
+                    <p className="truncate text-osce-meta text-ink-subtle">
                       {flag.reporter_name ?? "Someone"} · reported {formatMoment(flag.created_at)}
                       {flag.resolved_at ? ` · answered ${formatMoment(flag.resolved_at)}` : ""}
                     </p>
                     {flag.resolution_note ? (
-                      <p className="mt-1 text-xs text-ink-muted">{flag.resolution_note}</p>
+                      <p className="mt-1 text-osce-meta text-ink-muted">{flag.resolution_note}</p>
                     ) : null}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
@@ -146,7 +145,7 @@ export function StationFlags() {
                     }}
                     className="flex flex-col gap-2"
                   >
-                    <p className="text-sm font-medium text-ink">
+                    <p className="text-osce-data font-medium text-ink">
                       Answer: {editing.station_title ?? "a station we no longer have"}
                     </p>
                     <Input
@@ -170,7 +169,7 @@ export function StationFlags() {
             </RowList>
           )}
         </AsyncBoundary>
-      </Section>
+      </Panel>
     </div>
   );
 }

@@ -566,7 +566,6 @@ export function StationScreen(props: StationScreenProps) {
       <MarkingModal
         isOpen={marking}
         attemptId={attempt.attemptId}
-        examCode={props.examCode}
         onReady={() => {
           setMarking(false);
           setFinishedAttemptId(attempt.attemptId);

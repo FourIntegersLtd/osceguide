@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { LuArrowLeft } from "react-icons/lu";
-import { Alert, AsyncBoundary, Badge, Card } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Card, Panel, Row, RowList } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { kindLabel } from "@/capabilities/transcripts/api";
-import { readTranscript, TranscriptView } from "@/capabilities/feedback";
+import { AttemptFeedback, readTranscript, TranscriptView } from "@/capabilities/feedback";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import {
   failAttempt,
@@ -16,7 +16,6 @@ import {
   salvageAttempt,
   type PlatformAttemptDetail,
 } from "@/domains/platform/support/api";
-import { Row, RowList, Section } from "@/domains/platform/chrome";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
 import {
   attemptStatusLabel,
@@ -51,7 +50,7 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
               <div>
                 <Link
                   href={`${hrefFor(`/users/${encodeURIComponent(attempt.user_id)}`)}`}
-                  className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
+                  className="inline-flex items-center gap-1.5 text-osce-data text-ink-muted transition-colors hover:text-ink"
                 >
                   <LuArrowLeft className="h-4 w-4" aria-hidden /> Back to the account
                 </Link>
@@ -62,9 +61,9 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
                 actions={<Badge tone={attemptStatusTone(attempt.status)}>{attemptStatusLabel(attempt.status)}</Badge>}
               />
 
-              <Section title="What happened">
+              <Panel title="What happened">
                 <Card padding="md">
-                  <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                  <dl className="grid gap-2 text-osce-data sm:grid-cols-2">
                     <Fact label="Definition frozen" value={attempt.has_definition ? formatMoment(attempt.definition_frozen_at) : "Never — the worker did not fetch it"} />
                     <Fact label="Turns received" value={String(attempt.chunk_count)} />
                     <Fact label="Transcript delivered" value={attempt.transcript_complete ? formatMoment(attempt.transcript_delivered_at) : "Not delivered"} />
@@ -79,24 +78,24 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
                     </div>
                   ) : null}
                 </Card>
-              </Section>
+              </Panel>
 
               <Actions attempt={attempt} suggested={diagnosis?.action ?? null} onChanged={setFresh} />
 
-              <Section title="Marking jobs" description="Every job the queue has held for this attempt, newest first.">
+              <Panel title="Marking jobs" description="Every job the queue has held for this attempt, newest first.">
                 {attempt.jobs.length === 0 ? (
                   <Card padding="md">
-                    <p className="text-sm text-ink-muted">Nothing was ever queued.</p>
+                    <p className="text-osce-data text-ink-muted">Nothing was ever queued.</p>
                   </Card>
                 ) : (
                   <RowList>
                     {attempt.jobs.map((job) => (
                       <Row key={job.id}>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-ink">
+                          <p className="text-osce-data font-medium text-ink">
                             #{job.id} · {job.policy_version ?? "default policy"}
                           </p>
-                          <p className="text-xs text-ink-subtle">
+                          <p className="text-osce-meta text-ink-subtle">
                             {job.attempts} run{job.attempts === 1 ? "" : "s"}
                             {job.scheduled_at ? ` · scheduled ${formatMoment(job.scheduled_at)}` : ""}
                           </p>
@@ -106,7 +105,15 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
                     ))}
                   </RowList>
                 )}
-              </Section>
+              </Panel>
+
+              {/* What the candidate reads, drawn from the same rubric, so support
+                  can see the feedback a complaint is about rather than infer it. */}
+              {attempt.result_policy_versions.length > 0 ? (
+                <Panel title="Feedback" description="The marking as the candidate sees it.">
+                  <AttemptFeedback attemptId={attempt.id} />
+                </Panel>
+              ) : null}
 
               <TranscriptSection attemptId={attempt.id} available={attempt.chunk_count > 0} />
             </>
@@ -120,7 +127,7 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-xs uppercase tracking-wide text-ink-subtle">{label}</dt>
+      <dt className="text-osce-meta uppercase tracking-wide text-ink-subtle">{label}</dt>
       <dd className="truncate text-ink">{value}</dd>
     </div>
   );
@@ -143,7 +150,7 @@ function Actions({
   const reload = useCallback(async () => onChanged(await readAttemptForSupport(attempt.id)), [attempt.id, onChanged]);
 
   return (
-    <Section title="Fix it" description={suggested ? `Suggested: ${suggested}.` : "Nothing needs doing."}>
+    <Panel title="Fix it" description={suggested ? `Suggested: ${suggested}.` : "Nothing needs doing."}>
       <Card padding="md">
         <div className="flex flex-wrap gap-2">
           {markable ? (
@@ -183,10 +190,10 @@ function Actions({
               }}
             />
           ) : null}
-          {terminal && !markable ? <p className="text-sm text-ink-muted">A failed attempt is final; start a fresh one.</p> : null}
+          {terminal && !markable ? <p className="text-osce-data text-ink-muted">A failed attempt is final; start a fresh one.</p> : null}
         </div>
       </Card>
-    </Section>
+    </Panel>
   );
 }
 
@@ -196,18 +203,18 @@ function TranscriptSection({ attemptId, available }: { attemptId: string; availa
     [attemptId, available],
   );
   return (
-    <Section title="Transcript" description="What was said, in order — the turns that reached us.">
+    <Panel title="Transcript" description="What was said, in order — the turns that reached us.">
       {!available ? (
         <Card padding="md">
-          <p className="text-sm text-ink-muted">No turns were received.</p>
+          <p className="text-osce-data text-ink-muted">No turns were received.</p>
         </Card>
       ) : (
         <Card padding="md">
           <AsyncBoundary state={state}>
-            {(transcript) => (transcript ? <TranscriptView transcript={transcript} /> : <p className="text-sm text-ink-muted">{errorMessage(new Error("No transcript"))}</p>)}
+            {(transcript) => (transcript ? <TranscriptView transcript={transcript} /> : <p className="text-osce-data text-ink-muted">{errorMessage(new Error("No transcript"))}</p>)}
           </AsyncBoundary>
         </Card>
       )}
-    </Section>
+    </Panel>
   );
 }

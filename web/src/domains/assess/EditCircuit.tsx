@@ -46,15 +46,17 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
     async (signal) => {
       const [console_, trainees, staff] = await Promise.all([
         readConsole(orgSlug, circuitId, signal),
-        listTrainees(orgSlug, signal),
-        listMemberships(orgSlug, signal),
+        listTrainees(orgSlug, signal, { accessRevoked: false }),
+        listMemberships(orgSlug, signal, { status: "active" }),
       ]);
       return {
         console: console_,
-        trainees: trainees.items.filter((trainee) => !trainee.access_revoked),
-        staff: staff.items
-          .filter((member) => member.status !== "revoked")
-          .map((member) => ({ user_id: member.user_id, email: member.email, role: member.role })),
+        trainees: trainees.items,
+        staff: staff.items.map((member) => ({
+          user_id: member.user_id,
+          email: member.email,
+          role: member.role,
+        })),
       };
     },
     [orgSlug, circuitId],

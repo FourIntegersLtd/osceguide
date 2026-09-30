@@ -22,16 +22,24 @@ function resolveSelected(decks: MediaItem[], deckParam: string | null): MediaIte
 /**
  * Slides tab — B2C two-pane layout with selection in `?deck=`.
  */
+type SpecialtyFilterProps = {
+  specialty: string;
+  onSpecialtyChange: (specialty: string) => void;
+  specialtyOptions: string[];
+  hasUncategorized: boolean;
+};
+
 export function SlidesLibrary({
   items,
   allItemsCount,
+  ...specialtyFilter
 }: {
   items: MediaItem[];
   allItemsCount: number;
-}) {
+} & SpecialtyFilterProps) {
   return (
     <Suspense fallback={null}>
-      <SlidesLibraryInner items={items} allItemsCount={allItemsCount} />
+      <SlidesLibraryInner items={items} allItemsCount={allItemsCount} {...specialtyFilter} />
     </Suspense>
   );
 }
@@ -39,10 +47,11 @@ export function SlidesLibrary({
 function SlidesLibraryInner({
   items,
   allItemsCount,
+  ...specialtyFilter
 }: {
   items: MediaItem[];
   allItemsCount: number;
-}) {
+} & SpecialtyFilterProps) {
   const { hrefFor } = useSurface();
   const { code: examCode } = useCurrentExam();
   const searchParams = useSearchParams();
@@ -68,6 +77,12 @@ function SlidesLibraryInner({
   if (!selected) return null;
 
   return (
-    <SlidesWorkspace selected={selected} decks={items} deckHref={deckHref} hrefFor={hrefFor} />
+    <SlidesWorkspace
+      selected={selected}
+      decks={items}
+      deckHref={deckHref}
+      hrefFor={hrefFor}
+      {...specialtyFilter}
+    />
   );
 }

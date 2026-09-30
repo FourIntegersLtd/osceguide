@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, Card, Input } from "@/foundation/ui";
+import { Alert, Button, Card, Input, Panel } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { seatMembership } from "@/domains/platform/api";
-import { Section } from "@/domains/platform/chrome";
 import { SEAT_ROLES } from "@/domains/platform/support";
 
 /**
@@ -49,7 +48,7 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
   );
 
   return (
-    <Section
+    <Panel
       title="Seat an administrator"
       description="For a new organisation with nobody in it yet."
     >
@@ -73,7 +72,7 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
               value={role}
               onChange={(event) => setRole(event.target.value)}
               disabled={busy}
-              className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
+              className="h-10 rounded-control border border-border-strong bg-surface px-3 text-osce-data text-ink"
             >
               {SEAT_ROLES.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -90,6 +89,6 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
           </div>
         </form>
       </Card>
-    </Section>
+    </Panel>
   );
 }

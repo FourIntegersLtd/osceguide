@@ -74,7 +74,7 @@ export function B2cUserOverview({
         {legacyId ? (
           <p className="mt-1 flex items-center gap-2 text-osce-body text-b2c-text-muted">
             <HiOutlineUser className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            <span className="truncate font-mono text-xs">{legacyId}</span>
+            <span className="truncate font-mono text-osce-meta">{legacyId}</span>
           </p>
         ) : null}
       </div>

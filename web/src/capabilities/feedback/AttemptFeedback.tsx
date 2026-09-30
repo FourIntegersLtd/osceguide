@@ -4,15 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { HiOutlineArrowPath } from "react-icons/hi2";
 import { useAsync, useMeEvents } from "@/foundation/hooks";
 import { readAttempt } from "@/capabilities/attempt-runner/api";
-import { AsyncBoundary, cn, productTokens } from "@/foundation/ui";
-import { FeedbackView } from "@/capabilities/feedback/FeedbackView";
+import { HiOutlineFaceFrown } from "react-icons/hi2";
+import { AsyncBoundary, B2CEmptyState, cn, productTokens } from "@/foundation/ui";
+import { RubricFeedback } from "@/capabilities/feedback/RubricFeedback";
 import { SavedLiveCoverage } from "./SavedLiveCoverage";
-import {
-  isTerminal,
-  readResults,
-  scoredAtLabel,
-  type AssessmentResult,
-} from "@/capabilities/feedback/api";
+import { isTerminal, readFeedback, scoredAtLabel } from "@/capabilities/feedback/api";
+import type { MarkedResult, MarkingRubric } from "@/capabilities/feedback/rubric";
 
 const { b2cCard, b2cIconEmptyMd, b2cPickerChipBase } = productTokens;
 
@@ -28,9 +25,9 @@ const { b2cCard, b2cIconEmptyMd, b2cPickerChipBase } = productTokens;
  * results a person may read, and nothing in this component asks who is looking.
  */
 export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attemptId: string; showLiveCoverage?: boolean }) {
-  const state = useAsync((signal) => readResults(attemptId, signal), [attemptId]);
-  const results = state.data;
-  const pending = results !== null && results.length === 0;
+  const state = useAsync((signal) => readFeedback(attemptId, signal), [attemptId]);
+  const feedback = state.data;
+  const pending = feedback !== null && (feedback.results ?? []).length === 0;
 
   const [attemptStatus, setAttemptStatus] = useState<string | null>(null);
 
@@ -92,8 +89,8 @@ export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attem
     );
   }
 
-  return <AsyncBoundary state={state}>{(items) => <>
-    <Markings results={items} />
+  return <AsyncBoundary state={state}>{(read) => <>
+    <Markings rubric={read.rubric} results={read.results ?? []} />
     {showLiveCoverage && <SavedLiveCoverage attemptId={attemptId} />}
   </>}</AsyncBoundary>;
 }
@@ -108,7 +105,7 @@ export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attem
  * listed every feedback a station had ever produced, and a station's attempts
  * are the mock's list now.
  */
-function Markings({ results }: { results: AssessmentResult[] }) {
+function Markings({ rubric, results }: { rubric: MarkingRubric | null; results: MarkedResult[] }) {
   const latest = results.length - 1;
   const [selected, setSelected] = useState(latest);
   const showing = results[Math.min(selected, latest)];
@@ -138,7 +135,17 @@ function Markings({ results }: { results: AssessmentResult[] }) {
           ))}
         </div>
       )}
-      <FeedbackView payload={showing.payload} />
+      {rubric ? (
+        <RubricFeedback rubric={rubric} result={showing} />
+      ) : (
+        // Only an attempt marked before rubrics existed has none; its answers
+        // cannot be read without one, so say so rather than guess at a shape.
+        <B2CEmptyState
+          icon={HiOutlineFaceFrown}
+          title="No feedback recorded"
+          description="This attempt was marked before its exam had a rubric."
+        />
+      )}
     </div>
   );
 }

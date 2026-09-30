@@ -82,7 +82,7 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
   const [notice, setNotice] = useState<Notice | null>(null);
 
   // The exam is the app's, not this screen's: one answer, set once per account.
-  const { code: activeExam } = useCurrentExam();
+  const { code: activeExam, name: activeExamName } = useCurrentExam();
   const myPosts = useAsync((signal) => listMyPosts(signal), [reloadKey]);
 
   const say = useCallback((type: Notice["type"], text: string) => {
@@ -197,7 +197,7 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
         </div>
 
         <div className="mb-6 sm:mb-8">
-          <MarketplaceIntroCard examCode={activeExam || null} onLearnMore={() => setExplaining(true)} />
+          <MarketplaceIntroCard examName={activeExamName}onLearnMore={() => setExplaining(true)} />
         </div>
 
         <div id={`tab-panel-${tab}`} role="tabpanel">

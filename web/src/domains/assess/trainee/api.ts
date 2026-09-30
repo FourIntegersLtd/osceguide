@@ -26,21 +26,8 @@ export type MySlot = components["schemas"]["MySlot"];
 export type TraineeResult = components["schemas"]["TraineeResultRead"];
 export type OrgStation = components["schemas"]["StationRead"];
 
-/**
- * Not yet in `schema.d.ts` — `npm run platform:types` hasn't run against the
- * backend's new `/me/slots/{id}/review` route. Inline until it has.
- */
-export type MySlotReview = {
-  slot_id: string;
-  summary: {
-    slot_id: string;
-    overall_rag: string | null;
-    by_domain: Record<string, string>;
-    completed_reviews: number;
-  };
-  notes: string | null;
-  completed_at: string | null;
-};
+/** A candidate's released review of one station, in the rubric's own rating kind (`summary.rating`). */
+export type MySlotReview = components["schemas"]["MySlotReviewRead"];
 
 /** Pushed, not polled. The old detail screen re-fetched every five seconds. */
 export const MY_SITTINGS_STREAM = "/api/v1/me/sittings/stream";

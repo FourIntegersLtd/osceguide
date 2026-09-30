@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Button, Card, Input } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, Card, Input, Panel } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import {
@@ -10,7 +10,7 @@ import {
   type SsoConfig,
   type SaveSsoConfigInput,
 } from "@/domains/platform/api";
-import { Section, WriteOnlyNote } from "@/domains/platform/chrome";
+import { WriteOnlyNote } from "@/domains/platform/chrome";
 
 const PROVIDERS = [
   { value: "entra", label: "Microsoft Entra ID" },
@@ -74,18 +74,18 @@ export function SsoSection({ slug }: { slug: string }) {
 
   if (hasCode(state.error, "sso_not_configured")) {
     return (
-      <Section title="SSO" description="Single sign-on for this organisation's members. When enabled, the sign-in page shows the organisation's button alongside the password form.">
+      <Panel title="SSO" description="Single sign-on for this organisation's members. When enabled, the sign-in page shows the organisation's button alongside the password form.">
         <SsoForm slug={slug} config={null} onSaved={state.reload} />
-      </Section>
+      </Panel>
     );
   }
 
   return (
-    <Section title="SSO" description="Single sign-on for this organisation's members. When enabled, the sign-in page shows the organisation's button alongside the password form.">
+    <Panel title="SSO" description="Single sign-on for this organisation's members. When enabled, the sign-in page shows the organisation's button alongside the password form.">
       <AsyncBoundary state={state}>
         {(config) => <SsoForm slug={slug} config={config} onSaved={state.reload} />}
       </AsyncBoundary>
-    </Section>
+    </Panel>
   );
 }
 
@@ -156,7 +156,7 @@ function SsoForm({
             value={form.provider}
             onChange={(e) => update("provider", e.target.value)}
             disabled={busy}
-            className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
+            className="h-10 rounded-control border border-border-strong bg-surface px-3 text-osce-data text-ink"
           >
             {PROVIDERS.map((p) => (
               <option key={p.value} value={p.value}>
@@ -203,7 +203,7 @@ function SsoForm({
             disabled={busy}
             rows={3}
             placeholder="kings.edu"
-            className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-sm text-ink"
+            className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-osce-data text-ink"
           />
           <span className="text-osce-meta text-b2c-text-muted">
             One host per line. A sign-in from one of these hosts shows the SSO button.
@@ -218,7 +218,7 @@ function SsoForm({
             disabled={busy}
             rows={3}
             placeholder="kings.edu"
-            className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-sm text-ink"
+            className="w-full rounded-control border border-border-strong bg-surface px-3 py-2 text-osce-data text-ink"
           />
           <span className="text-osce-meta text-b2c-text-muted">
             One domain per line. A user whose email matches one of these is offered SSO.
@@ -234,7 +234,7 @@ function SsoForm({
               disabled={busy}
               className="h-4 w-4 rounded border-border-strong"
             />
-            <span className="text-sm text-ink">Enabled</span>
+            <span className="text-osce-data text-ink">Enabled</span>
           </label>
 
           <label className="flex items-center gap-2">
@@ -245,7 +245,7 @@ function SsoForm({
               disabled={busy}
               className="h-4 w-4 rounded border-border-strong"
             />
-            <span className="text-sm text-ink">
+            <span className="text-osce-data text-ink">
               SSO only — hide the password form entirely
             </span>
           </label>

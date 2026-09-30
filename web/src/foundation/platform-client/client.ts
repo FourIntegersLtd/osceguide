@@ -3,6 +3,7 @@ import {
   PlatformTransportError,
   type PlatformErrorBody,
 } from "@/foundation/platform-client/errors";
+import { createSseParser, type SseFrame } from "@/foundation/platform-client/sse";
 
 /**
  * The unified platform API client.
@@ -49,7 +50,7 @@ export interface RequestOptions {
   /** Serialised as JSON. Use `formData` for uploads. */
   body?: unknown;
   formData?: FormData;
-  query?: Record<string, string | number | boolean | null | undefined>;
+  query?: Record<string, string | number | boolean | readonly string[] | null | undefined>;
   signal?: AbortSignal;
   headers?: Record<string, string>;
   /**
@@ -70,7 +71,15 @@ function withQuery(path: string, query: RequestOptions["query"]): string {
   if (!query) return path;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null) params.set(key, String(value));
+    if (value === undefined || value === null) continue;
+    // A list-typed query param (e.g. `version_ids`) is repeated, not
+    // comma-joined: FastAPI's `Query(...)` over a `list[...]` reads
+    // `?k=a&k=b`, and a single `k=a,b` value arrives as one unparsed string.
+    if (Array.isArray(value)) {
+      for (const item of value) params.append(key, String(item));
+    } else {
+      params.set(key, String(value));
+    }
   }
   const qs = params.toString();
   return qs ? `${path}?${qs}` : path;
@@ -190,6 +199,46 @@ export async function platformDownload(
     blob: await response.blob(),
     filename: filenameFromContentDisposition(response.headers.get("Content-Disposition")),
   };
+}
+
+/**
+ * A POST (or any method) whose answer is a Server-Sent Events stream.
+ *
+ * `EventSource` cannot send a body or an Authorization header, so a stream
+ * that starts from a request body — a rubric trial mark — is read here with
+ * `fetch`, carrying the same token and the same error mapping as
+ * `platformRequest`. A refusal before the stream opens (422, 429, 503) throws a
+ * `PlatformError` exactly as a JSON call would. Each finished frame is handed
+ * to `onFrame` as it arrives; the promise settles when the server closes the
+ * stream. Abort `options.signal` to stop reading.
+ */
+export async function platformStream(
+  path: string,
+  options: RequestOptions,
+  onFrame: (frame: SseFrame) => void,
+): Promise<void> {
+  const response = await platformFetch(path, options, "text/event-stream");
+  if (!response.ok) {
+    const payload = await readPayload(response);
+    throw new PlatformError(response.status, asErrorBody(response.status, payload));
+  }
+  if (!response.body) return;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const parser = createSseParser();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const frame of parser.push(decoder.decode(value, { stream: true }))) onFrame(frame);
+    }
+    for (const frame of parser.push(`${decoder.decode()}\n\n`)) onFrame(frame);
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
+    throw new PlatformTransportError("The stream was cut off", cause);
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 function filenameFromContentDisposition(header: string | null): string {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { B2CMonoEyebrow, cn, productTokens } from "@/foundation/ui";
 import { bandChartColors } from "@/foundation/charts";
-import type { PerformanceSummary } from "@/domains/train/api";
+import type { DashboardView } from "@/domains/train/dashboard/dashboardView";
 
 type BandKey = "competent" | "developing" | "development";
 
@@ -20,29 +20,28 @@ const BAND_FILL: Record<BandKey, string> = {
 };
 
 /**
- * SCA's competency doughnut.
+ * The competency doughnut, for an exam whose rubric counts grades.
  *
- * The old screen built it from a count of red, amber and green marks
- * (`/api/dashboard/rag_overall`). The platform serves rates instead, so the
- * three bands read off the one summary every exam gets: competent is the pass
- * rate, developing the critical rate, development the fail rate. Same picture,
- * same arithmetic — the numbers are already percentages, so nothing has to be
- * divided by a total that the endpoint does not send.
+ * The three bands are the share of every competency mark at the best grade,
+ * in between, and at the worst, summed over the domains `/me/performance`
+ * returns. The retiring client read them off `rag_overall`; an interim port
+ * drew them from pass / critical / fail *rates*, which are about stations, not
+ * marks, and did not add up to the picture the old screen showed.
  */
 export function CompetencyHero({
-  summary,
+  mix,
   loading = false,
   className,
 }: {
-  summary: PerformanceSummary | null;
+  mix: DashboardView["hero"] | null;
   loading?: boolean;
   className?: string;
 }) {
   const [animated, setAnimated] = useState(false);
 
-  const green = Math.round(summary?.pass_rate ?? 0);
-  const amber = Math.round(summary?.critical_rate ?? 0);
-  const red = Math.round(summary?.fail_rate ?? 0);
+  const green = mix?.competent ?? 0;
+  const amber = mix?.developing ?? 0;
+  const red = mix?.development ?? 0;
   const hasData = green + amber + red > 0;
   const dominant = dominantBand(green, amber, red);
 
@@ -89,7 +88,7 @@ export function CompetencyHero({
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">
           <p className="text-osce-body font-medium text-b2c-text-muted">No assessments yet</p>
           <p className="mt-1 max-w-sm text-osce-meta text-b2c-text-secondary">
-            Complete SCA stations and your competency mix will appear here.
+            Complete stations and your competency mix will appear here.
           </p>
         </div>
       ) : (

@@ -2,27 +2,15 @@
 
 import { b2cCard, b2cCardPadding, b2cGhostButton } from "@/foundation/ui/productTokens";
 
-/** How the card names each exam; the wording is the retiring card's, "orthopaedic interview" included. */
-const EXAM_LABELS: Record<string, string> = {
-  sca: "SCA",
-  plab: "PLAB",
-  ortho: "orthopaedic interview",
-};
-
-/**
- * What the marketplace is, said once at the top.
- *
- * An exam the table does not know reads as SCA, as it did before: the
- * marketplace only appears in navigation for SCA candidates.
- */
+/** What the marketplace is, said once at the top; the exam is named by the backend. */
 export function MarketplaceIntroCard({
-  examCode,
+  examName,
   onLearnMore,
 }: {
-  examCode: string | null;
+  examName: string | null;
   onLearnMore: () => void;
 }) {
-  const examLabel = EXAM_LABELS[examCode?.toLowerCase() || "sca"] ?? "SCA";
+  const examLabel = examName ?? "same";
   return (
     <div
       className={`${b2cCard} ${b2cCardPadding} bg-gradient-to-br from-osce-accent-muted/90 to-b2c-surface`}

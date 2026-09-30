@@ -1,12 +1,14 @@
 export {
   platformRequest,
   platformDownload,
+  platformStream,
   saveBlob,
   platformApiUrl,
   setPlatformTokenSource,
   type RequestOptions,
   type PlatformDownload,
 } from "@/foundation/platform-client/client";
+export type { SseFrame } from "@/foundation/platform-client/sse";
 export {
   PlatformError,
   PlatformTransportError,

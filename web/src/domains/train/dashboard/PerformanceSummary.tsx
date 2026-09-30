@@ -1,49 +1,33 @@
 "use client";
 
-import type { ReactNode } from "react";
-import {
-  HiOutlineCheckCircle,
-  HiOutlineExclamationCircle,
-  HiOutlinePresentationChartLine,
-} from "react-icons/hi2";
+import { HiOutlineCheckCircle, HiOutlinePresentationChartLine } from "react-icons/hi2";
 import { HiQuestionMarkCircle } from "react-icons/hi";
 import {
   DashboardSection,
   DashboardStatCard,
   NoDataMessage,
 } from "@/domains/train/dashboard/DashboardLayout";
-import type { ExamConfig } from "@/domains/train/dashboard/examConfig";
-import type { PerformanceSummary as SummaryRates } from "@/domains/train/api";
-
-const ICONS: Record<ExamConfig["summaryCards"][number]["icon"], ReactNode> = {
-  pass: <HiOutlineCheckCircle className="h-5 w-5" />,
-  fail: <HiOutlinePresentationChartLine className="h-5 w-5" />,
-  critical: <HiOutlineExclamationCircle className="h-5 w-5" />,
-};
+import type { SummaryCard } from "@/domains/train/dashboard/dashboardView";
 
 /**
- * The pass and fail rates, as the two stat cards each old dashboard drew.
+ * The pass and fail rates, as two stat cards.
  *
- * The rates themselves are the same three numbers for every exam; only the
- * wording moved, so the cards are a list in `examConfig` rather than a
- * `getSummaryData()` written out four times.
+ * Shown only where the rubric sets a pass line: the cards come from
+ * `dashboardView`, which leaves them out when `/me/performance` sends null
+ * rates, rather than drawing a "0%" that means "no pass line here".
  */
 export function PerformanceSummary({
-  config,
-  summary,
+  cards,
   loading,
   onAbout,
 }: {
-  config: ExamConfig;
-  summary: SummaryRates | null;
+  cards: SummaryCard[];
   loading: boolean;
   onAbout: () => void;
 }) {
-  if (config.summaryCards.length === 0) return null;
-
   return (
     <DashboardSection
-      title={config.summaryTitle}
+      title="Performance overview"
       action={
         <button
           type="button"
@@ -61,17 +45,23 @@ export function PerformanceSummary({
           role="status"
           aria-label="Loading performance overview"
         />
-      ) : !summary ? (
+      ) : cards.length === 0 ? (
         <NoDataMessage />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {config.summaryCards.map((card) => (
+          {cards.map((card) => (
             <DashboardStatCard
-              key={card.title}
+              key={card.metric}
               title={card.title}
-              value={`${summary[card.metric]}%`}
+              value={card.value}
               description={card.description}
-              icon={ICONS[card.icon]}
+              icon={
+                card.metric === "pass_rate" ? (
+                  <HiOutlineCheckCircle className="h-5 w-5" />
+                ) : (
+                  <HiOutlinePresentationChartLine className="h-5 w-5" />
+                )
+              }
               variant={card.tone}
               className="xl:col-span-2"
             />

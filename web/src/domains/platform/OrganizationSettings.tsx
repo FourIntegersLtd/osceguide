@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, Card, Input } from "@/foundation/ui";
+import { Alert, Button, Card, Input, Panel } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import {
   setStaffMfaPolicy,
@@ -9,7 +9,7 @@ import {
   type Organization,
   type OrganizationChanges,
 } from "@/domains/platform/api";
-import { Section, WriteOnlyNote } from "@/domains/platform/chrome";
+import { WriteOnlyNote } from "@/domains/platform/chrome";
 import { ORG_TYPES, asContractDate } from "@/domains/platform/support";
 
 /**
@@ -54,7 +54,7 @@ export function OrganizationSettings({
 
   return (
     <div className="flex flex-col gap-8">
-      <Section title="Details">
+      <Panel title="Details">
         <Card padding="md">
           <div className="flex max-w-lg flex-col gap-3">
             {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
@@ -79,7 +79,7 @@ export function OrganizationSettings({
                 value={orgType}
                 onChange={(event) => setOrgType(event.target.value)}
                 disabled={busy}
-                className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
+                className="h-10 rounded-control border border-border-strong bg-surface px-3 text-osce-data text-ink"
               >
                 {ORG_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -109,7 +109,7 @@ export function OrganizationSettings({
             </div>
           </div>
         </Card>
-      </Section>
+      </Panel>
 
       <ContractDates organization={organization} busy={busy} onCommit={commit} />
       <StaffMfaPolicy organization={organization} onChanged={onChanged} />
@@ -150,7 +150,7 @@ function StaffMfaPolicy({
   };
 
   return (
-    <Section title="Two-factor sign-in">
+    <Panel title="Two-factor sign-in">
       <Card padding="md">
         <div className="flex max-w-lg flex-col gap-3">
           {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
@@ -170,7 +170,7 @@ function StaffMfaPolicy({
           </div>
         </div>
       </Card>
-    </Section>
+    </Panel>
   );
 }
 
@@ -210,7 +210,7 @@ function ContractDates({
   };
 
   return (
-    <Section
+    <Panel
       title="Contract"
       description="When this organisation's access starts, and when it lapses."
     >
@@ -260,6 +260,6 @@ function ContractDates({
           </div>
         </div>
       </Card>
-    </Section>
+    </Panel>
   );
 }

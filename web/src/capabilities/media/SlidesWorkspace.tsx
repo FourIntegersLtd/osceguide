@@ -22,6 +22,10 @@ export function SlidesWorkspace({
   hrefFor,
   showPageHeader = false,
   showBackLink = false,
+  specialty,
+  onSpecialtyChange,
+  specialtyOptions,
+  hasUncategorized,
 }: {
   selected: MediaItem;
   decks: MediaItem[];
@@ -29,6 +33,10 @@ export function SlidesWorkspace({
   hrefFor: (path: string) => string;
   showPageHeader?: boolean;
   showBackLink?: boolean;
+  specialty: string;
+  onSpecialtyChange: (specialty: string) => void;
+  specialtyOptions: string[];
+  hasUncategorized: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tab, setTab] = useState<"about" | "conversation">("about");
@@ -94,6 +102,10 @@ export function SlidesWorkspace({
               currentSlug={selected.slug}
               deckHref={deckHref}
               onPick={() => setSidebarOpen(false)}
+              specialty={specialty}
+              onSpecialtyChange={onSpecialtyChange}
+              specialtyOptions={specialtyOptions}
+              hasUncategorized={hasUncategorized}
             />
           </B2CPanelCard>
         </aside>

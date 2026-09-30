@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LuActivity } from "react-icons/lu";
-import { Alert, AsyncBoundary, Badge, Button, Card } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, Card, Panel, Row, RowList } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import {
@@ -12,7 +12,6 @@ import {
   reindexTutorMemory,
   type TutorMemoryReindex,
 } from "@/domains/platform/support/api";
-import { Row, RowList, Section } from "@/domains/platform/chrome";
 import { formatMoment, jobStatusTone } from "@/domains/platform/support";
 
 const JOB_STATUSES = ["failed", "todo", "doing", "succeeded"] as const;
@@ -46,7 +45,7 @@ export function Ops() {
         <Card padding="md">
           <AsyncBoundary state={health}>
             {(h) => (
-              <div className="text-sm">
+              <div className="text-osce-data">
                 <p className="font-medium text-ink">Platform {h.status} · v{h.version}</p>
                 <p className="text-ink-muted">
                   {Object.entries(h.checks).map(([k, v]) => `${k} ${v}`).join(" · ")}
@@ -64,7 +63,7 @@ export function Ops() {
         <Card padding="md">
           <AsyncBoundary state={capacity}>
             {(c) => (
-              <div className="text-sm">
+              <div className="text-osce-data">
                 <p className="font-medium text-ink">LiveKit Cloud</p>
                 <p className="text-ink-muted">
                   {c.active === null
@@ -82,7 +81,7 @@ export function Ops() {
           </AsyncBoundary>
         </Card>
       </div>
-      <Section
+      <Panel
         title="The tutor's material index"
         description="What the tutor has been told it may quote. It rebuilds nightly; this is for the moment somebody publishes a correction and wants it to be true now."
         actions={
@@ -101,13 +100,13 @@ export function Ops() {
           </Alert>
         ) : null}
         {!reindex && !reindexFailure ? (
-          <p className="text-sm text-ink-muted">
+          <p className="text-osce-data text-ink-muted">
             The request runs to completion in the browser rather than returning a job to poll, so a
             large library takes a while here on purpose.
           </p>
         ) : null}
-      </Section>
-      <Section
+      </Panel>
+      <Panel
         title="Jobs"
         description="No retry here: a failed marking is re-queued from the attempt it was about."
         actions={JOB_STATUSES.map((s) => (
@@ -122,8 +121,8 @@ export function Ops() {
               {page.items.map((job) => (
                 <Row key={job.id}>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink">#{job.id} · {job.task_name}</p>
-                    <p className="truncate text-xs text-ink-subtle">
+                    <p className="text-osce-data font-medium text-ink">#{job.id} · {job.task_name}</p>
+                    <p className="truncate text-osce-meta text-ink-subtle">
                       {Object.entries(job.args).map(([k, v]) => `${k}=${String(v)}`).join(" · ")} · {job.attempts} runs
                     </p>
                   </div>
@@ -133,7 +132,7 @@ export function Ops() {
             </RowList>
           )}
         </AsyncBoundary>
-      </Section>
+      </Panel>
     </div>
   );
 }

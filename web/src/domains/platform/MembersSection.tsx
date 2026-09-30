@@ -1,11 +1,8 @@
 "use client";
 
-import { AsyncBoundary } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { AsyncBoundary, Badge, Button, Panel, Row, RowList } from "@/foundation/ui";
+import { useAsync, useToast } from "@/foundation/hooks";
 import { listOrgMembershipsForSupport, type Membership } from "@/domains/platform/api";
-import { Row, RowList, Section } from "@/domains/platform/chrome";
-import { Badge, Button } from "@/foundation/ui";
-import { useToast } from "@/foundation/hooks";
 import { changeMembershipRole, restoreMembership, revokeMembership } from "@/domains/platform/support/api";
 import { SEAT_ROLES } from "@/domains/platform/support";
 
@@ -16,7 +13,7 @@ export function MembersSection({ slug }: { slug: string }) {
   );
 
   return (
-    <Section title="Members" description="Move a role, revoke, or restore — the same audited service the organisation's own admins use.">
+    <Panel title="Members" description="Move a role, revoke, or restore — the same audited service the organisation's own admins use.">
       <AsyncBoundary
         state={state}
         isEmpty={(page) => page.items.length === 0}
@@ -30,7 +27,7 @@ export function MembersSection({ slug }: { slug: string }) {
           </RowList>
         )}
       </AsyncBoundary>
-    </Section>
+    </Panel>
   );
 }
 
@@ -49,10 +46,10 @@ function MemberRow({ membership, slug, onChanged }: { membership: Membership; sl
   return (
     <Row>
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-ink">
+        <p className="truncate text-osce-data font-medium text-ink">
           {membership.email ?? membership.user_id}
         </p>
-        <p className="truncate text-xs text-ink-subtle">
+        <p className="truncate text-osce-meta text-ink-subtle">
           {membership.role}
           {membership.product_surface ? ` · ${membership.product_surface}` : ""}
         </p>
@@ -63,7 +60,7 @@ function MemberRow({ membership, slug, onChanged }: { membership: Membership; sl
           aria-label="Role"
           value={membership.role}
           onChange={(e) => void run(() => changeMembershipRole(slug, membership.id, e.target.value), "Role changed")}
-          className="h-8 rounded-control border border-border-strong bg-surface px-2 text-xs text-ink"
+          className="h-8 rounded-control border border-border-strong bg-surface px-2 text-osce-meta text-ink"
         >
           {[...SEAT_ROLES.map((r) => r.value), "supervisor", "trainee"]
             .filter((v, i, a) => a.indexOf(v) === i)

@@ -2,12 +2,11 @@
 
 import { useCallback, useState } from "react";
 import { LuShieldCheck } from "react-icons/lu";
-import { AsyncBoundary, Badge, Button, ConfirmModal } from "@/foundation/ui";
+import { AsyncBoundary, Badge, Button, ConfirmModal, Panel, Row, RowList } from "@/foundation/ui";
 import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import { InvitePlatformAdminModal } from "@/domains/platform/InvitePlatformAdminModal";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { listPlatformAdmins, setPlatformAdmin, type User } from "@/domains/platform/api";
-import { Row, RowList, Section } from "@/domains/platform/chrome";
 import { formatDay } from "@/domains/platform/support";
 import { useSession } from "@/foundation/session";
 
@@ -58,7 +57,7 @@ export function PlatformTeam() {
         onInvited={() => state.reload()}
       />
 
-      <Section title="Administrators">
+      <Panel title="Administrators">
         <AsyncBoundary
           state={state}
           isEmpty={(rows) => rows.length === 0}
@@ -79,8 +78,8 @@ export function PlatformTeam() {
                 return (
                   <Row key={user.id}>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-ink">{user.email}</p>
-                      <p className="truncate text-xs text-ink-subtle">
+                      <p className="truncate text-osce-data font-medium text-ink">{user.email}</p>
+                      <p className="truncate text-osce-meta text-ink-subtle">
                         {user.name || "No name"} · joined {formatDay(user.created_at)}
                         {isSelf ? " · you" : ""}
                       </p>
@@ -102,7 +101,7 @@ export function PlatformTeam() {
             </RowList>
           )}
         </AsyncBoundary>
-      </Section>
+      </Panel>
 
       <ConfirmModal
         isOpen={revokeTarget !== null}

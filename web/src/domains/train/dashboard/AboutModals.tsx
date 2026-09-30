@@ -15,27 +15,27 @@ import {
 import { chartColors } from "@/foundation/charts";
 import { aboutFor } from "@/domains/train/dashboard/aboutCopy";
 import type { AboutItem, AboutKey } from "@/domains/train/dashboard/aboutTypes";
-import type { ExamConfig } from "@/domains/train/dashboard/examConfig";
+import type { DashboardView } from "@/domains/train/dashboard/dashboardView";
 
 /**
  * The three explanatory modals, rendered from the exam's copy table.
  *
  * One component for twelve old ones. The markup is `AboutInfo` exactly as the
- * originals wrote it, so the modals look and read the same; what varies is the
- * sentences and the swatch colours, and both come from configuration.
+ * originals wrote it; the sentences and swatch colours come from the same
+ * dashboard view the charts draw, so they quote the same scale.
  */
 export function AboutModal({
-  config,
+  view,
   active,
   onClose,
 }: {
-  config: ExamConfig;
+  view: DashboardView;
   active: AboutKey | null;
   onClose: () => void;
 }) {
   if (!active) return null;
 
-  const content = aboutFor(config.code)[active];
+  const content = aboutFor(view)[active];
 
   return (
     <Modal width="600px" height="fit-content" onClose={onClose} title={content.title}>
@@ -46,7 +46,7 @@ export function AboutModal({
             {content.items.map((item) => (
               <AboutInfoItem
                 key={item.title}
-                marker={markerFor(item, config)}
+                marker={markerFor(item)}
                 title={item.title}
                 description={item.description}
               />
@@ -61,15 +61,12 @@ export function AboutModal({
   );
 }
 
-function markerFor(item: AboutItem, config: ExamConfig) {
+function markerFor(item: AboutItem) {
   switch (item.marker) {
     case "swatch":
       return (
         <AboutInfoSwatch
-          style={{
-            backgroundColor:
-              config.domains.colors?.[item.swatchFor ?? item.title] ?? chartColors.muted,
-          }}
+          style={{ backgroundColor: item.color ?? chartColors.muted }}
         />
       );
     case "success":

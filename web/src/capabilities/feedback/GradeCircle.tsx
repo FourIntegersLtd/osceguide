@@ -1,23 +1,24 @@
-import type { Rag } from "@/capabilities/feedback/model";
+import { toneVariant } from "@/capabilities/feedback/rubric";
 
-const GRADE_CLASSES: Record<Rag, string> = {
-  R: "bg-osce-danger-border text-osce-danger",
-  A: "bg-osce-warning-border text-osce-warning-text",
-  G: "bg-osce-success-border text-osce-success-text",
+const TONE_CLASSES: Record<ReturnType<typeof toneVariant>, string> = {
+  danger: "bg-osce-danger-border text-osce-danger",
+  warning: "bg-osce-warning-border text-osce-warning-text",
+  success: "bg-osce-success-border text-osce-success-text",
+  neutral: "bg-osce-canvas text-osce-ink-700",
 };
 
 /**
- * The red/amber/green disc.
+ * A scale grade in a disc: the letter, coloured by the tone the rubric's
+ * display gives it.
  *
- * Used by every framework's feedback, which is why it sits beside the
- * normaliser rather than inside one screen: the letter is the product's
- * vocabulary for a grade and a second spelling of it would read as a second
- * meaning.
+ * The colour comes from the tone (good, fair, poor...), never from the letter,
+ * so a rubric whose scale is "Excellent / Pass / Fail" is coloured by the same
+ * rule as one whose scale is G / A / R.
  */
-export function GradeCircle({ grade }: { grade: Rag }) {
+export function GradeCircle({ grade, tone }: { grade: string; tone: string | null }) {
   return (
     <span
-      className={`inline-flex items-center justify-center w-7 h-7 rounded-full ${GRADE_CLASSES[grade]} text-osce-body font-semibold mr-2`}
+      className={`mr-2 inline-flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full px-1.5 text-osce-body font-semibold ${TONE_CLASSES[toneVariant(tone)]}`}
     >
       {grade}
     </span>

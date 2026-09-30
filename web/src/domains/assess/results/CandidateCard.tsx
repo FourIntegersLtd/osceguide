@@ -7,7 +7,8 @@ import { Alert, Badge, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
-import { RAG_LABEL, type Rag } from "@/capabilities/feedback";
+import { ratingLabel, type Rating } from "@/capabilities/feedback/rubric";
+import { ratingVariant } from "@/domains/assess/results/reviewForm";
 import { downloadCandidateResult, type CandidateReport, type StationReport } from "@/domains/assess/results/api";
 import { CandidateDecision } from "@/domains/assess/results/CandidateDecision";
 import {
@@ -29,11 +30,14 @@ export function CandidateCard({
   orgSlug,
   sittingId,
   candidate,
+  rating,
   onChanged,
 }: {
   orgSlug: string;
   sittingId: string;
   candidate: CandidateReport;
+  /** The sitting's rating (`SittingReport.rating`), which says how a review value is written. */
+  rating: Rating | null;
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -75,7 +79,7 @@ export function CandidateCard({
           <p className={b2bTokens.b2bGroupedRowTitle}>{candidateName(candidate)}</p>
           <p className={b2bTokens.b2bGroupedRowSubtitle}>
             {candidate.stations_marked} of {stations.length} stations marked
-            {candidate.overall_rag ? ` · overall ${RAG_LABEL[candidate.overall_rag as Rag] ?? candidate.overall_rag}` : ""}
+            {candidate.overall_rag !== null ? ` · overall ${ratingLabel(rating, candidate.overall_rag)}` : ""}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -118,7 +122,7 @@ export function CandidateCard({
                   .slice()
                   .sort((a, b) => a.slot_index - b.slot_index)
                   .map((station) => (
-                    <StationRow key={station.slot_id} station={station} />
+                    <StationRow key={station.slot_id} station={station} rating={rating} />
                   ))}
               </ul>
             )}
@@ -139,7 +143,7 @@ export function CandidateCard({
   );
 }
 
-function StationRow({ station }: { station: StationReport }) {
+function StationRow({ station, rating }: { station: StationReport; rating: Rating | null }) {
   const { hrefFor } = useSurface();
 
   return (
@@ -153,9 +157,9 @@ function StationRow({ station }: { station: StationReport }) {
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {station.overall_rag ? (
-          <Badge variant={ragTone(station.overall_rag)}>
-            {RAG_LABEL[station.overall_rag as Rag] ?? station.overall_rag}
+        {station.overall_rag !== null ? (
+          <Badge variant={ratingVariant(rating, station.overall_rag)}>
+            {ratingLabel(rating, station.overall_rag)}
           </Badge>
         ) : (
           <Badge variant="neutral">{station.marked ? "Awaiting review" : "Not marked"}</Badge>
@@ -171,11 +175,4 @@ function StationRow({ station }: { station: StationReport }) {
       </div>
     </li>
   );
-}
-
-function ragTone(rag: string): "success" | "warning" | "danger" | "neutral" {
-  if (rag === "G") return "success";
-  if (rag === "A") return "warning";
-  if (rag === "R") return "danger";
-  return "neutral";
 }

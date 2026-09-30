@@ -122,6 +122,7 @@ function Report({
                     orgSlug={orgSlug}
                     sittingId={sittingId}
                     candidate={candidate}
+                    rating={report.rating ?? null}
                     onChanged={onChanged}
                   />
                 </li>

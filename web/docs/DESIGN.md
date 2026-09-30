@@ -107,6 +107,37 @@ arm-local colour map.
 4. **Grouped lists** for settings-style rows.
 5. **Metrics** in stat cards, not inline counts.
 
+## Console layout (staff pages)
+
+Staff pages (`domains/platform/*`, `staff-media`, `staff-moderation`,
+`staff-growth`) use a dedicated kit in `foundation/ui/PlatformConsole.tsx`,
+adapted structurally from eventtz's legacy admin — same colours and fonts,
+different spacing and arrangement. Same tokens as everywhere else; no new
+palette.
+
+- **Shell** (`surfaces/platform/PlatformStaffShell.tsx`, `PlatformSidebar.tsx`):
+  a fixed-width sidebar (no user-collapse — that mode stayed on the consumer
+  rail, `TrainSidebar.tsx`, because it is a different shell). Content is capped
+  at `max-w-[80rem]` so wide screens don't stretch tables.
+- **`PlatformPageHeader`**: title inline (not in a banded header), an optional
+  `icon` chip, a muted `description`, right-aligned `actions`, and an optional
+  `back` link — no more hand-rolled back links per page.
+- **`Panel`**: replaces the old `Section` + `Card` pairing. Title, description
+  and actions live inside the panel, above a divider; `padding="none"` for a
+  full-bleed `RowList` body.
+- **`RowList` / `Row` / `RowLink`**: list rows at `px-5 py-3.5 sm:px-6`.
+  `RowLink` adds the hover tint and trailing chevron for a row that navigates.
+- **`StatGrid` / `StatTile`**: a `gap-3 sm:grid-cols-2 lg:grid-cols-4` KPI row —
+  uppercase micro-label, `tabular-nums` value, tinted icon chip.
+- **`DetailLayout` / `ActionRail`**: a two-column detail page,
+  `lg:grid-cols-[minmax(0,1fr)_20rem]`, with a sticky action rail on the right
+  (destructive action last, behind a divider).
+- **`EmptyPanel`**: a dashed-border empty state.
+
+`domains/platform/chrome.tsx` now holds only `StatusBadge` and
+`WriteOnlyNote` — domain vocabulary that doesn't belong in a generic kit.
+Every staff screen imports layout pieces from `foundation/ui` directly.
+
 ## Components to reuse (`src/foundation/ui`)
 
 | Use | For |

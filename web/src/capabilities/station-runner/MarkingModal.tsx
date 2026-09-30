@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Modal, ModalCallout } from "@/foundation/ui";
 import { readResults } from "@/capabilities/attempt-runner";
 import { GeneratingFeedback } from "@/capabilities/station-runner/GeneratingFeedback";
+import { useCurrentExam } from "@/foundation/session";
 import Tips from "./tips/Tips";
 
 const MAX_TRIES = 10;
@@ -24,16 +25,15 @@ const MAX_TRIES = 10;
 export function MarkingModal({
   isOpen,
   attemptId,
-  examCode,
   onReady,
   onSkip,
 }: {
   isOpen: boolean;
   attemptId: string | null;
-  examCode: string;
   onReady: () => void;
   onSkip: () => void;
 }) {
+  const { settings } = useCurrentExam();
   const [tries, setTries] = useState(0);
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export function MarkingModal({
             Your attempt is safe. Your feedback will be on this station when it is ready.
           </p>
         </div>
-      ) : examCode === "sca" ? (
+      ) : settings.show_tips_while_marking ? (
         <Tips duration={120} />
       ) : (
         <GeneratingFeedback />

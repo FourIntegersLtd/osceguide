@@ -5,6 +5,7 @@ import {
   cn,
   productTokens,
 } from "@/foundation/ui";
+import { useCurrentExam, hasStationSubtypes } from "@/foundation/session";
 
 const {
   b2cGroupedRow,
@@ -107,12 +108,9 @@ const ORTHO_SUGGESTED_PROMPTS = [
   "For portfolio stations, how could I better link my CV to the person specification?",
 ];
 
-function isOrthoExam(examCode?: string | null): boolean {
-  return examCode?.toLowerCase() === "ortho";
-}
-
-export function DebriefTips({ examCode }: { examCode?: string | null }) {
-  const ortho = isOrthoExam(examCode);
+export function DebriefTips() {
+  const { settings } = useCurrentExam();
+  const ortho = hasStationSubtypes(settings);
   const features = ortho ? ORTHO_FEATURES : DEFAULT_FEATURES;
   const steps = ortho ? ORTHO_STEPS : DEFAULT_STEPS;
 
@@ -175,8 +173,9 @@ export function DebriefTips({ examCode }: { examCode?: string | null }) {
   );
 }
 
-export function DebriefSuggestedPrompts({ examCode }: { examCode?: string | null }) {
-  const prompts = isOrthoExam(examCode) ? ORTHO_SUGGESTED_PROMPTS : DEFAULT_SUGGESTED_PROMPTS;
+export function DebriefSuggestedPrompts() {
+  const { settings } = useCurrentExam();
+  const prompts = hasStationSubtypes(settings) ? ORTHO_SUGGESTED_PROMPTS : DEFAULT_SUGGESTED_PROMPTS;
 
   return (
     <div className="space-y-3">
