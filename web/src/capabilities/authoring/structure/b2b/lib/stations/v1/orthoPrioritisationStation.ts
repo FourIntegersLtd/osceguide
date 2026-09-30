@@ -48,13 +48,27 @@ export function orthoPrioritisationStationTemplateV1(): StationStructure {
         blocks: [
           {
             id: "patient_list_for_candidate",
-            type: "longText",
+            type: "records",
+            fields: [
+              { key: "number", label: "Patient" },
+              { key: "age", label: "Age" },
+              { key: "gender", label: "Gender" },
+              { key: "summary", label: "Summary" },
+              { key: "notes", label: "Notes" },
+            ],
             role: "candidate_brief",
             label: "Patient List for Candidate",
           },
           {
             id: "examiner_additional_info",
-            type: "longText",
+            type: "records",
+            fields: [
+              { key: "number", label: "Patient" },
+              { key: "age", label: "Age" },
+              { key: "gender", label: "Gender" },
+              { key: "summary", label: "Summary" },
+              { key: "notes", label: "Notes" },
+            ],
             role: "examiner",
             label: "Examiner Additional Info",
           },
@@ -67,7 +81,7 @@ export function orthoPrioritisationStationTemplateV1(): StationStructure {
         blocks: [
           {
             id: "suggested_order",
-            type: "longText",
+            type: "groupedList",
             role: "examiner",
             label: "Suggested List Order",
           },
@@ -80,7 +94,7 @@ export function orthoPrioritisationStationTemplateV1(): StationStructure {
         blocks: [
           {
             id: "interview_questions",
-            type: "longText",
+            type: "qaList",
             role: "examiner",
             label: "Interview Questions",
           },

@@ -19,6 +19,22 @@ export function defaultBlock(type: StationBlockType): StationBlock {
       return { id, type: "longText", label };
     case "list":
       return { id, type: "list", label, itemLabel: "Item" };
+    case "image":
+      return { id, type: "image", label };
+    case "records":
+      return {
+        id,
+        type: "records",
+        label,
+        fields: [
+          { key: "name", label: "Name" },
+          { key: "details", label: "Details" },
+        ],
+      };
+    case "qaList":
+      return { id, type: "qaList", label };
+    case "groupedList":
+      return { id, type: "groupedList", label };
     case "singleSelect":
       return {
         id,

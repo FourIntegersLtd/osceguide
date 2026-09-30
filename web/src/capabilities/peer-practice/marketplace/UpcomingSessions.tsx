@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Alert from "@/foundation/forms/Alert";
 import { AsyncBoundary, Button, ConfirmModal } from "@/foundation/ui";
 import { b2cCard, b2cMutedBand } from "@/foundation/ui/productTokens";
-import { useAsync } from "@/foundation/hooks";
+import { useCursorPages } from "@/foundation/hooks";
 import {
   cancelPeerSession,
   joinPeerSession,
-  listAllMyPeerSessions,
+  listMyPeerSessions,
+  MARKETPLACE_PAGE_SIZE,
   type PeerSession,
 } from "@/capabilities/peer-practice/api";
 import { ListLoadError, ListLoading } from "@/capabilities/peer-practice/marketplace/listStates";
@@ -17,7 +18,6 @@ import { hasCode } from "@/foundation/platform-client";
 import {
   canJoin,
   JOIN_OPENS_MINUTES,
-  joinWindowClosed,
   longDate,
   meridiemTime,
   timeUntilJoin,
@@ -28,9 +28,9 @@ type Notice = { id: number; type: "success" | "error"; text: string };
 /**
  * The sessions somebody has arranged, and the way into them.
  *
- * The API lists every booking; the ones cancelled, completed or more than an
- * hour past their start are left out here, which is what the retiring
- * upcoming-sessions endpoint did on the server.
+ * `when=upcoming` is the server's own definition — cancelled, completed or
+ * more than an hour past their start are left out there, not here. A page at
+ * a time, so this no longer walks every booking to find the live ones.
  */
 export function UpcomingSessions({
   reloadKey,
@@ -39,7 +39,12 @@ export function UpcomingSessions({
   reloadKey: number;
   onOpenPracticeSession: (practiceSessionId: string) => void;
 }) {
-  const state = useAsync((signal) => listAllMyPeerSessions(signal), [reloadKey]);
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listMyPeerSessions({ cursor, limit: MARKETPLACE_PAGE_SIZE, when: "upcoming" }, signal),
+    [reloadKey],
+  );
+  const state = pages.state;
   const [notice, setNotice] = useState<Notice | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -110,8 +115,7 @@ export function UpcomingSessions({
       )}
     >
       {(sessions) => {
-        const upcoming = sessions.filter((session) => isUpcoming(session, now));
-        if (upcoming.length === 0) {
+        if (sessions.length === 0) {
           return (
             <>
               {notice && <Alert key={notice.id} message={notice.text} type={notice.type} className="mb-4" />}
@@ -128,7 +132,7 @@ export function UpcomingSessions({
           <div className="space-y-4">
             {notice && <Alert key={notice.id} message={notice.text} type={notice.type} className="mb-4" />}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-              {upcoming.map((session) => (
+              {sessions.map((session) => (
                 <UpcomingSessionCard
                   key={session.id}
                   session={session}
@@ -140,17 +144,28 @@ export function UpcomingSessions({
                 />
               ))}
             </div>
+            {pages.moreError ? (
+              <p className="text-osce-body text-osce-danger">
+                Could not load more sessions: {pages.moreError.message}
+              </p>
+            ) : null}
+            {pages.hasMore ? (
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={pages.loadingMore}
+                  onClick={pages.loadMore}
+                >
+                  {pages.loadingMore ? "Loading…" : "Load more sessions"}
+                </Button>
+              </div>
+            ) : null}
           </div>
         );
       }}
     </AsyncBoundary>
   );
-}
-
-/** Until the clock lands, measure from the start so a valid card is never hidden. */
-function isUpcoming(session: PeerSession, now: number | null): boolean {
-  if (session.status === "cancelled" || session.status === "completed") return false;
-  return !joinWindowClosed(session.starts_at, now ?? new Date(session.starts_at).getTime());
 }
 
 function UpcomingSessionCard({

@@ -1,17 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { Alert, Button, EmptyState, b2bTokens } from "@/foundation/ui";
-import Table, {
-  type FetchPageParams,
-  type FetchPageResult,
-} from "@/foundation/table/Table";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Button, EmptyState, PlatformFilterBar, PlatformFilterSearch, b2bTokens } from "@/foundation/ui";
+import Table, { type FetchPageResult } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
-import { errorMessage } from "@/foundation/hooks";
+import { errorMessage, useCursorPages } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import {
   changeMemberRole,
+  listMemberships,
   resendInvitation,
   restoreMembership,
   revokeMembership,
@@ -24,7 +22,6 @@ import {
   isLastAdmin,
   isOwner,
   roleLabel,
-  sortMembers,
   staffCountLabel,
 } from "@/domains/assess/team/support";
 
@@ -40,25 +37,42 @@ type Pending =
  * Revoked memberships stay on the list rather than disappearing, because the
  * backend revokes rather than deletes — the record of who had access and when
  * is the point — and a screen that hid them would make "restore" unreachable.
+ *
+ * The list is one server page at a time, searched in SQL, rather than the
+ * whole team walked and filtered in the browser. The panel owns its own load
+ * and re-fetches on mutation, so `Team` no longer needs to hold the list just
+ * to hand it down.
  */
 export function MembersPanel({
   orgSlug,
-  members,
   canManage,
-  onChanged,
 }: {
   orgSlug: string;
-  members: Membership[];
   canManage: boolean;
-  onChanged: () => void;
 }) {
-  const rows = sortMembers(members);
   const [pending, setPending] = useState<Pending>(null);
   const [role, setRole] = useState<string>("supervisor");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // A page at a time, searched in SQL, rather than the whole team walked and
+  // filtered in the browser.
+  const pages = useCursorPages(
+    (cursor, signal) => listMemberships(orgSlug, signal, { cursor, search: query }),
+    [orgSlug, query],
+  );
+  const rows = pages.state.data ?? [];
 
   async function resend(member: Membership) {
     setError(null);
@@ -96,7 +110,7 @@ export function MembersPanel({
         setNotice(`Restored access for ${who}.`);
       }
       setPending(null);
-      onChanged();
+      pages.state.reload();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -104,25 +118,10 @@ export function MembersPanel({
     }
   }
 
-  const fetchPage = useCallback(
-    async (params: FetchPageParams): Promise<FetchPageResult<Membership>> => {
-      let filtered = rows;
-      if (params.search) {
-        const q = params.search.toLowerCase();
-        filtered = rows.filter(
-          (member) =>
-            (member.email?.toLowerCase().includes(q) ?? false) ||
-            roleLabel(member.role).toLowerCase().includes(q) ||
-            member.user_id.toLowerCase().includes(q),
-        );
-      }
-      const start = (params.page - 1) * params.perPage;
-      const end = start + params.perPage;
-      return {
-        items: filtered.slice(start, end),
-        totalCount: filtered.length,
-      };
-    },
+  /** Table renders whatever page the server has already handed back — it does
+   * not re-page, re-sort or re-filter what it is given. */
+  const tableFetchPage = useCallback(
+    async (): Promise<FetchPageResult<Membership>> => ({ items: rows, totalCount: rows.length }),
     [rows],
   );
 
@@ -181,32 +180,80 @@ export function MembersPanel({
           ) : null,
       },
     ],
-    [canManage, rows, resendingId, resend],
+    [canManage, rows, resendingId],
   );
-
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        title="No staff yet"
-        description="Invite a supervisor so somebody can run a circuit."
-      />
-    );
-  }
 
   return (
     <div className="min-w-0 space-y-4">
       {notice ? <Alert tone="success">{notice}</Alert> : null}
-      <p className={b2bTokens.b2bEyebrow}>{staffCountLabel(rows.length)}</p>
 
-      <Table<Membership>
-        fetchPage={fetchPage}
-        columns={columns}
-        idField="id"
-        nameField="email"
-        searchPlaceholder="Search staff…"
-        showPagination={rows.length > 10}
-        defaultItemsPerPage={25}
-      />
+      <PlatformFilterBar
+        leading={
+          rows.length > 0 || query ? (
+            <p className={b2bTokens.b2bEyebrow}>
+              {staffCountLabel(rows.length)}
+              {pages.hasMore ? "+" : ""}
+            </p>
+          ) : null
+        }
+      >
+        <PlatformFilterSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search staff…"
+          aria-label="Search staff"
+        />
+      </PlatformFilterBar>
+
+      {pages.state.error ? (
+        <Alert tone="danger">
+          {pages.state.error.message}
+          <button type="button" className="ml-2 underline" onClick={() => pages.state.reload()}>
+            Retry
+          </button>
+        </Alert>
+      ) : null}
+
+      {pages.state.loading && !pages.state.data ? (
+        <p className="text-osce-body text-b2c-text-secondary" role="status">
+          Loading staff…
+        </p>
+      ) : rows.length === 0 ? (
+        query ? (
+          <p className="text-osce-body text-b2b-mid">No staff match &ldquo;{query}&rdquo;.</p>
+        ) : (
+          <EmptyState
+            title="No staff yet"
+            description="Invite a supervisor so somebody can run a circuit."
+          />
+        )
+      ) : (
+        <Table<Membership>
+          fetchPage={tableFetchPage}
+          columns={columns}
+          idField="id"
+          nameField="email"
+          showSearch={false}
+          showPagination={false}
+        />
+      )}
+
+      {pages.moreError ? (
+        <Alert tone="danger">Could not load more staff: {pages.moreError.message}</Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="flex justify-center">
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            disabled={pages.loadingMore}
+            onClick={pages.loadMore}
+          >
+            {pages.loadingMore ? "Loading…" : "Load more staff"}
+          </Button>
+        </div>
+      ) : null}
 
       {!canManage ? (
         <p className="text-osce-caption text-b2b-icon">

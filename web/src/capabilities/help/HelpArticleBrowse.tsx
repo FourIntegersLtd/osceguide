@@ -166,24 +166,26 @@ function BrowsePanel({
   onOpenArticle: (slug: string) => void;
 }) {
   const [categories, setCategories] = useState<HelpCategory[]>([]);
-  const [allArticles, setAllArticles] = useState<HelpArticleListItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<HelpArticleListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(searchQuery.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    void Promise.all([
-      fetchHelpCategories(appType),
-      fetchHelpArticles(appType),
-    ])
-      .then(([cats, articles]) => {
-        if (!cancelled) {
-          setCategories(cats);
-          setAllArticles(articles);
-        }
+    void fetchHelpCategories(appType)
+      .then((cats) => {
+        if (!cancelled) setCategories(cats);
       })
       .catch((e: unknown) => {
         if (!cancelled) {
@@ -198,14 +200,31 @@ function BrowsePanel({
     };
   }, [appType]);
 
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const searchResults =
-    normalizedQuery.length > 0
-      ? allArticles.filter((article) => {
-          const haystack = `${article.title} ${article.summary} ${article.category_title ?? ""}`.toLowerCase();
-          return haystack.includes(normalizedQuery);
-        })
-      : [];
+  // The match is the server's: title, summary and category, searched in SQL
+  // rather than by holding every article and filtering it in the browser.
+  useEffect(() => {
+    if (query.length === 0) {
+      setSearchResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    void fetchHelpArticles(appType, undefined, query)
+      .then((articles) => {
+        if (!cancelled) setSearchResults(articles);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(apiErrorMessage(e, "Could not search help topics."));
+      })
+      .finally(() => {
+        if (!cancelled) setSearching(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appType, query]);
+
+  const normalizedQuery = query;
 
   return (
     <div className="w-full pb-2">
@@ -238,11 +257,13 @@ function BrowsePanel({
       ) : normalizedQuery.length > 0 ? (
         <B2CPanelCard className="mt-4">
           <B2CPanelCardHeader>
-            {searchResults.length > 0
-              ? `${searchResults.length} result${searchResults.length === 1 ? "" : "s"}`
-              : "No results"}
+            {searching
+              ? "Searching…"
+              : searchResults.length > 0
+                ? `${searchResults.length} result${searchResults.length === 1 ? "" : "s"}`
+                : "No results"}
           </B2CPanelCardHeader>
-          {searchResults.length === 0 ? (
+          {searching ? null : searchResults.length === 0 ? (
             <p className="px-4 py-4 text-osce-meta text-osce-ink-500">
               Try different words or browse categories below.
             </p>

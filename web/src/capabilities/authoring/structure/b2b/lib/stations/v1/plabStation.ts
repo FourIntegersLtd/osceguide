@@ -121,6 +121,13 @@ export function plabStationTemplateV1(): StationStructure {
         role: "examiner",
         label: "Additional Notes",
       },
+      {
+        id: "specialties",
+        type: "list",
+        role: "examiner",
+        label: "Specialties",
+        placeholder: "Lowercase, e.g. cardiology",
+      },
     ]),
   ]),
     "plab.station",

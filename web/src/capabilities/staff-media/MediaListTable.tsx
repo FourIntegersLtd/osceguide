@@ -2,14 +2,13 @@
 
 import { useCallback, useMemo } from "react";
 import { HiOutlineChevronRight, HiOutlineTrash } from "react-icons/hi2";
-import Table, { type FetchPageParams, type FetchPageResult } from "@/foundation/table/Table";
+import Table, { type FetchPageResult } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import {
   AuthoringIconAction,
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
-import { matchesExamFilter } from "@/capabilities/authoring/parts/examCatalogFilter";
 import type { MediaItem } from "@/capabilities/staff-media/api";
 
 function mediaDateLabel(iso: string | null | undefined): string {
@@ -36,43 +35,22 @@ function StatusPill({ status }: { status: string }) {
 
 export function MediaListTable({
   items,
-  examFilter,
-  search,
   busy,
   onOpen,
   onPublish,
   onDelete,
 }: {
   items: MediaItem[];
-  examFilter: string;
-  search: string;
   busy: string | null;
   onOpen: (item: MediaItem) => void;
   onPublish: (item: MediaItem) => void;
   onDelete: (item: MediaItem) => void;
 }) {
-  const pool = useMemo(
-    () => items.filter((item) => matchesExamFilter(item.exam_code, examFilter)),
-    [items, examFilter],
-  );
-
+  // Every row loaded so far, with the table's own pager off: paging is the
+  // server's cursor (Load more), and filtering already happened in SQL.
   const fetchPage = useCallback(
-    async (params: FetchPageParams): Promise<FetchPageResult<MediaItem>> => {
-      let filtered = pool;
-      if (params.search) {
-        const q = params.search.toLowerCase();
-        filtered = pool.filter(
-          (item) =>
-            item.title.toLowerCase().includes(q) ||
-            item.slug.toLowerCase().includes(q) ||
-            (item.exam_code ?? "").toLowerCase().includes(q),
-        );
-      }
-      const start = (params.page - 1) * params.perPage;
-      const end = start + params.perPage;
-      return { items: filtered.slice(start, end), totalCount: filtered.length };
-    },
-    [pool],
+    async (): Promise<FetchPageResult<MediaItem>> => ({ items: items, totalCount: items.length }),
+    [items],
   );
 
   const columns = useMemo(
@@ -162,10 +140,10 @@ export function MediaListTable({
   return (
     <Table<MediaItem>
       fetchPage={fetchPage}
+      showPagination={false}
       columns={columns}
       idField="id"
       nameField="title"
-      search={search}
       showSearch={false}
     />
   );

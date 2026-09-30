@@ -330,11 +330,21 @@ export function resolveRoster(
  * with the consumer free trial.
  * --------------------------------------------------------------------- */
 
-/** Everything granted, revoked rows included: `live` is the field that gates. */
-export function listEntitlements(slug: string, signal?: AbortSignal) {
+/**
+ * Everything granted, revoked rows included: `live` is the field that gates.
+ *
+ * One server page at a time, searched in SQL: an institution's grants can
+ * outgrow "load it all and filter in the browser" the same way its roster
+ * can.
+ */
+export function listEntitlements(
+  slug: string,
+  signal?: AbortSignal,
+  page?: PageParams,
+): Promise<components["schemas"]["Page_EntitlementRead_"]> {
   return platformRequest<components["schemas"]["Page_EntitlementRead_"]>(
     `${orgPath(slug)}/entitlements`,
-    { signal },
+    { signal, query: pageQuery(page) },
   );
 }
 

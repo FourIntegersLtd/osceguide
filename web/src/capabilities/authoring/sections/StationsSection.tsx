@@ -56,23 +56,26 @@ export function StationsSection() {
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  // A page at a time, searched in SQL. This used to walk up to 25 pages of
-  // 100 before drawing anything, and quietly stopped at 2,500 stations.
+  // A page at a time, searched and exam-filtered in SQL. This used to walk up
+  // to 25 pages of 100 before drawing anything, and quietly stopped at 2,500
+  // stations. Changing the exam filter is in `deps`, so it restarts from page
+  // one rather than re-filtering whatever happened to be loaded already.
   const pages = useCursorPages(
     (cursor, signal) =>
-      listStations(scope, { cursor, limit: STATION_PAGE_LIMIT, search: query }, signal),
-    [scope.base, query],
+      listStations(
+        scope,
+        { cursor, limit: STATION_PAGE_LIMIT, search: query, exam_code: examFilter || undefined },
+        signal,
+      ),
+    [scope.base, query, examFilter],
   );
   const stations = pages.state;
   const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
   const action = useAction(stations.reload);
 
-  const visibleCount = useMemo(() => {
-    const items = stations.data ?? [];
-    return items.filter(
-      (s) => s.status !== "archived" && matchesExamFilter(s.exam_code, examFilter),
-    ).length;
-  }, [stations.data, examFilter]);
+  // The server already excludes archived stations and matches the exam
+  // filter, so this is just the length of what came back.
+  const visibleCount = stations.data?.length ?? 0;
 
   const published = useMemo(() => {
     const all = (templates.data?.items ?? []).filter(hasPublishedVersion);
@@ -142,7 +145,6 @@ export function StationsSection() {
       ) : (
         <StationsTable
           stations={stations.data ?? []}
-          examFilter={examFilter}
           search={query}
           busy={action.busy}
           onOpen={setOpen}

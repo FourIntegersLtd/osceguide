@@ -80,7 +80,6 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
             {section === "trainees" ? (
               <TraineesPanel
                 orgSlug={orgSlug}
-                trainees={data.trainees}
                 cohorts={data.cohorts}
                 canManage={canManage}
                 onChanged={state.reload}

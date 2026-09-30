@@ -1,0 +1,39 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  RICH_SHAPES,
+  columnsFromLabels,
+  groupedItemsFromText,
+  groupedItemsToText,
+} from "./richBlockValues";
+
+test("a theatre list round-trips through the text an author edits", () => {
+  const items = ["Trauma meeting", { title: "Bed 2: open tibia", reasons: ["Contaminated", "Antibiotics given"] }];
+  const text = groupedItemsToText(items);
+  assert.equal(text, "Trauma meeting\nBed 2: open tibia\n- Contaminated\n- Antibiotics given");
+  assert.deepEqual(groupedItemsFromText(text), items);
+});
+
+test("a reason with no item above it becomes an item", () => {
+  assert.deepEqual(groupedItemsFromText("- orphan\n\n  Bed 3  "), ["- orphan", "Bed 3"]);
+});
+
+test("renaming a column keeps its stored key; a new one gets a key from its label", () => {
+  assert.deepEqual(
+    columnsFromLabels(["Patient number", "Age at admission"], [{ key: "number", label: "Patient" }]),
+    [
+      { key: "number", label: "Patient number" },
+      { key: "age_at_admission", label: "Age at admission" },
+    ],
+  );
+});
+
+test("rich shapes accept what the backend accepts", () => {
+  assert.equal(RICH_SHAPES.image?.accepts(["https://a.test/x.png"]), true);
+  assert.equal(RICH_SHAPES.image?.accepts([1]), false);
+  assert.equal(RICH_SHAPES.qaList?.accepts([{ question: "Why?", answer: "Because" }]), true);
+  assert.equal(RICH_SHAPES.qaList?.accepts([{ answer: "no question" }]), false);
+  assert.equal(RICH_SHAPES.groupedList?.accepts({ trauma: ["Bed 1", { title: "Bed 2", reasons: ["x"] }] }), true);
+  assert.equal(RICH_SHAPES.groupedList?.accepts({ trauma: "Bed 1" }), false);
+  assert.equal(RICH_SHAPES.records?.accepts([{ age: 70 }]), true);
+});

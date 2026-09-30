@@ -42,6 +42,7 @@ export {
 
 export {
   listStationTemplates,
+  listStationTemplatesPage,
   createStationTemplate,
   publishStationTemplate,
   addStationTemplateVersion,

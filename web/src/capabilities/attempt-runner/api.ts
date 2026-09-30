@@ -7,11 +7,6 @@ export type Transcript = components["schemas"]["TranscriptRead"];
 export type AttemptBrief = components["schemas"]["AttemptBriefRead"];
 export type AttemptReview = components["schemas"]["AttemptReviewRead"];
 export type AttemptHistoryItem = components["schemas"]["AttemptHistoryItem"];
-export type DoctorInformation = components["schemas"]["DoctorInformationRead"];
-export type CandidateScenario = components["schemas"]["CandidateScenarioRead"];
-export type ManagementPlan = components["schemas"]["ManagementPlanRead"];
-export type PatientReview = components["schemas"]["PatientReviewRead"];
-export type StationTeaching = components["schemas"]["StationTeachingRead"];
 export type VoiceQueueStanding = components["schemas"]["VoiceQueueStanding"];
 
 /**
@@ -166,6 +161,10 @@ export function listMyAttempts(
     setEntryId?: string | null;
     limit?: number;
     cursor?: string | null;
+    /** A title fragment matched against the exam code and the kind label, in SQL. */
+    search?: string | null;
+    /** Leaves out attempts that never reached the room, so a transcript picker never offers an empty page. */
+    transcribableOnly?: boolean;
   } = {},
   signal?: AbortSignal,
 ): Promise<{ items: AttemptHistoryItem[]; next_cursor?: string | null }> {
@@ -175,6 +174,8 @@ export function listMyAttempts(
       set_entry_id: params.setEntryId ?? undefined,
       limit: params.limit,
       cursor: params.cursor ?? undefined,
+      search: params.search?.trim() || undefined,
+      transcribable_only: params.transcribableOnly ?? undefined,
     },
     signal,
   });

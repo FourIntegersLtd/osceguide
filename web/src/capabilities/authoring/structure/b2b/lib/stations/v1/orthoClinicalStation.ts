@@ -29,10 +29,17 @@ export function orthoClinicalStationTemplateV1(): StationStructure {
           },
           {
             id: "radiograph_image_url",
-            type: "shortText",
+            type: "image",
             role: "candidate_brief",
             label: "Radiograph Image URL",
             placeholder: "Optional URL to primary imaging",
+          },
+          {
+            id: "additional_image_urls",
+            type: "image",
+            role: "candidate_brief",
+            label: "Additional Image URLs",
+            placeholder: "Classification diagrams, post-op X-rays, etc.",
           },
         ],
       },
@@ -87,7 +94,7 @@ export function orthoClinicalStationTemplateV1(): StationStructure {
         blocks: [
           {
             id: "interview_questions",
-            type: "longText",
+            type: "qaList",
             role: "examiner",
             label: "Interview Questions",
             placeholder: "Question and answer pairs for the examiner",

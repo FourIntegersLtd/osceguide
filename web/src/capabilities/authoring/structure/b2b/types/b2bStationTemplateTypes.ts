@@ -6,7 +6,14 @@ export type StationBlockType =
   | "multiSelect"
   | "checklist"
   | "scale"
-  | "ragCriterion";
+  | "ragCriterion"
+  | "image"
+  | "records"
+  | "qaList"
+  | "groupedList";
+
+/** One column of a `records` block: the key in each record, and its heading. */
+export type RecordField = { key: string; label: string };
 
 /**
  * What a block is *for*. Mirrors `KNOWN_ROLES` in the assessment engine's
@@ -70,7 +77,11 @@ export type StationBlock =
       type: "ragCriterion";
       /** B2C-aligned path stem, e.g. `global_skills.structures_consultation` */
       pathStem: string;
-    });
+    })
+  | (StationBlockBase & { type: "image" })
+  | (StationBlockBase & { type: "records"; fields?: RecordField[] })
+  | (StationBlockBase & { type: "qaList" })
+  | (StationBlockBase & { type: "groupedList" });
 export type StationSection = {
   id: string;
   title: string;

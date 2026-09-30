@@ -71,17 +71,6 @@ export async function flagStation(stationId: string, signal?: AbortSignal): Prom
 }
 
 /**
- * What this person has reported, newest first.
- *
- * The route used to be served by `identity` and thrown away, so the runner's
- * button confirmed a report nobody received; this is the read that proves it
- * landed, and the source of the "Flagged stations" list.
- */
-export function myStationFlags(signal?: AbortSignal): Promise<StationFlag[]> {
-  return platformRequest<StationFlag[]>("/api/v1/me/station-flags", { signal });
-}
-
-/**
  * One station by id.
  *
  * `GET /api/v1/stations/{id}` answers with the same row the browse page gives

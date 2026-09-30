@@ -74,7 +74,7 @@ export function orthoCommunicationStationTemplateV1(): StationStructure {
         blocks: [
           {
             id: "interview_questions",
-            type: "longText",
+            type: "qaList",
             role: "examiner",
             label: "Interview Questions",
           },

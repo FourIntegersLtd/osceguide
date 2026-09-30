@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { HiOutlineChevronRight, HiOutlinePlusCircle } from "react-icons/hi2";
 import { Alert, getInputClassName } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
@@ -12,9 +12,8 @@ import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRo
 import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
 import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
 import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
-import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
-import { useAsync } from "@/foundation/hooks";
-import { createRubric, listRubrics } from "@/capabilities/authoring/api";
+import { useCursorPages } from "@/foundation/hooks";
+import { createRubric, listRubrics, STATION_PAGE_LIMIT } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
@@ -37,11 +36,31 @@ import {
  */
 export function RubricsSection() {
   const scope = useAuthoringScope();
-  const { rubricVersionIdForExam } = useAuthoringExamCatalog();
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
-  const rubrics = useAsync((signal) => listRubrics(scope, {}, signal), [scope.base]);
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // A page at a time, searched and exam-filtered in SQL — mirrors
+  // StationsSection. Changing the exam filter or the search is in `deps`, so
+  // either restarts paging from page one.
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listRubrics(
+        scope,
+        { cursor, limit: STATION_PAGE_LIMIT, search: query, exam_code: examFilter || undefined },
+        signal,
+      ),
+    [scope.base, query, examFilter],
+  );
+  const rubrics = pages.state;
   const action = useAction(rubrics.reload);
+  const items = rubrics.data ?? [];
 
   const [creating, setCreating] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -49,20 +68,6 @@ export function RubricsSection() {
   const [prompt, setPrompt] = useState("");
   const [structure, setStructure] = useState("{}");
   const [pacing, setPacing] = useState("{}");
-
-  const items = useMemo(() => {
-    const rubricForExam = rubricVersionIdForExam(examFilter);
-    const q = search.trim().toLowerCase();
-    return (rubrics.data?.items ?? []).filter((rubric) => {
-      if (examFilter) {
-        if (!rubricForExam) return false;
-        const versionIds = (rubric.versions ?? []).map((v) => v.id);
-        if (!versionIds.includes(rubricForExam)) return false;
-      }
-      if (!q) return true;
-      return rubric.title.toLowerCase().includes(q) || rubric.id.toLowerCase().includes(q);
-    });
-  }, [rubrics.data, examFilter, search, rubricVersionIdForExam]);
 
   if (open) {
     return (
@@ -145,6 +150,24 @@ export function RubricsSection() {
           );
         })}
       </ListCard>
+
+      {pages.moreError ? (
+        <Alert tone="danger">
+          Could not load more rubrics: {pages.moreError.message}
+        </Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="flex justify-center">
+          <AuthoringButton
+            variant="secondary"
+            size="sm"
+            disabled={pages.loadingMore}
+            onClick={pages.loadMore}
+          >
+            {pages.loadingMore ? "Loading…" : "Load more rubrics"}
+          </AuthoringButton>
+        </div>
+      ) : null}
 
       <AuthoringDialog
         open={creating}

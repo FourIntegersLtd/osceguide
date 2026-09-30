@@ -1,21 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { HiInformationCircle } from "react-icons/hi";
-import { HiOutlineArrowPath } from "react-icons/hi2";
-import Table, { type Column } from "@/foundation/table/Table";
+import { useCallback, useEffect, useState } from "react";
+import { HiInformationCircle, HiOutlineArrowPath, HiOutlineMagnifyingGlass } from "react-icons/hi2";
+import Table, { type Column, type FetchPageResult } from "@/foundation/table/Table";
 import {
-  AsyncBoundary,
+  Alert,
   B2CPanelCard,
   B2CPanelCardBody,
   B2CPanelCardHeader,
+  Button,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { readReferralHistory, type ReferralHistoryRow } from "@/capabilities/account/api";
 
-const DEFAULT_ITEMS_PER_PAGE = 10;
+const PAGE_LIMIT = 25;
 
 /** Where one referral's own page lives. */
 export function referralDetailPath(referralId: string): string {
@@ -25,14 +25,27 @@ export function referralDetailPath(referralId: string): string {
 /**
  * Everybody who joined with your code: the retiring client's "Referral history".
  *
- * The same four columns, search box and paging, over `/me/referrals/history`.
- * Loading and the empty state are the old card's; with rows it is the shared
- * table, searched and paged in the browser as the old one was.
+ * The same four columns as the old card, now a server page at a time over
+ * `/me/referrals/history`, searched by referee email in SQL. This used to
+ * fetch up to 500 rows in one call and page and filter them in the browser.
  */
 export default function ReferralHistory() {
-  const state = useAsync((signal) => readReferralHistory(signal), []);
+  const [search, setSearch] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
-  if (state.loading && state.data === null) {
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      readReferralHistory({ cursor, limit: PAGE_LIMIT, search: query || null }, signal),
+    [query],
+  );
+  const rows = pages.state.data ?? [];
+
+  if (pages.state.loading && pages.state.data === null) {
     return (
       <B2CPanelCard className="mt-0 mb-24">
         <B2CPanelCardHeader>Referral history</B2CPanelCardHeader>
@@ -45,24 +58,20 @@ export default function ReferralHistory() {
     );
   }
 
-  return <AsyncBoundary state={state}>{(rows) => <ReferralHistoryTable rows={rows} />}</AsyncBoundary>;
-}
+  if (pages.state.error) {
+    return (
+      <B2CPanelCard className="mt-0 mb-24">
+        <B2CPanelCardHeader>Referral history</B2CPanelCardHeader>
+        <B2CPanelCardBody>
+          <p className="text-osce-body text-b2c-text-secondary">
+            We could not read your referral history. Try again in a moment.
+          </p>
+        </B2CPanelCardBody>
+      </B2CPanelCard>
+    );
+  }
 
-function ReferralHistoryTable({ rows }: { rows: ReferralHistoryRow[] }) {
-  const { hrefFor } = useSurface();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
-
-  const filteredHistory = rows.filter((row) =>
-    row.referee_email.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-  const totalPages = Math.max(1, Math.ceil(filteredHistory.length / itemsPerPage) || 1);
-  const safePage = Math.min(currentPage, totalPages);
-  const pageStart = (safePage - 1) * itemsPerPage;
-  const pageData = filteredHistory.slice(pageStart, pageStart + itemsPerPage);
-
-  if (filteredHistory.length === 0 && !searchQuery) {
+  if (rows.length === 0 && !query) {
     return (
       <B2CPanelCard className="mt-0 mb-24">
         <B2CPanelCardHeader>Referral history</B2CPanelCardHeader>
@@ -77,6 +86,49 @@ function ReferralHistoryTable({ rows }: { rows: ReferralHistoryRow[] }) {
       </B2CPanelCard>
     );
   }
+
+  return (
+    <>
+      <div className="mb-4 flex justify-end">
+        <label className="relative block w-full max-w-md">
+          <span className="sr-only">Search by referee email</span>
+          <HiOutlineMagnifyingGlass
+            className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-b2c-text-muted"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by referee email..."
+            className="w-full appearance-none rounded-lg border border-b2c-border bg-b2c-surface-muted py-2.5 pl-10 pr-3 text-osce-body text-osce-ink-900 outline-none placeholder:text-osce-ink-400 focus:border-osce-accent focus:bg-osce-surface focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+          />
+        </label>
+      </div>
+      <ReferralHistoryTable rows={rows} />
+      {pages.moreError ? (
+        <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="mb-24 flex justify-center">
+          <Button variant="secondary" size="sm" disabled={pages.loadingMore} onClick={pages.loadMore}>
+            {pages.loadingMore ? "Loading…" : "Load more"}
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function ReferralHistoryTable({ rows }: { rows: ReferralHistoryRow[] }) {
+  const { hrefFor } = useSurface();
+
+  // Every row loaded so far, with the table's own pager off: paging is the
+  // server's cursor (Load more), and filtering already happened in SQL.
+  const fetchPage = useCallback(
+    async (): Promise<FetchPageResult<ReferralHistoryRow>> => ({ items: rows, totalCount: rows.length }),
+    [rows],
+  );
 
   const columns: Column<ReferralHistoryRow>[] = [
     {
@@ -128,28 +180,16 @@ function ReferralHistoryTable({ rows }: { rows: ReferralHistoryRow[] }) {
 
   return (
     <Table<ReferralHistoryRow>
-      className="mb-24"
+      className="mb-4"
       title="Referral history"
       description="Track referees, earnings, and payout status."
-      data={pageData}
+      fetchPage={fetchPage}
+      showPagination={false}
       columns={columns}
-      totalItems={filteredHistory.length}
       idField="id"
       nameField="referee_email"
-      searchPlaceholder="Search by referee email..."
       deletable={false}
-      onSearch={(query) => {
-        setSearchQuery(query);
-        setCurrentPage(1);
-      }}
-      onPageChange={setCurrentPage}
-      onItemsPerPageChange={(count) => {
-        setItemsPerPage(count);
-        setCurrentPage(1);
-      }}
-      currentPage={safePage}
-      itemsPerPage={itemsPerPage}
-      loading={false}
+      showSearch={false}
     />
   );
 }

@@ -131,16 +131,29 @@ export type ReferralHistoryRow = components["schemas"]["ReferralHistoryRead"];
 export type PayoutDetails = components["schemas"]["PayoutDetailsRead"];
 export type PayoutDetailsWrite = components["schemas"]["PayoutDetailsWrite"];
 
-/** Most rows one person's history is read in; the table pages them in the browser, as the old one did. */
-const REFERRAL_HISTORY_LIMIT = 500;
+/**
+ * A page of `ReferralHistoryRow`. `/me/referrals/history` now walks a cursor
+ * and takes `search` (the referee email), matched in SQL, in place of the
+ * single `limit=500` fetch the browser used to page and filter on its own.
+ */
+export interface ReferralHistoryPage {
+  items: ReferralHistoryRow[];
+  next_cursor?: string | null;
+}
 
-/** Everybody who joined with the signed-in person's code: one row per referee, newest first. */
-export async function readReferralHistory(signal?: AbortSignal): Promise<ReferralHistoryRow[]> {
-  const page = await platformRequest<{ items: ReferralHistoryRow[] }>(
-    `/api/v1/me/referrals/history?limit=${REFERRAL_HISTORY_LIMIT}`,
-    { signal },
-  );
-  return page.items;
+/** A page of who joined with the signed-in person's code, newest first. */
+export function readReferralHistory(
+  params: { cursor?: string | null; limit?: number; search?: string | null },
+  signal?: AbortSignal,
+): Promise<ReferralHistoryPage> {
+  return platformRequest<ReferralHistoryPage>("/api/v1/me/referrals/history", {
+    query: {
+      cursor: params.cursor ?? undefined,
+      limit: params.limit,
+      search: params.search?.trim() || undefined,
+    },
+    signal,
+  });
 }
 
 /**

@@ -1,21 +1,23 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { LuChevronRight } from "react-icons/lu";
-import { AsyncBoundary, Button, Card } from "@/foundation/ui";
 import { LuBuilding2 } from "react-icons/lu";
-import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
 import {
+  AsyncBoundary,
+  Button,
+  Card,
+  Panel,
   PlatformFilterBar,
   PlatformFilterDivider,
   PlatformFilterSearch,
   PlatformFilterSelect,
-} from "@/domains/platform/PlatformFilterBar";
+  PlatformPageHeader,
+  RowLink,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listAllOrganizations, type Organization } from "@/domains/platform/api";
-import { Row, RowList, Section, StatusBadge } from "@/domains/platform/chrome";
+import { StatusBadge } from "@/domains/platform/chrome";
 import { ProvisionModal } from "@/domains/platform/ProvisionPanel";
 import { ORG_STATUSES, ORG_TYPES } from "@/domains/platform/support";
 
@@ -61,7 +63,7 @@ export function Organizations() {
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Organisations"
         description="Institutions and partners. Both run sittings; the mode is what differs."
@@ -178,42 +180,32 @@ function Directory({
   if (total === 0) {
     return (
       <Card padding="md">
-        <p className="text-sm text-ink-muted">Nothing matches those filters.</p>
+        <p className="text-osce-data text-b2c-text-muted">Nothing matches those filters.</p>
       </Card>
     );
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-6">
       {groups.map((group) => {
         const groupRows = [...group.rows, ...group.extra];
         if (groupRows.length === 0) return null;
         return (
-          <Section key={group.value} title={`${group.label}s · ${groupRows.length}`}>
-            <RowList>
+          <Panel key={group.value} title={`${group.label}s · ${groupRows.length}`} padding="none">
+            <ul className="divide-y divide-b2c-border">
               {groupRows.map((organization) => (
-                <Row key={organization.id} className="px-0 py-0">
-                  <Link
-                    href={hrefFor(`/organizations/${encodeURIComponent(organization.slug)}`)}
-                    className="flex min-w-0 flex-1 items-center gap-3 px-5 py-3 transition-colors hover:bg-surface-raised"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-ink">
-                        {organization.name}
-                      </span>
-                      <span className="block truncate text-xs text-ink-subtle">
-                        /{organization.slug} · {organization.org_type}
-                      </span>
-                    </span>
-                    <StatusBadge status={organization.status} />
-                    <LuChevronRight className="h-4 w-4 shrink-0 text-ink-subtle" aria-hidden />
-                  </Link>
-                </Row>
+                <RowLink
+                  key={organization.id}
+                  href={hrefFor(`/organizations/${encodeURIComponent(organization.slug)}`)}
+                  title={organization.name}
+                  subtitle={`/${organization.slug} · ${organization.org_type}`}
+                  trailing={<StatusBadge status={organization.status} />}
+                />
               ))}
-            </RowList>
-          </Section>
+            </ul>
+          </Panel>
         );
       })}
-    </>
+    </div>
   );
 }

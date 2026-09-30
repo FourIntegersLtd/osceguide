@@ -3,21 +3,20 @@
 import { useState } from "react";
 import { HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
 import {
+  Alert,
   AsyncBoundary,
   B2CEmptyState,
   B2CPageHeader,
   B2CSegmentedTabs,
-  Pagination,
-  cn,
+  Button,
   productTokens as t,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import {
   MEDIA_KINDS,
   MEDIA_KIND_LABELS,
-  filterMediaByExam,
-  listAllMedia,
+  listMedia,
   type MediaItem,
   type MediaKind,
 } from "@/capabilities/media/api";
@@ -27,6 +26,9 @@ import { SummaryIndex } from "@/capabilities/media/SummaryIndex";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
 
 type Filter = MediaKind | "all";
+
+/** The backend's page cap on `GET /api/v1/media` is 100; a screen doesn't need that much at once. */
+const MEDIA_LIBRARY_PAGE_LIMIT = 24;
 
 const EMPTY: Record<Filter, { title: string; description: string }> = {
   all: {
@@ -72,7 +74,13 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
   const [query, setQuery] = useState("");
 
   const kind = filter === "all" ? null : filter;
-  const state = useAsync((signal) => listAllMedia(kind, signal), [kind]);
+  // A page at a time, scoped by exam in SQL. This used to walk every cursor
+  // up front and then filter the whole catalogue by exam in the browser.
+  const pages = useCursorPages(
+    (cursor, signal) => listMedia({ kind, cursor, limit: MEDIA_LIBRARY_PAGE_LIMIT, examCode }, signal),
+    [kind, examCode],
+  );
+  const state = pages.state;
 
   const clearSearch = () => {
     setTerm("");
@@ -151,24 +159,39 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
 
           <AsyncBoundary state={state}>
             {(items) => {
-              const scoped = filterMediaByExam(items, examCode);
-              return scoped.length === 0 ? (
+              return items.length === 0 ? (
                 <B2CEmptyState
                   icon={filter === "all" ? undefined : MEDIA_KIND_ICON[filter]}
                   title={EMPTY[filter].title}
                   description={
-                    items.length > 0 && examCode
+                    examCode
                       ? `Nothing published for ${examCode.toUpperCase()} yet. Switch exam in the menu or upgrade for full access.`
                       : EMPTY[filter].description
                   }
                 />
               ) : filter === "summary" ? (
-                <SummaryIndex items={scoped} hrefFor={hrefFor} />
+                <SummaryIndex items={items} hrefFor={hrefFor} />
               ) : (
-                <PagedGrid items={scoped} hrefFor={hrefFor} />
+                <MediaGrid items={items} hrefFor={hrefFor} />
               );
             }}
           </AsyncBoundary>
+
+          {pages.moreError ? (
+            <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+          ) : null}
+          {pages.hasMore ? (
+            <div className="mt-6 flex justify-center">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={pages.loadingMore}
+                onClick={pages.loadMore}
+              >
+                {pages.loadingMore ? "Loading…" : "Load more"}
+              </Button>
+            </div>
+          ) : null}
         </>
       )}
     </div>
@@ -176,40 +199,20 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
 }
 
 /**
- * Paged in the browser, because the whole set is already here.
+ * The grid for slide decks, blogs and podcast episodes.
  *
- * `GET /api/v1/media` pages on an opaque cursor, so there is no total to count
- * pages against until every page has been walked — which the index and the
- * deck sidebar need anyway.
+ * One page's worth grows into more as `useCursorPages` answers "load more" —
+ * the A-to-Z index (`SummaryIndex`) is the only view that still needs the
+ * whole set grouped at once, and that grows the same way.
  */
-function PagedGrid({ items, hrefFor }: { items: MediaItem[]; hrefFor: (path: string) => string }) {
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
-
-  const start = (page - 1) * perPage;
-  const visible = items.slice(start, start + perPage);
-
+function MediaGrid({ items, hrefFor }: { items: MediaItem[]; hrefFor: (path: string) => string }) {
   return (
-    <div className={cn("space-y-8", items.length <= perPage && "pb-4")}>
+    <div className="space-y-8">
       <MediaCardGrid>
-        {visible.map((item) => (
+        {items.map((item) => (
           <MediaCard key={item.id} item={item} href={hrefFor(`/library/${item.slug}`)} />
         ))}
       </MediaCardGrid>
-
-      {items.length > perPage ? (
-        <Pagination
-          currentPage={page}
-          totalItems={items.length}
-          itemsPerPage={perPage}
-          knownTotal
-          onPageChange={setPage}
-          onItemsPerPageChange={(next) => {
-            setPerPage(next);
-            setPage(1);
-          }}
-        />
-      ) : null}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { readTranscript, type Transcript } from "@/capabilities/feedback";
 import { listMyAttempts, type AttemptHistoryItem } from "@/capabilities/attempt-runner";
+import type { CursorPage } from "@/foundation/hooks";
 
 export type RecentAttempt = AttemptHistoryItem;
 
@@ -27,35 +28,37 @@ export function kindLabel(kind: string): string {
   return KIND_LABELS[kind] ?? kind.replace(/_/g, " ");
 }
 
-const PAGE_LIMIT = 100;
-/** 2,500 attempts is generous for one person's history and bounds the walk. */
-const MAX_PAGES = 25;
+export const TRANSCRIPT_PAGE_LIMIT = 100;
 
 /**
- * The attempts a person could have a transcript for.
+ * One page of the attempts a person could have a transcript for.
  *
  * There is no "list my transcripts" endpoint and there should not be: a
- * transcript belongs to an attempt, so the attempt history *is* the list. An
- * attempt still in `created` never reached the room, so it is left out rather
- * than offered as a page that would only ever say "nothing was transcribed".
+ * transcript belongs to an attempt, so the attempt history *is* the list.
+ * `transcribable_only` leaves out an attempt still in `created` — it never
+ * reached the room — server-side, so this never offers a page that would only
+ * ever say "nothing was transcribed". `search` matches the exam code and the
+ * kind label in SQL, newest first; it does not reach the formatted date shown
+ * in the table, since the backend never indexed that.
  *
- * This walks `/me/attempts` rather than reading `/me/dashboard`'s
- * `recent_attempts` — that list is capped at ten for the dashboard's own
- * purposes, which meant an eleventh consultation was unreachable from here no
- * matter how the table was searched or sorted.
+ * This reads `/me/attempts` rather than `/me/dashboard`'s `recent_attempts` —
+ * that list is capped at ten for the dashboard's own purposes, which meant an
+ * eleventh consultation was unreachable from here no matter how the table was
+ * searched.
  */
-export async function listTranscribableAttempts(signal?: AbortSignal): Promise<RecentAttempt[]> {
-  const items: RecentAttempt[] = [];
-  let cursor: string | null = null;
-  for (let index = 0; index < MAX_PAGES; index += 1) {
-    const page = await listMyAttempts({ limit: PAGE_LIMIT, cursor }, signal);
-    items.push(...page.items);
-    cursor = page.next_cursor ?? null;
-    if (!cursor) break;
-  }
-  return items
-    .filter((attempt) => attempt.status !== "created")
-    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+export function listTranscribableAttempts(
+  params: { cursor?: string | null; limit?: number; search?: string } = {},
+  signal?: AbortSignal,
+): Promise<CursorPage<RecentAttempt>> {
+  return listMyAttempts(
+    {
+      cursor: params.cursor,
+      limit: params.limit ?? TRANSCRIPT_PAGE_LIMIT,
+      search: params.search,
+      transcribableOnly: true,
+    },
+    signal,
+  );
 }
 
 /**

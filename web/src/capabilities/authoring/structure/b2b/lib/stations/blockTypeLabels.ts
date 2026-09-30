@@ -2,17 +2,22 @@ import type { ComponentType } from "react";
 import {
   HiBars3,
   HiBars3BottomLeft,
+  HiChatBubbleLeftRight,
   HiChartBarSquare,
   HiCheck,
   HiClipboardDocumentCheck,
   HiListBullet,
+  HiPhoto,
+  HiQueueList,
+  HiRectangleStack,
   HiStopCircle,
   HiSignal,
 } from "react-icons/hi2";
 import type { StationBlockType } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-export type StationBlockFormsGroup = "text" | "choices" | "scoring";
+export type StationBlockFormsGroup = "text" | "rich" | "choices" | "scoring";
 export const STATION_BLOCK_FORMS_GROUPS: { id: StationBlockFormsGroup; label: string }[] = [
   { id: "text", label: "Text" },
+  { id: "rich", label: "Rich content" },
   { id: "choices", label: "Choices" },
   { id: "scoring", label: "Scoring" },
 ];
@@ -46,6 +51,36 @@ export const STATION_BLOCK_FORMS_ORDER: StationBlockFormsMeta[] = [
     description:
       "Add as many bullet points as needed. Good for drug lists, ideas, or open items.",
     icon: HiListBullet,
+  },
+  {
+    type: "image",
+    group: "rich",
+    formsLabel: "Images",
+    description: "One or more images, shown as a grid the reader can enlarge. Good for radiographs and scans.",
+    icon: HiPhoto,
+  },
+  {
+    type: "records",
+    group: "rich",
+    formsLabel: "Records",
+    description:
+      "A card per record with the columns you set. Good for a ward list of patients, each with age, summary and notes.",
+    icon: HiRectangleStack,
+  },
+  {
+    type: "qaList",
+    group: "rich",
+    formsLabel: "Questions and answers",
+    description: "Numbered questions, each with its model answer. Good for viva or interview questions.",
+    icon: HiChatBubbleLeftRight,
+  },
+  {
+    type: "groupedList",
+    group: "rich",
+    formsLabel: "Grouped list",
+    description:
+      "Items under headings, each with optional reasons. Good for a suggested order split by theatre list.",
+    icon: HiQueueList,
   },
   {
     type: "singleSelect",
@@ -92,7 +127,7 @@ export const STATION_BLOCK_FORMS_ORDER: StationBlockFormsMeta[] = [
  * lists; ticks, scales and R/A/G scores belong on a marking form. */
 export type TemplateKind = "station" | "feedback";
 export const BLOCK_TYPES_FOR_KIND: Record<TemplateKind, readonly StationBlockType[]> = {
-  station: ["shortText", "longText", "list", "singleSelect"],
+  station: ["shortText", "longText", "list", "singleSelect", "image", "records", "qaList", "groupedList"],
   feedback: ["shortText", "longText", "list", "singleSelect", "multiSelect", "checklist", "scale", "ragCriterion"],
 };
 export function formsOrderForKind(kind: TemplateKind): StationBlockFormsMeta[] {

@@ -20,7 +20,8 @@ import {
   declinePracticeMatch,
   joinPeerSession,
   readPracticeSession,
-  listAllMyPeerSessions,
+  listMyPeerSessions,
+  MARKETPLACE_PAGE_SIZE,
 } from "./api";
 import { useQueue, type JoinOutcome, type Queue } from "./support/useQueue";
 import { useQueuePersistence } from "./support/useQueuePersistence";
@@ -189,7 +190,7 @@ function PeerPracticeScope({ children, scope, orgId }: { children: ReactNode; sc
   const [dismissedBookings, setDismissedBookings] = useState<string[]>([]);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
-  const bookings = useAsync((signal) => listAllMyPeerSessions(signal), []);
+  const bookings = useAsync((signal) => listMyPeerSessions({ when: "upcoming", limit: MARKETPLACE_PAGE_SIZE }, signal), []);
   const [now, setNow] = useState(Date.now);
   const refresh = bookings.reload;
   // A booking's own window opening is a clock, not an event — nothing on the server
@@ -204,7 +205,7 @@ function PeerPracticeScope({ children, scope, orgId }: { children: ReactNode; sc
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
-  const candidate = (bookings.data ?? []).find((item) => !dismissedBookings.includes(item.id) &&
+  const candidate = (bookings.data?.items ?? []).find((item) => !dismissedBookings.includes(item.id) &&
     (item.status === "active" || (item.status !== "cancelled" && item.status !== "completed" &&
       canJoin(item.starts_at, now) && !joinWindowClosed(item.starts_at, now))));
   const joinBooking = async () => {

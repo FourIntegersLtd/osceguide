@@ -7,13 +7,25 @@ type S = components["schemas"];
 
 /* ----------------------------------------------------------------- rubrics */
 
+/**
+ * One page of this scope's rubrics.
+ *
+ * Shaped like `listStations`: `search` matches a title fragment and
+ * `exam_code` keeps only rubrics bound to that exam's published version, both
+ * run in SQL rather than filtered in the browser.
+ */
 export function listRubrics(
   scope: AuthoringScope,
-  params: { cursor?: string | null } = {},
+  params: { cursor?: string | null; limit?: number; search?: string | null; exam_code?: string | null } = {},
   signal?: AbortSignal,
 ): Promise<S["Page_RubricRead_"]> {
   return platformRequest(`${scope.base}/rubrics`, {
-    query: { cursor: params.cursor ?? undefined },
+    query: {
+      cursor: params.cursor ?? undefined,
+      limit: params.limit,
+      search: params.search?.trim() || undefined,
+      exam_code: params.exam_code || undefined,
+    },
     signal,
   });
 }

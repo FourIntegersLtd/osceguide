@@ -1,10 +1,11 @@
 "use client";
 
 import { HiOutlineCalendarDays } from "react-icons/hi2";
-import { B2CEmptyState } from "@/foundation/ui";
-import type { Slot } from "@/capabilities/peer-practice/api";
+import { Alert, B2CEmptyState, Button } from "@/foundation/ui";
+import { useCursorPages } from "@/foundation/hooks";
+import { listSlots, MARKETPLACE_PAGE_SIZE, type Slot } from "@/capabilities/peer-practice/api";
 import { SlotCard } from "@/capabilities/peer-practice/marketplace/SlotCard";
-import { isPast, startMs } from "@/capabilities/peer-practice/support/time";
+import { startMs } from "@/capabilities/peer-practice/support/time";
 
 export interface SlotActions {
   onClaim: (slot: Slot) => void;
@@ -38,50 +39,88 @@ function SectionHeading({ children }: { children: string }) {
   );
 }
 
-/**
- * Every slot, grouped the way the retiring screen grouped them.
- *
- * Available, then Scheduled, then Completed — most recent first inside each.
- * The client loads the full feed (available + claimed) for the current exam,
- * then splits it here the way the retiring B2C screen did.
- */
-export function SlotSections({ slots, actions }: { slots: Slot[]; actions: SlotActions }) {
-  const claimed = slots.filter((slot) => slot.status === "claimed");
-  const available = slots.filter((slot) => slot.status === "available" && !isPast(slot.starts_at));
-  const scheduled = claimed.filter((slot) => !isPast(slot.starts_at)).sort(byMostRecent);
-  const completed = claimed.filter((slot) => isPast(slot.starts_at)).sort(byMostRecent);
-  const sorted = [...available].sort(byMostRecent);
+type SectionFilter = { status: "available" | "claimed"; when: "upcoming" | "past" };
 
-  if (sorted.length === 0 && scheduled.length === 0 && completed.length === 0) {
-    return (
-      <B2CEmptyState
-        icon={HiOutlineCalendarDays}
-        title="No availability posts yet"
-        description="Be the first to post your availability!"
-      />
-    );
+const SECTIONS: { heading: string; filter: SectionFilter }[] = [
+  { heading: "Available", filter: { status: "available", when: "upcoming" } },
+  { heading: "Scheduled", filter: { status: "claimed", when: "upcoming" } },
+  { heading: "Completed", filter: { status: "claimed", when: "past" } },
+];
+
+/** One section of the marketplace: the server filters, orders and pages it. */
+function SlotSection({
+  heading,
+  filter,
+  orgId,
+  examCode,
+  reloadKey,
+  actions,
+}: {
+  heading: string;
+  filter: SectionFilter;
+  orgId: string | null;
+  examCode: string | null;
+  reloadKey: number;
+  actions: SlotActions;
+}) {
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listSlots({ cursor, orgId, examCode, limit: MARKETPLACE_PAGE_SIZE, ...filter }, signal),
+    [orgId, examCode, reloadKey, filter.status, filter.when],
+  );
+  const slots = pages.state.data ?? [];
+  if (pages.state.error) {
+    return <Alert tone="danger">Could not load {heading.toLowerCase()} sessions: {pages.state.error.message}</Alert>;
   }
+  if (slots.length === 0) return null;
+  return (
+    <section>
+      <SectionHeading>{heading}</SectionHeading>
+      <SlotGrid slots={slots} actions={actions} />
+      {pages.moreError ? (
+        <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="mt-3 flex justify-center">
+          <Button variant="secondary" size="sm" disabled={pages.loadingMore} onClick={pages.loadMore}>
+            {pages.loadingMore ? "Loading…" : "Load more"}
+          </Button>
+        </div>
+      ) : null}
+    </section>
+  );
+}
 
+/**
+ * The marketplace: Available, then Scheduled, then Completed.
+ *
+ * Each section is its own server query (status + when), ordered most recent
+ * first by the server, so nothing is filtered or sorted in the browser.
+ */
+export function SlotSections({
+  orgId,
+  examCode,
+  reloadKey,
+  actions,
+}: {
+  orgId: string | null;
+  examCode: string | null;
+  reloadKey: number;
+  actions: SlotActions;
+}) {
   return (
     <div className="space-y-8">
-      {sorted.length > 0 && (
-        <section>
-          <SectionHeading>Available</SectionHeading>
-          <SlotGrid slots={sorted} actions={actions} />
-        </section>
-      )}
-      {scheduled.length > 0 && (
-        <section>
-          <SectionHeading>Scheduled</SectionHeading>
-          <SlotGrid slots={scheduled} actions={actions} />
-        </section>
-      )}
-      {completed.length > 0 && (
-        <section>
-          <SectionHeading>Completed</SectionHeading>
-          <SlotGrid slots={completed} actions={actions} />
-        </section>
-      )}
+      {SECTIONS.map((section) => (
+        <SlotSection
+          key={section.heading}
+          heading={section.heading}
+          filter={section.filter}
+          orgId={orgId}
+          examCode={examCode}
+          reloadKey={reloadKey}
+          actions={actions}
+        />
+      ))}
     </div>
   );
 }

@@ -40,8 +40,12 @@ export const LOGIN_PATH = "/login";
  */
 export const VISITOR_KEY_COOKIE_NAME = "osce_visitor_key";
 
-/** First-touch lifetime (days). A partner's credit outlives the campaign. */
-export const VISITOR_KEY_COOKIE_MAX_AGE_DAYS = 90;
+/**
+ * First-touch lifetime (days). Attribution itself has no window — once a
+ * partner's link is clicked that partner is credited — so this is simply the
+ * longest a browser will keep a cookie (Chrome caps it at 400 days).
+ */
+export const VISITOR_KEY_COOKIE_MAX_AGE_DAYS = 400;
 
 const PILOT_PARTNER_SET = new Set<string>(PILOT_PARTNERS);
 

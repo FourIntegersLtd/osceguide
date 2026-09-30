@@ -16,7 +16,6 @@ import { useAsync } from "@/foundation/hooks";
 import { isPlatformAdmin, useCurrentExam, useSession } from "@/foundation/session";
 import {
   bodyMarkdown,
-  filterMediaByExam,
   isStructuredSummary,
   listAllMedia,
   podcastUrl,
@@ -164,11 +163,10 @@ function ListenCard({ onListen }: { onListen: () => void }) {
  */
 function SummaryPodcast({ item }: { item: MediaItem }) {
   const { code: examCode } = useCurrentExam();
-  const state = useAsync((signal) => listAllMedia("summary", signal), []);
+  const state = useAsync((signal) => listAllMedia("summary", signal, examCode), [examCode]);
   const [index, setIndex] = useState<number | null>(null);
 
-  const scoped = filterMediaByExam(state.data ?? [], examCode);
-  const withAudio = scoped.filter((entry) => podcastUrl(entry) !== null);
+  const withAudio = (state.data ?? []).filter((entry) => podcastUrl(entry) !== null);
   const episodes: Episode[] =
     withAudio.length > 0
       ? withAudio.map((entry) => ({ id: entry.id, title: entry.title, url: podcastUrl(entry) }))

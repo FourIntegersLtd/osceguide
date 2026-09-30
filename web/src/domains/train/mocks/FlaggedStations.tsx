@@ -1,22 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { HiInformationCircle } from "react-icons/hi";
-import { HiOutlineArrowPath } from "react-icons/hi2";
-import Table, { type Column } from "@/foundation/table/Table";
+import { HiOutlineArrowPath, HiOutlineMagnifyingGlass } from "react-icons/hi2";
+import Table, { type Column, type FetchPageResult } from "@/foundation/table/Table";
 import {
+  Alert,
   B2CPanelCard,
   B2CPanelCardBody,
   B2CPanelCardHeader,
+  Button,
   productTokens,
 } from "@/foundation/ui";
-import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { errorMessage, useCursorPages, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { flagSetEntry, listFlaggedStations, type FlaggedEntry } from "@/domains/train/api";
 import { flaggedEntryPath } from "@/domains/train/mocks/model";
 
-const PER_PAGE = 10;
+const PAGE_LIMIT = 25;
 
 /** A row is the flagged entry, with the title the backend resolved for it. */
 type FlagRow = FlaggedEntry & { id: string; station_name: string };
@@ -34,11 +36,29 @@ type FlagRow = FlaggedEntry & { id: string; station_name: string };
  * It is the same list the runner's flag button writes to, which is the point of
  * the tab. Reporting a station as wrong is a different button and goes to the
  * content team, not here.
+ *
+ * A page at a time, searched in SQL: this used to load the whole flag list and
+ * filter it by title in the browser.
  */
 export function FlaggedStations() {
   const { hrefFor } = useSurface();
   const toast = useToast();
-  const flags = useAsync((signal) => listFlaggedStations(signal), []);
+
+  const [search, setSearch] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listFlaggedStations({ cursor, limit: PAGE_LIMIT, search: query || null }, signal),
+    [query],
+  );
+  const flags = pages.state;
+
   const [removing, setRemoving] = useState<string | null>(null);
 
   const unflag = async (row: FlagRow) => {
@@ -52,20 +72,22 @@ export function FlaggedStations() {
       setRemoving(null);
     }
   };
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(PER_PAGE);
 
   const rows = useMemo<FlagRow[]>(
     () =>
-      (flags.data ?? [])
-        .map((flag) => ({
-          ...flag,
-          id: flag.entry_id,
-          station_name: flag.station_title ?? "Unknown Station",
-        }))
-        .filter((row) => row.station_name.toLowerCase().includes(search.toLowerCase())),
-    [flags.data, search],
+      (flags.data ?? []).map((flag) => ({
+        ...flag,
+        id: flag.entry_id,
+        station_name: flag.station_title ?? "Unknown Station",
+      })),
+    [flags.data],
+  );
+
+  // Every row loaded so far, with the table's own pager off: paging is the
+  // server's cursor (Load more), and filtering already happened in SQL.
+  const fetchPage = useCallback(
+    async (): Promise<FetchPageResult<FlagRow>> => ({ items: rows, totalCount: rows.length }),
+    [rows],
   );
 
   if (flags.loading) {
@@ -95,7 +117,7 @@ export function FlaggedStations() {
     );
   }
 
-  if ((flags.data ?? []).length === 0) {
+  if (rows.length === 0 && !query) {
     return (
       <B2CPanelCard className="mt-0 mb-24">
         <B2CPanelCardHeader>Flagged stations</B2CPanelCardHeader>
@@ -110,9 +132,6 @@ export function FlaggedStations() {
       </B2CPanelCard>
     );
   }
-
-  const totalPages = Math.max(1, Math.ceil(rows.length / perPage));
-  const safePage = Math.min(page, totalPages);
 
   const columns: Column<FlagRow>[] = [
     {
@@ -149,29 +168,45 @@ export function FlaggedStations() {
   ];
 
   return (
-    <Table<FlagRow>
-      className="mb-24"
-      title="Flagged stations"
-      description="Stations you flagged during practice to come back to."
-      data={rows.slice((safePage - 1) * perPage, safePage * perPage)}
-      columns={columns}
-      totalItems={rows.length}
-      idField="id"
-      nameField="station_name"
-      searchPlaceholder="Search flagged stations..."
-      deletable={false}
-      onSearch={(query) => {
-        setSearch(query);
-        setPage(1);
-      }}
-      onPageChange={setPage}
-      onItemsPerPageChange={(count) => {
-        setPerPage(count);
-        setPage(1);
-      }}
-      currentPage={safePage}
-      itemsPerPage={perPage}
-      loading={false}
-    />
+    <>
+      <div className="mb-4 flex justify-end">
+        <label className="relative block w-full max-w-md">
+          <span className="sr-only">Search flagged stations</span>
+          <HiOutlineMagnifyingGlass
+            className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-b2c-text-muted"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search flagged stations..."
+            className="w-full appearance-none rounded-lg border border-b2c-border bg-b2c-surface-muted py-2.5 pl-10 pr-3 text-osce-body text-osce-ink-900 outline-none placeholder:text-osce-ink-400 focus:border-osce-accent focus:bg-osce-surface focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+          />
+        </label>
+      </div>
+      <Table<FlagRow>
+        className="mb-4"
+        title="Flagged stations"
+        description="Stations you flagged during practice to come back to."
+        fetchPage={fetchPage}
+        showPagination={false}
+        columns={columns}
+        idField="id"
+        nameField="station_name"
+        deletable={false}
+        showSearch={false}
+      />
+      {pages.moreError ? (
+        <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="mb-24 flex justify-center">
+          <Button variant="secondary" size="sm" disabled={pages.loadingMore} onClick={pages.loadMore}>
+            {pages.loadingMore ? "Loading…" : "Load more"}
+          </Button>
+        </div>
+      ) : null}
+    </>
   );
 }

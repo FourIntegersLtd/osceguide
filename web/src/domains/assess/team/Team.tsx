@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { HiOutlineClock, HiOutlineSquares2X2, HiOutlineUserPlus } from "react-icons/hi2";
-import { AsyncBoundary, Button, PageHeader, TextLink } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { Button, PageHeader, TextLink } from "@/foundation/ui";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { TabStrip, type Tab } from "@/domains/assess/team/chrome";
-import { listAllMemberships } from "@/domains/assess/team/api";
 import { MembersPanel } from "@/domains/assess/team/MembersPanel";
 import { InvitePanel } from "@/domains/assess/team/InvitePanel";
 import { ActivityPanel } from "@/domains/assess/team/ActivityPanel";
@@ -37,7 +35,6 @@ export function Team({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const [section, setSection] = useState<Section>("members");
   const canManage = can(session, "manage_team");
-  const state = useAsync((signal) => listAllMemberships(orgSlug, signal), [orgSlug]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -57,21 +54,12 @@ export function Team({ orgSlug }: { orgSlug: string }) {
 
       {section === "activity" ? (
         <ActivityPanel orgSlug={orgSlug} />
+      ) : section === "members" ? (
+        <MembersPanel orgSlug={orgSlug} canManage={canManage} />
       ) : (
-        <AsyncBoundary state={state}>
-          {(members) =>
-            section === "members" ? (
-              <MembersPanel
-                orgSlug={orgSlug}
-                members={members}
-                canManage={canManage}
-                onChanged={state.reload}
-              />
-            ) : (
-              <InvitePanel orgSlug={orgSlug} canManage={canManage} onInvited={state.reload} />
-            )
-          }
-        </AsyncBoundary>
+        // The members list re-fetches on its own next mount, so nothing here
+        // needs to be told a new person was added.
+        <InvitePanel orgSlug={orgSlug} canManage={canManage} onInvited={() => {}} />
       )}
 
       <p className="text-osce-caption text-b2b-mid">

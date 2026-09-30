@@ -1347,8 +1347,11 @@ export interface paths {
          * List My Attempts
          * @description Everything this person has sat, newest first.
          *
-         *     The two filters answer the two questions the screens ask: every attempt at
-         *     one station, and every attempt at one entry of a practice set.
+         *     The two id filters answer the two questions the screens ask: every attempt
+         *     at one station, and every attempt at one entry of a practice set. `search`
+         *     matches the exam or the attempt's kind, and `transcribable_only` drops
+         *     attempts still `created` — the filters the transcripts screen used to
+         *     apply itself after walking every page of this same endpoint.
          */
         get: operations["attempts_list_my_attempts"];
         put?: never;
@@ -2052,8 +2055,8 @@ export interface paths {
          * Read My Referral History
          * @description This person's own redeemed referrals: who joined, what they bought, and what it earned.
          *
-         *     No cursor: the frontend pages and searches this list client-side, so one
-         *     call returns up to `limit` rows and there is nothing to page further.
+         *     Cursor-paginated, like every other list endpoint — the frontend pages and
+         *     searches this server-side now rather than fetching everything up front.
          */
         get: operations["growth_read_my_referral_history"];
         put?: never;
@@ -2192,6 +2195,8 @@ export interface paths {
         /**
          * My Reports
          * @description What this person has reported, so the runner's button and the list agree.
+         *
+         *     `search` is an ILIKE match on the reported station's title.
          */
         get: operations["stations_my_reports"];
         put?: never;
@@ -3106,7 +3111,7 @@ export interface paths {
         };
         /**
          * List Org Entitlements
-         * @description What this institution has granted, revoked ones included.
+         * @description A page of what this institution has granted, revoked ones included.
          */
         get: operations["entitlements_list_org_entitlements"];
         put?: never;
@@ -3709,6 +3714,10 @@ export interface paths {
         /**
          * List Org Rubrics
          * @description The organisation's own rubrics, and the platform's, which it may mark with.
+         *
+         *     `search` matches a rubric's title; `exam_code` narrows to rubrics already
+         *     bound to that exam (the platform-web author screen used to do this join
+         *     client-side).
          */
         get: operations["rubrics_list_org_rubrics"];
         put?: never;
@@ -4347,7 +4356,7 @@ export interface paths {
          *
          *     `OrgReader` admits every rostered trainee, who gets the candidate-facing projection of each
          *     `content` (S1) rather than the patient's persona and examiner's notes. Staff and a platform
-         *     admin read the whole thing.
+         *     admin read the whole thing. Archived stations are left out unless `include_archived` is set.
          */
         get: operations["stations_list_stations"];
         put?: never;
@@ -5690,7 +5699,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Platform Rubrics */
+        /**
+         * List Platform Rubrics
+         * @description `search` matches a rubric's title; `exam_code` narrows to rubrics already
+         *     bound to that exam.
+         */
         get: operations["rubrics_list_platform_rubrics"];
         put?: never;
         /**
@@ -5969,6 +5982,8 @@ export interface paths {
         /**
          * List Platform Stations
          * @description Every library station, drafts included — the author's own view of it.
+         *
+         *     Archived stations are left out unless `include_archived` is set.
          */
         get: operations["stations_list_platform_stations"];
         put?: never;
@@ -6962,7 +6977,8 @@ export interface components {
          * @description The reading-time screen, keyed on the attempt rather than the station.
          *
          *     Keyed on the attempt because that is what the entitlement check has already been made against;
-         *     the library itself is browsable by everyone but carries no content.
+         *     the library itself is browsable by everyone but carries no content. `sections` are the
+         *     candidate-audience sections of the station's template, in template order.
          */
         AttemptBriefRead: {
             /**
@@ -6970,13 +6986,16 @@ export interface components {
              * Format: uuid
              */
             attempt_id: string;
-            doctor_information?: components["schemas"]["DoctorInformationRead"] | null;
             /** Exam Code */
             exam_code: string;
             /** Kind */
             kind: string;
             patient: components["schemas"]["PatientIdentityRead"];
-            scenario?: components["schemas"]["CandidateScenarioRead"] | null;
+            /**
+             * Sections
+             * @default []
+             */
+            sections: components["schemas"]["AudienceSectionRead"][];
             /** Set Entry Id */
             set_entry_id?: string | null;
             /**
@@ -7067,6 +7086,10 @@ export interface components {
         /**
          * AttemptReviewRead
          * @description The management step: what the candidate should have covered.
+         *
+         *     `sections` are the candidate-audience sections again, followed by every examiner-audience
+         *     section — the model answer and the marking guidance, readable once the consultation is over and
+         *     not one moment before.
          */
         AttemptReviewRead: {
             /**
@@ -7078,9 +7101,11 @@ export interface components {
             exam_code: string;
             /** Kind */
             kind: string;
-            management_plan?: components["schemas"]["ManagementPlanRead"] | null;
-            patient_information?: components["schemas"]["PatientReviewRead"] | null;
-            scenario?: components["schemas"]["CandidateScenarioRead"] | null;
+            /**
+             * Sections
+             * @default []
+             */
+            sections: components["schemas"]["AudienceSectionRead"][];
             /** Set Entry Id */
             set_entry_id?: string | null;
             /**
@@ -7097,7 +7122,24 @@ export interface components {
             station_version_id: string;
             /** Status */
             status: string;
-            teaching?: components["schemas"]["StationTeachingRead"] | null;
+        };
+        /**
+         * AudienceBlockRead
+         * @description One block of a section, as one audience may read it.
+         */
+        AudienceBlockRead: {
+            /** Fields */
+            fields?: components["schemas"]["RecordFieldRead"][] | null;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Role */
+            role: string;
+            /** Type */
+            type: string;
+            /** Value */
+            value: unknown;
         };
         /**
          * AudienceIn
@@ -7124,6 +7166,25 @@ export interface components {
             /** Org Id */
             org_id?: string | null;
             visibility: components["schemas"]["Visibility"];
+        };
+        /**
+         * AudienceSectionRead
+         * @description A station's content, grouped by its template's sections, for one audience.
+         *
+         *     The one read model every screen that shows a candidate, a patient actor or
+         *     an examiner a station's material is built from. Shared here rather than
+         *     owned by `stations`: `attempts` and `peer_practice` both build one, and a
+         *     slice's `schemas.py` may not import another slice's.
+         */
+        AudienceSectionRead: {
+            /** Audience */
+            audience: string;
+            /** Blocks */
+            blocks: components["schemas"]["AudienceBlockRead"][];
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
         };
         /** AuditRead */
         AuditRead: {
@@ -7455,33 +7516,6 @@ export interface components {
              * Format: uuid
              */
             user_id: string;
-        };
-        /**
-         * CandidateScenarioRead
-         * @description Candidate-facing keys that sit flat on the document rather than in a block.
-         *
-         *     Ortho's stations are shaped this way: an interview or a trauma list rather
-         *     than a consultation, so the brief is a scenario and a set of images.
-         */
-        CandidateScenarioRead: {
-            /** Additional Image Urls */
-            additional_image_urls?: string[];
-            /** Background Overview */
-            background_overview?: string | null;
-            /** Clinical Scenario */
-            clinical_scenario?: string | null;
-            /** Clinical Scenario Title */
-            clinical_scenario_title?: string | null;
-            /** Duration Minutes */
-            duration_minutes?: number | null;
-            /** Patient List For Candidate */
-            patient_list_for_candidate?: components["schemas"]["PrioritisationPatientRead"][];
-            /** Radiograph Image Url */
-            radiograph_image_url?: string | null;
-            /** Station Type */
-            station_type?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /**
          * Capabilities
@@ -8400,36 +8434,6 @@ export interface components {
             stale_agents_removed: number;
         };
         /**
-         * DoctorInformationRead
-         * @description The candidate's brief: what the doctor has in front of them.
-         */
-        DoctorInformationRead: {
-            /** Current Medications */
-            current_medications?: string[];
-            /** Doctor Identity */
-            doctor_identity?: string | null;
-            /** Doctor Task */
-            doctor_task?: string | null;
-            /** Past Medical History */
-            past_medical_history?: string[];
-            /** Patient Biodata */
-            patient_biodata?: string | null;
-            /** Patient Information */
-            patient_information?: string[];
-            /** Photos */
-            photos?: string[];
-            /** Recent Investigations */
-            recent_investigations?: string[];
-            /** Recent Notes */
-            recent_notes?: string[];
-            /** Social History */
-            social_history?: string[];
-            /** Task Instructions */
-            task_instructions?: string | null;
-        } & {
-            [key: string]: unknown;
-        };
-        /**
          * DomainComposition
          * @description How many marked attempts landed red, amber or green on one domain.
          *
@@ -9133,15 +9137,6 @@ export interface components {
             /** Items */
             items?: components["schemas"]["Intervention"][];
         };
-        /** InterviewQuestionRead */
-        InterviewQuestionRead: {
-            /** Answer */
-            answer?: string | null;
-            /** Question */
-            question?: string | null;
-        } & {
-            [key: string]: unknown;
-        };
         /**
          * InvitationRead
          * @description A re-sent invitation. The token itself is never returned; it goes only to
@@ -9523,42 +9518,6 @@ export interface components {
         LogoutRequest: {
             /** Refresh Token */
             refresh_token?: string | null;
-        };
-        /**
-         * ManagementPlanRead
-         * @description The model answer, readable once the consultation is over.
-         */
-        ManagementPlanRead: {
-            /** Additional Notes */
-            additional_notes?: string | null;
-            /** Assessment */
-            assessment?: string[];
-            /** Differential Diagnosis */
-            differential_diagnosis?: string[];
-            /** Examination Findings */
-            examination_findings?: string[];
-            /** Explanation */
-            explanation?: string | null;
-            /** Follow Up */
-            follow_up?: string | null;
-            /** Further Investigations */
-            further_investigations?: string[];
-            /** Health Education */
-            health_education?: string[];
-            /** Ice */
-            ice?: string[];
-            /** Immediate Actions */
-            immediate_actions?: string[];
-            /** Non Pharmacological Treatment */
-            non_pharmacological_treatment?: string[];
-            /** Pharmacological Treatment */
-            pharmacological_treatment?: string[];
-            /** Safety Netting */
-            safety_netting?: string | null;
-            /** Social Concerns */
-            social_concerns?: string[];
-        } & {
-            [key: string]: unknown;
         };
         /**
          * MeEventEnvelope
@@ -10129,6 +10088,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** Page[FlaggedEntryRead] */
+        Page_FlaggedEntryRead_: {
+            /** Items */
+            items: components["schemas"]["FlaggedEntryRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** Page[GroupRead] */
         Page_GroupRead_: {
             /** Items */
@@ -10388,49 +10354,16 @@ export interface components {
             name_line?: string | null;
         };
         /**
-         * PatientReviewRead
-         * @description The patient's side, as a candidate may read it afterwards.
+         * PatientRoleplayRead
+         * @description The patient's whole script, for the candidate to play back once their own attempt has finished.
          *
-         *     Not a passthrough: `persona`, `opening_sentence`, `expanded_history` and the hidden question list
-         *     are how the patient is played, and stay on the server. What is here is the biodata line and the
-         *     ideas, concerns and expectations the candidate was supposed to draw out.
+         *     The patient audience's sections, with `include_hidden=True`: the actor needs the ICE and the
+         *     questions the patient holds back, not just what a candidate or an examiner may read of the same
+         *     station.
          */
-        PatientReviewRead: {
-            /** Concerns */
-            concerns?: string[];
-            /** Expectation */
-            expectation?: string[];
-            /** Gender */
-            gender?: string | null;
-            /** Idea */
-            idea?: string[];
-            /** Patient Biodata */
-            patient_biodata?: string | null;
-        };
-        /** PatientRoleplayRead */
         PatientRoleplayRead: {
-            /** Concerns */
-            concerns?: string[];
-            /** Expanded History */
-            expanded_history?: string | null;
-            /** Expectation */
-            expectation?: string[];
-            /** Family Social History */
-            family_social_history?: string[];
-            /** Gender */
-            gender?: string | null;
-            /** Idea */
-            idea?: string[];
-            /** Opening Sentence */
-            opening_sentence?: string | null;
-            /** Past Med History Allergies */
-            past_med_history_allergies?: string[];
-            /** Patient Biodata */
-            patient_biodata?: string | null;
-            /** Persona */
-            persona?: string | null;
-            /** Questions */
-            questions?: string[];
+            /** Sections */
+            sections?: components["schemas"]["AudienceSectionRead"][];
         };
         /**
          * PayoutDetailsAdminRead
@@ -11049,110 +10982,6 @@ export interface components {
             /** Exam Id */
             exam_id: string;
         };
-        /** PracticeCandidateScenarioRead */
-        PracticeCandidateScenarioRead: {
-            /** Additional Image Urls */
-            additional_image_urls?: string[];
-            /** Background Overview */
-            background_overview?: string | null;
-            /** Clinical Scenario */
-            clinical_scenario?: string | null;
-            /** Clinical Scenario Title */
-            clinical_scenario_title?: string | null;
-            /** Duration Minutes */
-            duration_minutes?: number | null;
-            /** Radiograph Image Url */
-            radiograph_image_url?: string | null;
-            /** Station Type */
-            station_type?: string | null;
-        } & {
-            [key: string]: unknown;
-        };
-        /** PracticeDoctorInformationRead */
-        PracticeDoctorInformationRead: {
-            /** Current Medications */
-            current_medications?: string[];
-            /** Doctor Identity */
-            doctor_identity?: string | null;
-            /** Doctor Task */
-            doctor_task?: string | null;
-            /** Past Medical History */
-            past_medical_history?: string[];
-            /** Patient Biodata */
-            patient_biodata?: string | null;
-            /** Patient Information */
-            patient_information?: string[];
-            /** Photos */
-            photos?: string[];
-            /** Recent Investigations */
-            recent_investigations?: string[];
-            /** Recent Notes */
-            recent_notes?: string[];
-            /** Social History */
-            social_history?: string[];
-            /** Task Instructions */
-            task_instructions?: string | null;
-        } & {
-            [key: string]: unknown;
-        };
-        /** PracticeManagementPlanRead */
-        PracticeManagementPlanRead: {
-            /** Additional Notes */
-            additional_notes?: string | null;
-            /** Assessment */
-            assessment?: string[];
-            /** Differential Diagnosis */
-            differential_diagnosis?: string[];
-            /** Examination Findings */
-            examination_findings?: string[];
-            /** Explanation */
-            explanation?: string | null;
-            /** Follow Up */
-            follow_up?: string | null;
-            /** Further Investigations */
-            further_investigations?: string[];
-            /** Health Education */
-            health_education?: string[];
-            /** Ice */
-            ice?: string[];
-            /** Immediate Actions */
-            immediate_actions?: string[];
-            /** Non Pharmacological Treatment */
-            non_pharmacological_treatment?: string[];
-            /** Pharmacological Treatment */
-            pharmacological_treatment?: string[];
-            /** Safety Netting */
-            safety_netting?: string | null;
-            /** Social Concerns */
-            social_concerns?: string[];
-        } & {
-            [key: string]: unknown;
-        };
-        /** PracticePatientRoleplayRead */
-        PracticePatientRoleplayRead: {
-            /** Concerns */
-            concerns?: string[];
-            /** Expanded History */
-            expanded_history?: string | null;
-            /** Expectation */
-            expectation?: string[];
-            /** Family Social History */
-            family_social_history?: string[];
-            /** Gender */
-            gender?: string | null;
-            /** Idea */
-            idea?: string[];
-            /** Opening Sentence */
-            opening_sentence?: string | null;
-            /** Past Med History Allergies */
-            past_med_history_allergies?: string[];
-            /** Patient Biodata */
-            patient_biodata?: string | null;
-            /** Persona */
-            persona?: string | null;
-            /** Questions */
-            questions?: string[];
-        };
         /** PracticeSessionRead */
         PracticeSessionRead: {
             /** Accept Expires At */
@@ -11217,18 +11046,20 @@ export interface components {
             /** Status */
             status: string;
         };
-        /** PracticeStationRead */
+        /**
+         * PracticeStationRead
+         * @description A peer session's station, for whichever of the two humans is asking.
+         *
+         *     `sections` are the template's audience sections this viewer's role and
+         *     phase may see, in template order — the same `AudienceSectionRead` shape
+         *     `stations` defines once, projected by `service_station._station_payload`:
+         *     the candidate audience always, the patient audience (with its `hidden`
+         *     blocks, the actor's own script) for whoever is not the doctor or once the
+         *     debrief has revealed it, and the examiner audience only once revealed.
+         */
         PracticeStationRead: {
-            doctor_information?: components["schemas"]["PracticeDoctorInformationRead"] | null;
-            management?: components["schemas"]["PracticeManagementPlanRead"] | null;
-            /** Management Plan */
-            management_plan?: string | null;
-            patient_information?: components["schemas"]["PracticePatientRoleplayRead"] | null;
-            /** Patient Script */
-            patient_script?: string | null;
-            /** Reading Brief */
-            reading_brief?: string | null;
-            scenario?: components["schemas"]["PracticeCandidateScenarioRead"] | null;
+            /** Sections */
+            sections?: components["schemas"]["AudienceSectionRead"][];
             /**
              * Station Id
              * Format: uuid
@@ -11239,58 +11070,8 @@ export interface components {
              * Format: uuid
              */
             station_version_id: string;
-            teaching?: components["schemas"]["PracticeStationTeachingRead"] | null;
             /** Title */
             title: string;
-        };
-        /** PracticeStationTeachingRead */
-        PracticeStationTeachingRead: {
-            /** Breaking Bad News Framework */
-            breaking_bad_news_framework?: string | null;
-            /** Communication Themes */
-            communication_themes?: string[];
-            /** Consent Approach */
-            consent_approach?: string | null;
-            /** Examination Overview */
-            examination_overview?: string | null;
-            /** History Overview */
-            history_overview?: string | null;
-            /** Investigations Overview */
-            investigations_overview?: string | null;
-            /** Key Concerns */
-            key_concerns?: string[];
-            /** Key Learning Points */
-            key_learning_points?: string[];
-            /** Management Overview */
-            management_overview?: string | null;
-            /** Portfolio Themes */
-            portfolio_themes?: string[];
-            /** Professional Conduct Topics */
-            professional_conduct_topics?: string[];
-            /** References */
-            references?: string[];
-            /** Suggested Order */
-            suggested_order?: {
-                [key: string]: unknown;
-            } | null;
-            /** Suggested Order Overview */
-            suggested_order_overview?: string | null;
-        } & {
-            [key: string]: unknown;
-        };
-        /**
-         * PrioritisationPatientRead
-         * @description One patient on an Ortho prioritisation list.
-         */
-        PrioritisationPatientRead: {
-            /** Age */
-            age?: number | null;
-            /** Gender */
-            gender?: string | null;
-            /** Number */
-            number?: number | null;
-        } & {
-            [key: string]: unknown;
         };
         /** ProgrammeRead */
         ProgrammeRead: {
@@ -11477,6 +11258,16 @@ export interface components {
             };
             /** Visitor Key */
             visitor_key: string;
+        };
+        /**
+         * RecordFieldRead
+         * @description One column of a `records` block: the key in each record, and its heading.
+         */
+        RecordFieldRead: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
         };
         /**
          * RecordManualPayment
@@ -12883,48 +12674,6 @@ export interface components {
             slot_status: string;
             /** Station Title */
             station_title: string | null;
-        };
-        /**
-         * StationTeachingRead
-         * @description Ortho's flat teaching keys: the debrief material for a non-consultation station.
-         */
-        StationTeachingRead: {
-            /** Breaking Bad News Framework */
-            breaking_bad_news_framework?: string | null;
-            /** Communication Themes */
-            communication_themes?: string[];
-            /** Consent Approach */
-            consent_approach?: string | null;
-            /** Examination Overview */
-            examination_overview?: string | null;
-            /** Examiner Additional Info */
-            examiner_additional_info?: components["schemas"]["PrioritisationPatientRead"][];
-            /** History Overview */
-            history_overview?: string | null;
-            /** Interview Questions */
-            interview_questions?: components["schemas"]["InterviewQuestionRead"][];
-            /** Investigations Overview */
-            investigations_overview?: string | null;
-            /** Key Concerns */
-            key_concerns?: string[];
-            /** Key Learning Points */
-            key_learning_points?: string[];
-            /** Management Overview */
-            management_overview?: string | null;
-            /** Portfolio Themes */
-            portfolio_themes?: string[];
-            /** Professional Conduct Topics */
-            professional_conduct_topics?: string[];
-            /** References */
-            references?: string[];
-            /** Suggested Order */
-            suggested_order?: {
-                [key: string]: unknown;
-            } | null;
-            /** Suggested Order Overview */
-            suggested_order_overview?: string | null;
-        } & {
-            [key: string]: unknown;
         };
         /** StationTemplateRead */
         StationTemplateRead: {
@@ -17524,6 +17273,8 @@ export interface operations {
             query?: {
                 exam_code?: "sca" | "plab" | "casc" | "ortho";
                 category?: string | null;
+                /** @description A fragment of a title or a body. */
+                search?: string | null;
             };
             header?: never;
             path?: never;
@@ -17715,6 +17466,10 @@ export interface operations {
         parameters: {
             query?: {
                 exam_code?: string | null;
+                /** @description Narrow to one slot status. */
+                status?: string | null;
+                /** @description Narrow to slots starting before or after now. */
+                when?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -18151,6 +17906,8 @@ export interface operations {
             query?: {
                 station_version_id?: string | null;
                 set_entry_id?: string | null;
+                search?: string | null;
+                transcribable_only?: boolean;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -18560,7 +18317,12 @@ export interface operations {
     };
     station_sets_list_flagged_stations: {
         parameters: {
-            query?: never;
+            query?: {
+                search?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -18573,7 +18335,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["FlaggedEntryRead"][];
+                    "application/json": components["schemas"]["Page_FlaggedEntryRead_"];
                 };
             };
             /** @description unauthenticated, account_suspended */
@@ -18583,6 +18345,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -18864,6 +18635,8 @@ export interface operations {
     marketplace_list_my_sessions: {
         parameters: {
             query?: {
+                /** @description Narrow to sessions still joinable, or not. */
+                when?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -19979,6 +19752,10 @@ export interface operations {
     growth_read_my_referral_history: {
         parameters: {
             query?: {
+                /** @description A fragment of the referee's email. */
+                search?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
                 limit?: number;
             };
             header?: never;
@@ -20286,7 +20063,12 @@ export interface operations {
     };
     stations_my_reports: {
         parameters: {
-            query?: never;
+            query?: {
+                search?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -20299,7 +20081,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StationFlagRead"][];
+                    "application/json": components["schemas"]["Page_StationFlagRead_"];
                 };
             };
             /** @description unauthenticated, account_suspended */
@@ -20309,6 +20091,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -23255,7 +23046,13 @@ export interface operations {
     };
     entitlements_list_org_entitlements: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description A grantee's name, email, or the exam's code */
+                search?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
             header?: never;
             path: {
                 /** @description Organisation slug */
@@ -24136,6 +23933,8 @@ export interface operations {
     tenancy_list_memberships: {
         parameters: {
             query?: {
+                /** @description A membership's email, role, or user id */
+                search?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -25085,6 +24884,8 @@ export interface operations {
     rubrics_list_org_rubrics: {
         parameters: {
             query?: {
+                search?: string | null;
+                exam_code?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -27465,6 +27266,9 @@ export interface operations {
     stations_list_station_templates: {
         parameters: {
             query?: {
+                search?: string | null;
+                exam_code?: string | null;
+                published_only?: boolean;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -27861,6 +27665,8 @@ export interface operations {
         parameters: {
             query?: {
                 search?: string | null;
+                exam_code?: string | null;
+                include_archived?: boolean;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -28919,6 +28725,8 @@ export interface operations {
     roster_list_trainees: {
         parameters: {
             query?: {
+                /** @description A trainee's name, email, or cohort */
+                search?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -32199,6 +32007,8 @@ export interface operations {
     rubrics_list_platform_rubrics: {
         parameters: {
             query?: {
+                search?: string | null;
+                exam_code?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -32848,6 +32658,9 @@ export interface operations {
     stations_list_platform_station_templates: {
         parameters: {
             query?: {
+                search?: string | null;
+                exam_code?: string | null;
+                published_only?: boolean;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;
@@ -33291,6 +33104,8 @@ export interface operations {
         parameters: {
             query?: {
                 search?: string | null;
+                exam_code?: string | null;
+                include_archived?: boolean;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;

@@ -18,13 +18,3 @@ export function matchesExamFilter(
   }
   return normalizeExamCode(itemCode) === want;
 }
-
-export function rubricMatchesExam(
-  rubricVersionIds: string[],
-  selectedExam: string,
-  examRubricVersionId: string | null | undefined,
-): boolean {
-  if (!selectedExam) return true;
-  if (!examRubricVersionId) return false;
-  return rubricVersionIds.includes(examRubricVersionId);
-}

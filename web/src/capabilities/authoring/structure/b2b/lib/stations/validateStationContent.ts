@@ -1,3 +1,4 @@
+import { RICH_SHAPES } from "@/capabilities/authoring/structure/b2b/lib/stations/richBlockValues";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes"; /** Client-side mirror of backend validate_station_content (required blocks + types). */
 export function validateStationContent(
   structure: StationStructure,
@@ -23,7 +24,10 @@ export function validateStationContent(
         continue;
       }
       if (value === undefined || value === null) continue;
-      if (btype === "shortText" || btype === "longText") {
+      const rich = RICH_SHAPES[btype];
+      if (rich) {
+        if (!rich.accepts(value)) errors.push(`"${bid}" ${rich.message}`);
+      } else if (btype === "shortText" || btype === "longText") {
         if (typeof value !== "string") errors.push(`"${bid}" Must be text`);
       } else if (btype === "list") {
         if (!Array.isArray(value)) errors.push(`"${bid}" Must be a list`);

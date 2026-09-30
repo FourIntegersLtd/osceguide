@@ -3,7 +3,6 @@
 import { useCallback, useMemo } from "react";
 import { HiOutlineArchiveBox, HiOutlineChevronRight } from "react-icons/hi2";
 import Table, {
-  type FetchPageParams,
   type FetchPageResult,
 } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
@@ -13,13 +12,7 @@ import {
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
-import { matchesExamFilter } from "@/capabilities/authoring/parts/examCatalogFilter";
 import { cn } from "@/foundation/ui/cn";
-
-function legacyStationId(station: Station): string | null {
-  const raw = station.content?.station_id;
-  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
-}
 
 function stationCreatedAtLabel(station: Station): string {
   const raw = station.content?.created_at;
@@ -49,47 +42,22 @@ function LegacyApprovalPill({ station }: { station: Station }) {
 
 export function StationsTable({
   stations,
-  examFilter,
   search,
   busy,
   onOpen,
   onArchive,
 }: {
   stations: Station[];
-  examFilter: string;
   search: string;
   busy: string | null;
   onOpen: (station: Station) => void;
   onArchive?: (station: Station) => void;
 }) {
-  const pool = useMemo(
-    () => stations.filter((s) => s.status !== "archived" && matchesExamFilter(s.exam_code, examFilter)),
-    [stations, examFilter],
-  );
-
+  // Every row loaded so far, with the table's own pager off: paging is the
+  // server's cursor (Load more), and filtering already happened in SQL.
   const fetchPage = useCallback(
-    async (params: FetchPageParams): Promise<FetchPageResult<Station>> => {
-      let filtered = pool;
-      if (params.search) {
-        const q = params.search.toLowerCase();
-        filtered = pool.filter((station) => {
-          const legacy = legacyStationId(station);
-          return (
-            station.title.toLowerCase().includes(q) ||
-            station.exam_code.toLowerCase().includes(q) ||
-            station.id.toLowerCase().includes(q) ||
-            (legacy?.toLowerCase().includes(q) ?? false)
-          );
-        });
-      }
-      const start = (params.page - 1) * params.perPage;
-      const end = start + params.perPage;
-      return {
-        items: filtered.slice(start, end),
-        totalCount: filtered.length,
-      };
-    },
-    [pool],
+    async (): Promise<FetchPageResult<Station>> => ({ items: stations, totalCount: stations.length }),
+    [stations],
   );
 
   const columns = useMemo(
@@ -171,6 +139,7 @@ export function StationsTable({
   return (
     <Table<Station>
       fetchPage={fetchPage}
+      showPagination={false}
       columns={columns}
       idField="id"
       nameField="title"

@@ -11,14 +11,13 @@ import {
   ConfirmModal,
   Modal,
 } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { useAsync } from "@/foundation/hooks";
 import { failureText } from "@/capabilities/peer-practice/support/failure";
 import { hasCode } from "@/foundation/platform-client";
 import { useCurrentExam } from "@/foundation/session";
 import {
   claimSlot,
   listMyPosts,
-  listAllSlots,
   offerSlot,
   withdrawSlot,
   type Slot,
@@ -84,10 +83,6 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
 
   // The exam is the app's, not this screen's: one answer, set once per account.
   const { code: activeExam } = useCurrentExam();
-  const slots = useAsync(
-    (signal) => listAllSlots({ orgId, examCode: activeExam || null }, signal),
-    [orgId, activeExam, reloadKey],
-  );
   const myPosts = useAsync((signal) => listMyPosts(signal), [reloadKey]);
 
   const say = useCallback((type: Notice["type"], text: string) => {
@@ -209,16 +204,7 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
           {tab === "upcoming" ? (
             <UpcomingSessions reloadKey={reloadKey} onOpenPracticeSession={shared.openSession} />
           ) : tab === "available" ? (
-            <AsyncBoundary
-              state={slots}
-              isEmpty={() => false}
-              loading={<ListLoading />}
-              failure={(error, retry) => (
-                <ListLoadError message={errorMessage(error)} onRetry={retry} />
-              )}
-            >
-              {(items) => <SlotSections slots={items} actions={actions} />}
-            </AsyncBoundary>
+            <SlotSections orgId={orgId ?? null} examCode={activeExam || null} reloadKey={reloadKey} actions={actions} />
           ) : (
             <AsyncBoundary
               state={myPosts}

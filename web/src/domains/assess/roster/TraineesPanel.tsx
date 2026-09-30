@@ -1,33 +1,32 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { Alert, EmptyState, b2bTokens } from "@/foundation/ui";
-import Table, {
-  type FetchPageParams,
-  type FetchPageResult,
-} from "@/foundation/table/Table";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Button,
+  EmptyState,
+  PlatformFilterBar,
+  PlatformFilterSearch,
+  b2bTokens,
+} from "@/foundation/ui";
+import Table, { type FetchPageResult } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import { hasCode } from "@/foundation/platform-client";
-import { errorMessage } from "@/foundation/hooks";
+import { errorMessage, useCursorPages } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import {
   anonymiseTrainee,
   deleteTrainee,
+  listTrainees,
   resendInvitation,
   setTraineeAccess,
   type Cohort,
 } from "@/domains/assess/roster/api";
 import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
 import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
-import {
-  accessActive,
-  cohortName,
-  displayName,
-  sortTrainees,
-  traineeCountLabel,
-} from "@/domains/assess/roster/support";
+import { accessActive, cohortName, displayName, traineeCountLabel } from "@/domains/assess/roster/support";
 
 type Pending = { kind: "revoke" | "restore" | "delete" | "anonymise"; trainee: Trainee } | null;
 
@@ -50,21 +49,24 @@ type Message = { tone: "success" | "warning" | "danger"; text: string };
  * separate screen, which is where the retiring client put them: the edit modal
  * was reached from an overflow menu on a different tab from the one that showed
  * the invitation had gone unanswered.
+ *
+ * The list itself is one server page at a time, searched in SQL — this used to
+ * take the whole roster from `Trainees` and filter and slice it in the browser,
+ * which is exactly the walk that silently stopped at 2,500 rows on the
+ * station catalogue. `cohorts` still comes from the parent, since every tab on
+ * this screen needs the same small lookup table.
  */
 export function TraineesPanel({
   orgSlug,
-  trainees,
   cohorts,
   canManage,
   onChanged,
 }: {
   orgSlug: string;
-  trainees: Trainee[];
   cohorts: Cohort[];
   canManage: boolean;
   onChanged: () => void;
 }) {
-  const rows = sortTrainees(trainees);
   const [pending, setPending] = useState<Pending>(null);
   const [editing, setEditing] = useState<Trainee | null>(null);
   const [busy, setBusy] = useState(false);
@@ -73,6 +75,23 @@ export function TraineesPanel({
   /** Rows the backend has said have nothing pending. See `TraineeRowActions`. */
   const [settled, setSettled] = useState<Set<string>>(() => new Set());
   const [resending, setResending] = useState<string | null>(null);
+
+  const [search, setSearch] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // A page at a time, searched in SQL, rather than the whole roster walked and
+  // filtered in the browser.
+  const pages = useCursorPages(
+    (cursor, signal) => listTrainees(orgSlug, signal, { cursor, search: query }),
+    [orgSlug, query],
+  );
+  const rows = pages.state.data ?? [];
 
   const commit = useCallback(async () => {
     if (!pending) return;
@@ -100,6 +119,7 @@ export function TraineesPanel({
         });
       }
       setPending(null);
+      pages.state.reload();
       onChanged();
     } catch (cause) {
       if (pending.kind === "delete" && hasCode(cause, "trainee_in_use")) {
@@ -112,7 +132,7 @@ export function TraineesPanel({
     } finally {
       setBusy(false);
     }
-  }, [pending, orgSlug, onChanged]);
+  }, [pending, orgSlug, onChanged, pages.state]);
 
   /**
    * Re-send the choose-a-password link.
@@ -151,26 +171,11 @@ export function TraineesPanel({
     [orgSlug, onChanged],
   );
 
-  const fetchPage = useCallback(
-    async (params: FetchPageParams): Promise<FetchPageResult<Trainee>> => {
-      let filtered = rows;
-      if (params.search) {
-        const q = params.search.toLowerCase();
-        filtered = rows.filter(
-          (trainee) =>
-            displayName(trainee).toLowerCase().includes(q) ||
-            trainee.email.toLowerCase().includes(q) ||
-            cohortName(cohorts, trainee.cohort_id).toLowerCase().includes(q),
-        );
-      }
-      const start = (params.page - 1) * params.perPage;
-      const end = start + params.perPage;
-      return {
-        items: filtered.slice(start, end),
-        totalCount: filtered.length,
-      };
-    },
-    [cohorts, rows],
+  /** Table renders whatever page the server has already handed back — it does
+   * not re-page, re-sort or re-filter what it is given. */
+  const tableFetchPage = useCallback(
+    async (): Promise<FetchPageResult<Trainee>> => ({ items: rows, totalCount: rows.length }),
+    [rows],
   );
 
   const columns = useMemo(
@@ -249,15 +254,6 @@ export function TraineesPanel({
     [canManage, cohorts, settled, resending, resend],
   );
 
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        title="No trainees yet"
-        description="Add trainees so you can put them on an exam or training circuit."
-      />
-    );
-  }
-
   const revoking = pending?.kind === "revoke";
   const deleting = pending?.kind === "delete";
   const anonymising = pending?.kind === "anonymise";
@@ -266,17 +262,74 @@ export function TraineesPanel({
   return (
     <div className="min-w-0 space-y-4">
       {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
-      <p className={b2bTokens.b2bEyebrow}>{traineeCountLabel(rows.length)}</p>
 
-      <Table<Trainee>
-        fetchPage={fetchPage}
-        columns={columns}
-        idField="id"
-        nameField="email"
-        searchPlaceholder="Search trainees…"
-        showPagination={rows.length > 10}
-        defaultItemsPerPage={25}
-      />
+      <PlatformFilterBar
+        leading={
+          rows.length > 0 || query ? (
+            <p className={b2bTokens.b2bEyebrow}>
+              {traineeCountLabel(rows.length)}
+              {pages.hasMore ? "+" : ""}
+            </p>
+          ) : null
+        }
+      >
+        <PlatformFilterSearch
+          value={search}
+          onChange={setSearch}
+          placeholder="Search trainees…"
+          aria-label="Search trainees"
+        />
+      </PlatformFilterBar>
+
+      {pages.state.error ? (
+        <Alert tone="danger">
+          {pages.state.error.message}
+          <button type="button" className="ml-2 underline" onClick={() => pages.state.reload()}>
+            Retry
+          </button>
+        </Alert>
+      ) : null}
+
+      {pages.state.loading && !pages.state.data ? (
+        <p className="text-osce-body text-b2c-text-secondary" role="status">
+          Loading trainees…
+        </p>
+      ) : rows.length === 0 ? (
+        query ? (
+          <p className="text-osce-body text-b2b-mid">No trainees match &ldquo;{query}&rdquo;.</p>
+        ) : (
+          <EmptyState
+            title="No trainees yet"
+            description="Add trainees so you can put them on an exam or training circuit."
+          />
+        )
+      ) : (
+        <Table<Trainee>
+          fetchPage={tableFetchPage}
+          columns={columns}
+          idField="id"
+          nameField="email"
+          showSearch={false}
+          showPagination={false}
+        />
+      )}
+
+      {pages.moreError ? (
+        <Alert tone="danger">Could not load more trainees: {pages.moreError.message}</Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="flex justify-center">
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            disabled={pages.loadingMore}
+            onClick={pages.loadMore}
+          >
+            {pages.loadingMore ? "Loading…" : "Load more trainees"}
+          </Button>
+        </div>
+      ) : null}
 
       {!canManage ? (
         <p className="text-osce-caption text-b2b-icon">
@@ -330,7 +383,10 @@ export function TraineesPanel({
         trainee={editing}
         cohorts={cohorts}
         onClose={() => setEditing(null)}
-        onSaved={onChanged}
+        onSaved={() => {
+          pages.state.reload();
+          onChanged();
+        }}
       />
     </div>
   );

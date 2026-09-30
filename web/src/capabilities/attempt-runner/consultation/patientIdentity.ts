@@ -59,16 +59,12 @@ export function parsePatientIdentity(
  */
 export function consultationPatientFromBrief(brief: {
   patient?: { name_line?: string | null; gender?: string | null };
-  doctor_information?: { patient_biodata?: string | null } | null;
 } | null | undefined): ConsultationPatient {
   if (!brief) {
     return { name: "Your patient", detail: null, initials: "?" };
   }
 
-  const biodata =
-    brief.doctor_information?.patient_biodata?.trim() ||
-    brief.patient?.name_line?.trim() ||
-    undefined;
+  const biodata = brief.patient?.name_line?.trim() || undefined;
 
   const parsed = parsePatientIdentity(biodata, brief.patient?.gender ?? undefined);
   const name = parsed.name ?? "Your patient";

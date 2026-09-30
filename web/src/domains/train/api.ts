@@ -40,9 +40,35 @@ export function flagSetEntry(setId: string, entryId: string, flagged: boolean): 
 
 export type FlaggedEntry = components["schemas"]["FlaggedEntryRead"];
 
-/** Every station this person has flagged across their sets, most recent first. */
-export function listFlaggedStations(signal?: AbortSignal): Promise<FlaggedEntry[]> {
-  return platformRequest<FlaggedEntry[]>("/api/v1/me/flagged-stations", { signal });
+/**
+ * A page of `FlaggedEntry`. Generated types are stale here — `schema.d.ts`
+ * still shows this route returning a bare array with no query params — so
+ * the shape is declared by hand rather than read off `components["schemas"]`,
+ * the same way `domains/platform/support/api.ts` does for a live route ahead
+ * of its generated type.
+ */
+export interface FlaggedEntryPage {
+  items: FlaggedEntry[];
+  next_cursor?: string | null;
+}
+
+/**
+ * A page of the stations this person has flagged across their sets, most
+ * recent first. `search` matches the station title in SQL, so a growing
+ * flag list is narrowed on the server rather than by walking every page.
+ */
+export function listFlaggedStations(
+  params: { cursor?: string | null; limit?: number; search?: string | null },
+  signal?: AbortSignal,
+): Promise<FlaggedEntryPage> {
+  return platformRequest<FlaggedEntryPage>("/api/v1/me/flagged-stations", {
+    query: {
+      cursor: params.cursor ?? undefined,
+      limit: params.limit,
+      search: params.search?.trim() || undefined,
+    },
+    signal,
+  });
 }
 
 export function createSet(input: {

@@ -13,12 +13,21 @@ export const STATION_PAGE_LIMIT = 100;
 /**
  * One page of this scope's stations.
  *
- * `search` matches a title fragment in SQL, so finding one station in a
- * catalogue of thousands is one request rather than loading all of it.
+ * `search` matches a title fragment in SQL and `exam_code` narrows to one
+ * exam, so finding one station in a catalogue of thousands is one request
+ * rather than loading all of it and filtering in the browser. `include_archived`
+ * defaults to false: the catalogue view hides archived stations unless a
+ * caller asks to see them.
  */
 export function listStations(
   scope: AuthoringScope,
-  params: { cursor?: string | null; limit?: number; search?: string | null } = {},
+  params: {
+    cursor?: string | null;
+    limit?: number;
+    search?: string | null;
+    exam_code?: string | null;
+    include_archived?: boolean;
+  } = {},
   signal?: AbortSignal,
 ): Promise<S["Page_StationRead_"]> {
   return platformRequest(`${scope.base}/stations`, {
@@ -26,6 +35,8 @@ export function listStations(
       cursor: params.cursor ?? undefined,
       limit: params.limit,
       search: params.search?.trim() || undefined,
+      exam_code: params.exam_code || undefined,
+      include_archived: params.include_archived ?? false,
     },
     signal,
   });

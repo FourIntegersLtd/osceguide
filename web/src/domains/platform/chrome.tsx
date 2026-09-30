@@ -1,55 +1,22 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Badge, Button, Card, cn, productTokens as t } from "@/foundation/ui";
+import { Badge } from "@/foundation/ui";
+import { Panel, Row, RowList, LoadMore } from "@/foundation/ui/PlatformConsole";
 import { statusTone } from "@/domains/platform/support";
 
 /**
- * Console layout primitives — B2C card chrome and osce typography (not semantic ink/black).
+ * Console layout primitives — re-exported from the shared staff-console kit
+ * (`foundation/ui/PlatformConsole`), where every staff page's `Section`,
+ * `RowList`, `Row` and `LoadMore` now live, so every caller here picks up the
+ * console's spacing and panel styling without a page-by-page migration.
+ * `StatusBadge` and `WriteOnlyNote` stay here: they read domain vocabulary
+ * (`statusTone`) that does not belong in a generic layout kit.
  */
+export { Row, RowList, LoadMore };
 
-/** A titled block. The console is a stack of these on every screen. */
-export function Section({
-  title,
-  description,
-  actions,
-  children,
-}: {
-  title: string;
-  description?: ReactNode;
-  actions?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className={t.b2cSectionTitle}>{title}</h2>
-          {description ? <p className={`mt-0.5 ${t.b2cBodyTextMuted}`}>{description}</p> : null}
-        </div>
-        {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/** A card holding a divided list. Every listing on the console is one. */
-export function RowList({ children }: { children: ReactNode }) {
-  return (
-    <Card>
-      <ul className="divide-y divide-b2c-border">{children}</ul>
-    </Card>
-  );
-}
-
-export function Row({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <li className={cn("flex flex-wrap items-center justify-between gap-3 px-5 py-3", className)}>
-      {children}
-    </li>
-  );
-}
+/** A titled block. Kept as `Section` for existing callers — same shape as `Panel`. */
+export const Section = Panel;
 
 /**
  * An organisation's status, coloured by whether its members can sign in.
@@ -70,24 +37,4 @@ export function StatusBadge({ status }: { status: string }) {
  */
 export function WriteOnlyNote({ children }: { children: ReactNode }) {
   return <p className="text-osce-meta text-b2c-text-muted">{children}</p>;
-}
-
-/** Cursor paging, as the one button every listing here uses. */
-export function LoadMore({
-  cursor,
-  busy,
-  onLoad,
-}: {
-  cursor: string | null | undefined;
-  busy: boolean;
-  onLoad: () => void;
-}) {
-  if (!cursor) return null;
-  return (
-    <div className="flex justify-center">
-      <Button variant="secondary" size="sm" onClick={onLoad} disabled={busy}>
-        {busy ? "Loading…" : "Load more"}
-      </Button>
-    </div>
-  );
 }

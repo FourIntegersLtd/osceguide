@@ -67,12 +67,16 @@ const MAX_PAGES = 6;
 export async function listAllMedia(
   kind: MediaKind | null,
   signal?: AbortSignal,
+  examCode?: string | null,
 ): Promise<MediaItem[]> {
   const items: MediaItem[] = [];
   let cursor: string | null = null;
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
-    const result: MediaPage = await listMedia({ kind, cursor, limit: MAX_PAGE }, signal);
+    const result: MediaPage = await listMedia(
+      { kind, cursor, limit: MAX_PAGE, examCode: examCode ?? null },
+      signal,
+    );
     items.push(...result.items);
     cursor = result.next_cursor ?? null;
     if (!cursor) break;

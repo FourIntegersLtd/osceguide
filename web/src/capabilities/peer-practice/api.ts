@@ -29,14 +29,24 @@ export type PracticeSessionPage = components["schemas"]["Page_PracticeSessionRea
 
 /* ---------- the marketplace ---------- */
 
-const MARKETPLACE_PAGE_SIZE = 100;
-const MARKETPLACE_MAX_PAGES = 6;
+export const MARKETPLACE_PAGE_SIZE = 100;
 
+/**
+ * One page of the marketplace, ordered by the server.
+ *
+ * `status` narrows to what is still open (`available`) or already booked
+ * (`claimed`); `when` narrows to `upcoming` or `past`. The retiring client's
+ * unpaginated posts list walked every page for one exam and sorted them in
+ * the browser into Available / Scheduled / Completed — the server does both
+ * jobs now, one section at a time.
+ */
 export function listSlots(
   params: {
     cursor?: string | null;
     orgId?: string | null;
     examCode?: string | null;
+    status?: "available" | "claimed" | null;
+    when?: "upcoming" | "past" | null;
     limit?: number;
   },
   signal?: AbortSignal,
@@ -46,32 +56,13 @@ export function listSlots(
       cursor: params.cursor ?? undefined,
       limit: params.limit ?? undefined,
       exam_code: params.examCode ?? undefined,
+      status: params.status ?? undefined,
+      when: params.when ?? undefined,
       visibility: params.orgId ? "organisation" : undefined,
       audience_org_id: params.orgId ?? undefined,
     },
     signal,
   });
-}
-
-/** Every slot for one exam, like the retiring client's unpaginated posts list. */
-export async function listAllSlots(
-  params: { orgId?: string | null; examCode?: string | null },
-  signal?: AbortSignal,
-): Promise<Slot[]> {
-  const items: Slot[] = [];
-  let cursor: string | null = null;
-
-  for (let page = 0; page < MARKETPLACE_MAX_PAGES; page += 1) {
-    const result = await listSlots(
-      { ...params, cursor, limit: MARKETPLACE_PAGE_SIZE },
-      signal,
-    );
-    items.push(...result.items);
-    cursor = result.next_cursor ?? null;
-    if (!cursor) break;
-  }
-
-  return items;
 }
 
 export function offerSlot(input: {
@@ -117,31 +108,19 @@ export function listMyPosts(signal?: AbortSignal): Promise<SlotPage> {
   return platformRequest<SlotPage>("/api/v1/me/marketplace/posts", { signal });
 }
 
+/** One page of this person's booked sessions; `when: "upcoming"` is the server's own definition, not a client-side clock read. */
 export function listMyPeerSessions(
-  params: { cursor?: string | null; limit?: number } = {},
+  params: { cursor?: string | null; limit?: number; when?: "upcoming" | "past" | null } = {},
   signal?: AbortSignal,
 ): Promise<PeerSessionPage> {
   return platformRequest<PeerSessionPage>("/api/v1/me/peer-sessions", {
     query: {
       cursor: params.cursor ?? undefined,
       limit: params.limit ?? undefined,
+      when: params.when ?? undefined,
     },
     signal,
   });
-}
-
-export async function listAllMyPeerSessions(signal?: AbortSignal): Promise<PeerSession[]> {
-  const items: PeerSession[] = [];
-  let cursor: string | null = null;
-
-  for (let page = 0; page < MARKETPLACE_MAX_PAGES; page += 1) {
-    const result = await listMyPeerSessions({ cursor, limit: MARKETPLACE_PAGE_SIZE }, signal);
-    items.push(...result.items);
-    cursor = result.next_cursor ?? null;
-    if (!cursor) break;
-  }
-
-  return items;
 }
 
 /**

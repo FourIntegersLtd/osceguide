@@ -1,5 +1,6 @@
 "use client";
 
+import { RichBlockEditor } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/RichBlockEditors";
 import { StationInstanceArrayField } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/StationInstanceArrayField";
 import { splitMultilineToTrimmedLines } from "@/capabilities/authoring/structure/b2b/lib/string/splitMultilineToTrimmedLines";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
@@ -49,6 +50,18 @@ export function StationInstanceBlocks({
         const label = b.label;
         const required = !!(b as { required?: boolean }).required;
 
+        if (b.type === "image" || b.type === "records" || b.type === "qaList" || b.type === "groupedList") {
+          return (
+            <RichBlockEditor
+              key={b.id}
+              block={b}
+              value={content[key]}
+              required={required}
+              readOnly={ro}
+              onChange={(next) => patch(key, next)}
+            />
+          );
+        }
         if (b.type === "shortText") {
           return (
             <div key={b.id} className="min-w-0">

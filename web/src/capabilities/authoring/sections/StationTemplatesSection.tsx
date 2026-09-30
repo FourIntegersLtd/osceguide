@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineArchiveBox,
@@ -20,16 +20,14 @@ import {
 import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRow";
 import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
 import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
-import {
-  AUTHORING_ALL_EXAMS,
-  matchesExamFilter,
-} from "@/capabilities/authoring/parts/examCatalogFilter";
-import { useAsync } from "@/foundation/hooks";
+import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
+import { useCursorPages } from "@/foundation/hooks";
 import {
   addStationTemplateVersion,
   archiveStationTemplateVersion,
   deleteStationTemplateVersion,
-  listStationTemplates,
+  listStationTemplatesPage,
+  STATION_PAGE_LIMIT,
   publishStationTemplate,
   type StationTemplate,
 } from "@/capabilities/authoring/api";
@@ -72,24 +70,30 @@ export function StationTemplatesSection() {
   const router = useRouter();
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
   const [pendingConfirm, setPendingConfirm] = useState<TemplateRowConfirm | null>(null);
-  const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
-  const action = useAction(templates.reload);
 
-  const items = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (templates.data?.items ?? []).filter((template) => {
-      if (!matchesExamFilter(template.exam_code, examFilter, { includeUnscoped: true })) {
-        return false;
-      }
-      if (!q) return true;
-      return (
-        template.title.toLowerCase().includes(q) ||
-        (template.exam_code ?? "").toLowerCase().includes(q) ||
-        template.id.toLowerCase().includes(q)
-      );
-    });
-  }, [templates.data, examFilter, search]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // A page at a time, searched and exam-filtered in SQL — mirrors
+  // StationsSection. Changing the exam filter or the search is in `deps`, so
+  // either restarts paging from page one.
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listStationTemplatesPage(
+        scope,
+        { cursor, limit: STATION_PAGE_LIMIT, search: query, exam_code: examFilter || undefined },
+        signal,
+      ),
+    [scope.base, query, examFilter],
+  );
+  const templates = pages.state;
+  const action = useAction(templates.reload);
+  const items = templates.data ?? [];
 
   const newHref =
     examFilter !== AUTHORING_ALL_EXAMS
@@ -186,6 +190,24 @@ export function StationTemplatesSection() {
           );
         })}
       </ListCard>
+
+      {pages.moreError ? (
+        <Alert tone="danger">
+          Could not load more templates: {pages.moreError.message}
+        </Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className="flex justify-center">
+          <AuthoringButton
+            variant="secondary"
+            size="sm"
+            disabled={pages.loadingMore}
+            onClick={pages.loadMore}
+          >
+            {pages.loadingMore ? "Loading…" : "Load more templates"}
+          </AuthoringButton>
+        </div>
+      ) : null}
 
       <ConfirmModal
         isOpen={pendingConfirm !== null}

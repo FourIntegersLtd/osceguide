@@ -22,14 +22,47 @@ type S = components["schemas"];
 
 /* ------------------------------------------------------- station templates */
 
+/**
+ * One page of this scope's station templates.
+ *
+ * Shaped like `listStations`: `search` and `exam_code` narrow in SQL, and
+ * `published_only` keeps only templates with a published version. The
+ * catalogue screen pages through these one request at a time instead of
+ * loading everything up front.
+ */
+export function listStationTemplatesPage(
+  scope: AuthoringScope,
+  params: {
+    cursor?: string | null;
+    limit?: number;
+    search?: string | null;
+    exam_code?: string | null;
+    published_only?: boolean;
+  } = {},
+  signal?: AbortSignal,
+): Promise<S["Page_StationTemplateRead_"]> {
+  return platformRequest(`${scope.base}/station-templates`, {
+    query: {
+      cursor: params.cursor ?? undefined,
+      limit: params.limit,
+      search: params.search?.trim() || undefined,
+      exam_code: params.exam_code || undefined,
+      published_only: params.published_only ?? undefined,
+    },
+    signal,
+  });
+}
+
 const TEMPLATE_MAX_PAGES = 20;
 
 /**
  * Every template in this scope.
  *
- * The route pages with a real cursor (it used to answer everything with a
- * null one), and the pickers that use this need every template, so it walks
- * the pages.
+ * Kept for the callers that need the complete set rather than a display
+ * page — the station picker and a station's template-version-to-structure
+ * lookup, both of which must see every template that could be bound to a
+ * station. The catalogue list itself no longer uses this; see
+ * `listStationTemplatesPage`.
  */
 export async function listStationTemplates(
   scope: AuthoringScope,
@@ -38,10 +71,7 @@ export async function listStationTemplates(
   const items: StationTemplate[] = [];
   let cursor: string | null = null;
   for (let page = 0; page < TEMPLATE_MAX_PAGES; page += 1) {
-    const result: S["Page_StationTemplateRead_"] = await platformRequest(
-      `${scope.base}/station-templates`,
-      { query: { cursor: cursor ?? undefined, limit: 100 }, signal },
-    );
+    const result = await listStationTemplatesPage(scope, { cursor, limit: 100 }, signal);
     items.push(...result.items);
     cursor = result.next_cursor ?? null;
     if (!cursor) break;

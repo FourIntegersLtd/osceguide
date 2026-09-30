@@ -4,15 +4,17 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
 import {
+  Alert,
   AsyncBoundary,
   B2CEmptyState,
   B2CPageHeader,
+  Button,
   cn,
   productTokens as t,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
-import { filterMediaByExam, listAllMedia, type MediaKind } from "@/capabilities/media/api";
+import { listMedia, type MediaKind } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
 import { MEDIA_KIND_ICON } from "@/capabilities/media/MediaCard";
 import { ArticlesLibrary } from "@/capabilities/media/ArticlesLibrary";
@@ -63,6 +65,9 @@ export function MediaKindLibrary({ kind }: { kind: MediaKind }) {
   );
 }
 
+/** The backend's page cap on `GET /api/v1/media` is 100; a screen doesn't need that much at once. */
+const MEDIA_KIND_PAGE_LIMIT = 24;
+
 function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
   const copy = PAGE_COPY[kind];
   const { hrefFor } = useSurface();
@@ -72,7 +77,13 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
   const urlQuery = searchParams.get("q")?.trim() ?? "";
   const [term, setTerm] = useState(urlQuery);
 
-  const state = useAsync((signal) => listAllMedia(kind, signal), [kind]);
+  // A page at a time, scoped by exam in SQL. This used to walk every cursor
+  // up front and then filter the whole catalogue by exam in the browser.
+  const pages = useCursorPages(
+    (cursor, signal) => listMedia({ kind, cursor, limit: MEDIA_KIND_PAGE_LIMIT, examCode }, signal),
+    [kind, examCode],
+  );
+  const state = pages.state;
   const searchEnabled = kind !== "slide_deck";
   const showSearchResults = searchEnabled && urlQuery.length > 0;
 
@@ -145,28 +156,45 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
       ) : (
         <div className={cn(!searchEnabled && "mt-6")}>
           <AsyncBoundary state={state}>
-            {(items) => {
-              const scoped = filterMediaByExam(items, examCode);
-              return scoped.length === 0 ? (
-                <B2CEmptyState
-                  icon={MEDIA_KIND_ICON[kind]}
-                  title={copy.emptyTitle}
-                  description={
-                    items.length > 0 && examCode
-                      ? `Nothing published for ${examCode.toUpperCase()} yet. Switch exam in the menu or upgrade for full access.`
-                      : copy.emptyDescription
-                  }
-                />
-              ) : kind === "summary" ? (
-                <SummaryIndex items={scoped} hrefFor={hrefFor} />
-              ) : kind === "slide_deck" ? (
-                <SlidesLibrary items={scoped} allItemsCount={items.length} />
-              ) : kind === "podcast" ? (
-                <PodcastLibrary items={scoped} allItemsCount={items.length} />
-              ) : (
-                <ArticlesLibrary items={scoped} hrefFor={hrefFor} />
-              );
-            }}
+            {(items) => (
+              <>
+                {items.length === 0 ? (
+                  <B2CEmptyState
+                    icon={MEDIA_KIND_ICON[kind]}
+                    title={copy.emptyTitle}
+                    description={
+                      examCode
+                        ? `Nothing published for ${examCode.toUpperCase()} yet. Switch exam in the menu or upgrade for full access.`
+                        : copy.emptyDescription
+                    }
+                  />
+                ) : kind === "summary" ? (
+                  <SummaryIndex items={items} hrefFor={hrefFor} />
+                ) : kind === "slide_deck" ? (
+                  <SlidesLibrary items={items} allItemsCount={items.length} />
+                ) : kind === "podcast" ? (
+                  <PodcastLibrary items={items} allItemsCount={items.length} />
+                ) : (
+                  <ArticlesLibrary items={items} hrefFor={hrefFor} />
+                )}
+
+                {pages.moreError ? (
+                  <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+                ) : null}
+                {pages.hasMore ? (
+                  <div className="mt-6 flex justify-center">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={pages.loadingMore}
+                      onClick={pages.loadMore}
+                    >
+                      {pages.loadingMore ? "Loading…" : "Load more"}
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            )}
           </AsyncBoundary>
         </div>
       )}

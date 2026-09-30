@@ -312,14 +312,24 @@ async function main() {
       expect: (p) => must(p.id, "no attempt id"),
     });
     if (attempt) {
-      await step("mint a voice token", `/api/v1/attempts/${attempt.id}/voice-token`, {
+      // Every seat busy answers 202 with a place in line instead of a token.
+      // That is the waiting line working, not a failure.
+      const grant = await step("mint a voice token", `/api/v1/attempts/${attempt.id}/voice-token`, {
         method: "POST",
         expect: (p) => {
+          if (p.ready === false) {
+            must(Number.isInteger(p.position) && p.position >= 1, "queued without a place in line");
+            return;
+          }
           must(typeof p.token === "string" && p.token.length > 100, "no LiveKit token");
           must(p.server_url?.startsWith("ws"), "no LiveKit server url");
           must(p.room, "no room name");
         },
       });
+      // A queued smoke run must not keep a real candidate behind it.
+      if (grant?.ready === false) {
+        await step("leave the waiting line", `/api/v1/attempts/${attempt.id}/voice-queue`, { method: "DELETE" });
+      }
       // Leave nothing running: an abandoned attempt is the honest end state for
       // one nobody sat.
       await step("abandon it", `/api/v1/attempts/${attempt.id}/abandon`, { method: "POST" });

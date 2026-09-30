@@ -37,35 +37,33 @@ export function deleteMedia(itemId: string): Promise<void> {
   return platformRequest<void>(`/api/v1/media/${encodeURIComponent(itemId)}`, { method: "DELETE" });
 }
 
+/** One page's worth of a page-size default for the authoring table. */
+export const AUTHORING_MEDIA_PAGE_LIMIT = MAX_PAGE;
+
+/**
+ * One page of a kind's rows, draft and published, for the authoring table.
+ *
+ * Used to walk every cursor up front so the table could filter by exam and
+ * search box text in the browser. `exam_code` and `q` now do that in SQL, so
+ * this asks for one page at a time instead — `useCursorPages` grows the list
+ * as the table asks for more.
+ */
 export function listMediaForAuthoring(
   kind: MediaKind,
+  params: { cursor?: string | null; limit?: number; examCode?: string | null; q?: string | null } = {},
   signal?: AbortSignal,
 ): Promise<MediaPage> {
   return platformRequest("/api/v1/media", {
     signal,
-    query: { kind, limit: MAX_PAGE, status: "all" },
+    query: {
+      kind,
+      limit: params.limit ?? MAX_PAGE,
+      status: "all",
+      cursor: params.cursor ?? undefined,
+      exam_code: params.examCode ?? undefined,
+      q: params.q ?? undefined,
+    },
   });
-}
-
-/** Walk the cursor until every draft and published row of a kind is loaded. */
-export async function listAllMediaForAuthoring(
-  kind: MediaKind,
-  signal?: AbortSignal,
-): Promise<MediaItem[]> {
-  const items: MediaItem[] = [];
-  let cursor: string | null = null;
-
-  for (;;) {
-    const page: MediaPage = await platformRequest("/api/v1/media", {
-      signal,
-      query: { kind, limit: MAX_PAGE, status: "all", cursor },
-    });
-    items.push(...page.items);
-    cursor = page.next_cursor ?? null;
-    if (!cursor) break;
-  }
-
-  return items;
 }
 
 async function generateContent(

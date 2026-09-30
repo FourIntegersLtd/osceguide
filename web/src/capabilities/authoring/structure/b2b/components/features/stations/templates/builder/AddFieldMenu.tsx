@@ -32,6 +32,7 @@ const PAD = 8;
 
 const GROUP_TONE: Record<StationBlockFormsGroup, BuilderTone> = {
   text: "primary",
+  rich: "violet",
   choices: "emerald",
   scoring: "amber",
 };

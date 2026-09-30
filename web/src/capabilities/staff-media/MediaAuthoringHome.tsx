@@ -4,15 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HiOutlinePlusCircle } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Button, PlatformTabbedScreen, type B2CSegmentedTabItem } from "@/foundation/ui";
-import { useAsync, useToast } from "@/foundation/hooks";
+import { useCursorPages, useToast } from "@/foundation/hooks";
 import { isMediaKind, MEDIA_KIND_LABELS, type MediaKind } from "@/capabilities/media/api";
 import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
 import {
   AUTHORING_ALL_EXAMS,
 } from "@/capabilities/authoring/parts/examCatalogFilter";
 import {
+  AUTHORING_MEDIA_PAGE_LIMIT,
   deleteMedia,
-  listAllMediaForAuthoring,
+  listMediaForAuthoring,
   publishMedia,
   type MediaItem,
 } from "@/capabilities/staff-media/api";
@@ -35,7 +36,26 @@ export function MediaAuthoringHome() {
   const [createOpen, setCreateOpen] = useState(false);
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
-  const list = useAsync((signal) => listAllMediaForAuthoring(kind, signal), [kind]);
+  // What the server is asked for: the box, once typing pauses.
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // A page at a time, scoped and searched in SQL. This used to walk every
+  // cursor up front and re-filter by exam and search text in the browser.
+  const pages = useCursorPages(
+    (cursor, signal) =>
+      listMediaForAuthoring(
+        kind,
+        { cursor, limit: AUTHORING_MEDIA_PAGE_LIMIT, examCode: examFilter || null, q: query || null },
+        signal,
+      ),
+    [kind, examFilter, query],
+  );
+  const list = pages.state;
 
   useEffect(() => {
     setSearch("");
@@ -81,7 +101,8 @@ export function MediaAuthoringHome() {
         searchAriaLabel="Search study material by title or slug"
         leading={
           <p className="text-osce-body text-b2c-text-muted">
-            {visibleCount} {MEDIA_KIND_LABELS[kind].many.toLowerCase()} in the catalogue.
+            {visibleCount}
+            {pages.hasMore ? "+" : ""} {MEDIA_KIND_LABELS[kind].many.toLowerCase()} in the catalogue.
           </p>
         }
         trailing={
@@ -114,25 +135,41 @@ export function MediaAuthoringHome() {
         }}
       >
         {() => (
-          <MediaListTable
-            items={list.data ?? []}
-            examFilter={examFilter}
-            search={search}
-            busy={action.busy}
-            onOpen={(item: MediaItem) => router.push(staffMediaDetailPath(item.id))}
-            onPublish={(item) =>
-              void action.run(`publish:${item.id}`, async () => {
-                await publishMedia(item.id);
-                toast.success("Published");
-              })
-            }
-            onDelete={(item) =>
-              void action.run(`delete:${item.id}`, async () => {
-                await deleteMedia(item.id);
-                toast.success("Deleted");
-              })
-            }
-          />
+          <>
+            <MediaListTable
+              items={list.data ?? []}
+              busy={action.busy}
+              onOpen={(item: MediaItem) => router.push(staffMediaDetailPath(item.id))}
+              onPublish={(item) =>
+                void action.run(`publish:${item.id}`, async () => {
+                  await publishMedia(item.id);
+                  toast.success("Published");
+                })
+              }
+              onDelete={(item) =>
+                void action.run(`delete:${item.id}`, async () => {
+                  await deleteMedia(item.id);
+                  toast.success("Deleted");
+                })
+              }
+            />
+
+            {pages.moreError ? (
+              <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+            ) : null}
+            {pages.hasMore ? (
+              <div className="flex justify-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pages.loadingMore}
+                  onClick={pages.loadMore}
+                >
+                  {pages.loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            ) : null}
+          </>
         )}
       </AsyncBoundary>
     </PlatformTabbedScreen>

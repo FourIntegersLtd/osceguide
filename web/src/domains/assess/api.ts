@@ -28,6 +28,8 @@ export function readSitting(slug: string, sittingId: string, signal?: AbortSigna
 export interface PageParams {
   limit?: number;
   cursor?: string | null;
+  /** Matched in SQL, so a screen never has to load a page to filter it away. */
+  search?: string | null;
 }
 
 const PAGE_LIMIT = 100;
@@ -37,7 +39,11 @@ const MAX_PAGES = 25;
 export const orgPath = org;
 
 export function pageQuery(page?: PageParams) {
-  return { limit: page?.limit ?? PAGE_LIMIT, cursor: page?.cursor ?? undefined };
+  return {
+    limit: page?.limit ?? PAGE_LIMIT,
+    cursor: page?.cursor ?? undefined,
+    search: page?.search?.trim() || undefined,
+  };
 }
 
 export async function collectPages<T>(

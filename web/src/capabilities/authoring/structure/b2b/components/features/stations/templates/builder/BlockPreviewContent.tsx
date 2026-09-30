@@ -129,6 +129,32 @@ export function BlockPreviewContent({
               ))}
           </div>
         )}
+        {block.type === "image" && (
+          <div className="flex gap-2">
+            {[0, 1, 2].map((index) => (
+              <span key={index} className={`h-12 w-16 rounded-md ${minimal ? "bg-osce-canvas" : "border border-osce-border bg-osce-canvas"}`} />
+            ))}
+          </div>
+        )}
+        {block.type === "records" && (
+          <div className={`${fieldClass} flex flex-wrap gap-x-4 gap-y-1`}>
+            {(block.fields?.length ? block.fields : [{ key: "details", label: "Details" }]).map((field) => (
+              <span key={field.key}>{field.label}</span>
+            ))}
+          </div>
+        )}
+        {block.type === "qaList" && (
+          <div className={fieldClass}>
+            <p>1. Question</p>
+            <p className="pl-4 opacity-80">Model answer</p>
+          </div>
+        )}
+        {block.type === "groupedList" && (
+          <div className={fieldClass}>
+            <p className="font-semibold">Group</p>
+            <p className="pl-4">1. Item, with reasons</p>
+          </div>
+        )}
         {block.type === "ragCriterion" && (
           <RagGradePreviewRow />
         )}

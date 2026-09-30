@@ -100,14 +100,17 @@ export function fetchHelpCategories(appType: string): Promise<HelpCategory[]> {
   }).then((data) => data.categories ?? []);
 }
 
+/** `search` is matched against title, summary and category in SQL. */
 export function fetchHelpArticles(
   appType: string,
   categorySlug?: string,
+  search?: string,
 ): Promise<HelpArticleListItem[]> {
   return platformRequest<{ articles: HelpArticleListItem[] }>("/api/v1/help/articles", {
     query: {
       app_type: appType,
       ...(categorySlug ? { category: categorySlug } : {}),
+      ...(search?.trim() ? { search: search.trim() } : {}),
     },
   }).then((data) => data.articles ?? []);
 }

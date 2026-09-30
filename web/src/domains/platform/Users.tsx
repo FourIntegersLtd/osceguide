@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { IconType } from "react-icons";
 import { LuCreditCard, LuUserRound, LuUsers } from "react-icons/lu";
-import { AsyncBoundary, Card } from "@/foundation/ui";
-import { PlatformPageHeader } from "@/domains/platform/PlatformPageHeader";
+import { AsyncBoundary, Card, PlatformPageHeader, StatGrid, StatTile } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listPlans } from "@/capabilities/account/api";
@@ -44,7 +42,7 @@ export function Users() {
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Users"
         description="Everyone with an account, grouped by the exam they are here for."
@@ -121,7 +119,7 @@ function Groups({
       />
       {empty.length > 0 ? (
         <Card padding="md">
-          <p className="text-sm text-ink-muted">
+          <p className="text-osce-data text-b2c-text-muted">
             Nobody yet on {empty.map((exam) => exam.name || exam.code.toUpperCase()).join(", ")}.
           </p>
         </Card>
@@ -134,21 +132,10 @@ function SummaryStrip({ summary }: { summary: DirectorySummary }) {
   const paid = summary.exams.reduce((sum, exam) => sum + exam.paid, 0);
   const trial = summary.exams.reduce((sum, exam) => sum + exam.trial, 0);
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <Stat label="Accounts" value={summary.total} icon={LuUsers} />
-      <Stat label="Paid" value={paid} icon={LuCreditCard} />
-      <Stat label="On trial" value={trial} icon={LuUserRound} />
-    </div>
-  );
-}
-
-function Stat({ label, value, icon: Icon }: { label: string; value: number; icon: IconType }) {
-  return (
-    <Card padding="md">
-      <p className="flex items-center gap-2 text-xs uppercase tracking-wide text-ink-subtle">
-        <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
-      </p>
-      <p className="mt-1 text-2xl font-semibold text-ink">{value}</p>
-    </Card>
+    <StatGrid>
+      <StatTile label="Accounts" value={summary.total} icon={LuUsers} />
+      <StatTile label="Paid" value={paid} icon={LuCreditCard} />
+      <StatTile label="On trial" value={trial} icon={LuUserRound} />
+    </StatGrid>
   );
 }

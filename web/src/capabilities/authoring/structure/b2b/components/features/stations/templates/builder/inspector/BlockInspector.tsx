@@ -1,3 +1,4 @@
+import { columnsFromLabels } from "@/capabilities/authoring/structure/b2b/lib/stations/richBlockValues";
 import { newId } from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplatePresets";
 import { formsOrderForKind, type TemplateKind } from "@/capabilities/authoring/structure/b2b/lib/stations/blockTypeLabels";
 import { blockRole, roleMeta, rolesForAudience, sectionAudience } from "@/capabilities/authoring/structure/b2b/lib/stations/blockRoles";
@@ -183,6 +184,25 @@ export function BlockInspector({
             className={inspectorInput}
             rows={4}
           />
+        </div>
+      )}
+      {block.type === "records" && (
+        <div>
+          <label htmlFor="block-inspector-columns" className={inspectorLabel}>Columns (one per line)</label>
+          <textarea
+            id="block-inspector-columns"
+            value={(block.fields ?? []).map((field) => field.label).join("\n")}
+            onChange={(e) =>
+              onPatch({
+                fields: columnsFromLabels(splitMultilineToTrimmedLinesKeepEmpty(e.target.value), block.fields ?? []),
+              } as Partial<StationBlock>)
+            }
+            className={inspectorInput}
+            rows={5}
+          />
+          <p className={inspectorHint}>
+            Each record shows these, in this order. Renaming a column keeps the values already written under it.
+          </p>
         </div>
       )}
       {block.type === "scale" && (

@@ -41,7 +41,7 @@ export function orthoPortfolioStationTemplateV1(): StationStructure {
         blocks: [
           {
             id: "interview_questions",
-            type: "longText",
+            type: "qaList",
             role: "examiner",
             label: "Interview Questions",
           },
@@ -57,6 +57,19 @@ export function orthoPortfolioStationTemplateV1(): StationStructure {
             type: "list",
             role: "examiner",
             label: "Key Learning Points",
+          },
+        ],
+      },
+      {
+        id: "references",
+        title: "References",
+        audience: "examiner",
+        blocks: [
+          {
+            id: "references",
+            type: "list",
+            role: "examiner",
+            label: "References",
           },
         ],
       },

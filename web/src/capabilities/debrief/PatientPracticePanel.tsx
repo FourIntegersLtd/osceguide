@@ -24,6 +24,11 @@ import { parsePatientIdentity } from "@/capabilities/attempt-runner/consultation
 import { readAttemptReview, type AttemptBrief, type AttemptReview } from "@/capabilities/attempt-runner";
 import { PatientRoleplayScript } from "@/capabilities/debrief/PatientRoleplayScript";
 import {
+  sectionLines,
+  sectionsFor,
+  type AudienceSection,
+} from "@/capabilities/attempt-runner/material/AudienceSections";
+import {
   athenaDoctorVoiceToken,
   startAthenaDoctorSession,
   readPatientRoleplay,
@@ -46,19 +51,16 @@ export function PatientPracticePanel({
   const script = useAsync((signal) => readPatientRoleplay(attemptId, signal), [attemptId]);
   const review = initialReview ?? reviewState.data ?? null;
   const stationTitle = review?.station_title ?? brief?.station_title ?? null;
-  const patientInfo = review?.patient_information ?? null;
-  const patientBiodata =
-    patientInfo?.patient_biodata ??
-    brief?.doctor_information?.patient_biodata ??
-    brief?.patient.name_line ??
-    null;
-  const patientGender = patientInfo?.gender ?? brief?.patient.gender ?? null;
+  const patientBiodata = brief?.patient.name_line ?? null;
+  const patientGender = brief?.patient.gender ?? null;
 
   return (
     <div className="grid grid-cols-1 overflow-hidden rounded-lg border border-b2c-border lg:grid-cols-5 lg:h-[min(620px,calc(90dvh-11rem))]">
       <div className="flex max-h-[min(50dvh,420px)] min-h-0 flex-col overflow-hidden border-b border-b2c-border lg:col-span-3 lg:max-h-none lg:border-b-0 lg:border-r">
         <AsyncBoundary state={script}>
-          {(patient) => <PatientRoleplayScript stationData={{ patient_information: patient }} noBorder />}
+          {(patient) => (
+            <PatientRoleplayScript sections={patient.sections ?? []} subtitle={patientBiodata} noBorder />
+          )}
         </AsyncBoundary>
       </div>
       <div className="min-h-[22rem] min-w-0 bg-b2c-surface-muted p-4 lg:col-span-2 lg:min-h-0 sm:p-5">
@@ -76,6 +78,7 @@ export function PatientPracticePanel({
           patientGender={patientGender}
           brief={brief}
           review={review}
+          patientSections={script.data?.sections ?? []}
         />
       </div>
     </div>
@@ -91,6 +94,7 @@ function AthenaDoctorVoicePanel({
   patientGender,
   brief,
   review,
+  patientSections,
 }: {
   attemptId: string;
   examCode: string;
@@ -100,6 +104,7 @@ function AthenaDoctorVoicePanel({
   patientGender: string | null;
   brief: AttemptBrief | null;
   review: AttemptReview | null;
+  patientSections: AudienceSection[];
 }) {
   const { surface } = useSurface();
   const pathname = usePathname();
@@ -128,20 +133,10 @@ function AthenaDoctorVoicePanel({
         patientName: patient.name,
         patientGender,
         patientBiodata,
-        doctorRole: brief?.doctor_information?.doctor_identity ?? null,
-        doctorTask:
-          brief?.doctor_information?.doctor_task ??
-          brief?.doctor_information?.task_instructions ??
-          null,
-        clinicalScenario: brief?.scenario?.clinical_scenario ?? null,
-        backgroundOverview: brief?.scenario?.background_overview ?? null,
-        patientInformation: brief?.doctor_information?.patient_information ?? [],
-        ice: [
-          ...(review?.patient_information?.idea ?? []),
-          ...(review?.patient_information?.concerns ?? []),
-          ...(review?.patient_information?.expectation ?? []),
-        ],
-        managementPoints: managementPoints(review),
+        // The template's sections as `Label: text` lines, whichever exam wrote them.
+        patientInformation: sectionLines(sectionsFor(brief?.sections ?? [], "candidate")),
+        ice: sectionLines(sectionsFor(patientSections, "patient")),
+        managementPoints: sectionLines(sectionsFor(review?.sections ?? [], "examiner")).slice(0, 24),
       }, {
         surface: assistantSurfaceFor(surface),
         route: pathname ?? "",
@@ -173,6 +168,7 @@ function AthenaDoctorVoicePanel({
     surface,
     toast,
     review,
+    patientSections,
   ]);
 
   const endVoice = useCallback(() => { setGrant(null); setEnded(true); }, []);
@@ -209,34 +205,6 @@ function AthenaDoctorVoicePanel({
       )}
     </div>
   );
-}
-
-function managementPoints(review: AttemptReview | null): string[] {
-  const plan = review?.management_plan;
-  if (!plan) return [];
-  return [
-    ...asLines(plan.differential_diagnosis, "Differentials"),
-    ...asLines(plan.examination_findings, "Examination"),
-    ...asLines(plan.assessment, "Assessment"),
-    ...asLines(plan.further_investigations, "Investigations"),
-    ...asLines(plan.social_concerns, "Social concerns"),
-    ...asLines(plan.ice, "ICE"),
-    ...asLines(plan.immediate_actions, "Immediate actions"),
-    ...asLines(plan.pharmacological_treatment, "Treatment"),
-    ...asLines(plan.non_pharmacological_treatment, "Non-pharmacological treatment"),
-    ...asLines(plan.health_education, "Health education"),
-    ...asText(plan.explanation, "Explanation"),
-    ...asText(plan.follow_up, "Follow-up"),
-    ...asText(plan.safety_netting, "Safety-netting"),
-  ].slice(0, 24);
-}
-
-function asLines(value: string[] | undefined, label: string): string[] {
-  return (value ?? []).filter(Boolean).map((item) => `${label}: ${item}`);
-}
-
-function asText(value: string | null | undefined, label: string): string[] {
-  return value?.trim() ? [`${label}: ${value.trim()}`] : [];
 }
 
 function DoctorLiveStage({ onEnd }: { onEnd: () => void }) {

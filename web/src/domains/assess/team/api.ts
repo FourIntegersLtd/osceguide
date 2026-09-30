@@ -8,7 +8,7 @@
  * depending on which tab happened to be open.
  */
 import { platformRequest, type components } from "@/foundation/platform-client";
-import { collectPages, orgPath, pageQuery, type PageParams } from "@/domains/assess/api";
+import { orgPath, pageQuery, type PageParams } from "@/domains/assess/api";
 
 export type Membership = components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
 export type MembershipPage = components["schemas"]["Page_MembershipRead_"];
@@ -26,11 +26,6 @@ export function listMemberships(
     signal,
     query: pageQuery(page),
   });
-}
-
-/** Every membership, revoked ones included — the screen shows both. */
-export function listAllMemberships(slug: string, signal?: AbortSignal): Promise<Membership[]> {
-  return collectPages((cursor) => listMemberships(slug, signal, { cursor }));
 }
 
 /**
