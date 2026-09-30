@@ -1,96 +1,197 @@
 "use client";
 
-import { LuArrowRight, LuTrendingUp, LuUserPlus, LuUsers } from "react-icons/lu";
-import { AsyncBoundary, Card, PageHeader } from "@/foundation/ui";
+import { useMemo } from "react";
+import { AsyncBoundary, B2CSegmentedTabs, PageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { useSurface } from "@/capabilities";
-import { readFunnel, type PartnerFunnel } from "@/domains/partner/api";
+import { useAttributionState } from "@/foundation/attribution/useAttributionFilters";
+import { getDashboardCopy } from "@/foundation/attribution/copy";
+import { filterScope, tabsForMode } from "@/foundation/attribution/tabs";
+import { seriesColors } from "@/foundation/attribution/theme";
+import { bucketForRange, funnelCounts, partnerDisplayName, partnerHeroFigures } from "@/foundation/attribution/viewModel";
+import { DashboardFilterBar } from "@/foundation/attribution/DashboardFilterBar";
+import { FeeDisclaimerBanner } from "@/foundation/attribution/Banners";
+import { Hero } from "@/foundation/attribution/Hero";
+import { Methodology } from "@/foundation/attribution/Methodology";
+import { LoadFailure } from "@/foundation/attribution/LoadFailure";
+import { UpdatedAt } from "@/foundation/attribution/UpdatedAt";
+import {
+  CountOverTimeSection,
+  ExamBreakdownSection,
+  FeeOverTimeSection,
+  FunnelSection,
+} from "@/foundation/attribution/Charts";
+import {
+  readFeeOverTime,
+  readFunnel,
+  readPartnerSummary,
+  readSignupsOverTime,
+  readVisitsOverTime,
+} from "@/domains/partner/api";
+
+const copy = getDashboardCopy("partner");
 
 /**
- * How a partner's audience is arriving.
+ * A partner's dashboard: how the people they sent us are arriving, signing up
+ * and what the estimated fee is.
  *
- * A partner does not examine a cohort, so a results dashboard would say
- * nothing. What they ask is whether the people they sent us signed up and
- * bought, which is what `growth/partners/{partner}/funnel` answers in one
- * request.
+ * Four tabs. It never asks for, and never draws, revenue, margin or spend: the
+ * partner endpoints do not return them and the view model has no field for them.
+ * The partner is locked to the signed-in reporter's own, whatever the address says.
  */
 export function PartnerDashboard({ partner }: { partner: string }) {
-  const state = useAsync((signal) => readFunnel(partner, signal), [partner]);
+  const { filters, query, tab, setFilters, selectPreset, reset, setTab } = useAttributionState(
+    "partner",
+    partner,
+  );
+  const bucket = bucketForRange(query.from_date, query.to_date);
+
+  const needsSummary = tab === "overview" || tab === "performance" || tab === "fee";
+  const summary = useAsync(
+    (signal) => (needsSummary ? readPartnerSummary(partner, query, signal) : Promise.resolve(null)),
+    [partner, query, needsSummary],
+  );
+  const funnel = useAsync(
+    (signal) => (tab === "overview" ? readFunnel(partner, query, signal) : Promise.resolve(null)),
+    [partner, query, tab === "overview"],
+  );
+  const visits = useAsync(
+    (signal) =>
+      tab === "performance" ? readVisitsOverTime(partner, query, bucket, signal) : Promise.resolve(null),
+    [partner, query, bucket, tab === "performance"],
+  );
+  const signups = useAsync(
+    (signal) =>
+      tab === "performance" ? readSignupsOverTime(partner, query, bucket, signal) : Promise.resolve(null),
+    [partner, query, bucket, tab === "performance"],
+  );
+  const fee = useAsync(
+    (signal) => (tab === "fee" ? readFeeOverTime(partner, query, bucket, signal) : Promise.resolve(null)),
+    [partner, query, bucket, tab === "fee"],
+  );
+
+  // The moment the numbers on screen arrived.
+  const updatedAt = useMemo(() => (summary.data ? new Date() : null), [summary.data]);
+
+  const failure = (title: string, note?: string) =>
+    function Failure(error: Error, retry: () => void) {
+      return <LoadFailure title={title} error={error} onRetry={retry} note={note} />;
+    };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-5">
       <PageHeader
-        title="Overview"
-        description="How the people you sent us are progressing."
+        title={`${partnerDisplayName(partner)} dashboard`}
+        description="See how people from your links are using OSCE Guide. All dates are UK calendar days."
       />
-      <AsyncBoundary state={state}>{(data) => <Funnel data={data} />}</AsyncBoundary>
+      <B2CSegmentedTabs
+        items={tabsForMode("partner").map((item) => ({ id: item.id, label: item.label }))}
+        value={tab}
+        onChange={setTab}
+        aria-label="Partner dashboard sections"
+      />
+      <DashboardFilterBar
+        filters={filters}
+        onChange={setFilters}
+        scope={filterScope(tab, "partner")}
+        mode="partner"
+        onPresetSelect={selectPreset}
+        onReset={reset}
+      />
+      <UpdatedAt at={updatedAt} />
+
+      {tab === "overview" ? (
+        <div className="space-y-5">
+          <AsyncBoundary
+            state={summary}
+            failure={failure("We couldn't load these numbers", "Nothing here is zero; it just hasn't loaded.")}
+          >
+            {(data) =>
+              data ? (
+                <>
+                  <FeeDisclaimerBanner fee={data.fee} />
+                  <Hero
+                    copy={copy.hero}
+                    mode="partner"
+                    figures={partnerHeroFigures(data)}
+                    counts={funnelCounts(funnel.data, {
+                      visits: data.raw_arrival_count,
+                      signups: data.acquired_user_count,
+                      paid: data.paying_user_count,
+                    })}
+                  />
+                </>
+              ) : null
+            }
+          </AsyncBoundary>
+          <AsyncBoundary state={funnel} failure={failure("We couldn't load the funnel", "")}>
+            {(data) =>
+              data ? (
+                <FunnelSection copy={copy.funnel} counts={funnelCounts(data, { visits: 0, signups: 0, paid: 0 })} />
+              ) : null
+            }
+          </AsyncBoundary>
+        </div>
+      ) : null}
+
+      {tab === "performance" ? (
+        <div className="space-y-5">
+          <AsyncBoundary
+            state={visits}
+            failure={failure("We couldn't load performance", "Other sections are unaffected.")}
+          >
+            {(report) =>
+              report ? (
+                <CountOverTimeSection
+                  title={copy.performance.visitsOverTime.title}
+                  subtitle={copy.performance.visitsOverTime.subtitle}
+                  emptyMessage={copy.performance.visitsOverTime.emptyMessage}
+                  emptyHint={copy.performance.visitsOverTime.emptyHint}
+                  report={report}
+                  variant="bar"
+                  color={seriesColors.linkVisits}
+                  seriesName="Link visits"
+                />
+              ) : null
+            }
+          </AsyncBoundary>
+          <AsyncBoundary state={signups} failure={() => null}>
+            {(report) =>
+              report ? (
+                <CountOverTimeSection
+                  title={copy.performance.signupsOverTime.title}
+                  subtitle={copy.performance.signupsOverTime.subtitle}
+                  emptyMessage={copy.performance.signupsOverTime.emptyMessage}
+                  emptyHint={copy.performance.signupsOverTime.emptyHint}
+                  report={report}
+                  variant="area"
+                  color={seriesColors.signups}
+                  seriesName="Sign-ups"
+                />
+              ) : null
+            }
+          </AsyncBoundary>
+          {filters.exam ? null : (
+            <AsyncBoundary state={summary} failure={() => null}>
+              {(data) =>
+                data ? <ExamBreakdownSection copy={copy.performance.byExam} rows={data.breakdown_by_exam} /> : null
+              }
+            </AsyncBoundary>
+          )}
+        </div>
+      ) : null}
+
+      {tab === "fee" ? (
+        <div className="space-y-5">
+          <AsyncBoundary state={summary} failure={() => null}>
+            {(data) => (data ? <FeeDisclaimerBanner fee={data.fee} /> : null)}
+          </AsyncBoundary>
+          <AsyncBoundary state={fee} failure={failure("We couldn't load the fee estimate", "")}>
+            {(report) => (report ? <FeeOverTimeSection copy={copy.feeOverTime} report={report} /> : null)}
+          </AsyncBoundary>
+        </div>
+      ) : null}
+
+      {tab === "definitions" ? <Methodology copy={copy.methodology} mode="partner" /> : null}
     </div>
-  );
-}
-
-function Funnel({ data }: { data: PartnerFunnel }) {
-  const { hrefFor } = useSurface();
-
-  return (
-    <div className="flex flex-col gap-4">
-      <section className="grid gap-3 sm:grid-cols-3">
-        <Stat icon={LuUsers} label="Arrivals" value={data.arrivals} />
-        <Stat
-          icon={LuUserPlus}
-          label="Signed up"
-          value={data.signups}
-          rate={data.signup_rate}
-          of="of arrivals"
-        />
-        <Stat
-          icon={LuTrendingUp}
-          label="Purchased"
-          value={data.purchases}
-          rate={data.purchase_rate}
-          of="of signups"
-        />
-      </section>
-
-      <Card title="Tracking references">
-        <p className="text-sm text-ink-muted">
-          Every link you publish carries a reference, and each one is counted separately.
-        </p>
-        <a
-          href={hrefFor("/reporting")}
-          className="mt-3 inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
-        >
-          See them all <LuArrowRight className="h-4 w-4" aria-hidden />
-        </a>
-      </Card>
-    </div>
-  );
-}
-
-function Stat({
-  icon: Icon,
-  label,
-  value,
-  rate,
-  of,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-  rate?: number;
-  of?: string;
-}) {
-  return (
-    <Card>
-      <Icon className="h-4 w-4 text-ink-subtle" aria-hidden />
-      <p className="mt-2 text-2xl font-semibold text-ink">{value.toLocaleString()}</p>
-      <p className="text-sm text-ink-muted">{label}</p>
-      {rate !== undefined && (
-        // A rate with no denominator named is a number people misread as a
-        // share of everything.
-        <p className="mt-1 text-xs text-ink-subtle">
-          {(rate * 100).toFixed(1)}% {of}
-        </p>
-      )}
-    </Card>
   );
 }

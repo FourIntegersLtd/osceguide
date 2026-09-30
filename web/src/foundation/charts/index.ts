@@ -30,3 +30,7 @@ export {
   type ThresholdBarDatum,
 } from "@/foundation/charts/ThresholdBars";
 export * from "@/foundation/charts/chartTheme";
+export { default as TimeSeriesBars, type TimeSeriesDatum, type TimeSeriesProps } from "@/foundation/charts/TimeSeriesBars";
+export { default as TimeSeriesArea } from "@/foundation/charts/TimeSeriesArea";
+export { default as ComparisonBars, type ComparisonBarDatum } from "@/foundation/charts/ComparisonBars";
+export { default as FunnelBars, type FunnelBarDatum } from "@/foundation/charts/FunnelBars";

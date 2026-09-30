@@ -1003,6 +1003,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/growth/partners/{partner}/acquired-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dashboard Acquired Users */
+        get: operations["growth_list_dashboard_acquired_users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/arrivals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dashboard Arrivals */
+        get: operations["growth_list_dashboard_arrivals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/growth/partners/{partner}/funnel": {
         parameters: {
             query?: never;
@@ -1013,6 +1047,9 @@ export interface paths {
         /**
          * Read Funnel
          * @description A partner's funnel: arrivals, signups and purchases. Reporter-gated per partner.
+         *
+         *     With no range, this is the whole pilot to date; a range plus an optional
+         *     exam or campaign filter narrows every count to match.
          */
         get: operations["growth_read_funnel"];
         put?: never;
@@ -1087,13 +1124,136 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Dashboard Reporters */
+        get: operations["growth_list_dashboard_reporters"];
         put?: never;
         /**
          * Add Reporter
          * @description Platform admin only: partners do not appoint their own reporters.
          */
         post: operations["growth_add_reporter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/reporters/{email}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Dashboard Reporter */
+        delete: operations["growth_revoke_dashboard_reporter"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/reporting/fee-over-time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Partner Fee Over Time */
+        get: operations["growth_read_partner_fee_over_time"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/reporting/signups-over-time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Partner Signups Over Time */
+        get: operations["growth_read_partner_signups_over_time"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/reporting/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Partner Reporting Summary
+         * @description A partner's own view of its pilot: visits, signups, its own fee. No revenue, ever.
+         */
+        get: operations["growth_read_partner_reporting_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/reporting/visits-over-time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Partner Visits Over Time */
+        get: operations["growth_read_partner_visits_over_time"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Dashboard Revenue */
+        get: operations["growth_read_dashboard_revenue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/revenue-over-time": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Dashboard Revenue Over Time */
+        get: operations["growth_read_dashboard_revenue_over_time"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1109,6 +1269,23 @@ export interface paths {
         };
         /** Read Partner Spend */
         get: operations["growth_read_partner_spend"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/growth/partners/{partner}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Dashboard Summary */
+        get: operations["growth_read_dashboard_summary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7140,6 +7317,69 @@ export interface components {
             /** Streak Badge Count */
             streak_badge_count: number;
         };
+        /**
+         * AcquiredRevenueReport
+         * @description What the people a partner was credited with acquiring have paid, gross.
+         */
+        AcquiredRevenueReport: {
+            /** Acquired User Count */
+            acquired_user_count: number;
+            /**
+             * Currency
+             * @default gbp
+             */
+            currency: string;
+            /** Exam Code */
+            exam_code?: string | null;
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /** Gross Revenue Pence */
+            gross_revenue_pence: number;
+            /** Partner */
+            partner: string;
+            /** Paying User Count */
+            paying_user_count: number;
+            /** Payment Count */
+            payment_count: number;
+            /** Revenue By Plan */
+            revenue_by_plan: components["schemas"]["RevenueByPlanRow"][];
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Utm Campaign */
+            utm_campaign?: string | null;
+        };
+        /**
+         * AcquiredUserRow
+         * @description One row of the admin "recent activity" acquired-users table.
+         */
+        AcquiredUserRow: {
+            /**
+             * Acquired At
+             * Format: date-time
+             */
+            acquired_at: string;
+            /** Exam Code */
+            exam_code: string | null;
+            /** Original Ref Id */
+            original_ref_id: string | null;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Utm Campaign */
+            utm_campaign: string | null;
+            /** Utm Medium */
+            utm_medium: string | null;
+            /** Visitor Key */
+            visitor_key: string | null;
+        };
         /** AcquisitionRead */
         AcquisitionRead: {
             /**
@@ -7227,6 +7467,34 @@ export interface components {
             id: string;
             /** Partner */
             partner: string;
+        };
+        /**
+         * ArrivalRow
+         * @description One row of the admin "recent activity" arrivals table.
+         */
+        ArrivalRow: {
+            /**
+             * Arrival Id
+             * Format: uuid
+             */
+            arrival_id: string;
+            /** Exam Code */
+            exam_code: string | null;
+            /**
+             * Landed At
+             * Format: date-time
+             */
+            landed_at: string;
+            /** Landing Path */
+            landing_path: string | null;
+            /** Partner */
+            partner: string;
+            /** Utm Campaign */
+            utm_campaign: string | null;
+            /** Utm Medium */
+            utm_medium: string | null;
+            /** Visitor Key */
+            visitor_key: string | null;
         };
         /** AssessmentResultRead */
         AssessmentResultRead: {
@@ -8245,6 +8513,43 @@ export interface components {
             /** Title */
             title?: string | null;
         };
+        /** CountOverTimePoint */
+        CountOverTimePoint: {
+            /** Count */
+            count: number;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+        };
+        /**
+         * CountOverTimeReport
+         * @description A partner's visits or signups, bucketed — no money in it, so this is
+         *     safe for partner mode as well as admin.
+         */
+        CountOverTimeReport: {
+            /** Bucket */
+            bucket: string;
+            /** Exam Code */
+            exam_code?: string | null;
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /** Partner */
+            partner: string;
+            /** Points */
+            points: components["schemas"]["CountOverTimePoint"][];
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Utm Campaign */
+            utm_campaign?: string | null;
+        };
         /** CoverageItemRead */
         CoverageItemRead: {
             /** Competency Id */
@@ -8662,6 +8967,38 @@ export interface components {
             name: string;
             settings: components["schemas"]["ExamSettings"];
         };
+        /**
+         * DashboardSummaryRead
+         * @description The admin overview tab: every KPI, at a glance, for one range.
+         */
+        DashboardSummaryRead: {
+            /** Acquired User Count */
+            acquired_user_count: number;
+            anomalies: components["schemas"]["PartnerAnomalyReport"];
+            /** Exam Code */
+            exam_code?: string | null;
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /** Partner */
+            partner: string;
+            /** Raw Arrival Count */
+            raw_arrival_count: number;
+            reconciliation: components["schemas"]["LandingReconciliationRead"];
+            revenue: components["schemas"]["AcquiredRevenueReport"];
+            spend: components["schemas"]["PartnerSpendRead"];
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Unique Arrival Count */
+            unique_arrival_count: number;
+            /** Utm Campaign */
+            utm_campaign?: string | null;
+        };
         /** DebriefSummaryRead */
         DebriefSummaryRead: {
             /** Action Plan */
@@ -9001,7 +9338,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "debrief_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_exam_code" | "invalid_exam_settings" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rating" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_trial_transcript" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invoice_not_editable" | "invoice_not_found" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "marker_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "not_a_media_block" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "payout_details_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_code_taken" | "plan_not_available" | "plan_not_found" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "price_creation_failed" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "debrief_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "forbidden" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_bucket" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_exam_code" | "invalid_exam_settings" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rating" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_trial_transcript" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invoice_not_editable" | "invoice_not_found" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "marker_unavailable" | "media_already_published" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "not_a_media_block" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "payout_details_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_code_taken" | "plan_not_available" | "plan_not_found" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "price_creation_failed" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "reporter_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_flag_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -9265,6 +9602,48 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** FeeOverTimePoint */
+        FeeOverTimePoint: {
+            /** Estimated Fee Pence */
+            estimated_fee_pence: number;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+            /** Visit Count */
+            visit_count: number;
+        };
+        /** FeeOverTimeReport */
+        FeeOverTimeReport: {
+            /** Bucket */
+            bucket: string;
+            /** Cost Per Click Pence */
+            cost_per_click_pence: number;
+            /**
+             * Currency
+             * @default gbp
+             */
+            currency: string;
+            /** Exam Code */
+            exam_code?: string | null;
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /** Partner */
+            partner: string;
+            /** Points */
+            points: components["schemas"]["FeeOverTimePoint"][];
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Utm Campaign */
+            utm_campaign?: string | null;
+        };
         /** FinalizeCircuitReview */
         FinalizeCircuitReview: {
             /** Merged Notes */
@@ -9341,6 +9720,21 @@ export interface components {
             signup_rate: number;
             /** Signups */
             signups: number;
+            /** Steps */
+            steps?: components["schemas"]["FunnelStepCount"][];
+        };
+        /**
+         * FunnelStepCount
+         * @description One stage of the funnel, for the chart's x-axis. `count` is null only
+         *     for a stage this range genuinely has no reading for, never for zero.
+         */
+        FunnelStepCount: {
+            /** Count */
+            count: number | null;
+            /** Event */
+            event: string;
+            /** Step */
+            step: string;
         };
         /**
          * GenerateResult
@@ -10573,6 +10967,20 @@ export interface components {
             /** Reason */
             reason?: string | null;
         };
+        /** Page[AcquiredUserRow] */
+        Page_AcquiredUserRow_: {
+            /** Items */
+            items: components["schemas"]["AcquiredUserRow"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[ArrivalRow] */
+        Page_ArrivalRow_: {
+            /** Items */
+            items: components["schemas"]["ArrivalRow"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** Page[AssessmentResultRead] */
         Page_AssessmentResultRead_: {
             /** Items */
@@ -10845,6 +11253,110 @@ export interface components {
             items: string[];
             /** Next Cursor */
             next_cursor?: string | null;
+        };
+        /** PartnerAnomaly */
+        PartnerAnomaly: {
+            /** Code */
+            code: string;
+            /** Detail */
+            detail: string;
+            /** Metric */
+            metric?: string | null;
+            /** Severity */
+            severity: string;
+            /** Title */
+            title: string;
+        };
+        /** PartnerAnomalyReport */
+        PartnerAnomalyReport: {
+            /** Count */
+            count: number;
+            /** Items */
+            items: components["schemas"]["PartnerAnomaly"][];
+            /** Status */
+            status: string;
+        };
+        /**
+         * PartnerBreakdownRow
+         * @description One exam or campaign's visits, signups and payments, for a partner's
+         *     own "Performance" tab. Never any money — pure counts.
+         */
+        PartnerBreakdownRow: {
+            /** Dimension */
+            dimension: string;
+            /** Paid Count */
+            paid_count: number;
+            /** Signup Count */
+            signup_count: number;
+            /** Visit Count */
+            visit_count: number;
+        };
+        /**
+         * PartnerDashboardSummaryRead
+         * @description The partner-mode overview: fee-framed, never revenue-framed.
+         *
+         *     Deliberately carries no `revenue`, `gross_revenue_pence`, `net_margin_pence`
+         *     or `spend` field — a partner reporter must never see what its own traffic
+         *     is worth to us, only what it is owed on its clicks (`fee`).
+         */
+        PartnerDashboardSummaryRead: {
+            /** Acquired User Count */
+            acquired_user_count: number;
+            /** Breakdown By Campaign */
+            breakdown_by_campaign: components["schemas"]["PartnerBreakdownRow"][];
+            /** Breakdown By Exam */
+            breakdown_by_exam: components["schemas"]["PartnerBreakdownRow"][];
+            /** Exam Code */
+            exam_code?: string | null;
+            fee: components["schemas"]["PartnerFeeSummary"];
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /** Partner */
+            partner: string;
+            /** Paying User Count */
+            paying_user_count: number;
+            /** Raw Arrival Count */
+            raw_arrival_count: number;
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Unique Arrival Count */
+            unique_arrival_count: number;
+            /** Utm Campaign */
+            utm_campaign?: string | null;
+        };
+        /**
+         * PartnerFeeSummary
+         * @description What a partner is estimated to be owed on its own clicks — never what it
+         *     brought in. The partner-mode twin of `PartnerSpendRead`, revenue omitted.
+         */
+        PartnerFeeSummary: {
+            /**
+             * Billing Disclaimer
+             * @default This is a rough estimate only. We count link visits on OSCE Guide and multiply by our agreed rate per visit. BMJ invoices based on their own click records, so this won't match what they bill you.
+             */
+            billing_disclaimer: string;
+            /**
+             * Click Count Source
+             * @default osce_raw_arrivals_proxy
+             */
+            click_count_source: string;
+            /** Cost Per Click Pence */
+            cost_per_click_pence: number;
+            /**
+             * Currency
+             * @default gbp
+             */
+            currency: string;
+            /** Estimated Click Count */
+            estimated_click_count: number;
+            /** Estimated Spend Pence */
+            estimated_spend_pence: number;
         };
         /** PartnerSpendRead */
         PartnerSpendRead: {
@@ -12087,6 +12599,23 @@ export interface components {
             stations_marked: number;
         };
         /**
+         * ReporterRead
+         * @description One partner reporter, for the admin Access tab.
+         */
+        ReporterRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string;
+            /** Partner */
+            partner: string;
+            /** Revoked At */
+            revoked_at: string | null;
+        };
+        /**
          * RescoreRequest
          * @description Re-queue the marking. Left empty, under the policy the attempt was
          *     frozen with; named, under another one, whose result sits beside the old.
@@ -12160,6 +12689,61 @@ export interface components {
             passed: boolean | null;
             /** Total */
             total: number | null;
+        };
+        /**
+         * RevenueByPlanRow
+         * @description One plan's contribution to a partner's acquired revenue.
+         *
+         *     `plan_type` is `"unknown"` for a payment whose plan has since been
+         *     deleted (`Payment.plan_id` is `SET NULL`), never dropped from the total.
+         */
+        RevenueByPlanRow: {
+            /** Gross Revenue Pence */
+            gross_revenue_pence: number;
+            /** Payment Count */
+            payment_count: number;
+            /** Plan Type */
+            plan_type: string;
+        };
+        /** RevenueOverTimePoint */
+        RevenueOverTimePoint: {
+            /** Gross Revenue Pence */
+            gross_revenue_pence: number;
+            /** Payment Count */
+            payment_count: number;
+            /**
+             * Period
+             * Format: date
+             */
+            period: string;
+        };
+        /** RevenueOverTimeReport */
+        RevenueOverTimeReport: {
+            /** Bucket */
+            bucket: string;
+            /**
+             * Currency
+             * @default gbp
+             */
+            currency: string;
+            /** Exam Code */
+            exam_code?: string | null;
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /** Partner */
+            partner: string;
+            /** Points */
+            points: components["schemas"]["RevenueOverTimePoint"][];
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Utm Campaign */
+            utm_campaign?: string | null;
         };
         /**
          * ReviewFieldRead
@@ -17730,9 +18314,136 @@ export interface operations {
             };
         };
     };
+    growth_list_dashboard_acquired_users: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AcquiredUserRow_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_list_dashboard_arrivals: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+                /** @description A fragment of the visitor key or reference id. */
+                search?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ArrivalRow_"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     growth_read_funnel: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Inclusive UTC date */
+                from_date?: string | null;
+                /** @description Inclusive UTC date */
+                to_date?: string | null;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+            };
             header?: never;
             path: {
                 partner: string;
@@ -17777,13 +18488,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description invalid_date_range */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -18004,6 +18715,55 @@ export interface operations {
             };
         };
     };
+    growth_list_dashboard_reporters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReporterRead"][];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     growth_add_reporter: {
         parameters: {
             query?: never;
@@ -18055,6 +18815,434 @@ export interface operations {
             };
         };
     };
+    growth_revoke_dashboard_reporter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                partner: string;
+                email: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner, reporter_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    growth_read_partner_fee_over_time: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                /** @description day, week or month */
+                bucket?: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeeOverTimeReport"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_a_partner_reporter */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range, invalid_bucket */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_read_partner_signups_over_time: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                /** @description day, week or month */
+                bucket?: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountOverTimeReport"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_a_partner_reporter */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range, invalid_bucket */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_read_partner_reporting_summary: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartnerDashboardSummaryRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_a_partner_reporter */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_read_partner_visits_over_time: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                /** @description day, week or month */
+                bucket?: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountOverTimeReport"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_a_partner_reporter */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range, invalid_bucket */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_read_dashboard_revenue: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcquiredRevenueReport"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_read_dashboard_revenue_over_time: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                /** @description day, week or month */
+                bucket?: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueOverTimeReport"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range, invalid_bucket */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     growth_read_partner_spend: {
         parameters: {
             query: {
@@ -18099,6 +19287,62 @@ export interface operations {
                 };
             };
             /** @description invalid_date_range */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    growth_read_dashboard_summary: {
+        parameters: {
+            query: {
+                /** @description Inclusive UTC date */
+                from_date: string;
+                /** @description Inclusive UTC date */
+                to_date: string;
+                exam_code?: string | null;
+                utm_campaign?: string | null;
+            };
+            header?: never;
+            path: {
+                partner: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardSummaryRead"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description unknown_partner */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_date_range, exam_not_in_pilot */
             422: {
                 headers: {
                     [name: string]: unknown;
