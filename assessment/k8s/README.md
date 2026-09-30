@@ -167,6 +167,21 @@ shares a node with a production pod. That is why staging runs 1 replica with cap
 2 + 1: a busy staging test takes at most 3 sessions' worth of a node from production.
 Check headroom before raising them.
 
+**platform-api's waiting line must match.** platform-api admits assessment sessions
+onto these workers itself and queues candidates once `LIVEKIT_SELF_HOSTED_SEATS` are
+taken (`app/features/voice/seats.py`). That setting must equal replicas ×
+`LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS` for the environment, on both the Railway
+api and worker services:
+
+| Environment | Replicas × per-pod cap | `LIVEKIT_SELF_HOSTED_SEATS` |
+|---|---|---|
+| production | 3 × 6 | 18 (the default) |
+| staging | 1 × 2 | 2 |
+
+Set it too high and the candidate past the real limit joins an empty room that no
+worker accepts. Set it too low and people wait while pods sit idle. Change it in the
+same change as the replicas or the cap.
+
 ## Rollouts drain rather than cut
 
 `terminationGracePeriodSeconds: 900` with `maxUnavailable: 0` means a rollout adds
