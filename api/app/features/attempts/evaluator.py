@@ -6,8 +6,8 @@ is the whole job — the marking itself belongs to the engine and nothing here
 should ever reimplement a piece of it.
 
 The engine is imported lazily so the API starts, and the rest of the tests run,
-without it installed — `make engine-dev` puts it there from the sibling
-checkout. When it is genuinely absent `build_evaluator` raises rather than
+without it installed — `poetry install` puts it there from
+`assessment/packages/osce_assessment`. When it is genuinely absent `build_evaluator` raises rather than
 guessing: a deployment that tries to mark without an engine should say so
 instead of storing an empty result.
 """
@@ -190,9 +190,8 @@ def build_evaluator() -> Evaluator:
         from osce_assessment.evaluation.evaluator import LLMEvaluator  # noqa: PLC0415
     except ImportError as exc:
         raise EvaluationFailed(
-            "The osce_assessment engine is not installed. Run `make engine-dev` "
-            "locally, or pin the `engine-vX.Y.Z` tag in pyproject.toml for a "
-            "deployment."
+            "The osce_assessment engine is not installed. Run `poetry install`; "
+            "it comes from assessment/packages/osce_assessment in this repository."
         ) from exc
 
     from app.features.attempts.llm_clients import (  # noqa: PLC0415

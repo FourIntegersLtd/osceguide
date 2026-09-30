@@ -51,8 +51,8 @@ def build_renderer() -> TutorPromptRenderer:
     except ImportError as exc:
         raise RenderFailed(
             "The osce_assessment engine is not installed, so no tutor prompt can be rendered. "
-            "Run `make engine-dev` locally, or pin the `engine-vX.Y.Z` tag in "
-            "pyproject.toml for a deployment."
+            "Run `poetry install`; it comes from assessment/packages/osce_assessment "
+            "in this repository."
         ) from exc
 
     return EngineTutorPromptRenderer(DashboardTutorFormatter.create_prompt)

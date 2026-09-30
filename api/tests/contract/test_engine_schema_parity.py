@@ -20,7 +20,7 @@ What survives is the half that still bites, and it is the one worth keeping:
     no error anywhere.
 
 Skips rather than fails while the engine is absent or being reworked, exactly
-as the legacy test did — `make engine-dev`, or pin the `engine-vX.Y.Z` tag.
+as the legacy test did — `poetry install` puts it in place.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ import pytest
 
 strict = pytest.importorskip(
     "osce_assessment.schemas.strict",
-    reason="the osce_assessment engine is not installed; run `make engine-dev`",
+    reason="the osce_assessment engine is not installed; run `poetry install`",
 )
 
 SCHEMAS = Path(__file__).resolve().parents[1] / "fixtures" / "legacy_schemas"

@@ -40,13 +40,10 @@ dependencies = [
     "anthropic (>=0.40,<1)",
     # Transactional email. `notifications/sender.py` is the only caller.
     "resend (>=2.4,<3)",
-    # The assessment engine. `make engine-dev` installs it editable from the
-    # sibling checkout for local work; a deployment wants the tag, which is
-    # this (E-1, closed). 0.7.0 is the version that stopped shipping
-    # frameworks — a rubric is authored and travels with the attempt, so an
-    # older engine cannot mark anything this backend produces — and the one
-    # that added the dashboard tutor's prompt.
-    "osce-assessment @ git+https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git@engine-v0.9.0#subdirectory=packages/osce_assessment",
+    # The assessment engine, from this repository's own `assessment/` folder
+    # (see `[tool.poetry.dependencies]` below for where). An api change can use
+    # an engine change in the same commit, with no tag and no reinstall.
+    "osce-assessment",
     "python-multipart (>=0.0.18,<0.0.21)",
     # Reading the text out of an uploaded CV. `cv/service.py` imports it inside
     # the call, so a machine without it still starts and still serves every
@@ -69,6 +66,12 @@ dependencies = [
 
 [tool.poetry]
 package-mode = false
+
+# Where `osce-assessment` comes from. `develop = false` copies it into the
+# environment, as the Docker build needs; after an engine change run
+# `poetry install` again (or `make ci`, which does) to pick it up.
+[tool.poetry.dependencies]
+osce-assessment = { path = "../assessment/packages/osce_assessment", develop = false }
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3,<9"

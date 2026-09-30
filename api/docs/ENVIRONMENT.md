@@ -71,20 +71,20 @@ chasing a red suite.
 
 ## Building the image
 
-`ENGINE_REPO_TOKEN` is not a runtime setting: it is a **build** argument, and
-the only thing it does is let `poetry install` read the private repository the
-marking engine lives in. Pass it to `docker build --build-arg`, and set the
-same value as the `ENGINE_REPO_TOKEN` secret in GitHub Actions. Make it
-read-only, scoped to `OSCEGuide-assessment-platform`, and give it an expiry.
-On Railway it is simply a service variable: Railway passes service variables
-to the build as build arguments. The Dockerfile declares it only in its
-throwaway `dependencies` stage, so the shipped image's `docker history` never
-shows it. Railway's builder does not support BuildKit secret mounts
-(`--mount=type=secret`); every build failed while the Dockerfile used one.
+The image builds from the **repository root**, because the marking engine it
+installs lives beside the api in `assessment/packages/osce_assessment`:
+
+```bash
+docker build -f api/Dockerfile .
+```
+
+The root `.dockerignore` sends only `api/` and the engine package to the
+builder. No token or build argument is needed; the engine is a path
+dependency in `pyproject.toml`, copied in before `poetry install`.
 
 The build ends with `python -c "import osce_assessment"`. That line is not
 decoration. `poetry install` prints "Installing osce-assessment" and exits
-zero even when the clone produced nothing, so without the check an image with
+zero even when the package produced nothing, so without the check an image with
 no marking engine builds green, starts, answers its health check, serves every
 page and refuses the one thing it exists to do.
 
@@ -96,7 +96,7 @@ pgvector image in `infra/postgres/`) and Redis. Nothing is shared between them.
 
 | | Staging | Production |
 |---|---|---|
-| Deploys from | `main`, by itself after every push | `production`, moved only by the promote workflow |
+| Deploys from | `main`, by itself after every push | `production-api`, moved only by the promote workflow |
 | `APP_ENV` | `staging` | `production` |
 | Data | Seeded test data only (`scripts/seed_platform.py`) | Real people |
 | LiveKit project | `new-test-agent` | the production project |
@@ -104,10 +104,10 @@ pgvector image in `infra/postgres/`) and Redis. Nothing is shared between them.
 | `JWT_SECRET`, `WORKER_SECRET` | its own | its own, never copied to staging |
 
 **Getting a change to production.** Merge to `main`; CI runs and Railway deploys
-staging. Test it there. Then GitHub → Actions → "Promote platform-api to
+staging. Test it there. Then GitHub → Actions → "Promote api to
 production" → Run workflow. It checks the commit is on `main`, CI passed, staging
 runs it and is healthy, and a test account can sign in on staging and read its
-dashboard; then it fast-forwards `production`, and Railway deploys it. `/health`
+dashboard; then it fast-forwards `production-api`, and Railway deploys it. `/health`
 on either environment reports the commit it runs.
 
 **Rolling back.** Railway → production → platform-api → Deployments → the
@@ -134,10 +134,10 @@ branch differs.
 
 | Setting | platform-api | platform-worker |
 |---|---|---|
-| Source → Branch | `main` on staging, `production` on production | same |
-| Source → Root directory | `/platform-api` | `/platform-api` |
-| Build → Builder / Dockerfile path | Dockerfile, `/platform-api/Dockerfile` | same |
-| Build → Watch paths | `/platform-api/**` | `/platform-api/**` |
+| Source → Branch | `main` on staging, `production-api` on production | same |
+| Source → Root directory | `/` (the engine sits outside `api/`) | `/` |
+| Build → Builder / Dockerfile path | Dockerfile, `/api/Dockerfile` | same |
+| Build → Watch paths | `/api/**`, `/assessment/packages/osce_assessment/**` | same |
 | Deploy → Custom start command | empty (the Dockerfile's `uvicorn`) | `python -m app.worker.main` |
 | Deploy → Pre-deploy command | `alembic upgrade head` | empty, so two migrators never race |
 | Deploy → Healthcheck path | `/health` | empty (the worker serves no HTTP) |

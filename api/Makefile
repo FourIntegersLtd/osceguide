@@ -1,4 +1,4 @@
-.PHONY: help install bootstrap-admin start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format engine-dev data-model
+.PHONY: help install bootstrap-admin start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format data-model
 
 help:
 	@echo "OSCE Guide Platform API"
@@ -18,7 +18,6 @@ help:
 	@echo "  make arch        import-linter architecture rules"
 	@echo "  make ci          lint + typecheck + arch + test"
 	@echo "  make openapi     write openapi.json"
-	@echo "  make engine-dev  install osce_assessment from the local checkout, editable"
 	@echo "  make bootstrap-admin EMAIL=you@example.com   make the first platform admin"
 	@echo "  make seed-platform  author the four consumer exams and rubrics (dry run)"
 	@echo "  make data-model  check docs/DATA-MODEL.md against the schema"
@@ -79,11 +78,6 @@ ci: lint typecheck arch guards test
 openapi:
 	poetry run python scripts/export_openapi.py
 
-# The engine is a dependency, not a vendored subtree (ADR 0009, E-1). For local
-# work install it from the sibling checkout so a change there is visible here
-# without a tag and a reinstall. Deployments pin the tag instead.
-ENGINE ?= ../../assessment-platform/packages/osce_assessment
-
 NAME ?= Platform Admin
 
 bootstrap-admin:
@@ -93,11 +87,6 @@ bootstrap-admin:
 grant-exam-access:
 	@test -n "$(EMAIL)" || { echo "Set EMAIL=you@example.com"; exit 1; }
 	poetry run python scripts/grant_exam_access.py --email "$(EMAIL)" --exam "$(or $(EXAM),sca)"
-
-engine-dev:
-	@test -f "$(ENGINE)/pyproject.toml" || 		{ echo "No engine at $(ENGINE). Set ENGINE=<path to packages/osce_assessment>."; exit 1; }
-	poetry run pip install -e "$(ENGINE)"
-	poetry run python -c "import osce_assessment as e; print('osce_assessment', e.__version__)"
 
 # A migrated database has no exams and no rubrics (ADR 0016), so nothing can
 # be run in it until the platform catalogue is authored. Idempotent: an exam

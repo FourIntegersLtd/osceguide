@@ -1,0 +1,41 @@
+# Context for the api image (`docker build -f api/Dockerfile .` from the repo
+# root). Everything is out except the api and the marking engine it installs;
+# web/ and the voice workers build from their own folders.
+*
+!api
+!assessment/packages/osce_assessment
+
+# SEC-009: keep secrets, local state and cruft out of the build context so they
+# never reach the image or a build cache.
+**/.git
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.env
+**/.env.*
+!api/.env.example
+**/*.pem
+**/*.key
+**/serviceAccountKey.json
+**/*serviceAccount*.json
+**/.DS_Store
+**/*.log
+
+# Engine build leftovers from a local `poetry install`.
+assessment/packages/osce_assessment/build
+assessment/packages/osce_assessment/*.egg-info
+
+# Api files not needed at runtime. The engine keeps its README: its
+# pyproject names it, and the install fails without it.
+api/docker-compose.yml
+api/docker-compose.*.yml
+api/*.md
+api/docs
+api/tests
+api/htmlcov
+api/.coverage
+api/coverage.xml
+api/logs

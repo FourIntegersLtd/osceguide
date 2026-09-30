@@ -21,11 +21,7 @@ from tests.guards._scan import PROJECT_ROOT, python_files, rel
 
 # Imported from production code but deliberately undeclared, each with the
 # open question that tracks it. Anything else here is a bug.
-KNOWN_UNDECLARED = {
-    # E-1: the engine is installed from a sibling checkout by `make engine-dev`
-    # until `engine-v0.7.0` is tagged. The commented line is in `pyproject.toml`.
-    "osce_assessment",
-}
+KNOWN_UNDECLARED: set[str] = set()
 
 
 def _declared_distributions() -> set[str]:

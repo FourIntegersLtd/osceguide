@@ -88,8 +88,8 @@ def build_renderer() -> ProfileRenderer:
     except ImportError as exc:
         raise RenderFailed(
             "The osce_assessment engine is not installed, so no prompt can be rendered. "
-            "Run `make engine-dev` locally, or pin the `engine-vX.Y.Z` tag in "
-            "pyproject.toml for a deployment."
+            "Run `poetry install`; it comes from assessment/packages/osce_assessment "
+            "in this repository."
         ) from exc
 
     return EngineProfileRenderer(
