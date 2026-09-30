@@ -22,11 +22,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import raise_mapped
 from app.core.settings import Settings
 from app.features.media_production import service_storage as storage
-from app.features.stations import domain, domain_photos, errors, repository
+from app.features.stations import domain, domain_photos, errors, repository, repository_templates
 from app.features.stations.models import StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
-from app.features.stations.service import _exam_code, read_station
 from app.features.stations.service_versions import _version, _version_read
 
 
@@ -50,24 +49,35 @@ async def _editable_version(
     return station_version
 
 
+async def _template_sections(session: AsyncSession, station_version: StationVersion) -> list[object]:
+    """The sections of the template this version was written against; none when it is unbound."""
+    if station_version.template_version_id is None:
+        return []
+    structure = await repository_templates.structure_for_version(session, station_version.template_version_id)
+    sections = (structure or {}).get("sections")
+    return list(sections) if isinstance(sections, list) else []
+
+
 async def add_photos(
     session: AsyncSession,
     org_id: uuid.UUID | None,
     station_id: uuid.UUID,
     version: int,
     *,
+    block_id: str,
     files: list[tuple[str, int, BinaryIO]],
     settings: Settings,
 ) -> tuple[StationVersionRead, list[dict[str, str]]]:
-    """Put images on a station's version. Returns the version and what failed.
+    """Put images on one media block of a station's version. Returns the version and what failed.
 
     One bad file does not lose the others: each is validated and uploaded on its own, and the caller
     is told which ones did not make it. A partial success answers 200, with the failures named.
     """
     _ensure_storage(settings)
-    station = await read_station(session, org_id, station_id)
-    exam_code = await _exam_code(session, station)
     station_version = await _editable_version(session, org_id, station_id, version)
+    section_id = domain_photos.media_section(await _template_sections(session, station_version), block_id)
+    if section_id is None:
+        raise errors.NotAMediaBlockError()
 
     content = dict(station_version.content or {})
     failed: list[dict[str, str]] = []
@@ -84,7 +94,7 @@ async def add_photos(
             continue
         key = domain_photos.object_key(station_id=station_id, filename=filename)
         url = storage.put_object(settings, handle, key)
-        content = domain_photos.with_photo(content, url=url, exam_code=exam_code)
+        content = domain_photos.with_media(content, section_id=section_id, block_id=block_id, url=url)
 
     await repository.set_version_content(session, org_id, station_version.id, content=content)
     return _version_read(await _version(session, org_id, station_id, version)), failed
@@ -109,7 +119,9 @@ async def remove_photo(
     station_version = await _editable_version(session, org_id, station_id, version)
 
     content = dict(station_version.content or {})
-    updated, found = domain_photos.without_photo(content, url=url)
+    updated, found = domain_photos.without_media(
+        content, await _template_sections(session, station_version), url=url
+    )
     if not found:
         raise errors.PhotoNotOnStationError()
 

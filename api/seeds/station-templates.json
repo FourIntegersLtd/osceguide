@@ -137,6 +137,12 @@
                 "type": "list",
                 "role": "candidate_brief",
                 "label": "Social History"
+              },
+              {
+                "id": "doctor_photos",
+                "type": "media",
+                "role": "candidate_brief",
+                "label": "Photos"
               }
             ]
           },
@@ -374,6 +380,12 @@
                 "role": "candidate_brief",
                 "label": "Task Instructions",
                 "required": true
+              },
+              {
+                "id": "doctor_photos",
+                "type": "media",
+                "role": "candidate_brief",
+                "label": "Photos"
               }
             ]
           },
@@ -581,6 +593,12 @@
                 "role": "candidate_brief",
                 "label": "Doctor Task",
                 "required": true
+              },
+              {
+                "id": "doctor_photos",
+                "type": "media",
+                "role": "candidate_brief",
+                "label": "Photos"
               }
             ]
           },
@@ -706,14 +724,14 @@
               },
               {
                 "id": "radiograph_image_url",
-                "type": "image",
+                "type": "media",
                 "role": "candidate_brief",
                 "label": "Radiograph Image URL",
                 "placeholder": "Optional URL to primary imaging"
               },
               {
                 "id": "additional_image_urls",
-                "type": "image",
+                "type": "media",
                 "role": "candidate_brief",
                 "label": "Additional Image URLs",
                 "placeholder": "Classification diagrams, post-op X-rays, etc."

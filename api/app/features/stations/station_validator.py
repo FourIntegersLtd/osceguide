@@ -16,7 +16,7 @@ _VALID_BLOCK_TYPES = frozenset(
         "ragCriterion",
         # Rich types: the type also says how the block is drawn, so a new exam's
         # layout is template data rather than a screen of its own.
-        "image",
+        "media",
         "records",
         "qaList",
         "groupedList",

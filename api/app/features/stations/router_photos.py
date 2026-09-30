@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
@@ -21,11 +21,16 @@ from app.features.stations import errors, schemas, service_photos
 router = APIRouter(tags=["stations"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
+# The template's media block the images are added to.
+MediaBlock = Annotated[
+    str, Query(alias="block", min_length=1, max_length=200, description="A media block id")
+]
 
 _PHOTO_REFUSALS = (
     errors.VersionNotFound,
     errors.NotEditableError,
     errors.InvalidPhotoError,
+    errors.NotAMediaBlockError,
     errors.PhotoNotOnStationError,
     errors.PhotoStorageUnavailable,
 )
@@ -42,13 +47,13 @@ async def add_station_photos(
     workspace: OrgAdmin,
     session: Session,
     settings: SettingsDep,
+    block_id: MediaBlock,
     files: Annotated[list[UploadFile], File(description="PNG or JPEG images")],
 ) -> schemas.StationPhotosResult:
-    """Put images on a station.
+    """Put images on one of a station's media blocks.
 
-    An orthopaedic station is a radiograph and a question about it, so a
-    catalogue that cannot take an image cannot hold one at all. The field name
-    is `files`, as the retiring uploader sent it.
+    The block, not the exam, decides where an image lands. The field name is
+    `files`, as the retiring uploader sent it.
     """
     prepared = [(upload.filename or "", upload.size or 0, upload.file) for upload in files]
     read, failed = await service_photos.add_photos(
@@ -56,6 +61,7 @@ async def add_station_photos(
         workspace.org_id,
         station_id,
         version,
+        block_id=block_id,
         files=prepared,
         settings=settings,
     )
@@ -106,13 +112,14 @@ async def add_platform_station_photos(
     admin: PlatformAdmin,
     session: Session,
     settings: SettingsDep,
+    block_id: MediaBlock,
     files: Annotated[list[UploadFile], File(description="PNG or JPEG images")],
 ) -> schemas.StationPhotosResult:
-    """The library's own images — an ortho station is a radiograph, chiefly."""
+    """The library's own images, on one of the station's media blocks."""
     _ = admin
     prepared = [(upload.filename or "", upload.size or 0, upload.file) for upload in files]
     read, failed = await service_photos.add_photos(
-        session, None, station_id, version, files=prepared, settings=settings
+        session, None, station_id, version, block_id=block_id, files=prepared, settings=settings
     )
     return schemas.StationPhotosResult(
         version=read,

@@ -53,7 +53,7 @@ _TEMPLATE_AUTOGENERATE_RULES = (
     "- multiSelect: array of provided options (strings).\n"
     "- checklist: array of item ids (strings).\n"
     "- scale: number between min and max.\n"
-    "- image: an image URL string or an array of them; leave it out if you have no real URL.\n"
+    "- media: a media URL string or an array of them; leave it out if you have no real URL.\n"
     "- records: array of objects, one per record, keyed by the block's fields.\n"
     '- qaList: array of {"question": string, "answer": string}.\n'
     '- groupedList: object of group name -> array of {"title": string, "reasons": string[]}.\n'

@@ -46,7 +46,7 @@ RICH_STRUCTURE = {
             "id": "main",
             "title": "Main",
             "blocks": [
-                {"id": "scans", "type": "image", "label": "Radiographs"},
+                {"id": "scans", "type": "media", "label": "Radiographs"},
                 {
                     "id": "ward",
                     "type": "records",
@@ -78,7 +78,10 @@ def test_records_fields_must_name_keys() -> None:
 
 def test_rich_values_in_their_shapes_are_accepted() -> None:
     content = {
-        "scans": ["https://example.test/a.png", "https://example.test/b.png"],
+        "scans": [
+            "https://example.test/a.png",
+            {"url": "https://example.test/report.pdf", "kind": "pdf", "caption": "Report"},
+        ],
         "ward": [{"age": 71, "summary": "Hip fracture"}],
         "viva": [{"question": "First step?", "answer": "ATLS primary survey"}],
         "order": {"Trauma list": [{"title": "Bed 2", "reasons": ["Open fracture"]}, "Bed 4"]},
@@ -96,7 +99,7 @@ def test_rich_values_in_the_wrong_shape_are_refused() -> None:
     ok, errs = validate_station_content(RICH_STRUCTURE, content)
     assert not ok
     assert errs == [
-        "Block 'scans' must be an image URL or a list of image URLs",
+        "Block 'scans' must be a media URL, a {url} object, or a list of them",
         "Block 'ward' must be an array of objects",
         "Block 'viva' must be an array of {question, answer} objects",
         "Block 'order' must be an object of groups, each an array of text or {title, reasons}",

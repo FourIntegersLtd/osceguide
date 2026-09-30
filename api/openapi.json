@@ -4601,6 +4601,7 @@
               "mfa_not_enrolled",
               "mfa_required_by_policy",
               "no_active_station",
+              "not_a_media_block",
               "not_a_member",
               "not_a_partner_reporter",
               "not_an_exam_sitting",
@@ -42103,7 +42104,7 @@
     },
     "/api/v1/orgs/{org_slug}/stations/{station_id}/versions/{version}/photos": {
       "post": {
-        "description": "Put images on a station.\n\nAn orthopaedic station is a radiograph and a question about it, so a\ncatalogue that cannot take an image cannot hold one at all. The field name\nis `files`, as the retiring uploader sent it.",
+        "description": "Put images on one of a station's media blocks.\n\nThe block, not the exam, decides where an image lands. The field name is\n`files`, as the retiring uploader sent it.",
         "operationId": "stations_add_station_photos",
         "parameters": [
           {
@@ -42133,6 +42134,19 @@
             "schema": {
               "description": "Organisation slug",
               "title": "Org Slug",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A media block id",
+            "in": "query",
+            "name": "block",
+            "required": true,
+            "schema": {
+              "description": "A media block id",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Block",
               "type": "string"
             }
           }
@@ -42207,9 +42221,10 @@
                 }
               }
             },
-            "description": "invalid_photo",
+            "description": "invalid_photo, not_a_media_block",
             "x-codes": [
-              "invalid_photo"
+              "invalid_photo",
+              "not_a_media_block"
             ]
           },
           "503": {
@@ -42343,9 +42358,10 @@
                 }
               }
             },
-            "description": "invalid_photo",
+            "description": "invalid_photo, not_a_media_block",
             "x-codes": [
-              "invalid_photo"
+              "invalid_photo",
+              "not_a_media_block"
             ]
           },
           "503": {
@@ -51244,7 +51260,7 @@
     },
     "/api/v1/platform/stations/{station_id}/versions/{version}/photos": {
       "post": {
-        "description": "The library's own images \u2014 an ortho station is a radiograph, chiefly.",
+        "description": "The library's own images, on one of the station's media blocks.",
         "operationId": "stations_add_platform_station_photos",
         "parameters": [
           {
@@ -51264,6 +51280,19 @@
             "schema": {
               "title": "Version",
               "type": "integer"
+            }
+          },
+          {
+            "description": "A media block id",
+            "in": "query",
+            "name": "block",
+            "required": true,
+            "schema": {
+              "description": "A media block id",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Block",
+              "type": "string"
             }
           }
         ],
@@ -51351,9 +51380,10 @@
                 }
               }
             },
-            "description": "invalid_photo",
+            "description": "invalid_photo, not_a_media_block",
             "x-codes": [
-              "invalid_photo"
+              "invalid_photo",
+              "not_a_media_block"
             ]
           },
           "503": {
@@ -51489,9 +51519,10 @@
                 }
               }
             },
-            "description": "invalid_photo",
+            "description": "invalid_photo, not_a_media_block",
             "x-codes": [
-              "invalid_photo"
+              "invalid_photo",
+              "not_a_media_block"
             ]
           },
           "503": {

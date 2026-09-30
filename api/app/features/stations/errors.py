@@ -131,6 +131,16 @@ class InvalidPhotoError(InvalidInput):
     default_message = "That file cannot be used as a station image"
 
 
+class NotAMediaBlockError(InvalidInput):
+    """An upload naming a block that is not a `media` block on the station's template.
+
+    An unbound station has no template, so it has no media blocks either.
+    """
+
+    code = "not_a_media_block"
+    default_message = "That block does not take images"
+
+
 class PhotoNotOnStationError(NotFound):
     """Deleting an image that is not on this station.
 

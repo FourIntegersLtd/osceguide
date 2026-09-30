@@ -18,7 +18,31 @@ from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 
-CONTENT: dict = {"doctor_information": {"task": "assess"}}
+# A b2c-shaped station: its photos sit inside the doctor's information, which
+# the template's `doctor_photos` block reads with the section prefix dropped.
+CONTENT: dict = {"doctor_information": {"task": "assess", "photos": []}}
+
+TEMPLATE: dict = {
+    "sections": [
+        {
+            "id": "doctor_information",
+            "title": "Doctor information",
+            "audience": "candidate",
+            "blocks": [
+                {"id": "doctor_task", "type": "longText", "role": "candidate_brief", "label": "Task"},
+                {"id": "doctor_photos", "type": "media", "role": "candidate_brief", "label": "Photos"},
+            ],
+        },
+        {
+            "id": "imaging",
+            "title": "Imaging",
+            "audience": "candidate",
+            "blocks": [
+                {"id": "radiograph", "type": "media", "role": "candidate_brief", "label": "Radiograph"}
+            ],
+        },
+    ]
+}
 
 
 @pytest.fixture(autouse=True)
@@ -57,10 +81,31 @@ async def admin_of(make_actor, org_id: uuid.UUID, slug: str) -> str:  # type: ig
     )
 
 
+async def a_template(client: AsyncClient, token: str, exam: str, slug: str) -> str:
+    """A published org template with two media blocks; returns its version id."""
+    created = await client.post(
+        f"/api/v1/orgs/{slug}/station-templates",
+        json={"title": "Consultation", "exam_code": exam, "structure": TEMPLATE},
+        headers=bearer(token),
+    )
+    assert created.status_code == 201, created.text
+    published = await client.post(
+        f"/api/v1/orgs/{slug}/station-templates/{created.json()['id']}/publish", headers=bearer(token)
+    )
+    assert published.status_code == 200, published.text
+    return str(published.json()["id"])
+
+
 async def a_station(client: AsyncClient, token: str, exam: str, content: dict, slug: str = "kings") -> dict:
+    template_version_id = await a_template(client, token, exam, slug)
     response = await client.post(
         f"/api/v1/orgs/{slug}/stations",
-        json={"title": "Chest pain", "exam_code": exam, "content": content},
+        json={
+            "title": "Chest pain",
+            "exam_code": exam,
+            "content": content,
+            "template_version_id": template_version_id,
+        },
         headers=bearer(token),
     )
     assert response.status_code == 201, response.text
@@ -71,15 +116,17 @@ def png(name: str = "xray.png", size: int = 2048) -> tuple[str, bytes, str]:
     return (name, b"\x89PNG\r\n\x1a\n" + b"0" * size, "image/png")
 
 
-def photos_url(station: dict, slug: str = "kings") -> str:
-    return f"/api/v1/orgs/{slug}/stations/{station['id']}/versions/{station['version']}/photos"
+def photos_url(station: dict, slug: str = "kings", block: str = "doctor_photos") -> str:
+    base = f"/api/v1/orgs/{slug}/stations/{station['id']}/versions/{station['version']}/photos"
+    return f"{base}?block={block}"
 
 
-async def test_a_photo_lands_where_the_candidate_brief_reads_it(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
-    """`doctor_information.photos` is not a preference — it is the key the
+def remove_url(station: dict, slug: str = "kings") -> str:
+    return f"/api/v1/orgs/{slug}/stations/{station['id']}/versions/{station['version']}/photos/remove"
 
-    attempt runner's station brief already renders.
-    """
+
+async def test_a_photo_lands_where_its_media_block_reads_it(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`doctor_photos` reads a b2c station's `doctor_information.photos`, so that is where it goes."""
     org = await seed_org(client, make_actor)
     token = await admin_of(make_actor, org, "kings")
     station = await a_station(client, token, "sca", CONTENT)
@@ -94,28 +141,52 @@ async def test_a_photo_lands_where_the_candidate_brief_reads_it(client: AsyncCli
     assert photos[0].startswith("https://test-bucket.s3.eu-west-2.amazonaws.com/stations/")
 
 
-async def test_an_ortho_clinical_stations_first_image_is_the_radiograph(
+async def test_a_b2c_section_without_photos_takes_them_under_the_block_id(
     client: AsyncClient, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
-    """The ortho screens render the radiograph and the rest separately, so an
+    org = await seed_org(client, make_actor)
+    token = await admin_of(make_actor, org, "kings")
+    station = await a_station(client, token, "sca", {"doctor_information": {"task": "assess"}})
 
-    image in the wrong field is an image nobody sees.
-    """
+    response = await client.post(photos_url(station), files={"files": png()}, headers=bearer(token))
+
+    assert response.status_code == 200, response.text
+    doctor = response.json()["version"]["content"]["doctor_information"]
+    assert len(doctor["doctor_photos"]) == 1
+    assert "photos" not in doctor
+
+
+async def test_a_block_with_no_stored_value_is_written_flat_under_its_id(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
     org = await seed_org(client, make_actor, slug="guys", exam="ortho")
     token = await admin_of(make_actor, org, "guys")
-    station = await a_station(client, token, "ortho", {"station_type": "clinical"}, slug="guys")
+    station = await a_station(client, token, "ortho", {}, slug="guys")
 
     first = await client.post(
-        photos_url(station, "guys"), files={"files": png("a.png")}, headers=bearer(token)
+        photos_url(station, "guys", "radiograph"), files={"files": png("a.png")}, headers=bearer(token)
     )
     second = await client.post(
-        photos_url(station, "guys"), files={"files": png("b.png")}, headers=bearer(token)
+        photos_url(station, "guys", "radiograph"), files={"files": png("b.png")}, headers=bearer(token)
     )
 
-    assert first.json()["version"]["content"]["radiograph_image_url"] is not None
-    content = second.json()["version"]["content"]
-    assert len(content["additional_image_urls"]) == 1
-    assert content["radiograph_image_url"] != content["additional_image_urls"][0]
+    assert first.status_code == 200, first.text
+    radiographs = second.json()["version"]["content"]["radiograph"]
+    assert len(radiographs) == 2
+    assert radiographs[0] == first.json()["version"]["content"]["radiograph"][0]
+
+
+async def test_a_block_that_does_not_take_images_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org = await seed_org(client, make_actor)
+    token = await admin_of(make_actor, org, "kings")
+    station = await a_station(client, token, "sca", CONTENT)
+
+    response = await client.post(
+        photos_url(station, block="doctor_task"), files={"files": png()}, headers=bearer(token)
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "not_a_media_block"
 
 
 async def test_a_file_that_is_not_an_image_is_named_rather_than_losing_the_batch(
@@ -147,9 +218,7 @@ async def test_removing_a_photo_takes_it_out_of_the_bucket_too(
     uploaded = await client.post(photos_url(station), files={"files": png()}, headers=bearer(token))
     url = uploaded.json()["version"]["content"]["doctor_information"]["photos"][0]
 
-    response = await client.post(
-        f"{photos_url(station)}/remove", json={"photo_url": url}, headers=bearer(token)
-    )
+    response = await client.post(remove_url(station), json={"photo_url": url}, headers=bearer(token))
 
     assert response.status_code == 200, response.text
     assert response.json()["content"]["doctor_information"]["photos"] == []
@@ -168,7 +237,7 @@ async def test_a_photo_that_is_not_on_this_station_is_refused(
     station = await a_station(client, token, "sca", CONTENT)
 
     response = await client.post(
-        f"{photos_url(station)}/remove",
+        remove_url(station),
         json={"photo_url": "https://test-bucket.s3.eu-west-2.amazonaws.com/stations/elsewhere.png"},
         headers=bearer(token),
     )

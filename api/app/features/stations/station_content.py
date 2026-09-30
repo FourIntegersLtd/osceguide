@@ -143,11 +143,14 @@ def summarize_station_content_coverage(structure: Any, content: Any) -> dict[str
     }
 
 
-def _is_image(value: Any) -> bool:
-    """A URL, or a list of URLs."""
-    if isinstance(value, str):
-        return True
-    return isinstance(value, list) and all(isinstance(url, str) for url in value)
+def _is_media_item(item: Any) -> bool:
+    """A bare URL, or `{url, kind?, caption?, alt?}`."""
+    return isinstance(item, str) or (isinstance(item, dict) and isinstance(item.get("url"), str))
+
+
+def _is_media(value: Any) -> bool:
+    """One media item, or a list of them."""
+    return _is_media_item(value) or (isinstance(value, list) and all(_is_media_item(item) for item in value))
 
 
 def _is_records(value: Any) -> bool:
@@ -178,7 +181,7 @@ def _is_grouped_list(value: Any) -> bool:
 
 
 _RICH_SHAPES: dict[str, tuple[Callable[[Any], bool], str]] = {
-    "image": (_is_image, "an image URL or a list of image URLs"),
+    "media": (_is_media, "a media URL, a {url} object, or a list of them"),
     "records": (_is_records, "an array of objects"),
     "qaList": (_is_qa_list, "an array of {question, answer} objects"),
     "groupedList": (_is_grouped_list, "an object of groups, each an array of text or {title, reasons}"),

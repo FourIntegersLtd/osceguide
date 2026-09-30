@@ -96,6 +96,12 @@ class TestTheTransform:
                 continue
             assert station.content[key] == value
 
+    def test_a_numeric_duration_becomes_the_text_its_template_block_takes(self) -> None:
+        """Ortho portfolio templates type `duration_minutes` as short text; a
+        number imported verbatim made every later save of the station fail."""
+        station = station_from_document({"id": "sta-7", "app_type": "ortho", "duration_minutes": 20})
+        assert station.content["duration_minutes"] == "20"
+
 
 @pytest.mark.db
 class TestTheLoad:

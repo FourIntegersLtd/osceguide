@@ -105,6 +105,11 @@ def station_from_document(document: dict[str, Any], *, product: str | None = Non
     # rendered prompt can still be traced to the document it came from after
     # the Firestore project is archived.
     content["station_id"] = legacy_id
+    # Firestore held an Ortho portfolio's duration as a number; its template
+    # types the block as short text, so a number left here fails every save.
+    duration = content.get("duration_minutes")
+    if isinstance(duration, (int, float)) and not isinstance(duration, bool):
+        content["duration_minutes"] = str(duration)
 
     warnings: list[str] = []
     if not any(isinstance(content.get(block), dict) and content[block] for block in _PATIENT_BLOCKS):

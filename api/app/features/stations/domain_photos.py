@@ -4,15 +4,18 @@ Pure. Checking only the filename extension once left size unchecked server-side 
 limit that existed only in the browser, so any caller that skipped it could post whatever it liked.
 The size check is here.
 
-Where a photo goes on the document is not a preference: every reader in the
-product — the candidate's brief, the ortho doctor screen, the management
-review — already reads these exact keys, so the shape is fixed by what is
-already rendering it.
+Where an image lands is the template's call, not the exam's: the uploader
+names a `media` block and the image is appended to that block's value, found
+the same way `domain_content.content_for_template` reads it (a b2c station's
+nested section first, then the flat block id). A new exam with scans needs a
+media block in its template, never a branch here.
 """
 
 from __future__ import annotations
 
+import copy
 import uuid
+from collections.abc import Mapping
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -77,63 +80,79 @@ def object_key(*, station_id: uuid.UUID, filename: str) -> str:
     return f"{KEY_PREFIX}/{station_id}/{uuid.uuid4().hex}{suffix}"
 
 
-def is_ortho_clinical(content: dict[str, Any], exam_code: str) -> bool:
-    """Whether the ortho radiograph slot applies to this station."""
-    return exam_code.strip().lower() == "ortho" and (
-        str(content.get("station_type") or "clinical").strip().lower() == "clinical"
-    )
+# The block type whose value is a list of media items: a URL, or `{url, kind, caption, alt}`.
+MEDIA_TYPE = "media"
 
 
-def with_photo(content: dict[str, Any], *, url: str, exam_code: str) -> dict[str, Any]:
-    """The content, with one more image on it, in the place its readers look.
+def media_section(sections: list[Any], block_id: str) -> str | None:
+    """The id of the section holding `block_id`, when that block is a media block; otherwise None."""
+    for section in sections:
+        if not isinstance(section, Mapping):
+            continue
+        for block in section.get("blocks") or []:
+            if isinstance(block, Mapping) and block.get("id") == block_id and block.get("type") == MEDIA_TYPE:
+                return str(section.get("id") or "")
+    return None
 
-    Ortho's first clinical image is the radiograph and the rest are additional
-    — the retiring rule, kept because `OrthoDoctorScreen` renders those two
-    fields separately and a photo in the wrong one is a photo nobody sees.
-    Every other exam keeps its photos on the doctor's information.
+
+def _slot(content: dict[str, Any], section_id: str, block_id: str) -> tuple[dict[str, Any], str]:
+    """The dict a block's value lives in, and its key there.
+
+    A b2c station keeps it inside the section's own dict, by the block id or
+    the id without the section's prefix (`doctor_photos` is
+    `doctor_information.photos`), and a value it does not hold yet goes in
+    under the block id. A station without that section dict is flat.
     """
-    updated = dict(content)
-    if exam_code.strip().lower() == "ortho":
-        if is_ortho_clinical(updated, exam_code) and not updated.get("radiograph_image_url"):
-            updated["radiograph_image_url"] = url
-            return updated
-        additional = list(updated.get("additional_image_urls") or [])
-        additional.append(url)
-        updated["additional_image_urls"] = additional
-        return updated
+    nested = content.get(section_id)
+    if not isinstance(nested, dict):
+        return content, block_id
+    bare = block_id.removeprefix(section_id.split("_", 1)[0] + "_")
+    return nested, (bare if bare in nested and block_id not in nested else block_id)
 
-    doctor = dict(updated.get("doctor_information") or {})
-    photos = list(doctor.get("photos") or [])
-    photos.append(url)
-    doctor["photos"] = photos
-    updated["doctor_information"] = doctor
+
+def _item_url(item: Any) -> str | None:
+    """A media item's URL, whether it is stored as a bare URL or as an object."""
+    if isinstance(item, str):
+        return item
+    if isinstance(item, Mapping) and isinstance(item.get("url"), str):
+        return str(item["url"])
+    return None
+
+
+def with_media(content: dict[str, Any], *, section_id: str, block_id: str, url: str) -> dict[str, Any]:
+    """The content with `url` appended to that media block. A single stored URL becomes a list of two."""
+    updated = copy.deepcopy(content)
+    holder, key = _slot(updated, section_id, block_id)
+    current = holder.get(key)
+    items = list(current) if isinstance(current, list) else ([current] if current else [])
+    holder[key] = [*items, url]
     return updated
 
 
-def without_photo(content: dict[str, Any], *, url: str) -> tuple[dict[str, Any], bool]:
-    """The content with that image removed, and whether it was ever on it.
+def without_media(content: dict[str, Any], sections: list[Any], *, url: str) -> tuple[dict[str, Any], bool]:
+    """The content with that URL taken out of every media block, and whether it was ever on it.
 
     The second half is the check the retiring route did not make: it deleted
     whatever key the caller named, so any authorised user could pass any URL
     in the bucket and destroy it.
     """
-    updated = dict(content)
+    updated = copy.deepcopy(content)
     found = False
-
-    if updated.get("radiograph_image_url") == url:
-        updated["radiograph_image_url"] = None
-        found = True
-
-    additional = list(updated.get("additional_image_urls") or [])
-    if url in additional:
-        updated["additional_image_urls"] = [image_url for image_url in additional if image_url != url]
-        found = True
-
-    doctor = dict(updated.get("doctor_information") or {})
-    photos = list(doctor.get("photos") or [])
-    if url in photos:
-        doctor["photos"] = [photo_url for photo_url in photos if photo_url != url]
-        updated["doctor_information"] = doctor
-        found = True
-
+    for section in sections:
+        if not isinstance(section, Mapping):
+            continue
+        section_id = str(section.get("id") or "")
+        for block in section.get("blocks") or []:
+            if not isinstance(block, Mapping) or block.get("type") != MEDIA_TYPE or not block.get("id"):
+                continue
+            holder, key = _slot(updated, section_id, str(block["id"]))
+            current = holder.get(key)
+            if isinstance(current, list):
+                kept = [item for item in current if _item_url(item) != url]
+                if len(kept) != len(current):
+                    holder[key] = kept
+                    found = True
+            elif _item_url(current) == url:
+                holder[key] = []
+                found = True
     return updated, found
