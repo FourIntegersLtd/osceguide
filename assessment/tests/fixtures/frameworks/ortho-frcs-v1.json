@@ -1,0 +1,169 @@
+{
+  "id": "ortho-frcs-v1",
+  "label": "FRCS Orth",
+  "version": "1",
+  "scale": [],
+  "rating": {
+    "kind": "range",
+    "minimum": 0,
+    "maximum": 10,
+    "step": "integer"
+  },
+  "rating_field": "score",
+  "domains": [
+    {
+      "id": "clinical_skills",
+      "label": "Clinical station",
+      "live": false,
+      "nullable": true
+    },
+    {
+      "id": "prioritisation_skills",
+      "label": "Prioritisation station",
+      "live": false,
+      "nullable": true
+    },
+    {
+      "id": "communication_skills",
+      "label": "Communication station",
+      "live": false,
+      "nullable": true
+    },
+    {
+      "id": "portfolio_skills",
+      "label": "Portfolio station",
+      "live": false,
+      "nullable": true
+    }
+  ],
+  "competencies": [
+    {
+      "id": "clinical_skills.technical_knowledge_clinical_expertise",
+      "label": "Technical knowledge and clinical expertise",
+      "domain_id": "clinical_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "clinical_skills.situational_awareness",
+      "label": "Situational awareness",
+      "domain_id": "clinical_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "clinical_skills.communication_information_gathering",
+      "label": "Communication and information gathering",
+      "domain_id": "clinical_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "clinical_skills.problem_solving_decision_making",
+      "label": "Problem solving and decision making",
+      "domain_id": "clinical_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "clinical_skills.communication_information_giving",
+      "label": "Communication and information giving",
+      "domain_id": "clinical_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "prioritisation_skills.organisation_planning",
+      "label": "Organisation and planning",
+      "domain_id": "prioritisation_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "prioritisation_skills.judgement_under_pressure",
+      "label": "Judgement under pressure",
+      "domain_id": "prioritisation_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "prioritisation_skills.situational_awareness",
+      "label": "Situational awareness",
+      "domain_id": "prioritisation_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "prioritisation_skills.problem_solving_decision_making",
+      "label": "Problem solving and decision making",
+      "domain_id": "prioritisation_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "prioritisation_skills.communication_information_gathering",
+      "label": "Communication and information gathering",
+      "domain_id": "prioritisation_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "communication_skills.communication_information_gathering",
+      "label": "Communication and information gathering",
+      "domain_id": "communication_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "communication_skills.communication_information_giving",
+      "label": "Communication and information giving",
+      "domain_id": "communication_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "communication_skills.situational_awareness",
+      "label": "Situational awareness",
+      "domain_id": "communication_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "communication_skills.judgement_under_pressure",
+      "label": "Judgement under pressure",
+      "domain_id": "communication_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "communication_skills.technical_knowledge_clinical_expertise",
+      "label": "Technical knowledge and clinical expertise",
+      "domain_id": "communication_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "portfolio_skills.person_specifications_cv_articulation",
+      "label": "Person specifications and CV articulation",
+      "domain_id": "portfolio_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "portfolio_skills.portfolio_knowledge",
+      "label": "Portfolio knowledge",
+      "domain_id": "portfolio_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "portfolio_skills.reflection_professional_conduct",
+      "label": "Reflection and professional conduct",
+      "domain_id": "portfolio_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "portfolio_skills.communication_information_giving",
+      "label": "Communication and information giving",
+      "domain_id": "portfolio_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "portfolio_skills.critical_thinking_justification",
+      "label": "Critical thinking and justification",
+      "domain_id": "portfolio_skills",
+      "descriptors": {}
+    }
+  ],
+  "field_roles": {
+    "station_type": "selector",
+    "score": "rating",
+    "score_justification": "explanation",
+    "evidence_points": "evidence",
+    "completed": "strength",
+    "suggested_actions": "action"
+  }
+}

@@ -39,7 +39,6 @@ class AthenaDoctorFormatter:
         doctor_information: dict,
         management_plan: dict,
         *,
-        interview_questions: bool = False,
         pacing: ConsultationPacing | None = None,
     ) -> str:
         """
@@ -49,7 +48,6 @@ class AthenaDoctorFormatter:
             station_name: Name/diagnosis of the station
             doctor_information: Dict containing patient biodata and recent notes
             management_plan: Dict containing treatment and follow-up plans
-            interview_questions: format the interview Q&A block instead of a management plan
             pacing: how long this station runs; the phase budgets are rendered from it
         """
         pacing = pacing or DEFAULT_PACING
@@ -70,9 +68,7 @@ class AthenaDoctorFormatter:
 
         recent_notes_formatted = AthenaDoctorFormatter.format_list_items(recent_notes, "No recent notes")
 
-        full_management_plan = ManagementPlanFormatter.format(
-            management_plan, interview_questions=interview_questions
-        )
+        full_management_plan = ManagementPlanFormatter.format(management_plan)
         # The order the plan actually renders in, not a restatement of it. The two
         # drifted apart once, and the heading that stopped being named was the one
         # the model stopped covering.
@@ -83,23 +79,18 @@ class AthenaDoctorFormatter:
         def _numbered(titles: list[str], empty: str) -> str:
             return "\n".join(f"  {i}. {title}" for i, title in enumerate(titles, 1)) or f"  ({empty})"
 
-        if interview_questions:
-            core_checklist = "  Work through the interview questions below in the order they appear."
-            optional_checklist = "  (none)"
-            doctor_checklist = "  (none; the questions above are the station)"
-        else:
-            core_checklist = _numbered(
-                ManagementPlanFormatter.section_titles(management_plan, audience="patient", priority="core"),
-                "no plan content was provided for the patient",
-            )
-            optional_checklist = _numbered(
-                ManagementPlanFormatter.section_titles(management_plan, audience="patient", priority="if_time"),
-                "none",
-            )
-            doctor_checklist = _numbered(
-                ManagementPlanFormatter.section_titles(management_plan, audience="doctor"),
-                "none",
-            )
+        core_checklist = _numbered(
+            ManagementPlanFormatter.section_titles(management_plan, audience="patient", priority="core"),
+            "no plan content was provided for the patient",
+        )
+        optional_checklist = _numbered(
+            ManagementPlanFormatter.section_titles(management_plan, audience="patient", priority="if_time"),
+            "none",
+        )
+        doctor_checklist = _numbered(
+            ManagementPlanFormatter.section_titles(management_plan, audience="doctor"),
+            "none",
+        )
 
         current_medications_formatted = AthenaDoctorFormatter.format_list_items(
             current_medications, "None recorded"

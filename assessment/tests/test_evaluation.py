@@ -292,3 +292,48 @@ def test_a_framework_with_no_prompt_and_no_override_is_refused() -> None:
 def test_unknown_framework_id_surfaces_from_the_provider() -> None:
     with pytest.raises(LookupError):
         evaluator(FakePrimary(content="{}")).evaluate(ATTEMPT, transcript(), policy(framework_id="nope"), scenario())
+
+
+NATIVE = CompetencyFramework(
+    id="native-v1",
+    label="Native",
+    scale=(),
+    rating={"kind": "range", "minimum": 0, "maximum": 10, "step": "integer"},
+    rating_field="score",
+    domains=({"id": "clinical", "label": "Clinical"},),
+    competencies=({"id": "clinical.awareness", "label": "Awareness", "domain_id": "clinical"},),
+    result_schema={
+        "type": "object",
+        "properties": {
+            "clinical": {
+                "type": "object",
+                "properties": {
+                    "awareness": {
+                        "type": "object",
+                        "properties": {"score": {"type": "integer", "minimum": 0, "maximum": 10}},
+                        "required": ["score"],
+                    }
+                },
+                "required": ["awareness"],
+            }
+        },
+        "required": ["clinical"],
+    },
+)
+
+
+def test_a_rating_outside_its_native_range_is_rejected_not_stored() -> None:
+    """The schema validator does not hold a model to minimum/maximum; the framework does."""
+    primary = FakePrimary(content=json.dumps({"clinical": {"awareness": {"score": 11}}}))
+    with pytest.raises(EvaluationError, match="a whole number from 0"):
+        evaluator(primary, frameworks=StaticFrameworkProvider(NATIVE)).evaluate(
+            ATTEMPT, transcript(), policy(framework_id="native-v1", system_prompt_override="S"), scenario()
+        )
+
+
+def test_a_rating_within_its_native_range_is_accepted() -> None:
+    primary = FakePrimary(content=json.dumps({"clinical": {"awareness": {"score": 7}}}))
+    result = evaluator(primary, frameworks=StaticFrameworkProvider(NATIVE)).evaluate(
+        ATTEMPT, transcript(), policy(framework_id="native-v1", system_prompt_override="S"), scenario()
+    )
+    assert result.result == {"clinical": {"awareness": {"score": 7}}}

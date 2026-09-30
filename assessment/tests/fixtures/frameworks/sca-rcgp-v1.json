@@ -1,0 +1,74 @@
+{
+  "id": "sca-rcgp-v1",
+  "label": "SCA",
+  "version": "1",
+  "scale": [
+    "G",
+    "A",
+    "R"
+  ],
+  "rating": {
+    "kind": "rag",
+    "minimum": null,
+    "maximum": null,
+    "step": "number"
+  },
+  "rating_field": "score",
+  "domains": [
+    {
+      "id": "global_skills",
+      "label": "Global skills",
+      "live": true,
+      "nullable": false
+    },
+    {
+      "id": "tasks",
+      "label": "Clinical tasks",
+      "live": true,
+      "nullable": false
+    },
+    {
+      "id": "relating_to_others",
+      "label": "Relating to others",
+      "live": false,
+      "nullable": false
+    }
+  ],
+  "competencies": [
+    {
+      "id": "global_skills.structures_consultation",
+      "label": "Structures the consultation",
+      "domain_id": "global_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "global_skills.uses_clear_language",
+      "label": "Uses clear language",
+      "domain_id": "global_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "tasks.opens_consultation",
+      "label": "Opens the consultation",
+      "domain_id": "tasks",
+      "descriptors": {}
+    },
+    {
+      "id": "relating_to_others.generates_rapport",
+      "label": "Generates rapport",
+      "domain_id": "relating_to_others",
+      "descriptors": {}
+    }
+  ],
+  "field_roles": {
+    "score": "rating",
+    "supporting_phrase": "evidence",
+    "score_explanation": "explanation",
+    "strengths": "strength",
+    "improvements": "improvement",
+    "improvement_steps": "action",
+    "current_level": "other",
+    "expected_outcome": "other",
+    "area": "other"
+  }
+}

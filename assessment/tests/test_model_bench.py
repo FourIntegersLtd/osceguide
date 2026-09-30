@@ -126,15 +126,6 @@ def test_the_examiner_prompt_keeps_the_expected_answers_from_the_candidate() -> 
     assert "never" in instructions.lower() and "expected answer" in instructions
 
 
-def test_an_ortho_debrief_is_built_from_interview_questions_not_a_management_plan() -> None:
-    """Orthopaedics debriefs against the station's questions and its own competency set."""
-    script = json.loads((BENCH / "candidate_debrief_ortho.json").read_text())
-    instructions, _ = render_prompt("tutor", script)
-    assert "Interview Questions & Answers" in instructions
-    assert "Clinical Station Feedback" in instructions
-    assert "## Explanation" not in instructions
-
-
 @pytest.mark.parametrize(("role", "never"), [("patient", PATIENT_NEVER), ("tutor", TUTOR_NEVER)])
 def test_the_judge_scores_against_what_the_model_was_actually_told(role, never) -> None:
     """A judge held to a stricter spec than the prompt invents breaches.

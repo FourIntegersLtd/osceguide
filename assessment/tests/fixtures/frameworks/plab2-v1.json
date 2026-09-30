@@ -1,0 +1,115 @@
+{
+  "id": "plab2-v1",
+  "label": "PLAB 2",
+  "version": "1",
+  "scale": [],
+  "rating": {
+    "kind": "range",
+    "minimum": 0,
+    "maximum": 1,
+    "step": "number"
+  },
+  "rating_field": "score",
+  "domains": [
+    {
+      "id": "data_gathering",
+      "label": "Data gathering",
+      "live": false,
+      "nullable": false
+    },
+    {
+      "id": "clinical_management",
+      "label": "Clinical management",
+      "live": false,
+      "nullable": false
+    },
+    {
+      "id": "interpersonal_skills",
+      "label": "Interpersonal skills",
+      "live": false,
+      "nullable": false
+    }
+  ],
+  "competencies": [
+    {
+      "id": "data_gathering.history_taking",
+      "label": "History taking",
+      "domain_id": "data_gathering",
+      "descriptors": {}
+    },
+    {
+      "id": "data_gathering.examination",
+      "label": "Examination",
+      "domain_id": "data_gathering",
+      "descriptors": {}
+    },
+    {
+      "id": "data_gathering.investigations",
+      "label": "Investigations",
+      "domain_id": "data_gathering",
+      "descriptors": {}
+    },
+    {
+      "id": "data_gathering.interpretation",
+      "label": "Clinical interpretation",
+      "domain_id": "data_gathering",
+      "descriptors": {}
+    },
+    {
+      "id": "clinical_management.diagnosis",
+      "label": "Diagnosis",
+      "domain_id": "clinical_management",
+      "descriptors": {}
+    },
+    {
+      "id": "clinical_management.management_plan",
+      "label": "Management plan",
+      "domain_id": "clinical_management",
+      "descriptors": {}
+    },
+    {
+      "id": "clinical_management.safety_netting",
+      "label": "Safety netting",
+      "domain_id": "clinical_management",
+      "descriptors": {}
+    },
+    {
+      "id": "clinical_management.follow_up",
+      "label": "Follow-up plan",
+      "domain_id": "clinical_management",
+      "descriptors": {}
+    },
+    {
+      "id": "interpersonal_skills.language",
+      "label": "Language and communication",
+      "domain_id": "interpersonal_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "interpersonal_skills.listening",
+      "label": "Active listening",
+      "domain_id": "interpersonal_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "interpersonal_skills.rapport",
+      "label": "Building rapport",
+      "domain_id": "interpersonal_skills",
+      "descriptors": {}
+    },
+    {
+      "id": "interpersonal_skills.empathy",
+      "label": "Empathy and compassion",
+      "domain_id": "interpersonal_skills",
+      "descriptors": {}
+    }
+  ],
+  "field_roles": {
+    "score": "rating",
+    "completed": "strength",
+    "supporting_phrase": "evidence",
+    "missed": "improvement",
+    "critical_flags": "flag",
+    "suggested_actions": "action"
+  }
+}

@@ -25,8 +25,10 @@ from ..contracts import (
     AssessmentResult,
     EvaluationPolicy,
     FrameworkProvider,
+    InvalidScoreError,
     Scenario,
     Transcript,
+    UnknownCompetencyError,
 )
 from ..prompts import render_user_prompt
 from ..schemas.strict import inline_refs, to_strict_json_schema
@@ -136,6 +138,14 @@ class LLMEvaluator:
                 f"{provider} result does not match the {framework.id} schema: " + "; ".join(problems[:10]),
                 attempts,
             )
+        # The schema checks shape; it does not hold a model to a rating's
+        # native range (the validator does not check minimum or maximum). A framework
+        # that names its rating field is checked here too.
+        if framework.rating_field:
+            try:
+                framework.validate_scores(framework.scores_in(payload))
+            except (UnknownCompetencyError, InvalidScoreError) as exc:
+                raise EvaluationError(f"{provider} result: {exc}", attempts) from exc
 
         return AssessmentResult(
             attempt_id=attempt.attempt_id,

@@ -46,17 +46,17 @@ from osce_assessment.prompts import (  # noqa: E402
     AthenaDoctorFormatter,
     DebriefPromptFormatter,
     ManagementPlanFormatter,
-    OrthoFeedbackFormatter,
-    PlabFeedbackFormatter,
-    ScaFeedbackFormatter,
     TranscriptFormatter,
     create_station_prompt,
+    render_marking,
 )
+from osce_assessment.contracts import CompetencyFramework  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCRIPT = ROOT / "scripts" / "bench" / "doctor_sca_chest_pain.json"
 STATIONS = ROOT / "tests" / "fixtures" / "stations"
 FEEDBACK = ROOT / "tests" / "fixtures" / "feedback"
+FRAMEWORKS = ROOT / "tests" / "fixtures" / "frameworks"
 
 # Published list prices, dollars per million tokens: (input, cached input, output).
 # Cached input dominates a voice consultation, because the system prompt is
@@ -246,17 +246,24 @@ def render_prompt(role: str, script: dict) -> tuple[str, str]:
     return create_station_prompt(station, station.get("layout")), reminder
 
 
+def framework_named(framework_id: str) -> CompetencyFramework:
+    """One of the fixture frameworks, as the backend would send it."""
+    return CompetencyFramework.model_validate_json((FRAMEWORKS / f"{framework_id}.json").read_text())
+
+
+def marking_for(framework_id: str, feedback: dict) -> str:
+    """The marking block the tutor reads: the stored result walked by its framework's roles."""
+    return render_marking(framework_named(framework_id), feedback)
+
+
 def _debrief_prompt(context: dict) -> str:
     """The tutor prompt, assembled the way the dispatching backend assembles it.
 
-    An orthopaedic debrief is a different document from a consultation debrief:
-    the plan slot holds the station's interview questions rather than a
-    management plan, and the marking is the orthopaedic competency set. Both
-    backends pass every framework's feedback formatter regardless, so this does
-    too, or the prompt would not be the one production renders.
+    The marking is rendered from the scenario's framework, exactly as the one
+    by-role renderer does it for every exam: an exam is data, so nothing here
+    branches on which one this is.
     """
     framework = context.get("framework", "sca-rcgp-v1")
-    is_ortho = framework == "ortho-frcs-v1"
     # A scenario may carry its own marking inline, so a new case is not scored
     # with another case's feedback.
     feedback = context.get("feedback") or json.loads(
@@ -264,16 +271,10 @@ def _debrief_prompt(context: dict) -> str:
     )
     station = context.get("station") or {}
     transcript = TranscriptFormatter.format(context["transcript"])
-    station_type = station.get("station_type") or feedback.get("station_type", "") or ""
     return DebriefPromptFormatter.create_prompt(
         transcript=transcript,
-        management_plan=ManagementPlanFormatter.format(
-            station.get("management_plan"), interview_questions=is_ortho, station_obj=station
-        ),
-        sca_feedback=ScaFeedbackFormatter.format(feedback),
-        plab_feedback=PlabFeedbackFormatter.format(feedback),
-        ortho_feedback=OrthoFeedbackFormatter.format(feedback, station_type=station_type) if is_ortho else "",
-        station_type=station_type,
+        management_plan=ManagementPlanFormatter.format(station.get("management_plan")),
+        marking=marking_for(framework, feedback),
     )
 
 

@@ -18,6 +18,7 @@ from typing import Any
 from pydantic import Field, model_validator
 
 from ._base import Frozen
+from .rating import FieldRole, Rating
 
 # The platform's existing marking convention: red, amber, green.
 RAG_SCALE: tuple[str, ...] = ("R", "A", "G")
@@ -40,6 +41,9 @@ class CompetencyDomain(Frozen):
     # running. Was a tuple of two domain ids in `live_coverage`, which only
     # ever matched the framework the platform happened to ship.
     live: bool = False
+    # Whether a result may leave this domain null: a rubric that marks one
+    # station type per interview leaves the other domains legitimately absent.
+    nullable: bool = False
 
 
 class Competency(Frozen):
@@ -53,6 +57,16 @@ class Competency(Frozen):
     # why nobody could edit a rubric without editing the package.
     descriptors: dict[str, str] = Field(default_factory=dict)
 
+    @property
+    def local_id(self) -> str:
+        """The id the result nests this competency under, inside its domain.
+
+        platform-api qualifies ids as ``domain.competency`` so one name can
+        appear in several domains; the result still uses the bare name.
+        """
+        prefix = f"{self.domain_id}."
+        return self.id[len(prefix):] if self.id.startswith(prefix) else self.id
+
 
 class CompetencyFramework(Frozen):
     """The domains, competencies and scale that define a result's shape."""
@@ -63,6 +77,16 @@ class CompetencyFramework(Frozen):
     domains: tuple[CompetencyDomain, ...] = ()
     competencies: tuple[Competency, ...] = ()
     scale: tuple[str, ...] = RAG_SCALE
+    # The native kind of rating, and the field inside each competency's result
+    # object that holds it (``score``, ``competent``). With no ``rating_field``
+    # the framework cannot read ratings out of a result and checks none.
+    rating: Rating = Field(default_factory=Rating)
+    rating_field: str | None = None
+    # What each result field means (field id -> role), for competency and
+    # domain fields alike. Readers such as the debrief tutor walk a result by
+    # role, never by field name. Absent (a v1 payload), every field but the
+    # rating field reads as ``other``.
+    field_roles: dict[str, FieldRole] = Field(default_factory=dict)
     # Optional structural description of the result payload, for frameworks
     # whose shape is richer than a flat set of scored competencies.
     result_schema: dict[str, Any] | None = None
@@ -72,7 +96,8 @@ class CompetencyFramework(Frozen):
 
     @model_validator(mode="after")
     def _check_internal_consistency(self) -> "CompetencyFramework":
-        if not self.scale:
+        """Refuse a framework whose parts contradict each other."""
+        if self.rating.is_enumerated and not self.scale:
             raise ValueError(f"framework {self.id} has an empty scale")
         domain_ids = [domain.id for domain in self.domains]
         if len(set(domain_ids)) != len(domain_ids):
@@ -93,17 +118,23 @@ class CompetencyFramework(Frozen):
                 f"{c.id}.{key}"
                 for c in self.competencies
                 for key in c.descriptors
-                if key not in scale
+                if self.rating.is_enumerated and key not in scale
             }
         )
         if off_scale:
             raise ValueError(
                 f"framework {self.id} describes scores outside its scale: {off_scale}"
             )
+        if self.rating_field and self.field_roles.get(self.rating_field, "rating") != "rating":
+            raise ValueError(
+                f"framework {self.id} gives its rating field {self.rating_field!r} the role "
+                f"{self.field_roles[self.rating_field]!r}"
+            )
         return self
 
     @property
     def domain_ids(self) -> tuple[str, ...]:
+        """Every domain id, in the framework's order."""
         return tuple(domain.id for domain in self.domains)
 
     @property
@@ -113,17 +144,49 @@ class CompetencyFramework(Frozen):
 
     @property
     def competency_ids(self) -> tuple[str, ...]:
+        """Every competency id, in the framework's order."""
         return tuple(competency.id for competency in self.competencies)
 
     def competencies_in(self, domain_id: str) -> tuple[Competency, ...]:
+        """The competencies marked under one domain."""
         return tuple(c for c in self.competencies if c.domain_id == domain_id)
 
-    def validate_scores(self, scores: Mapping[str, str]) -> None:
-        """Check a competency-to-score mapping against this framework.
+    def scores_in(self, result: Mapping[str, Any]) -> dict[str, Any]:
+        """Every competency's rating in a result, keyed by competency id.
 
-        Raises ``UnknownCompetencyError`` or ``InvalidScoreError``. A framework
-        with no declared competencies accepts anything, which is what lets a
-        schema-only framework pass through untouched.
+        A competency id may be qualified as ``domain.competency`` (a rubric may
+        use one competency name in several domains); the result nests it
+        under its domain by the local name either way. A nullable domain the
+        result left null contributes nothing, and neither does a competency
+        whose rating field is absent: the schema decides what is required.
+        """
+        if not self.rating_field:
+            return {}
+        ratings: dict[str, Any] = {}
+        for competency in self.competencies:
+            block = result.get(competency.domain_id)
+            if not isinstance(block, Mapping):
+                continue
+            answer = block.get(competency.local_id)
+            if isinstance(answer, Mapping) and self.rating_field in answer:
+                ratings[competency.id] = answer[self.rating_field]
+        return ratings
+
+    def role_of(self, field_id: str) -> FieldRole:
+        """What one result field means: its declared role, else ``rating`` or ``other``."""
+        declared = self.field_roles.get(field_id)
+        if declared is not None:
+            return declared
+        return "rating" if field_id == self.rating_field else "other"
+
+    def validate_scores(self, scores: Mapping[str, Any]) -> None:
+        """Check a competency-to-rating mapping against this framework.
+
+        Raises ``UnknownCompetencyError`` or ``InvalidScoreError``. A rating is
+        checked natively: on the scale for ``rag``/``scale``, a number within
+        bounds (whole for an ``integer`` step) for ``range``, a true/false for
+        ``boolean``. A framework with no declared competencies accepts
+        anything, which is what lets a schema-only framework pass through.
         """
         if not self.competencies:
             return
@@ -134,10 +197,10 @@ class CompetencyFramework(Frozen):
                 f"framework {self.id} does not define {unknown}"
             )
         off_scale = sorted(
-            {value for value in scores.values() if value not in self.scale}
+            {repr(value) for value in scores.values() if not self.rating.accepts(value, self.scale)}
         )
         if off_scale:
             raise InvalidScoreError(
-                f"framework {self.id} scores must be one of {list(self.scale)}; "
+                f"framework {self.id} scores must be {self.rating.describe(self.scale)}; "
                 f"got {off_scale}"
             )

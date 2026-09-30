@@ -176,6 +176,16 @@ the only such allowance. It was chosen by `scripts/debrief_bench.py`, which runs
 prompt variants against simulated trainees played by Claude. Change the debrief
 prompt only after running that against the baseline (about $2 for 16 debriefs).
 
+The debrief tutor's marking block is one walk by role (`prompts/debrief_feedback.py`
+`render_marking(framework, result)`): domains and labels come from the
+`CompetencyFramework`, each field is placed by `field_roles` (the closed list in
+`contracts/rating.py::FieldRole`), and ratings are worded by
+`prompts/_rating_text.py::rating_text` from the rating's kind ("7/10", "Amber",
+"competent"). Never add a per-exam formatter or read a field by name: an exam is
+data. A framework with no `field_roles` (a v1 payload) still renders every field,
+as `other`. Test frameworks live in `tests/fixtures/frameworks/` in platform-api's
+exact `framework_payload` shape.
+
 The debrief runs on a ten-minute clock, as the consulting doctor runs on its
 own: `osce_assessment.prompts.debrief_pacing` writes the marks and the prompt's
 `<pacing>` block, platform-api sends the plan as `tool_context["pacing"]` with

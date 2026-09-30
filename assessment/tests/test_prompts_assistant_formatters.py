@@ -48,11 +48,6 @@ def test_athena_doctor_prompt_embeds_records_and_the_full_plan() -> None:
     assert ManagementPlanFormatter.format(plan) in prompt
 
 
-def test_athena_doctor_interview_variant_uses_station_questions() -> None:
-    prompt = AthenaDoctorFormatter.create_prompt("Ortho viva", {}, {}, interview_questions=True)
-    assert "Interview Questions" in prompt
-
-
 def _numbered_block(prompt: str, marker: str) -> list[str]:
     """The one numbered list that follows a marker line, stopping where it ends."""
     titles: list[str] = []
@@ -146,14 +141,6 @@ def test_the_doctor_is_not_given_a_responsiveness_rule() -> None:
     """
     prompt = AthenaDoctorFormatter.create_prompt("Hypothyroidism", {"patient_biodata": "Jane, 44"}, PLAN)
     assert "<answer_what_was_asked>" not in prompt
-
-
-def test_an_interview_station_is_pointed_at_its_questions_instead() -> None:
-    """Ortho stations render interview Q&A, not plan sections, so a section list would be wrong."""
-    prompt = AthenaDoctorFormatter.create_prompt(
-        "Ortho", {"patient_biodata": "x"}, {"explanation": "y"}, interview_questions=True
-    )
-    assert "Work through the interview questions below in the order they appear." in prompt
 
 
 def test_every_list_item_is_a_bullet_including_the_first() -> None:

@@ -8,6 +8,7 @@ from .framework import (
     InvalidScoreError,
     UnknownCompetencyError,
 )
+from .rating import FieldRole, Rating
 from .models import (
     AIInteractionProfile,
     AssessmentAttempt,
@@ -54,6 +55,8 @@ __all__ = [
     "MessageRole",
     "ProfileBuilder",
     "RAG_SCALE",
+    "Rating",
+    "FieldRole",
     "ResultSink",
     "RuntimeHint",
     "Scenario",

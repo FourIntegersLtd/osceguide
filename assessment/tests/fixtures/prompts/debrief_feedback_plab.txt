@@ -1,63 +1,45 @@
-## Data Gathering
+## Data gathering
+Total: 1.25/2
 
-Domain Score: 1.2/4.0
-
-
-### History Taking
-Score: 0.75
-
-Completed Tasks:
-✓ Onset and duration
-✓ Exertional pattern
-
-Evidence:
-"When did the tightness start?"
-
-Missed Tasks:
-× Cardiac risk factors
-
-Suggested Actions:
+### History taking
+Score: 0.75/1
+Supporting phrase (evidence):
+- When did the tightness start?
+Completed (went well):
+- Onset and duration
+- Exertional pattern
+Missed (to improve):
+- Cardiac risk factors
+Suggested actions (next step):
 - Ask about smoking and family history early
 
 ### Examination
-Score: 0.50
-
-Completed Tasks:
-✓ Pulse and BP
-
-Missed Tasks:
-× Auscultation
-
-⚠️ Critical Concerns:
-! Did not check for calf tenderness
-
-Suggested Actions:
+Score: 0.5/1
+Completed (went well):
+- Pulse and BP
+Missed (to improve):
+- Auscultation
+Critical flags (critical concern):
+- Did not check for calf tenderness
+Suggested actions (next step):
 - Complete the cardiovascular examination
 
-## Clinical Management
+## Clinical management
+Total: 1/1
 
-Domain Score: 1.0/4.0
+### Safety netting
+Score: 1/1
+Supporting phrase (evidence):
+- If the pain comes on at rest, call 999 straight away.
+Completed (went well):
+- Explained when to call 999
 
+## Interpersonal skills
+Total: 0.25/1
 
-### Safety Netting
-Score: 1.00
-
-Completed Tasks:
-✓ Explained when to call 999
-
-Evidence:
-"If the pain comes on at rest, call 999 straight away."
-
-## Interpersonal Skills
-
-Domain Score: 0.2/4.0
-
-
-### Empathy & Compassion
-Score: 0.25
-
-Missed Tasks:
-× Acknowledged worry about father
-
-Suggested Actions:
+### Empathy and compassion
+Score: 0.25/1
+Missed (to improve):
+- Acknowledged worry about father
+Suggested actions (next step):
 - Reflect the patient's fear before moving on

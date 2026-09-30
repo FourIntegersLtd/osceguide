@@ -62,6 +62,8 @@ The session lasts about ten minutes, which is time to work through the whole pla
 </how_the_debrief_goes>"""
 
 class DebriefPromptFormatter:
+    """Builds the debrief tutor's system prompt for one finished consultation."""
+
     DEFAULT_PROMPT = "\n\n".join([
         role_lock(persona="the tutor", counterpart="the doctor you are debriefing", never=TUTOR_NEVER),
         speech_rules(),
@@ -74,16 +76,15 @@ class DebriefPromptFormatter:
     def create_prompt(
         transcript: Optional[str],
         management_plan: Optional[str],
-        sca_feedback: Optional[str] = None,
-        plab_feedback: Optional[str] = None,
-        ortho_feedback: Optional[str] = None,
-        station_type: Optional[str] = None,
+        marking: Optional[str] = None,
     ) -> str:
         """The tutor prompt for one finished consultation.
 
-        Every reference block is optional except the transcript: a station may be
-        marked by one framework or none, and a portfolio station is debriefed
-        against the candidate's own CV rather than a management plan.
+        Only the transcript is expected; everything else is optional.
+        ``marking`` is the one exam-neutral marking input: the caller's own
+        by-role rendering of the scored result (``render_marking``), already
+        rendered to text before it reaches this formatter. Nothing here knows
+        which exam it is, or renders marking text itself.
         """
         parts = [
             role_lock(
@@ -95,23 +96,10 @@ class DebriefPromptFormatter:
             speech_rules(),
             _HOW_IT_GOES,
             DEBRIEF_PACING_BLOCK,
+            f"<transcript>\n{transcript or 'No transcript provided'}\n</transcript>",
+            f"<management_plan>\n{management_plan or 'No management plan provided'}\n</management_plan>",
         ]
-
-        if (station_type or "").lower() == "portfolio":
-            parts.append(
-                "<portfolio_station>\n"
-                "This was a portfolio station, so the debrief is about them, not about a clinical case. "
-                "Tie every point to their own background in the reference material below: their "
-                "experience, training, research, publications and teaching. Generic careers advice is "
-                "worthless here.\n"
-                "</portfolio_station>"
-            )
-
-        parts.append(f"<transcript>\n{transcript or 'No transcript provided'}\n</transcript>")
-        parts.append(f"<management_plan>\n{management_plan or 'No management plan provided'}\n</management_plan>")
-
-        for label, body in (("marking", sca_feedback), ("marking", plab_feedback), ("marking", ortho_feedback)):
-            if str(body or "").strip():
-                parts.append(f"<{label}>\n{body.strip()}\n</{label}>")
-
+        # A station marked by no framework, or not yet marked, has no marking block.
+        if str(marking or "").strip():
+            parts.append(f"<marking>\n{marking.strip()}\n</marking>")
         return "\n\n".join(parts)

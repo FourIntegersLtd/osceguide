@@ -1,0 +1,51 @@
+Station type: clinical
+
+## Clinical station
+Total: 12/20
+
+### Technical knowledge and clinical expertise
+Score: 7/10
+Score justification (reason for the rating): Sound differential for an acute haemarthrosis.
+Evidence points (evidence):
+- Named ACL rupture first
+- Requested urgent MRI
+Completed (went well):
+- Differential
+- Investigations
+Suggested actions (next step):
+- Mention aspiration for pain relief
+
+### Situational awareness
+Score: 5/10
+Score justification (reason for the rating): Did not explore the patient's work situation.
+Suggested actions (next step):
+- Ask about occupation before planning
+
+## Prioritisation station
+Total: 6/10
+
+### Organisation and planning
+Score: 6/10
+Score justification (reason for the rating): Reasonable ordering.
+Evidence points (evidence):
+- Saw the open fracture first
+Completed (went well):
+- Triage
+
+## Communication station
+Total: 8/10
+
+### Communication and information giving
+Score: 8/10
+Score justification (reason for the rating): Clear, jargon-free.
+Evidence points (evidence):
+- Explained the ligament with an analogy
+
+## Portfolio station
+Total: 4/10
+
+### Portfolio knowledge
+Score: 4/10
+Score justification (reason for the rating): Vague on audit cycle.
+Suggested actions (next step):
+- Prepare one audit example with a closed loop

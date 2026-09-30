@@ -1,4 +1,4 @@
-"""Renders a station management plan (or interview questions) for the debrief tutor."""
+"""Renders a station management plan for the debrief tutor and the consulting doctor."""
 from typing import Any, Dict, List, Optional
 
 
@@ -170,98 +170,20 @@ class ManagementPlanFormatter:
         return "\n\n".join(formatted_sections).strip()
 
     @staticmethod
-    def format(
-        management_plan: Optional[Dict],
-        *,
-        interview_questions: bool = False,
-        station_obj: Optional[Dict] = None,
-        candidate_cv_markdown: Optional[str] = None,
-    ) -> str:
+    def format(management_plan: Optional[Dict]) -> str:
         """
         Formats the entire management plan into a markdown string.
-        With interview_questions=True, formats the station's interview questions
-        instead of a management plan (the orthopaedic interview format).
 
         Args:
             management_plan: Dictionary containing the management plan sections
-            interview_questions: Debrief on interview Q&A rather than a management plan
-            station_obj: Station object (required for ortho to extract interview_questions)
 
         Returns:
-            Formatted markdown string of the management plan or interview questions
+            Formatted markdown string of the management plan
         """
         try:
-            if interview_questions:
-                return ManagementPlanFormatter.format_ortho_interview_questions(
-                    station_obj,
-                    candidate_cv_markdown=candidate_cv_markdown,
-                )
-
             if not ManagementPlanFormatter._is_valid_plan(management_plan):
                 return ManagementPlanFormatter.DEFAULT_PLAN
 
             return ManagementPlanFormatter._format_plan_sections(management_plan)
-        except Exception as e:
+        except Exception:
             return ManagementPlanFormatter.DEFAULT_PLAN
-
-    @staticmethod
-    def format_ortho_interview_questions(
-        station_obj: Optional[Dict],
-        *,
-        candidate_cv_markdown: Optional[str] = None,
-    ) -> str:
-        """
-        Formats ortho station interview questions and answers into a markdown string.
-
-        Args:
-            station_obj: Dictionary containing the ortho station data with interview_questions
-
-        Returns:
-            Formatted markdown string of interview questions and answers
-        """
-        DEFAULT_ORTHO_PLAN = """
-        ## Interview Questions & Answers
-        No interview questions available for this station."""
-
-        try:
-            if not station_obj or not isinstance(station_obj, dict):
-                return DEFAULT_ORTHO_PLAN
-
-            interview_questions = station_obj.get("interview_questions", [])
-            cv_section = ""
-            if candidate_cv_markdown:
-                cv_section = f"## Candidate CV\n{candidate_cv_markdown}\n\n"
-
-            if not interview_questions or not isinstance(interview_questions, list):
-                return DEFAULT_ORTHO_PLAN
-
-            # Portfolio debrief: CV sections (when present) are included before Interview Q&A.
-            # (Portfolio personalisation instruction is in debrief prompt via DebriefPromptFormatter.)
-            sections = (
-                [cv_section, "## Interview Questions & Answers\n"]
-                if cv_section
-                else ["## Interview Questions & Answers\n"]
-            )
-
-            for idx, qa in enumerate(interview_questions, 1):
-                if isinstance(qa, dict):
-                    question = qa.get("question", "")
-                    answer = qa.get("answer", "")
-
-                    if question or answer:
-                        sections.append(f"### Question {idx}")
-                        if question:
-                            sections.append(f"**Q:** {question}\n")
-                        if answer:
-                            sections.append(f"**A:** {answer}\n")
-                        sections.append("")  # Add spacing between Q&A pairs
-
-            # Return default only when there is no CV and no Q&A content
-            has_qa = any("### Question" in s for s in sections)
-            if not cv_section and not has_qa:
-                return DEFAULT_ORTHO_PLAN
-
-            return "\n".join(sections).strip()
-
-        except Exception as e:
-            return DEFAULT_ORTHO_PLAN

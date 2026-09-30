@@ -11,6 +11,7 @@ from osce_assessment.contracts import (
     CompetencyDomain,
     CompetencyFramework,
     InvalidScoreError,
+    Rating,
     UnknownCompetencyError,
 )
 
@@ -135,6 +136,9 @@ def test_the_framework_holds_shape_and_says_nothing_about_which_model_runs() -> 
         "domains",
         "competencies",
         "scale",
+        "rating",
+        "rating_field",
+        "field_roles",
         "result_schema",
         "system_prompt",
     }
@@ -155,3 +159,177 @@ def test_the_policy_holds_scoring_and_says_nothing_about_shape() -> None:
     }
     assert {"primary_model", "system_prompt_override", "version"} <= fields
     assert "framework_id" in fields, "a policy must name the shape it scores"
+
+
+# --- native ratings -------------------------------------------------------------
+#
+# Each rubric marks in its own units: a number in a range, a whole number in a
+# range, a competent true/false, or a word on a scale. The framework checks the
+# value the rubric defines rather than forcing everything through R/A/G.
+
+
+def test_a_rag_rating_accepts_its_letters_and_refuses_any_other() -> None:
+    fw = framework(scale=("G", "A", "R"), rating=Rating(kind="rag"))
+    fw.validate_scores({"structures_consultation": "G", "uses_clear_language": "R"})
+    for bad in ("B", "g", 1, None):
+        with pytest.raises(InvalidScoreError, match=r"one of \['G', 'A', 'R'\]"):
+            fw.validate_scores({"structures_consultation": bad})
+
+
+def test_a_scale_rating_accepts_only_the_authors_words() -> None:
+    fw = framework(scale=("Excellent", "Adequate", "Poor"), rating=Rating(kind="scale"))
+    fw.validate_scores({"structures_consultation": "Adequate"})
+    with pytest.raises(InvalidScoreError, match="one of"):
+        fw.validate_scores({"structures_consultation": "Good"})
+
+
+def test_an_integer_range_refuses_a_value_above_its_maximum() -> None:
+    fw = framework(scale=(), rating=Rating(kind="range", minimum=0, maximum=10, step="integer"))
+    fw.validate_scores({"structures_consultation": 0, "uses_clear_language": 10})
+    for bad in (11, -1):
+        with pytest.raises(InvalidScoreError, match="a whole number from 0 to 10"):
+            fw.validate_scores({"structures_consultation": bad})
+
+
+def test_a_range_rating_needs_both_bounds_lowest_first() -> None:
+    with pytest.raises(ValidationError, match="needs a minimum and a maximum"):
+        Rating(kind="range", maximum=10)
+    with pytest.raises(ValidationError, match="must be below its maximum"):
+        Rating(kind="range", minimum=10, maximum=0)
+
+
+def test_a_nullable_domain_may_be_left_null() -> None:
+    fw = framework(
+        scale=(),
+        rating=Rating(kind="range", minimum=0, maximum=10, step="integer"),
+        rating_field="score",
+        domains=(DOMAIN, CompetencyDomain(id="tasks", label="Tasks", nullable=True)),
+    )
+    result = {"global_skills": {"structures_consultation": {"score": 6}}, "tasks": None}
+    assert fw.scores_in(result) == {"structures_consultation": 6}
+    fw.validate_scores(fw.scores_in(result))
+    assert [domain.nullable for domain in fw.domains] == [False, True]
+
+
+def test_field_roles_come_from_a_closed_list() -> None:
+    fw = framework(rating_field="score", field_roles={"missed": "improvement", "critical_flags": "flag"})
+    assert fw.role_of("missed") == "improvement"
+    assert fw.role_of("score") == "rating"
+    assert fw.role_of("anything_else") == "other"
+    with pytest.raises(ValidationError):
+        framework(field_roles={"missed": "weakness"})
+
+
+def test_the_rating_field_cannot_be_given_another_role() -> None:
+    with pytest.raises(ValidationError, match="gives its rating field 'score' the role 'evidence'"):
+        framework(rating_field="score", field_roles={"score": "evidence"})
+
+
+def test_a_v1_payload_without_the_new_keys_keeps_rating_on_rag() -> None:
+    """Today's platform-api payload: no rating, rating_field or field_roles."""
+    fw = CompetencyFramework.model_validate(
+        {
+            "id": "v1",
+            "label": "V1",
+            "scale": ["G", "A", "R"],
+            "domains": [{"id": "global_skills", "label": "Global skills"}],
+            "competencies": [{"id": "structures_consultation", "label": "S", "domain_id": "global_skills"}],
+        }
+    )
+    assert (fw.rating.kind, fw.rating_field, fw.field_roles) == ("rag", None, {})
+    assert fw.scores_in({"global_skills": {"structures_consultation": {"score": "Q"}}}) == {}
+
+
+def test_a_key_the_payload_should_not_carry_is_refused() -> None:
+    with pytest.raises(ValidationError, match="labels"):
+        CompetencyFramework.model_validate(
+            {"id": "x", "label": "X", "rating": {"kind": "rag", "labels": {"G": "Competent"}}}
+        )
+
+
+def test_a_range_rating_accepts_numbers_within_its_bounds_only() -> None:
+    fw = framework(scale=(), rating=Rating(kind="range", minimum=0, maximum=1))
+    fw.validate_scores({"structures_consultation": 0.75, "opens_consultation": 1})
+    for bad in (1.5, -0.1, "G", True):
+        with pytest.raises(InvalidScoreError, match="a number from 0"):
+            fw.validate_scores({"structures_consultation": bad})
+
+
+def test_an_integer_range_refuses_a_fraction() -> None:
+    fw = framework(scale=(), rating=Rating(kind="range", minimum=0, maximum=10, step="integer"))
+    fw.validate_scores({"structures_consultation": 7})
+    with pytest.raises(InvalidScoreError, match="a whole number from 0"):
+        fw.validate_scores({"structures_consultation": 7.5})
+
+
+def test_a_boolean_rating_accepts_only_true_or_false() -> None:
+    fw = framework(scale=(), rating=Rating(kind="boolean"))
+    fw.validate_scores({"structures_consultation": True, "uses_clear_language": False})
+    with pytest.raises(InvalidScoreError, match="true or false"):
+        fw.validate_scores({"structures_consultation": 1})
+
+
+def test_an_enumerated_rating_still_needs_a_scale() -> None:
+    with pytest.raises(ValidationError, match="empty scale"):
+        framework(scale=(), rating=Rating(kind="rag"))
+
+
+def test_ratings_are_read_out_of_a_result_by_the_rating_field() -> None:
+    """Qualified ids find their answer under the domain by the local name."""
+    clinical = CompetencyDomain(id="clinical", label="Clinical", nullable=True)
+    portfolio = CompetencyDomain(id="portfolio", label="Portfolio", nullable=True)
+    fw = CompetencyFramework(
+        id="ortho-like",
+        label="Ortho-like",
+        scale=(),
+        rating=Rating(kind="range", minimum=0, maximum=10, step="integer"),
+        rating_field="score",
+        domains=(clinical, portfolio),
+        competencies=(
+            Competency(id="clinical.awareness", label="Awareness", domain_id="clinical"),
+            Competency(id="portfolio.awareness", label="Awareness", domain_id="portfolio"),
+        ),
+    )
+    result = {
+        "clinical": {"awareness": {"score": 8, "score_justification": "Good."}},
+        "portfolio": None,
+    }
+    assert fw.scores_in(result) == {"clinical.awareness": 8}
+    fw.validate_scores(fw.scores_in(result))
+
+
+def test_a_framework_without_a_rating_field_reads_no_ratings() -> None:
+    assert framework().scores_in({"global_skills": {"structures_consultation": {"score": "G"}}}) == {}
+
+
+def test_a_fifth_exam_needs_no_code_only_a_framework() -> None:
+    """A made-up exam: whole 1..5 ratings, a domain-level list, a narrative.
+
+    Nothing in the engine names it; the rating kind and field carry everything
+    the framework needs to check a mark in the exam's own units.
+    """
+    fw = CompetencyFramework.model_validate(
+        {
+            "id": "fifth-exam-v1",
+            "label": "Fifth exam",
+            "scale": [],
+            "rating": {"kind": "range", "minimum": 1, "maximum": 5, "step": "integer"},
+            "rating_field": "rating",
+            "domains": [{"id": "consulting", "label": "Consulting"}],
+            "competencies": [
+                {"id": "consulting.opening", "label": "Opening", "domain_id": "consulting"},
+                {"id": "consulting.closing", "label": "Closing", "domain_id": "consulting"},
+            ],
+        }
+    )
+    mark = {
+        "consulting": {
+            "opening": {"rating": 4, "evidence": "Introduced themselves."},
+            "closing": {"rating": 2, "evidence": "No safety net."},
+            "themes": ["Structure", "Safety netting"],
+        },
+        "narrative": "A solid consultation that ended abruptly.",
+    }
+    fw.validate_scores(fw.scores_in(mark))
+    with pytest.raises(InvalidScoreError, match="a whole number from 1"):
+        fw.validate_scores(fw.scores_in({"consulting": {"opening": {"rating": 6}}}))

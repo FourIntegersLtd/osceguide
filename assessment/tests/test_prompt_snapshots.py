@@ -4,8 +4,9 @@ The snapshots started as the legacy ``livekit`` workers' output, byte for byte,
 and held that parity through the cutover. The live prompts have since been
 rewritten so each persona states its role and holds its clinical material back
 until asked, so these files now pin the current prompts rather than the legacy
-ones. The feedback and transcript snapshots are still the legacy output: those
-formatters did not change.
+ones. The transcript snapshot is still the legacy output. The marking snapshots
+are the one by-role walk every rubric now shares; they replaced the legacy
+per-exam formatters' output on 2026-09-30 (rubric templates, Stage 2).
 
 Regenerate deliberately, never to make a diff go away. A change here changes
 what a model is told during a real exam.
@@ -18,20 +19,15 @@ from pathlib import Path
 
 import pytest
 
+from osce_assessment.contracts import CompetencyFramework
 from osce_assessment.prompts import (
     DashboardTutorFormatter,
     DebriefPromptFormatter,
     ManagementPlanFormatter,
-    OrthoClinicalSkillFeedbackFormatter,
-    OrthoCommunicationSkillFeedbackFormatter,
-    OrthoFeedbackFormatter,
-    OrthoPortfolioSkillFeedbackFormatter,
-    OrthoPrioritisationSkillFeedbackFormatter,
-    PlabFeedbackFormatter,
-    ScaFeedbackFormatter,
     StationPromptFormatter,
     TranscriptFormatter,
     create_station_prompt,
+    render_marking,
 )
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -39,6 +35,11 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 def _load(relative: str) -> dict:
     return json.loads((FIXTURES / relative).read_text(encoding="utf-8"))
+
+
+def _framework(framework_id: str) -> CompetencyFramework:
+    """A framework exactly as platform-api sends it, from `fixtures/frameworks`."""
+    return CompetencyFramework.model_validate(_load(f"frameworks/{framework_id}.json"))
 
 
 def _snapshot(name: str) -> str:
@@ -73,33 +74,18 @@ def test_the_examiner_persona_holds_the_examiner_blocks() -> None:
     assert "<your_questions_and_expected_answers>" not in create_station_prompt(station, station["layout"])
 
 
-def test_sca_feedback_rendering_matches_legacy() -> None:
-    assert ScaFeedbackFormatter.format(_load("feedback/sca_feedback.json")) == _snapshot("debrief_feedback_sca")
-
-
-def test_plab_feedback_rendering_matches_legacy() -> None:
-    assert PlabFeedbackFormatter.format(_load("feedback/plab_feedback.json")) == _snapshot("debrief_feedback_plab")
-
-
-def test_ortho_feedback_rendering_matches_legacy() -> None:
-    assert OrthoFeedbackFormatter.format(_load("feedback/ortho_feedback.json"), station_type="clinical") == _snapshot(
-        "debrief_feedback_ortho_clinical"
-    )
-
-
 @pytest.mark.parametrize(
-    ("station_type", "formatter"),
+    ("framework_id", "feedback_fixture", "snapshot_name"),
     [
-        ("clinical", OrthoClinicalSkillFeedbackFormatter),
-        ("prioritisation", OrthoPrioritisationSkillFeedbackFormatter),
-        ("communication", OrthoCommunicationSkillFeedbackFormatter),
-        ("portfolio", OrthoPortfolioSkillFeedbackFormatter),
-        ("unknown", OrthoClinicalSkillFeedbackFormatter),
+        ("sca-rcgp-v1", "sca_feedback", "debrief_feedback_sca"),
+        ("plab2-v1", "plab_feedback", "debrief_feedback_plab"),
+        ("ortho-frcs-v1", "ortho_feedback", "debrief_feedback_ortho"),
     ],
 )
-def test_ortho_station_type_routing(station_type, formatter) -> None:
-    feedback = _load("feedback/ortho_feedback.json")
-    assert OrthoFeedbackFormatter.format(feedback, station_type=station_type) == formatter.format(feedback)
+def test_marking_rendering_matches_snapshot(framework_id: str, feedback_fixture: str, snapshot_name: str) -> None:
+    """One walk by role renders every exam's marking; only the framework differs."""
+    rendered = render_marking(_framework(framework_id), _load(f"feedback/{feedback_fixture}.json"))
+    assert rendered == _snapshot(snapshot_name)
 
 
 def test_debrief_prompt_matches_snapshot() -> None:
@@ -107,10 +93,7 @@ def test_debrief_prompt_matches_snapshot() -> None:
     prompt = DebriefPromptFormatter.create_prompt(
         transcript="[1] DOCTOR: What's brought you in today?\n[2] PATIENT: This tightness in my chest.",
         management_plan="Assessment: rule out ACS. Explanation: likely stable angina.",
-        sca_feedback=ScaFeedbackFormatter.format(sca),
-        plab_feedback=PlabFeedbackFormatter.format(sca),
-        ortho_feedback="",
-        station_type="",
+        marking=render_marking(_framework("sca-rcgp-v1"), sca),
     )
     assert prompt == _snapshot("debrief_prompt_sca")
 
@@ -136,19 +119,9 @@ def test_transcript_formatter_labels_speakers_and_drops_empty_turns() -> None:
     assert TranscriptFormatter.format({"transcript_message": []}) == TranscriptFormatter.DEFAULT_TRANSCRIPT
 
 
-def test_management_plan_renders_sections_or_interview_questions_by_flag() -> None:
+def test_management_plan_renders_its_sections() -> None:
     plan = {"explanation": "Likely stable angina.", "immediate_actions": ["ECG today", "Aspirin 300mg"]}
     rendered = ManagementPlanFormatter.format(plan)
     assert rendered.startswith("## Explanation\nLikely stable angina.")
     assert "ECG today\nAspirin 300mg" in rendered
     assert ManagementPlanFormatter.format({}) == ManagementPlanFormatter.DEFAULT_PLAN
-
-    station = {"interview_questions": [{"question": "Tell me about an audit.", "answer": "Closed loop on VTE prophylaxis."}]}
-    interview = ManagementPlanFormatter.format(plan, interview_questions=True, station_obj=station)
-    assert interview.startswith("## Interview Questions & Answers")
-    assert "**Q:** Tell me about an audit." in interview
-    assert "Explanation" not in interview
-
-    with_cv = ManagementPlanFormatter.format(None, interview_questions=True, station_obj=station, candidate_cv_markdown="## Summary\nST3 trainee")
-    assert with_cv.startswith("## Candidate CV\n## Summary\nST3 trainee")
-    assert with_cv.index("Candidate CV") < with_cv.index("Interview Questions")

@@ -55,9 +55,9 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages"))
 
-from model_bench import JUDGE_MODEL, PRICES, REASONING_MODEL_PREFIX, Turn, _debrief_prompt  # noqa: E402
+from model_bench import JUDGE_MODEL, PRICES, REASONING_MODEL_PREFIX, Turn, _debrief_prompt, marking_for  # noqa: E402
 from osce_assessment.prompts.debrief_pacing import DEBRIEF_SECONDS, debrief_pacing_payload  # noqa: E402
-from osce_assessment.prompts import ManagementPlanFormatter, ScaFeedbackFormatter, TranscriptFormatter  # noqa: E402
+from osce_assessment.prompts import ManagementPlanFormatter, TranscriptFormatter  # noqa: E402
 from osce_assessment.prompts.greetings import DEBRIEF_GREETING  # noqa: E402
 
 DEBRIEF_BENCH = Path(__file__).resolve().parent / "bench" / "debrief"
@@ -631,7 +631,7 @@ The management plan the tutor was given:
 
 The marking the tutor was given:
 <marking>
-{ScaFeedbackFormatter.format(context["feedback"]).strip()}
+{marking_for(context.get("framework", "sca-rcgp-v1"), context["feedback"]).strip()}
 </marking>
 
 The safety-critical gap in this consultation: {scenario["trainee_brief"]["safety_critical_gap"]}
