@@ -15,7 +15,8 @@ volunteering it unprompted is the worse failure.
 Blocks the candidate must not hear — the examiner's expected answers, the
 marking order — carry the ``examiner`` role and never reach the patient prompt.
 They are handed to the marker separately through
-:func:`station_examiner_context`.
+:func:`station_examiner_context`. An examiner persona is given them too: they
+are the questions it asks, and a viva run without them has nothing to ask.
 """
 from __future__ import annotations
 
@@ -235,6 +236,9 @@ class StationPromptFormatter:
         for text in roles["candidate_brief"]:
             parts.append(f"<what_the_candidate_was_told>\n{text}\n</what_the_candidate_was_told>")
 
+        if persona == "examiner" and roles["examiner"]:
+            parts.append(_examiner_material(roles["examiner"]))
+
         parts.append(_station_title(title, persona))
         return "\n\n".join(part for part in parts if part)
 
@@ -257,6 +261,24 @@ class StationPromptFormatter:
             return None
         body = "\n\n".join(blocks)
         return f"\n\n<examiner_notes>\n{body}\n</examiner_notes>"
+
+
+def _examiner_material(blocks: Sequence[str]) -> str:
+    """The station's questions and expected answers, as the examiner running the viva holds them.
+
+    The same blocks the marker is given. Without them an examiner persona knows
+    only what the candidate was told, so it has nothing of the station's own to
+    ask. The expected answers are its mark sheet: `EXAMINER_NEVER` already
+    forbids revealing them, and this says so where they sit.
+    """
+    body = "\n\n".join(blocks)
+    return (
+        "<your_questions_and_expected_answers>\n"
+        "Ask the questions the station sets out below. The expected answers are for you alone: "
+        "never read them out, hint at them, or say whether an answer matched them.\n\n"
+        f"{body}\n"
+        "</your_questions_and_expected_answers>"
+    )
 
 
 def _station_title(title: str, persona: str) -> str:

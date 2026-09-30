@@ -64,6 +64,15 @@ def test_the_examiner_blocks_never_reach_the_patient() -> None:
     assert context is not None and "cessation support" in context
 
 
+def test_the_examiner_persona_holds_the_examiner_blocks() -> None:
+    """An examiner running a viva is given the questions it asks; the patient never is."""
+    station = _load("stations/templated_station.json")
+    prompt = create_station_prompt(station, station["layout"], persona="examiner")
+    assert "<your_questions_and_expected_answers>" in prompt
+    assert "cessation support" in prompt
+    assert "<your_questions_and_expected_answers>" not in create_station_prompt(station, station["layout"])
+
+
 def test_sca_feedback_rendering_matches_legacy() -> None:
     assert ScaFeedbackFormatter.format(_load("feedback/sca_feedback.json")) == _snapshot("debrief_feedback_sca")
 
