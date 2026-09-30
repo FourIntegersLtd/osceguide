@@ -1,8 +1,8 @@
-name: Promote to production
+name: Promote workers to production
 
 # The only way the production workers change.
 #
-# How to use it: GitHub → Actions → "Promote to production" → Run workflow (from main).
+# How to use it: GitHub → Actions → "Promote workers to production" → Run workflow (from main).
 #   - Leave "commit_sha" empty to promote whatever staging is running right now.
 #   - Rollback: tick "rollback" and give the commit_sha production ran before. That
 #     commit's image already exists, so nothing is rebuilt.
@@ -13,14 +13,14 @@ name: Promote to production
 #      is running exactly that image, healthily. The result is written to the run
 #      summary, so the run records what shipped and why it was allowed.
 #   2. deploy rolls that exact image out to the production namespace, re-points the
-#      `:production` tag, then moves the `production` branch forward to the commit.
+#      `:production` tag, then moves the `production-workers` branch forward to the commit.
 #
 # Who may promote: anyone who can run workflows here, which today is only the owner,
 # so pressing "Run workflow" is the approval. A required reviewer on the GitHub
-# Environment "production" would make deploy pause for a second click, but GitHub
+# Environment "production-workers" would make deploy pause for a second click, but GitHub
 # offers that on private repositories only on paid plans.
 #
-# The `production` branch therefore always says which commit production runs, and
+# The `production-workers` branch therefore always says which commit production runs, and
 # only ever moves forward (a plain push, never a force push). A rollback leaves the
 # branch where it is; the pods' osceguide.io/commit annotation shows the real state.
 
@@ -42,7 +42,7 @@ permissions: {}
 
 # One promotion at a time. A second run waits instead of fighting over the pods.
 concurrency:
-  group: promote-production
+  group: promote-workers-production
   cancel-in-progress: false
 
 env:
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: read # read the git history (is the commit on main / on production?)
+      contents: read # read the git history (is the commit on main / on production-workers?)
       actions: read # look up the CI run for the commit
       packages: read # look up the commit's image in GHCR
     outputs:
@@ -70,7 +70,7 @@ jobs:
           echo "Run this workflow from main (Use workflow from: main), not ${GITHUB_REF}." >&2
           exit 1
 
-      # Full history, so the ancestry checks below can see main and production.
+      # Full history, so the ancestry checks below can see main and production-workers.
       - name: Checkout main with history
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -118,13 +118,13 @@ jobs:
           IS_ROLLBACK: ${{ inputs.rollback }}
         run: |
           production_branch_exists="false"
-          if git rev-parse --verify --quiet origin/production >/dev/null; then
+          if git rev-parse --verify --quiet origin/production-workers >/dev/null; then
             production_branch_exists="true"
           fi
 
           if [[ "$IS_ROLLBACK" == "true" ]]; then
-            [[ "$production_branch_exists" == "true" ]] || { echo "There is no production branch yet, so nothing to roll back to." >&2; exit 1; }
-            git merge-base --is-ancestor "$COMMIT_SHA" origin/production \
+            [[ "$production_branch_exists" == "true" ]] || { echo "There is no production-workers branch yet, so nothing to roll back to." >&2; exit 1; }
+            git merge-base --is-ancestor "$COMMIT_SHA" origin/production-workers \
               || { echo "${COMMIT_SHA} was never promoted to production, so it cannot be a rollback target." >&2; exit 1; }
             echo "Rollback target ${COMMIT_SHA} is in production's history."
             exit 0
@@ -135,7 +135,7 @@ jobs:
           # The production branch only moves forward. If production already has
           # commits this one lacks, promoting it would silently undo them.
           if [[ "$production_branch_exists" == "true" ]]; then
-            git merge-base --is-ancestor origin/production "$COMMIT_SHA" \
+            git merge-base --is-ancestor origin/production-workers "$COMMIT_SHA" \
               || { echo "production has commits that ${COMMIT_SHA} does not; promote a newer commit, or use rollback." >&2; exit 1; }
           fi
           echo "${COMMIT_SHA} is on main and moves production forward."
@@ -146,12 +146,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
         run: |
-          successful_ci_runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$COMMIT_SHA" \
+          successful_ci_runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci-assessment.yml --commit "$COMMIT_SHA" \
             --status success --json databaseId --jq 'length')"
-          [[ "$successful_ci_runs" -gt 0 ]] || { echo "CI has not passed on ${COMMIT_SHA}." >&2; exit 1; }
+          [[ "$successful_ci_runs" -gt 0 ]] || { echo "CI assessment has not passed on ${COMMIT_SHA}." >&2; exit 1; }
           echo "CI passed on ${COMMIT_SHA}."
 
-      # Every green main commit was built and pushed as :<sha> by publish-ghcr.yml.
+      # Every green main commit was built and pushed as :<sha> by publish-workers.yml.
       # Resolve that tag to its digest now, so the deploy ships this exact image
       # even if someone re-pushes the tag later.
       - name: Find the commit's image
@@ -165,7 +165,7 @@ jobs:
           set -o pipefail
           echo "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin >/dev/null
           image_digest="$(docker buildx imagetools inspect "${IMAGE_NAME}:${COMMIT_SHA}" --format '{{json .Manifest}}' | jq -r '.digest')" \
-            || { echo "No image ${IMAGE_NAME}:${COMMIT_SHA}. Did publish-ghcr.yml run for this commit?" >&2; exit 1; }
+            || { echo "No image ${IMAGE_NAME}:${COMMIT_SHA}. Did publish-workers.yml run for this commit?" >&2; exit 1; }
           [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Unexpected digest '${image_digest}'." >&2; exit 1; }
           echo "image_digest=${image_digest}" >> "$GITHUB_OUTPUT"
           echo "${IMAGE_NAME}:${COMMIT_SHA} is ${image_digest}."
@@ -214,10 +214,10 @@ jobs:
             echo ""
             echo "- Commit: \`${COMMIT_SHA}\` — $(git log -1 --format='%s' "$COMMIT_SHA")"
             echo "- Image: \`${IMAGE_NAME}@${IMAGE_DIGEST}\`"
-            if git rev-parse --verify --quiet origin/production >/dev/null; then
-              echo "- Production branch is at: \`$(git rev-parse origin/production)\`"
+            if git rev-parse --verify --quiet origin/production-workers >/dev/null; then
+              echo "- production-workers branch is at: \`$(git rev-parse origin/production-workers)\`"
             else
-              echo "- Production branch: not created yet (this run creates it)"
+              echo "- production-workers branch: not created yet (this run creates it)"
             fi
             echo ""
             echo "The **deploy** job rolls this out next. Live consultations drain first, so it can take up to ~15 minutes per worker."
@@ -230,10 +230,10 @@ jobs:
     # Draining pods can hold a rollout for many minutes; see rollout-timeout-seconds.
     timeout-minutes: 75
     # Records the deploy under the repo's Environments tab. If the GitHub Environment
-    # "production" ever gets a required reviewer, this job pauses for approval here.
-    environment: production
+    # "production-workers" ever gets a required reviewer, this job pauses for approval here.
+    environment: production-workers
     permissions:
-      contents: write # move the production branch
+      contents: write # move the production-workers branch
       packages: write # re-point the :production image tag
     steps:
       # Main's tooling (composite actions, rollout script) with full history for the push.
@@ -242,15 +242,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Deploy the manifests as they were at the promoted commit, so production gets
+      # Deploy the manifests (assessment/k8s) as they were at the promoted commit, so production gets
       # the same config staging tested (or, on rollback, the config it ran before).
       - name: Use the promoted commit's manifests
         env:
           COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}
         run: |
           # Remove main's copy first, so a file main added but the commit lacks cannot ride along.
-          rm -rf k8s
-          git checkout "$COMMIT_SHA" -- k8s
+          rm -rf assessment/k8s
+          git checkout "$COMMIT_SHA" -- assessment/k8s
 
       - name: Connect to the control plane
         uses: ./.github/actions/connect-to-control-plane
@@ -261,7 +261,7 @@ jobs:
       - name: Roll out to production
         uses: ./.github/actions/roll-out-workers
         with:
-          environment: production
+          environment: production-workers
           image-digest: ${{ needs.check.outputs.image_digest }}
           commit-sha: ${{ needs.check.outputs.commit_sha }}
           control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
@@ -271,8 +271,8 @@ jobs:
 
       # Only after production is running it. A plain (non-force) push, so GitHub
       # itself refuses if the branch would move backwards.
-      - name: Move the production branch to the commit
+      - name: Move the production-workers branch to the commit
         if: ${{ !inputs.rollback }}
         env:
           COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}
-        run: git push origin "${COMMIT_SHA}:refs/heads/production"
+        run: git push origin "${COMMIT_SHA}:refs/heads/production-workers"

@@ -1,9 +1,18 @@
-name: CI
+name: CI assessment
+
+# The assessment engine and the LiveKit workers, on every change under
+# assessment/. A green run on main is what publish-workers.yml waits for.
 
 on:
   pull_request:
+    paths:
+      - "assessment/**"
+      - ".github/workflows/ci-assessment.yml"
   push:
     branches: [main]
+    paths:
+      - "assessment/**"
+      - ".github/workflows/ci-assessment.yml"
 
 permissions:
   contents: read
@@ -17,6 +26,9 @@ jobs:
     name: assessment-platform
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: assessment
     env:
       SENTRY_DSN: ""
       OPENAI_API_KEY: ci-dummy
@@ -37,13 +49,16 @@ jobs:
       - uses: actions/cache@v4
         id: venv
         with:
-          path: .venv
-          key: venv-${{ runner.os }}-py3.11-${{ hashFiles('poetry.lock') }}
+          path: assessment/.venv
+          key: venv-${{ runner.os }}-py3.11-assessment-${{ hashFiles('assessment/poetry.lock') }}
       - if: steps.venv.outputs.cache-hit != 'true'
         run: poetry install --no-interaction
+      # Includes the drift test against web/'s guidance contracts, which is in
+      # the same checkout.
       - name: Tests (leakage guards, contracts, worker)
         run: poetry run pytest -q
       - name: Engine subtree is exportable
-        run: git subtree split --prefix=packages/osce_assessment >/dev/null
+        working-directory: .
+        run: git subtree split --prefix=assessment/packages/osce_assessment >/dev/null
       - name: Worker import smoke (no product, prompt or scoring code loaded)
         run: poetry run pytest -q tests/test_assessment_worker_boundaries.py

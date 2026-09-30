@@ -1,0 +1,68 @@
+name: CI web
+
+# Types, lint, unit tests and the route ledger on every change to web/, and on
+# every change to the api's openapi.json, which web/ is typed against.
+#
+# "Promote web to production" refuses a commit unless this workflow passed on
+# it, so a red main can reach staging (Vercel builds every push to web/) but
+# never production.
+#
+# The last step regenerates the api types from api/openapi.json and fails if
+# the committed schema.d.ts differs: an api change that alters the contract
+# must land with the regenerated types in the same commit.
+
+on:
+  pull_request:
+    paths:
+      - "web/**"
+      - "api/openapi.json"
+      - ".github/workflows/ci-web.yml"
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "api/openapi.json"
+      - ".github/workflows/ci-web.yml"
+
+# Reading the code is all this workflow does.
+permissions:
+  contents: read
+
+# A newer push to the same branch makes an older run pointless.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: types, lint, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      # Node 22 matches local development and the Vercel project's setting.
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # `npm ci` installs exactly what package-lock.json says.
+      - name: Install dependencies
+        run: npm ci
+
+      # Types, lint (with the tier rules), unit tests, and check:ledger, which
+      # reads ../api/openapi.json.
+      - name: npm run ci
+        run: npm run ci
+
+      - name: Api types are generated from the committed openapi.json
+        run: |
+          npm run platform:types
+          git diff --exit-code -- src/foundation/platform-client/schema.d.ts

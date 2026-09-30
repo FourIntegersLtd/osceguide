@@ -1,11 +1,11 @@
-name: Publish GHCR
+name: Publish workers
 
-# Builds the single worker image (OSCE_LIVEKIT_WORKER selects assessment or
-# assistant at run time) after CI passes on main, tags it with its commit sha,
+# Builds the single worker image from assessment/ (OSCE_LIVEKIT_WORKER selects assessment or
+# assistant at run time) after CI assessment passes on main, tags it with its commit sha,
 # and rolls it out to STAGING on the K3s control plane.
 #
 # This workflow never touches production. Production only changes when someone
-# runs "Promote to production" (promote-production.yml), which ships an image
+# runs "Promote workers to production" (promote-workers.yml), which ships an image
 # this workflow built and staging already ran.
 #
 # Repository variable K8S_AUTO_DEPLOY=true turns the staging rollout on; with any
@@ -14,7 +14,7 @@ name: Publish GHCR
 on:
   workflow_run:
     workflows:
-      - CI
+      - CI assessment
     types:
       - completed
     branches:
@@ -26,7 +26,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: publish-ghcr-main
+  group: publish-workers-main
   cancel-in-progress: false
 
 env:
@@ -73,8 +73,8 @@ jobs:
         id: build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
-          context: .
-          file: Dockerfile
+          context: assessment
+          file: assessment/Dockerfile
           push: true
           # Only the commit sha. The moving `:staging` and `:production` tags are set
           # by the roll-out-workers action after a rollout succeeds, so each always
@@ -93,13 +93,13 @@ jobs:
     if: >-
       needs.publish.result == 'success' &&
       vars.K8S_AUTO_DEPLOY == 'true'
-    # GitHub Environment "staging": shows the deploy history under the repo's
+    # GitHub Environment "staging-workers": shows the deploy history under the repo's
     # Environments tab and can hold staging-only secrets later.
-    environment: staging
+    environment: staging-workers
     # One staging rollout at a time; a newer push waits rather than cancelling a
     # rollout halfway through draining.
     concurrency:
-      group: deploy-staging
+      group: deploy-workers-staging
       cancel-in-progress: false
     steps:
       # Deploy the manifests from the same commit the image was built from.
@@ -117,7 +117,7 @@ jobs:
       - name: Roll out to staging
         uses: ./.github/actions/roll-out-workers
         with:
-          environment: staging
+          environment: staging-workers
           image-digest: ${{ needs.publish.outputs.digest }}
           commit-sha: ${{ needs.publish.outputs.sha }}
           control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}

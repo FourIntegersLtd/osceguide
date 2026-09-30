@@ -1,7 +1,7 @@
 # Opens an SSH connection path to the K3s control plane for the rest of the job.
 #
-# Used by the staging deploy (publish-ghcr.yml) and by "Promote to production"
-# (promote-production.yml). After this step, later steps can run
+# Used by the staging deploy (publish-workers.yml) and by "Promote workers to
+# production" (promote-workers.yml). After this step, later steps can run
 # `ssh "$CONTROL_PLANE_HOST" ...` without handling keys themselves.
 name: Connect to the K3s control plane
 description: Check the deploy secrets, load the SSH key into an agent and trust the host.

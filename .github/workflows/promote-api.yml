@@ -1,0 +1,190 @@
+# Promote the api (platform-api) to production.
+#
+# How changes reach production:
+#   merge to main ──CI green──► Railway staging deploys it by itself
+#   you test on staging ──► press "Run workflow" here ──► production deploys it
+#
+# This workflow never builds or deploys anything itself. It checks that the
+# commit is safe to promote, then fast-forwards the `production-api` branch to it.
+# Railway's production platform-api and platform-worker deploy from that branch,
+# so moving it is what starts the production deploy.
+#
+# The gates, in order (any failure stops the run and production is untouched):
+#   1. the commit is on main;
+#   2. CI api's platform-api job passed on it;
+#   3. staging reports that exact commit and a healthy status on /health;
+#   4. the staging check: a test account signs in on staging and reads its dashboard;
+#   5. production only moves forward (the commit contains what production runs now).
+#
+# Rolling back is not done here: Railway → production → Deployments → the previous
+# deployment → Redeploy (about two minutes). See api/docs/ENVIRONMENT.md.
+#
+# One-time setup, in GitHub → Settings → Environments → `production-api`:
+#   - Required reviewer: the owner (so every promote is approved by a person).
+#   - Variable STAGING_API_URL, e.g. https://staging-api.osceguide.com (no trailing slash).
+#   - Secrets STAGING_CHECK_EMAIL and STAGING_CHECK_PASSWORD: the staging test consumer.
+# If the `production-api` branch is protected, allow GitHub Actions to push to it.
+name: Promote api to production
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Full commit sha to promote. Leave empty to promote whatever staging is running."
+        required: false
+        default: ""
+
+# Only the rights this needs: push the production-api branch, and read CI results.
+permissions:
+  contents: write
+  checks: read
+
+# Two promotes at once could race on the branch; the second waits for the first.
+concurrency:
+  group: promote-api-production
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    name: Promote
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The `production-api` environment holds the reviewer rule, the staging URL and
+    # the staging check's credentials.
+    environment: production-api
+    env:
+      STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # Full history, so the gates can compare the commit with main and production.
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      # Ask staging what it runs. Its answer is also the default commit to promote.
+      - name: Read staging's health
+        id: staging
+        run: |
+          set -euo pipefail
+          if [ -z "${STAGING_API_URL}" ]; then
+            echo "::error::Set the STAGING_API_URL variable on the production-api environment."
+            exit 1
+          fi
+          staging_health=$(curl --fail --silent --show-error --max-time 20 "${STAGING_API_URL}/health")
+          echo "Staging says: ${staging_health}"
+          echo "status=$(echo "${staging_health}" | jq -r '.status')" >> "$GITHUB_OUTPUT"
+          echo "commit=$(echo "${staging_health}" | jq -r '.commit // ""')" >> "$GITHUB_OUTPUT"
+
+      # The commit to promote: the one typed in, or else the one staging runs.
+      - name: Choose the commit
+        id: target
+        env:
+          REQUESTED_SHA: ${{ inputs.sha }}
+          STAGING_COMMIT: ${{ steps.staging.outputs.commit }}
+        run: |
+          set -euo pipefail
+          target_sha="${REQUESTED_SHA:-$STAGING_COMMIT}"
+          if ! [[ "${target_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::'${target_sha}' is not a full 40-character commit sha."
+            exit 1
+          fi
+          echo "sha=${target_sha}" >> "$GITHUB_OUTPUT"
+          echo "Promoting ${target_sha}"
+
+      # Gate 1: only code that went through main can reach production.
+      - name: "Gate 1: the commit is on main"
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if ! git merge-base --is-ancestor "${TARGET_SHA}" origin/main; then
+            echo "::error::${TARGET_SHA} is not on main."
+            exit 1
+          fi
+
+      # Gate 2: CI api's platform-api job ran on this exact commit and passed.
+      - name: "Gate 2: CI passed"
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          ci_conclusion=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${TARGET_SHA}/check-runs?check_name=platform-api" \
+            --jq '[.check_runs[] | select(.status == "completed")][0].conclusion // "missing"')
+          if [ "${ci_conclusion}" != "success" ]; then
+            echo "::error::CI api's platform-api job on ${TARGET_SHA} is '${ci_conclusion}', not 'success'."
+            exit 1
+          fi
+
+      # Gate 3: staging has actually been running this commit, and is healthy.
+      - name: "Gate 3: staging runs this commit"
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+          STAGING_STATUS: ${{ steps.staging.outputs.status }}
+          STAGING_COMMIT: ${{ steps.staging.outputs.commit }}
+        run: |
+          set -euo pipefail
+          if [ "${STAGING_COMMIT}" != "${TARGET_SHA}" ]; then
+            echo "::error::Staging runs '${STAGING_COMMIT}', not ${TARGET_SHA}. Wait for staging to deploy it, or promote what staging runs."
+            exit 1
+          fi
+          if [ "${STAGING_STATUS}" != "ok" ]; then
+            echo "::error::Staging's health is '${STAGING_STATUS}', not 'ok'."
+            exit 1
+          fi
+
+      # Gate 4: the staging check. A real sign-in and a real read, through the
+      # database, as a person would, so a deploy that is "up" but broken is caught.
+      - name: "Gate 4: sign in on staging and read the dashboard"
+        env:
+          STAGING_CHECK_EMAIL: ${{ secrets.STAGING_CHECK_EMAIL }}
+          STAGING_CHECK_PASSWORD: ${{ secrets.STAGING_CHECK_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${STAGING_CHECK_EMAIL}" ] || [ -z "${STAGING_CHECK_PASSWORD}" ]; then
+            echo "::error::Set the STAGING_CHECK_EMAIL and STAGING_CHECK_PASSWORD secrets on the production-api environment."
+            exit 1
+          fi
+          # jq builds the JSON, so a password with quotes or backslashes still arrives intact.
+          login_body=$(jq -n --arg email "${STAGING_CHECK_EMAIL}" --arg password "${STAGING_CHECK_PASSWORD}" \
+            '{email: $email, password: $password}')
+          access_token=$(curl --fail --silent --show-error --max-time 20 \
+            -H "Content-Type: application/json" -d "${login_body}" \
+            "${STAGING_API_URL}/api/v1/auth/login" | jq -r '.access_token')
+          echo "::add-mask::${access_token}"
+          dashboard_status=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 20 \
+            -H "Authorization: Bearer ${access_token}" "${STAGING_API_URL}/api/v1/me/dashboard")
+          if [ "${dashboard_status}" != "200" ]; then
+            echo "::error::The staging dashboard answered ${dashboard_status}, not 200."
+            exit 1
+          fi
+
+      # Gate 5: production only moves forward. If this commit does not contain
+      # what production runs now, promoting it would silently undo changes.
+      - name: "Gate 5: production only moves forward"
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          if git rev-parse --verify --quiet origin/production-api > /dev/null; then
+            if ! git merge-base --is-ancestor origin/production-api "${TARGET_SHA}"; then
+              echo "::error::${TARGET_SHA} does not contain production's current commit. To go back, use Railway's Redeploy instead."
+              exit 1
+            fi
+          fi
+
+      # Every gate passed: fast-forward `production-api`. A plain push (never --force)
+      # fails on its own if the branch could not fast-forward.
+      - name: Move the production-api branch
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git push origin "${TARGET_SHA}:refs/heads/production-api"
+          {
+            echo "### Promoted platform-api to production"
+            echo ""
+            echo "Commit \`${TARGET_SHA}\`. Railway's production platform-api and platform-worker deploy it now."
+            echo "Watch it: Railway → production → platform-api → Deployments."
+            echo "Once live, production's /health reports this commit."
+          } >> "$GITHUB_STEP_SUMMARY"

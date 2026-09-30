@@ -1,20 +1,20 @@
-name: Promote to production
+name: Promote web to production
 
 # The only way the production website changes.
 #
 # How it fits together: Vercel builds every push to `main` onto
-# staging.osceguide.com, and builds the `production` branch as production. This
-# workflow is what moves the `production` branch, and it only moves it to a
+# staging.osceguide.com, and builds the `production-web` branch as production. This
+# workflow is what moves the `production-web` branch, and it only moves it to a
 # commit staging is already serving.
 #
-# How to use it: GitHub → Actions → "Promote to production" → Run workflow (from main).
+# How to use it: GitHub → Actions → "Promote web to production" → Run workflow (from main).
 #   - Leave "commit_sha" empty to promote whatever staging is serving right now.
 #
 # What happens:
 #   1. check works out which commit to ship and refuses unless it is safe: the
 #      commit is on main, it moves production forward, CI passed on it, staging
 #      serves exactly that commit, and staging's sign-in page loads.
-#   2. deploy pushes the commit to the `production` branch (a plain fast-forward,
+#   2. deploy pushes the commit to the `production-web` branch (a plain fast-forward,
 #      never a force push), then waits until production's /version answers with
 #      that commit, which only happens once Vercel's build of it is live.
 #
@@ -40,7 +40,7 @@ permissions: {}
 
 # One promotion at a time, so two runs never race to move the branch.
 concurrency:
-  group: promote-production
+  group: promote-web-production
   cancel-in-progress: false
 
 # Staging is open today (Vercel Deployment Protection is off). Each call to it
@@ -106,8 +106,8 @@ jobs:
         run: |
           git merge-base --is-ancestor "$COMMIT_SHA" origin/main \
             || { echo "${COMMIT_SHA} is not on main. Merge it to main (and let staging serve it) first." >&2; exit 1; }
-          if git rev-parse --verify --quiet origin/production >/dev/null; then
-            git merge-base --is-ancestor origin/production "$COMMIT_SHA" \
+          if git rev-parse --verify --quiet origin/production-web >/dev/null; then
+            git merge-base --is-ancestor origin/production-web "$COMMIT_SHA" \
               || { echo "production has commits that ${COMMIT_SHA} does not; promote a newer commit." >&2; exit 1; }
           fi
           echo "${COMMIT_SHA} is on main and moves production forward."
@@ -117,9 +117,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
         run: |
-          successful_ci_runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$COMMIT_SHA" \
+          successful_ci_runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci-web.yml --commit "$COMMIT_SHA" \
             --status success --json databaseId --jq 'length')"
-          [[ "$successful_ci_runs" -gt 0 ]] || { echo "CI has not passed on ${COMMIT_SHA}." >&2; exit 1; }
+          [[ "$successful_ci_runs" -gt 0 ]] || { echo "CI web has not passed on ${COMMIT_SHA}." >&2; exit 1; }
           echo "CI passed on ${COMMIT_SHA}."
 
       # The heart of the gate: staging must be serving this exact commit, and a
@@ -149,9 +149,9 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: production
+    environment: production-web
     permissions:
-      contents: write # move the production branch
+      contents: write # move the production-web branch
     steps:
       - name: Checkout main with history
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -161,16 +161,16 @@ jobs:
       # A plain push, so git itself refuses anything but a fast-forward. Vercel's
       # GitHub App sees the push (pushes made with GITHUB_TOKEN skip other
       # workflows, not app webhooks) and starts the production build.
-      - name: Move the production branch to the commit
+      - name: Move the production-web branch to the commit
         env:
           COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}
         run: |
-          git push origin "${COMMIT_SHA}:refs/heads/production"
-          echo "production → ${COMMIT_SHA}" >> "$GITHUB_STEP_SUMMARY"
+          git push origin "${COMMIT_SHA}:refs/heads/production-web"
+          echo "production-web → ${COMMIT_SHA}" >> "$GITHUB_STEP_SUMMARY"
 
       # Ask production itself which commit it serves. GitHub's deployment records
-      # are not used: this repo's `production` environment is shared by this job
-      # and Vercel, so the records mix both and cannot say whether the build is
+      # are not used: Vercel writes its own records to this repository, so they
+      # would mix with this job's and cannot say whether the build is
       # live. /version answers {"commit": "<sha>"} from whichever build Vercel is
       # serving, so a match means the new build is live, not just built.
       - name: Wait until production serves the commit

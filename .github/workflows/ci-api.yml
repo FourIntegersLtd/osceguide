@@ -1,0 +1,113 @@
+name: CI api
+
+# platform-api's checks, on every change to api/ or to the marking engine it
+# installs from assessment/packages/osce_assessment.
+#
+# The job keeps the name `platform-api`: "Promote api to production" looks up
+# that check run on the commit it promotes.
+
+on:
+  pull_request:
+    paths:
+      - "api/**"
+      - "assessment/packages/osce_assessment/**"
+      - ".github/workflows/ci-api.yml"
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "assessment/packages/osce_assessment/**"
+      - ".github/workflows/ci-api.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  platform-api:
+    name: platform-api
+    runs-on: ubuntu-latest
+    # Tests run in parallel across the runner's cores (pytest-xdist); each
+    # worker gets its own database, so the 7,000-test suite takes ~5 minutes.
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: api
+    services:
+      postgres:
+        # pgvector, not stock postgres: `7c1e9f40ab52` runs
+        # `CREATE EXTENSION vector`, and on an image without it every database
+        # test dies at `alembic upgrade head` rather than at one assertion.
+        # Keep in step with api/docker-compose.yml and tests/conftest.py.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: osce_platform_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      JWT_SECRET: ci-jwt-secret
+      WORKER_SECRET: ci-worker-secret
+      REDIS_DISABLED: "1"
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/osce_platform_test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@a783c322200f0519c7926aa6faa857c4e23e9263 # v1
+
+      # The engine is a path dependency copied into the venv (`develop = false`),
+      # so its source is part of the key: an engine change must reinstall it.
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: api/.venv
+          key: venv-${{ runner.os }}-py3.11-api-${{ hashFiles('api/poetry.lock', 'assessment/packages/osce_assessment/**') }}
+
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction
+
+      - name: Lint
+        run: |
+          poetry run ruff check .
+          poetry run ruff format --check .
+
+      - name: Type check
+        run: poetry run mypy app
+
+      - name: Architecture rules
+        run: |
+          poetry run lint-imports
+          poetry run python scripts/check_slice_readmes.py
+          poetry run python scripts/check_data_model.py
+
+      - name: Architecture guards
+        run: poetry run pytest -q tests/guards
+
+      - name: Test
+        # `-n auto` runs tests in parallel across the runner's cores; a file
+        # lock in conftest.py prevents concurrent migration races.
+        run: poetry run pytest -q -n auto
+
+      - name: OpenAPI is committed and current
+        run: |
+          poetry run python scripts/export_openapi.py
+          git diff --exit-code -- openapi.json
