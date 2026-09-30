@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import Select, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -367,15 +367,50 @@ async def first_arrival_at(session: AsyncSession, partner: str) -> datetime | No
     return (await session.execute(stmt)).scalar_one()
 
 
+def _narrow_arrivals(stmt: Select[Any], *, exam_code: str | None, utm_campaign: str | None) -> Select[Any]:
+    """Apply b2c's `exam` and `utm_campaign` filters to an arrival query."""
+    if exam_code is not None:
+        stmt = stmt.where(PartnerArrival.exam_code == exam_code)
+    if utm_campaign is not None:
+        stmt = stmt.where(PartnerArrival.utm["utm_campaign"].astext == utm_campaign)
+    return stmt
+
+
+def _narrow_acquisitions(
+    stmt: Select[Any], *, exam_code: str | None, utm_campaign: str | None
+) -> Select[Any]:
+    """Apply b2c's `original_exam` and `original_campaign` filters to an
+    acquisition query. The campaign lives on the arrival that earned the
+    acquisition, so it is matched through `arrival_id` (an acquisition whose
+    arrival was deleted carries no campaign and never matches a campaign filter)."""
+    if exam_code is not None:
+        stmt = stmt.where(Acquisition.exam_code == exam_code)
+    if utm_campaign is not None:
+        stmt = stmt.where(
+            Acquisition.arrival_id.in_(
+                select(PartnerArrival.id).where(PartnerArrival.utm["utm_campaign"].astext == utm_campaign)
+            )
+        )
+    return stmt
+
+
 async def acquired_user_ids_between(
-    session: AsyncSession, partner: str, *, acquired_from: datetime, acquired_before: datetime
+    session: AsyncSession,
+    partner: str,
+    *,
+    acquired_from: datetime,
+    acquired_before: datetime,
+    exam_code: str | None = None,
+    utm_campaign: str | None = None,
 ) -> list[uuid.UUID]:
-    """The people this partner was credited with in a window."""
+    """The people this partner was credited with in a window, optionally narrowed
+    to one exam and/or the campaign that brought them."""
     stmt = select(Acquisition.user_id).where(
         Acquisition.partner == partner,
         Acquisition.acquired_at >= acquired_from,
         Acquisition.acquired_at < acquired_before,
     )
+    stmt = _narrow_acquisitions(stmt, exam_code=exam_code, utm_campaign=utm_campaign)
     return list((await session.execute(stmt)).scalars())
 
 
@@ -383,6 +418,298 @@ async def pilot_config(session: AsyncSession, partner: str) -> PartnerPilotConfi
     """This partner's stored pilot settings, or None while the defaults apply."""
     stmt = select(PartnerPilotConfig).where(PartnerPilotConfig.partner == partner)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def unique_arrival_count(
+    session: AsyncSession,
+    partner: str,
+    *,
+    landed_from: datetime,
+    landed_before: datetime,
+    exam_code: str | None = None,
+    utm_campaign: str | None = None,
+) -> int:
+    """How many distinct visitors landed from this partner's links in a window.
+
+    `count_arrivals_between` counts every visit; a visitor who follows the
+    same link twice inflates that raw count without inflating this one.
+    """
+    stmt = select(func.count(func.distinct(PartnerArrival.visitor_key))).where(
+        PartnerArrival.partner == partner,
+        PartnerArrival.landed_at >= landed_from,
+        PartnerArrival.landed_at < landed_before,
+    )
+    if exam_code is not None:
+        stmt = stmt.where(PartnerArrival.exam_code == exam_code)
+    if utm_campaign is not None:
+        stmt = stmt.where(PartnerArrival.utm["utm_campaign"].astext == utm_campaign)
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def arrivals_page(
+    session: AsyncSession,
+    partner: str,
+    *,
+    landed_from: datetime,
+    landed_before: datetime,
+    exam_code: str | None,
+    utm_campaign: str | None,
+    search: str | None,
+    limit: int,
+    cursor: dict[str, Any] | None,
+) -> tuple[list[PartnerArrival], str | None]:
+    """A partner's raw arrivals in a window, newest first, keyset-paginated.
+
+    `search` matches a fragment of the visitor key or the reference id — the
+    two identifiers a support conversation about one visit is likely to quote.
+    """
+    stmt = select(PartnerArrival).where(
+        PartnerArrival.partner == partner,
+        PartnerArrival.landed_at >= landed_from,
+        PartnerArrival.landed_at < landed_before,
+    )
+    if exam_code is not None:
+        stmt = stmt.where(PartnerArrival.exam_code == exam_code)
+    if utm_campaign is not None:
+        stmt = stmt.where(PartnerArrival.utm["utm_campaign"].astext == utm_campaign)
+    if search:
+        pattern = f"%{search.strip()}%"
+        stmt = stmt.where(PartnerArrival.visitor_key.ilike(pattern) | PartnerArrival.ref_id.ilike(pattern))
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=PartnerArrival.landed_at,
+        id_col=PartnerArrival.id,
+        limit=limit,
+        cursor=cursor,
+        descending=True,
+    )
+
+
+async def acquired_users_page(
+    session: AsyncSession,
+    partner: str,
+    *,
+    acquired_from: datetime,
+    acquired_before: datetime,
+    exam_code: str | None,
+    utm_campaign: str | None,
+    limit: int,
+    cursor: dict[str, Any] | None,
+) -> tuple[list[Acquisition], str | None]:
+    """A partner's acquired users in a window, newest first, keyset-paginated."""
+    stmt = select(Acquisition).where(
+        Acquisition.partner == partner,
+        Acquisition.acquired_at >= acquired_from,
+        Acquisition.acquired_at < acquired_before,
+    )
+    stmt = _narrow_acquisitions(stmt, exam_code=exam_code, utm_campaign=utm_campaign)
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=Acquisition.acquired_at,
+        id_col=Acquisition.id,
+        limit=limit,
+        cursor=cursor,
+        descending=True,
+    )
+
+
+async def arrival_by_id(session: AsyncSession, arrival_id: uuid.UUID) -> PartnerArrival | None:
+    """One arrival by its id, for enriching an acquired-user row with where they landed from."""
+    stmt = select(PartnerArrival).where(PartnerArrival.id == arrival_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def arrivals_by_ids(
+    session: AsyncSession, arrival_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, PartnerArrival]:
+    """Several arrivals in one query, keyed by id — for enriching a page of acquired
+    users without one query per row."""
+    if not arrival_ids:
+        return {}
+    stmt = select(PartnerArrival).where(PartnerArrival.id.in_(list(arrival_ids)))
+    rows = (await session.execute(stmt)).scalars()
+    return {row.id: row for row in rows}
+
+
+async def reporters_for_partner(session: AsyncSession, partner: str) -> list[PartnerReporter]:
+    """Every reporter ever granted access to this partner, active or revoked, newest first."""
+    stmt = (
+        select(PartnerReporter)
+        .where(PartnerReporter.partner == partner)
+        .order_by(PartnerReporter.created_at.desc())
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def revoke_reporter(session: AsyncSession, *, partner: str, email: str) -> bool:
+    """Take away this email's reporting access to one partner.
+
+    Returns True if a live grant existed to revoke; False if it was already
+    revoked or never existed, so the caller can answer `not_found` honestly.
+    """
+    result = await session.execute(
+        update(PartnerReporter)
+        .where(
+            PartnerReporter.partner == partner,
+            PartnerReporter.email == email,
+            PartnerReporter.revoked_at.is_(None),
+        )
+        .values(revoked_at=func.now())
+    )
+    return bool(getattr(result, "rowcount", 0))
+
+
+async def arrivals_over_time(
+    session: AsyncSession,
+    partner: str,
+    *,
+    landed_from: datetime,
+    landed_before: datetime,
+    exam_code: str | None,
+    utm_campaign: str | None,
+    bucket: str,
+) -> list[tuple[datetime, int]]:
+    """Raw arrival counts per `date_trunc(bucket, landed_at)` bucket.
+
+    Only the buckets with at least one arrival; the caller (`service_dashboard`)
+    gap-fills the empty ones so a chart's x-axis is continuous. `bucket` is
+    `day`, `week` or `month`, passed straight to Postgres, so the caller must
+    have already validated it.
+    """
+    period = func.date_trunc(bucket, PartnerArrival.landed_at).label("period")
+    stmt = (
+        select(period, func.count(PartnerArrival.id))
+        .where(
+            PartnerArrival.partner == partner,
+            PartnerArrival.landed_at >= landed_from,
+            PartnerArrival.landed_at < landed_before,
+        )
+        .group_by(period)
+        .order_by(period)
+    )
+    if exam_code is not None:
+        stmt = stmt.where(PartnerArrival.exam_code == exam_code)
+    if utm_campaign is not None:
+        stmt = stmt.where(PartnerArrival.utm["utm_campaign"].astext == utm_campaign)
+    rows = (await session.execute(stmt)).all()
+    return [(period_start, int(count)) for period_start, count in rows]
+
+
+async def acquisitions_over_time(
+    session: AsyncSession,
+    partner: str,
+    *,
+    acquired_from: datetime,
+    acquired_before: datetime,
+    exam_code: str | None,
+    utm_campaign: str | None,
+    bucket: str,
+) -> list[tuple[datetime, int]]:
+    """Signup counts per `date_trunc(bucket, acquired_at)` bucket. Only the buckets
+    with at least one acquisition; the caller gap-fills the rest."""
+    period = func.date_trunc(bucket, Acquisition.acquired_at).label("period")
+    stmt = (
+        select(period, func.count(Acquisition.id))
+        .where(
+            Acquisition.partner == partner,
+            Acquisition.acquired_at >= acquired_from,
+            Acquisition.acquired_at < acquired_before,
+        )
+        .group_by(period)
+        .order_by(period)
+    )
+    stmt = _narrow_acquisitions(stmt, exam_code=exam_code, utm_campaign=utm_campaign)
+    rows = (await session.execute(stmt)).all()
+    return [(period_start, int(count)) for period_start, count in rows]
+
+
+async def visits_by_exam(
+    session: AsyncSession,
+    partner: str,
+    *,
+    landed_from: datetime,
+    landed_before: datetime,
+    exam_code: str | None = None,
+    utm_campaign: str | None = None,
+) -> dict[str, int]:
+    """Raw arrival counts per exam in a window, keyed by exam code ("unknown"
+    for an arrival whose reference named no pilot exam)."""
+    stmt = (
+        select(PartnerArrival.exam_code, func.count(PartnerArrival.id))
+        .where(
+            PartnerArrival.partner == partner,
+            PartnerArrival.landed_at >= landed_from,
+            PartnerArrival.landed_at < landed_before,
+        )
+        .group_by(PartnerArrival.exam_code)
+    )
+    stmt = _narrow_arrivals(stmt, exam_code=exam_code, utm_campaign=utm_campaign)
+    rows = (await session.execute(stmt)).all()
+    return {(exam_code or "unknown"): int(count) for exam_code, count in rows}
+
+
+async def visits_by_campaign(
+    session: AsyncSession,
+    partner: str,
+    *,
+    landed_from: datetime,
+    landed_before: datetime,
+    exam_code: str | None = None,
+    utm_campaign: str | None = None,
+) -> dict[str, int]:
+    """Raw arrival counts per UTM campaign in a window, keyed by campaign
+    ("unknown" for an arrival with no campaign tag). Every campaign is returned;
+    the caller keeps the top ten after merging in the signup side."""
+    campaign = PartnerArrival.utm["utm_campaign"].astext.label("campaign")
+    stmt = (
+        select(campaign, func.count(PartnerArrival.id))
+        .where(
+            PartnerArrival.partner == partner,
+            PartnerArrival.landed_at >= landed_from,
+            PartnerArrival.landed_at < landed_before,
+        )
+        .group_by(campaign)
+    )
+    stmt = _narrow_arrivals(stmt, exam_code=exam_code, utm_campaign=utm_campaign)
+    rows = (await session.execute(stmt)).all()
+    return {(campaign_value or "unknown"): int(count) for campaign_value, count in rows}
+
+
+async def acquisitions_with_campaign(
+    session: AsyncSession,
+    partner: str,
+    *,
+    acquired_from: datetime,
+    acquired_before: datetime,
+    exam_code: str | None = None,
+    utm_campaign: str | None = None,
+) -> list[tuple[uuid.UUID, str, str]]:
+    """This partner's acquisitions in a window, each with the exam and UTM campaign
+    of the arrival that earned it — for the partner-safe breakdown tables.
+
+    A left join on `arrival_id`: an acquisition whose arrival has since been
+    deleted (`SET NULL`) still counts, against "unknown" for both dimensions,
+    rather than vanishing from the signup breakdown.
+    """
+    stmt = (
+        select(
+            Acquisition.user_id,
+            Acquisition.exam_code,
+            PartnerArrival.utm["utm_campaign"].astext,
+        )
+        .select_from(Acquisition)
+        .outerjoin(PartnerArrival, PartnerArrival.id == Acquisition.arrival_id)
+        .where(
+            Acquisition.partner == partner,
+            Acquisition.acquired_at >= acquired_from,
+            Acquisition.acquired_at < acquired_before,
+        )
+    )
+    stmt = _narrow_acquisitions(stmt, exam_code=exam_code, utm_campaign=utm_campaign)
+    rows = (await session.execute(stmt)).all()
+    return [(user_id, row_exam or "unknown", campaign or "unknown") for user_id, row_exam, campaign in rows]
 
 
 async def save_pilot_config(session: AsyncSession, partner: str, **values: Any) -> PartnerPilotConfig:

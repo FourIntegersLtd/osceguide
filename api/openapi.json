@@ -35,6 +35,168 @@
         "title": "AchievementsRead",
         "type": "object"
       },
+      "AcquiredRevenueReport": {
+        "description": "What the people a partner was credited with acquiring have paid, gross.",
+        "properties": {
+          "acquired_user_count": {
+            "title": "Acquired User Count",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "gbp",
+            "title": "Currency",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "gross_revenue_pence": {
+            "title": "Gross Revenue Pence",
+            "type": "integer"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "paying_user_count": {
+            "title": "Paying User Count",
+            "type": "integer"
+          },
+          "payment_count": {
+            "title": "Payment Count",
+            "type": "integer"
+          },
+          "revenue_by_plan": {
+            "items": {
+              "$ref": "#/components/schemas/RevenueByPlanRow"
+            },
+            "title": "Revenue By Plan",
+            "type": "array"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "acquired_user_count",
+          "paying_user_count",
+          "payment_count",
+          "gross_revenue_pence",
+          "revenue_by_plan"
+        ],
+        "title": "AcquiredRevenueReport",
+        "type": "object"
+      },
+      "AcquiredUserRow": {
+        "description": "One row of the admin \"recent activity\" acquired-users table.",
+        "properties": {
+          "acquired_at": {
+            "format": "date-time",
+            "title": "Acquired At",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "original_ref_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Ref Id"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          },
+          "utm_medium": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Medium"
+          },
+          "visitor_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visitor Key"
+          }
+        },
+        "required": [
+          "user_id",
+          "exam_code",
+          "utm_medium",
+          "utm_campaign",
+          "original_ref_id",
+          "acquired_at",
+          "visitor_key"
+        ],
+        "title": "AcquiredUserRow",
+        "type": "object"
+      },
       "AcquisitionRead": {
         "properties": {
           "acquired_at": {
@@ -248,6 +410,92 @@
           "exam_code"
         ],
         "title": "ArrivalRecorded",
+        "type": "object"
+      },
+      "ArrivalRow": {
+        "description": "One row of the admin \"recent activity\" arrivals table.",
+        "properties": {
+          "arrival_id": {
+            "format": "uuid",
+            "title": "Arrival Id",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "landed_at": {
+            "format": "date-time",
+            "title": "Landed At",
+            "type": "string"
+          },
+          "landing_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landing Path"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          },
+          "utm_medium": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Medium"
+          },
+          "visitor_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Visitor Key"
+          }
+        },
+        "required": [
+          "arrival_id",
+          "partner",
+          "exam_code",
+          "utm_medium",
+          "utm_campaign",
+          "landing_path",
+          "visitor_key",
+          "landed_at"
+        ],
+        "title": "ArrivalRow",
         "type": "object"
       },
       "AssessmentResultRead": {
@@ -2814,6 +3062,86 @@
         "title": "CopyRubric",
         "type": "object"
       },
+      "CountOverTimePoint": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "period": {
+            "format": "date",
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "count"
+        ],
+        "title": "CountOverTimePoint",
+        "type": "object"
+      },
+      "CountOverTimeReport": {
+        "description": "A partner's visits or signups, bucketed \u2014 no money in it, so this is\nsafe for partner mode as well as admin.",
+        "properties": {
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/CountOverTimePoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "bucket",
+          "points"
+        ],
+        "title": "CountOverTimeReport",
+        "type": "object"
+      },
       "CoverageItemRead": {
         "properties": {
           "competency_id": {
@@ -3923,6 +4251,85 @@
         "title": "DashboardExam",
         "type": "object"
       },
+      "DashboardSummaryRead": {
+        "description": "The admin overview tab: every KPI, at a glance, for one range.",
+        "properties": {
+          "acquired_user_count": {
+            "title": "Acquired User Count",
+            "type": "integer"
+          },
+          "anomalies": {
+            "$ref": "#/components/schemas/PartnerAnomalyReport"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "raw_arrival_count": {
+            "title": "Raw Arrival Count",
+            "type": "integer"
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/LandingReconciliationRead"
+          },
+          "revenue": {
+            "$ref": "#/components/schemas/AcquiredRevenueReport"
+          },
+          "spend": {
+            "$ref": "#/components/schemas/PartnerSpendRead"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          },
+          "unique_arrival_count": {
+            "title": "Unique Arrival Count",
+            "type": "integer"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "raw_arrival_count",
+          "unique_arrival_count",
+          "acquired_user_count",
+          "reconciliation",
+          "revenue",
+          "spend",
+          "anomalies"
+        ],
+        "title": "DashboardSummaryRead",
+        "type": "object"
+      },
       "DebriefSummaryRead": {
         "properties": {
           "action_plan": {
@@ -4869,6 +5276,7 @@
               "invalid_audience",
               "invalid_author_filter",
               "invalid_avatar_file",
+              "invalid_bucket",
               "invalid_circuit",
               "invalid_credentials",
               "invalid_cv_file",
@@ -4964,6 +5372,7 @@
               "referral_discount_unavailable",
               "referral_not_found",
               "referral_not_redeemed",
+              "reporter_not_found",
               "result_not_found",
               "result_not_released",
               "review_conflict",
@@ -5641,6 +6050,100 @@
         "title": "FailAttemptRequest",
         "type": "object"
       },
+      "FeeOverTimePoint": {
+        "properties": {
+          "estimated_fee_pence": {
+            "title": "Estimated Fee Pence",
+            "type": "integer"
+          },
+          "period": {
+            "format": "date",
+            "title": "Period",
+            "type": "string"
+          },
+          "visit_count": {
+            "title": "Visit Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "period",
+          "visit_count",
+          "estimated_fee_pence"
+        ],
+        "title": "FeeOverTimePoint",
+        "type": "object"
+      },
+      "FeeOverTimeReport": {
+        "properties": {
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "cost_per_click_pence": {
+            "title": "Cost Per Click Pence",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "gbp",
+            "title": "Currency",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/FeeOverTimePoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "bucket",
+          "cost_per_click_pence",
+          "points"
+        ],
+        "title": "FeeOverTimeReport",
+        "type": "object"
+      },
       "FinalizeCircuitReview": {
         "properties": {
           "merged_notes": {
@@ -5788,6 +6291,13 @@
           "signups": {
             "title": "Signups",
             "type": "integer"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/FunnelStepCount"
+            },
+            "title": "Steps",
+            "type": "array"
           }
         },
         "required": [
@@ -5799,6 +6309,37 @@
           "purchase_rate"
         ],
         "title": "FunnelRead",
+        "type": "object"
+      },
+      "FunnelStepCount": {
+        "description": "One stage of the funnel, for the chart's x-axis. `count` is null only\nfor a stage this range genuinely has no reading for, never for zero.",
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step",
+          "event",
+          "count"
+        ],
+        "title": "FunnelStepCount",
         "type": "object"
       },
       "GenerateResult": {
@@ -8735,6 +9276,60 @@
         "title": "Override",
         "type": "object"
       },
+      "Page_AcquiredUserRow_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AcquiredUserRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[AcquiredUserRow]",
+        "type": "object"
+      },
+      "Page_ArrivalRow_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ArrivalRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[ArrivalRow]",
+        "type": "object"
+      },
       "Page_AssessmentResultRead_": {
         "properties": {
           "items": {
@@ -9786,6 +10381,227 @@
           "items"
         ],
         "title": "Page[str]",
+        "type": "object"
+      },
+      "PartnerAnomaly": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "metric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "title",
+          "detail"
+        ],
+        "title": "PartnerAnomaly",
+        "type": "object"
+      },
+      "PartnerAnomalyReport": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PartnerAnomaly"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "count",
+          "items"
+        ],
+        "title": "PartnerAnomalyReport",
+        "type": "object"
+      },
+      "PartnerBreakdownRow": {
+        "description": "One exam or campaign's visits, signups and payments, for a partner's\nown \"Performance\" tab. Never any money \u2014 pure counts.",
+        "properties": {
+          "dimension": {
+            "title": "Dimension",
+            "type": "string"
+          },
+          "paid_count": {
+            "title": "Paid Count",
+            "type": "integer"
+          },
+          "signup_count": {
+            "title": "Signup Count",
+            "type": "integer"
+          },
+          "visit_count": {
+            "title": "Visit Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension",
+          "visit_count",
+          "signup_count",
+          "paid_count"
+        ],
+        "title": "PartnerBreakdownRow",
+        "type": "object"
+      },
+      "PartnerDashboardSummaryRead": {
+        "description": "The partner-mode overview: fee-framed, never revenue-framed.\n\nDeliberately carries no `revenue`, `gross_revenue_pence`, `net_margin_pence`\nor `spend` field \u2014 a partner reporter must never see what its own traffic\nis worth to us, only what it is owed on its clicks (`fee`).",
+        "properties": {
+          "acquired_user_count": {
+            "title": "Acquired User Count",
+            "type": "integer"
+          },
+          "breakdown_by_campaign": {
+            "items": {
+              "$ref": "#/components/schemas/PartnerBreakdownRow"
+            },
+            "title": "Breakdown By Campaign",
+            "type": "array"
+          },
+          "breakdown_by_exam": {
+            "items": {
+              "$ref": "#/components/schemas/PartnerBreakdownRow"
+            },
+            "title": "Breakdown By Exam",
+            "type": "array"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "fee": {
+            "$ref": "#/components/schemas/PartnerFeeSummary"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "paying_user_count": {
+            "title": "Paying User Count",
+            "type": "integer"
+          },
+          "raw_arrival_count": {
+            "title": "Raw Arrival Count",
+            "type": "integer"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          },
+          "unique_arrival_count": {
+            "title": "Unique Arrival Count",
+            "type": "integer"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "raw_arrival_count",
+          "unique_arrival_count",
+          "acquired_user_count",
+          "paying_user_count",
+          "fee",
+          "breakdown_by_exam",
+          "breakdown_by_campaign"
+        ],
+        "title": "PartnerDashboardSummaryRead",
+        "type": "object"
+      },
+      "PartnerFeeSummary": {
+        "description": "What a partner is estimated to be owed on its own clicks \u2014 never what it\nbrought in. The partner-mode twin of `PartnerSpendRead`, revenue omitted.",
+        "properties": {
+          "billing_disclaimer": {
+            "default": "This is a rough estimate only. We count link visits on OSCE Guide and multiply by our agreed rate per visit. BMJ invoices based on their own click records, so this won't match what they bill you.",
+            "title": "Billing Disclaimer",
+            "type": "string"
+          },
+          "click_count_source": {
+            "default": "osce_raw_arrivals_proxy",
+            "title": "Click Count Source",
+            "type": "string"
+          },
+          "cost_per_click_pence": {
+            "title": "Cost Per Click Pence",
+            "type": "integer"
+          },
+          "currency": {
+            "default": "gbp",
+            "title": "Currency",
+            "type": "string"
+          },
+          "estimated_click_count": {
+            "title": "Estimated Click Count",
+            "type": "integer"
+          },
+          "estimated_spend_pence": {
+            "title": "Estimated Spend Pence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "estimated_click_count",
+          "cost_per_click_pence",
+          "estimated_spend_pence"
+        ],
+        "title": "PartnerFeeSummary",
         "type": "object"
       },
       "PartnerSpendRead": {
@@ -12846,6 +13662,44 @@
         "title": "ReportTotals",
         "type": "object"
       },
+      "ReporterRead": {
+        "description": "One partner reporter, for the admin Access tab.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          }
+        },
+        "required": [
+          "email",
+          "partner",
+          "created_at",
+          "revoked_at"
+        ],
+        "title": "ReporterRead",
+        "type": "object"
+      },
       "RescoreRequest": {
         "description": "Re-queue the marking. Left empty, under the policy the attempt was\nfrozen with; named, under another one, whose result sits beside the old.",
         "properties": {
@@ -13031,6 +13885,119 @@
           "critical_count"
         ],
         "title": "ResultTotalsRead",
+        "type": "object"
+      },
+      "RevenueByPlanRow": {
+        "description": "One plan's contribution to a partner's acquired revenue.\n\n`plan_type` is `\"unknown\"` for a payment whose plan has since been\ndeleted (`Payment.plan_id` is `SET NULL`), never dropped from the total.",
+        "properties": {
+          "gross_revenue_pence": {
+            "title": "Gross Revenue Pence",
+            "type": "integer"
+          },
+          "payment_count": {
+            "title": "Payment Count",
+            "type": "integer"
+          },
+          "plan_type": {
+            "title": "Plan Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_type",
+          "payment_count",
+          "gross_revenue_pence"
+        ],
+        "title": "RevenueByPlanRow",
+        "type": "object"
+      },
+      "RevenueOverTimePoint": {
+        "properties": {
+          "gross_revenue_pence": {
+            "title": "Gross Revenue Pence",
+            "type": "integer"
+          },
+          "payment_count": {
+            "title": "Payment Count",
+            "type": "integer"
+          },
+          "period": {
+            "format": "date",
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "gross_revenue_pence",
+          "payment_count"
+        ],
+        "title": "RevenueOverTimePoint",
+        "type": "object"
+      },
+      "RevenueOverTimeReport": {
+        "properties": {
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "currency": {
+            "default": "gbp",
+            "title": "Currency",
+            "type": "string"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
+          "from_date": {
+            "format": "date",
+            "title": "From Date",
+            "type": "string"
+          },
+          "partner": {
+            "title": "Partner",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/RevenueOverTimePoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "to_date": {
+            "format": "date",
+            "title": "To Date",
+            "type": "string"
+          },
+          "utm_campaign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Campaign"
+          }
+        },
+        "required": [
+          "partner",
+          "from_date",
+          "to_date",
+          "bucket",
+          "points"
+        ],
+        "title": "RevenueOverTimeReport",
         "type": "object"
       },
       "ReviewFieldRead": {
@@ -24143,9 +25110,356 @@
         ]
       }
     },
+    "/api/v1/growth/partners/{partner}/acquired-users": {
+      "get": {
+        "operationId": "growth_list_dashboard_acquired_users",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AcquiredUserRow_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Dashboard Acquired Users",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/arrivals": {
+      "get": {
+        "operationId": "growth_list_dashboard_arrivals",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          },
+          {
+            "description": "A fragment of the visitor key or reference id.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A fragment of the visitor key or reference id.",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_ArrivalRow_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Dashboard Arrivals",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
     "/api/v1/growth/partners/{partner}/funnel": {
       "get": {
-        "description": "A partner's funnel: arrivals, signups and purchases. Reporter-gated per partner.",
+        "description": "A partner's funnel: arrivals, signups and purchases. Reporter-gated per partner.\n\nWith no range, this is the whole pilot to date; a range plus an optional\nexam or campaign filter narrows every count to match.",
         "operationId": "growth_read_funnel",
         "parameters": [
           {
@@ -24155,6 +25469,78 @@
             "schema": {
               "title": "Partner",
               "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inclusive UTC date",
+              "title": "From Date"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Inclusive UTC date",
+              "title": "To Date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
             }
           }
         ],
@@ -24213,11 +25599,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
           }
         },
         "security": [
@@ -24608,6 +25997,81 @@
       }
     },
     "/api/v1/growth/partners/{partner}/reporters": {
+      "get": {
+        "operationId": "growth_list_dashboard_reporters",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReporterRead"
+                  },
+                  "title": "Response Growth List Dashboard Reporters",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Dashboard Reporters",
+        "tags": [
+          "growth"
+        ]
+      },
       "post": {
         "description": "Platform admin only: partners do not appoint their own reporters.",
         "operationId": "growth_add_reporter",
@@ -24679,6 +26143,995 @@
           }
         ],
         "summary": "Add Reporter",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/reporters/{email}": {
+      "delete": {
+        "operationId": "growth_revoke_dashboard_reporter",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "email",
+            "required": true,
+            "schema": {
+              "title": "Email",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner, reporter_not_found",
+            "x-codes": [
+              "unknown_partner",
+              "reporter_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Revoke Dashboard Reporter",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/reporting/fee-over-time": {
+      "get": {
+        "operationId": "growth_read_partner_fee_over_time",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "day, week or month",
+            "in": "query",
+            "name": "bucket",
+            "required": false,
+            "schema": {
+              "default": "day",
+              "description": "day, week or month",
+              "title": "Bucket",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeOverTimeReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_partner_reporter",
+            "x-codes": [
+              "not_a_partner_reporter"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range, invalid_bucket",
+            "x-codes": [
+              "invalid_date_range",
+              "invalid_bucket"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Partner Fee Over Time",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/reporting/signups-over-time": {
+      "get": {
+        "operationId": "growth_read_partner_signups_over_time",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "day, week or month",
+            "in": "query",
+            "name": "bucket",
+            "required": false,
+            "schema": {
+              "default": "day",
+              "description": "day, week or month",
+              "title": "Bucket",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountOverTimeReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_partner_reporter",
+            "x-codes": [
+              "not_a_partner_reporter"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range, invalid_bucket",
+            "x-codes": [
+              "invalid_date_range",
+              "invalid_bucket"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Partner Signups Over Time",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/reporting/summary": {
+      "get": {
+        "description": "A partner's own view of its pilot: visits, signups, its own fee. No revenue, ever.",
+        "operationId": "growth_read_partner_reporting_summary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartnerDashboardSummaryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_partner_reporter",
+            "x-codes": [
+              "not_a_partner_reporter"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Partner Reporting Summary",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/reporting/visits-over-time": {
+      "get": {
+        "operationId": "growth_read_partner_visits_over_time",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "day, week or month",
+            "in": "query",
+            "name": "bucket",
+            "required": false,
+            "schema": {
+              "default": "day",
+              "description": "day, week or month",
+              "title": "Bucket",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountOverTimeReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_partner_reporter",
+            "x-codes": [
+              "not_a_partner_reporter"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range, invalid_bucket",
+            "x-codes": [
+              "invalid_date_range",
+              "invalid_bucket"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Partner Visits Over Time",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/revenue": {
+      "get": {
+        "operationId": "growth_read_dashboard_revenue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcquiredRevenueReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range",
+            "x-codes": [
+              "invalid_date_range"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Dashboard Revenue",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/revenue-over-time": {
+      "get": {
+        "operationId": "growth_read_dashboard_revenue_over_time",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "day, week or month",
+            "in": "query",
+            "name": "bucket",
+            "required": false,
+            "schema": {
+              "default": "day",
+              "description": "day, week or month",
+              "title": "Bucket",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevenueOverTimeReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range, invalid_bucket",
+            "x-codes": [
+              "invalid_date_range",
+              "invalid_bucket"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Dashboard Revenue Over Time",
         "tags": [
           "growth"
         ]
@@ -24779,6 +27232,141 @@
           }
         ],
         "summary": "Read Partner Spend",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
+    "/api/v1/growth/partners/{partner}/summary": {
+      "get": {
+        "operationId": "growth_read_dashboard_summary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "partner",
+            "required": true,
+            "schema": {
+              "title": "Partner",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "from_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "From Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Inclusive UTC date",
+            "in": "query",
+            "name": "to_date",
+            "required": true,
+            "schema": {
+              "description": "Inclusive UTC date",
+              "format": "date",
+              "title": "To Date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exam Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "utm_campaign",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Utm Campaign"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummaryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unknown_partner",
+            "x-codes": [
+              "unknown_partner"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_date_range, exam_not_in_pilot",
+            "x-codes": [
+              "invalid_date_range",
+              "exam_not_in_pilot"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Dashboard Summary",
         "tags": [
           "growth"
         ]

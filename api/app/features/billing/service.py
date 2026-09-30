@@ -206,3 +206,40 @@ async def revenue_for_users(
 ) -> int:
     """For a partner's spend report: what the people it sent paid in the window, gross."""
     return await repository.revenue_for_users(session, user_ids, paid_from=paid_from, paid_before=paid_before)
+
+
+async def payer_user_ids_among(
+    session: AsyncSession, user_ids: list[uuid.UUID], *, paid_from: datetime, paid_before: datetime
+) -> set[uuid.UUID]:
+    """For a partner breakdown: which of these acquired users paid at least once in the window."""
+    return await repository.payer_user_ids_among(
+        session, user_ids, paid_from=paid_from, paid_before=paid_before
+    )
+
+
+async def revenue_breakdown_for_users(
+    session: AsyncSession, user_ids: list[uuid.UUID], *, paid_from: datetime, paid_before: datetime
+) -> list[tuple[str | None, int, int]]:
+    """For a partner's revenue report: what these people paid in the window, split by
+    plan code. A `None` plan code is a payment whose plan has since been deleted."""
+    return await repository.revenue_breakdown_for_users(
+        session, user_ids, paid_from=paid_from, paid_before=paid_before
+    )
+
+
+async def revenue_over_time_for_users(
+    session: AsyncSession,
+    user_ids: list[uuid.UUID],
+    *,
+    paid_from: datetime,
+    paid_before: datetime,
+    bucket: str,
+) -> list[tuple[datetime, int, int]]:
+    """For a partner's revenue-over-time chart: gross revenue and payment count per bucket.
+
+    `bucket` is `day`, `week` or `month` — passed straight to Postgres'
+    `date_trunc`, so the caller must have already validated it.
+    """
+    return await repository.revenue_over_time_for_users(
+        session, user_ids, paid_from=paid_from, paid_before=paid_before, bucket=bucket
+    )

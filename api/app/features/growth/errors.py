@@ -78,3 +78,22 @@ class InvalidDateRangeError(InvalidInput):
 
     code = "invalid_date_range"
     default_message = "from_date must be on or before to_date"
+
+
+class InvalidBucketError(InvalidInput):
+    """A chart's `bucket` query param named none of `day`, `week` or `month`."""
+
+    code = "invalid_bucket"
+    default_message = "bucket must be one of day, week or month"
+
+
+class ReporterNotFound(NotFound):
+    """No live reporting grant exists for that partner and email.
+
+    Distinct from `NotAReporter`: this is the admin's view, refusing to
+    revoke a grant that either never existed or was already revoked, so a
+    double-click cannot look like it worked twice.
+    """
+
+    code = "reporter_not_found"
+    default_message = "No reporting access exists for that email"

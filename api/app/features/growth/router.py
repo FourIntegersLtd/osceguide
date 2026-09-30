@@ -16,7 +16,7 @@ from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, EventCounts
 from app.core.rate_limit import USER_WRITE, TooManyRequests, per_user
 from app.core.tenancy import PlatformAdmin
-from app.features.growth import errors, schemas, service, service_payouts, service_spend
+from app.features.growth import errors, schemas, service, service_dashboard, service_payouts, service_spend
 
 router = APIRouter(tags=["growth"])
 
@@ -44,17 +44,38 @@ async def record_arrival(body: schemas.RecordArrival, session: Session) -> schem
 @router.get(
     "/growth/partners/{partner}/funnel",
     response_model=schemas.FunnelRead,
-    responses=error_responses(Unauthenticated, errors.NotAReporter, errors.UnknownPartnerError),
+    responses=error_responses(
+        Unauthenticated, errors.NotAReporter, errors.UnknownPartnerError, errors.InvalidDateRangeError
+    ),
 )
-async def read_funnel(partner: str, principal: CurrentPrincipal, session: Session) -> schemas.FunnelRead:
-    """A partner's funnel: arrivals, signups and purchases. Reporter-gated per partner."""
+async def read_funnel(
+    partner: str,
+    principal: CurrentPrincipal,
+    session: Session,
+    from_date: Annotated[date | None, Query(description="Inclusive UTC date")] = None,
+    to_date: Annotated[date | None, Query(description="Inclusive UTC date")] = None,
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.FunnelRead:
+    """A partner's funnel: arrivals, signups and purchases. Reporter-gated per partner.
+
+    With no range, this is the whole pilot to date; a range plus an optional
+    exam or campaign filter narrows every count to match.
+    """
     await service.ensure_reporter(
         session,
         partner=partner.strip().lower(),
         email=principal.email,
         is_platform_admin=principal.is_platform_admin,
     )
-    return await service.read_funnel(session, partner=partner)
+    return await service.read_funnel(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+    )
 
 
 @router.post(
@@ -290,3 +311,335 @@ async def update_pilot_config(
 ) -> schemas.PilotConfigRead:
     _ = admin
     return await service_spend.update_config(session, partner=partner, changes=body)
+
+
+# --- the BMJ dashboard: admin (PlatformAdmin-gated) --------------------------
+
+DASHBOARD_ERRORS = (
+    Forbidden,
+    errors.UnknownPartnerError,
+    errors.InvalidDateRangeError,
+    errors.ExamNotInPilotError,
+)
+
+
+# The admin Overview tab: every KPI for one range, in a single call.
+@router.get(
+    "/growth/partners/{partner}/summary",
+    response_model=schemas.DashboardSummaryRead,
+    responses=error_responses(*DASHBOARD_ERRORS),
+)
+async def read_dashboard_summary(
+    partner: str,
+    admin: PlatformAdmin,
+    session: Session,
+    event_counts: Annotated[EventCounts, Depends(service_spend.get_event_counts)],
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.DashboardSummaryRead:
+    _ = admin
+    return await service_dashboard.read_summary(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+        event_counts=event_counts,
+    )
+
+
+# The admin Revenue tab's headline numbers.
+@router.get(
+    "/growth/partners/{partner}/revenue",
+    response_model=schemas.AcquiredRevenueReport,
+    responses=error_responses(Forbidden, errors.UnknownPartnerError, errors.InvalidDateRangeError),
+)
+async def read_dashboard_revenue(
+    partner: str,
+    admin: PlatformAdmin,
+    session: Session,
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.AcquiredRevenueReport:
+    _ = admin
+    return await service_dashboard.read_revenue(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+    )
+
+
+# The admin Revenue tab's chart, gaps filled so the x-axis is continuous.
+@router.get(
+    "/growth/partners/{partner}/revenue-over-time",
+    response_model=schemas.RevenueOverTimeReport,
+    responses=error_responses(
+        Forbidden, errors.UnknownPartnerError, errors.InvalidDateRangeError, errors.InvalidBucketError
+    ),
+)
+async def read_dashboard_revenue_over_time(
+    partner: str,
+    admin: PlatformAdmin,
+    session: Session,
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    bucket: Annotated[str, Query(description="day, week or month")] = "day",
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.RevenueOverTimeReport:
+    _ = admin
+    return await service_dashboard.read_revenue_over_time(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+        bucket=bucket,
+    )
+
+
+# The admin "recent activity" arrivals table, paginated and searchable.
+@router.get(
+    "/growth/partners/{partner}/arrivals",
+    response_model=Page[schemas.ArrivalRow],
+    responses=error_responses(Forbidden, errors.UnknownPartnerError, errors.InvalidDateRangeError),
+)
+async def list_dashboard_arrivals(
+    partner: str,
+    admin: PlatformAdmin,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+    search: Annotated[
+        str | None, Query(max_length=300, description="A fragment of the visitor key or reference id.")
+    ] = None,
+) -> Page[schemas.ArrivalRow]:
+    _ = admin
+    rows, next_cursor = await service_dashboard.list_arrivals(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+        search=search,
+        limit=page.limit,
+        cursor=page.cursor,
+    )
+    return Page(items=rows, next_cursor=next_cursor)
+
+
+# The admin "recent activity" acquired-users table, paginated.
+@router.get(
+    "/growth/partners/{partner}/acquired-users",
+    response_model=Page[schemas.AcquiredUserRow],
+    responses=error_responses(Forbidden, errors.UnknownPartnerError, errors.InvalidDateRangeError),
+)
+async def list_dashboard_acquired_users(
+    partner: str,
+    admin: PlatformAdmin,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> Page[schemas.AcquiredUserRow]:
+    _ = admin
+    rows, next_cursor = await service_dashboard.list_acquired_users(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+        limit=page.limit,
+        cursor=page.cursor,
+    )
+    return Page(items=rows, next_cursor=next_cursor)
+
+
+# The admin Access tab: every reporter ever granted access to one partner.
+@router.get(
+    "/growth/partners/{partner}/reporters",
+    response_model=list[schemas.ReporterRead],
+    responses=error_responses(Forbidden, errors.UnknownPartnerError),
+)
+async def list_dashboard_reporters(
+    partner: str, admin: PlatformAdmin, session: Session
+) -> list[schemas.ReporterRead]:
+    _ = admin
+    return await service_dashboard.list_reporters(session, partner=partner)
+
+
+# Take away a reporter's access to one partner.
+@router.delete(
+    "/growth/partners/{partner}/reporters/{email}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.UnknownPartnerError, errors.ReporterNotFound),
+)
+async def revoke_dashboard_reporter(
+    partner: str, email: str, admin: PlatformAdmin, session: Session
+) -> Response:
+    _ = admin
+    await service_dashboard.revoke_reporter(session, partner=partner, email=email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- the BMJ dashboard: partner mode (reporter-gated, never any money) ------
+
+
+async def _ensure_partner_reporter(
+    session: AsyncSession, *, partner: str, principal: CurrentPrincipal
+) -> None:
+    """The one gate every `reporting/*` route shares: a reporter for this
+    partner, or a platform admin standing in for one."""
+    await service.ensure_reporter(
+        session,
+        partner=partner.strip().lower(),
+        email=principal.email,
+        is_platform_admin=principal.is_platform_admin,
+    )
+
+
+# The partner-mode Overview tab: fee-framed, never revenue-framed.
+@router.get(
+    "/growth/partners/{partner}/reporting/summary",
+    response_model=schemas.PartnerDashboardSummaryRead,
+    responses=error_responses(
+        Unauthenticated, errors.NotAReporter, errors.UnknownPartnerError, errors.InvalidDateRangeError
+    ),
+)
+async def read_partner_reporting_summary(
+    partner: str,
+    principal: CurrentPrincipal,
+    session: Session,
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.PartnerDashboardSummaryRead:
+    """A partner's own view of its pilot: visits, signups, its own fee. No revenue, ever."""
+    await _ensure_partner_reporter(session, partner=partner, principal=principal)
+    return await service_dashboard.read_partner_summary(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+    )
+
+
+# The partner Performance tab's visits chart.
+@router.get(
+    "/growth/partners/{partner}/reporting/visits-over-time",
+    response_model=schemas.CountOverTimeReport,
+    responses=error_responses(
+        Unauthenticated,
+        errors.NotAReporter,
+        errors.UnknownPartnerError,
+        errors.InvalidDateRangeError,
+        errors.InvalidBucketError,
+    ),
+)
+async def read_partner_visits_over_time(
+    partner: str,
+    principal: CurrentPrincipal,
+    session: Session,
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    bucket: Annotated[str, Query(description="day, week or month")] = "day",
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.CountOverTimeReport:
+    await _ensure_partner_reporter(session, partner=partner, principal=principal)
+    return await service_dashboard.read_visits_over_time(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+        bucket=bucket,
+    )
+
+
+# The partner Performance tab's signups chart.
+@router.get(
+    "/growth/partners/{partner}/reporting/signups-over-time",
+    response_model=schemas.CountOverTimeReport,
+    responses=error_responses(
+        Unauthenticated,
+        errors.NotAReporter,
+        errors.UnknownPartnerError,
+        errors.InvalidDateRangeError,
+        errors.InvalidBucketError,
+    ),
+)
+async def read_partner_signups_over_time(
+    partner: str,
+    principal: CurrentPrincipal,
+    session: Session,
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    bucket: Annotated[str, Query(description="day, week or month")] = "day",
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.CountOverTimeReport:
+    await _ensure_partner_reporter(session, partner=partner, principal=principal)
+    return await service_dashboard.read_signups_over_time(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+        bucket=bucket,
+    )
+
+
+# The partner "Your fee" tab's chart: visits and their estimated fee, per bucket.
+@router.get(
+    "/growth/partners/{partner}/reporting/fee-over-time",
+    response_model=schemas.FeeOverTimeReport,
+    responses=error_responses(
+        Unauthenticated,
+        errors.NotAReporter,
+        errors.UnknownPartnerError,
+        errors.InvalidDateRangeError,
+        errors.InvalidBucketError,
+    ),
+)
+async def read_partner_fee_over_time(
+    partner: str,
+    principal: CurrentPrincipal,
+    session: Session,
+    from_date: Annotated[date, Query(description="Inclusive UTC date")],
+    to_date: Annotated[date, Query(description="Inclusive UTC date")],
+    bucket: Annotated[str, Query(description="day, week or month")] = "day",
+    exam_code: Annotated[str | None, Query(max_length=32)] = None,
+    utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
+) -> schemas.FeeOverTimeReport:
+    await _ensure_partner_reporter(session, partner=partner, principal=principal)
+    return await service_dashboard.read_fee_over_time(
+        session,
+        partner=partner,
+        from_date=from_date,
+        to_date=to_date,
+        exam_code=exam_code,
+        utm_campaign=utm_campaign,
+        bucket=bucket,
+    )

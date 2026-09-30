@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ from app.features.growth.schemas import (
     AcquisitionRead,
     ArrivalRecorded,
     FunnelRead,
+    FunnelStepCount,
     PayoutDetailsRead,
     PayoutDetailsWrite,
     ReferralHistoryRead,
@@ -120,14 +121,63 @@ async def _purchases_for(session: AsyncSession, partner: str) -> int:
     return await billing.count_payments_for_users(session, user_ids) if user_ids else 0
 
 
-async def read_funnel(session: AsyncSession, *, partner: str) -> FunnelRead:
-    """This partner's arrivals, signups and purchases, with the two conversion rates."""
+async def read_funnel(
+    session: AsyncSession,
+    *,
+    partner: str,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    exam_code: str | None = None,
+    utm_campaign: str | None = None,
+) -> FunnelRead:
+    """This partner's arrivals, signups and purchases, with the two conversion rates.
+
+    With no range given, this is the whole pilot to date (the original,
+    unfiltered behaviour); a range and/or `exam_code`/`utm_campaign` narrows
+    every count to match, as the admin dashboard's funnel tab needs.
+    """
     partner_key = (partner or "").strip().lower()
     if partner_key not in domain.PILOT_PARTNERS:
         raise errors.UnknownPartnerError()
-    arrivals, signups = await repository.counts_for_partner(session, partner_key)
-    purchases = await _purchases_for(session, partner_key)
+
+    if from_date is None and to_date is None and exam_code is None and utm_campaign is None:
+        # The whole pilot to date — the original, unfiltered behaviour.
+        arrivals, signups = await repository.counts_for_partner(session, partner_key)
+        acquired_ids = await repository.acquired_user_ids(session, partner_key)
+    else:
+        # A filtered read needs a bounded window: an exam or campaign filter with
+        # no dates would otherwise have to scan every arrival ever recorded.
+        if from_date is None or to_date is None:
+            raise errors.InvalidDateRangeError(
+                "from_date and to_date are both required when filtering the funnel"
+            )
+        domain.ensure_date_range(from_date, to_date)
+        landed_from, landed_before = domain.ledger_bounds(from_date, to_date)
+        arrivals = await repository.count_arrivals_between(
+            session,
+            partner_key,
+            landed_from=landed_from,
+            landed_before=landed_before,
+            exam_code=exam_code,
+            utm_campaign=utm_campaign,
+        )
+        acquired_ids = await repository.acquired_user_ids_between(
+            session,
+            partner_key,
+            acquired_from=landed_from,
+            acquired_before=landed_before,
+            exam_code=exam_code,
+            utm_campaign=utm_campaign,
+        )
+        signups = len(acquired_ids)
+
+    purchases = await billing.count_payments_for_users(session, acquired_ids) if acquired_ids else 0
     funnel = domain.funnel(arrivals=arrivals, signups=signups, purchases=purchases)
+    steps = [
+        FunnelStepCount(step="arrivals", event=domain.PARTNER_LANDING_EVENT, count=funnel.arrivals),
+        FunnelStepCount(step="signups", event="account_acquired", count=funnel.signups),
+        FunnelStepCount(step="purchases", event="payment_settled", count=funnel.purchases),
+    ]
     return FunnelRead(
         partner=partner_key,
         arrivals=funnel.arrivals,
@@ -135,6 +185,7 @@ async def read_funnel(session: AsyncSession, *, partner: str) -> FunnelRead:
         purchases=funnel.purchases,
         signup_rate=funnel.signup_rate,
         purchase_rate=funnel.purchase_rate,
+        steps=steps,
     )
 
 

@@ -58,7 +58,7 @@ so the rules are strict and nothing is inferred.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/api/v1/growth/arrivals` | none | there is nobody to authenticate yet |
-| GET | `/api/v1/growth/partners/{partner}/funnel` | reporter for that partner | `not_a_partner_reporter` (403) |
+| GET | `/api/v1/growth/partners/{partner}/funnel` | reporter for that partner | `not_a_partner_reporter` (403); optional `from_date`+`to_date` (both, or neither), `exam_code`, `utm_campaign` narrow it — omit all four for the whole pilot to date |
 | GET | `/api/v1/growth/partners/{partner}/ref-ids` | reporter for that partner | the references to put in their links, one per pilot exam |
 | POST | `/api/v1/growth/partners/{partner}/reporters` | platform admin | |
 | POST | `/api/v1/me/referral-code` | bearer | idempotent |
@@ -68,11 +68,66 @@ so the rules are strict and nothing is inferred.
 | GET | `/api/v1/growth/partners/{partner}/pilot-config` | platform admin | b2c's defaults until first saved |
 | PATCH | `/api/v1/growth/partners/{partner}/pilot-config` | platform admin | `reset_spend_alerts` forgets which thresholds have alerted |
 
+### The BMJ dashboard
+Ported from b2c's `partner_dashboard_service`, `bmj_metrics_service`,
+`bmj_anomaly_service` and `partner_reporting_service`. No migration backs any
+of it: every figure is computed on the fly from `PartnerArrival`,
+`Acquisition`, `PartnerReporter` and `billing.payments`. All ten read the
+`from_date`/`to_date`/`exam_code`/`utm_campaign` filters the funnel does;
+the `-over-time` routes also take `bucket` (`day`/`week`/`month`,
+`invalid_bucket` (422) otherwise). `exam_code` and `utm_campaign` narrow arrivals *and* sign-ups alike (a sign-up's campaign is its arrival's), as b2c's `original_exam`/`original_campaign` filters do and gap-fill empty buckets with zero so a
+chart's x-axis is continuous.
+
+**Admin (platform admin only) — figures include revenue and margin:**
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/v1/growth/partners/{partner}/summary` | the Overview tab: arrivals, acquisitions, reconciliation, revenue, spend and the anomaly panel in one call |
+| GET | `/api/v1/growth/partners/{partner}/revenue` | revenue by plan, standalone |
+| GET | `/api/v1/growth/partners/{partner}/revenue-over-time` | chart |
+| GET | `/api/v1/growth/partners/{partner}/arrivals` | cursor-paginated, `search` by visitor key |
+| GET | `/api/v1/growth/partners/{partner}/acquired-users` | cursor-paginated, each row enriched with its arrival's UTM tags |
+| GET | `/api/v1/growth/partners/{partner}/reporters` | active and revoked |
+| DELETE | `/api/v1/growth/partners/{partner}/reporters/{email}` | 204; `reporter_not_found` (404) on a second revoke |
+
+**Partner mode (that partner's reporter) — money never appears, by construction:**
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/v1/growth/partners/{partner}/reporting/summary` | fee-framed, not revenue-framed: `PartnerFeeSummary` carries an estimated spend and nothing else money-shaped, plus breakdown by exam and by campaign (counts only) |
+| GET | `/api/v1/growth/partners/{partner}/reporting/visits-over-time` | chart |
+| GET | `/api/v1/growth/partners/{partner}/reporting/signups-over-time` | chart |
+| GET | `/api/v1/growth/partners/{partner}/reporting/fee-over-time` | visits and their estimated fee per bucket |
+
+Anomalies (`detect_anomalies` in `domain.py`, up to 5, most severe first):
+`mixpanel_unavailable` (info), `mixpanel_drift` (warning ≥10%, critical ≥25%),
+`funnel_order_violation` (critical), `acquired_count_mismatch` (warning —
+structurally unreachable from `read_summary` today, since it passes the same
+value for both `signup_count` and `acquired_user_count`; kept general for a
+future caller that could pass them independently), `negative_net_margin`
+(warning — fires on nearly any range with arrivals and no matching revenue,
+since the default 40p/click estimate outruns zero revenue immediately).
+
 ## Jobs
 - `check_partner_spend` (daily, 06:15 UTC): queues a `partner_spend_alert` email
   to the pilot's recipients (or `SUPPORT_EMAIL`) for any partner whose estimated
   spend crossed a new threshold, and records it in the same transaction.
 
+## Demo data
+`scripts/seed_partner_attribution.py` (`--dry-run`, `--clean`) writes 84
+synthetic BMJ visitors — arrivals, signups, and 44 payments across all three
+plan lengths and all three pilot exams — ported verbatim from b2c's
+`_visitor_specs()`. Idempotent by deterministic key (`vk_seed_dashboard_NN`,
+`seed_dashboard_u_NN@seed.osceguide.test`, `pi_seed_dashboard_NN`) rather than
+a tag column, since neither `growth` nor `billing` has one. Requires `sca`,
+`plab` and `ortho` to already exist (`scripts/seed_platform.py` first); flips
+their `partner_pilot` flag on if it is not already. Creates `reporter@bmj.com`
+with a freshly generated password, printed once on the run that creates the
+account.
+
 ## Cross-slice dependencies
 `billing` supplies the purchase count for a funnel and the revenue for a spend
-report (`revenue_for_users`); `notifications` queues the spend alert.
+report (`revenue_for_users`) and the dashboard's revenue breakdown and
+over-time chart (`revenue_breakdown_for_users`, `revenue_over_time_for_users`,
+`payer_user_ids_among`, which takes the paid-date range: a sign-up is "paid" when that user has a payment inside the range, counted under the exam and campaign of their arrival, as in b2c); `catalog` supplies which exams are in the pilot
+(`pilot_exam_codes`); `notifications` queues the spend alert.

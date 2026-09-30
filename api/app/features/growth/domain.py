@@ -8,7 +8,7 @@ owed to the wrong party.
 from __future__ import annotations
 
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Iterator
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
@@ -315,3 +315,184 @@ def normalise_thresholds(thresholds_pence: Collection[int]) -> list[int]:
 def format_gbp(pence: int) -> str:
     """Oracle: b2c `_format_gbp` — `£1,234.50`."""
     return f"£{pence / 100:,.2f}"
+
+
+# --- time buckets (BMJ dashboard "over time" charts) -------------------------
+
+# A chart's `bucket` query param: `date_trunc` is asked to do the grouping in
+# Postgres, but only for the buckets that have a row in them, so every "over
+# time" endpoint gap-fills the empty ones with these pure functions before it
+# is honest about what an empty week looks like on a chart.
+VALID_BUCKETS = frozenset({"day", "week", "month"})
+
+
+class InvalidBucket(ValueError):
+    """Raised when a `bucket` query param names none of `day`, `week`, `month`."""
+
+
+def validate_bucket(bucket: str) -> str:
+    """The bucket name, unchanged, or `InvalidBucket` if it names none of the three."""
+    if bucket not in VALID_BUCKETS:
+        raise InvalidBucket(f"bucket must be one of {sorted(VALID_BUCKETS)}, not {bucket!r}")
+    return bucket
+
+
+def bucket_start(day: date, bucket: str) -> date:
+    """The first day of the bucket this date falls in.
+
+    Matches Postgres' own `date_trunc`: a week starts on Monday (ISO, not the
+    US Sunday), a month on its first day, a day is itself.
+    """
+    if bucket == "day":
+        return day
+    if bucket == "week":
+        return day - timedelta(days=day.weekday())
+    if bucket == "month":
+        return day.replace(day=1)
+    raise InvalidBucket(f"bucket must be one of {sorted(VALID_BUCKETS)}, not {bucket!r}")
+
+
+def advance_bucket(start: date, bucket: str) -> date:
+    """The first day of the bucket after this one."""
+    if bucket == "day":
+        return start + timedelta(days=1)
+    if bucket == "week":
+        return start + timedelta(weeks=1)
+    if bucket == "month":
+        return date(start.year + 1, 1, 1) if start.month == 12 else date(start.year, start.month + 1, 1)
+    raise InvalidBucket(f"bucket must be one of {sorted(VALID_BUCKETS)}, not {bucket!r}")
+
+
+def iter_bucket_starts(from_date: date, to_date: date, bucket: str) -> Iterator[date]:
+    """Every bucket start from the one `from_date` falls in to the one `to_date`
+    falls in, inclusive — the full x-axis a chart draws, gaps and all.
+    """
+    current = bucket_start(from_date, bucket)
+    last = bucket_start(to_date, bucket)
+    while current <= last:
+        yield current
+        current = advance_bucket(current, bucket)
+
+
+# --- anomaly detection (BMJ dashboard) ---------------------------------------
+
+# Oracle: b2c `bmj_anomaly_service`. A reconciliation delta below this share of
+# the ledger is ordinary noise and is not flagged at all.
+MIXPANEL_DRIFT_WARNING_PERCENT = 10.0
+MIXPANEL_DRIFT_CRITICAL_PERCENT = 25.0
+
+
+@dataclass(frozen=True)
+class Anomaly:
+    """One thing about a partner's numbers worth a human's attention.
+
+    `metric` is a short, already-formatted figure for the card ("18.4%",
+    "£120.00"), never a number the frontend has to format itself.
+    """
+
+    code: str
+    severity: str
+    title: str
+    detail: str
+    metric: str | None
+
+
+def detect_anomalies(
+    *,
+    reconciliation_status: str,
+    reconciliation_delta_percent: float | None,
+    raw_arrival_count: int,
+    signup_count: int,
+    purchase_count: int,
+    acquired_user_count: int,
+    net_margin_pence: int,
+) -> list[Anomaly]:
+    """Every anomaly a partner's summary should flag, in a fixed order so the
+    dashboard's list does not reshuffle between two loads of the same range.
+
+    Oracle: b2c `bmj_anomaly_service.detect_anomalies` — same five codes, same
+    severities. Each rule stands alone: a range can trigger any subset of them,
+    including all five or none.
+    """
+    anomalies: list[Anomaly] = []
+
+    if reconciliation_status != "ok":
+        # Mixpanel could not be asked at all; there is nothing to compare, so
+        # this is informational rather than a sign that anything is wrong.
+        anomalies.append(
+            Anomaly(
+                code="mixpanel_unavailable",
+                severity="info",
+                title="Mixpanel could not be reached",
+                detail="The ledger count is shown alone for this range; Mixpanel did not answer.",
+                metric=reconciliation_status,
+            )
+        )
+    elif reconciliation_delta_percent is not None:
+        magnitude = abs(reconciliation_delta_percent)
+        if magnitude >= MIXPANEL_DRIFT_CRITICAL_PERCENT:
+            anomalies.append(
+                Anomaly(
+                    code="mixpanel_drift",
+                    severity="critical",
+                    title="The ledger and Mixpanel disagree sharply",
+                    detail=(
+                        "Our arrival ledger and Mixpanel's landing count differ by a wide "
+                        "margin for this range."
+                    ),
+                    metric=f"{magnitude:.1f}%",
+                )
+            )
+        elif magnitude >= MIXPANEL_DRIFT_WARNING_PERCENT:
+            anomalies.append(
+                Anomaly(
+                    code="mixpanel_drift",
+                    severity="warning",
+                    title="The ledger and Mixpanel disagree",
+                    detail="Our arrival ledger and Mixpanel's landing count differ for this range.",
+                    metric=f"{magnitude:.1f}%",
+                )
+            )
+
+    if signup_count > raw_arrival_count or purchase_count > signup_count:
+        # A later funnel stage can never outnumber the stage before it; seeing
+        # one do so means something upstream is double-counted or mis-joined.
+        anomalies.append(
+            Anomaly(
+                code="funnel_order_violation",
+                severity="critical",
+                title="The funnel is out of order",
+                detail="A later stage of the funnel counts more people than the stage before it.",
+                metric=f"arrivals={raw_arrival_count} signups={signup_count} purchases={purchase_count}",
+            )
+        )
+
+    if acquired_user_count != signup_count:
+        # The acquisitions ledger (what a partner is paid on) and the funnel's
+        # own signup count are two different reads of "how many signed up";
+        # they must always agree, so a gap means one of the paths has a bug.
+        anomalies.append(
+            Anomaly(
+                code="acquired_count_mismatch",
+                severity="warning",
+                title="Acquired users do not match the funnel's signups",
+                detail="The acquisitions ledger and the funnel's own signup count disagree for this range.",
+                metric=f"acquired={acquired_user_count} signups={signup_count}",
+            )
+        )
+
+    if net_margin_pence < 0:
+        anomalies.append(
+            Anomaly(
+                code="negative_net_margin",
+                severity="warning",
+                title="Estimated spend exceeds revenue",
+                detail=(
+                    "This partner's estimated click spend is more than the revenue it has "
+                    "brought in so far in this range."
+                ),
+                metric=format_gbp(net_margin_pence),
+            )
+        )
+
+    return anomalies

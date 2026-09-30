@@ -34,6 +34,15 @@ class TrackingReference(BaseModel):
     landing_path: str
 
 
+class FunnelStepCount(BaseModel):
+    """One stage of the funnel, for the chart's x-axis. `count` is null only
+    for a stage this range genuinely has no reading for, never for zero."""
+
+    step: str
+    event: str
+    count: int | None
+
+
 class FunnelRead(BaseModel):
     partner: str
     arrivals: int
@@ -41,6 +50,9 @@ class FunnelRead(BaseModel):
     purchases: int
     signup_rate: float
     purchase_rate: float
+    # Additive (BMJ dashboard): the same three numbers as a chart-ready list,
+    # so the existing fields above keep working for whatever already reads them.
+    steps: list[FunnelStepCount] = Field(default_factory=list)
 
 
 class ReferralRead(BaseModel):
@@ -250,3 +262,203 @@ class UpdatePilotConfig(BaseModel):
     spend_alert_thresholds_pence: list[int] | None = Field(default=None, max_length=20)
     spend_alert_recipients: list[EmailStr] | None = Field(default=None, max_length=20)
     reset_spend_alerts: bool = False
+
+
+# --- the BMJ dashboard (admin and partner reporting) -------------------------
+#
+# Field names mirror the retiring client's `dashboardTypes.ts` wherever that
+# client already shipped a shape for it, so the frontend port is mechanical.
+# Two deliberate departures, both already established by the routes above
+# rather than invented here: query params and path fields are named
+# `exam_code` (not `exam`), and every list is `Page[T]` with a `next_cursor`
+# (not `page`/`page_size`/`total`) — content parity over wire parity.
+
+
+class RevenueByPlanRow(BaseModel):
+    """One plan's contribution to a partner's acquired revenue.
+
+    `plan_type` is `"unknown"` for a payment whose plan has since been
+    deleted (`Payment.plan_id` is `SET NULL`), never dropped from the total.
+    """
+
+    plan_type: str
+    payment_count: int
+    gross_revenue_pence: int
+
+
+class AcquiredRevenueReport(BaseModel):
+    """What the people a partner was credited with acquiring have paid, gross."""
+
+    partner: str
+    exam_code: str | None = None
+    utm_campaign: str | None = None
+    from_date: date
+    to_date: date
+    acquired_user_count: int
+    paying_user_count: int
+    payment_count: int
+    gross_revenue_pence: int
+    currency: str = "gbp"
+    revenue_by_plan: list[RevenueByPlanRow]
+
+
+class RevenueOverTimePoint(BaseModel):
+    period: date
+    gross_revenue_pence: int
+    payment_count: int
+
+
+class RevenueOverTimeReport(BaseModel):
+    partner: str
+    exam_code: str | None = None
+    utm_campaign: str | None = None
+    from_date: date
+    to_date: date
+    bucket: str
+    currency: str = "gbp"
+    points: list[RevenueOverTimePoint]
+
+
+class PartnerAnomaly(BaseModel):
+    code: str
+    severity: str
+    title: str
+    detail: str
+    metric: str | None = None
+
+
+class PartnerAnomalyReport(BaseModel):
+    status: str
+    count: int
+    items: list[PartnerAnomaly]
+
+
+class DashboardSummaryRead(BaseModel):
+    """The admin overview tab: every KPI, at a glance, for one range."""
+
+    partner: str
+    exam_code: str | None = None
+    utm_campaign: str | None = None
+    from_date: date
+    to_date: date
+    raw_arrival_count: int
+    unique_arrival_count: int
+    acquired_user_count: int
+    reconciliation: LandingReconciliationRead
+    revenue: AcquiredRevenueReport
+    spend: PartnerSpendRead
+    anomalies: PartnerAnomalyReport
+
+
+class ArrivalRow(BaseModel):
+    """One row of the admin "recent activity" arrivals table."""
+
+    arrival_id: uuid.UUID
+    partner: str
+    exam_code: str | None
+    utm_medium: str | None
+    utm_campaign: str | None
+    landing_path: str | None
+    visitor_key: str | None
+    landed_at: datetime
+
+
+class AcquiredUserRow(BaseModel):
+    """One row of the admin "recent activity" acquired-users table."""
+
+    user_id: uuid.UUID
+    exam_code: str | None
+    utm_medium: str | None
+    utm_campaign: str | None
+    original_ref_id: str | None
+    acquired_at: datetime
+    visitor_key: str | None
+
+
+class ReporterRead(BaseModel):
+    """One partner reporter, for the admin Access tab."""
+
+    email: str
+    partner: str
+    created_at: datetime
+    revoked_at: datetime | None
+
+
+class CountOverTimePoint(BaseModel):
+    period: date
+    count: int
+
+
+class CountOverTimeReport(BaseModel):
+    """A partner's visits or signups, bucketed — no money in it, so this is
+    safe for partner mode as well as admin."""
+
+    partner: str
+    exam_code: str | None = None
+    utm_campaign: str | None = None
+    from_date: date
+    to_date: date
+    bucket: str
+    points: list[CountOverTimePoint]
+
+
+class PartnerFeeSummary(BaseModel):
+    """What a partner is estimated to be owed on its own clicks — never what it
+    brought in. The partner-mode twin of `PartnerSpendRead`, revenue omitted."""
+
+    estimated_click_count: int
+    cost_per_click_pence: int
+    estimated_spend_pence: int
+    billing_disclaimer: str = domain.SPEND_BILLING_DISCLAIMER
+    currency: str = "gbp"
+    click_count_source: str = domain.CLICK_COUNT_SOURCE
+
+
+class PartnerBreakdownRow(BaseModel):
+    """One exam or campaign's visits, signups and payments, for a partner's
+    own "Performance" tab. Never any money — pure counts."""
+
+    dimension: str
+    visit_count: int
+    signup_count: int
+    paid_count: int
+
+
+class FeeOverTimePoint(BaseModel):
+    period: date
+    visit_count: int
+    estimated_fee_pence: int
+
+
+class FeeOverTimeReport(BaseModel):
+    partner: str
+    exam_code: str | None = None
+    utm_campaign: str | None = None
+    from_date: date
+    to_date: date
+    bucket: str
+    currency: str = "gbp"
+    cost_per_click_pence: int
+    points: list[FeeOverTimePoint]
+
+
+class PartnerDashboardSummaryRead(BaseModel):
+    """The partner-mode overview: fee-framed, never revenue-framed.
+
+    Deliberately carries no `revenue`, `gross_revenue_pence`, `net_margin_pence`
+    or `spend` field — a partner reporter must never see what its own traffic
+    is worth to us, only what it is owed on its clicks (`fee`).
+    """
+
+    partner: str
+    exam_code: str | None = None
+    utm_campaign: str | None = None
+    from_date: date
+    to_date: date
+    raw_arrival_count: int
+    unique_arrival_count: int
+    acquired_user_count: int
+    paying_user_count: int
+    fee: PartnerFeeSummary
+    breakdown_by_exam: list[PartnerBreakdownRow]
+    breakdown_by_campaign: list[PartnerBreakdownRow]

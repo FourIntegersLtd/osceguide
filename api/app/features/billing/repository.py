@@ -273,6 +273,83 @@ async def latest_payments(
     }
 
 
+async def payer_user_ids_among(
+    session: AsyncSession, user_ids: Collection[uuid.UUID], *, paid_from: datetime, paid_before: datetime
+) -> set[uuid.UUID]:
+    """Of these people, the ones with at least one payment in the window. Empty for an empty list.
+
+    For a partner breakdown: which of the users it was credited with acquiring
+    paid within the range being read (b2c's `_aggregate_payments` payer set),
+    without asking about every payer on the platform.
+    """
+    if not user_ids:
+        return set()
+    stmt = (
+        select(Payment.user_id)
+        .where(
+            Payment.user_id.in_(list(user_ids)), Payment.paid_at >= paid_from, Payment.paid_at < paid_before
+        )
+        .distinct()
+    )
+    return set((await session.execute(stmt)).scalars())
+
+
+async def revenue_breakdown_for_users(
+    session: AsyncSession, user_ids: Collection[uuid.UUID], *, paid_from: datetime, paid_before: datetime
+) -> list[tuple[str | None, int, int]]:
+    """What these people paid in a window, split by the plan they bought.
+
+    Each row is `(plan code, payment count, gross revenue pence)`; a payment
+    whose plan was since deleted (`plan_id` gone `SET NULL`) groups under a
+    `None` code, which the caller reads as "unknown". Empty for an empty list
+    of users.
+    """
+    if not user_ids:
+        return []
+    stmt = (
+        select(Plan.code, func.count(Payment.id), func.coalesce(func.sum(Payment.amount_total_pence), 0))
+        .select_from(Payment)
+        .outerjoin(Plan, Plan.id == Payment.plan_id)
+        .where(
+            Payment.user_id.in_(list(user_ids)),
+            Payment.paid_at >= paid_from,
+            Payment.paid_at < paid_before,
+        )
+        .group_by(Plan.code)
+    )
+    return [(code, int(count), int(gross)) for code, count, gross in (await session.execute(stmt)).all()]
+
+
+async def revenue_over_time_for_users(
+    session: AsyncSession,
+    user_ids: Collection[uuid.UUID],
+    *,
+    paid_from: datetime,
+    paid_before: datetime,
+    bucket: str,
+) -> list[tuple[datetime, int, int]]:
+    """Revenue from these people, grouped into `date_trunc(bucket, paid_at)` buckets.
+
+    Only the buckets with at least one payment; the caller gap-fills the empty
+    ones so a chart's x-axis is continuous. Empty for an empty list of users.
+    """
+    if not user_ids:
+        return []
+    period = func.date_trunc(bucket, Payment.paid_at).label("period")
+    stmt = (
+        select(period, func.count(Payment.id), func.coalesce(func.sum(Payment.amount_total_pence), 0))
+        .where(
+            Payment.user_id.in_(list(user_ids)),
+            Payment.paid_at >= paid_from,
+            Payment.paid_at < paid_before,
+        )
+        .group_by(period)
+        .order_by(period)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [(period_start, int(count), int(gross)) for period_start, count, gross in rows]
+
+
 async def payer_user_ids_on_plan(session: AsyncSession, plan_code: str) -> set[uuid.UUID]:
     """Everyone whose most recent payment bought this plan."""
     newest = (
