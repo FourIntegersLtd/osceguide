@@ -81,3 +81,39 @@ def candidate_content(content: Mapping[str, Any] | None) -> dict[str, Any] | Non
         if identity:
             projected[key] = identity
     return projected
+
+
+def content_for_template(content: Mapping[str, Any] | None, sections: list[Any]) -> dict[str, Any]:
+    """The document as a template's blocks read it: each block's value under its own id.
+
+    The engine reads a bound station flat, `content[block_id]`. Stations
+    imported from b2c keep their sections nested (`patient_information`,
+    `doctor_information`, `management_plan`), and the platform templates for
+    those exams name their sections the same way, so a block is looked up in
+    the section dict of the same id — by its own id, then without the
+    section's prefix (`doctor_patient_biodata` is `doctor_information`'s
+    `patient_biodata`). A section dict that was read from is replaced by the
+    blocks lifted out of it, so its material reaches the patient only under
+    its block's role and never whole. Everything else stays as stored, which
+    is all a station authored flat against its template ever holds.
+    """
+    source = dict(content or {})
+    lifted: dict[str, Any] = {}
+    consumed: set[str] = set()
+    for section in sections:
+        if not isinstance(section, Mapping):
+            continue
+        section_id = str(section.get("id") or "")
+        nested = source.get(section_id)
+        if not section_id or not isinstance(nested, Mapping):
+            continue
+        consumed.add(section_id)
+        prefix = section_id.split("_", 1)[0] + "_"
+        for block in section.get("blocks") or []:
+            block_id = str(block.get("id") or "") if isinstance(block, Mapping) else ""
+            if block_id in nested:
+                lifted[block_id] = nested[block_id]
+            elif block_id and block_id.removeprefix(prefix) in nested:
+                lifted[block_id] = nested[block_id.removeprefix(prefix)]
+    kept = {key: value for key, value in source.items() if key not in consumed}
+    return kept | lifted

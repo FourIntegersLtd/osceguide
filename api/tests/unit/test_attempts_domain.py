@@ -191,6 +191,30 @@ def test_a_templated_station_whose_patient_blocks_are_empty_is_not_renderable() 
     assert not domain_definition.scenario_is_renderable({"unrelated": "text"}, LAYOUT)
 
 
+# An examiner-led viva: the candidate reads the scenario, the examiner asks the questions.
+VIVA_LAYOUT = [
+    {"id": "clinical_scenario", "label": "Clinical scenario", "role": "candidate_brief"},
+    {"id": "interview_questions", "label": "Interview questions", "role": "examiner"},
+]
+
+
+def test_a_viva_is_renderable_on_its_questions() -> None:
+    """It has no patient blocks at all; what the examiner asks is what it runs on."""
+    content = {
+        "clinical_scenario": "A 70-year-old with a hip fracture.",
+        "interview_questions": ["Classify it."],
+    }
+    assert domain_definition.scenario_is_renderable(content, VIVA_LAYOUT, "examiner")
+    assert not domain_definition.scenario_is_renderable(content, VIVA_LAYOUT)
+
+
+def test_a_viva_with_no_questions_is_not_renderable() -> None:
+    """The scenario alone leaves the examiner nothing of the station's own to ask."""
+    assert not domain_definition.scenario_is_renderable(
+        {"clinical_scenario": "A 70-year-old with a hip fracture."}, VIVA_LAYOUT, "examiner"
+    )
+
+
 def test_a_definition_carries_everything_the_worker_and_the_marker_need() -> None:
     payload = domain_definition.definition_payload(
         attempt_id="a-1",

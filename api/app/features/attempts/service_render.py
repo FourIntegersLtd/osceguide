@@ -55,7 +55,7 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
         )
 
     exam = await catalog.exam_for_attempt(session, attempt.exam_id)
-    degraded = not domain_definition.scenario_is_renderable(station.content, station.layout)
+    degraded = not domain_definition.scenario_is_renderable(station.content, station.layout, station.persona)
     mode = station.persona if station.persona != "patient" else _MODE_FOR_KIND.get(attempt.kind, "patient")
     if attempt.kind == "debrief":
         mode = "tutor"

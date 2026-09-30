@@ -171,13 +171,15 @@ async def runnable_station(
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
-    layout, persona, greeting = await _presentation(session, version.template_version_id)
+    layout, persona, greeting, content = await _presentation(
+        session, version.template_version_id, dict(version.content or {})
+    )
     return RunnableStation(
         version_id=version.id,
         owner_kind=station.owner_kind,
         exam_code=await _exam_code(session, station),
         title=station.title,
-        content=dict(version.content or {}),
+        content=content,
         published=version.status == "published",
         layout=layout,
         persona=persona,
@@ -186,18 +188,18 @@ async def runnable_station(
 
 
 async def _presentation(
-    session: AsyncSession, template_version_id: uuid.UUID | None
-) -> tuple[list[dict[str, Any]] | None, str, str | None]:
-    """How the template says this station should be presented.
+    session: AsyncSession, template_version_id: uuid.UUID | None, content: dict[str, Any]
+) -> tuple[list[dict[str, Any]] | None, str, str | None, dict[str, Any]]:
+    """How the template says this station should be presented, and its content as the blocks read it.
 
     A station bound to no template renders on the block-id conventions, which
     is what keeps stations written before templates working.
     """
     if template_version_id is None:
-        return None, "patient", None
+        return None, "patient", None, content
     structure = await repository_templates.structure_for_version(session, template_version_id)
     if not structure:
-        return None, "patient", None
+        return None, "patient", None, content
     blocks = structure.get("blocks")
     if not isinstance(blocks, list):
         blocks = [
@@ -213,4 +215,5 @@ async def _presentation(
     )
     persona = str(presentation.get("persona") or "patient")
     greeting = presentation.get("greeting")
-    return layout, persona, (str(greeting) if greeting else None)
+    content = domain_content.content_for_template(content, list(structure.get("sections") or []))
+    return layout, persona, (str(greeting) if greeting else None), content

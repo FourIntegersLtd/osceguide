@@ -10,3 +10,6 @@ logs/
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+
+# Per-machine Claude Code permissions
+.claude/settings.local.json

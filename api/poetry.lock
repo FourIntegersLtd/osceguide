@@ -2992,7 +2992,7 @@ typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "osce-assessment"
-version = "0.8.0"
+version = "0.9.0"
 description = "Consumer-agnostic OSCE assessment engine: contracts, catalogue, prompts and evaluation"
 optional = false
 python-versions = ">=3.11,<3.14"
@@ -3006,8 +3006,8 @@ pydantic = ">=2.10,<3"
 [package.source]
 type = "git"
 url = "https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git"
-reference = "engine-v0.8.0"
-resolved_reference = "fd5180bfb4648d479f3cf891ee86f02729d44555"
+reference = "engine-v0.9.0"
+resolved_reference = "2d714910658dcf36ca7fa70e95a806c82dfca65d"
 subdirectory = "packages/osce_assessment"
 
 [[package]]
@@ -5252,4 +5252,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "12b3bac037ec8705d3ab4db2115d18f78dfbf770b03d4c70afdb0ebf5e738114"
+content-hash = "acd7724635b6c8cd368e35ed6524c8334f636e708a6301daec614cb0cb42ec62"

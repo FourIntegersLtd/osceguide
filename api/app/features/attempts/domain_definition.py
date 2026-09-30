@@ -27,11 +27,18 @@ _PATIENT_ROLES = frozenset(
     {"persona", "complaint", "instructions", "history", "medications", "social", "examination", "hidden"}
 )
 
+# What an examiner-led station (a viva, Ortho's) is built from: the questions
+# and expected answers. A scenario the candidate was told is not enough — the
+# examiner would have nothing of the station's own to ask.
+_EXAMINER_ROLES = frozenset({"examiner"})
+
 
 def scenario_is_renderable(
-    content: Mapping[str, Any] | None, layout: Sequence[Mapping[str, Any]] | None = None
+    content: Mapping[str, Any] | None,
+    layout: Sequence[Mapping[str, Any]] | None = None,
+    persona: str = "patient",
 ) -> bool:
-    """Whether this station has enough to render a real patient.
+    """Whether this station has enough to render a real patient, or for a viva, a real examiner.
 
     A render with a patient that has nothing to say is served, so a session is never blocked, but is
     never frozen, so the attempt retries once the station is fixed.
@@ -43,10 +50,11 @@ def scenario_is_renderable(
     if not content:
         return False
     if layout:
+        roles = _EXAMINER_ROLES if persona == "examiner" else _PATIENT_ROLES
         wanted = {
             str(block.get("id"))
             for block in layout
-            if str(block.get("role") or "") in _PATIENT_ROLES and block.get("id")
+            if str(block.get("role") or "") in roles and block.get("id")
         }
         return any(_has_text(content.get(block_id)) for block_id in wanted)
     for key in _PATIENT_KEYS:

@@ -46,7 +46,7 @@ dependencies = [
     # frameworks — a rubric is authored and travels with the attempt, so an
     # older engine cannot mark anything this backend produces — and the one
     # that added the dashboard tutor's prompt.
-    "osce-assessment @ git+https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git@engine-v0.8.0#subdirectory=packages/osce_assessment",
+    "osce-assessment @ git+https://github.com/FourIntegersLtd/OSCEGuide-assessment-platform.git@engine-v0.9.0#subdirectory=packages/osce_assessment",
     "python-multipart (>=0.0.18,<0.0.21)",
     # Reading the text out of an uploaded CV. `cv/service.py` imports it inside
     # the call, so a machine without it still starts and still serves every
