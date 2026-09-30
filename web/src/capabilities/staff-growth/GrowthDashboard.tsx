@@ -77,7 +77,7 @@ export function GrowthDashboard() {
           empty={{ title: "No ref ids", description: "This partner has no tracking links yet." }}
         >
           {(page) => (
-          <ul className="divide-y divide-border">
+            <ul className="divide-y divide-border">
               {page.items.map((ref) => (
                 <li key={ref.ref_id} className="px-5 py-3">
                   <p className="truncate text-osce-data font-medium text-ink">{ref.ref_id}</p>
@@ -86,7 +86,7 @@ export function GrowthDashboard() {
                   </p>
                 </li>
               ))}
-              </ul>
+            </ul>
           )}
         </AsyncBoundary>
       </Panel>
