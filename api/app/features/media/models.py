@@ -26,6 +26,8 @@ class MediaItem(Base, UUIDPrimaryKey, Timestamps):
         UniqueConstraint("slug", name="uq_media_items_slug"),
         Index("ix_media_items_kind_published", "kind", "published_at"),
         Index("ix_media_items_exam", "exam_id"),
+        # Backs `specialty=` on the catalogue.
+        Index("ix_media_items_kind_specialty", "kind", "specialty"),
     )
 
     kind: Mapped[str] = mapped_column(String(32), nullable=False)

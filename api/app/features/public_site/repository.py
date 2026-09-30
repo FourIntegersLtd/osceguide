@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import CursorParams, keyset_page
 from app.features.public_site.models import SiteMessage
 
 
@@ -38,13 +38,25 @@ async def add_message(
     return message
 
 
-async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) -> Sequence[SiteMessage]:
-    """Every message, newest first, optionally narrowed to one kind."""
-    stmt = select(SiteMessage).order_by(SiteMessage.created_at.desc()).limit(limit)
+async def list_messages(
+    session: AsyncSession, *, kind: str | None, handled: bool | None, params: CursorParams
+) -> tuple[list[SiteMessage], str | None]:
+    """One page of messages, newest first, optionally narrowed to one kind and to handled or not."""
+    stmt = select(SiteMessage)
     if kind:
         stmt = stmt.where(SiteMessage.kind == kind)
-    found = await session.execute(stmt)
-    return found.scalars().all()
+    if handled is not None:
+        stmt = stmt.where(
+            SiteMessage.handled_at.is_not(None) if handled else SiteMessage.handled_at.is_(None)
+        )
+    return await keyset_page(
+        session,
+        stmt,
+        sort_col=SiteMessage.created_at,
+        id_col=SiteMessage.id,
+        limit=params.limit,
+        cursor=params.cursor,
+    )
 
 
 async def mark_handled(

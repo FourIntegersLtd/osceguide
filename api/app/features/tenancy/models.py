@@ -45,6 +45,8 @@ class Membership(Base, UUIDPrimaryKey, Timestamps):
     __table_args__ = (
         UniqueConstraint("org_id", "user_id", "role", name="uq_memberships_org_user_role"),
         Index("ix_memberships_user_id", "user_id"),
+        # Backs `status=` on the org's membership list.
+        Index("ix_memberships_org_status", "org_id", "status"),
     )
 
     org_id: Mapped[uuid.UUID] = mapped_column(

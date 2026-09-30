@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, text
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,7 +16,13 @@ class SiteMessage(Base, UUIDPrimaryKey, Timestamps):
     """Somebody wrote to us from the public site, or from inside the product."""
 
     __tablename__ = "site_messages"
-    __table_args__ = (Index("ix_site_messages_kind_created", "kind", "created_at"),)
+    __table_args__ = (
+        Index("ix_site_messages_kind_created", "kind", "created_at"),
+        # Backs the inbox's `handled=false`: the unhandled messages, newest first.
+        Index(
+            "ix_site_messages_unhandled_created", "created_at", postgresql_where=text("handled_at IS NULL")
+        ),
+    )
 
     kind: Mapped[str] = mapped_column(String(32), nullable=False)
     name: Mapped[str | None] = mapped_column(String(120))

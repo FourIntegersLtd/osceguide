@@ -5,7 +5,7 @@ study material with: slide decks, summaries, blog posts and podcasts.
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +44,20 @@ async def list_published(
         Query(description="Only this exam's material, plus material tagged with no exam."),
     ] = None,
     q: Annotated[str | None, Query(description="A fragment of a title or a summary.", max_length=300)] = None,
+    specialty: Annotated[
+        str | None, Query(description="Only items filed under this specialty, exactly.", max_length=120)
+    ] = None,
+    has_specialty: Annotated[
+        bool | None, Query(description="true: only items with a specialty; false: only items without one.")
+    ] = None,
+    sort: Annotated[
+        Literal["created", "published"],
+        Query(
+            description=(
+                "created: newest written first. published: newest published first, unpublished left out."
+            )
+        ),
+    ] = "created",
 ) -> schemas.MediaPage:
     """Published material: the titles to anybody, the bodies to subscribers.
 
@@ -68,6 +82,9 @@ async def list_published(
         exam_code=exam_code,
         search=q,
         unlocked=unlocked,
+        specialty=specialty,
+        has_specialty=has_specialty,
+        sort=sort,
     )
     return schemas.MediaPage(items=media_items, next_cursor=next_cursor, total_count=total_count)
 

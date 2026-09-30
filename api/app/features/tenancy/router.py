@@ -107,9 +107,12 @@ async def list_memberships(
     session: Session,
     page: Annotated[CursorParams, Depends()],
     search: Annotated[str | None, Query(description="A membership's email, role, or user id")] = None,
+    status: Annotated[
+        str | None, Query(pattern="^(active|revoked)$", description="Only memberships in this state.")
+    ] = None,
 ) -> Page[schemas.MembershipRead]:
     memberships, next_cursor = await service_memberships.list_memberships(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor, search=search
+        session, workspace.org_id, limit=page.limit, cursor=page.cursor, search=search, status=status
     )
     return Page(items=memberships, next_cursor=next_cursor)
 

@@ -37,6 +37,8 @@ class Trainee(Base, UUIDPrimaryKey, Timestamps):
     __table_args__ = (
         UniqueConstraint("org_id", "email", name="uq_trainees_org_email"),
         Index("ix_trainees_org_cohort", "org_id", "cohort_id"),
+        # Backs `access_revoked=` on the roster list.
+        Index("ix_trainees_org_access_revoked", "org_id", "access_revoked_at"),
     )
 
     org_id: Mapped[uuid.UUID] = mapped_column(

@@ -60,3 +60,50 @@ async def test_debrief_history_pages_and_links_the_source_consultation(
     private = await client.get("/api/v1/me/debriefs", headers=bearer(other))
     assert private.json()["items"] == []
     assert (await client.get("/api/v1/me/debriefs")).status_code == 401
+
+
+async def test_debriefs_narrow_by_consultation_and_one_reads_back_only_for_its_owner(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    make_actor,
+) -> None:
+    """A station's review screen asks for the debriefs about that consultation, not all of them."""
+    token = await make_actor("debrief-filter-owner@example.com")
+    other = await make_actor("debrief-filter-other@example.com")
+    sat = await _entitled_attempt(db_session, "debrief-filter-owner@example.com")
+    await finish_consultation(db_session, sat.attempt_id)
+    await db_session.commit()
+    started = await client.post(f"/api/v1/attempts/{sat.attempt_id}/debriefs", headers=bearer(token))
+    assert started.status_code == 201, started.text
+    summary = await repository.add_debrief_summary(
+        db_session,
+        attempt_id=uuid.UUID(started.json()["id"]),
+        user_id=sat.user_id,
+        exam_id=None,
+        key_insights=["Summarise before closing"],
+        action_plan=[],
+        narrative="Close with a plan.",
+        model_used=None,
+    )
+    await db_session.commit()
+
+    async def listed_ids(params: dict[str, str]) -> list[str]:
+        """The debrief ids the list answers for these filters."""
+        response = await client.get("/api/v1/me/debriefs", params=params, headers=bearer(token))
+        assert response.status_code == 200, response.text
+        return [item["id"] for item in response.json()["items"]]
+
+    assert await listed_ids({"attempt_id": str(sat.attempt_id)}) == [str(summary.id)]
+    assert await listed_ids({"station_version_id": str(sat.version_id)}) == [str(summary.id)]
+    assert await listed_ids({"attempt_id": str(uuid.uuid4())}) == []
+    assert await listed_ids({"station_version_id": str(uuid.uuid4())}) == []
+
+    one = await client.get(f"/api/v1/me/debriefs/{summary.id}", headers=bearer(token))
+    assert one.status_code == 200, one.text
+    assert one.json()["id"] == str(summary.id)
+    assert one.json()["source_attempt_id"] == str(sat.attempt_id)
+    assert one.json()["narrative"] == "Close with a plan."
+
+    stranger = await client.get(f"/api/v1/me/debriefs/{summary.id}", headers=bearer(other))
+    assert stranger.status_code == 404
+    assert stranger.json()["code"] == "debrief_not_found"

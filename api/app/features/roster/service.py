@@ -79,11 +79,12 @@ async def list_trainees(
     limit: int,
     cursor: dict[str, Any] | None,
     search: str | None = None,
+    access_revoked: bool | None = None,
 ) -> tuple[list[TraineeRead], str | None]:
     """A page of an organisation's roster, optionally narrowed to a trainee
-    whose name, email or cohort matches `search`."""
+    whose name, email or cohort matches `search`, and to revoked or live access."""
     trainees, next_cursor = await repository.list_trainees(
-        session, org_id, limit=limit, cursor=cursor, search=search
+        session, org_id, limit=limit, cursor=cursor, search=search, access_revoked=access_revoked
     )
     return [_trainee_read(trainee) for trainee in trainees], next_cursor
 

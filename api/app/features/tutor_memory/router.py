@@ -32,8 +32,36 @@ async def list_debriefs(
     principal: CurrentPrincipal,
     session: Session,
     params: Annotated[CursorParams, Depends()],
+    attempt_id: Annotated[
+        uuid.UUID | None, Query(description="Only debriefs of this consultation (the source attempt).")
+    ] = None,
+    station_version_id: Annotated[
+        uuid.UUID | None, Query(description="Only debriefs of consultations on this station version.")
+    ] = None,
+    set_entry_id: Annotated[
+        uuid.UUID | None, Query(description="Only debriefs of consultations of this question-set entry.")
+    ] = None,
 ) -> Page[schemas.DebriefSummaryRead]:
-    return await service.list_debriefs(session, principal.user_id, params)
+    return await service.list_debriefs(
+        session,
+        principal.user_id,
+        params,
+        source_attempt_id=attempt_id,
+        station_version_id=station_version_id,
+        set_entry_id=set_entry_id,
+    )
+
+
+# One of this person's debrief summaries. Anyone else's answers 404.
+@router.get(
+    "/me/debriefs/{debrief_id}",
+    response_model=schemas.DebriefSummaryRead,
+    responses=error_responses(Unauthenticated, errors.DebriefNotFound),
+)
+async def get_debrief(
+    debrief_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas.DebriefSummaryRead:
+    return await service.get_debrief(session, principal.user_id, debrief_id)
 
 
 @router.post(

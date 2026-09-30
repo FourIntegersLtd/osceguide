@@ -9,6 +9,7 @@ from app.features.assistant.errors import SessionNotFound, SessionNotJoinable
 # can refuse without naming another slice. The same classes, not copies: the
 # codes are the contract.
 __all__ = [
+    "DebriefNotFound",
     "NoteNotFound",
     "SessionNotFound",
     "SessionNotJoinable",
@@ -36,3 +37,10 @@ class NoteNotFound(NotFound):
 
     code = "tutor_note_not_found"
     default_message = "No such note"
+
+
+class DebriefNotFound(NotFound):
+    """No debrief summary with that id is this person's. Another person's gets the same answer."""
+
+    code = "debrief_not_found"
+    default_message = "No such debrief"

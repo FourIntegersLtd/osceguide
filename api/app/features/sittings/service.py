@@ -7,6 +7,7 @@ Running a circuit is `service_run.py`: this one moves when an examination is
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -206,6 +207,13 @@ async def rubric_version_for_slot(
 ) -> uuid.UUID | None:
     """Which rubric version a slot is marked against (R-1), for `reviews`."""
     return await repository.rubric_version_for_slot(session, org_id, slot_id)
+
+
+async def rubric_versions_for_slots(
+    session: AsyncSession, org_id: uuid.UUID, slot_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, uuid.UUID]:
+    """Which rubric version each slot is marked against, for `reviews` scoring many slots at once."""
+    return await repository.rubric_versions_for_slots(session, org_id, slot_ids)
 
 
 # --- Which rubric version a sitting is marked against.

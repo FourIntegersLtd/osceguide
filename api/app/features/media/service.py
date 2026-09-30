@@ -165,6 +165,9 @@ async def list_catalog(
     exam_code: str | None = None,
     search: str | None = None,
     unlocked: frozenset[uuid.UUID] = frozenset(),
+    specialty: str | None = None,
+    has_specialty: bool | None = None,
+    sort: str = "created",
 ) -> tuple[list[MediaRead], str | None, int]:
     """A page of the catalogue, what comes after it, and how many items match.
 
@@ -186,7 +189,15 @@ async def list_catalog(
         except domain.InvalidListStatus as exc:
             raise_mapped(exc, _REFUSALS)
     exam_id = (await resolve_exam(session, exam_code)).id if exam_code else None
-    narrowed: dict[str, Any] = {"kind": kind, "statuses": statuses, "exam_id": exam_id, "search": search}
+    narrowed: dict[str, Any] = {
+        "kind": kind,
+        "statuses": statuses,
+        "exam_id": exam_id,
+        "search": search,
+        "specialty": (specialty or "").strip() or None,
+        "has_specialty": has_specialty,
+        "sort": sort,
+    }
     records, next_cursor = await repository.list_catalog(session, limit=limit, cursor=cursor, **narrowed)
     total = await repository.count_catalog(session, **narrowed)
     # Staff listing the public catalogue still get bodies: a slug read already

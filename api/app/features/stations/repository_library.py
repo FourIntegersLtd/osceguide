@@ -27,8 +27,9 @@ async def library_page(
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
+    version_ids: Sequence[uuid.UUID] | None = None,
 ) -> tuple[list[Station], str | None]:
-    """A page of the published library, narrowed by exam and by title.
+    """A page of the published library, narrowed by exam, by title and by current version.
 
     `search` belongs in SQL rather than in whoever asked: applying a filter to an already-fetched
     page can only ever match the rows that page contained.
@@ -40,6 +41,8 @@ async def library_page(
         # Matched like the console's other title filters, including its LIKE
         # wildcards: a `%` typed into a search box widens the query here too.
         stmt = stmt.where(Station.title.ilike(f"%{search.strip()}%"))
+    if version_ids:
+        stmt = stmt.where(Station.current_version_id.in_(list(version_ids)))
     return await keyset_page(
         session,
         stmt,

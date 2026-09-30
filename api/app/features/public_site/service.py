@@ -15,6 +15,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
+from app.core.pagination import CursorParams, Page
 from app.core.redis import get_redis
 from app.features.attempts import service_reads as attempts
 from app.features.identity import service as identity
@@ -102,10 +103,12 @@ async def send(
     return schemas.MessageAccepted(id=message.id, kind=message.kind)
 
 
-async def list_messages(session: AsyncSession, *, kind: str | None, limit: int) -> list[schemas.MessageRead]:
-    """The platform-admin inbox: every message, newest first, optionally narrowed to one kind."""
-    messages = await repository.list_messages(session, kind=kind, limit=limit)
-    return [_read(message) for message in messages]
+async def list_messages(
+    session: AsyncSession, *, kind: str | None, handled: bool | None, params: CursorParams
+) -> Page[schemas.MessageRead]:
+    """The platform-admin inbox, one page at a time, newest first, narrowed by kind and handled state."""
+    messages, next_cursor = await repository.list_messages(session, kind=kind, handled=handled, params=params)
+    return Page(items=[_read(message) for message in messages], next_cursor=next_cursor)
 
 
 async def mark_handled(

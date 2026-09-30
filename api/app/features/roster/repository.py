@@ -69,14 +69,22 @@ async def list_trainees(
     limit: int,
     cursor: dict[str, Any] | None = None,
     search: str | None = None,
+    access_revoked: bool | None = None,
 ) -> tuple[list[Trainee], str | None]:
     """A page of an organisation's roster, oldest trainee first.
+
+    `access_revoked`, if given, keeps only trainees whose access is revoked
+    (`True`) or still live (`False`).
 
     `search`, if given, narrows to a trainee whose name, email or cohort name
     contains it, case-insensitively. A left join to `cohorts` so a trainee with
     no cohort is still searchable on name and email.
     """
     stmt = select(Trainee).where(Trainee.org_id == org_id)
+    if access_revoked is not None:
+        stmt = stmt.where(
+            Trainee.access_revoked_at.is_not(None) if access_revoked else Trainee.access_revoked_at.is_(None)
+        )
     term = (search or "").strip()
     if term:
         pattern = f"%{term}%"

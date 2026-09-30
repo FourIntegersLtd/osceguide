@@ -197,14 +197,32 @@ async def recent_debrief_summaries(
 
 
 async def page_debrief_summaries(
-    session: AsyncSession, user_id: uuid.UUID, params: CursorParams
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    params: CursorParams,
+    *,
+    debrief_attempt_ids: list[uuid.UUID] | None = None,
 ) -> tuple[list[DebriefSummary], str | None]:
-    """One page of this person's debrief summaries, for the history screen."""
+    """One page of this person's debrief summaries, for the history screen.
+
+    `debrief_attempt_ids`, when given, keeps only the summaries of those debriefs.
+    """
+    stmt = select(DebriefSummary).where(DebriefSummary.user_id == user_id)
+    if debrief_attempt_ids is not None:
+        stmt = stmt.where(DebriefSummary.attempt_id.in_(debrief_attempt_ids))
     return await keyset_page(
         session,
-        select(DebriefSummary).where(DebriefSummary.user_id == user_id),
+        stmt,
         sort_col=DebriefSummary.created_at,
         id_col=DebriefSummary.id,
         limit=params.limit,
         cursor=params.cursor,
     )
+
+
+async def debrief_summary_for_user(
+    session: AsyncSession, user_id: uuid.UUID, debrief_id: uuid.UUID
+) -> DebriefSummary | None:
+    """One debrief summary, only if it is this person's own."""
+    stmt = select(DebriefSummary).where(DebriefSummary.id == debrief_id, DebriefSummary.user_id == user_id)
+    return (await session.execute(stmt)).scalar_one_or_none()

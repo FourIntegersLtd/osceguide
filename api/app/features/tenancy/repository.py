@@ -151,8 +151,9 @@ async def list_memberships(
     role_pattern: str | None = None,
     matching_user_ids: Sequence[uuid.UUID] | None = None,
     exact_user_id: uuid.UUID | None = None,
+    status: str | None = None,
 ) -> tuple[list[Membership], str | None]:
-    """A page of an organisation's memberships, oldest first.
+    """A page of an organisation's memberships, oldest first, optionally only those with `status`.
 
     `role_pattern`, `matching_user_ids` and `exact_user_id` are the three ways
     a search term can match a row — its role by `ILIKE`, its person's email or
@@ -162,6 +163,8 @@ async def list_memberships(
     the same as no search at all.
     """
     stmt = select(Membership).where(Membership.org_id == org_id)
+    if status is not None:
+        stmt = stmt.where(Membership.status == status)
     if role_pattern is not None:
         conditions: list[Any] = [Membership.role.ilike(role_pattern)]
         if matching_user_ids:

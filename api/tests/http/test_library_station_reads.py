@@ -415,3 +415,25 @@ async def test_the_history_says_how_much_uses_each_revision(
 
     rows = (await client.get(f"/api/v1/stations/{station_id}/versions", headers=bearer(admin))).json()
     assert [(row["version"], row["used_by_count"]) for row in rows] == [(2, 0), (1, 3)]
+
+
+async def test_the_library_answers_for_the_versions_a_set_names(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """A practice set holds version ids; its screen asks for those stations and no others."""
+    token = await a_browser(db_session, make_actor, "by-version@example.com")
+    await a_library_station(db_session, "Chest pain")
+    await a_library_station(db_session, "Headache")
+    await a_library_station(db_session, "Wheezy child")
+    everything = (await client.get("/api/v1/stations", headers=bearer(token))).json()["items"]
+    wanted = {
+        row["title"]: row["version_id"] for row in everything if row["title"] in ("Headache", "Wheezy child")
+    }
+
+    narrowed = await client.get(
+        "/api/v1/stations",
+        params=[("version_ids", version) for version in wanted.values()],
+        headers=bearer(token),
+    )
+    assert narrowed.status_code == 200, narrowed.text
+    assert sorted(row["title"] for row in narrowed.json()["items"]) == ["Headache", "Wheezy child"]

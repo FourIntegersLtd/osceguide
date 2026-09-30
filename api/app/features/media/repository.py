@@ -72,6 +72,9 @@ def _catalog_filters(
     statuses: tuple[str, ...] | None,
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
+    specialty: str | None = None,
+    has_specialty: bool | None = None,
+    published_only: bool = False,
 ) -> list[Any]:
     """The conditions the catalogue narrows by, shared with its count.
 
@@ -100,6 +103,15 @@ def _catalog_filters(
         # Matched like the station library's title filter, including its LIKE
         # wildcards: a `%` typed into a search box widens the query here too.
         conditions.append(or_(MediaItem.title.ilike(f"%{term}%"), MediaItem.summary.ilike(f"%{term}%")))
+    if specialty:
+        conditions.append(MediaItem.specialty == specialty)
+    if has_specialty is not None:
+        conditions.append(
+            MediaItem.specialty.is_not(None) if has_specialty else MediaItem.specialty.is_(None)
+        )
+    if published_only:
+        # Sorting by publication date pages on it, so an undated row has no place in the order.
+        conditions.append(MediaItem.published_at.is_not(None))
     return conditions
 
 
@@ -112,15 +124,30 @@ async def list_catalog(
     cursor: dict[str, Any] | None = None,
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
+    specialty: str | None = None,
+    has_specialty: bool | None = None,
+    sort: str = "created",
 ) -> tuple[list[MediaItem], str | None]:
-    """A page of the catalogue, narrowed by kind, status, exam and a title or summary fragment."""
+    """A page of the catalogue, narrowed by kind, status, exam, specialty and a title or summary fragment.
+
+    `sort="published"` orders newest-published first and leaves out anything never published.
+    """
+    by_published = sort == "published"
     stmt = select(MediaItem).where(
-        *_catalog_filters(kind=kind, statuses=statuses, exam_id=exam_id, search=search)
+        *_catalog_filters(
+            kind=kind,
+            statuses=statuses,
+            exam_id=exam_id,
+            search=search,
+            specialty=specialty,
+            has_specialty=has_specialty,
+            published_only=by_published,
+        )
     )
     return await keyset_page(
         session,
         stmt,
-        sort_col=MediaItem.created_at,
+        sort_col=MediaItem.published_at if by_published else MediaItem.created_at,
         id_col=MediaItem.id,
         limit=limit,
         cursor=cursor,
@@ -134,12 +161,25 @@ async def count_catalog(
     statuses: tuple[str, ...] | None,
     exam_id: uuid.UUID | None = None,
     search: str | None = None,
+    specialty: str | None = None,
+    has_specialty: bool | None = None,
+    sort: str = "created",
 ) -> int:
     """How many items the same filters match, ignoring the cursor."""
     stmt = (
         select(func.count())
         .select_from(MediaItem)
-        .where(*_catalog_filters(kind=kind, statuses=statuses, exam_id=exam_id, search=search))
+        .where(
+            *_catalog_filters(
+                kind=kind,
+                statuses=statuses,
+                exam_id=exam_id,
+                search=search,
+                specialty=specialty,
+                has_specialty=has_specialty,
+                published_only=sort == "published",
+            )
+        )
     )
     return int((await session.execute(stmt)).scalar_one())
 

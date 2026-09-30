@@ -15,9 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import CursorParams, Page
 from app.features.assistant import service as assistant
-from app.features.attempts.service_debrief import debrief_sources
+from app.features.attempts.service_debrief import debrief_attempt_ids_about, debrief_sources
 from app.features.catalog import service as catalog
 from app.features.tutor_memory import domain, errors, repository
+from app.features.tutor_memory.models import DebriefSummary
 from app.features.tutor_memory.schemas import (
     ActivityAccepted,
     ActivityIn,
@@ -161,23 +162,58 @@ async def _exam_id(session: AsyncSession, exam_code: str | None) -> uuid.UUID | 
 
 
 async def list_debriefs(
-    session: AsyncSession, user_id: uuid.UUID, params: CursorParams
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    params: CursorParams,
+    *,
+    source_attempt_id: uuid.UUID | None = None,
+    station_version_id: uuid.UUID | None = None,
+    set_entry_id: uuid.UUID | None = None,
 ) -> Page[DebriefSummaryRead]:
-    """One page of this person's debrief history, most recent first."""
-    debriefs, cursor = await repository.page_debrief_summaries(session, user_id, params)
+    """One page of this person's debrief history, most recent first.
+
+    Each filter narrows to debriefs about a consultation that matches it: that
+    exact consultation, one of that station version, or one of that set entry.
+    """
+    filtered = any(value is not None for value in (source_attempt_id, station_version_id, set_entry_id))
+    debrief_attempt_ids = (
+        await debrief_attempt_ids_about(
+            session,
+            user_id,
+            source_attempt_id=source_attempt_id,
+            station_version_id=station_version_id,
+            set_entry_id=set_entry_id,
+        )
+        if filtered
+        else None
+    )
+    debriefs, cursor = await repository.page_debrief_summaries(
+        session, user_id, params, debrief_attempt_ids=debrief_attempt_ids
+    )
     sources = await debrief_sources(session, user_id, [debrief.attempt_id for debrief in debriefs])
     return Page(
-        items=[
-            DebriefSummaryRead(
-                id=debrief.id,
-                attempt_id=debrief.attempt_id,
-                source_attempt_id=sources.get(debrief.attempt_id),
-                key_insights=list(debrief.key_insights or []),
-                action_plan=list(debrief.action_plan or []),
-                narrative=debrief.narrative,
-                created_at=debrief.created_at,
-            )
-            for debrief in debriefs
-        ],
+        items=[_debrief_read(debrief, sources.get(debrief.attempt_id)) for debrief in debriefs],
         next_cursor=cursor,
+    )
+
+
+async def get_debrief(session: AsyncSession, user_id: uuid.UUID, debrief_id: uuid.UUID) -> DebriefSummaryRead:
+    """One of this person's debrief summaries; anyone else's is refused as missing."""
+    debrief = await repository.debrief_summary_for_user(session, user_id, debrief_id)
+    if debrief is None:
+        raise errors.DebriefNotFound()
+    sources = await debrief_sources(session, user_id, [debrief.attempt_id])
+    return _debrief_read(debrief, sources.get(debrief.attempt_id))
+
+
+def _debrief_read(debrief: DebriefSummary, source_attempt_id: uuid.UUID | None) -> DebriefSummaryRead:
+    """Map a stored debrief summary, and the consultation it is about, onto what a route returns."""
+    return DebriefSummaryRead(
+        id=debrief.id,
+        attempt_id=debrief.attempt_id,
+        source_attempt_id=source_attempt_id,
+        key_insights=list(debrief.key_insights or []),
+        action_plan=list(debrief.action_plan or []),
+        narrative=debrief.narrative,
+        created_at=debrief.created_at,
     )

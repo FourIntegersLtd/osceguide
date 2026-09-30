@@ -371,3 +371,17 @@ async def test_an_empty_upload_is_invalid(client: AsyncClient, make_actor) -> No
         "/api/v1/orgs/kings/trainees/bulk", json={"trainees": []}, headers=bearer(admin)
     )
     assert response.status_code == 422
+
+
+async def test_the_roster_filters_on_revoked_access(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    revoked_id = await add_trainee(client, admin, "gone@example.com")
+    await add_trainee(client, admin, "still-here@example.com")
+    await client.post(
+        f"/api/v1/orgs/kings/trainees/{revoked_id}/access", json={"revoked": True}, headers=bearer(admin)
+    )
+
+    revoked = await client.get("/api/v1/orgs/kings/trainees?access_revoked=true", headers=bearer(admin))
+    active = await client.get("/api/v1/orgs/kings/trainees?access_revoked=false", headers=bearer(admin))
+    assert [trainee["email"] for trainee in revoked.json()["items"]] == ["gone@example.com"]
+    assert [trainee["email"] for trainee in active.json()["items"]] == ["still-here@example.com"]

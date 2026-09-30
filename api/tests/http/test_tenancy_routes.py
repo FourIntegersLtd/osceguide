@@ -534,3 +534,31 @@ async def test_an_organisations_audit_log_can_be_narrowed(
         headers=bearer(admin),
     )
     assert [entry["action"] for entry in both.json()["items"]] == ["trainee.deleted"]
+
+
+async def test_memberships_filter_on_status(client: AsyncClient, make_actor) -> None:
+    org_id = await seed_org(client, make_actor)
+    owner = await member_token(make_actor, org_id, "kings", "owner")
+    added = await client.post(
+        "/api/v1/orgs/kings/memberships",
+        json={"email": "leaver@kings.example", "role": "supervisor"},
+        headers=bearer(owner),
+    )
+    leaver_id = added.json()["id"]
+    revoked = await client.post(f"/api/v1/orgs/kings/memberships/{leaver_id}/revoke", headers=bearer(owner))
+    assert revoked.status_code == 200, revoked.text
+
+    gone = await client.get(
+        "/api/v1/orgs/kings/memberships", params={"status": "revoked"}, headers=bearer(owner)
+    )
+    active = await client.get(
+        "/api/v1/orgs/kings/memberships", params={"status": "active"}, headers=bearer(owner)
+    )
+    assert [row["id"] for row in gone.json()["items"]] == [leaver_id]
+    assert leaver_id not in [row["id"] for row in active.json()["items"]]
+    assert all(row["status"] == "active" for row in active.json()["items"])
+
+    nonsense = await client.get(
+        "/api/v1/orgs/kings/memberships", params={"status": "maybe"}, headers=bearer(owner)
+    )
+    assert nonsense.status_code == 422

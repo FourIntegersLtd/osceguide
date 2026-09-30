@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import MaybePrincipal
 from app.core.db import get_session
-from app.core.errors import Forbidden, Unauthenticated, error_responses
+from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
+from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.rate_limit import Limit, TooManyRequests, caller_key, check
 from app.core.tenancy import PlatformAdmin
@@ -71,17 +72,20 @@ async def send_message(
 
 @router.get(
     "/platform/site/messages",
-    response_model=list[schemas.MessageRead],
-    responses=error_responses(Unauthenticated, Forbidden),
+    response_model=Page[schemas.MessageRead],
+    responses=error_responses(Unauthenticated, Forbidden, InvalidInput),
 )
 async def list_messages(
     _admin: PlatformAdmin,
     session: Session,
+    page: Annotated[CursorParams, Depends()],
     kind: Annotated[str | None, Query(description="contact or product_feedback")] = None,
-    limit: Annotated[int, Query(ge=1, le=200)] = 50,
-) -> list[schemas.MessageRead]:
-    """The inbox. Platform admin, because it is everybody's messages."""
-    return await service.list_messages(session, kind=kind, limit=limit)
+    handled: Annotated[
+        bool | None, Query(description="true: only answered messages; false: only the ones still waiting.")
+    ] = None,
+) -> Page[schemas.MessageRead]:
+    """The inbox, paged. Platform admin, because it is everybody's messages."""
+    return await service.list_messages(session, kind=kind, handled=handled, params=page)
 
 
 @router.post(

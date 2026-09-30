@@ -659,3 +659,58 @@ async def test_editing_a_drafts_document_refiles_its_specialty(
     )
     assert edited.status_code == 200, edited.text
     assert edited.json()["specialty"] == "Renal"
+
+
+async def test_specialty_narrows_the_listing_exactly(
+    client: AsyncClient,
+    make_actor,
+    index: FakeVectorIndex,  # type: ignore[no-untyped-def]
+) -> None:
+    admin = await make_actor("m-specialty@osceguide.com", platform_admin=True)
+    for title, specialty in (("Heart Sounds", "Cardiology"), ("Wheeze", "Respiratory"), ("Unfiled", None)):
+        # The column is read out of the document, the way an authored item files it.
+        payload: dict = {"kind": "summary", "title": title}
+        if specialty is not None:
+            payload["content"] = {"specialty": specialty}
+        created = await client.post("/api/v1/media", json=payload, headers=bearer(admin))
+        assert created.status_code == 201, created.text
+        await client.post(f"/api/v1/media/{created.json()['id']}/publish", headers=bearer(admin))
+
+    cardiology = (await client.get("/api/v1/media?specialty=Cardiology", headers=bearer(admin))).json()
+    assert [item["title"] for item in cardiology["items"]] == ["Heart Sounds"]
+    assert cardiology["total_count"] == 1
+
+    unfiled = (await client.get("/api/v1/media?has_specialty=false", headers=bearer(admin))).json()
+    assert [item["title"] for item in unfiled["items"]] == ["Unfiled"]
+
+
+async def test_sort_published_orders_by_when_it_went_out(
+    client: AsyncClient,
+    make_actor,
+    db_session,
+    index: FakeVectorIndex,  # type: ignore[no-untyped-def]
+) -> None:
+    """Newest published first, whatever order the drafts were written in."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import update
+
+    from app.features.media.models import MediaItem
+
+    admin = await make_actor("m-sort@osceguide.com", platform_admin=True)
+    older = await publish_item(client, admin, title="Written Second Published First")
+    newer = await publish_item(client, admin, title="Written First Published Last")
+    for item, published_at in (
+        (older, datetime(2026, 1, 1, tzinfo=UTC)),
+        (newer, datetime(2026, 6, 1, tzinfo=UTC)),
+    ):
+        await db_session.execute(
+            update(MediaItem).where(MediaItem.id == item["id"]).values(published_at=published_at)
+        )
+    await db_session.commit()
+
+    body = (await client.get("/api/v1/media?sort=published", headers=bearer(admin))).json()
+    assert [item["title"] for item in body["items"]] == [
+        "Written First Published Last",
+        "Written Second Published First",
+    ]

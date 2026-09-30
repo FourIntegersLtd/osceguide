@@ -48,8 +48,11 @@ async def list_memberships(
     limit: int,
     cursor: dict[str, Any] | None,
     search: str | None = None,
+    status: str | None = None,
 ) -> tuple[list[MembershipRead], str | None]:
     """A page of an organisation's memberships, with each person's email attached.
+
+    `status`, if given, keeps only `active` or only `revoked` memberships.
 
     `search`, if given, narrows to a membership whose role or person matches
     it: role by substring, person by email or name (resolved through
@@ -72,6 +75,7 @@ async def list_memberships(
         role_pattern=f"%{term}%" if term else None,
         matching_user_ids=matching_user_ids,
         exact_user_id=exact_user_id,
+        status=status,
     )
     # The addresses are read for the page instead of being left null. A team
     # list without an email can only show the front of a user id, which is a

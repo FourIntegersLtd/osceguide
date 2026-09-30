@@ -63,7 +63,7 @@ async def test_a_signed_in_sender_is_filed_against_their_account(
         "/api/v1/platform/site/messages", params={"kind": "product_feedback"}, headers=bearer(root)
     )
     assert inbox.status_code == 200, inbox.text
-    mine = next(m for m in inbox.json() if m["body"] == "The station list is slow.")
+    mine = next(m for m in inbox.json()["items"] if m["body"] == "The station list is slow.")
     assert mine["user_id"] is not None
     assert mine["source"] == "/app/me/stations"
 
@@ -85,3 +85,36 @@ async def test_a_message_can_be_taken_out_of_the_queue(client: AsyncClient, make
     handled = await client.post(f"/api/v1/platform/site/messages/{message_id}/handled", headers=bearer(root))
     assert handled.status_code == 200, handled.text
     assert handled.json()["handled_at"] is not None
+
+
+async def test_the_inbox_filters_on_handled_and_pages(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """The console's queue is the unhandled rows; the archive is the rest. Both come from SQL."""
+    for body in ("First question", "Second question"):
+        sent = await client.post(
+            MESSAGES, json={"kind": "contact", "name": "Amara", "email": "amara@example.com", "body": body}
+        )
+        assert sent.status_code == 201, sent.text
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    everything = await client.get("/api/v1/platform/site/messages", headers=bearer(root))
+    first = next(m for m in everything.json()["items"] if m["body"] == "First question")
+    handled = await client.post(f"/api/v1/platform/site/messages/{first['id']}/handled", headers=bearer(root))
+    assert handled.status_code == 200, handled.text
+
+    queue = await client.get(
+        "/api/v1/platform/site/messages", params={"handled": "false"}, headers=bearer(root)
+    )
+    archive = await client.get(
+        "/api/v1/platform/site/messages", params={"handled": "true"}, headers=bearer(root)
+    )
+    assert [m["body"] for m in queue.json()["items"]] == ["Second question"]
+    assert [m["body"] for m in archive.json()["items"]] == ["First question"]
+
+    one = await client.get("/api/v1/platform/site/messages", params={"limit": 1}, headers=bearer(root))
+    assert len(one.json()["items"]) == 1
+    rest = await client.get(
+        "/api/v1/platform/site/messages",
+        params={"limit": 1, "cursor": one.json()["next_cursor"]},
+        headers=bearer(root),
+    )
+    assert len(rest.json()["items"]) == 1
+    assert rest.json()["items"][0]["id"] != one.json()["items"][0]["id"]

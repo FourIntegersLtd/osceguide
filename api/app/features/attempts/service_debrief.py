@@ -53,3 +53,21 @@ async def debrief_sources(
     attempt_ids: list[uuid.UUID],
 ) -> dict[uuid.UUID, uuid.UUID]:
     return await repository.sources_for(session, user_id, attempt_ids)
+
+
+async def debrief_attempt_ids_about(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    source_attempt_id: uuid.UUID | None = None,
+    station_version_id: uuid.UUID | None = None,
+    set_entry_id: uuid.UUID | None = None,
+) -> list[uuid.UUID]:
+    """Ids of this person's debrief attempts about a consultation matching every filter given."""
+    return await repository.debrief_ids_about(
+        session,
+        user_id,
+        source_attempt_id=source_attempt_id,
+        station_version_id=station_version_id,
+        set_entry_id=set_entry_id,
+    )

@@ -29,6 +29,7 @@ async def browse_library(
     now: datetime | None = None,
     all_exams: bool = False,
     search: str | None = None,
+    version_ids: list[uuid.UUID] | None = None,
 ) -> tuple[list[LibraryStationRead], str | None]:
     """The published platform library, scoped to the exams the caller may open.
 
@@ -52,7 +53,7 @@ async def browse_library(
         exam_id = (await catalog.resolve_exam(session, access.current)).id
 
     stations, next_cursor = await repository_library.library_page(
-        session, limit=limit, cursor=cursor, exam_id=exam_id, search=search
+        session, limit=limit, cursor=cursor, exam_id=exam_id, search=search, version_ids=version_ids
     )
     version_ids = [
         station.current_version_id for station in stations if station.current_version_id is not None

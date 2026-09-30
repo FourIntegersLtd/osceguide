@@ -86,6 +86,8 @@ class Station(Base, UUIDPrimaryKey, Timestamps):
         # Backs `include_archived=false` on the station list endpoints, which
         # excludes archived rows by default.
         Index("ix_stations_org_status", "org_id", "status"),
+        # Backs `version_ids=` on the library: the stations a list of versions belongs to.
+        Index("ix_stations_current_version_id", "current_version_id"),
     )
 
     owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)

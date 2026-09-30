@@ -36,10 +36,18 @@ async def list_trainees(
     session: Session,
     page: Annotated[CursorParams, Depends()],
     search: Annotated[str | None, Query(description="A trainee's name, email, or cohort")] = None,
+    access_revoked: Annotated[
+        bool | None, Query(description="true: only trainees whose access is revoked; false: only live ones.")
+    ] = None,
 ) -> Page[schemas.TraineeRead]:
     """Readable by any member: a supervisor needs names to run a circuit."""
     trainees, next_cursor = await service.list_trainees(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor, search=search
+        session,
+        workspace.org_id,
+        limit=page.limit,
+        cursor=page.cursor,
+        search=search,
+        access_revoked=access_revoked,
     )
     return Page(items=trainees, next_cursor=next_cursor)
 

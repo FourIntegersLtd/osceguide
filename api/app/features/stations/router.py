@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -43,12 +43,20 @@ async def browse_library(
     page: Annotated[CursorParams, Depends()],
     exam_code: str | None = None,
     search: str | None = None,
+    version_ids: Annotated[
+        list[uuid.UUID] | None,
+        Query(
+            max_length=100,
+            description="Only stations whose current version is one of these (repeat the param).",
+        ),
+    ] = None,
 ) -> Page[schemas.LibraryStationRead]:
     """The published platform library, scoped to what the caller may open.
 
     Rows carry no station content — see `LibraryStationRead`. `search` matches a title fragment in
-    SQL. A platform admin browses the whole catalogue; everybody else gets their own exam, and asking
-    for another is refused.
+    SQL; `version_ids` narrows to the stations those versions are current for. A platform admin
+    browses the whole catalogue; everybody else gets their own exam, and asking for another is
+    refused.
     """
     items, next_cursor = await service_library_reads.browse_library(
         session,
@@ -59,6 +67,7 @@ async def browse_library(
         now=clock.now(),
         all_exams=principal.is_platform_admin,
         search=search,
+        version_ids=version_ids,
     )
     return Page(items=items, next_cursor=next_cursor)
 

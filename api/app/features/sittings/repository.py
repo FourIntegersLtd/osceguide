@@ -248,6 +248,21 @@ async def rubric_version_for_slot(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def rubric_versions_for_slots(
+    session: AsyncSession, org_id: uuid.UUID, slot_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, uuid.UUID]:
+    """The rubric version each slot is marked against, in one query (see `rubric_version_for_slot`)."""
+    if not slot_ids:
+        return {}
+    stmt = (
+        select(Slot.id, Sitting.rubric_version_id)
+        .join(Circuit, Circuit.id == Slot.circuit_id)
+        .join(Sitting, Sitting.id == Circuit.sitting_id)
+        .where(Slot.org_id == org_id, Slot.id.in_(list(slot_ids)))
+    )
+    return {slot_id: version_id for slot_id, version_id in (await session.execute(stmt)).all()}
+
+
 async def circuit_counts_by_station_version(
     session: AsyncSession, station_version_ids: Collection[uuid.UUID]
 ) -> dict[uuid.UUID, int]:
