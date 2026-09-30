@@ -3,16 +3,27 @@ name: CI assessment
 # The assessment engine and the LiveKit workers, on every change under
 # assessment/. A green run on main is what publish-workers.yml waits for.
 
+# The worker deploy tooling is included because "Promote workers to production"
+# refuses any commit without a green run of this workflow: a change to those
+# files must still produce one, or it could never be promoted.
 on:
   pull_request:
     paths:
       - "assessment/**"
       - ".github/workflows/ci-assessment.yml"
+      - ".github/workflows/publish-workers.yml"
+      - ".github/workflows/promote-workers.yml"
+      - ".github/actions/roll-out-workers/**"
+      - ".github/actions/connect-to-control-plane/**"
   push:
     branches: [main]
     paths:
       - "assessment/**"
       - ".github/workflows/ci-assessment.yml"
+      - ".github/workflows/publish-workers.yml"
+      - ".github/workflows/promote-workers.yml"
+      - ".github/actions/roll-out-workers/**"
+      - ".github/actions/connect-to-control-plane/**"
 
 permissions:
   contents: read
