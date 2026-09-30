@@ -1,0 +1,25 @@
+{
+  "profileKey": "ortho.clinical",
+  "label": "Ortho ST3 clinical",
+  "examCode": "ortho",
+  "orthoStationType": "clinical",
+  "blockHints": {
+    "station_id": "Unique identifier for this station",
+    "station_name": "Name of the station/scenario extracted from the title",
+    "station_type": "Type of ortho station (clinical, communication, prioritisation)",
+    "created_at": "Creation timestamp",
+    "created_by": "Creator identifier",
+    "clinical_scenario_title": "Concise case title from the source material",
+    "clinical_scenario": "Brief clinical context for the imaging interpretation task. Keep it concise (2-3 sentences max) focusing on key demographics, mechanism of injury, and presenting complaint. The main goal is for the doctor to interpret the imaging, not diagnose from history alone.",
+    "radiograph_image_url": "URL to the primary radiograph/X-ray image if provided in source material",
+    "additional_image_urls": "Additional supporting images (classification diagrams, post-op X-rays, etc.) if provided",
+    "key_concerns": "High-priority concerns/guidelines to address, extracted from 'Key Concerns' section. Should include guideline references (NICE, BOAST, etc.)",
+    "history_overview": "History taking points extracted from the 'History' section. REPHRASE and RESTRUCTURE from source while maintaining clinical completeness. Should include: Allergies, Medications, PMHx, Last ate, Events/mechanism, Social history, mobility aids, AMTS, and any condition-specific questions. Use varied phrasing (e.g., 'Drug history' vs 'Medications', 'Social circumstances' vs 'Social history'). Add clinical context where appropriate (e.g., 'Check anticoagulation status' vs just 'Medication').",
+    "examination_overview": "Examination points extracted from the 'Examination' section. REPHRASE from source using varied clinical terminology. Should include condition-specific tests (e.g., axial loading, pin rolling for NOF#; NV status, compartment assessment, open injury classification, etc.). Use synonyms and varied phrasing (e.g., 'Neurovascular assessment' vs 'N+V intact', 'Assess for shortening and rotation' vs 'Deformity', 'Palpate for tenderness' vs 'Pin rolling').",
+    "investigations_overview": "Investigation plan extracted from the 'Investigations' section. REPHRASE using varied terminology while maintaining clinical accuracy. Should include: bedside tests, bloods (with rationale), imaging (with specific views), and any additional investigations. Use varied phrasing (e.g., 'Venous blood gas' vs 'VBG', 'Full blood count' vs 'FBC', 'Plain radiographs' vs 'X-rays', 'Cross-sectional imaging' vs 'CT/MRI').",
+    "management_overview": "Management plan extracted from the 'Management' section. REPHRASE and RESTRUCTURE using varied terminology while maintaining clinical completeness. Should include immediate actions, analgesia, VTE prophylaxis, NBM, theatre planning, MDT input, consent, and condition-specific management. Must reference relevant guidelines. Use varied phrasing (e.g., 'Thromboprophylaxis' vs 'VTE assessment', 'Nil by mouth' vs 'NBM', 'Multidisciplinary team review' vs 'Orthogeriatric review', 'Informed consent' vs 'Consented').",
+    "interview_questions": "Ordered list of interview questions and answers extracted from the source material. CRITICAL: REPHRASE questions and REWRITE answers in your own words while preserving all technical accuracy. Each Q&A should maintain guideline references, classifications, clinical reasoning, and evidence, but with varied phrasing and structure. \n\nCommon question types to extract:\n1. Radiograph interpretation questions\n2. Management approach questions ('How would you manage this patient?')\n3. Guideline questions ('As per NICE Guidelines what are the aims of surgery?')\n4. Operative decision questions ('What operation would you offer? Why?')\n5. Technical questions ('What is a proven femoral stem?', 'Cemented vs uncemented?')\n6. Complication management ('Patient on Warfarin with raised INR - how does this affect management?')\n7. Classification questions ('Can you describe the Garden's Classification?')\n8. Scoring system questions ('Are you aware of any scoring systems?')\n9. Audit/database questions ('What is the NHFD?', 'What is BPT?')\n10. Evidence questions ('Do you know of any clinical trials?')\n\nPreserve all technical detail including:\n- Specific drug names, doses, routes, timing\n- Guideline references (NICE, BOAST, RCoA, etc.)\n- Classification systems with full detail\n- Clinical trial methodology and results\n- Audit standards and KPIs\n- Complication rates and management strategies",
+    "references": "Full reference list extracted from the 'References' section of source material. Include complete citations with URLs where provided.",
+    "approved": "Whether this station has been approved for use"
+  }
+}

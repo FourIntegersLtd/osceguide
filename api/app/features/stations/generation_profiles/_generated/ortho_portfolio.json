@@ -1,0 +1,20 @@
+{
+  "profileKey": "ortho.portfolio",
+  "label": "Ortho ST3 portfolio",
+  "examCode": "ortho",
+  "orthoStationType": "portfolio",
+  "blockHints": {
+    "station_id": "Unique identifier for this station",
+    "station_name": "Short title for the portfolio station (e.g. 'Portfolio – Tell me about yourself and professional knowledge')",
+    "station_type": "Type of ortho station (clinical, communication, prioritisation, portfolio)",
+    "created_at": "Creation timestamp",
+    "created_by": "Creator identifier",
+    "clinical_scenario": "Brief instructions for the candidate and examiner. Describe the two-part portfolio station (Part 1: CAMP, person specifications; Part 2: audit/QIP/research, NJR, GIRFT, BPT, reflection). State that the station is personalised to the candidate's CV and that questions will draw on their experience, education, and CV.",
+    "duration_minutes": "Total duration in minutes (typically 10 = 5 min × 2 parts)",
+    "portfolio_themes": "Themes covered in the station. Examples: 'CAMP', 'Person specifications', 'Audit vs QIP vs research', 'NJR, GIRFT, best practice tariff', 'Reflection and never events', 'Personalised CV-based questions'",
+    "interview_questions": "Q&A pairs. MUST include: (1) Personalised questions drawn from the candidate's experience, education, research, audits, teaching, leadership, or achievements; (2) Standard portfolio questions: Why should we choose you? Person specifications? Why orthopaedics? Audit/QIP/research and differences? Standard vs guideline? NJR? GIRFT? Best practice tariff? Complaints procedure? An error you have made? What is a never event?",
+    "key_learning_points": "Summary of what the candidate should demonstrate. Examples: 'Articulate experience and person spec alignment', 'Explain NJR, GIRFT, BPT', 'Reflect on error and never events', 'Use CV evidence to justify registrar appointment'",
+    "references": "Relevant guidance. Examples: 'Person specification for ST3 Orthopaedics', 'GMC Good Medical Practice', 'NJR', 'GIRFT', 'NHS Never Events list'",
+    "approved": "Whether this station has been approved for use"
+  }
+}

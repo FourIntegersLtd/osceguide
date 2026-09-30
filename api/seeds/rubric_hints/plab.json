@@ -1,0 +1,25 @@
+{
+  "_comment": "What the PLAB 2 legacy model does not say (plan section 4.3). requireEveryDomain is b2c PlabFeedbackModel.passed_station: every domain at 2 or more as well as a total of 7.",
+  "name": "PLAB 2",
+  "readingSeconds": 90,
+  "simulationSeconds": 480,
+  "pacing": {"total_seconds": 480, "history_seconds": 240, "introduction_seconds": 30, "safety_net_seconds": 90},
+  "ratingField": "score",
+  "roles": {},
+  "systemFields": [],
+  "display": {
+    "domain": {"aggregate": "sum", "passAtLeast": 2},
+    "total": {"aggregate": "sum", "passAtLeast": 7, "requireEveryDomain": true},
+    "tones": [
+      {"atLeast": 0.8, "tone": "good"},
+      {"atLeast": 0.6, "tone": "fair"},
+      {"atLeast": 0, "tone": "poor"}
+    ],
+    "labels": {
+      "domainSubtitle": "Average score out of 4",
+      "domainPassLabel": "Min threshold",
+      "trendSubtitle": "Station score over time",
+      "passLabel": "Pass (7/12)"
+    }
+  }
+}

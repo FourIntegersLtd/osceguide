@@ -1,0 +1,19 @@
+{
+  "_comment": "What the SCA legacy model does not say: its name, clock, which competency field holds the rating, and how the dashboard reads it (plan section 4.3). Read by scripts/generate_platform_seed.py.",
+  "name": "Simulated Consultation Assessment",
+  "readingSeconds": 120,
+  "simulationSeconds": 720,
+  "pacing": {"total_seconds": 720, "history_seconds": 360, "introduction_seconds": 30, "safety_net_seconds": 120},
+  "ratingField": "score",
+  "roles": {},
+  "systemFields": [],
+  "display": {
+    "domain": {"aggregate": "ragCounts"},
+    "total": {"aggregate": "ragShare"},
+    "labels": {
+      "title": "Where you stand",
+      "domainSubtitle": "RAG mix by clinical domain",
+      "trendSubtitle": "How your skills moved across recent sessions"
+    }
+  }
+}

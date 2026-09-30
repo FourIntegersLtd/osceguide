@@ -1,0 +1,116 @@
+"""Storage for assistant sessions."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import delete, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.assistant.models import AssistantSession, AssistantTranscriptMessage
+
+
+async def create_session(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    session_type: str,
+    instructions: str,
+    greeting: str | None,
+    extras: dict[str, Any] | None,
+    room_name: str | None,
+) -> AssistantSession:
+    """Insert a new assistant session and return it with its generated id loaded."""
+    assistant_session = AssistantSession(
+        user_id=user_id,
+        session_type=session_type,
+        instructions=instructions,
+        greeting=greeting,
+        extras=extras,
+        room_name=room_name,
+    )
+    session.add(assistant_session)
+    await session.flush()
+    await session.refresh(assistant_session)
+    return assistant_session
+
+
+async def set_room(session: AsyncSession, session_id: uuid.UUID, *, room_name: str) -> None:
+    """Record the LiveKit room name a session was started in."""
+    await session.execute(
+        update(AssistantSession).where(AssistantSession.id == session_id).values(room_name=room_name)
+    )
+
+
+async def by_id(session: AsyncSession, session_id: uuid.UUID) -> AssistantSession | None:
+    """The session with this id, or `None` if there is none."""
+    stmt = select(AssistantSession).where(AssistantSession.id == session_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def complete(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    at: datetime,
+    end_reason: str | None,
+    usage: dict[str, Any] | None,
+) -> None:
+    """Mark a session completed, with when it ended, why, and any usage it reported."""
+    await session.execute(
+        update(AssistantSession)
+        .where(AssistantSession.id == session_id)
+        .values(status="completed", completed_at=at, end_reason=end_reason, usage=usage)
+    )
+
+
+async def seen_message_ids(session: AsyncSession, session_id: uuid.UUID) -> set[str]:
+    """The message ids already stored for this session, so a transcript can skip repeats."""
+    stmt = select(AssistantTranscriptMessage.message_id).where(
+        AssistantTranscriptMessage.session_id == session_id
+    )
+    return set((await session.execute(stmt)).scalars())
+
+
+async def add_message(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    message_id: str,
+    seq: int,
+    role: str,
+    message: str,
+    spoken_at: datetime,
+) -> None:
+    """Store one turn of a session's transcript."""
+    session.add(
+        AssistantTranscriptMessage(
+            session_id=session_id,
+            message_id=message_id,
+            seq=seq,
+            role=role,
+            message=message,
+            spoken_at=spoken_at,
+        )
+    )
+    await session.flush()
+
+
+async def messages_for(session: AsyncSession, session_id: uuid.UUID) -> list[AssistantTranscriptMessage]:
+    """A session's transcript, in the order it was spoken."""
+    stmt = (
+        select(AssistantTranscriptMessage)
+        .where(AssistantTranscriptMessage.session_id == session_id)
+        .order_by(AssistantTranscriptMessage.seq)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def delete_messages(session: AsyncSession, session_id: uuid.UUID) -> int:
+    """Delete a session's turns. Returns how many went."""
+    deleted = await session.execute(
+        delete(AssistantTranscriptMessage).where(AssistantTranscriptMessage.session_id == session_id)
+    )
+    return int(getattr(deleted, "rowcount", 0) or 0)

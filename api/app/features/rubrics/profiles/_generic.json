@@ -1,0 +1,15 @@
+{
+  "domain": "What this domain assesses, and what the marker should look for across its competencies.",
+  "competency": "What the candidate must do to meet this competency, and what falls short.",
+  "section": "What this section asks the marker to write.",
+  "rating": "The rating for this competency, on the rubric's own scale.",
+  "evidence": "A short quote or paraphrase from the transcript that supports the rating.",
+  "explanation": "Why this rating was given, referring to what the candidate did or missed.",
+  "strength": "What the candidate did well.",
+  "improvement": "What the candidate missed or should do differently.",
+  "action": "A concrete next step the candidate can practise.",
+  "flag": "A safety or critical issue, if there was one.",
+  "summary": "A short overall summary.",
+  "selector": "Which variant of the station this was.",
+  "other": ""
+}

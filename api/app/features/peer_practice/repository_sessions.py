@@ -1,0 +1,220 @@
+"""Storage for one matched practice session, and the history it leaves behind.
+
+`repository.py` keeps the queue half: joining, waiting and matching are a
+different shape of query from reading, ending and remembering a session that
+already exists.
+"""
+
+from __future__ import annotations
+
+import uuid
+from collections.abc import Collection, Mapping
+from datetime import datetime
+
+from sqlalchemy import func, or_, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.features.peer_practice.models import PracticeHistory, PracticeSession
+
+
+async def create_session(
+    session: AsyncSession,
+    *,
+    exam_id: uuid.UUID,
+    doctor_user_id: uuid.UUID,
+    patient_user_id: uuid.UUID,
+    station_version_id: uuid.UUID | None = None,
+    peer_session_id: uuid.UUID | None = None,
+    status: str | None = None,
+    accept_expires_at: datetime | None = None,
+) -> PracticeSession:
+    """Create the matched pair's practice session row.
+
+    `status`/`accept_expires_at` are left out for a marketplace-booked pair,
+    which both already agreed to a fixed time and skips the accept handshake;
+    the queue's own matcher passes both, starting the pair in `pending_accept`.
+    """
+    practice_session = PracticeSession(
+        exam_id=exam_id,
+        doctor_user_id=doctor_user_id,
+        patient_user_id=patient_user_id,
+        station_version_id=station_version_id,
+        peer_session_id=peer_session_id,
+        accept_expires_at=accept_expires_at,
+        **({"status": status} if status is not None else {}),
+    )
+    session.add(practice_session)
+    await session.flush()
+    await session.refresh(practice_session)
+    return practice_session
+
+
+async def set_room(session: AsyncSession, session_id: uuid.UUID, *, room_name: str) -> None:
+    """Record which LiveKit room this session's pair will meet in."""
+    await session.execute(
+        update(PracticeSession).where(PracticeSession.id == session_id).values(room_name=room_name)
+    )
+
+
+async def session_by_id(session: AsyncSession, session_id: uuid.UUID) -> PracticeSession | None:
+    """One practice session, whatever its status."""
+    stmt = select(PracticeSession).where(PracticeSession.id == session_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def end_session(
+    session: AsyncSession, session_id: uuid.UUID, *, at: datetime, reason: str | None
+) -> None:
+    """Mark a session finished, recording why."""
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id)
+        .values(status="ended", ended_at=at, end_reason=reason)
+    )
+
+
+async def sessions_for_user(
+    session: AsyncSession, user_id: uuid.UUID, *, limit: int = 50
+) -> list[PracticeSession]:
+    """Every session this person has been part of, as doctor or patient, latest first."""
+    stmt = (
+        select(PracticeSession)
+        .where(
+            or_(
+                PracticeSession.doctor_user_id == user_id,
+                PracticeSession.patient_user_id == user_id,
+            )
+        )
+        .order_by(PracticeSession.created_at.desc())
+        .limit(limit)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+# --- history ---------------------------------------------------------------
+
+
+async def history_for(session: AsyncSession, user_id: uuid.UUID) -> PracticeHistory | None:
+    """What part this person last played, and how many sessions they have had. `None` for a newcomer."""
+    stmt = select(PracticeHistory).where(PracticeHistory.user_id == user_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def record_role(session: AsyncSession, user_id: uuid.UUID, *, role: str) -> None:
+    """Remember the part someone played, so they take the other one next time."""
+    existing = await history_for(session, user_id)
+    if existing is None:
+        session.add(PracticeHistory(user_id=user_id, last_role=role, session_count=1))
+        await session.flush()
+        return
+    await session.execute(
+        update(PracticeHistory)
+        .where(PracticeHistory.user_id == user_id)
+        .values(last_role=role, session_count=PracticeHistory.session_count + 1)
+    )
+
+
+async def record_feedback(
+    session: AsyncSession,
+    session_id: uuid.UUID,
+    *,
+    would_practice_again: bool,
+    rating: int | None = None,
+    comment: str | None = None,
+) -> None:
+    """Record the feedback one participant leaves after their session."""
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id)
+        .values(feedback_rating=rating, feedback_comment=comment, would_practice_again=would_practice_again)
+    )
+
+
+async def record_accept(session: AsyncSession, session_id: uuid.UUID, *, column: str, at: datetime) -> None:
+    """Stamp one side's acceptance of a pending pairing.
+
+    `column` is always `doctor_accepted_at` or `patient_accepted_at`, chosen
+    by the caller from which role the accepting user plays — there is no
+    third option, so this stays a plain column write rather than a case
+    expression.
+    """
+    await session.execute(
+        update(PracticeSession).where(PracticeSession.id == session_id).values(**{column: at})
+    )
+
+
+async def advance_phase(
+    session: AsyncSession, session_id: uuid.UUID, *, values: Mapping[str, object]
+) -> None:
+    await session.execute(update(PracticeSession).where(PracticeSession.id == session_id).values(**values))
+
+
+async def set_recording_started(
+    session: AsyncSession, session_id: uuid.UUID, *, egress_id: str, key: str
+) -> None:
+    """Record that a recording is running, and where it will land.
+
+    Guarded on the state rather than written blind: two presence heartbeats can
+    observe the same phase change, and the second must not overwrite the first
+    recording's id with its own and orphan a running egress.
+    """
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id, PracticeSession.recording_state == "none")
+        .values(egress_id=egress_id, recording_key=key, recording_state="recording")
+    )
+
+
+async def set_recording_state(
+    session: AsyncSession, session_id: uuid.UUID, *, state: str, error: str | None = None
+) -> None:
+    """Move a session's recording to a new state, and say why if it failed."""
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id)
+        .values(recording_state=state, recording_error=error)
+    )
+
+
+async def clear_recording(session: AsyncSession, session_id: uuid.UUID) -> bool:
+    """Blank a session's recording pointers, once erasure has deleted the object they name.
+
+    Guarded on `recording_key` still being set, mirroring `set_recording_started`'s
+    own guard: the erasure job runs daily and a crash mid-run is simply retried,
+    so a second pass over an already-cleared session must find nothing to do
+    rather than clear it again and report a false success.
+    """
+    result = await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id, PracticeSession.recording_key.is_not(None))
+        .values(egress_id=None, recording_key=None, recording_state="erased")
+        .returning(PracticeSession.id)
+    )
+    return result.first() is not None
+
+
+async def set_doctor_attempt(session: AsyncSession, session_id: uuid.UUID, *, attempt_id: uuid.UUID) -> None:
+    """Point the session at the doctor's marked attempt, once transcription has produced one."""
+    await session.execute(
+        update(PracticeSession)
+        .where(PracticeSession.id == session_id)
+        .values(doctor_attempt_id=attempt_id, recording_state="scored", recording_error=None)
+    )
+
+
+async def session_counts_by_station_version(
+    session: AsyncSession, station_version_ids: Collection[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many peer practice sessions were played on each station version."""
+    if not station_version_ids:
+        return {}
+    stmt = (
+        select(PracticeSession.station_version_id, func.count(PracticeSession.id))
+        .where(PracticeSession.station_version_id.in_(list(station_version_ids)))
+        .group_by(PracticeSession.station_version_id)
+    )
+    return {
+        version_id: int(count)
+        for version_id, count in (await session.execute(stmt)).all()
+        if version_id is not None
+    }

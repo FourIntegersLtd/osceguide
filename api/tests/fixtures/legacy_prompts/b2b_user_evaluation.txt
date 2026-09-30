@@ -1,0 +1,15 @@
+
+    Evaluate the medical consultation transcript for {station_name}.
+
+    Transcript speakers are tagged DOCTOR (GP trainee under assessment) and PATIENT (simulated patient).
+
+    For each category in the assessment framework:
+    1. Assign appropriate scores based on the scoring system defined
+    2. Support with direct quotes from transcript (grammatically corrected)
+    3. Be specific and evidence-based
+    4. Identify what was done well and what was missed
+    5. Provide actionable improvement suggestions
+
+    {transcript}
+
+    Note: Every field requires both score and supporting evidence from the transcript.

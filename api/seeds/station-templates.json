@@ -1,0 +1,1152 @@
+{
+  "templates": [
+    {
+      "exam_code": "sca",
+      "title": "SCA consultation station",
+      "start_point": "sca",
+      "structure": {
+        "schemaVersion": 1,
+        "layout": {
+          "persona": "patient"
+        },
+        "sections": [
+          {
+            "id": "patient_information",
+            "title": "Patient Information",
+            "audience": "patient",
+            "blocks": [
+              {
+                "id": "patient_biodata",
+                "type": "shortText",
+                "role": "persona",
+                "label": "Patient Biodata",
+                "required": true,
+                "placeholder": "e.g. Aisha Khan, 24, female, university student"
+              },
+              {
+                "id": "gender",
+                "type": "singleSelect",
+                "role": "persona",
+                "label": "Gender",
+                "required": true,
+                "options": [
+                  "male",
+                  "female"
+                ]
+              },
+              {
+                "id": "persona",
+                "type": "longText",
+                "role": "persona",
+                "label": "Persona",
+                "placeholder": "Tone, anxiety level, how they open up. e.g. Nervous at first but cooperative; tearful when discussing family."
+              },
+              {
+                "id": "opening_sentence",
+                "type": "longText",
+                "role": "complaint",
+                "label": "Opening sentence",
+                "required": true,
+                "placeholder": "First-person line the AI patient says to open (no \u201cHi doctor\u201d). e.g. I'm pregnant\u2026 I need an abortion. If my family finds out, I'm scared they'll kill me."
+              },
+              {
+                "id": "expanded_history",
+                "type": "longText",
+                "role": "history",
+                "label": "Expanded history",
+                "required": true,
+                "placeholder": "Full history the patient reveals when asked \u2014 not the opening line."
+              },
+              {
+                "id": "past_med_history_allergies",
+                "type": "list",
+                "role": "history",
+                "label": "Past medical history and allergies"
+              },
+              {
+                "id": "family_social_history",
+                "type": "list",
+                "role": "social",
+                "label": "Family and social history"
+              },
+              {
+                "id": "idea",
+                "type": "list",
+                "role": "hidden",
+                "label": "Ideas (ICE)"
+              },
+              {
+                "id": "concerns",
+                "type": "list",
+                "role": "hidden",
+                "label": "Concerns (ICE)"
+              },
+              {
+                "id": "expectation",
+                "type": "list",
+                "role": "hidden",
+                "label": "Expectations (ICE)"
+              },
+              {
+                "id": "questions",
+                "type": "list",
+                "role": "hidden",
+                "label": "Questions the patient may ask"
+              }
+            ]
+          },
+          {
+            "id": "doctor_information",
+            "title": "Doctor Information",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "doctor_patient_biodata",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Patient Biodata",
+                "placeholder": "e.g. John Doe, 35"
+              },
+              {
+                "id": "recent_notes",
+                "type": "list",
+                "role": "candidate_brief",
+                "label": "Recent Notes",
+                "placeholder": "Past GP visits only \u2014 not today's story. e.g. No recent GP visits; or Seen 2 months ago for medication review."
+              },
+              {
+                "id": "current_medications",
+                "type": "list",
+                "role": "candidate_brief",
+                "label": "Current Medications"
+              },
+              {
+                "id": "past_medical_history",
+                "type": "list",
+                "role": "candidate_brief",
+                "label": "Past Medical History"
+              },
+              {
+                "id": "recent_investigations",
+                "type": "list",
+                "role": "candidate_brief",
+                "label": "Recent Investigations"
+              },
+              {
+                "id": "social_history",
+                "type": "list",
+                "role": "candidate_brief",
+                "label": "Social History"
+              },
+              {
+                "id": "doctor_photos",
+                "type": "media",
+                "role": "candidate_brief",
+                "label": "Photos"
+              }
+            ]
+          },
+          {
+            "id": "management_plan",
+            "title": "Management Plan",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "explanation",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Explanation"
+              },
+              {
+                "id": "assessment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Assessment"
+              },
+              {
+                "id": "social_concerns",
+                "type": "list",
+                "role": "examiner",
+                "label": "Social Concerns"
+              },
+              {
+                "id": "ice",
+                "type": "list",
+                "role": "examiner",
+                "label": "ICE"
+              },
+              {
+                "id": "immediate_actions",
+                "type": "list",
+                "role": "examiner",
+                "label": "Immediate Actions"
+              },
+              {
+                "id": "pharmacological_treatment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Pharmacological Treatment"
+              },
+              {
+                "id": "non_pharmacological_treatment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Non-Pharmacological Treatment"
+              },
+              {
+                "id": "follow_up",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Follow Up"
+              },
+              {
+                "id": "health_education",
+                "type": "list",
+                "role": "examiner",
+                "label": "Health Education"
+              },
+              {
+                "id": "safety_netting",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Safety Netting"
+              },
+              {
+                "id": "additional_notes",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Additional Notes"
+              }
+            ]
+          },
+          {
+            "id": "clinical_experience_groups",
+            "title": "Clinical Experience Groups",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "capability",
+                "type": "singleSelect",
+                "role": "examiner",
+                "label": "Clinical Experience Groups",
+                "options": [
+                  "Infants, children and young people (under the age of 19)",
+                  "Mental health (including addiction, alcohol and substance misuse)",
+                  "People with long term conditions including cancer, multi-morbidity and disability",
+                  "Older adults including frailty and/or people at end of life",
+                  "Gender, reproductive and sexual health (including women's, men's, LGBTQ, gynaecology and breast)",
+                  "Urgent and unscheduled care",
+                  "People with health disadvantage and vulnerabilities (including veterans, mental capacity difficulties, safeguarding and those with communication difficulties/disability)",
+                  "Population Health and health promotion (including people with non-acute and/or non-chronic health problems)",
+                  "Clinical problems not linked to a specific clinical experience group",
+                  "Ethnicity, culture, diversity, inclusivity",
+                  "New presentation of undifferentiated disease",
+                  "Prescribing",
+                  "Investigation / Results",
+                  "Professional conversation / Professional dilemma"
+                ]
+              }
+            ]
+          }
+        ],
+        "generation": {
+          "profileKey": "sca.station"
+        }
+      }
+    },
+    {
+      "exam_code": "plab",
+      "title": "PLAB 2 station",
+      "start_point": "plab",
+      "structure": {
+        "schemaVersion": 1,
+        "layout": {
+          "persona": "patient"
+        },
+        "sections": [
+          {
+            "id": "patient_information",
+            "title": "Patient Information",
+            "audience": "patient",
+            "blocks": [
+              {
+                "id": "patient_biodata",
+                "type": "shortText",
+                "role": "persona",
+                "label": "Patient Biodata",
+                "required": true,
+                "placeholder": "e.g. Aisha Khan, 24, female, university student"
+              },
+              {
+                "id": "gender",
+                "type": "singleSelect",
+                "role": "persona",
+                "label": "Gender",
+                "required": true,
+                "options": [
+                  "male",
+                  "female"
+                ]
+              },
+              {
+                "id": "persona",
+                "type": "longText",
+                "role": "persona",
+                "label": "Persona",
+                "placeholder": "Tone, anxiety level, how they open up. e.g. Nervous at first but cooperative; tearful when discussing family."
+              },
+              {
+                "id": "opening_sentence",
+                "type": "longText",
+                "role": "complaint",
+                "label": "Opening sentence",
+                "required": true,
+                "placeholder": "First-person line the AI patient says to open (no \u201cHi doctor\u201d). e.g. I'm pregnant\u2026 I need an abortion. If my family finds out, I'm scared they'll kill me."
+              },
+              {
+                "id": "expanded_history",
+                "type": "longText",
+                "role": "history",
+                "label": "Expanded history",
+                "required": true,
+                "placeholder": "Full history the patient reveals when asked \u2014 not the opening line."
+              },
+              {
+                "id": "past_med_history_allergies",
+                "type": "list",
+                "role": "history",
+                "label": "Past medical history and allergies"
+              },
+              {
+                "id": "examination_findings",
+                "type": "list",
+                "role": "examination",
+                "label": "Examination findings"
+              },
+              {
+                "id": "family_social_history",
+                "type": "list",
+                "role": "social",
+                "label": "Family and social history"
+              },
+              {
+                "id": "idea",
+                "type": "list",
+                "role": "hidden",
+                "label": "Ideas (ICE)"
+              },
+              {
+                "id": "concerns",
+                "type": "list",
+                "role": "hidden",
+                "label": "Concerns (ICE)"
+              },
+              {
+                "id": "expectation",
+                "type": "list",
+                "role": "hidden",
+                "label": "Expectations (ICE)"
+              },
+              {
+                "id": "questions",
+                "type": "list",
+                "role": "hidden",
+                "label": "Questions the patient may ask"
+              }
+            ]
+          },
+          {
+            "id": "doctor_information",
+            "title": "Doctor Information",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "doctor_identity",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Doctor Identity",
+                "required": true,
+                "placeholder": "e.g. You are an FY2 in the emergency department."
+              },
+              {
+                "id": "patient_information",
+                "type": "list",
+                "role": "candidate_brief",
+                "label": "Patient Information"
+              },
+              {
+                "id": "task_instructions",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Task Instructions",
+                "required": true
+              },
+              {
+                "id": "doctor_photos",
+                "type": "media",
+                "role": "candidate_brief",
+                "label": "Photos"
+              }
+            ]
+          },
+          {
+            "id": "management_plan",
+            "title": "Management Plan",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "explanation",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Explanation"
+              },
+              {
+                "id": "differential_diagnosis",
+                "type": "list",
+                "role": "examiner",
+                "label": "Differential Diagnosis"
+              },
+              {
+                "id": "assessment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Clinical Assessment"
+              },
+              {
+                "id": "management_examination_findings",
+                "type": "list",
+                "role": "examiner",
+                "label": "Clinical Examination Findings"
+              },
+              {
+                "id": "further_investigations",
+                "type": "list",
+                "role": "examiner",
+                "label": "Further Investigations"
+              },
+              {
+                "id": "pharmacological_treatment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Pharmacological Management"
+              },
+              {
+                "id": "non_pharmacological_treatment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Non-Pharmacological Management"
+              },
+              {
+                "id": "health_education",
+                "type": "list",
+                "role": "examiner",
+                "label": "Health Education"
+              },
+              {
+                "id": "follow_up",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Follow Up"
+              },
+              {
+                "id": "safety_netting",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Safety Netting"
+              },
+              {
+                "id": "social_concerns",
+                "type": "list",
+                "role": "examiner",
+                "label": "Social Concerns"
+              },
+              {
+                "id": "ice",
+                "type": "list",
+                "role": "examiner",
+                "label": "ICE"
+              },
+              {
+                "id": "additional_notes",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Additional Notes"
+              },
+              {
+                "id": "specialties",
+                "type": "list",
+                "role": "examiner",
+                "label": "Specialties",
+                "placeholder": "Lowercase, e.g. cardiology"
+              }
+            ]
+          }
+        ],
+        "generation": {
+          "profileKey": "plab.station"
+        }
+      }
+    },
+    {
+      "exam_code": "casc",
+      "title": "CASC station",
+      "start_point": "casc",
+      "structure": {
+        "schemaVersion": 1,
+        "layout": {
+          "persona": "patient"
+        },
+        "sections": [
+          {
+            "id": "patient_information",
+            "title": "Patient Information",
+            "audience": "patient",
+            "blocks": [
+              {
+                "id": "patient_biodata",
+                "type": "shortText",
+                "role": "persona",
+                "label": "Patient Biodata",
+                "required": true,
+                "placeholder": "e.g. Aisha Khan, 24, female, university student"
+              },
+              {
+                "id": "gender",
+                "type": "singleSelect",
+                "role": "persona",
+                "label": "Gender",
+                "required": true,
+                "options": [
+                  "male",
+                  "female"
+                ]
+              },
+              {
+                "id": "persona",
+                "type": "longText",
+                "role": "persona",
+                "label": "Persona",
+                "placeholder": "Tone, anxiety level, how they open up. e.g. Nervous at first but cooperative; tearful when discussing family."
+              },
+              {
+                "id": "opening_sentence",
+                "type": "longText",
+                "role": "complaint",
+                "label": "Opening sentence",
+                "required": true,
+                "placeholder": "First-person line the AI patient says to open (no \u201cHi doctor\u201d). e.g. I'm pregnant\u2026 I need an abortion. If my family finds out, I'm scared they'll kill me."
+              },
+              {
+                "id": "expanded_history",
+                "type": "longText",
+                "role": "history",
+                "label": "Expanded history",
+                "required": true,
+                "placeholder": "Full history the patient reveals when asked \u2014 not the opening line."
+              },
+              {
+                "id": "past_med_history_allergies",
+                "type": "list",
+                "role": "history",
+                "label": "Past medical history and allergies"
+              },
+              {
+                "id": "family_social_history",
+                "type": "list",
+                "role": "social",
+                "label": "Family and social history"
+              },
+              {
+                "id": "idea",
+                "type": "list",
+                "role": "hidden",
+                "label": "Ideas (ICE)"
+              },
+              {
+                "id": "concerns",
+                "type": "list",
+                "role": "hidden",
+                "label": "Concerns (ICE)"
+              },
+              {
+                "id": "expectation",
+                "type": "list",
+                "role": "hidden",
+                "label": "Expectations (ICE)"
+              },
+              {
+                "id": "questions",
+                "type": "list",
+                "role": "hidden",
+                "label": "Questions the patient may ask"
+              }
+            ]
+          },
+          {
+            "id": "doctor_information",
+            "title": "Doctor Information",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "doctor_task",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Doctor Task",
+                "required": true
+              },
+              {
+                "id": "doctor_photos",
+                "type": "media",
+                "role": "candidate_brief",
+                "label": "Photos"
+              }
+            ]
+          },
+          {
+            "id": "management_plan",
+            "title": "Management Plan",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "description",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Description"
+              },
+              {
+                "id": "diagnostic_criteria",
+                "type": "list",
+                "role": "examiner",
+                "label": "Diagnostic Criteria"
+              },
+              {
+                "id": "differential_diagnosis",
+                "type": "list",
+                "role": "examiner",
+                "label": "Differential Diagnosis"
+              },
+              {
+                "id": "explanation",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Explanation"
+              },
+              {
+                "id": "assessment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Assessment"
+              },
+              {
+                "id": "risk_factors",
+                "type": "list",
+                "role": "examiner",
+                "label": "Risk Factors"
+              },
+              {
+                "id": "immediate_actions",
+                "type": "list",
+                "role": "examiner",
+                "label": "Immediate Actions"
+              },
+              {
+                "id": "pharmacological_treatment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Pharmacological Treatment"
+              },
+              {
+                "id": "psychological_treatment",
+                "type": "list",
+                "role": "examiner",
+                "label": "Psychological Treatment"
+              },
+              {
+                "id": "social_interventions",
+                "type": "list",
+                "role": "examiner",
+                "label": "Social Interventions"
+              },
+              {
+                "id": "safety_planning",
+                "type": "list",
+                "role": "examiner",
+                "label": "Safety Planning"
+              },
+              {
+                "id": "follow_up",
+                "type": "list",
+                "role": "examiner",
+                "label": "Follow Up"
+              },
+              {
+                "id": "additional_notes",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Additional Notes"
+              }
+            ]
+          }
+        ],
+        "generation": {
+          "profileKey": "casc.station"
+        }
+      }
+    },
+    {
+      "exam_code": "ortho",
+      "title": "Ortho ST3 clinical",
+      "start_point": "ortho",
+      "structure": {
+        "schemaVersion": 1,
+        "layout": {
+          "persona": "examiner"
+        },
+        "sections": [
+          {
+            "id": "basic_information",
+            "title": "Basic Information",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "clinical_scenario_title",
+                "type": "shortText",
+                "role": "candidate_brief",
+                "label": "Clinical Scenario Title",
+                "required": true
+              },
+              {
+                "id": "clinical_scenario",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Clinical Scenario",
+                "required": true
+              },
+              {
+                "id": "radiograph_image_url",
+                "type": "media",
+                "role": "candidate_brief",
+                "label": "Radiograph Image URL",
+                "placeholder": "Optional URL to primary imaging"
+              },
+              {
+                "id": "additional_image_urls",
+                "type": "media",
+                "role": "candidate_brief",
+                "label": "Additional Image URLs",
+                "placeholder": "Classification diagrams, post-op X-rays, etc."
+              }
+            ]
+          },
+          {
+            "id": "key_concerns",
+            "title": "Key Concerns",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "key_concerns",
+                "type": "list",
+                "role": "examiner",
+                "label": "Key Concerns"
+              }
+            ]
+          },
+          {
+            "id": "clinical_assessment",
+            "title": "Clinical Assessment",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "history_overview",
+                "type": "longText",
+                "role": "examiner",
+                "label": "History Overview"
+              },
+              {
+                "id": "examination_overview",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Examination Overview"
+              },
+              {
+                "id": "investigations_overview",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Investigations Overview"
+              },
+              {
+                "id": "management_overview",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Management Overview"
+              }
+            ]
+          },
+          {
+            "id": "interview_questions",
+            "title": "Interview Questions",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "interview_questions",
+                "type": "qaList",
+                "role": "examiner",
+                "label": "Interview Questions",
+                "placeholder": "Question and answer pairs for the examiner"
+              }
+            ]
+          },
+          {
+            "id": "references",
+            "title": "References",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "references",
+                "type": "list",
+                "role": "examiner",
+                "label": "References"
+              }
+            ]
+          }
+        ],
+        "generation": {
+          "profileKey": "ortho.clinical"
+        }
+      }
+    },
+    {
+      "exam_code": "ortho",
+      "title": "Ortho ST3 communication",
+      "start_point": "ortho_communication",
+      "structure": {
+        "schemaVersion": 1,
+        "layout": {
+          "persona": "examiner"
+        },
+        "sections": [
+          {
+            "id": "basic_information",
+            "title": "Basic Information",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "clinical_scenario_title",
+                "type": "shortText",
+                "role": "candidate_brief",
+                "label": "Clinical Scenario Title",
+                "required": true
+              },
+              {
+                "id": "clinical_scenario",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Clinical Scenario",
+                "required": true
+              }
+            ]
+          },
+          {
+            "id": "communication_themes",
+            "title": "Communication Themes",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "communication_themes",
+                "type": "list",
+                "role": "examiner",
+                "label": "Communication Themes"
+              },
+              {
+                "id": "professional_conduct_topics",
+                "type": "list",
+                "role": "examiner",
+                "label": "Professional Conduct Topics"
+              }
+            ]
+          },
+          {
+            "id": "communication_frameworks",
+            "title": "Communication Frameworks",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "consent_approach",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Consent Approach"
+              },
+              {
+                "id": "breaking_bad_news_framework",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Breaking Bad News Framework"
+              }
+            ]
+          },
+          {
+            "id": "interview_questions",
+            "title": "Interview Questions",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "interview_questions",
+                "type": "qaList",
+                "role": "examiner",
+                "label": "Interview Questions"
+              }
+            ]
+          },
+          {
+            "id": "key_learning_points",
+            "title": "Key Learning Points",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "key_learning_points",
+                "type": "list",
+                "role": "examiner",
+                "label": "Key Learning Points"
+              }
+            ]
+          },
+          {
+            "id": "references",
+            "title": "References",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "references",
+                "type": "list",
+                "role": "examiner",
+                "label": "References"
+              }
+            ]
+          }
+        ],
+        "generation": {
+          "profileKey": "ortho.communication"
+        }
+      }
+    },
+    {
+      "exam_code": "ortho",
+      "title": "Ortho ST3 prioritisation",
+      "start_point": "ortho_prioritisation",
+      "structure": {
+        "schemaVersion": 1,
+        "layout": {
+          "persona": "examiner"
+        },
+        "sections": [
+          {
+            "id": "basic_information",
+            "title": "Basic Information",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "clinical_scenario_title",
+                "type": "shortText",
+                "role": "candidate_brief",
+                "label": "Clinical Scenario Title",
+                "required": true
+              },
+              {
+                "id": "clinical_scenario",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Clinical Scenario",
+                "required": true
+              },
+              {
+                "id": "background_overview",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Background Overview"
+              },
+              {
+                "id": "suggested_order_overview",
+                "type": "longText",
+                "role": "examiner",
+                "label": "Suggested Order Overview"
+              }
+            ]
+          },
+          {
+            "id": "patient_lists",
+            "title": "Patient Lists",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "patient_list_for_candidate",
+                "type": "records",
+                "role": "candidate_brief",
+                "label": "Patient List for Candidate",
+                "fields": [
+                  {
+                    "key": "number",
+                    "label": "Patient"
+                  },
+                  {
+                    "key": "age",
+                    "label": "Age"
+                  },
+                  {
+                    "key": "gender",
+                    "label": "Gender"
+                  },
+                  {
+                    "key": "summary",
+                    "label": "Summary"
+                  },
+                  {
+                    "key": "notes",
+                    "label": "Notes"
+                  }
+                ]
+              },
+              {
+                "id": "examiner_additional_info",
+                "type": "records",
+                "role": "examiner",
+                "label": "Examiner Additional Info",
+                "fields": [
+                  {
+                    "key": "number",
+                    "label": "Patient"
+                  },
+                  {
+                    "key": "age",
+                    "label": "Age"
+                  },
+                  {
+                    "key": "gender",
+                    "label": "Gender"
+                  },
+                  {
+                    "key": "summary",
+                    "label": "Summary"
+                  },
+                  {
+                    "key": "notes",
+                    "label": "Notes"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "suggested_list_order",
+            "title": "Suggested List Order",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "suggested_order",
+                "type": "groupedList",
+                "role": "examiner",
+                "label": "Suggested List Order"
+              }
+            ]
+          },
+          {
+            "id": "interview_questions",
+            "title": "Interview Questions",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "interview_questions",
+                "type": "qaList",
+                "role": "examiner",
+                "label": "Interview Questions"
+              }
+            ]
+          }
+        ],
+        "generation": {
+          "profileKey": "ortho.prioritisation"
+        }
+      }
+    },
+    {
+      "exam_code": "ortho",
+      "title": "Ortho ST3 portfolio",
+      "start_point": "ortho_portfolio",
+      "structure": {
+        "schemaVersion": 1,
+        "layout": {
+          "persona": "examiner"
+        },
+        "sections": [
+          {
+            "id": "basic_information",
+            "title": "Basic Information",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "clinical_scenario",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Clinical Scenario",
+                "required": true
+              },
+              {
+                "id": "duration_minutes",
+                "type": "shortText",
+                "role": "candidate_brief",
+                "label": "Duration (minutes)"
+              },
+              {
+                "id": "portfolio_themes",
+                "type": "list",
+                "role": "candidate_brief",
+                "label": "Portfolio Themes"
+              }
+            ]
+          },
+          {
+            "id": "interview_questions",
+            "title": "Interview Questions",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "interview_questions",
+                "type": "qaList",
+                "role": "examiner",
+                "label": "Interview Questions"
+              }
+            ]
+          },
+          {
+            "id": "key_learning_points",
+            "title": "Key Learning Points",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "key_learning_points",
+                "type": "list",
+                "role": "examiner",
+                "label": "Key Learning Points"
+              }
+            ]
+          },
+          {
+            "id": "references",
+            "title": "References",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "references",
+                "type": "list",
+                "role": "examiner",
+                "label": "References"
+              }
+            ]
+          }
+        ],
+        "generation": {
+          "profileKey": "ortho.portfolio"
+        }
+      }
+    }
+  ]
+}

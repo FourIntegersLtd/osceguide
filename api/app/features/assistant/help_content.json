@@ -1,0 +1,367 @@
+{
+  "categories": [
+    {
+      "slug": "getting-started",
+      "title": "Getting started",
+      "description": "Find your way around and create your first session",
+      "icon_key": "rocket",
+      "sort_order": 10,
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "practice",
+      "title": "Practice sessions",
+      "description": "Set up mocks, retry stations, and use Combine or Flagged",
+      "icon_key": "book",
+      "sort_order": 20,
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "stations",
+      "title": "Stations and feedback",
+      "description": "Run a consultation, read feedback, and debrief with Athena",
+      "icon_key": "message",
+      "sort_order": 30,
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "live-community",
+      "title": "Live practice",
+      "description": "Practice with colleagues and use Community",
+      "icon_key": "user",
+      "sort_order": 40,
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "billing",
+      "title": "Plans and billing",
+      "description": "Subscribe, upgrade, and fix payment problems",
+      "icon_key": "wallet",
+      "sort_order": 50,
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "account-help",
+      "title": "Account and help",
+      "description": "Settings, audio tips, and when to Contact Us",
+      "icon_key": "settings",
+      "sort_order": 60,
+      "exam_codes": [
+        "all"
+      ]
+    }
+  ],
+  "articles": [
+    {
+      "slug": "first-steps",
+      "category_slug": "getting-started",
+      "title": "Where to go after you log in",
+      "summary": "Dashboard for progress, AI Practice for cases.",
+      "sort_order": 10,
+      "related_slugs": [
+        "find-your-way",
+        "create-a-session"
+      ],
+      "body_md": "Pick one of these to begin.\n\n- **Dashboard** if you want to see how you are doing\n- **AI Practice** if you want to run a case\n\nMost people start with **AI Practice**. When you are ready to set up a mock, follow the guide on creating a practice session.\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "find-your-way",
+      "category_slug": "getting-started",
+      "title": "Using the left sidebar",
+      "summary": "The main menu for every page in the app.",
+      "sort_order": 20,
+      "related_slugs": [
+        "first-steps",
+        "create-a-session"
+      ],
+      "body_md": "The left sidebar is how you move around.\n\nCommon items:\n\n- **Dashboard** — progress and charts\n- **AI Practice** — create and run sessions\n- **Contact Us** — message the team\n- **Community** — posts from other learners\n- **Settings** — profile and payments\n- **Achievements** — milestones and badges\n\nYou may also see extra links such as **Marketplace** or **A to Z**. Tap them the same way as everything else.\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "create-a-session",
+      "category_slug": "practice",
+      "title": "Create a practice session",
+      "summary": "Name it, pick stations, tap Create Session.",
+      "sort_order": 10,
+      "related_slugs": [
+        "find-past-sessions",
+        "combine-and-flag",
+        "locked-sessions"
+      ],
+      "body_md": "This is how you start a new mock.\n\n1. Open **AI Practice** in the left sidebar\n2. Stay on the **Setup** tab\n3. Enter a session name and choose how many stations (up to 12)\n4. Tap **Create Session**\n5. Open the session from **View All Sessions** and start a station\n\n### Good to know\n\n- Stations are assigned for you. You cannot pick one specialty up front\n- To reuse cases you already did, use **Combine Stations** or open them from **View All Sessions**\n\n### Free trial\n\nAfter you sign up, create a session the same way. If the app asks you to upgrade or you cannot see stations, follow the prompt or open **Contact Us**.\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "find-past-sessions",
+      "category_slug": "practice",
+      "title": "Find, retry, or review a session",
+      "summary": "Open View All Sessions to continue or review.",
+      "sort_order": 20,
+      "related_slugs": [
+        "create-a-session",
+        "run-a-station"
+      ],
+      "body_md": "Open your past mocks from Setup.\n\n1. Go to **AI Practice** → **Setup**\n2. Tap **View All Sessions**\n3. Open the session you want\n\nOn a station you can:\n\n- **Start New Attempt** for another go\n- **Review Last Attempt** for feedback and the transcript\n\n### Attempts\n\n- **Three attempts max** on each station\n- **After three,** Start New Attempt is blocked\n- **You cannot reset** attempts yourself\n\n### If something goes wrong\n\n- **Glitch used an attempt.** Message **Contact Us** with the session and station names\n- **Delete a session.** Use the trash control on View All Sessions\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "combine-and-flag",
+      "category_slug": "practice",
+      "title": "Combine stations and flagged cases",
+      "summary": "Rebuild a mock from past attempts, or reopen flagged cases.",
+      "sort_order": 30,
+      "related_slugs": [
+        "create-a-session",
+        "find-past-sessions"
+      ],
+      "body_md": "### Build a session from past stations\n\n1. Open **AI Practice** → **Combine Stations**\n2. Enter a name for the new session\n3. Select stations you have already attempted\n4. Tap **Create Session**\n\n### Flag a case for later\n\n1. During a mock, tap the **flag** icon near the station indicator\n2. Later, open **AI Practice** → **Flagged Stations**\n3. Tap **View Details** on the case you want\n\nFlags stay until you remove them.\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "locked-sessions",
+      "category_slug": "practice",
+      "title": "Why a session looks locked",
+      "summary": "Older sessions can lock when a past plan ends.",
+      "sort_order": 40,
+      "related_slugs": [
+        "create-a-session",
+        "subscribe-and-pay"
+      ],
+      "body_md": "A session often locks when it belongs to an older plan that has ended.\n\n### What to do\n\n1. Create a **new** session from **AI Practice** → **Setup** under your current access\n2. Or open **Settings** → **Payments** if you need to upgrade\n\n### After you resubscribe\n\n1. On **Setup**, turn on **Include previously attempted stations** if you want older cases back\n2. Or rebuild from **Combine Stations** using stations you already attempted\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "run-a-station",
+      "category_slug": "stations",
+      "title": "Run a consultation",
+      "summary": "Open Simulation, then Start Consultation.",
+      "sort_order": 10,
+      "related_slugs": [
+        "read-feedback",
+        "fix-audio"
+      ],
+      "body_md": "Speak with the AI patient like a real consultation.\n\n1. Open the station\n2. Go to the **Simulation** tab\n3. Tap **Start Consultation**\n4. Speak normally. The patient answers by voice\n\n### Tips\n\n- **Best browser.** Prefer Chrome or Edge on a laptop\n- **Mic access.** Allow the microphone before you start\n\n### If something goes wrong\n\n- **No reply.** Check the mic, refresh, and try again\n- **Timer running, patient silent.** Stop and refresh instead of burning the attempt\n- **Still stuck.** Leave the station and use **Contact Us** with the session and station names\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "read-feedback",
+      "category_slug": "stations",
+      "title": "Feedback, transcript, and scores",
+      "summary": "Open Review Last Attempt for scores, chat, and plans.",
+      "sort_order": 20,
+      "related_slugs": [
+        "run-a-station",
+        "debrief-athena"
+      ],
+      "body_md": "Review what happened after a station.\n\n1. Open **View All Sessions**\n2. Open your session\n3. Tap **Review Last Attempt**\n\nThen use the tabs:\n\n- **Feedback** for Athena scores and comments\n- **Simulation** for the transcript\n- **Management** for the management plan\n\n### About Red, Amber, and Green\n\n- **Green and Amber** both count as doing well enough\n- **Red** marks something to practise next (common early on)\n\n### If something goes wrong\n\n- **Still generating.** Wait a few minutes, then refresh\n- **Review missing.** Use **Contact Us** after a finished consultation\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "debrief-athena",
+      "category_slug": "stations",
+      "title": "Debrief with Athena",
+      "summary": "Talk through your attempt from the Feedback tab.",
+      "sort_order": 30,
+      "related_slugs": [
+        "read-feedback",
+        "fix-audio"
+      ],
+      "body_md": "Use Athena to talk through how you did.\n\n1. Open **Review Last Attempt**\n2. Go to the **Feedback** tab\n3. Tap **Start Debrief**\n4. Choose **Debrief Session** to talk through your performance\n\n### Practice as Patient\n\nIf you also see **Practice as Patient**, Athena acts as the doctor while you experience the consultation as the patient.\n\n### If something goes wrong\n\n- Stuck on connecting? Refresh, allow the microphone, and try again on a laptop\n- Still stuck? Contact Us with the session name\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "dashboard-progress",
+      "category_slug": "stations",
+      "title": "Dashboard and progress",
+      "summary": "Charts, trends, and ideas for what to practise next.",
+      "sort_order": 40,
+      "related_slugs": [
+        "read-feedback",
+        "first-steps"
+      ],
+      "body_md": "Open **Dashboard** in the left sidebar.\n\nYou can use it to:\n\n- See charts and trends over time\n- Spot sections like Important Observations or skill recommendations, when they appear\n- Decide what to practise next in **AI Practice**\n\nFor milestones and badges, open **Achievements** in the sidebar.\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "practice-with-people",
+      "category_slug": "live-community",
+      "title": "Practice with a colleague",
+      "summary": "Instant Live Practice, or book a slot in Marketplace.",
+      "sort_order": 10,
+      "related_slugs": [
+        "community",
+        "fix-audio"
+      ],
+      "body_md": "Practise with another person, not only the AI.\n\n1. From your dashboard, tap **Practice with colleague**\n2. Choose one option:\n   - **Live Practice** for an instant queue match\n   - **Schedule Practice** to open **Marketplace** and post or book a slot\n\n### Tips\n\n- Use a laptop. Phone video is not supported for full colleague practice\n- Doctor and patient roles are assigned when you join, so you get both sides over time\n\n### Join a booked session\n\n1. Open **Marketplace** → **Upcoming Sessions**\n2. Join from 10 minutes before the start until one hour after\n\n### If something goes wrong\n\n- Says too early at the right time? Refresh and check your device clock\n- Still wrong? Contact Us with the session time\n",
+      "exam_codes": [
+        "sca"
+      ]
+    },
+    {
+      "slug": "community",
+      "category_slug": "live-community",
+      "title": "Community",
+      "summary": "Read posts and ask other learners questions.",
+      "sort_order": 20,
+      "related_slugs": [
+        "first-steps",
+        "get-more-help"
+      ],
+      "body_md": "Open **Community** in the left sidebar to:\n\n- Read posts from other learners\n- Ask questions and share tips\n\nBe respectful. Offensive content may be removed.\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "subscribe-and-pay",
+      "category_slug": "billing",
+      "title": "Subscribe or upgrade",
+      "summary": "Choose a plan under Settings → Payments.",
+      "sort_order": 10,
+      "related_slugs": [
+        "payment-problems",
+        "refunds-and-codes"
+      ],
+      "body_md": "Pay for access from Settings.\n\n1. Open **Settings** → **Payments**\n2. Choose a plan\n3. Finish checkout\n4. Refresh, or log out and back in\n5. Open **AI Practice** to create a session\n\nYou may also see an upgrade prompt when you try to create a session. Follow that prompt if it appears.\n\n### Plans\n\n- Typical lengths are 1, 3, or 6 months\n- Station counts depend on your exam and plan\n- Check the pricing page on the website for current details\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "payment-problems",
+      "category_slug": "billing",
+      "title": "I paid but still cannot practise",
+      "summary": "Log out, check Payments, then try Create Session.",
+      "sort_order": 20,
+      "related_slugs": [
+        "subscribe-and-pay",
+        "get-more-help"
+      ],
+      "body_md": "Try these steps in order.\n\n1. **Log out** and log back in\n2. **Check Payments.** Open **Settings** → **Payments** and confirm the plan looks active\n3. **Create a session.** Open **AI Practice** → **Setup** → **Create Session**\n\nAccess is usually instant. If nothing changes after a few minutes, refresh and try again.\n\n### Other cases\n\n- **Wrong email.** Contact Us from the account you should have used, and include both addresses\n- **Need a receipt.** Open **Settings → Payments** and use **Download receipt** (also emailed at purchase). For older purchases without a download, contact **hello@fourintegers.com**\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "refunds-and-codes",
+      "category_slug": "billing",
+      "title": "Refunds, cancel, and promo codes",
+      "summary": "No refund after you access a station. Codes are paused.",
+      "sort_order": 30,
+      "related_slugs": [
+        "subscribe-and-pay",
+        "get-more-help"
+      ],
+      "body_md": "### Cancel\n\nYou cannot cancel mid-plan after payment. Access runs until the end of the period you bought.\n\n### Refunds\n\nThere is a strict **no refund** policy after you access any station. Read the refund policy before you buy.\n\nFor questions before purchase, email hello at fourintegers dot com.\n\n### Promo codes\n\n- **Paused for now.** Referral and discount codes are not available\n- **We will announce** when codes return\n- **Do not pay twice** hoping a code will apply\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "fix-audio",
+      "category_slug": "account-help",
+      "title": "Fix microphone and audio",
+      "summary": "Allow the mic, use Chrome or Edge on a laptop.",
+      "sort_order": 10,
+      "related_slugs": [
+        "run-a-station",
+        "get-more-help"
+      ],
+      "body_md": "Work through this checklist.\n\n1. **Allow the microphone** in the browser\n2. **Use Chrome or Edge** on a laptop when you can\n3. **Check volume** and the selected mic\n4. **Unplug Bluetooth headsets** that fight for the mic\n\n### More tips\n\n- **Phones and tablets.** Avoid in-app browsers\n- **Best setup.** Laptop audio is more reliable for AI practice and Live Practice\n\n### If the page is blank\n\n1. Hard refresh\n2. Try another browser\n3. Turn off aggressive ad blockers for this site\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "account-settings",
+      "category_slug": "account-help",
+      "title": "Profile, password, and logout",
+      "summary": "Update Profile in Settings. Log out from the sidebar.",
+      "sort_order": 20,
+      "related_slugs": [
+        "get-more-help",
+        "ortho-cv"
+      ],
+      "body_md": "### Change your profile\n\n1. Open **Settings** → **Profile**\n2. Update your username or change your password\n3. Save\n\nEmail is read-only in the app. To change email, use **Contact Us**.\n\n### Log out\n\nTap **Logout** at the bottom of the left sidebar.\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "ortho-cv",
+      "category_slug": "account-help",
+      "title": "Upload your CV",
+      "summary": "Add a PDF from Settings → Profile.",
+      "sort_order": 30,
+      "related_slugs": [
+        "account-settings",
+        "get-more-help"
+      ],
+      "body_md": "1. Open **Settings** → **Profile**\n2. Tap **Upload CV**\n3. Choose a PDF\n\nIf you see an onboarding checklist when you first open the app, you can upload there too.\n",
+      "exam_codes": [
+        "ortho"
+      ]
+    },
+    {
+      "slug": "talk-to-athena",
+      "category_slug": "account-help",
+      "title": "Talk to Athena for help",
+      "summary": "Start a voice chat from this help panel.",
+      "sort_order": 40,
+      "related_slugs": [
+        "first-steps",
+        "get-more-help"
+      ],
+      "body_md": "Use Athena when you want spoken help with the app.\n\n1. Tap **Start conversation** in this panel\n2. Ask how to use a feature\n3. Follow highlights on screen when guidance is on\n\n### What Athena is for here\n\n- Help with the product and navigation\n\nIf you also see **Ask our knowledge base**, use that for clinical questions about conditions and management.\n",
+      "exam_codes": [
+        "all"
+      ]
+    },
+    {
+      "slug": "get-more-help",
+      "category_slug": "account-help",
+      "title": "Contact Us",
+      "summary": "Message the team when these guides are not enough.",
+      "sort_order": 50,
+      "related_slugs": [
+        "fix-audio",
+        "payment-problems"
+      ],
+      "body_md": "Open **Contact Us** in the left sidebar and send a message.\n\n### What to include\n\n- Practice problems: session and station names\n- Billing: the payment email\n\n### What to ask the team (not Athena)\n\n- Reset account or exam data\n- Fix attempts lost to technical issues\n- Feature requests such as adding your own cases\n",
+      "exam_codes": [
+        "all"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+[
+  {
+    "profileKey": "sca.station",
+    "label": "SCA consultation station",
+    "examCode": "sca",
+    "orthoStationType": null
+  },
+  {
+    "profileKey": "plab.station",
+    "label": "PLAB 2 station",
+    "examCode": "plab",
+    "orthoStationType": null
+  },
+  {
+    "profileKey": "casc.station",
+    "label": "CASC station",
+    "examCode": "casc",
+    "orthoStationType": null
+  },
+  {
+    "profileKey": "ortho.clinical",
+    "label": "Ortho ST3 clinical",
+    "examCode": "ortho",
+    "orthoStationType": "clinical"
+  },
+  {
+    "profileKey": "ortho.communication",
+    "label": "Ortho ST3 communication",
+    "examCode": "ortho",
+    "orthoStationType": "communication"
+  },
+  {
+    "profileKey": "ortho.prioritisation",
+    "label": "Ortho ST3 prioritisation",
+    "examCode": "ortho",
+    "orthoStationType": "prioritisation"
+  },
+  {
+    "profileKey": "ortho.portfolio",
+    "label": "Ortho ST3 portfolio",
+    "examCode": "ortho",
+    "orthoStationType": "portfolio"
+  },
+  {
+    "profileKey": "custom",
+    "label": "Custom (org-defined system prompt)",
+    "examCode": null,
+    "orthoStationType": null
+  }
+]

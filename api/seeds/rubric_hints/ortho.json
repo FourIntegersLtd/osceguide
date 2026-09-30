@@ -1,0 +1,32 @@
+{
+  "_comment": "What the Ortho legacy model does not say (plan section 4.3). station_type picks which nullable station domain is filled. The total's maximum (50) is derived; the bands carry no text because b2c shows coloured dots only.",
+  "name": "Orthopaedic interview",
+  "readingSeconds": 120,
+  "simulationSeconds": 600,
+  "pacing": {"total_seconds": 600, "history_seconds": 300, "introduction_seconds": 30, "safety_net_seconds": 120},
+  "ratingField": "score",
+  "roles": {"station_type": "selector"},
+  "systemFields": [],
+  "display": {
+    "domain": {"aggregate": "mean", "passAtLeast": 7},
+    "total": {"aggregate": "sum", "passAtLeast": 35},
+    "tones": [
+      {"atLeast": 0.9, "tone": "excellent"},
+      {"atLeast": 0.7, "tone": "good"},
+      {"atLeast": 0.4, "tone": "fair"},
+      {"atLeast": 0, "tone": "poor"}
+    ],
+    "bands": [
+      {"from": 0, "to": 17, "label": "", "tone": "poor"},
+      {"from": 18, "to": 34, "label": "", "tone": "fair"},
+      {"from": 35, "to": 42, "label": "", "tone": "good"},
+      {"from": 43, "to": 50, "label": "", "tone": "excellent"}
+    ],
+    "labels": {
+      "domainSubtitle": "Scores by station type or domain",
+      "domainPassLabel": "Good (7/10)",
+      "trendSubtitle": "Station score over time",
+      "passLabel": "Pass (35/50)"
+    }
+  }
+}
