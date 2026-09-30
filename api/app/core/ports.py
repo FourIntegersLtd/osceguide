@@ -497,6 +497,10 @@ class RoomAgents(Protocol):
         """Remove every agent participant. Returns how many were removed."""
         ...
 
+    async def close_room(self, room: str) -> bool:
+        """Close the room for everyone in it once an agent has joined. False if it was not closed."""
+        ...
+
     async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:
         """Ask LiveKit to put `agent_name` into `room`.
 

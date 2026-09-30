@@ -40,6 +40,11 @@ def user_topic(user_id: object) -> str:
     return f"user:{user_id}"
 
 
+def voice_queue_topic() -> str:
+    """Everyone waiting for a voice seat. Published when one frees up."""
+    return "voice:queue"
+
+
 def org_topic(org_id: object) -> str:
     """One subscription for everything happening inside an organisation.
 

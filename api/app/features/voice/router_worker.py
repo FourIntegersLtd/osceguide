@@ -11,12 +11,17 @@ an accounting detail.
 
 from __future__ import annotations
 
+import contextlib
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 
 from app.core.auth import require_worker_secret
 from app.core.errors import Unauthenticated, error_responses
+from app.core.events import get_event_bus, voice_queue_topic
+from app.core.ports import EventBus
 from app.core.settings import SettingsDep
-from app.features.voice import capacity, schemas
+from app.features.voice import capacity, schemas, seats
 
 router = APIRouter(
     tags=["worker"],
@@ -30,14 +35,15 @@ router = APIRouter(
     responses=error_responses(Unauthenticated),
 )
 async def extend_cloud_slot(body: schemas.CloudSlotPost, settings: SettingsDep) -> schemas.CloudSlotResult:
-    """A worker has connected, so hold the slot for a whole session.
+    """A worker has connected, so hold the room's seat for a whole session.
 
-    Only lengthens a room that already holds one: a self-hosted session in a
-    room nobody reserved must not start being counted against the Cloud cap.
+    Every worker calls this, on Cloud or ours, so it lengthens whichever seat
+    the room holds. Only ever one that exists: a room nobody reserved must not
+    start being counted against either.
     """
-    return schemas.CloudSlotResult(
-        room_name=body.room_name, changed=await capacity.extend(settings, body.room_name)
-    )
+    on_cloud = await capacity.extend(settings, body.room_name)
+    on_ours = await seats.extend(settings, body.room_name)
+    return schemas.CloudSlotResult(room_name=body.room_name, changed=on_cloud or on_ours)
 
 
 @router.post(
@@ -45,8 +51,17 @@ async def extend_cloud_slot(body: schemas.CloudSlotPost, settings: SettingsDep) 
     response_model=schemas.CloudSlotResult,
     responses=error_responses(Unauthenticated),
 )
-async def release_cloud_slot(body: schemas.CloudSlotPost, settings: SettingsDep) -> schemas.CloudSlotResult:
-    """The session is over. Give the slot back before its expiry would."""
-    return schemas.CloudSlotResult(
-        room_name=body.room_name, changed=await capacity.release(settings, body.room_name)
-    )
+async def release_cloud_slot(
+    body: schemas.CloudSlotPost,
+    settings: SettingsDep,
+    bus: Annotated[EventBus, Depends(get_event_bus)],
+) -> schemas.CloudSlotResult:
+    """The session is over. Give the seat back before its expiry would, and tell the line."""
+    on_cloud = await capacity.release(settings, body.room_name)
+    on_ours = await seats.release(body.room_name)
+    if on_cloud or on_ours:
+        # Best effort, like the release itself: a waiter who misses this still
+        # re-reads their place on the stream's next heartbeat.
+        with contextlib.suppress(Exception):
+            await bus.publish(voice_queue_topic(), "seat_freed")
+    return schemas.CloudSlotResult(room_name=body.room_name, changed=on_cloud or on_ours)

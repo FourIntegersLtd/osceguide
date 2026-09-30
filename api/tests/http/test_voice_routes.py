@@ -18,19 +18,6 @@ from tests.support.tokens import bearer
 pytestmark = pytest.mark.db
 
 
-@pytest.fixture
-def voice_tokens(client: AsyncClient) -> FakeVoiceTokens:
-    """Replace the LiveKit adapter with a recording fake.
-
-    An override rather than a patch, so the seam is the one production uses.
-    """
-    from app.features.voice.service import get_voice_tokens
-
-    fake = FakeVoiceTokens()
-    client._transport.app.dependency_overrides[get_voice_tokens] = lambda: fake  # type: ignore[attr-defined]
-    return fake
-
-
 async def an_attempt(
     client: AsyncClient, db_session: AsyncSession, make_actor, email: str
 ) -> tuple[str, str]:  # type: ignore[no-untyped-def]

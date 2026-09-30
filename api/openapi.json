@@ -2010,7 +2010,7 @@
         "type": "object"
       },
       "CloudCapacityRead": {
-        "description": "How full LiveKit Cloud is, for the people watching it.\n\n`active` is None when Redis cannot be asked, which is also what routes a\nnew session to our own workers \u2014 so None here is the thing to look at.",
+        "description": "How full LiveKit Cloud, our own workers and the waiting line are, for the people watching them.\n\n`active` is None when Redis cannot be asked, which is also what routes a\nnew session to our own workers \u2014 so None here is the thing to look at.\n`self_hosted_seats_taken` and `queue_length` are None for the same reason;\nthe total is configuration, so it is always known.",
         "properties": {
           "active": {
             "anyOf": [
@@ -2041,13 +2041,42 @@
           "overflow_enabled": {
             "title": "Overflow Enabled",
             "type": "boolean"
+          },
+          "queue_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Length"
+          },
+          "self_hosted_seats_taken": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Hosted Seats Taken"
+          },
+          "self_hosted_seats_total": {
+            "title": "Self Hosted Seats Total",
+            "type": "integer"
           }
         },
         "required": [
           "overflow_enabled",
           "max_concurrent",
           "active",
-          "free"
+          "free",
+          "self_hosted_seats_total",
+          "self_hosted_seats_taken",
+          "queue_length"
         ],
         "title": "CloudCapacityRead",
         "type": "object"
@@ -18422,6 +18451,25 @@
         "title": "VoiceGrant",
         "type": "object"
       },
+      "VoiceQueueStanding": {
+        "description": "A candidate's place in line while every voice seat is taken.\n\n`position` is 1 at the front. `ready` means a seat is free for them now:\nask for the token again and it is theirs. Sent as the 202 body of the\ntoken request and as each frame of the waiting stream.",
+        "properties": {
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready",
+          "position"
+        ],
+        "title": "VoiceQueueStanding",
+        "type": "object"
+      },
       "WebhookResult": {
         "properties": {
           "status": {
@@ -20593,6 +20641,309 @@
         ]
       }
     },
+    "/api/v1/attempts/{attempt_id}/voice-queue": {
+      "delete": {
+        "operationId": "voice_leave_voice_queue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Leave Voice Queue",
+        "tags": [
+          "voice"
+        ]
+      },
+      "get": {
+        "operationId": "voice_stream_voice_queue",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "A stream ticket from POST /auth/stream-ticket",
+            "in": "query",
+            "name": "ticket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A stream ticket from POST /auth/stream-ticket",
+              "title": "Ticket"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceQueueStanding"
+                }
+              }
+            },
+            "description": "An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `VoiceQueueStanding` each time the state changes, and `ping` every 25 seconds."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Voice Queue",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/voice-room": {
+      "delete": {
+        "operationId": "voice_close_voice_room",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_yours",
+            "x-codes": [
+              "attempt_not_yours"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "attempt_not_found",
+            "x-codes": [
+              "attempt_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "voice_unavailable",
+            "x-codes": [
+              "voice_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Close Voice Room",
+        "tags": [
+          "voice"
+        ]
+      }
+    },
     "/api/v1/attempts/{attempt_id}/voice-token": {
       "post": {
         "operationId": "voice_issue_voice_token",
@@ -20618,6 +20969,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceQueueStanding"
+                }
+              }
+            },
+            "description": "Every seat is taken: the candidate is in line. Watch `voice-queue`, then retry."
           },
           "401": {
             "content": {
@@ -54874,7 +55235,7 @@
     },
     "/api/worker/livekit-cloud-slot/extend": {
       "post": {
-        "description": "A worker has connected, so hold the slot for a whole session.\n\nOnly lengthens a room that already holds one: a self-hosted session in a\nroom nobody reserved must not start being counted against the Cloud cap.",
+        "description": "A worker has connected, so hold the room's seat for a whole session.\n\nEvery worker calls this, on Cloud or ours, so it lengthens whichever seat\nthe room holds. Only ever one that exists: a room nobody reserved must not\nstart being counted against either.",
         "operationId": "worker_extend_cloud_slot",
         "requestBody": {
           "content": {
@@ -54930,7 +55291,7 @@
     },
     "/api/worker/livekit-cloud-slot/release": {
       "post": {
-        "description": "The session is over. Give the slot back before its expiry would.",
+        "description": "The session is over. Give the seat back before its expiry would, and tell the line.",
         "operationId": "worker_release_cloud_slot",
         "requestBody": {
           "content": {

@@ -77,11 +77,16 @@ async def event_stream(
     snapshot: Callable[[], Awaitable[Snapshot]],
     bus: EventBus,
     heartbeat_seconds: float = HEARTBEAT_SECONDS,
+    snapshot_on_heartbeat: bool = False,
 ) -> AsyncIterator[str]:
     """Send the current state, then send it again whenever something happens.
 
     The client gets `connected`, then a `snapshot` immediately — so a stream is
     a complete replacement for the poll it removes, not an addition to it.
+
+    `snapshot_on_heartbeat` sends a snapshot where a ping would go, for a read
+    model that also changes with nobody announcing it — a seat whose expiry
+    lapses — and whose reads are cheap. The client still only listens.
     """
     yield frame("connected", "{}")
 
@@ -117,8 +122,9 @@ async def event_stream(
                 except TimeoutError:
                     if pumping.done():
                         return
-                    yield frame("ping", "{}")
-                    continue
+                    if not snapshot_on_heartbeat:
+                        yield frame("ping", "{}")
+                        continue
 
                 # Several changes in the same instant are one snapshot: a
                 # supervisor switching turns twice quickly should not queue two

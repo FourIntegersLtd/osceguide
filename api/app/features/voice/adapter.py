@@ -121,6 +121,40 @@ class LiveKitRoomAgents:
                 removed += 1
         return removed
 
+    async def close_room(self, room: str) -> bool:
+        """Delete the room once its agent is in it, so the agent leaves now instead of after LiveKit's
+        empty-room timeout. Returns whether it was deleted.
+
+        Only once an agent has joined: a worker still starting up when its room
+        is deleted never connects, never shuts down, and so never releases its
+        seat (seen locally with a cold worker). Left alone, that room closes on
+        LiveKit's timeout after the agent has joined, as it always did.
+
+        A room that is already gone is the outcome asked for, so it is not a
+        failure: LiveKit reaps an empty room on its own.
+        """
+        api = _livekit_api()
+        settings = get_settings()
+        from livekit.protocol.room import DeleteRoomRequest, ListParticipantsRequest
+
+        async with api.LiveKitAPI(
+            settings.livekit_url, settings.livekit_api_key, settings.livekit_api_secret
+        ) as client:
+            try:
+                listed = await client.room.list_participants(ListParticipantsRequest(room=room))
+                # LiveKit names agent participants `agent-*`, as `remove_agents` relies on.
+                if not any(
+                    str(getattr(participant, "identity", "")).startswith("agent-")
+                    for participant in listed.participants
+                ):
+                    return False
+                await client.room.delete_room(DeleteRoomRequest(room=room))
+            except Exception as exc:  # noqa: BLE001 - the SDK raises a transport error type
+                if _is_room_missing(exc):
+                    return False
+                raise
+        return True
+
     async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:
         """Create the room if it does not exist yet, then explicitly dispatch this agent into it."""
         import json

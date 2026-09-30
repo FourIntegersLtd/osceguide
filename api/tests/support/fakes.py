@@ -177,11 +177,17 @@ class FakeRoomAgents:
     dispatched: list[dict[str, object]] = field(default_factory=list)
     agents_in_room: int = 0
     fail_dispatch: bool = False
+    closed: list[str] = field(default_factory=list)
 
     async def remove_agents(self, room: str) -> int:
         self.calls.append(("remove", room))
         removed, self.agents_in_room = self.agents_in_room, 0
         return removed
+
+    async def close_room(self, room: str) -> bool:
+        self.calls.append(("close", room))
+        self.closed.append(room)
+        return True
 
     async def dispatch(self, *, room: str, agent_name: str, metadata: dict[str, str]) -> None:
         self.calls.append(("dispatch", room))
