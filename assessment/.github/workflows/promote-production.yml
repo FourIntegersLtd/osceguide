@@ -1,0 +1,278 @@
+name: Promote to production
+
+# The only way the production workers change.
+#
+# How to use it: GitHub → Actions → "Promote to production" → Run workflow (from main).
+#   - Leave "commit_sha" empty to promote whatever staging is running right now.
+#   - Rollback: tick "rollback" and give the commit_sha production ran before. That
+#     commit's image already exists, so nothing is rebuilt.
+#
+# What happens:
+#   1. check works out which commit and image to ship and
+#      refuses unless it is safe: the commit is on main, CI passed on it, and staging
+#      is running exactly that image, healthily. The result is written to the run
+#      summary, so the run records what shipped and why it was allowed.
+#   2. deploy rolls that exact image out to the production namespace, re-points the
+#      `:production` tag, then moves the `production` branch forward to the commit.
+#
+# Who may promote: anyone who can run workflows here, which today is only the owner,
+# so pressing "Run workflow" is the approval. A required reviewer on the GitHub
+# Environment "production" would make deploy pause for a second click, but GitHub
+# offers that on private repositories only on paid plans.
+#
+# The `production` branch therefore always says which commit production runs, and
+# only ever moves forward (a plain push, never a force push). A rollback leaves the
+# branch where it is; the pods' osceguide.io/commit annotation shows the real state.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Commit to promote. Empty = whatever staging is running now. Required for a rollback.
+        required: false
+        default: ""
+      rollback:
+        description: Roll production back to an earlier commit it already ran (skips the staging check).
+        type: boolean
+        required: false
+        default: false
+
+# Each job asks for exactly what it needs below.
+permissions: {}
+
+# One promotion at a time. A second run waits instead of fighting over the pods.
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/fourintegersltd/osceguide-assessment-platform
+  STAGING_NAMESPACE: assessment-platform-staging
+
+jobs:
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read # read the git history (is the commit on main / on production?)
+      actions: read # look up the CI run for the commit
+      packages: read # look up the commit's image in GHCR
+    outputs:
+      commit_sha: ${{ steps.target.outputs.commit_sha }}
+      image_digest: ${{ steps.image.outputs.image_digest }}
+    steps:
+      # The deploy tooling (composite actions, rollout script) must be main's reviewed
+      # copy, not whatever an arbitrary branch carries.
+      - name: Refuse runs from any branch but main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Run this workflow from main (Use workflow from: main), not ${GITHUB_REF}." >&2
+          exit 1
+
+      # Full history, so the ancestry checks below can see main and production.
+      - name: Checkout main with history
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Connect to the control plane
+        uses: ./.github/actions/connect-to-control-plane
+        with:
+          control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
+          control-plane-ssh-key: ${{ secrets.K8S_CONTROL_PLANE_SSH_KEY }}
+
+      # Turn the input (or, when empty, staging's current commit) into a full sha
+      # that exists in this repository.
+      - name: Work out which commit to ship
+        id: target
+        env:
+          REQUESTED_COMMIT: ${{ inputs.commit_sha }}
+          IS_ROLLBACK: ${{ inputs.rollback }}
+          CONTROL_PLANE_HOST: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
+        run: |
+          requested_commit="$(echo "$REQUESTED_COMMIT" | tr -d '[:space:]')"
+
+          if [[ -z "$requested_commit" ]]; then
+            if [[ "$IS_ROLLBACK" == "true" ]]; then
+              echo "A rollback needs commit_sha: the earlier commit production should go back to." >&2
+              exit 1
+            fi
+            # The staging deploy stamps its commit on every resource it applies.
+            requested_commit="$(ssh -o StrictHostKeyChecking=yes "$CONTROL_PLANE_HOST" \
+              "kubectl -n ${STAGING_NAMESPACE} get deployment assessment-worker -o jsonpath='{.metadata.annotations.osceguide\.io/commit}'")"
+            echo "commit_sha was empty, so promoting what staging runs: ${requested_commit}"
+          fi
+
+          # Only hex, so the value is safe to pass to git and into YAML later.
+          [[ "$requested_commit" =~ ^[0-9a-f]{7,40}$ ]] || { echo "'${requested_commit}' is not a commit sha." >&2; exit 1; }
+          full_commit_sha="$(git rev-parse --verify --quiet "${requested_commit}^{commit}")" \
+            || { echo "Commit ${requested_commit} is not in this repository." >&2; exit 1; }
+          echo "commit_sha=${full_commit_sha}" >> "$GITHUB_OUTPUT"
+
+      # A normal promotion ships only reviewed code: the commit must be on main.
+      # A rollback ships only something production already ran: it must be on production.
+      - name: Check the commit's history
+        env:
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+          IS_ROLLBACK: ${{ inputs.rollback }}
+        run: |
+          production_branch_exists="false"
+          if git rev-parse --verify --quiet origin/production >/dev/null; then
+            production_branch_exists="true"
+          fi
+
+          if [[ "$IS_ROLLBACK" == "true" ]]; then
+            [[ "$production_branch_exists" == "true" ]] || { echo "There is no production branch yet, so nothing to roll back to." >&2; exit 1; }
+            git merge-base --is-ancestor "$COMMIT_SHA" origin/production \
+              || { echo "${COMMIT_SHA} was never promoted to production, so it cannot be a rollback target." >&2; exit 1; }
+            echo "Rollback target ${COMMIT_SHA} is in production's history."
+            exit 0
+          fi
+
+          git merge-base --is-ancestor "$COMMIT_SHA" origin/main \
+            || { echo "${COMMIT_SHA} is not on main. Merge it to main (and let staging run it) first." >&2; exit 1; }
+          # The production branch only moves forward. If production already has
+          # commits this one lacks, promoting it would silently undo them.
+          if [[ "$production_branch_exists" == "true" ]]; then
+            git merge-base --is-ancestor origin/production "$COMMIT_SHA" \
+              || { echo "production has commits that ${COMMIT_SHA} does not; promote a newer commit, or use rollback." >&2; exit 1; }
+          fi
+          echo "${COMMIT_SHA} is on main and moves production forward."
+
+      - name: Check CI passed on the commit
+        if: ${{ !inputs.rollback }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+        run: |
+          successful_ci_runs="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$COMMIT_SHA" \
+            --status success --json databaseId --jq 'length')"
+          [[ "$successful_ci_runs" -gt 0 ]] || { echo "CI has not passed on ${COMMIT_SHA}." >&2; exit 1; }
+          echo "CI passed on ${COMMIT_SHA}."
+
+      # Every green main commit was built and pushed as :<sha> by publish-ghcr.yml.
+      # Resolve that tag to its digest now, so the deploy ships this exact image
+      # even if someone re-pushes the tag later.
+      - name: Find the commit's image
+        id: image
+        env:
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          # Without pipefail a failed inspect would hide behind jq's success.
+          set -o pipefail
+          echo "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin >/dev/null
+          image_digest="$(docker buildx imagetools inspect "${IMAGE_NAME}:${COMMIT_SHA}" --format '{{json .Manifest}}' | jq -r '.digest')" \
+            || { echo "No image ${IMAGE_NAME}:${COMMIT_SHA}. Did publish-ghcr.yml run for this commit?" >&2; exit 1; }
+          [[ "$image_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "Unexpected digest '${image_digest}'." >&2; exit 1; }
+          echo "image_digest=${image_digest}" >> "$GITHUB_OUTPUT"
+          echo "${IMAGE_NAME}:${COMMIT_SHA} is ${image_digest}."
+
+      # The heart of the gate: staging must be running this exact image, stamped with
+      # this commit, and both workers must be fully rolled out and available.
+      - name: Check staging runs this image healthily
+        if: ${{ !inputs.rollback }}
+        env:
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.image_digest }}
+          CONTROL_PLANE_HOST: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
+        run: |
+          for deployment_name in assessment-worker assistant-worker; do
+            # One SSH call per worker, printing "<image> <commit> <available>".
+            staging_state="$(ssh -o StrictHostKeyChecking=yes "$CONTROL_PLANE_HOST" \
+              "kubectl -n ${STAGING_NAMESPACE} get deployment ${deployment_name} -o jsonpath='{.spec.template.spec.containers[0].image} {.metadata.annotations.osceguide\.io/commit} {.status.conditions[?(@.type==\"Available\")].status}'")"
+            read -r staging_image staging_commit staging_available <<<"$staging_state"
+
+            [[ "$staging_image" == "${IMAGE_NAME}@${IMAGE_DIGEST}" ]] \
+              || { echo "Staging ${deployment_name} runs ${staging_image}, not ${IMAGE_NAME}@${IMAGE_DIGEST}. Let staging deploy this commit first." >&2; exit 1; }
+            [[ "$staging_commit" == "$COMMIT_SHA" ]] \
+              || { echo "Staging ${deployment_name} is stamped with commit ${staging_commit}, not ${COMMIT_SHA}." >&2; exit 1; }
+            [[ "$staging_available" == "True" ]] \
+              || { echo "Staging ${deployment_name} is not Available (${staging_available:-unknown})." >&2; exit 1; }
+            # Also refuse while a rollout is still in progress (old pods not yet replaced).
+            ssh -o StrictHostKeyChecking=yes "$CONTROL_PLANE_HOST" \
+              "kubectl -n ${STAGING_NAMESPACE} rollout status deployment/${deployment_name} --timeout=10s" \
+              || { echo "Staging ${deployment_name} is still rolling out." >&2; exit 1; }
+            echo "Staging ${deployment_name}: runs ${COMMIT_SHA}, available."
+          done
+
+      # What the deploy job is about to ship, for anyone reading the run later.
+      - name: Summarise what will ship
+        env:
+          COMMIT_SHA: ${{ steps.target.outputs.commit_sha }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.image_digest }}
+          IS_ROLLBACK: ${{ inputs.rollback }}
+        run: |
+          {
+            if [[ "$IS_ROLLBACK" == "true" ]]; then
+              echo "### Rollback of production workers"
+            else
+              echo "### Promotion of production workers"
+            fi
+            echo ""
+            echo "- Commit: \`${COMMIT_SHA}\` — $(git log -1 --format='%s' "$COMMIT_SHA")"
+            echo "- Image: \`${IMAGE_NAME}@${IMAGE_DIGEST}\`"
+            if git rev-parse --verify --quiet origin/production >/dev/null; then
+              echo "- Production branch is at: \`$(git rev-parse origin/production)\`"
+            else
+              echo "- Production branch: not created yet (this run creates it)"
+            fi
+            echo ""
+            echo "The **deploy** job rolls this out next. Live consultations drain first, so it can take up to ~15 minutes per worker."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: deploy
+    needs: check
+    runs-on: ubuntu-latest
+    # Draining pods can hold a rollout for many minutes; see rollout-timeout-seconds.
+    timeout-minutes: 75
+    # Records the deploy under the repo's Environments tab. If the GitHub Environment
+    # "production" ever gets a required reviewer, this job pauses for approval here.
+    environment: production
+    permissions:
+      contents: write # move the production branch
+      packages: write # re-point the :production image tag
+    steps:
+      # Main's tooling (composite actions, rollout script) with full history for the push.
+      - name: Checkout main with history
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      # Deploy the manifests as they were at the promoted commit, so production gets
+      # the same config staging tested (or, on rollback, the config it ran before).
+      - name: Use the promoted commit's manifests
+        env:
+          COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}
+        run: |
+          # Remove main's copy first, so a file main added but the commit lacks cannot ride along.
+          rm -rf k8s
+          git checkout "$COMMIT_SHA" -- k8s
+
+      - name: Connect to the control plane
+        uses: ./.github/actions/connect-to-control-plane
+        with:
+          control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
+          control-plane-ssh-key: ${{ secrets.K8S_CONTROL_PLANE_SSH_KEY }}
+
+      - name: Roll out to production
+        uses: ./.github/actions/roll-out-workers
+        with:
+          environment: production
+          image-digest: ${{ needs.check.outputs.image_digest }}
+          commit-sha: ${{ needs.check.outputs.commit_sha }}
+          control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
+          registry-token: ${{ secrets.GITHUB_TOKEN }}
+          manifest-root: ${{ vars.K8S_MANIFEST_DIR || '/root/k8s/assessment-platform' }}
+          rollout-timeout-seconds: ${{ vars.ROLLOUT_TIMEOUT_SECS || '1800' }}
+
+      # Only after production is running it. A plain (non-force) push, so GitHub
+      # itself refuses if the branch would move backwards.
+      - name: Move the production branch to the commit
+        if: ${{ !inputs.rollback }}
+        env:
+          COMMIT_SHA: ${{ needs.check.outputs.commit_sha }}
+        run: git push origin "${COMMIT_SHA}:refs/heads/production"

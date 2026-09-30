@@ -1,0 +1,43 @@
+## Global skills
+Ratings: 1 Green, 1 Amber
+
+### Structures the consultation
+Score: Amber
+Score explanation (reason for the rating): Clear recap but the closing was rushed.
+Supporting phrase (evidence): So let me just recap what you've told me.
+
+### Uses clear language
+Score: Green
+Score explanation (reason for the rating): Plain, checked understanding twice.
+Supporting phrase (evidence): Angina means the heart muscle is not getting enough blood.
+
+## Clinical tasks
+Ratings: 1 Amber
+
+### Opens the consultation
+Score: Amber
+Score explanation (reason for the rating): Good opener, no agenda set.
+Supporting phrase (evidence): What's brought you in today?
+
+## Relating to others
+Ratings: 1 Red
+
+### Generates rapport
+Score: Red
+Score explanation (reason for the rating): Missed the cue about her father.
+Supporting phrase (evidence): Right, next question.
+
+## Actionable feedback
+### Global skills feedback
+Score: Amber
+Strengths (went well):
+- Recapped clearly
+Improvements (to improve):
+- Set an agenda early
+### Overall priorities 1
+Improvement steps (next step):
+- Reflect emotional statements back
+- Pause after the patient mentions family history
+Area: Cue recognition
+Current level: R
+Expected outcome: Patient feels heard and shares concerns earlier

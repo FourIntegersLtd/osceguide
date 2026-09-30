@@ -1,0 +1,65 @@
+{
+  "stationId": "st-templated-copd",
+  "title": "COPD exacerbation",
+  "content": {
+    "who_you_are": "Marek, 61, retired bus driver, smoked 40 years.",
+    "why_you_came": "I've been getting short of breath walking to the shops this week.",
+    "your_history": [
+      "COPD diagnosed 2019",
+      "Two admissions last winter"
+    ],
+    "your_medications": "Seretide, salbutamol as needed",
+    "your_life": "Lives with his wife. Still smokes ten a day.",
+    "on_examination": "Wheeze throughout, sats 92% on air, no fever.",
+    "how_to_play_it": "Play down the smoking unless asked directly.",
+    "expected_answers": "Candidate should elicit smoking history and offer cessation support.",
+    "candidate_instructions": "You are the GP. You have ten minutes."
+  },
+  "layout": [
+    {
+      "id": "who_you_are",
+      "label": "Who you are",
+      "role": "persona"
+    },
+    {
+      "id": "why_you_came",
+      "label": "Why you came",
+      "role": "complaint"
+    },
+    {
+      "id": "your_history",
+      "label": "Your history",
+      "role": "history"
+    },
+    {
+      "id": "your_medications",
+      "label": "Your medications",
+      "role": "medications"
+    },
+    {
+      "id": "your_life",
+      "label": "Your life",
+      "role": "social"
+    },
+    {
+      "id": "on_examination",
+      "label": "On examination",
+      "role": "examination"
+    },
+    {
+      "id": "how_to_play_it",
+      "label": "How to play it",
+      "role": "instructions"
+    },
+    {
+      "id": "expected_answers",
+      "label": "Expected answers",
+      "role": "examiner"
+    },
+    {
+      "id": "candidate_instructions",
+      "label": "Candidate instructions",
+      "role": "candidate_brief"
+    }
+  ]
+}

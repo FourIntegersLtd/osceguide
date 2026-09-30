@@ -1,0 +1,18 @@
+{
+  "global_skills": {
+    "structures_consultation": {"score": "A", "supporting_phrase": "So let me just recap what you've told me.", "score_explanation": "Clear recap but the closing was rushed."},
+    "uses_clear_language": {"score": "G", "supporting_phrase": "Angina means the heart muscle is not getting enough blood.", "score_explanation": "Plain, checked understanding twice."}
+  },
+  "tasks": {
+    "opens_consultation": {"score": "A", "supporting_phrase": "What's brought you in today?", "score_explanation": "Good opener, no agenda set."}
+  },
+  "relating_to_others": {
+    "generates_rapport": {"score": "R", "supporting_phrase": "Right, next question.", "score_explanation": "Missed the cue about her father."}
+  },
+  "actionable_feedback": {
+    "global_skills_feedback": {"score": "A", "strengths": ["Recapped clearly"], "improvements": ["Set an agenda early"]},
+    "overall_priorities": [
+      {"area": "Cue recognition", "current_level": "R", "improvement_steps": ["Reflect emotional statements back", "Pause after the patient mentions family history"], "expected_outcome": "Patient feels heard and shares concerns earlier"}
+    ]
+  }
+}

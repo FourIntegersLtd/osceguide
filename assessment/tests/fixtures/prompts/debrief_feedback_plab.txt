@@ -1,0 +1,45 @@
+## Data gathering
+Total: 1.25/2
+
+### History taking
+Score: 0.75/1
+Supporting phrase (evidence):
+- When did the tightness start?
+Completed (went well):
+- Onset and duration
+- Exertional pattern
+Missed (to improve):
+- Cardiac risk factors
+Suggested actions (next step):
+- Ask about smoking and family history early
+
+### Examination
+Score: 0.5/1
+Completed (went well):
+- Pulse and BP
+Missed (to improve):
+- Auscultation
+Critical flags (critical concern):
+- Did not check for calf tenderness
+Suggested actions (next step):
+- Complete the cardiovascular examination
+
+## Clinical management
+Total: 1/1
+
+### Safety netting
+Score: 1/1
+Supporting phrase (evidence):
+- If the pain comes on at rest, call 999 straight away.
+Completed (went well):
+- Explained when to call 999
+
+## Interpersonal skills
+Total: 0.25/1
+
+### Empathy and compassion
+Score: 0.25/1
+Missed (to improve):
+- Acknowledged worry about father
+Suggested actions (next step):
+- Reflect the patient's fear before moving on

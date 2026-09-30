@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: assessment-platform
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SENTRY_DSN: ""
+      OPENAI_API_KEY: ci-dummy
+      ANTHROPIC_API_KEY: ci-dummy
+      DEEPGRAM_API_KEY: ci-dummy
+      CARTESIA_API_KEY: ci-dummy
+      ELEVEN_API_KEY: ci-dummy
+      GOOGLE_API_KEY: ci-dummy
+      LIVEKIT_URL: wss://ci.example.livekit.cloud
+      LIVEKIT_API_KEY: ci-dummy
+      LIVEKIT_API_SECRET: ci-dummy
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: snok/install-poetry@v1
+      - uses: actions/cache@v4
+        id: venv
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-py3.11-${{ hashFiles('poetry.lock') }}
+      - if: steps.venv.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction
+      - name: Tests (leakage guards, contracts, worker)
+        run: poetry run pytest -q
+      - name: Engine subtree is exportable
+        run: git subtree split --prefix=packages/osce_assessment >/dev/null
+      - name: Worker import smoke (no product, prompt or scoring code loaded)
+        run: poetry run pytest -q tests/test_assessment_worker_boundaries.py

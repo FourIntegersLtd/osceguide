@@ -1,0 +1,15 @@
+{
+  "stationId": "st-org-knee",
+  "orgSlug": "demo-org",
+  "title": "Acute knee pain after football",
+  "content": {
+    "patientDescription": "Jamal, 27, warehouse operative and weekend footballer.",
+    "presenting_complaint": "Twisted my knee yesterday, it swelled up within an hour and now it gives way.",
+    "medical_history": ["Asthma, well controlled", "No previous knee injuries"],
+    "medications": "Salbutamol inhaler as needed",
+    "social_history": {"children": [{"text": "Lives alone, drives to work, plays football twice a week."}]},
+    "examination": "Moderate effusion, positive anterior drawer, tender medial joint line.",
+    "actor_instructions": "Be worried about missing work. Ask about surgery only if the doctor raises it.",
+    "red_flags": ["Unable to weight bear", "Locked knee"]
+  }
+}

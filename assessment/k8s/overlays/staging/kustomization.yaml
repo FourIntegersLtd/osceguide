@@ -1,0 +1,55 @@
+# Staging: a small private copy of the workers where every change runs first.
+#
+# Deployed automatically after CI passes on main (.github/workflows/publish-ghcr.yml).
+# It connects to the staging LiveKit Cloud project (new-test-agent) and the staging
+# platform-api, through the keys in this namespace's own assessment-worker-secrets.
+# Because the LiveKit project is separate, the agent names can stay the same as
+# production's: a staging worker can never be dispatched into a real candidate's room.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Its own namespace, so staging's pods, config and secrets never touch production's.
+namespace: assessment-platform-staging
+
+# Which build staging runs. The committed value is the moving `staging` tag; the
+# deploy workflow rewrites this line to the exact digest it is rolling out.
+images:
+  - name: ghcr.io/fourintegersltd/osceguide-assessment-platform
+    newTag: staging
+
+# The commit this build came from, stamped by the deploy workflow in place of
+# "unpinned". "Promote to production" reads it to know what staging is running.
+commonAnnotations:
+  osceguide.io/commit: unpinned
+
+# One pod of each worker is enough to test on.
+replicas:
+  - name: assessment-worker
+    count: 1
+  - name: assistant-worker
+    count: 1
+
+patches:
+  # Staging pods share worker nodes with production pods. The one-pod-per-node
+  # rule in the base only counts pods in the same namespace, so a staging pod
+  # lands on a node that already carries production's 6 + 3 sessions. Small caps
+  # (2 + 1) keep a staging test from crowding the real candidates on that node.
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: assessment-worker-config
+      data:
+        LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS: "2"
+        SENTRY_ENVIRONMENT: "staging"
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: assistant-worker-config
+      data:
+        LIVEKIT_ASSISTANT_MAX_CONCURRENT_JOBS: "1"
+        SENTRY_ENVIRONMENT: "staging"

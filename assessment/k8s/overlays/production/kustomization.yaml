@@ -1,0 +1,47 @@
+# Production: the workers real candidates talk to.
+#
+# Deployed only by the "Promote to production" workflow
+# (.github/workflows/promote-production.yml), and only with an image that has
+# already run on staging. Never by a push to main.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# The namespace the live workers have always run in. Do not rename it: a rename
+# would start a second set of workers beside the running ones instead of
+# replacing them. tests/test_k8s_config.py holds this name in place.
+namespace: assessment-platform
+
+# Which build these workers run. The committed value is the moving `production`
+# tag, so a hand-run `kubectl apply -k` gets whatever production last ran. The
+# deploy workflow rewrites this line to the exact image digest it is rolling out,
+# so a deploy can never pick up a different build than the one it checked.
+images:
+  - name: ghcr.io/fourintegersltd/osceguide-assessment-platform
+    newTag: production
+
+# The commit these workers were built from, stamped by the deploy workflow in
+# place of "unpinned". `kubectl get deploy -n assessment-platform -o yaml` then
+# answers "what is production running?" without comparing digests by hand.
+commonAnnotations:
+  osceguide.io/commit: unpinned
+
+# Production keeps the base's capacity (3 replicas, 6 + 3 sessions per node). The
+# only thing it adds is its Sentry label, so errors land under "production".
+patches:
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: assessment-worker-config
+      data:
+        SENTRY_ENVIRONMENT: "production"
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: assistant-worker-config
+      data:
+        SENTRY_ENVIRONMENT: "production"

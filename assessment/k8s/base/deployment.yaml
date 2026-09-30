@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: assessment-worker
+spec:
+  replicas: 3
+  # Add capacity before removing any, so a rollout never evicts a pod that is
+  # still carrying consultations to make room for its own replacement.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: assessment-worker
+  template:
+    metadata:
+      labels:
+        app: assessment-worker
+    spec:
+      # The longest station is 12 min (sca-rcgp-v1, osce_assessment/prompts/
+      # consultation_pacing.py). On SIGTERM the worker stops accepting jobs and
+      # lets running ones finish, so the kubelet must wait it out rather than
+      # SIGKILL at the 30s default. Keep this above the worker's drain_timeout
+      # (LIVEKIT_ASSESSMENT_DRAIN_TIMEOUT, 840s).
+      terminationGracePeriodSeconds: 900
+      # SEC-010: run as the unprivileged uid the image builds (appuser, 10001),
+      # never as root, and take the default seccomp profile.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # Same node rule as the legacy worker: only labelled worker nodes, never the control plane.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: osceguide.io/livekit-worker
+                    operator: In
+                    values:
+                      - "true"
+      # One pod per node. This is what makes LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS
+      # a per-node admission limit instead of a per-pod one; without it the default
+      # scheduler may co-locate replicas and admit several times the node's capacity.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: assessment-worker
+      # Private GHCR image (published by .github/workflows/publish-ghcr.yml).
+      imagePullSecrets:
+        - name: ghcr-pull-credentials
+      containers:
+        - name: worker
+          image: ghcr.io/fourintegersltd/osceguide-assessment-platform:production
+          # SEC-010: drop every capability and forbid privilege escalation. The
+          # root filesystem stays writable because the worker caches plugin
+          # models under /app/.cache at runtime; a future pass can make it
+          # read-only with a tmpfs mount there.
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: assessment-worker-config
+            - secretRef:
+                name: assessment-worker-secrets
+          # The LiveKit SDK's own HTTP server, inside the worker process. Its "/"
+          # answers 200, or 503 once the inference process has died or the worker
+          # cannot reach LiveKit.
+          ports:
+            - containerPort: 8087
+              name: worker
+          # Holds readiness off until the worker first answers, so a slow cold
+          # boot is never mistaken for a failure. 18 x 10s matches the legacy manifest.
+          startupProbe:
+            httpGet:
+              path: /
+              port: worker
+            periodSeconds: 10
+            failureThreshold: 18
+          readinessProbe:
+            httpGet:
+              path: /
+              port: worker
+            periodSeconds: 10
+          # Liveness intentionally omitted: a restart would cut every consultation
+          # on the pod. A worker that exits on its own is restarted by the kubelet
+          # anyway, because it is the container's main process.
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              memory: "2Gi"

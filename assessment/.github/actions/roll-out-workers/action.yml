@@ -1,0 +1,126 @@
+# Rolls one exact image out to one environment (staging or production), then moves
+# that environment's tag (`:staging` or `:production`) to the image it now runs.
+#
+# Used by the staging deploy (publish-ghcr.yml) and by "Promote to production"
+# (promote-production.yml). Run connect-to-control-plane first; this action
+# expects the SSH agent and known_hosts it sets up.
+#
+# It deploys the k8s/ folder as it is checked out in the workspace, so the caller
+# decides which commit's manifests ship.
+name: Roll out workers
+description: Pin an image digest into an environment's overlay, apply it on K3s and retag the image.
+
+inputs:
+  environment:
+    description: staging or production. Selects k8s/overlays/<environment>.
+    required: true
+  image-digest:
+    description: The exact image to run, as sha256:<64 hex>. Never a tag, so nothing can change under us.
+    required: true
+  commit-sha:
+    description: The full 40-character commit the image was built from, stamped on every resource.
+    required: true
+  control-plane-host:
+    description: The control plane as user@host.
+    required: true
+  registry-token:
+    description: A token that may push tags to GHCR (the workflow's GITHUB_TOKEN with packages write).
+    required: true
+  manifest-root:
+    description: Folder on the control plane that holds one sub-folder of manifests per environment.
+    required: false
+    default: /root/k8s/assessment-platform
+  rollout-timeout-seconds:
+    description: >-
+      How long to wait for each deployment. Replaced pods keep serving their consultations
+      for up to 15 minutes (terminationGracePeriodSeconds 900), so keep this well above that.
+    required: false
+    default: "1800"
+  image-name:
+    description: The worker image repository.
+    required: false
+    default: ghcr.io/fourintegersltd/osceguide-assessment-platform
+
+runs:
+  using: composite
+  steps:
+    # Write the exact digest and commit into the overlay, then render it here on the
+    # runner. A mistake in the manifests fails now, before anything touches the cluster.
+    - name: Pin the image and commit into the overlay
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        IMAGE_DIGEST: ${{ inputs.image-digest }}
+        COMMIT_SHA: ${{ inputs.commit-sha }}
+        IMAGE_NAME: ${{ inputs.image-name }}
+      run: |
+        # Reject anything that is not exactly what we expect; these values end up in YAML.
+        [[ "$ENVIRONMENT" =~ ^(staging|production)$ ]] || { echo "environment must be staging or production, got '$ENVIRONMENT'." >&2; exit 1; }
+        [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "image-digest must be sha256:<64 hex>, got '$IMAGE_DIGEST'." >&2; exit 1; }
+        [[ "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "commit-sha must be a full 40-character sha, got '$COMMIT_SHA'." >&2; exit 1; }
+
+        overlay_file="k8s/overlays/${ENVIRONMENT}/kustomization.yaml"
+        [[ -f "$overlay_file" ]] || { echo "$overlay_file does not exist in this checkout." >&2; exit 1; }
+
+        # Swap the committed moving tag (newTag: staging|production) for the digest,
+        # and the "unpinned" placeholder for the real commit.
+        sed -i -E "s|^( *)newTag: ${ENVIRONMENT}$|\1digest: ${IMAGE_DIGEST}|" "$overlay_file"
+        sed -i -E "s|^( *)osceguide.io/commit: unpinned$|\1osceguide.io/commit: \"${COMMIT_SHA}\"|" "$overlay_file"
+
+        # Prove both substitutions landed in what Kubernetes will actually receive.
+        rendered_manifests="$(kubectl kustomize "k8s/overlays/${ENVIRONMENT}")"
+        grep -q "image: ${IMAGE_NAME}@${IMAGE_DIGEST}" <<<"$rendered_manifests" || { echo "Rendered manifests do not use ${IMAGE_NAME}@${IMAGE_DIGEST}." >&2; exit 1; }
+        grep -q "osceguide.io/commit: \"\{0,1\}${COMMIT_SHA}" <<<"$rendered_manifests" || { echo "Rendered manifests do not carry commit ${COMMIT_SHA}." >&2; exit 1; }
+        echo "Rolling ${IMAGE_NAME}@${IMAGE_DIGEST} (commit ${COMMIT_SHA}) out to ${ENVIRONMENT}."
+
+    # Replace this environment's copy of the manifests on the control plane. Each
+    # environment has its own folder, so a staging deploy and a production promote
+    # running at the same time can never overwrite each other's pinned files.
+    - name: Copy manifests to the control plane
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        CONTROL_PLANE_HOST: ${{ inputs.control-plane-host }}
+        MANIFEST_ROOT: ${{ inputs.manifest-root }}
+      run: |
+        environment_manifest_dir="${MANIFEST_ROOT}/${ENVIRONMENT}"
+        # Clear only this environment's base/ and overlays/ so no file deleted from
+        # the repo lingers on the server.
+        ssh -o StrictHostKeyChecking=yes "$CONTROL_PLANE_HOST" \
+          "rm -rf '${environment_manifest_dir}/base' '${environment_manifest_dir}/overlays' && mkdir -p '${environment_manifest_dir}'"
+        scp -o StrictHostKeyChecking=yes -r k8s/base k8s/overlays "${CONTROL_PLANE_HOST}:${environment_manifest_dir}/"
+
+    # Run scripts/k8s_rollout_on_control_plane.sh on the control plane. It checks the
+    # namespace's secrets exist, applies the overlay and waits for both workers.
+    - name: Apply and wait for the rollout
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        CONTROL_PLANE_HOST: ${{ inputs.control-plane-host }}
+        MANIFEST_ROOT: ${{ inputs.manifest-root }}
+        ROLLOUT_TIMEOUT_SECS: ${{ inputs.rollout-timeout-seconds }}
+      run: |
+        environment_manifest_dir="${MANIFEST_ROOT}/${ENVIRONMENT}"
+        # Keepalives: the rollout wait can outlast the SSH idle timeout and drop with "Broken pipe".
+        ssh -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=20 "$CONTROL_PLANE_HOST" \
+          "ENVIRONMENT='${ENVIRONMENT}' K8S_MANIFEST_DIR='${environment_manifest_dir}' ROLLOUT_TIMEOUT_SECS='${ROLLOUT_TIMEOUT_SECS}' bash -s" \
+          < scripts/k8s_rollout_on_control_plane.sh
+
+    # Only after a successful rollout: point the environment's moving tag at the image
+    # it now runs, so `:staging` and `:production` always mean "what is live there".
+    - name: Log in to GHCR
+      uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.registry-token }}
+
+    - name: Move the environment tag to this image
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        IMAGE_DIGEST: ${{ inputs.image-digest }}
+        IMAGE_NAME: ${{ inputs.image-name }}
+      run: |
+        # Re-points the tag at the existing image; nothing is rebuilt or re-uploaded.
+        docker buildx imagetools create --tag "${IMAGE_NAME}:${ENVIRONMENT}" "${IMAGE_NAME}@${IMAGE_DIGEST}"

@@ -1,0 +1,23 @@
+# The manifests every environment shares.
+#
+# Nothing here is applied on its own. Each environment in k8s/overlays/ builds on
+# this base and adds what differs: the namespace, replica counts, session caps, the
+# Sentry label and the exact image to run. Deploy with:
+#
+#   kubectl apply -k k8s/overlays/staging       # or k8s/overlays/production
+#
+# `kubectl -k` has Kustomize built in, so no extra tool is needed on the control plane.
+#
+# The worker secrets (assessment-worker-secrets) and the GHCR pull secret
+# (ghcr-pull-credentials) are deliberately NOT listed: they hold real keys, differ
+# per environment, and are created by hand once per namespace (see k8s/README.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - networkpolicy.yaml
+  - configmap.yaml
+  - configmap-assistant.yaml
+  - deployment.yaml
+  - deployment-assistant.yaml

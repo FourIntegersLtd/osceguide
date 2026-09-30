@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+.env
+.env.*
+!.env.sample
+.DS_Store
+*.log
+logs/
+.coverage
+htmlcov/
+:memory:.ses
+
+# Model benchmark output: full transcripts per run, regenerated on demand.
+runs/
+
+# Filled-in worker secrets (k8s/secret.example.yaml is the template). Real keys,
+# never committed.
+k8s/secret*.yaml
+!k8s/secret.example.yaml

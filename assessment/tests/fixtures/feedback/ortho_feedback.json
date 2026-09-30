@@ -1,0 +1,16 @@
+{
+  "station_type": "clinical",
+  "clinical_skills": {
+    "technical_knowledge_clinical_expertise": {"score": 7, "score_justification": "Sound differential for an acute haemarthrosis.", "evidence_points": ["Named ACL rupture first", "Requested urgent MRI"], "completed": ["Differential", "Investigations"], "suggested_actions": ["Mention aspiration for pain relief"]},
+    "situational_awareness": {"score": 5, "score_justification": "Did not explore the patient's work situation.", "evidence_points": [], "completed": [], "suggested_actions": ["Ask about occupation before planning"]}
+  },
+  "prioritisation_skills": {
+    "organisation_planning": {"score": 6, "score_justification": "Reasonable ordering.", "evidence_points": ["Saw the open fracture first"], "completed": ["Triage"], "suggested_actions": []}
+  },
+  "communication_skills": {
+    "communication_information_giving": {"score": 8, "score_justification": "Clear, jargon-free.", "evidence_points": ["Explained the ligament with an analogy"], "completed": [], "suggested_actions": []}
+  },
+  "portfolio_skills": {
+    "portfolio_knowledge": {"score": 4, "score_justification": "Vague on audit cycle.", "evidence_points": [], "completed": [], "suggested_actions": ["Prepare one audit example with a closed loop"]}
+  }
+}

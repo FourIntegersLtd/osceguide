@@ -1,0 +1,299 @@
+{
+  "name": "new_type2_diabetes",
+  "notes": "A new diagnosis of type 2 diabetes in a delivery driver. The plan fills every section the formatter knows. The doctor used jargon, heard that his mother lost a leg and moved on, overrode his wish to try diet first, arranged no follow-up and gave a vague safety net.",
+  "context": {
+    "transcript": {
+      "transcript_message": [
+        {
+          "role": "user",
+          "message": "Hi Mr Okafor, come in. What can I do for you today?",
+          "transcript_message_id": "m1"
+        },
+        {
+          "role": "assistant",
+          "message": "You rang me about my blood test. The receptionist said to come in and talk about it.",
+          "transcript_message_id": "m2"
+        },
+        {
+          "role": "user",
+          "message": "Yes. So your HbA1c came back at fifty eight, which is diagnostic of type 2 diabetes mellitus.",
+          "transcript_message_id": "m3"
+        },
+        {
+          "role": "assistant",
+          "message": "Diabetes? Right... I wasn't expecting that. I only had the bloods because of the tiredness.",
+          "transcript_message_id": "m4"
+        },
+        {
+          "role": "user",
+          "message": "Tell me about the tiredness.",
+          "transcript_message_id": "m5"
+        },
+        {
+          "role": "assistant",
+          "message": "A few months now. I'm up in the night going to the toilet, and I'm always thirsty. I thought it was the heat and the long shifts.",
+          "transcript_message_id": "m6"
+        },
+        {
+          "role": "user",
+          "message": "Any weight loss, blurred vision, tingling in your feet?",
+          "transcript_message_id": "m7"
+        },
+        {
+          "role": "assistant",
+          "message": "Maybe a bit of weight off. Eyes are fine. No tingling.",
+          "transcript_message_id": "m8"
+        },
+        {
+          "role": "user",
+          "message": "Any infections, thrush, cuts that are slow to heal?",
+          "transcript_message_id": "m9"
+        },
+        {
+          "role": "assistant",
+          "message": "No, nothing like that.",
+          "transcript_message_id": "m10"
+        },
+        {
+          "role": "user",
+          "message": "What medications do you take?",
+          "transcript_message_id": "m11"
+        },
+        {
+          "role": "assistant",
+          "message": "Just amlodipine for my blood pressure.",
+          "transcript_message_id": "m12"
+        },
+        {
+          "role": "user",
+          "message": "Do you smoke or drink?",
+          "transcript_message_id": "m13"
+        },
+        {
+          "role": "assistant",
+          "message": "Gave up smoking five years ago. A few beers at the weekend.",
+          "transcript_message_id": "m14"
+        },
+        {
+          "role": "user",
+          "message": "What do you do for work?",
+          "transcript_message_id": "m15"
+        },
+        {
+          "role": "assistant",
+          "message": "I drive a delivery van. Long days. I eat whatever I can grab at the services.",
+          "transcript_message_id": "m16"
+        },
+        {
+          "role": "user",
+          "message": "Okay. And is there any diabetes in the family?",
+          "transcript_message_id": "m17"
+        },
+        {
+          "role": "assistant",
+          "message": "My mum had it. She ended up losing her leg to it, actually.",
+          "transcript_message_id": "m18"
+        },
+        {
+          "role": "user",
+          "message": "Right. So in terms of management, I'm going to start you on metformin, five hundred milligrams, and we'll titrate it up. It works on insulin resistance and improves your glycaemic control.",
+          "transcript_message_id": "m19"
+        },
+        {
+          "role": "assistant",
+          "message": "Tablets already? I was hoping I could sort it out myself, with my diet or something. I don't really want to be on tablets for life.",
+          "transcript_message_id": "m20"
+        },
+        {
+          "role": "user",
+          "message": "Well, with a level of fifty eight you do need them. Diet on its own won't be enough.",
+          "transcript_message_id": "m21"
+        },
+        {
+          "role": "assistant",
+          "message": "Okay. If you say so.",
+          "transcript_message_id": "m22"
+        },
+        {
+          "role": "user",
+          "message": "I'll also refer you to a structured education programme, and we'll check your kidneys, cholesterol and urine. I'll have a look at your feet today as well.",
+          "transcript_message_id": "m23"
+        },
+        {
+          "role": "assistant",
+          "message": "Right.",
+          "transcript_message_id": "m24"
+        },
+        {
+          "role": "user",
+          "message": "Any questions?",
+          "transcript_message_id": "m25"
+        },
+        {
+          "role": "assistant",
+          "message": "I don't think so. It's a lot to take in.",
+          "transcript_message_id": "m26"
+        },
+        {
+          "role": "user",
+          "message": "If you feel unwell, just come back and see us.",
+          "transcript_message_id": "m27"
+        },
+        {
+          "role": "assistant",
+          "message": "Okay. Thanks, doctor.",
+          "transcript_message_id": "m28"
+        }
+      ]
+    },
+    "framework": "sca-rcgp-v1",
+    "feedback": {
+      "global_skills": {
+        "structures_consultation": {
+          "score": "A",
+          "supporting_phrase": "So in terms of management, I'm going to start you on metformin",
+          "score_explanation": "Clear history, but management began before his understanding or concerns were explored."
+        },
+        "uses_clear_language": {
+          "score": "R",
+          "supporting_phrase": "your HbA1c came back at fifty eight, which is diagnostic of type 2 diabetes mellitus",
+          "score_explanation": "Jargon throughout: HbA1c, diagnostic, titrate, insulin resistance, glycaemic control. Understanding was never checked."
+        }
+      },
+      "tasks": {
+        "gathers_information": {
+          "score": "G",
+          "supporting_phrase": "Any infections, thrush, cuts that are slow to heal?",
+          "score_explanation": "Covered osmotic symptoms, complications, medication, smoking, alcohol and work."
+        },
+        "explains_diagnosis": {
+          "score": "R",
+          "supporting_phrase": "which is diagnostic of type 2 diabetes mellitus",
+          "score_explanation": "Named the condition but never explained what it is or what it means for him."
+        },
+        "management_plan": {
+          "score": "A",
+          "supporting_phrase": "I'll also refer you to a structured education programme",
+          "score_explanation": "Appropriate elements, but no follow-up was arranged and metformin side effects were not explained."
+        },
+        "safety_netting": {
+          "score": "R",
+          "supporting_phrase": "If you feel unwell, just come back and see us.",
+          "score_explanation": "No specific warning symptoms, and nothing about stopping metformin if vomiting or dehydrated."
+        }
+      },
+      "relating_to_others": {
+        "responds_to_cues": {
+          "score": "R",
+          "supporting_phrase": "Right. So in terms of management",
+          "score_explanation": "Moved straight on after he said his mother lost her leg to diabetes."
+        },
+        "shares_decisions": {
+          "score": "R",
+          "supporting_phrase": "Well, with a level of fifty eight you do need them.",
+          "score_explanation": "Overrode his wish to try diet first; a lifestyle trial was a reasonable option to offer."
+        }
+      },
+      "actionable_feedback": {
+        "global_skills_feedback": {
+          "score": "A",
+          "strengths": [
+            "Thorough, focused history"
+          ],
+          "improvements": [
+            "Plain language, and check understanding"
+          ]
+        },
+        "overall_priorities": [
+          {
+            "area": "Shared decision making",
+            "current_level": "R",
+            "improvement_steps": [
+              "Ask what he knows and what worries him before planning",
+              "Offer options, including a lifestyle trial, and agree one"
+            ],
+            "expected_outcome": "A plan he owns and will follow"
+          },
+          {
+            "area": "Safety netting and follow-up",
+            "current_level": "R",
+            "improvement_steps": [
+              "Name the symptoms that need same-day help",
+              "Book the review before he leaves"
+            ],
+            "expected_outcome": "He knows what to watch for and when he is next seen"
+          }
+        ]
+      }
+    },
+    "station": {
+      "station_name": "New diagnosis of type 2 diabetes",
+      "station_type": "consultation",
+      "management_plan": {
+        "explanation": "The blood test shows type 2 diabetes: his body is not handling sugar well, so it builds up in the blood. That explains the thirst, the night-time trips to the toilet and the tiredness. It is common and manageable, and what he does now makes a big difference to the risk of complications like the ones his mother had.",
+        "differential_diagnosis": [
+          "Type 2 diabetes, most likely given age, weight, family history and gradual onset",
+          "Type 1 diabetes or LADA if weight loss is marked or ketones are present",
+          "Secondary causes such as steroids or pancreatic disease, unlikely here"
+        ],
+        "examination_findings": [
+          "BMI 32",
+          "Blood pressure 148 over 88 on amlodipine",
+          "Feet: pulses present, monofilament sensation intact, no ulcers",
+          "Urine dip: glucose two plus, no ketones"
+        ],
+        "assessment": [
+          "Confirm symptoms of high sugar and ask about weight loss",
+          "Screen for complications: eyes, feet, kidneys, infections",
+          "Review cardiovascular risk: blood pressure, smoking, lipids, family history",
+          "Check current medication"
+        ],
+        "further_investigations": [
+          "Urine albumin to creatinine ratio",
+          "Renal function before starting metformin",
+          "Lipid profile and QRISK3",
+          "Referral to diabetic eye screening",
+          "Repeat HbA1c in three months"
+        ],
+        "social_concerns": [
+          "Delivery driver on long shifts who eats at service stations",
+          "Irregular meal times will shape diet changes and when he takes medication"
+        ],
+        "ice": [
+          "Idea: thought the tiredness was the heat and long shifts",
+          "Concern: his mother had diabetes and lost her leg to it",
+          "Expectation: hoped to manage it with diet rather than tablets"
+        ],
+        "immediate_actions": [
+          "Explain the diagnosis in plain words and check understanding",
+          "Explore his fear about his mother's amputation",
+          "Foot check today"
+        ],
+        "pharmacological_treatment": [
+          "Offer metformin 500mg once daily with food, increasing over several weeks as tolerated",
+          "Warn that stomach upset is common early and usually settles; modified release if it does not",
+          "If he prefers, a three month lifestyle trial with a repeat HbA1c is a reasonable option",
+          "Consider a statin once QRISK3 is known"
+        ],
+        "non_pharmacological_treatment": [
+          "Structured education programme such as DESMOND",
+          "Diet changes that fit shift work: planned meals, fewer sugary drinks",
+          "Regular activity and gradual weight loss"
+        ],
+        "follow_up": "Review in four weeks with the kidney and cholesterol results, HbA1c again in three months, and an annual diabetes review with feet and eye screening.",
+        "health_education": [
+          "Why feet and eyes are checked every year",
+          "On metformin alone there is no risk of low sugar, so no need to tell the DVLA for a car or van licence",
+          "Alcohol in moderation and with food"
+        ],
+        "safety_netting": "Seek same-day help for vomiting or being unable to keep fluids down, rapid weight loss, marked thirst with drowsiness or confusion, or a foot wound that is not healing. If vomiting or dehydrated, stop metformin until eating and drinking normally again.",
+        "additional_notes": "A plan agreed with him matters more than starting treatment today."
+      }
+    }
+  },
+  "trainee_brief": {
+    "hard_moment": "When he said he didn't want tablets and hoped to sort it out with diet, you told him he needed them. He went quiet and said 'if you say so'. You felt you'd steamrollered him but didn't know what else to say.",
+    "unaware_gap": "You think your safety net ('if you feel unwell, come back') was fine, and you have not noticed that you arranged no follow-up. You also didn't really register what he said about his mother's leg.",
+    "safety_critical_gap": "No specific warning symptoms needing same-day help, no advice to stop metformin when vomiting or dehydrated, and no follow-up arranged."
+  }
+}

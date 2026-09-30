@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: assistant-worker-config
+data:
+  OSCE_LIVEKIT_HOSTING: "self-hosted"
+  OSCE_LIVEKIT_WORKER: "assistant"
+  LIVEKIT_ASSISTANT_AGENT_NAME: "assistant-self-hosted"
+  LIVEKIT_ASSISTANT_WORKER_PORT: "8088"
+  # Per-node admission limit; see the note in configmap.yaml. The assessment pod
+  # takes 6 of the node's ~8 measured concurrent sessions, leaving 3 here on the
+  # basis that help/onboarding sessions are lighter than a full consultation.
+  LIVEKIT_ASSISTANT_MAX_CONCURRENT_JOBS: "3"
+  # Stay under terminationGracePeriodSeconds (900s) so the worker finishes draining
+  # before the kubelet's SIGKILL. The SDK default is one hour, which would outlast it.
+  LIVEKIT_ASSISTANT_DRAIN_TIMEOUT: "840"
+  # Backends the worker may be dispatched for, keyed by the opaque label the
+  # dispatching backend puts in job metadata. `platform` is the unified backend
+  # that replaces the other two; all three coexist under their own labels for
+  # the whole cutover, so a session already in flight keeps talking to the
+  # backend that dispatched it and rollback is a routing change, not a deploy.
+  # It serves the worker's default attempt and assistant paths, so it declares none. URLs and secrets come from env
+  # variables named here (see secret.example.yaml).
+  VOICE_BACKENDS_JSON: |
+    {
+      "platform": {
+        "base_url_env": "PLATFORM_API_URL",
+        "secret_env": "PLATFORM_WORKER_SECRET",
+        "secret_header": "X-Worker-Secret",
+        "slot_release_path": "/api/worker/livekit-cloud-slot/release",
+        "slot_extend_path": "/api/worker/livekit-cloud-slot/extend",
+        "slot_payload_key": "room_name"
+      },
+      "practice": {
+        "base_url_env": "PRACTICE_API_URL",
+        "secret_env": "PRACTICE_WORKER_SECRET",
+        "secret_header": "X-B2C-Worker-Secret",
+        "slot_release_path": "/api/worker/livekit-cloud-slot/release",
+        "slot_extend_path": "/api/worker/livekit-cloud-slot/extend",
+        "slot_payload_key": "room_name"
+      },
+      "institution": {
+        "base_url_env": "INSTITUTION_API_URL",
+        "secret_env": "INSTITUTION_WORKER_SECRET",
+        "secret_header": "X-B2B-Worker-Secret",
+        "slot_release_path": "/api/b2b/worker/livekit-cloud-slot/release",
+        "slot_extend_path": "/api/b2b/worker/livekit-cloud-slot/extend",
+        "slot_payload_key": "roomName"
+      }
+    }
+  # SENTRY_ENVIRONMENT is deliberately absent here: each overlay in
+  # k8s/overlays/<environment>/ sets it, so a staging pod can never report its
+  # errors as production.
