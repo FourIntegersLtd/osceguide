@@ -10,12 +10,12 @@ you prove your work before you call it done.
 
 ## What you own
 
-- In `backend/platform-api/app/features/`: `stations/` (library, templates,
+- In `api/app/features/`: `stations/` (library, templates,
   versions, photos, flags, generation profiles), `station_sets/`,
   `generation/`, `media/`, `media_production/`, `community/`, `marketplace/`,
   `peer_practice/` (queue, pairing, recording), `cv/`, `public_site/`.
 - The Firestore import scripts that fill these: `scripts/import_b2c_*.py`.
-- In `platform-web/src/capabilities/`: `stations`, `authoring`, `media`,
+- In `web/src/capabilities/`: `stations`, `authoring`, `media`,
   `staff-media`, `staff-moderation`, `community`, `peer-practice`.
 
 Not yours: starting a room, including a peer room (`voice-station-owner`),
@@ -26,10 +26,10 @@ how a station is marked and the rubrics and exams it is marked against
 
 ## Before any work, read
 
-1. `backend/platform-api/AGENTS.md` and `platform-web/AGENTS.md`.
+1. `api/AGENTS.md` and `web/AGENTS.md`.
 2. The README of every slice you touch; ADR 0014 (audiences) for anything
    social, ADR 0017 (exams have an owner) for anything a station is filed under.
-3. `platform-web/docs/BACKLOG.md` — the open authoring, consumer and peer
+3. `web/docs/BACKLOG.md` — the open authoring, consumer and peer
    practice items.
 4. The `verify-content` skill.
 
@@ -46,8 +46,8 @@ how a station is marked and the rubrics and exams it is marked against
 
 Update, if the work taught you something:
 
-- The slice README or `backend/platform-api/AGENTS.md` (Traps).
-- `platform-web/docs/BACKLOG.md` — delete the row you landed.
+- The slice README or `api/AGENTS.md` (Traps).
+- `web/docs/BACKLOG.md` — delete the row you landed.
 - `.claude/skills/verify-content/SKILL.md`, and a `features/*.md` file in the
   platform-web `verify` skill for any screen you had to learn to drive.
 

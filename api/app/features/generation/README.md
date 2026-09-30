@@ -7,7 +7,7 @@ comes back is a draft for a person to edit and publish through `stations` or
 `media`; nothing here writes a row.
 
 Ports the four `autogenerate_*` routes of the legacy b2c admin console
-(`platform-web/docs/BACKLOG.md` M-2), behind `PlatformAdmin` rather than an email list.
+(`web/docs/BACKLOG.md` M-2), behind `PlatformAdmin` rather than an email list.
 
 ## Aggregates & invariants
 None. This slice owns no tables and stores nothing: a generated draft exists

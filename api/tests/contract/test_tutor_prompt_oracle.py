@@ -6,7 +6,7 @@ templates, so drift here means the tutor a doctor talks to is quietly not the
 tutor that was written — and nothing else in the suite would notice, because
 every other test asserts on instructions it wrote itself.
 
-Compared against `assessment-platform/tests/fixtures/prompts/dashboard_tutor.txt`,
+Compared against `assessment/tests/fixtures/prompts/dashboard_tutor.txt`,
 rendered from the brief fixture beside it.
 """
 
@@ -23,7 +23,7 @@ from app.features.tutor_memory.renderer import LABELS, build_renderer
 
 def _find_checkout() -> Path | None:
     for parent in Path(__file__).resolve().parents:
-        candidate = parent / "assessment-platform"
+        candidate = parent / "assessment"
         if (candidate / "packages" / "osce_assessment").is_dir():
             return candidate
     return None
@@ -33,7 +33,7 @@ _CHECKOUT = _find_checkout()
 if _CHECKOUT is not None and str(_CHECKOUT / "packages") not in sys.path:
     sys.path.insert(0, str(_CHECKOUT / "packages"))
 
-pytestmark = pytest.mark.skipif(_CHECKOUT is None, reason="assessment-platform checkout not present")
+pytestmark = pytest.mark.skipif(_CHECKOUT is None, reason="assessment/ not present in this checkout")
 
 
 def test_the_backend_renders_exactly_what_the_engine_renders() -> None:

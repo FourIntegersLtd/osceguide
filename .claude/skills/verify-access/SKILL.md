@@ -21,7 +21,7 @@ green while the app signed everyone out on reload.
 ## Level 1 — backend tests (~2.5 min, needs the docker services)
 
 ```bash
-cd backend/platform-api
+cd api
 docker compose up -d            # Postgres :5433, Redis :6380; without them DB tests skip
 poetry run pytest -q \
   tests/unit/test_auth.py tests/unit/test_identity_domain.py tests/unit/test_mfa_domain.py \
@@ -74,7 +74,7 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   each time is a new `service_privacy.py`/`service_*` function in the *owning*
   slice, not a query in identity.
 - **Proving the erasure job needs a plain script, not just pytest.** From
-  `backend/platform-api`, with the docker services up and migrated:
+  `api`, with the docker services up and migrated:
   `PYTHONPATH=. poetry run python <script>` that creates a user, closes it,
   backdates `closed_at` (`repository.user_by_id` then set the attribute and
   commit), calls `service_erasure.erase_due_accounts(session, now=...)`, and

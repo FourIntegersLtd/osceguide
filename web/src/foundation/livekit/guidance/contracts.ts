@@ -2,7 +2,7 @@ import { z } from "zod";
 
 /**
  * The wire contract between the browser and the LiveKit assistant worker.
- * Mirrored in `assessment-platform/packages/livekit_assistant_worker/ui_guidance/contracts.py`;
+ * Mirrored in `assessment/packages/livekit_assistant_worker/ui_guidance/contracts.py`;
  * `test_ui_guidance_contract_drift.py` fails when the two disagree.
  */
 

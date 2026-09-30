@@ -17,7 +17,7 @@ const repoRoot = path.join(platformRoot, "..");
  * tree deleted.
  */
 const turbopackAliases = {
-  "@": "platform-web/src",
+  "@": "web/src",
 } as const;
 
 const DEFAULT_PLATFORM_API = "http://127.0.0.1:8002";

@@ -12,7 +12,7 @@ Read in this order if you are new.
 | 6 | [adr/](adr/) | The decisions someone might otherwise question. |
 | — | [DEPLOY-CHECKLIST.md](DEPLOY-CHECKLIST.md) | Gates before shipping platform-api to staging or production (migrations, voice label, classic Railway isolation). |
 | — | [SUPPORT-RUNBOOK.md](SUPPORT-RUNBOOK.md) | What a platform admin does about the tickets that actually arrive. |
-| — | [../../../platform-web/docs/BACKLOG.md](../../../platform-web/docs/BACKLOG.md) | All pending work and open questions, for every live repo. |
+| — | [../../../web/docs/BACKLOG.md](../../../web/docs/BACKLOG.md) | All pending work and open questions, for every live repo. |
 | — | [security/](security/) | The 2026-09 security assessment and the penetration test plan. |
 
 1–4 are also published as one searchable page:

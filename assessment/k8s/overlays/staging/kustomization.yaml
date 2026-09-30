@@ -1,6 +1,6 @@
 # Staging: a small private copy of the workers where every change runs first.
 #
-# Deployed automatically after CI passes on main (.github/workflows/publish-ghcr.yml).
+# Deployed automatically after CI assessment passes on main (.github/workflows/publish-workers.yml).
 # It connects to the staging LiveKit Cloud project (new-test-agent) and the staging
 # platform-api, through the keys in this namespace's own assessment-worker-secrets.
 # Because the LiveKit project is separate, the agent names can stay the same as
@@ -21,7 +21,7 @@ images:
     newTag: staging
 
 # The commit this build came from, stamped by the deploy workflow in place of
-# "unpinned". "Promote to production" reads it to know what staging is running.
+# "unpinned". "Promote workers to production" reads it to know what staging is running.
 commonAnnotations:
   osceguide.io/commit: unpinned
 

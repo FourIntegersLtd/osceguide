@@ -21,12 +21,12 @@ shows up in a live room: CI stayed green here while real bugs shipped.
 
 ```bash
 cd assessment-platform && poetry run pytest -q        # ~750 tests, ~11s
-cd backend/platform-api && poetry run pytest -q -k "voice or livekit or sittings"   # backend side, if touched
+cd api && poetry run pytest -q -k "voice or livekit or sittings"   # backend side, if touched
 ```
 
 A change to `CompetencyFramework`, `Rating` or the marking renderer must also
-parse what platform-api really sends. From `backend/platform-api`, with
-`sys.path.insert(0, "../../assessment-platform/packages")`, build
+parse what platform-api really sends. From `api`, with
+`sys.path.insert(0, "../../assessment/packages")`, build
 `schema_builder.framework_payload(...)` for every rubric in
 `seeds/platform-starter.json` and `CompetencyFramework.model_validate` it (four
 rubrics: rag, range, boolean, range with nullable domains, on 2026-09-30). The
@@ -42,7 +42,7 @@ The e2e test starts the real assessment worker, joins a real LiveKit room,
 plays a spoken sentence and asserts the patient answers and the transcript
 comes back. It is the only thing that proves the two halves agree.
 
-1. **Services:** `cd backend/platform-api && docker compose up -d`
+1. **Services:** `cd api && docker compose up -d`
    (Postgres on **5433**, Redis on **6380**, not the defaults).
 2. **Database:** `poetry run alembic upgrade head`, then
    `poetry run python scripts/seed_platform.py` (`make seed-platform` is only a
@@ -52,8 +52,8 @@ comes back. It is the only thing that proves the two halves agree.
    draft is refused the same way.
 3. **API:** start it on **:8002**.
 4. **Env:** the seven vars listed at the top of
-   `backend/platform-api/tests/e2e/conftest.py`. LiveKit creds,
-   `OPENAI_API_KEY` and `DEEPGRAM_API_KEY` are in `assessment-platform/.env`.
+   `api/tests/e2e/conftest.py`. LiveKit creds,
+   `OPENAI_API_KEY` and `DEEPGRAM_API_KEY` are in `assessment/.env`.
    Also set `ASSESSMENT_PLATFORM_PYTHON` to assessment-platform's interpreter
    (`cd assessment-platform && poetry env info --path`)/bin/python — otherwise
    the worker dies on `No module named livekit.agents` and the test only says
@@ -67,7 +67,7 @@ comes back. It is the only thing that proves the two halves agree.
    assessment-platform's `LIVEKIT_URL`/`LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET`.
 5. **Audio:** a 16 kHz mono WAV for `LIVEKIT_E2E_AUDIO_WAV`:
    `say -o t.aiff "I have had chest pain since this morning" && afconvert -f WAVE -d LEI16@16000 -c 1 t.aiff t.wav`
-6. **Run:** `cd backend/platform-api && poetry run pytest -m e2e tests/e2e -q`
+6. **Run:** `cd api && poetry run pytest -m e2e tests/e2e -q`
    `test_dashboard_e2e.py` covers the assistant worker; its second case also
    needs `make worker` running and `WORKER_SECRET` set.
 7. **Clean up:** the run needs `livekit` (rtc, the version assessment-platform
@@ -85,8 +85,8 @@ overdue for ever (two failed exam-day runs, 2026-09-19).
 
 ## Level 3 — deployed (after the person pushes)
 
-A push to `assessment-platform` main is the deploy: CI, then
-`publish-ghcr.yml` builds the image and rolls out both K3s deployments. There
+A push to `main` that touches `assessment/` is the staging deploy: CI
+assessment, then `publish-workers.yml` builds the image and rolls out both K3s deployments. There
 is no kubectl context on this machine; check the Actions run for the rollout
 step, then run one real session of the affected type.
 

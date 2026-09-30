@@ -78,7 +78,7 @@ within that window; there is no page 101, and inventing an offset to reach one
 would put back exactly the instability the rest of the API pages without.
 
 ## Jobs
-None. LLM draft generation for staff authoring lives under `generation` (`POST /api/v1/platform/generate/*`); TTS and slide video render are not ported — see `platform-web/docs/BACKLOG.md` M-2.
+None. LLM draft generation for staff authoring lives under `generation` (`POST /api/v1/platform/generate/*`); TTS and slide video render are not ported — see `web/docs/BACKLOG.md` M-2.
 
 ## Who may read a body
 The titles are public — the landing page's article rail and a shared link both

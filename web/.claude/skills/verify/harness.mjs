@@ -1,7 +1,7 @@
 /**
  * The browser half of the verify skill: sign in the way a person does, open a
  * page, and write proof. Import it from a throwaway script run inside
- * platform-web/ (playwright-core only resolves from there):
+ * web/ (playwright-core only resolves from there):
  *
  *   import { start, signIn, open, proof, finish } from "./.claude/skills/verify/harness.mjs";
  *   const run = await start("my-check");

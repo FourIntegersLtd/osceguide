@@ -20,7 +20,7 @@ of whatever you start so Cleanup kills that and nothing else.
 ```bash
 export PATH="$HOME/.nvm/versions/node/v22.22.3/bin:$PATH"   # npm is not on PATH otherwise
 
-# API (from backend/platform-api)
+# API (from api)
 make db-up                                   # postgres :5433, redis :6380
 nohup make start > "$TMP/api.log" 2>&1 & echo $! > "$TMP/api.pid"
 
@@ -51,7 +51,7 @@ its fix. Do not drive anything until it says `ready`.
 
 ## Drive
 
-Write a throwaway script in `.verify/` and run it from `platform-web/`
+Write a throwaway script in `.verify/` and run it from `web/`
 (`playwright-core` resolves only there):
 
 ```js

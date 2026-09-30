@@ -32,7 +32,7 @@ pytestmark = pytest.mark.db
 
 NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
 
-# The real thing: `assessment-platform/tests/fixtures/stations/library_station_sca.json`,
+# The real thing: `assessment/tests/fixtures/stations/library_station_sca.json`,
 # which is also what the golden prompt fixture was rendered from. Inlined
 # rather than read from the sibling checkout so this test does not skip when
 # the checkout is absent — `tests/contract/test_prompt_rendering.py` is what

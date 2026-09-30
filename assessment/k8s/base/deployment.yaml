@@ -54,7 +54,7 @@ spec:
           labelSelector:
             matchLabels:
               app: assessment-worker
-      # Private GHCR image (published by .github/workflows/publish-ghcr.yml).
+      # Private GHCR image (published by the repository root's .github/workflows/publish-workers.yml).
       imagePullSecrets:
         - name: ghcr-pull-credentials
       containers:

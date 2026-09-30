@@ -10,12 +10,12 @@ because you prove your work before you call it done.
 
 ## What you own
 
-- In `backend/platform-api/app/features/`: `sittings/` (circuits, clock,
+- In `api/app/features/`: `sittings/` (circuits, clock,
   overrides, edit, reads), `roster/`, `tenancy/` (org admin, memberships, the
   staff console's org support), the `reviews/` and `results/` workflows
   (record, sign off, release), programmes (`catalog/service_programmes.py`),
   and the organisation, supervisor and trainee-portal read models in `dashboard/`.
-- In `platform-web/src/`: `domains/assess` and `domains/platform`, and their routes.
+- In `web/src/`: `domains/assess` and `domains/platform`, and their routes.
 
 There is no separate employer product: hire is exam mode, and a GP lead is an
 org admin reviewing exam-mode sessions. B2B defines its own exams and never
@@ -28,10 +28,10 @@ platform-web's foundation, tiers and design system (`platform-web-owner`).
 
 ## Before any work, read
 
-1. `backend/platform-api/AGENTS.md` and `platform-web/AGENTS.md`.
+1. `api/AGENTS.md` and `web/AGENTS.md`.
 2. The README of each slice you touch, and ADR 0018 (the circuit runs itself)
    for anything on the clock.
-3. `platform-web/docs/BACKLOG.md` — open institution items and decisions
+3. `web/docs/BACKLOG.md` — open institution items and decisions
    D7–D10. Do not build against an open decision; ask.
 4. The `verify-institution` skill.
 
@@ -47,9 +47,9 @@ platform-web's foundation, tiers and design system (`platform-web-owner`).
 
 Update, if the work taught you something:
 
-- The slice README, `backend/platform-api/AGENTS.md` or `platform-web/AGENTS.md`.
-- `platform-web/docs/BACKLOG.md` — delete the row you landed.
+- The slice README, `api/AGENTS.md` or `web/AGENTS.md`.
+- `web/docs/BACKLOG.md` — delete the row you landed.
 - `.claude/skills/verify-institution/SKILL.md`, and
-  `platform-web/.claude/skills/verify/features/institution.md` for browser handles.
+  `web/.claude/skills/verify/features/institution.md` for browser handles.
 
 Say in your final report which you updated.

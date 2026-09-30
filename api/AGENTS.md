@@ -53,14 +53,14 @@ make guards                                    # tests/guards only, fast
   run after `tests/repository`, so run it alone. DB tests silently skip without
   the docker services, and a pass then means nothing.
 - **A push to `main` deploys staging, not production.** Production moves only
-  through the "Promote platform-api to production" workflow, which is ask-first.
+  through the "Promote api to production" workflow (it moves `production-api`), which is ask-first.
   Every deploy runs `alembic upgrade head`, so a migration must only add (a
   rollback keeps the new schema). See `docs/ENVIRONMENT.md`, "Staging and production".
 - **Real data never goes to staging.** `app.migration` refuses to import under
   `APP_ENV=staging`; seed staging with `scripts/seed_platform.py` instead.
 - **A one-off script outside pytest needs `PYTHONPATH=.`.** `poetry run python
   some_script.py` fails `ModuleNotFoundError: No module named 'app'` unless run
-  as `PYTHONPATH=. poetry run python some_script.py` from `backend/platform-api`
+  as `PYTHONPATH=. poetry run python some_script.py` from `api`
   — pytest's own `pythonpath` config doesn't apply outside it. Needed to prove
   the E-4 erasure job against a real row rather than only through pytest.
 - **A stored rubric structure is version 1 or version 2.** Never read

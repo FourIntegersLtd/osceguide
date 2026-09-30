@@ -5,7 +5,7 @@ One Deployment per worker, in two environments on the same K3s cluster:
 | Environment | Namespace | LiveKit Cloud project | Backend | Changes when |
 |---|---|---|---|---|
 | staging | `assessment-platform-staging` | `new-test-agent` | `staging-api.osceguide.com` | CI passes on `main` (automatic) |
-| production | `assessment-platform` | the live project | the live backends | someone runs **Promote to production** |
+| production | `assessment-platform` | the live project | the live backends | someone runs **Promote workers to production** |
 
 ## Layout
 
@@ -49,25 +49,25 @@ answers "which commit is production running?".
 
 ## How a change reaches production
 
-1. Merge to `main`. CI runs, then `publish-ghcr.yml` builds
+1. Merge to `main` a change under `assessment/`. CI assessment runs, then
+   `publish-workers.yml` builds
    `ghcr.io/fourintegersltd/osceguide-assessment-platform:<sha>` and rolls it out
    to **staging** (when the repository variable `K8S_AUTO_DEPLOY` is `true`).
 2. Test on staging: the staging site and API dispatch into `new-test-agent`, which
    only the staging workers serve.
-3. GitHub → Actions → **Promote to production** → Run workflow (from `main`). Leave
+3. GitHub → Actions → **Promote workers to production** → Run workflow (from `main`). Leave
    the commit empty to ship what staging runs. The `check` job refuses unless the
    commit is on `main`, CI passed on it, and both staging workers run that exact
    image and are available. The `deploy` job then rolls the same image out to
-   production, re-points `:production`, and moves the `production` branch forward
+   production, re-points `:production`, and moves the `production-workers` branch forward
    to the commit.
 
-Promote order when a change spans repos: platform-api, then assessment-platform,
-then platform-web.
+Promote order when a change spans apps: api, then workers, then web.
 
 ## Rolling production back
 
-Run **Promote to production** with `rollback` ticked and `commit_sha` set to the
-commit production ran before (any commit on the `production` branch). Its image
+Run **Promote workers to production** with `rollback` ticked and `commit_sha` set to the
+commit production ran before (any commit on the `production-workers` branch). Its image
 already exists, so nothing is rebuilt; the staging check and branch move are skipped.
 Live consultations drain first, so allow up to ~15 minutes per worker.
 
@@ -117,12 +117,13 @@ secret: staging would then take real candidates' dispatches or write into real d
 
 ### One-time GitHub setup (repository settings)
 
-- **Environments** `staging` and `production` exist (created 2026-09-26) and record
-  each deploy. They have no rules: this is a private repository on a free plan,
+- **Environments** `staging-workers` and `production-workers` record each deploy
+  (in the old repository they were `staging` and `production`). They have no
+  rules: this is a private repository on a free plan,
   where GitHub offers neither required reviewers nor branch protection. Today only
-  the owner can run workflows, so running **Promote to production** is the
+  the owner can run workflows, so running **Promote workers to production** is the
   approval. If someone else gets write access, upgrade the plan and add the owner as
-  a required reviewer on `production`, plus a rule on the `production` branch
+  a required reviewer on `production-workers`, plus a rule on the `production-workers` branch
   blocking force pushes and deletion.
 - Repository secrets `K8S_CONTROL_PLANE_HOST` and `K8S_CONTROL_PLANE_SSH_KEY` are
   shared by both environments. Optional variables: `K8S_MANIFEST_DIR` (control-plane

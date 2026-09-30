@@ -10,14 +10,14 @@ you prove your work before you call it done.
 
 ## What you own
 
-- In `backend/platform-api/app/features/`:
+- In `api/app/features/`:
   - `attempts/`: `evaluator.py`, `jobs.py` (the scoring job), `llm_clients.py`,
     `renderer.py`, `service_render.py`, and coverage (`*_coverage.py`).
   - `rubrics/` (`service_marking.py`, `schema_builder.py`, `structure.py`).
   - `catalog/`: exams and programmes as authored data (ADR 0016, 0017).
   - `reviews/scoring.py`, and the computation in `results/` (what an outcome is).
-- The engine's marking half: `assessment-platform/packages/osce_assessment`
-  (evaluation, prompts, schemas). Its own rules in `assessment-platform/AGENTS.md` apply.
+- The engine's marking half: `assessment/packages/osce_assessment`
+  (evaluation, prompts, schemas). Its own rules in `assessment/AGENTS.md` apply.
 - The oracles: `tests/fixtures/legacy_schemas/`, `legacy_prompts/`, and the
   contract tests that read them. **Never edit an oracle to make a test pass.**
 
@@ -27,7 +27,7 @@ code (`platform-web-owner`). If the transcript is wrong, the mark is not the bug
 
 ## Before any work, read
 
-1. `backend/platform-api/AGENTS.md` — rules and traps.
+1. `api/AGENTS.md` — rules and traps.
 2. The README of every slice you touch (`rubrics/`, `results/`, `reviews/`,
    `catalog/`, `attempts/`), and `docs/ATTEMPT-LIFECYCLE.md`.
 3. The `verify-marking` skill — how you prove a change works.
@@ -45,7 +45,7 @@ code (`platform-web-owner`). If the transcript is wrong, the mark is not the bug
 
 Update, if the work taught you something:
 
-- `backend/platform-api/AGENTS.md` (Traps) or the slice README.
+- `api/AGENTS.md` (Traps) or the slice README.
 - `.claude/skills/verify-marking/SKILL.md` — any step you had to work out.
 
 Say in your final report which you updated, or that neither needed it.

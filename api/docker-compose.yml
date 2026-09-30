@@ -1,3 +1,7 @@
+# Keeps the project name it had as its own repository (the folder was
+# platform-api/), so the existing containers and database volume carry over.
+name: platform-api
+
 services:
   postgres:
     # pgvector's own image: stock Postgres 16 plus the `vector`

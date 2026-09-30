@@ -19,7 +19,7 @@ command and its output.
 ## Level 1 — backend tests (~4 min, needs the docker services)
 
 ```bash
-cd backend/platform-api
+cd api
 docker compose up -d            # Postgres :5433, Redis :6380; without them DB tests skip
 LIVEKIT_AGENT_NAMESPACE= poetry run pytest -q \
   tests/unit/test_sittings_domain.py tests/unit/test_sittings_domain_edit.py \
@@ -48,7 +48,7 @@ After a schema change: `make openapi`, then in platform-web
 
 ## Level 2 — the screen in a real browser
 
-Use platform-web's `verify` skill (`platform-web/.claude/skills/verify/`):
+Use platform-web's `verify` skill (`web/.claude/skills/verify/`):
 `doctor.mjs` until it says `ready`, then drive the screen with its harness.
 `features/institution.md` has the handles for the dashboard, sittings and
 authoring. The test account `walkthrough@example.com` owns `kings` and is

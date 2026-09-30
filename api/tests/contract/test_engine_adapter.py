@@ -20,14 +20,14 @@ from tests.support.rubrics import frozen_rubric
 
 
 def _find_engine() -> Path | None:
-    """Look upward for the assessment-platform checkout.
+    """Look upward for the assessment folder.
 
     Searched rather than counted: the depth differs between a worktree and a
     plain checkout, and a hardcoded `parents[n]` quietly points at nothing the
     moment either moves — which is exactly how these tests first "passed".
     """
     for parent in Path(__file__).resolve().parents:
-        candidate = parent / "assessment-platform" / "packages"
+        candidate = parent / "assessment" / "packages"
         if (candidate / "osce_assessment").is_dir():
             return candidate
     return None
@@ -41,7 +41,7 @@ if _ENGINE is not None and str(_ENGINE) not in sys.path:
 
 pytestmark = pytest.mark.skipif(
     _ENGINE is None,
-    reason="assessment-platform checkout not present; the engine is not a dependency yet (E-1)",
+    reason="assessment/ not present in this checkout; the engine is not a dependency yet (E-1)",
 )
 
 

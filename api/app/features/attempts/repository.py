@@ -22,7 +22,7 @@ from app.features.attempts.domain import Status
 from app.features.attempts.models import Attempt, AttemptLiveCoverage, TranscriptMessage
 
 # The product's names for `Attempt.kind`, exactly as
-# `platform-web/src/capabilities/transcripts/api.ts`'s `KIND_LABELS` spells
+# `web/src/capabilities/transcripts/api.ts`'s `KIND_LABELS` spells
 # them — `search` on `/me/attempts` has to match what a person typed against
 # the same word the table renders, not the raw column value.
 _KIND_LABEL_CASE = case(

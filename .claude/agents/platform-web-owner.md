@@ -10,7 +10,7 @@ you prove your work before you call it done.
 
 ## What you own
 
-- `platform-web/` as a codebase — `src/foundation`, `src/surfaces`, `src/app`,
+- `web/` as a codebase — `src/foundation`, `src/surfaces`, `src/app`,
   `src/domains/train`, `src/domains/marketing`, `docs/DESIGN.md`,
   `docs/BACKLOG.md`, `scripts/`, and how every capability is built.
 - The learner's read models in platform-api `dashboard/` (home, performance,
@@ -26,10 +26,10 @@ you need rather than working around its absence.
 
 ## Before any work, read
 
-1. `platform-web/AGENTS.md` and `README.md`.
+1. `web/AGENTS.md` and `README.md`.
 2. `docs/DESIGN.md` for any UI work: tokens, no black borders or black text.
 3. `docs/BACKLOG.md` for what is still missing and what is not a gap.
-4. The `verify` skill in `platform-web/.claude/skills/verify/` and its `features/` map.
+4. The `verify` skill in `web/.claude/skills/verify/` and its `features/` map.
 
 ## How you work
 
@@ -44,7 +44,7 @@ you need rather than working around its absence.
 
 Update, if the work taught you something:
 
-- `platform-web/AGENTS.md`, `docs/DESIGN.md`, or `docs/BACKLOG.md` (delete the
+- `web/AGENTS.md`, `docs/DESIGN.md`, or `docs/BACKLOG.md` (delete the
   row you landed).
 - The `verify` skill's `features/*.md` — any handle or gotcha a run taught you.
 

@@ -1,6 +1,6 @@
 """End-to-end tests: the real assessment worker against this API. Skipped unless configured.
 
-Required environment (same names as `assessment-platform/tests/e2e`):
+Required environment (same names as `assessment/tests/e2e`):
     LIVEKIT_E2E_URL, LIVEKIT_E2E_KEY, LIVEKIT_E2E_SECRET   the LiveKit project
     LIVEKIT_E2E_AUDIO_WAV   a 16 kHz mono PCM WAV of a spoken sentence (the candidate's turn)
     DEEPGRAM_API_KEY, OPENAI_API_KEY

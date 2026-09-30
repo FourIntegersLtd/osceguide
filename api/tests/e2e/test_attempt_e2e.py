@@ -9,7 +9,7 @@ there is nothing clever to go wrong and it matches how the stack is actually
 run: `make db-up && make migrate && make start`, plus Redis and the worker.
 Everything it asserts is read back through the public API.
 
-It reuses `assessment-platform/tests/e2e/_harness.py` for the LiveKit parts —
+It reuses `assessment/tests/e2e/_harness.py` for the LiveKit parts —
 token minting, dispatch, playing a WAV as the candidate — because that harness
 is already proven against the worker.
 

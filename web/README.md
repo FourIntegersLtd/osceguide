@@ -93,8 +93,8 @@ section from an institution.
 Three things have to be up: Postgres and Redis, the API, and this.
 
 ```bash
-# 1. the backend (the current checkout is backend-tutor-memory/platform-api)
-cd ../backend-tutor-memory/platform-api
+# 1. the backend (the current checkout is api)
+cd ../api
 cp .env.example .env          # see "Talking to the workers" before editing
 make db-up && make migrate
 make start                    # :8002
@@ -136,7 +136,7 @@ Port 3100. The API's `CORS_ORIGINS` must list `http://localhost:3100`.
 A migrated database has the four exams and nothing else.
 
 ```bash
-cd ../backend-tutor-memory/platform-api
+cd ../api
 poetry run python scripts/bootstrap_admin.py --email you@example.com
 ```
 
@@ -154,13 +154,13 @@ and the steps below.
 **1. The API can mint a room token.** `POST /api/v1/attempts/{id}/voice-token`
 answers `voice_unavailable` until the API has `LIVEKIT_URL`,
 `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`. The same three live in
-`assessment-platform/.env`. The API mints the token and decides Cloud against
+`assessment/.env`. The API mints the token and decides Cloud against
 self-hosted; the browser never chooses a server.
 
 **2. The agent names match.** The API dispatches `{family}-{mode}`, so with the
 default self-hosted mode it asks for `assessment-self-hosted`. The worker
 registers under `LIVEKIT_ASSESSMENT_AGENT_NAME`, which is that same string in
-`assessment-platform/.env`. If they differ, a candidate joins a room and nobody
+`assessment/.env`. If they differ, a candidate joins a room and nobody
 comes.
 
 If local and deployed workers share the LiveKit project, set the API's
@@ -168,10 +168,10 @@ If local and deployed workers share the LiveKit project, set the API's
 prefix plus `-` to both worker agent names. Run the assistant worker as well
 as the assessment worker: Practice as Patient uses the consulting-doctor role
 on `assistant`, while debrief uses `assessment`. See
-`../assessment-platform/README.md` for the paired startup commands.
+`../assessment/README.md` for the paired startup commands.
 
 ```bash
-cd ../assessment-platform && make dev-assessment
+cd ../assessment && make dev-assessment
 # registered worker {"agent_name": "assessment-self-hosted", ...}
 ```
 
@@ -234,6 +234,13 @@ Two things follow from the site URL alone:
 
 See `.env.example` for the full list with commentary.
 
+**Deploys.** Vercel builds this folder of the osceguide repository (project
+setting Root Directory `web`). Its Ignored Build Step is
+`git diff --quiet HEAD^ HEAD -- . ../api/openapi.json`, so a push that changes
+neither `web/` nor the api contract builds nothing. `main` builds staging;
+production builds from the `production-web` branch, which only the "Promote web
+to production" workflow moves.
+
 ## Checking it
 
 ```bash
@@ -260,6 +267,6 @@ and the backend answers `manage_team`.
 npm run platform:types
 ```
 
-Reads `../backend-tutor-memory/platform-api/openapi.json`. Point it at whichever
-checkout is current; `backend/platform-api` was fifteen migrations behind when
+Reads `../api/openapi.json`. Point it at whichever
+checkout is current; `api` was fifteen migrations behind when
 this was written.

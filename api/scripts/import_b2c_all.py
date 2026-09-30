@@ -39,6 +39,8 @@ os.environ.setdefault("APP_ENV", "local")
 from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(_ROOT / ".env")
+# The legacy b2c-api's .env sits beside api/ only in the old backend checkout;
+# in the osceguide repository set the Firebase variables in the environment.
 if (_ROOT.parent / "b2c-api" / ".env").is_file():
     load_dotenv(_ROOT.parent / "b2c-api" / ".env", override=False)
 

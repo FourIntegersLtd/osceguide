@@ -1,4 +1,4 @@
-"""Copy AV-related keys from backend/b2c-api/.env into platform-api/.env.
+"""Copy AV-related keys from backend/b2c-api/.env into api/.env.
 
 Maps B2C naming (AWS_ACCESS_KEY, AWS_S3_BUCKET_NAME) to platform Settings names.
 Does not print secret values.

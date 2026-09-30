@@ -27,7 +27,7 @@ import { dirname, resolve } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
-const OPENAPI = resolve(root, "../backend/platform-api/openapi.json");
+const OPENAPI = resolve(root, "../api/openapi.json");
 const DOCS = ["docs/BACKLOG.md"];
 
 // A path parameterised differently ("{id}" vs "{user_id}") is the same route.

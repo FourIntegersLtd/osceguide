@@ -38,10 +38,10 @@ function check(name, ok, fix) {
 }
 
 check("system Chrome present", existsSync(CHROME), `install Chrome or set VERIFY_CHROME`);
-check("docker postgres :5433", Boolean(listener(5433)), "cd ../backend/platform-api && make db-up");
+check("docker postgres :5433", Boolean(listener(5433)), "cd ../api && make db-up");
 
 const health = await status(`${API}/health`);
-check(`platform-api ${API}/health -> ${health}`, health === 200, "cd ../backend/platform-api && make start");
+check(`platform-api ${API}/health -> ${health}`, health === 200, "cd ../api && make start");
 
 // The first request compiles /login, which takes ~15s on webpack dev.
 const login = await status(`${WEB}/login`);

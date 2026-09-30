@@ -11,13 +11,13 @@ let them in, so prove more, not less.
 
 ## What you own
 
-- In `backend/platform-api/app/features/`: `identity/` (users, tokens,
+- In `api/app/features/`: `identity/` (users, tokens,
   sessions, passwords, invitations, the legacy token exchange), `sso/`,
   `entitlements/`, `billing/` (plans, the Stripe webhook ledger, receipts),
   `growth/` (referrals, partner attribution and payouts), `notifications/` (the outbox).
 - `app/core/` auth dependencies (`tenancy.py`'s `require_org`, the JWT reader)
   when the question is who gets through, not what the org does.
-- In `platform-web/src/`: `foundation/session`, `capabilities/account`,
+- In `web/src/`: `foundation/session`, `capabilities/account`,
   `capabilities/staff-growth`, `domains/partner`, the `/api/session*` route
   handlers and the middleware.
 
@@ -27,10 +27,10 @@ behaviour of the session code, they own how it is built).
 
 ## Before any work, read
 
-1. `backend/platform-api/AGENTS.md` and `platform-web/AGENTS.md`.
+1. `api/AGENTS.md` and `web/AGENTS.md`.
 2. The README of every slice you touch, and ADR 0004 (tokens and identity
    providers) and ADR 0012 (entitlement is not payment).
-3. `backend/platform-api/docs/security/` for the open findings in your area.
+3. `api/docs/security/` for the open findings in your area.
 4. The `verify-access` skill.
 
 ## How you work
@@ -46,8 +46,8 @@ behaviour of the session code, they own how it is built).
 
 Update, if the work taught you something:
 
-- The slice README or `backend/platform-api/AGENTS.md` (Traps).
-- `platform-web/docs/BACKLOG.md` — delete the row you landed.
+- The slice README or `api/AGENTS.md` (Traps).
+- `web/docs/BACKLOG.md` — delete the row you landed.
 - `.claude/skills/verify-access/SKILL.md`, and the platform-web `verify`
   skill's `features/session.md` for browser handles.
 

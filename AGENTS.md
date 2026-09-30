@@ -14,55 +14,53 @@ LiveKit.
 
 ## Repo map
 
-This root is a **workspace repo** (local git) holding only agent files. Every
-folder below is its own git repo.
+One repository, `FourIntegersLtd/osceguide`, with one folder per app. Each app
+deploys on its own, only when its own folder changes:
 
-**Live**
+| Folder | What it is | Staging | Production |
+|---|---|---|---|
+| `api/` | platform-api, the one backend (FastAPI). Replaces b2c-api and b2b-api | Railway, every push to `main` touching `api/` or the engine | Railway, from `production-api` ("Promote api to production") |
+| `web/` | platform-web, the one frontend (Next.js) | Vercel, every push to `main` touching `web/` or `api/openapi.json` | Vercel, from `production-web` ("Promote web to production") |
+| `assessment/` | The marking engine (`packages/osce_assessment`) and the LiveKit assessment and assistant workers | K3s, after CI assessment passes on `main` | K3s, from `production-workers` ("Promote workers to production") |
 
-| Repo | What it is |
-|---|---|
-| `backend/platform-api/` (repo: `backend/`) | The one backend, FastAPI. Replaces b2c-api and b2b-api |
-| `platform-web/` | The one frontend, Next.js |
-| `assessment-platform/` | Assessment engine + the LiveKit assessment and assistant workers. A push to main deploys to K3s |
+The api installs the engine straight from `assessment/packages/osce_assessment`
+(a Poetry path dependency), so an engine change and the api change that uses
+it land in one commit, with no tag. An engine change therefore runs CI api too
+and redeploys the api's staging.
 
-**Retiring**: do not start new work here.
+**Retiring**, outside this repository: do not start new work there.
 
 | Repo | Status |
 |---|---|
-| `backend/b2c-api/`, `backend/b2b-api/` | Legacy backends, still serving the live site until the switch |
+| `b2c-api/`, `b2b-api/` in the old backend repo | Legacy backends, still serving the live site until the switch |
 | `livekit/` | Frozen legacy workers, no traffic. Never edit or push. Retirement: `livekit/README.md` |
 
 ## Where agent files live
 
 **The rule:**
 
-- Anything that spans repos or is about how agents work goes in this workspace
-  repo: owner agents, cross-repo verify skills, shared Cursor rules, and this
-  map.
-- Anything describing one repo's code goes in that repo's `AGENTS.md` or
-  `.claude/skills/`. It then changes in the same commit as the code, and a
-  single-repo clone still has it.
+- Anything that spans apps or is about how agents work goes at the root:
+  owner agents, cross-app verify skills, shared Cursor rules, and this map.
+- Anything describing one app's code goes in that folder's `AGENTS.md` or
+  `.claude/skills/`, and changes in the same commit as the code.
 
 | File | Scope |
 |---|---|
-| `AGENTS.md` (this file) | Workspace map, principles, cost discipline |
-| `.claude/agents/voice-station-owner.md` | Owner: live voice station, across assessment-platform and platform-api |
+| `AGENTS.md` (this file) | Repository map, principles, cost discipline |
+| `.claude/agents/voice-station-owner.md` | Owner: live voice station, across assessment/ and api/ |
 | `.claude/skills/verify-voice-station/` | How to prove a voice change works (unit → e2e → deployed) |
 | `.claude/agents/*-owner.md` | The other owners (see Owners) |
-| `.claude/skills/verify-{marking,institution,access,content}/` | Their proof recipes; platform-web's is its own `verify` skill |
+| `.claude/skills/verify-{marking,institution,access,content}/` | Their proof recipes; web/'s is its own `verify` skill |
 | `.cursor/rules/critical-thinking-partner.mdc` | Always on: push back on risk, plan first for large work |
-| `backend/platform-api/AGENTS.md` | Backend rules, commands, traps, ownership |
-| `platform-web/AGENTS.md` (+ `docs/DESIGN.md`) | Frontend tiers, non-negotiables, design language |
-| `platform-web/.claude/skills/verify/` | Prove a platform-web change in a real browser |
-| `assessment-platform/AGENTS.md` | Engine and worker boundaries (test-enforced) |
-| `backend/b2b-api/AGENTS.md`, `livekit/k8s/AGENTS.md` | Legacy. Retire with their code, don't extend |
+| `api/AGENTS.md` | Backend rules, commands, traps, ownership |
+| `web/AGENTS.md` (+ `docs/DESIGN.md`) | Frontend tiers, non-negotiables, design language |
+| `web/.claude/skills/verify/` | Prove a web/ change in a real browser |
+| `.github/workflows/` | One CI and one promote workflow per app, filtered by folder |
+| `assessment/AGENTS.md` | Engine and worker boundaries (test-enforced) |
+| b2b-api's and `livekit/k8s/`'s `AGENTS.md` | Legacy, in the old repos. Retire with their code, don't extend |
 
 `CLAUDE.md` files contain only `@AGENTS.md`, so Claude Code and Cursor read
 the same text.
-
-**Committing here:** only the files above that sit at the root. A pre-commit
-hook refuses anything else, so `misc/`, `docs/`, secrets and child repos can
-never land here. `git status` hides untracked files on purpose.
 
 ## Owners
 
@@ -94,17 +92,17 @@ To add one:
 ## Commands
 
 ```bash
-# platform-api (from backend/platform-api)
+# platform-api (from api)
 docker compose up -d && poetry run alembic upgrade head
 poetry run python scripts/seed_platform.py   # an unseeded DB refuses every attempt
 make start                                   # :8002
 make ci
 
-# platform-web (from platform-web)
+# platform-web (from web)
 npm run dev
 npm run ci
 
-# assessment-platform (from assessment-platform)
+# assessment engine and workers (from assessment)
 poetry run pytest -q
 ```
 
@@ -114,8 +112,9 @@ Node is not on the default PATH here:
 Retiring stack, only while it still serves the live site:
 
 ```bash
-cd backend/b2c-api && make start && poetry run pytest -q
-cd backend/b2b-api && make start && poetry run pytest -q
+# in the old backend checkout, not this repository
+cd b2c-api && make start && poetry run pytest -q
+cd b2b-api && make start && poetry run pytest -q
 ```
 
 ## Boundaries
@@ -204,5 +203,5 @@ these at the moment you break them. It never blocks -- heed it anyway.
 
 ## Updating this file
 
-Update it when a repo goes live or retires, when an owner is added, or when an
+Update it when an app is added or retires, when an owner is added, or when an
 agent file moves.

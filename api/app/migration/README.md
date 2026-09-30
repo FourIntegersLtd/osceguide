@@ -87,7 +87,7 @@ One-way import into `stations` / `station_versions`. **Does not write to
 Firestore** or change live consumer traffic.
 
 ```bash
-cd backend/platform-api
+cd api
 poetry run python scripts/import_b2c_stations.py --from-firestore --dry-run
 poetry run python scripts/import_b2c_stations.py --from-firestore --no-dry-run
 poetry run python scripts/import_b2c_stations.py --export ./export --no-dry-run
@@ -105,7 +105,7 @@ or change live consumer traffic. Merges on email when loading more than one
 exam; use `--collection` to copy a single exam's collection first.
 
 ```bash
-cd backend/platform-api
+cd api
 poetry run python scripts/import_b2c_users.py --from-firestore --dry-run
 poetry run python scripts/import_b2c_users.py --from-firestore --no-dry-run
 poetry run python scripts/import_b2c_users.py --export ./export --no-dry-run
@@ -124,7 +124,7 @@ episodes derived from summaries with `podcast_url`). **Does not write to
 Firestore** or change live consumer traffic.
 
 ```bash
-cd backend/platform-api
+cd api
 poetry run python scripts/import_b2c_media.py --from-firestore --dry-run
 poetry run python scripts/import_b2c_media.py --from-firestore --no-dry-run
 poetry run python scripts/import_b2c_media.py --export ./export --no-dry-run
@@ -154,7 +154,7 @@ One-way import into `posts` and `post_likes` (questions, replies, station
 comments). **Does not write to Firestore.**
 
 ```bash
-cd backend/platform-api
+cd api
 poetry run python scripts/import_b2c_community.py --from-firestore --dry-run
 poetry run python scripts/import_b2c_community.py --from-firestore --no-dry-run
 ```
@@ -220,4 +220,4 @@ Every step is idempotent, so re-running copies only what is new.
 Station sets, sittings and org data. The consumer path — people, entitlements,
 attempts, transcripts and legacy feedback — is end to end. A real export is
 still needed to size the run and to catch shapes the fixtures do not have; see
-`platform-web/docs/BACKLOG.md` M-1.
+`web/docs/BACKLOG.md` M-1.

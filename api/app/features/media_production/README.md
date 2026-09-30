@@ -37,7 +37,7 @@ Run `make worker` beside `make start`. **ffmpeg** must be on `PATH` for slide vi
 
 ## Local setup
 
-From `backend/platform-api`, copy AV keys from the B2C `.env`:
+From `api`, copy AV keys from the B2C `.env`:
 
 ```bash
 poetry run python scripts/sync_av_env_from_b2c.py

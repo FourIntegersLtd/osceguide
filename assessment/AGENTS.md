@@ -59,7 +59,7 @@ workers being built to replace `livekit/packages/livekit_b2c_worker` and
 `livekit_b2b_worker`. See `README.md` for the architecture and the three-layer
 domain model.
 
-Its own git repo. Python 3.11, Poetry, pytest, flat `packages/<name>/` layout
+The `assessment/` folder of the osceguide repository. Python 3.11, Poetry, pytest, flat `packages/<name>/` layout
 mirroring the legacy `livekit/packages` convention.
 
 ## The rule that matters most
@@ -100,7 +100,7 @@ the engine must never import `compat` itself.
 - Changing a port signature that a worker package already implements.
 - Anything that changes scoring behaviour for an existing consumer.
 - Database migrations in the backends.
-- Running **Promote to production**, or anything else that changes the
+- Running **Promote workers to production**, or anything else that changes the
   `assessment-platform` namespace.
 
 ## Never do
@@ -209,9 +209,10 @@ Two environments on one K3s cluster, built from `k8s/base` plus an overlay
 
 - **staging**: namespace `assessment-platform-staging`, LiveKit project
   `new-test-agent`, backend `staging-api.osceguide.com`. Every green `main` rolls
-  here by itself (`publish-ghcr.yml`).
+  here by itself (`publish-workers.yml`, at the repository root).
 - **production**: namespace `assessment-platform` (never rename it). Changes only
-  via the **Promote to production** workflow, and only to an image staging runs.
+  via the **Promote workers to production** workflow (`promote-workers.yml`),
+  which moves the `production-workers` branch, and only to an image staging runs.
 
 Rules:
 

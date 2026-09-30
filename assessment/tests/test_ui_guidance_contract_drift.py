@@ -15,7 +15,7 @@ from livekit_assistant_worker.ui_guidance import contracts
 
 # The frontend is a separate repository checked out beside this one. When it is
 # not there, there is nothing to drift against.
-CONTRACTS_TS = Path(__file__).resolve().parents[2] / "frontend/src/shared/livekit-ui-guidance/contracts.ts"
+CONTRACTS_TS = Path(__file__).resolve().parents[2] / "web/src/foundation/livekit/guidance/contracts.ts"
 
 _STRING_CONST = re.compile(r'export const (\w+)\s*=\s*"([^"]*)"\s*as const;')
 _NUMBER_CONST = re.compile(r"export const (\w+)\s*=\s*(\d+);")
@@ -23,7 +23,7 @@ _NUMBER_CONST = re.compile(r"export const (\w+)\s*=\s*(\d+);")
 
 def _typescript_constants() -> dict[str, str | int]:
     if not CONTRACTS_TS.exists():
-        pytest.skip(f"frontend not checked out beside this repo ({CONTRACTS_TS})")
+        pytest.skip(f"web/ not present in this checkout ({CONTRACTS_TS})")
     source = CONTRACTS_TS.read_text()
     found: dict[str, str | int] = {name: value for name, value in _STRING_CONST.findall(source)}
     found.update({name: int(value) for name, value in _NUMBER_CONST.findall(source)})

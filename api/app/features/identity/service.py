@@ -203,7 +203,7 @@ async def update_me(
     The custom reading/simulation timers (`custom_reading_seconds`,
     `custom_simulation_seconds`) are **not** applied to an institution's examination: a
     circuit's clock is one clock for everybody on it. An accommodation there is granted on the
-    circuit's timing instead. See `platform-web/docs/BACKLOG.md`, S-2. They only take effect at
+    circuit's timing instead. See `web/docs/BACKLOG.md`, S-2. They only take effect at
     all while `needs_extra_time` is true, matching the retiring client's "Extra reading time"
     checkbox.
 

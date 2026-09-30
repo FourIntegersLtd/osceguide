@@ -19,7 +19,7 @@ command and its output.
 ## Level 1 — backend tests (needs the docker services)
 
 ```bash
-cd backend/platform-api
+cd api
 docker compose up -d            # Postgres :5433, Redis :6380; without them DB tests skip
 # domain + repository (~5s)
 poetry run pytest -q \

@@ -7,10 +7,10 @@ station a doctor practises is quietly not the station that was authored — and
 nothing else in the suite would notice, because every other test asserts on
 instructions it wrote itself.
 
-Compared against `assessment-platform/tests/fixtures/prompts/*.txt`, the
+Compared against `assessment/tests/fixtures/prompts/*.txt`, the
 engine's own golden files, rendered from the station fixtures beside them.
-Skipped when the checkout is absent; the engine is installed by
-`make engine-dev`.
+Skipped when `assessment/` is absent; the engine is installed by
+`poetry install`.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from app.features.attempts.renderer import build_renderer
 
 def _find_checkout() -> Path | None:
     for parent in Path(__file__).resolve().parents:
-        candidate = parent / "assessment-platform"
+        candidate = parent / "assessment"
         if (candidate / "packages" / "osce_assessment").is_dir():
             return candidate
     return None
@@ -36,7 +36,7 @@ _CHECKOUT = _find_checkout()
 if _CHECKOUT is not None and str(_CHECKOUT / "packages") not in sys.path:
     sys.path.insert(0, str(_CHECKOUT / "packages"))
 
-pytestmark = pytest.mark.skipif(_CHECKOUT is None, reason="assessment-platform checkout not present")
+pytestmark = pytest.mark.skipif(_CHECKOUT is None, reason="assessment/ not present in this checkout")
 
 
 def _fixture(kind: str, name: str, suffix: str) -> Path:

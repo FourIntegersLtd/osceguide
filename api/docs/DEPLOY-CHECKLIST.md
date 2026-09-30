@@ -3,7 +3,7 @@
 Use this before promoting **platform-api** to production (not b2c-api/b2b-api).
 A push to `main` deploys staging by itself; production changes only through the
 promote workflow (see [ENVIRONMENT.md](ENVIRONMENT.md), "Staging and production").
-Each backend redeploys only for its own folder: `platform-api/**`, `b2c-api/**`
+Each backend redeploys only for its own folder: `api/**`, `b2c-api/**`
 or `b2b-api/**`.
 
 ## Before deploy
@@ -34,7 +34,8 @@ or `b2b-api/**`.
 
 | Service | Trigger |
 |---------|---------|
-| platform-api, platform-worker | `platform-api/**`: staging on a push to `main`, production when the promote workflow moves `production` |
-| b2c-api | `b2c-api/**` in backend repo |
-| b2b-api | `b2b-api/**` in backend repo |
-| assessment-platform workers | Push to `assessment-platform` `main` → GHCR (+ optional K8s rollout) |
+| platform-api, platform-worker | `api/**` or `assessment/packages/osce_assessment/**`: staging on a push to `main`, production when "Promote api to production" moves `production-api` |
+| b2c-api | `b2c-api/**` in the old backend repo |
+| b2b-api | `b2b-api/**` in the old backend repo |
+| assessment workers | `assessment/**` on `main` → CI assessment → GHCR → K3s staging; production via "Promote workers to production" |
+| platform-web | `web/**` or `api/openapi.json` → Vercel staging; production via "Promote web to production" |

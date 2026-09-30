@@ -97,7 +97,7 @@ together.
 published is dropped. Running it twice costs the embeddings and changes
 nothing, and a run that failed half way is repaired by the next one rather
 than needing to be unwound. It is nightly rather than on publish because
-embedding the whole library costs minutes and money — see `platform-web/docs/BACKLOG.md` T-3.
+embedding the whole library costs minutes and money — see `web/docs/BACKLOG.md` T-3.
 
 ## Cross-slice dependencies
 - `attempts.service_reads` — recent attempts, their results and a debrief's

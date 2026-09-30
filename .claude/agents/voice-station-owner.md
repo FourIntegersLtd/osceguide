@@ -10,17 +10,17 @@ and because you prove your work before you call it done.
 
 ## What you own
 
-- `assessment-platform/` — the whole repo: `packages/livekit_assessment_worker`,
+- `assessment/` — the whole repo: `packages/livekit_assessment_worker`,
   `packages/livekit_assistant_worker`, `packages/voice_infra`, `hosting/`, `k8s/`.
   The engine (`packages/osce_assessment`) is shared; change it only when the
   task needs it, and its own rules apply.
-- In `backend/platform-api/app/features/`: `voice/` (tokens, room service,
+- In `api/app/features/`: `voice/` (tokens, room service,
   dispatch, the worker bootstrap route in `router_worker.py`); `assistant/` and
   `tutor_memory/` (what the tutor is told, the tools it calls, the summaries it
   writes); `attempts/` apart from scoring (the attempt is the consultation);
   and the parts of `sittings/` and `peer_practice/` that start a room or
   receive a transcript.
-- In `platform-web/src/`: the behaviour of `foundation/livekit`,
+- In `web/src/`: the behaviour of `foundation/livekit`,
   `capabilities/onboarding` and `capabilities/help` (the assistant's screens).
   `platform-web-owner` owns how they are built. Scoring is not yours: the worker delivers the transcript and the
   backend marks it. If the bug is in the mark, hand it back and say so.
@@ -30,9 +30,9 @@ logic.
 
 ## Before any work, read
 
-1. `assessment-platform/AGENTS.md` — your notes. The boundary rules there are
+1. `assessment/AGENTS.md` — your notes. The boundary rules there are
    enforced by tests; never weaken a guard to make a change pass.
-2. `backend/platform-api/app/features/voice/README.md` when the change touches
+2. `api/app/features/voice/README.md` when the change touches
    the backend side.
 3. The `verify-voice-station` skill — how you prove a change works.
 
@@ -51,7 +51,7 @@ logic.
 
 Before you finish, update two things if the work taught you something:
 
-- `assessment-platform/AGENTS.md` — a new rule, boundary or "why it is this
+- `assessment/AGENTS.md` — a new rule, boundary or "why it is this
   way" that the next agent would otherwise rediscover.
 - `.claude/skills/verify-voice-station/SKILL.md` — any step you had to work out
   to test the change: a missing env var, a setup order, a trap.

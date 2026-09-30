@@ -336,7 +336,7 @@ allow-lists that the backends never implemented; the variables it named do not
 exist.
 
 So if a worker release misbehaves under load, recovery is a **production
-rollback**, not an environment change: run **Promote to production** with
+rollback**, not an environment change: run **Promote workers to production** with
 `rollback` ticked and the previous commit (see `k8s/README.md`, "Rolling
 production back"), or `kubectl -n assessment-platform rollout undo` if GitHub
 is down. Because there is no gate inside production, the staging environment is
@@ -368,11 +368,11 @@ Differences from the legacy workers to keep in mind:
 - The `recommendation` and `vision` session types were removed from the product
   rather than ported.
 
-Deployment: `.github/workflows/publish-ghcr.yml` builds
-`ghcr.io/fourintegersltd/osceguide-assessment-platform:<sha>` after CI on `main`
+Deployment: the repository root's `.github/workflows/publish-workers.yml` builds
+`ghcr.io/fourintegersltd/osceguide-assessment-platform:<sha>` after CI assessment passes on `main`
 and, with the `K8S_AUTO_DEPLOY` repository variable set, rolls it out to
 **staging** (`k8s/overlays/staging`). Production changes only through the
-**Promote to production** workflow, which ships the image staging already runs.
+**Promote workers to production** workflow, which ships the image staging already runs.
 The whole flow, and how to set up an environment, is in `k8s/README.md`.
 Both backends must vendor an engine that carries
 `AIInteractionProfile.tool_context` (refresh with `make engine-sync` in the

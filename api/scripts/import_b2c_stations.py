@@ -11,7 +11,7 @@ unchanged — no deletes or updates at the source.
 
 Credentials: `GOOGLE_APPLICATION_CREDENTIALS`, `FIREBASE_SERVICE_ACCOUNT_KEY_PATH`
 (same as b2c-api), or JSON in `FIREBASE_SERVICE_ACCOUNT_KEY` /
-`GOOGLE_APPLICATION_CREDENTIALS_JSON`. Loads `backend/b2c-api/.env` for the path
+`GOOGLE_APPLICATION_CREDENTIALS_JSON`. Loads the old checkout's `b2c-api/.env` for the path
 when present (does not override platform-api `.env`).
 
 `--dry-run` is the default: full load, then rollback.
@@ -33,6 +33,8 @@ os.environ.setdefault("APP_ENV", "local")
 from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(_ROOT / ".env")
+# The legacy b2c-api's .env sits beside api/ only in the old backend checkout;
+# in the osceguide repository set the Firebase variables in the environment.
 _b2c_env = _ROOT.parent / "b2c-api" / ".env"
 if _b2c_env.is_file():
     load_dotenv(_b2c_env, override=False)

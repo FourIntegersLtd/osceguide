@@ -1,7 +1,7 @@
 /**
  * Give the local library stations with a real document behind them.
  *
- * The seed (`platform-api/scripts/seed_platform.py`) authors the four exams
+ * The seed (`api/scripts/seed_platform.py`) authors the four exams
  * and their rubrics; the stations come from a migration of the legacy
  * Firestore collections, which nobody runs locally. What is left is a handful
  * of stations carrying a `patient_information` block and nothing else — enough

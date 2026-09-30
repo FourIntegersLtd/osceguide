@@ -18,7 +18,7 @@ command and its output.
 ## Level 1 — tests (~2.5 min, needs the docker services)
 
 ```bash
-cd backend/platform-api
+cd api
 docker compose up -d            # Postgres :5433, Redis :6380; without them DB tests skip and a pass means nothing
 poetry run pytest -q tests/contract \
   tests/unit/test_rubrics_domain.py tests/unit/test_rubric_validation.py \

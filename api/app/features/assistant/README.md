@@ -64,7 +64,7 @@ this slice — see **Three fates** below.
 (`livekit_assistant_worker/metadata.py:9-12`), not configured per backend as the
 assessment worker's are. They must be mounted at exactly these spellings; moving
 them breaks the worker. Worth making configurable there — see
-`platform-web/docs/BACKLOG.md` A-1.
+`web/docs/BACKLOG.md` A-1.
 
 ## Jobs
 None of its own. A dashboard transcript causes `tutor_memory` to defer

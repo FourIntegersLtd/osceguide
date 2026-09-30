@@ -89,8 +89,8 @@ function apiUnreachableDevMessage(status: number): string {
   return (
     `Request failed (${status}) — platform-api was not reached. ` +
     "Use http://localhost:3100 (not :3000). " +
-    "Start the API: cd backend/platform-api && make start. " +
-    "In platform-web/.env.local set PLATFORM_API_URL=http://127.0.0.1:8002 and restart npm run dev:webpack."
+    "Start the API: cd api && make start. " +
+    "In web/.env.local set PLATFORM_API_URL=http://127.0.0.1:8002 and restart npm run dev:webpack."
   );
 }
 
