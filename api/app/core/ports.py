@@ -140,8 +140,8 @@ class VectorIndex(Protocol):
         """Add or replace this document's vector."""
         ...
 
-    async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
-        """Return `(doc_id, score)` pairs, best first."""
+    async def search(self, *, query: str, limit: int, kind: str | None = None) -> list[tuple[str, float]]:
+        """Return `(doc_id, score)` pairs, best first, of one media kind if `kind` is given."""
         ...
 
 

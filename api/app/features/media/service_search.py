@@ -63,7 +63,7 @@ async def search(
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
-    hits = await index.search(query=cleaned, limit=limit)
+    hits = await index.search(query=cleaned, limit=limit, kind=wanted)
     scores = {uuid.UUID(doc_id): score for doc_id, score in hits}
     items = await repository.by_ids(session, list(scores))
     return sorted(

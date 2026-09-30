@@ -92,6 +92,36 @@ async def test_a_document_matches_once_however_many_passages_it_has(
     assert len(ids) == len(set(ids))
 
 
+async def test_station_passages_never_take_a_media_result_s_place(
+    db_session: AsyncSession,
+    searchable,  # type: ignore[no-untyped-def]
+) -> None:
+    """Stations share the store but are not media items. On staging they filled every
+    place for "red flags for chest pain", so Athena found no summary to answer from."""
+    summary = str(uuid.uuid4())
+    for station_number in range(5):
+        await index_passages(db_session, corpus="station", source_id=f"station-{station_number}", seeds=[1.0])
+    await index_passages(db_session, corpus="summary", source_id=summary, seeds=[0.5])
+    searchable(vector(1.0))
+
+    hits = await PgVectorMediaIndex(db_session).search(query="chest pain", limit=1)
+    assert [doc_id for doc_id, _ in hits] == [summary]
+
+
+async def test_a_search_can_ask_for_one_kind(
+    db_session: AsyncSession,
+    searchable,  # type: ignore[no-untyped-def]
+) -> None:
+    """Athena answers from summaries only, so a closer podcast must not use up a place."""
+    podcast, summary = str(uuid.uuid4()), str(uuid.uuid4())
+    await index_passages(db_session, corpus="podcast", source_id=podcast, seeds=[1.0])
+    await index_passages(db_session, corpus="summary", source_id=summary, seeds=[0.5])
+    searchable(vector(1.0))
+
+    hits = await PgVectorMediaIndex(db_session).search(query="chest pain", limit=1, kind="summary")
+    assert [doc_id for doc_id, _ in hits] == [summary]
+
+
 async def test_search_is_not_filtered_by_what_the_reader_has_bought(
     db_session: AsyncSession,
     searchable,  # type: ignore[no-untyped-def]

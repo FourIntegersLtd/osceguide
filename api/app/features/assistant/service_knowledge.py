@@ -59,7 +59,7 @@ async def answer(
         )
     question = body.messages[-1].content.strip()
     hits = await service_search.search(
-        session, query=question[:_MAX_QUERY], index=index, limit=8, unlocked=scoped
+        session, query=question[:_MAX_QUERY], index=index, limit=8, kind="summary", unlocked=scoped
     )
     passages: list[str] = []
     for hit in hits:

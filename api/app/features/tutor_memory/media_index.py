@@ -19,6 +19,7 @@ from app.core.ports import VectorIndex
 from app.features.tutor_memory import repository_index
 from app.features.tutor_memory.chunking import chunk
 from app.features.tutor_memory.embedder import build_embedder
+from app.features.tutor_memory.service_material import MEDIA_CORPORA
 
 log = get_logger(__name__)
 
@@ -68,8 +69,12 @@ class PgVectorMediaIndex:
             ],
         )
 
-    async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
-        """The media items whose best passage is closest to `query`, one hit per item."""
+    async def search(self, *, query: str, limit: int, kind: str | None = None) -> list[tuple[str, float]]:
+        """The media items whose best passage is closest to `query`, one hit per item.
+
+        Only media corpora: the store also holds station passages, which are not media
+        items and would otherwise take the places of real results.
+        """
         try:
             embedder = build_embedder()
         except Exception as exc:  # noqa: BLE001 - an unconfigured search finds nothing
@@ -82,7 +87,7 @@ class PgVectorMediaIndex:
             # No filter, deliberately, and spelled `None` rather than reached
             # by passing an empty list: see `media.service_search.get_vector_index`.
             exam_ids=None,
-            corpus=None,
+            corpus=kind if kind else MEDIA_CORPORA,
             limit=limit * _PASSAGE_FACTOR,
         )
         best: dict[str, float] = {}

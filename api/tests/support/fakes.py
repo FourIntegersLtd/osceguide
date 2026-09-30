@@ -158,7 +158,7 @@ class FakeVectorIndex:
     async def index(self, *, doc_id: str, text: str, metadata: dict[str, str]) -> None:
         self.documents[doc_id] = text
 
-    async def search(self, *, query: str, limit: int) -> list[tuple[str, float]]:
+    async def search(self, *, query: str, limit: int, kind: str | None = None) -> list[tuple[str, float]]:
         self.queries.append(query)
         hits = [(doc_id, 1.0) for doc_id, text in self.documents.items() if query.lower() in text.lower()]
         return hits[:limit]

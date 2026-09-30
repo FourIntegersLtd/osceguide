@@ -87,7 +87,7 @@ async def nearest(
     *,
     embedding: Sequence[float],
     exam_ids: Sequence[uuid.UUID] | None,
-    corpus: str | None,
+    corpus: str | tuple[str, ...] | None,
     limit: int,
 ) -> list[tuple[MaterialChunk, float]]:
     """The nearest passages, best first, within the exams given.
@@ -118,8 +118,16 @@ async def nearest(
     stmt = select(MaterialChunk, distance.label("distance")).order_by(distance).limit(limit)
     if exam_ids is not None:
         stmt = stmt.where(MaterialChunk.exam_id.in_(list(exam_ids)))
-    if corpus is not None:
+    if isinstance(corpus, str):
         stmt = stmt.where(MaterialChunk.corpus == corpus)
+    elif corpus is not None:
+        stmt = stmt.where(MaterialChunk.corpus.in_(corpus))
 
+    # IVFFlat searches only the `probes` nearest of its 100 lists, and the default of
+    # one reads about 1% of the table. A filter is applied after that read, so on
+    # staging the one list probed for "red flags for chest pain" held only station
+    # passages and Athena found no summary at all. Ten lists keeps recall close to an
+    # exact scan at this table's size. `true` scopes it to this transaction.
+    await session.execute(text("SELECT set_config('ivfflat.probes', '10', true)"))
     matches = (await session.execute(stmt)).all()
     return [(match[0], 1.0 - float(match[1])) for match in matches]
