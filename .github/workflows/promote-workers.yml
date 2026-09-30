@@ -261,7 +261,8 @@ jobs:
       - name: Roll out to production
         uses: ./.github/actions/roll-out-workers
         with:
-          environment: production-workers
+          # The k8s overlay name; the GitHub Environment above is "production-workers".
+          environment: production
           image-digest: ${{ needs.check.outputs.image_digest }}
           commit-sha: ${{ needs.check.outputs.commit_sha }}
           control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}

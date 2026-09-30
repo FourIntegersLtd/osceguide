@@ -117,7 +117,8 @@ jobs:
       - name: Roll out to staging
         uses: ./.github/actions/roll-out-workers
         with:
-          environment: staging-workers
+          # The k8s overlay name; the GitHub Environment above is "staging-workers".
+          environment: staging
           image-digest: ${{ needs.publish.outputs.digest }}
           commit-sha: ${{ needs.publish.outputs.sha }}
           control-plane-host: ${{ secrets.K8S_CONTROL_PLANE_HOST }}
