@@ -58,6 +58,33 @@ product preference, not a default.
 - Fonts: Inter (UI), Archivo (`font-heading`), IBM Plex Mono (`font-mono`,
   eyebrows, marks and timestamps).
 
+## Help dock
+
+The Athena dock (`capabilities/help`, plus the transcript and cards it shows
+from `foundation/livekit`) has its own small type language, so every section
+reads as one panel. The roles are constants in `src/foundation/ui/helpType.ts`;
+article and chat markdown follows them in `.helpCompact`
+(`markdown.module.css`). Use a role, never a hand-written size and weight.
+
+| Role | Looks like | Use |
+|---|---|---|
+| `barTitle` | Archivo 16 semibold, white | the name in the coloured bar |
+| `title` | Archivo 16 semibold, ink-900 | a view's title, a block's title, an article heading |
+| `groupLabel` | Inter 16 medium, secondary ink | a card's header band, the transcript's |
+| `rowTitle` | Inter 16 medium, ink-900 | the main line of a row, option or suggested card |
+| `prose` | Inter 16 relaxed, colour from the surface | answers, chat bubbles, the transcript |
+| `support` | Inter 13 relaxed, ink-500 | descriptions, hints, timestamps, status |
+| `link` | Inter 13 medium, accent | a text link |
+
+- **Two families.** Archivo is for titles and nothing else; a title is Archivo
+  whether it is an `h3`, a `p` or a `span`. No mono in the dock.
+- **Two sizes.** 16 for anything read or pressed, 13 for what supports it. No
+  15px prose, no 11px captions.
+- **Three weights.** 600 is a title, 500 is something you press or a group
+  label, 400 is prose. Semibold Inter does not appear.
+- **Ink scale only**: 900 titles, 700 prose, 500 support, 400 placeholders and
+  chevrons. No zinc hex values.
+
 ## Surfaces, radius, layout
 
 - **Cards are flat**: a 1px border on white over the canvas, no shadow. Only
