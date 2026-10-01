@@ -106,7 +106,7 @@ export function TraineesPanel({
         await anonymiseTrainee(orgSlug, pending.trainee.id);
         setNotice({
           tone: "success",
-          text: `${displayName(pending.trainee)}'s name and address have been scrubbed. Any decision on record is unchanged.`,
+          text: `${displayName(pending.trainee)}’s name and email address have been removed. Any results already recorded are kept.`,
         });
       } else {
         const revoking = pending.kind === "revoke";
@@ -159,7 +159,7 @@ export function TraineesPanel({
           setSettled((current) => new Set(current).add(trainee.id));
           setNotice({
             tone: "warning",
-            text: `${displayName(trainee)} has already chosen a password, so there is no invitation to re-send.`,
+            text: `${displayName(trainee)}  has already set up their account, so there is no invitation to resend.`,
           });
         } else {
           setNotice({ tone: "danger", text: errorMessage(cause) });
@@ -351,7 +351,7 @@ export function TraineesPanel({
         lead={
           pending
             ? deleting
-              ? "Only a row with no decision recorded can be deleted this way. Anything examined is refused — revoke their access instead."
+              ? "You can only delete a trainee with no results recorded. If they have been examined, remove their access instead."
               : anonymising
                 ? `${named}'s name and email address will be scrubbed and their access revoked. Any decision already recorded about them is kept — this cannot be undone.`
                 : revoking

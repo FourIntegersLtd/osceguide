@@ -49,7 +49,7 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
 
   return (
     <Panel
-      title="Seat an administrator"
+      title="Add an administrator"
       description="For a new organisation with nobody in it yet."
     >
       <form onSubmit={submit} className="flex max-w-lg flex-col gap-3">
@@ -62,7 +62,7 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             disabled={busy}
-            hint="An address with no account is invited: the backend emails a link to set a password. No password passes through this console."
+            hint="If they do not have an account yet, we email them a link to choose a password. You never see or set their password."
           />
 
           <Select
@@ -80,7 +80,7 @@ export function SeatMemberPanel({ slug }: { slug: string }) {
 
           <div className="flex justify-end">
             <Button type="submit" disabled={busy || !email.trim()}>
-              {busy ? "Seating…" : "Seat member"}
+              {busy ? "Adding…" : "Add administrator"}
             </Button>
           </div>
         </form>

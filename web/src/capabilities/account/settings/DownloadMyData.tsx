@@ -45,7 +45,7 @@ export function DownloadMyData() {
       <div className="space-y-3">
         <ModalHelper className="mt-0">
           Download everything this account owns: your profile, your attempts with their
-          transcripts and marks, and your payments — one file, ready to keep or hand to
+          transcripts and marks, and your payments, all in one file, ready to keep or hand to
           anyone who asks what we hold about you.
         </ModalHelper>
         {error ? <p className="text-osce-meta text-osce-danger">{error}</p> : null}

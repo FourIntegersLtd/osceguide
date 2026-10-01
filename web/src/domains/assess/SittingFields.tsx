@@ -52,7 +52,7 @@ export function ModeField({
       <p className="text-sm text-ink-muted">
         {hint ??
           (value === "exam"
-            ? "One candidate through every station, at most twelve. Trainees cannot be appended once it runs."
+            ? "One candidate takes every station, up to twelve. You cannot add trainees once it has started."
             : "Each trainee is paired with one station, and they rotate.")}
       </p>
     </fieldset>
@@ -93,8 +93,7 @@ export function ProgrammeField({
       />
       {selected ? (
         <p className="text-sm text-ink-muted">
-          Marking uses the published rubric bound to {selected.exam_name}. You do not pick a
-          separate feedback template.
+          Marking and feedback follow the published marking scheme for {selected.exam_name}, so there is nothing else to choose.
         </p>
       ) : null}
     </div>

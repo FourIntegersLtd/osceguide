@@ -89,14 +89,11 @@ export function SittingEditForm({
       <div className="flex flex-col gap-4">
         {lock.assessmentFrozen ? (
           <Alert tone="warning">
-            A circuit on this sitting has started, so its mode and its programme are fixed — you can
-            still rename it and move its date. To change what it examines, rebuild the circuits or
-            schedule another sitting.
+            A circuit in this sitting has already started, so its type and programme can no longer change. You can still rename it or change its date. To examine something different, rebuild the circuits or schedule a new sitting.
           </Alert>
         ) : lock.modeFrozen ? (
           <Alert tone="warning">
-            This sitting already has {lock.circuits} circuit{lock.circuits === 1 ? "" : "s"}, so its
-            mode is chosen for good — the mode is what those circuits are composed from.
+            This sitting already has {lock.circuits} circuit{lock.circuits === 1 ? "" : "s"}, so its type can no longer change. Those circuits were built for this type.
           </Alert>
         ) : null}
 
@@ -131,7 +128,7 @@ export function SittingEditForm({
           onChange={(scheduledFor) => set("scheduledFor", scheduledFor)}
           hint={
             sitting.scheduled_for
-              ? "When it is due to run. Leave empty to unschedule it."
+              ? "When it takes place. Leave this blank to remove the date."
               : "Leave empty to schedule it later."
           }
         />
@@ -153,7 +150,7 @@ function refusal(cause: unknown): string {
     return "This sitting has begun, so what it examines is fixed. Its name and date can still change.";
   }
   if (hasCode(cause, "exam_rubric_not_ready", "rubric_version_not_published")) {
-    return "That programme has no published rubric to mark against yet. Publish one, or pick another programme.";
+    return "That programme has no published marking scheme yet. Publish one, or choose another programme.";
   }
   if (hasCode(cause, "programme_not_found")) {
     return "That programme is no longer here. Pick another.";

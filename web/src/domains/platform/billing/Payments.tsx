@@ -103,7 +103,7 @@ function PaymentRow({
         <InlineAction
           label="Record refund"
           tone="danger"
-          description="Record-only: refund the money in the Stripe dashboard. This withdraws the access it bought and keeps the payment."
+          description="This does not refund any money; do that in Stripe. It removes the access this payment bought and keeps the payment on record."
           onConfirm={async (reason) => {
             await recordRefund(payment.id, reason);
             toast.success(

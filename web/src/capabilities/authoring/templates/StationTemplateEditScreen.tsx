@@ -57,7 +57,7 @@ export function StationTemplateEditScreen({
   return (
     <PlatformTemplateWizardPageLayout
       title={match?.title || "Edit draft"}
-      subtitle={`Version ${version}. Published versions cannot be edited — cut a new draft from the list first.`}
+      subtitle={`Version ${version}. Published versions cannot be edited. Make a new draft from the list first.`}
       backHref={listHref}
       backLabel="Station templates"
     >

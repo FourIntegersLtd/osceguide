@@ -172,7 +172,7 @@ const PARTNER_COPY: DashboardCopy = {
       spendPerSignup: {
         label: "Spend per sign-up",
         tooltip:
-          "Estimated BMJ spend divided by sign-ups — what each new sign-up cost on average.",
+          "Estimated BMJ spend divided by sign-ups: what each new sign-up cost on average.",
       },
     },
   },
@@ -229,7 +229,7 @@ const PARTNER_COPY: DashboardCopy = {
       {
         term: "Estimated fee",
         detail:
-          "Link visits in the date range times our agreed rate per visit (pilot default £0.40). This is a guide only — you invoice from your own click records.",
+          "Link visits in the date range times our agreed rate per visit (pilot default £0.40). This is a guide only. You invoice from your own click records.",
       },
       {
         term: "Est. BMJ spend",
@@ -246,7 +246,7 @@ const PARTNER_COPY: DashboardCopy = {
       {
         term: "Spend per sign-up",
         detail:
-          "Estimated BMJ spend divided by sign-ups — what we think each new sign-up cost on average.",
+          "Estimated BMJ spend divided by sign-ups: what we think each new sign-up cost on average.",
         internalOnly: true,
       },
     ],
@@ -375,7 +375,7 @@ const INTERNAL_COPY: DashboardCopy = {
       spendPerSignup: {
         label: "Spend per sign-up",
         tooltip:
-          "Estimated BMJ spend divided by sign-ups — what each new sign-up cost on average.",
+          "Estimated BMJ spend divided by sign-ups: what each new sign-up cost on average.",
       },
     },
   },
@@ -451,7 +451,7 @@ const INTERNAL_COPY: DashboardCopy = {
       {
         term: "Spend per sign-up",
         detail:
-          "Estimated BMJ spend divided by sign-ups — what we think each new sign-up cost on average.",
+          "Estimated BMJ spend divided by sign-ups: what we think each new sign-up cost on average.",
         internalOnly: true,
       },
     ],

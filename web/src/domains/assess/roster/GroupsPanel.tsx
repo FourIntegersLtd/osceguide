@@ -87,7 +87,7 @@ export function GroupsPanel({
 
       <PanelCard
         title="Groups"
-        subtitle="A list of people you put on a circuit — a rotation team, a resit group. Somebody can be in several."
+        subtitle="A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one."
         icon={<HiOutlineUserGroup className="h-5 w-5" aria-hidden />}
       >
         {groups.length === 0 ? (

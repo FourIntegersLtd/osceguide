@@ -67,7 +67,7 @@ export function AccountTab({
             ? "Account deactivated"
             : "Account reactivated",
           status === "deactivated"
-            ? "Their sessions have ended and their token is refused from now on."
+            ? "They have been signed out everywhere and cannot sign in again."
             : "They can sign in again.",
         );
         setConfirmOff(false);
@@ -112,7 +112,7 @@ export function AccountTab({
             ) : null}
             <Panel
               title="Payment and access"
-              description="Read from what happened. Changed where it is recorded."
+              description="What they have paid for and can use. Make changes on the Billing and Access tabs."
               actions={
                 <>
                   <Button
@@ -141,7 +141,7 @@ export function AccountTab({
                         {accessLabel(access)}
                       </Badge>
                     ) : (
-                      "—"
+                      "-"
                     ),
                   },
                   { label: "Last paid", value: formatDay(facts?.last_paid_at) },
@@ -164,7 +164,7 @@ export function AccountTab({
                   },
                   {
                     label: "Signed in",
-                    value: facts ? (facts.signed_in ? "Now" : "No") : "—",
+                    value: facts ? (facts.signed_in ? "Now" : "No") : "-",
                   },
                 ]}
               />
@@ -224,7 +224,7 @@ export function AccountTab({
                 </Button>
                 <p className="text-osce-meta text-ink-subtle">
                   {deactivated
-                    ? "Deactivated. Its sessions have ended and its token is refused."
+                    ? "Deactivated. They have been signed out everywhere and cannot sign in."
                     : "Signs them out everywhere. Nothing is deleted."}
                 </p>
               </>

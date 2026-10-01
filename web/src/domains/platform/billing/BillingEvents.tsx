@@ -117,10 +117,10 @@ function EventRow({
         </Badge>
         {refused ? (
           <InlineAction
-            label="Replay"
+            label="Try again"
             requireReason={false}
             reasonLabel="Note"
-            description="Applies the delivery again. Works once its cause is fixed — the account exists, the plan exists."
+            description="Tries this payment update again. It only works once the problem is fixed, for example once the account or the plan exists."
             onConfirm={async () => {
               const result = await replayBillingEvent(event.event_id);
               toast.success(`Replay: ${result.status.replace(/_/g, " ")}`);

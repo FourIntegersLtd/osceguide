@@ -13,9 +13,9 @@ import {
 import type { MediaItem } from "@/capabilities/staff-media/api";
 
 function mediaDateLabel(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const date = new Date(iso);
-  if (!Number.isFinite(date.getTime())) return "—";
+  if (!Number.isFinite(date.getTime())) return "-";
   return date.toLocaleString("en-GB");
 }
 
@@ -65,7 +65,7 @@ export function MediaListTable({
         header: "Exam",
         key: "exam_code" as keyof MediaItem,
         render: (item: MediaItem) => (
-          <Badge tone="accent">{(item.exam_code ?? "—").toUpperCase()}</Badge>
+          <Badge tone="accent">{(item.exam_code ?? "-").toUpperCase()}</Badge>
         ),
       },
       {

@@ -113,7 +113,7 @@ export const STATION_BLOCK_ROLES: RoleMeta[] = [
     id: "hidden",
     audience: "patient",
     label: "Held back until asked",
-    description: "What the patient thinks, worries about, and might ask — only brought up when the doctor asks.",
+    description: "What the patient thinks, worries about, and might ask, brought up only when the doctor asks.",
     icon: HiOutlineEyeSlash,
   },
   {

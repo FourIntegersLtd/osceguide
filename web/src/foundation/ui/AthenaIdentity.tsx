@@ -70,7 +70,7 @@ export function AthenaIdentity({
             {title}
           </p>
           {description != null ? (
-            <p className={cn(b2cBodyTextMuted, "mt-0.5 truncate leading-tight")}>
+            <p className={cn(b2cBodyTextMuted, "mt-0.5 line-clamp-2 leading-snug")}>
               {description}
             </p>
           ) : null}

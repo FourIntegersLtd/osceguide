@@ -48,7 +48,7 @@ export function EntitlementsTab({
       main={
         <Panel
           title="Access"
-          description="Every grant, live or not, newest last."
+          description="Everything this person has been given access to, current or ended, oldest first."
           padding="none"
         >
           <AsyncBoundary
@@ -196,7 +196,7 @@ function GrantPanel({
   return (
     <Panel
       title="Grant access"
-      description="For a payment taken under another address, a sponsor's seat, or a goodwill month. A purchase that failed to apply is replayed from Billing instead."
+      description="For a payment taken under another address, a sponsor's seat, or a goodwill month. If a purchase did not give access, retry it from the Billing tab instead."
       padding="sm"
     >
       <form onSubmit={submit} className="flex flex-col gap-3">

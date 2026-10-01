@@ -35,7 +35,7 @@ export const OUTCOME_HINT: Record<AssessmentOutcome, string> = {
   pass: "Met the standard.",
   fail: "Did not meet the standard.",
   inconclusive: "Not enough was assessed to decide.",
-  withheld: "Decided, and not being released — an investigation, an appeal.",
+  withheld: "Decided, but held back, for example during an investigation or an appeal.",
 };
 
 export function outcomeTone(
@@ -95,7 +95,7 @@ export function formatScore(score: number | null | undefined): string {
 }
 
 export function formatCompletion(rate: number | null | undefined): string {
-  if (rate === null || rate === undefined || Number.isNaN(rate)) return "—";
+  if (rate === null || rate === undefined || Number.isNaN(rate)) return "-";
   return `${Math.round(rate * 100)}%`;
 }
 
@@ -151,7 +151,7 @@ export function signOffBlockers(input: {
   const blockers: string[] = [];
   if (!input.outcome) blockers.push("An outcome has to be chosen.");
   if (!(input.rationale ?? "").trim()) {
-    blockers.push("A rationale has to be written — somebody has to be able to say why, later.");
+    blockers.push("Write down the reason, so anyone can see why this was decided later.");
   }
   return blockers;
 }

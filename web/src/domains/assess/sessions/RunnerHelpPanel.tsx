@@ -12,7 +12,7 @@ const COPY = {
     points: [
       "Start the circuit to open the room; everybody joins from their own screen.",
       "Reading time and the patient follow the server's clock, not this browser.",
-      "Pause, extend, resend or jump when you need to — each one asks why, and the answer is kept.",
+      "Pause, extend, resend or jump when you need to. Each one asks why, and your answer is saved.",
     ],
   },
   exam: {

@@ -202,6 +202,6 @@ function grantLabel(live: Entitlement[]): string {
 
 function formatDate(value: string): string {
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "—";
+  if (!Number.isFinite(date.getTime())) return "-";
   return date.toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" });
 }

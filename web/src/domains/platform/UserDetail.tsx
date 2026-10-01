@@ -35,7 +35,7 @@ const USER_TABS: B2CSegmentedTabItem<Tab>[] = [
   { id: "profile", label: "Profile" },
   { id: "stations", label: "Stations" },
   { id: "attempts", label: "Attempts" },
-  { id: "entitlements", label: "Entitlements" },
+  { id: "entitlements", label: "Access" },
   { id: "billing", label: "Billing" },
   { id: "account", label: "Account" },
   { id: "history", label: "History" },

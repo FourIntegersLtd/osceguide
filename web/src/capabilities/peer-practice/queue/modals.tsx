@@ -91,7 +91,7 @@ export function SearchingModal({
             <>
               We&apos;re looking for an available colleague to match you with.
               We&apos;ll search for up to 10 minutes. You can close this and
-              continue browsing — we&apos;ll notify you when a match is found.
+              continue browsing. We&apos;ll notify you when a match is found.
             </>
           }
           icon={<HiOutlineArrowPath className="h-4 w-4 animate-spin" />}

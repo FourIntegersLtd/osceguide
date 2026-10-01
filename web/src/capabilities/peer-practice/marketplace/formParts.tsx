@@ -80,7 +80,7 @@ export function TimeSlotList({
   if (options.length === 0) {
     return (
       <p className="px-4 py-8 text-center text-osce-body text-b2c-text-muted">
-        No times left on this date — choose a later day
+        No times left on this date. Choose a later day
       </p>
     );
   }

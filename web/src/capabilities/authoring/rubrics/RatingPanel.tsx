@@ -15,7 +15,7 @@ import {
 import { RATING_KINDS } from "@/capabilities/authoring/rubrics/rubricVocabulary";
 
 const STEP_CHOICES = [
-  { value: "integer" as const, label: "Whole numbers", hint: "0, 1, 2… — no halves." },
+  { value: "integer" as const, label: "Whole numbers", hint: "0, 1, 2 and so on, with no halves." },
   { value: "number" as const, label: "Any number", hint: "Halves and decimals allowed." },
 ];
 

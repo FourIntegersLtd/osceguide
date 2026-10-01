@@ -39,8 +39,7 @@ export function PartnerReporting({ partner }: { partner: string }) {
       ) : (
         <Card title="Who can read this">
           <p className="text-sm text-ink-muted">
-            A reporter sees these numbers and nothing else. Ask OSCE Guide staff to add
-            someone — reporters are appointed by us, not by your team.
+            A reporter sees these numbers and nothing else. Ask OSCE Guide staff to add someone. Reporters are added by us, not by your team.
           </p>
         </Card>
       )}

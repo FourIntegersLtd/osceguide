@@ -81,7 +81,7 @@ function RenameForm({
     <Dialog
       open
       title="Rename cohort"
-      lead="Everyone in this intake keeps their place — the name is the only thing that changes."
+      lead="Everyone in this intake stays in it. Only the name changes."
       error={error}
       busy={busy}
       commitLabel="Save"

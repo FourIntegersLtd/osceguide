@@ -92,7 +92,7 @@ function Form({
     <Dialog
       open
       title="Edit trainee"
-      lead="Only what is on this form is written. The address is not — it is how this person's results stay theirs."
+      lead="Only what is on this form is written. The email address cannot be changed here, because it keeps this person’s results linked to them."
       error={error}
       busy={busy}
       commitLabel="Save"
@@ -146,7 +146,7 @@ function Form({
           Cohort
         </label>
         <p className="mt-0.5 text-osce-caption text-b2b-mid">
-          An intake. Choose one that exists — cohorts are created under Groups.
+          An intake. Choose an existing one; cohorts are created under Groups.
         </p>
         <select
           id="assess-trainee-edit-cohort"

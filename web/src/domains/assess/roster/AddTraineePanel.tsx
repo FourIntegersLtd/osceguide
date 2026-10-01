@@ -172,7 +172,7 @@ export function AddTraineePanel({
 
       <PanelCard
         title="Import a spreadsheet"
-        subtitle="Upload a list of trainees from Excel or Google Sheets (.csv). Duplicates are reported, not fatal."
+        subtitle="Upload a list of trainees saved from Excel or Google Sheets as a .csv file. Anyone already on the list is skipped and shown to you."
         icon={<HiOutlineArrowUpTray className="h-5 w-5" aria-hidden />}
       >
         <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>

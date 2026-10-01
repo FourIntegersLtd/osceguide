@@ -105,7 +105,7 @@ function PlabLandingContent() {
             </h2>
             <p className={type.sectionSubtitleCentered}>
               Structured, evidence-based plans that cover both clinical and
-              psychosocial care — and an AI patient to rehearse them on, marked
+              psychosocial care, and an AI patient to rehearse them on, marked
               as you speak.
             </p>
           </div>

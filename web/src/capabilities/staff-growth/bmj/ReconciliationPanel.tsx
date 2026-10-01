@@ -26,7 +26,7 @@ export function ReconciliationPanel({ report }: { report: Report }) {
   const difference =
     report.delta != null
       ? `${report.delta}${report.delta_percent != null ? ` (${report.delta_percent}%)` : ""}`
-      : "—";
+      : "-";
   return (
     <Panel
       title="Do our visit numbers match?"
@@ -42,7 +42,7 @@ export function ReconciliationPanel({ report }: { report: Report }) {
         <StatTile label="Our records" value={String(report.ledger_raw_count)} icon={HiOutlineChartBarSquare} />
         <StatTile
           label="Website tracker"
-          value={report.mixpanel_raw_count != null ? String(report.mixpanel_raw_count) : "—"}
+          value={report.mixpanel_raw_count != null ? String(report.mixpanel_raw_count) : "-"}
           icon={HiOutlineArrowPath}
         />
         <StatTile label="Difference" value={difference} icon={HiOutlineScale} />

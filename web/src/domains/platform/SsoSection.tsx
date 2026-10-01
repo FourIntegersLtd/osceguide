@@ -167,8 +167,7 @@ function SsoForm({
 
       {config === null ? (
         <WriteOnlyNote>
-          SSO is not configured for this organisation yet. Fill in the fields
-          below to set it up.
+          Organisation sign-in (single sign-on) is not set up yet. Fill in the fields below to set it up.
         </WriteOnlyNote>
       ) : null}
 
@@ -194,7 +193,7 @@ function SsoForm({
         onChange={(e) => update("issuer", e.target.value)}
         disabled={busy}
         placeholder="https://login.microsoftonline.com/…"
-        hint="The OIDC issuer URL. Required when SSO is enabled."
+        hint="The sign-in address from the organisation’s identity provider. Their IT team can give you this. Required when organisation sign-in is on."
       />
 
       <Input
@@ -211,7 +210,7 @@ function SsoForm({
         value={form.default_exam_code}
         onChange={(e) => update("default_exam_code", e.target.value)}
         disabled={busy}
-        hint="Pre-filled for new accounts created through SSO. Optional."
+        hint="The exam chosen for new people who join through organisation sign-in. Optional."
       />
 
       <Textarea
@@ -220,7 +219,7 @@ function SsoForm({
         onChange={(e) => update("hosts", e.target.value)}
         disabled={busy}
         placeholder="kings.edu"
-        hint="One host per line. A sign-in from one of these hosts shows the SSO button."
+        hint="One web address per line. People signing in from one of these addresses see the organisation sign-in button."
       />
 
       <Textarea
@@ -229,7 +228,7 @@ function SsoForm({
         onChange={(e) => update("email_domains", e.target.value)}
         disabled={busy}
         placeholder="kings.edu"
-        hint="One domain per line. A user whose email matches one of these is offered SSO."
+        hint="One email domain per line, such as nhs.net. Anyone with a matching email address is offered organisation sign-in."
       />
 
       <div className="flex flex-col gap-3 border-t border-border pt-4">
@@ -242,7 +241,7 @@ function SsoForm({
         />
         <Checkbox
           label="SSO only"
-          description="Hide the password form entirely."
+          description="Hide the email and password form, so members can only use organisation sign-in."
           checked={form.sso_only}
           onChange={(e) => update("sso_only", e.target.checked)}
           disabled={busy}

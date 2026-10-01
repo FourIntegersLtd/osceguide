@@ -70,7 +70,7 @@ export function OrganizationSettings({
             label="Slug"
             value={organization.slug}
             readOnly
-            hint="The URL every one of this tenant's screens hangs off. It cannot be changed."
+            hint="Part of the web address of every page in this organisation. It cannot be changed."
           />
 
           <Select
@@ -78,7 +78,7 @@ export function OrganizationSettings({
             value={orgType}
             onChange={(event) => setOrgType(event.target.value)}
             disabled={busy}
-            hint="Which console this tenant's members land in."
+            hint="Which version of the site this organisation’s members see when they sign in."
           >
             {ORG_TYPES.map((type) => (
               <option key={type.value} value={type.value}>
@@ -166,9 +166,7 @@ function StaffMfaPolicy({
             : "Staff may sign in with a password alone. Each person can still turn two-factor sign-in on for themselves."}
         </p>
         <p className="text-osce-meta text-ink-subtle">
-          Applies at each person&rsquo;s next password sign-in. Anyone without
-          an authenticator sets one up then. Organisation (SSO) sign-in is
-          unaffected.
+          Takes effect the next time each person signs in with a password. Anyone without an authenticator app sets one up then. Signing in through the organisation&rsquo;s own login is not affected.
         </p>
         <div className="flex justify-end">
           <Button
@@ -233,8 +231,7 @@ function ContractDates({
       <div className="flex max-w-lg flex-col gap-3">
         {!organization.contract_starts_at && !organization.contract_ends_at ? (
           <WriteOnlyNote>
-            Contract dates are not on this organisation record yet. A blank
-            field is left untouched when you save.
+            No contract dates have been set yet. Any field you leave blank stays as it is when you save.
           </WriteOnlyNote>
         ) : null}
 
@@ -252,7 +249,7 @@ function ContractDates({
           value={endsAt}
           onChange={(event) => setEndsAt(event.target.value)}
           disabled={busy}
-          hint="Midnight at the start of this day. A lapsed contract suspends the organisation."
+          hint="Access ends at midnight as this day begins. When the contract ends, the organisation is suspended."
         />
 
         <div className="flex flex-wrap justify-end gap-2">

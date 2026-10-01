@@ -29,7 +29,7 @@ export function PlatformAudit() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Audit log"
-        description="Every organisation's log, and the platform's own rows."
+        description="Activity in every organisation, plus changes made by OSCE Guide staff."
         icon={LuScrollText}
       />
       <PlatformFilterBar>
@@ -48,7 +48,7 @@ export function PlatformAudit() {
         <PlatformFilterSearch
           value={action}
           onChange={setAction}
-          placeholder="Action, e.g. entitlement"
+          placeholder="Action, such as access"
           aria-label="Action name or prefix"
         />
       </PlatformFilterBar>

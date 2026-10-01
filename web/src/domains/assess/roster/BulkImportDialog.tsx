@@ -156,13 +156,12 @@ export function BulkImportDialog({
           {parsed.skippedLines.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
               No email address on line{parsed.skippedLines.length === 1 ? "" : "s"}{" "}
-              {parsed.skippedLines.join(", ")} — those rows are left out.
+              {parsed.skippedLines.join(", ")}, so those rows are left out.
             </p>
           ) : null}
           {unknownCohorts.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
-              No cohort here is called {unknownCohorts.join(", ")}. Those people are imported with
-              no cohort; create the cohort under Groups and set it afterwards.
+              No cohort here is called {unknownCohorts.join(", ")}. Those people are added without a cohort. Create the cohort under Groups, then set it for them.
             </p>
           ) : null}
         </div>

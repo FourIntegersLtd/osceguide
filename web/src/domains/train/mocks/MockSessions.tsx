@@ -181,8 +181,7 @@ const SessionCard = memo(function SessionCard({
           </p>
           {set.locked && (
             <p className="mb-4 line-clamp-2 text-osce-meta text-b2c-text-muted">
-              From a past subscription. Review your feedback and transcripts any time — reattempts
-              aren&apos;t available.
+              From a past subscription. Review your feedback and transcripts any time. Reattempts aren&apos;t available.
             </p>
           )}
         </div>

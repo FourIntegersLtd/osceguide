@@ -51,8 +51,7 @@ export function CohortRanking({ orgSlug, sittingId }: { orgSlug: string; sitting
         <div className="min-w-0">
           <h2 className={b2bTokens.b2bEyebrow}>Review order</h2>
           <p className="text-osce-caption text-b2b-mid">
-            {summary.cohort_size} candidate{summary.cohort_size === 1 ? "" : "s"}, ranked on what is
-            unfinished before what is poor.
+            {summary.cohort_size} candidate{summary.cohort_size === 1 ? "" : "s"}, with unfinished reviews first, then the weakest results.
           </p>
         </div>
         {/* Same place the retiring cohort report put it: beside the ranking it

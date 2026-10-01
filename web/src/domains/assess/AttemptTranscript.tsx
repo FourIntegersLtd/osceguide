@@ -38,7 +38,7 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
     return (
       <Card
         title="What was said"
-        description="The consultation itself, not the scoring of it."
+        description="Everything said in the consultation. The marks are shown separately."
       >
         <Button variant="secondary" size="sm" onClick={() => setWanted(true)}>
           <HiOutlineChatBubbleLeftRight className="mr-2 h-4 w-4 shrink-0" aria-hidden />
@@ -78,7 +78,7 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
       description={
         transcript.complete
           ? "The whole consultation, in order."
-          : "Still arriving — this is what has been transcribed so far."
+          : "The consultation is still going. This is everything said so far."
       }
     >
       {/*

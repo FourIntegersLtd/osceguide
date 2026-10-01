@@ -50,7 +50,7 @@ const PAGE_COPY: Record<
     title: "Articles",
     subtitle: "Articles and updates from the study team.",
     emptyTitle: "No articles found",
-    emptyDescription: "New articles are published regularly — check back soon.",
+    emptyDescription: "New articles are published regularly, so check back soon.",
   },
 };
 

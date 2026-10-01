@@ -203,7 +203,7 @@ export function CircuitBuilder({
       {isExam ? (
         <Card
           title="Breaks"
-          description="A break falls between two stations and never after the last one, and it holds the whole circuit at once."
+          description="A break goes between two stations, never after the last one. Everyone on the circuit pauses during it."
         >
           <div className="flex flex-col gap-4">
             <div className="max-w-[13rem]">
@@ -218,7 +218,7 @@ export function CircuitBuilder({
             </div>
             {gaps.length === 0 ? (
               <p className="text-sm text-ink-muted">
-                Add a second station before a break can be placed.
+                Add a second station before adding a break.
               </p>
             ) : (
               <ul className="flex flex-wrap gap-2">

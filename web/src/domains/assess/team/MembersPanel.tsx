@@ -134,7 +134,7 @@ export function MembersPanel({
         render: (member: Membership) => (
           <div className={b2cTableCellText}>
             <span className="font-medium text-osce-ink-900">
-              {member.email ?? "Account without a listed address"}
+              {member.email ?? "No email address on file"}
             </span>
             {member.email ? null : (
               <span className="ml-2 font-mono text-osce-caption text-b2b-icon">
@@ -355,7 +355,7 @@ function RowActions({
           variant="secondary"
           size="sm"
           disabled={resending}
-          title="Only sends if that person has not yet chosen a password."
+          title="Only sent if that person has not set up their account yet."
           onClick={() => onResend(member)}
         >
           {resending ? "Resending…" : "Resend invitation"}

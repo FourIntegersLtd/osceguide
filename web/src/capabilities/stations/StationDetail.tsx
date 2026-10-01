@@ -145,7 +145,7 @@ function Overview({
       <B2CPanelCardBody className="space-y-4">
         <p className={b2cBodyText}>
           You will read the candidate brief, then speak to a simulated patient. The brief opens
-          when the station starts — it is part of the exam, not something to read beforehand.
+          when the station starts. It is part of the exam, not something to read beforehand.
         </p>
         <ul className="space-y-2">
           <Timing

@@ -29,10 +29,8 @@ export type CreatePlanInput = S["CreatePlan"];
 export type PlatformAuditEntry = S["PlatformAuditRead"];
 export type OrgAtRisk = S["OrgAtRisk"];
 export type Job = S["JobRead"];
-export type JobsPage = S["JobsPage"];
+export type Machinery = S["Machinery"];
 export type TutorMemoryReindex = S["ReindexReport"];
-export type PlatformHealth = S["PlatformHealth"];
-export type CloudCapacity = S["CloudCapacityRead"];
 export type StationProgress = S["StationProgressRead"];
 export type StationProgressChange = S["StationProgressChange"];
 
@@ -337,27 +335,14 @@ export function restoreMembership(slug: string, membershipId: string): Promise<M
 
 /* -------------------------------------------------------------------- Ops */
 
-export function readPlatformHealth(signal?: AbortSignal): Promise<PlatformHealth> {
-  return platformRequest<PlatformHealth>(`${PLATFORM}/health`, { signal });
+/** The machinery page in one read; its stream then sends the same shape whenever it changes. */
+export function readMachinery(status: string, signal?: AbortSignal): Promise<Machinery> {
+  return platformRequest<Machinery>(`${PLATFORM}/machinery`, { signal, query: { status } });
 }
 
-export function listJobs(
-  options: { status?: string | null; task?: string | null; beforeId?: number | null; limit?: number } = {},
-  signal?: AbortSignal,
-): Promise<JobsPage> {
-  return platformRequest<JobsPage>(`${PLATFORM}/jobs`, {
-    signal,
-    query: {
-      status: options.status || undefined,
-      task: options.task?.trim() || undefined,
-      before_id: options.beforeId ?? undefined,
-      limit: options.limit ?? 50,
-    },
-  });
-}
-
-export function readCloudCapacity(signal?: AbortSignal): Promise<CloudCapacity> {
-  return platformRequest<CloudCapacity>(`${PLATFORM}/voice/capacity`, { signal });
+/** The machinery page's stream: health, voice capacity and one status of the queue, pushed. */
+export function machineryStreamPath(status: string): string {
+  return `${PLATFORM}/machinery/stream?status=${encodeURIComponent(status)}`;
 }
 
 /**

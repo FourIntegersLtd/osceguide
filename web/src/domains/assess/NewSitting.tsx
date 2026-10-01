@@ -80,8 +80,7 @@ function Form({
   if (activeProgrammes.length === 0) {
     return (
       <Alert tone="warning" title="Add a programme first">
-        A sitting is bound to a programme whose exam has a published rubric. Add an active programme
-        under Authoring and come back.
+        Every sitting belongs to a programme, and that programme’s exam needs a published marking scheme. Set up a programme under Authoring, then come back here.
       </Alert>
     );
   }

@@ -245,7 +245,7 @@ export function ExamsSection() {
         title={deleting ? `Delete "${deleting.name}"?` : "Confirm"}
         confirmText="Delete exam"
         error={action.error}
-        message="Only a draft nothing was ever built on can be deleted this way. Anything with a station, a sitting or an attempt against it is refused — retire it instead."
+        message="Only a draft nothing was ever built on can be deleted this way. Anything with a station, a sitting or an attempt against it cannot be deleted. Retire it instead."
       />
     </div>
   );

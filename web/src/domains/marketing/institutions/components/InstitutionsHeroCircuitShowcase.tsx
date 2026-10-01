@@ -9,7 +9,7 @@ const CIRCUIT_ROWS: Array<{
 }> = [
   { station: "Chest pain", candidate: "AM", status: "complete" },
   { station: "Low mood", candidate: "SR", status: "live" },
-  { station: "Diabetes review", candidate: "—", status: "upnext" },
+  { station: "Diabetes review", candidate: "-", status: "upnext" },
   { station: "Abdominal pain", candidate: "PK", status: "waiting" },
 ];
 

@@ -128,7 +128,7 @@ export function parseStaffCsv(text: string): StaffCsvParse {
       rows: [],
       skippedLines,
       badRoles,
-      error: `That file has ${rows.length} people. One upload takes ${MAX_TEAM_UPLOAD} at most — split it into smaller sheets.`,
+      error: `That file has ${rows.length} people. One upload takes ${MAX_TEAM_UPLOAD} at most, so split it into smaller sheets.`,
     };
   }
   return { rows, skippedLines, badRoles, error: null };

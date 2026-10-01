@@ -152,8 +152,7 @@ export function CvPanel() {
               <Upload onUploaded={(cvId) => setWatching(cvId)} />
               {latest?.status === "processing" ? (
                 <p className="flex items-center gap-2 text-osce-meta text-ink-subtle">
-                  <Spinner label="Reading" /> Reading {latest.original_filename} — this takes about
-                  a minute.
+                  <Spinner label="Reading" /> Reading {latest.original_filename} . This takes about a minute.
                 </p>
               ) : null}
               {latest?.status === "failed" ? (

@@ -30,7 +30,7 @@ const interviewStations: Array<{
     color: "blue",
     title: "Clinical Stations",
     description:
-      "Two consultant interviewers present trauma or elective scenarios and ask structured questions on assessment, anatomy, BOAST guidelines, and operative planning — just like the national ST3 clinical station.",
+      "Two consultant interviewers present trauma or elective scenarios and ask structured questions on assessment, anatomy, BOAST guidelines, and operative planning, just like the national ST3 clinical station.",
   },
   {
     icon: HiOutlineClipboardDocumentList,
@@ -44,7 +44,7 @@ const interviewStations: Array<{
     color: "indigo",
     title: "Commitment to Specialty",
     description:
-      "Interviewers question you on career motivation, leadership, organisation, and academic work — aligned to the portfolio station in UK ST3 selection.",
+      "Interviewers question you on career motivation, leadership, organisation, and academic work, matching the portfolio station in UK ST3 selection.",
   },
   {
     icon: LuHeartHandshake,

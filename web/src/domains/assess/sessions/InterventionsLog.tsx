@@ -66,7 +66,7 @@ function Entries({ orgSlug, circuitId }: { orgSlug: string; circuitId: string })
 
   const items = log.data?.items ?? [];
   if (items.length === 0) {
-    return <EmptyState title="Nothing on this circuit has been overridden." />;
+    return <EmptyState title="Nobody has stepped in on this circuit." />;
   }
 
   return (

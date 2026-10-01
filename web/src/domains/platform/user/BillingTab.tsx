@@ -26,11 +26,11 @@ export function BillingTab({ userId }: { userId: string }) {
           <BillingEvents
             key={reloadKey}
             userId={userId}
-            title="Stripe deliveries"
-            description="Every delivery naming this address. A refused one is the 'paid but no access' case: fix the cause, then replay."
+            title="Payment updates from Stripe"
+            description="Every payment update from Stripe for this email address. A failed one means they paid but did not get access: fix the problem, then try it again."
             empty={{
-              title: "No deliveries",
-              description: "Stripe has sent nothing for this address.",
+              title: "No payment updates",
+              description: "No payments from Stripe for this email address.",
             }}
           />
         </>
@@ -70,7 +70,7 @@ function ManualPaymentPanel({
         });
         toast.success(
           "Payment recorded",
-          "Access granted and a receipt minted, as a card payment would.",
+          "Access given and a receipt created, just as a card payment would.",
         );
         setNote("");
         onRecorded();
@@ -86,7 +86,7 @@ function ManualPaymentPanel({
   return (
     <Panel
       title="Record a payment"
-      description="For money that did not come through Stripe — a bank transfer, a sponsor, a comped seat. Takes the same steps a checkout does."
+      description="For money that did not come through Stripe, such as a bank transfer, a sponsor or a free place. It gives access and a receipt, just like paying online."
       padding="sm"
     >
       <form onSubmit={submit} className="flex flex-col gap-3">
@@ -97,21 +97,21 @@ function ManualPaymentPanel({
           onChange={(event) => setPlanCode(event.target.value)}
           disabled={busy}
           required
-          hint="As listed on the pricing page, e.g. one_month."
+          hint="The plan’s short name from the Billing page, such as sca_1m."
         />
         <Input
           label="Reference"
           value={reference}
           onChange={(event) => setReference(event.target.value)}
           disabled={busy}
-          hint="A Stripe intent id or a bank reference. Left empty, one is minted."
+          hint="A Stripe payment reference or a bank reference. Leave it blank and one is created for you."
         />
         <Input
           label="Amount paid"
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           disabled={busy}
-          hint="In pounds. Left empty, the plan's price."
+          hint="In pounds. Leave it blank to use the plan’s price."
           inputMode="decimal"
         />
         <Input

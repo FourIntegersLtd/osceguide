@@ -92,7 +92,7 @@ export function CreateStationScreen() {
         <Alert tone="info">
           {promptGeneration
             ? "No published templates yet. You can still write a station straight from a prompt by choosing its exam below."
-            : "No published templates yet. You can still write a station by choosing its exam below — generating one from a prompt needs a published template to generate against."}
+            : "No published templates yet. You can still write a station by choosing its exam below. Generating one from a prompt needs a published template to generate against."}
         </Alert>
       ) : null}
 
@@ -151,7 +151,7 @@ export function CreateStationScreen() {
               disabled={templates.loading}
               className="mt-1"
             >
-              <option value="">No template — write it from a prompt</option>
+              <option value="">No template: write it from a prompt</option>
               {choices.map((choice) => (
                 <option key={choice.id} value={choice.id}>
                   {choice.label}
@@ -160,7 +160,7 @@ export function CreateStationScreen() {
             </Select>
             <p className="mt-1 text-osce-caption text-ink-muted">
               Only published templates can be used for stations. A station with no template is
-              still a real station — it just borrows the exam&apos;s own shape rather than a reusable
+              still a real station. It just borrows the exam&apos;s own shape rather than a reusable
               one.
             </p>
           </div>
@@ -226,7 +226,7 @@ export function CreateStationScreen() {
         {form.mode === "ai" && !form.structure && !promptGeneration ? (
           <Alert tone="info">
             Generating a draft needs a published template to generate against. Choose one above, or
-            switch to Manual and write the station yourself — a station with no template is still a
+            switch to Manual and write the station yourself. A station with no template is still a
             real station.
           </Alert>
         ) : null}

@@ -158,7 +158,7 @@ export function InvitePanel({
 
       <PanelCard
         title="Import a spreadsheet"
-        subtitle="Upload a list of staff from Excel or Google Sheets (.csv). Everyone already on the team is reported, not fatal."
+        subtitle="Upload a list of staff saved from Excel or Google Sheets as a .csv file. Anyone already on the team is skipped and shown to you."
         icon={<HiOutlineArrowUpTray className="h-5 w-5" aria-hidden />}
       >
         <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>

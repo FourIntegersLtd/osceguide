@@ -176,8 +176,8 @@ export function AddTraineesDialog({
           </select>
           <span className="text-osce-caption text-b2b-mid">
             {picked.size > 1
-              ? "Each of them goes to the station chosen here, at the end of the circuit. Rebuild the circuit to spread them across it."
-              : "Their turn is appended after everything already on the circuit."}
+              ? "Everyone you add takes the station chosen here, after everyone else on the circuit. To spread them across different stations, rebuild the circuit."
+              : "They take their turn after everyone already on the circuit."}
           </span>
         </label>
       ) : null}

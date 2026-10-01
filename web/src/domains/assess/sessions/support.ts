@@ -217,11 +217,11 @@ export function markable(slot: ConsoleSlot): boolean {
 }
 
 export const EDIT_BLOCK_COPY: Record<string, string> = {
-  circuit_ended: "This circuit has finished. Its slots are part of the record now.",
+  circuit_ended: "This circuit has finished, so its stations can no longer be changed.",
   consultation_in_progress:
-    "A station is being sat. Rebuilding the slots would delete the consultation in progress.",
+    "Someone is taking a station right now. Changing the stations would delete that consultation.",
   feedback_recorded:
-    "Feedback has been recorded against these slots, so they cannot be rebuilt.",
+    "Feedback has already been given on these stations, so they cannot be changed.",
 };
 
 /**

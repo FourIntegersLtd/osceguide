@@ -62,7 +62,7 @@ function ExamCards({ me }: { me: Me }) {
       <Panel title="Exam">
         <div className="space-y-4">
           <ModalHelper className="mt-0">
-            Your exam type and date — the same options available from your dashboard.
+            Your exam type and date. These are the same options as on your dashboard.
           </ModalHelper>
           <div>
             <label htmlFor="settings-exam-type" className={b2cFieldLabel}>

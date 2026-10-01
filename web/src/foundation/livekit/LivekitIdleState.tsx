@@ -103,7 +103,7 @@ export function LivekitReadinessChecklist({
     micPermission === "denied"
       ? {
           icon: HiOutlineExclamationTriangle,
-          label: "Microphone blocked — allow access in your browser",
+          label: "Microphone blocked. Allow access in your browser",
           tone: "warning" as const,
         }
       : micPermission === "granted"

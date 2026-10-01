@@ -50,7 +50,7 @@ export function GroupMembersDialog({
       <ModalContent>
         <ModalTitle>People in {group.label}</ModalTitle>
         <p className="mt-1 text-osce-body text-b2b-mid">
-          Tick everyone who belongs to this group. What you save replaces what is there.
+          Tick everyone who belongs to this group. Saving replaces the current list.
         </p>
         <div className="mt-4">
           <AsyncBoundary state={members}>

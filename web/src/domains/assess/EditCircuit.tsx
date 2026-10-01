@@ -86,7 +86,7 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                       <Alert tone="warning">{blocked}</Alert>
                       <Card
                         title="What you can still change"
-                        description="Name, supervisor and the clock are not part of the lock — only the slots are. The run console changes the clock while a circuit is live."
+                        description="You can still change the name, supervisor and timings. Only the stations and who takes them are fixed. While the circuit is running, change its timings from the live circuit screen."
                       />
                     </>
                   ) : null

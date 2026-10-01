@@ -45,7 +45,7 @@ const EMPTY: Record<Filter, { title: string; description: string }> = {
   },
   blog: {
     title: "No articles found",
-    description: "New articles are published regularly — check back soon.",
+    description: "New articles are published regularly, so check back soon.",
   },
   podcast: {
     title: "No episodes yet",

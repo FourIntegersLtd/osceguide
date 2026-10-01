@@ -139,7 +139,7 @@ function Groups({
       ))}
       <UserGroup
         title={`No exam chosen · ${summary.unassigned}`}
-        description="Accounts naming no exam and holding no live access. Staff accounts sit here too."
+        description="Accounts with no exam chosen and no current access. Staff accounts appear here too."
         filters={{ ...filters, examCode: null, unassigned: true }}
         hrefFor={hrefFor}
         totalCount={directoryListingTotal(summary, {

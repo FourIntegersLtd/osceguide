@@ -61,7 +61,7 @@ export function TraineeRowActions({
             variant="secondary"
             size="sm"
             disabled
-            title="That person has already chosen a password, so there is no invitation to re-send."
+            title="That person has already set up their account, so there is no invitation to resend."
           >
             Already joined
           </Button>

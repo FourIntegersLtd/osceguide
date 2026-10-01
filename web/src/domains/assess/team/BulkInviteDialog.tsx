@@ -135,15 +135,15 @@ export function BulkInviteDialog({
           {parsed.skippedLines.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
               No email address on line{parsed.skippedLines.length === 1 ? "" : "s"}{" "}
-              {parsed.skippedLines.join(", ")} — those rows are left out.
+              {parsed.skippedLines.join(", ")}, so those rows are left out.
             </p>
           ) : null}
           {parsed.badRoles.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
               Line{parsed.badRoles.length === 1 ? "" : "s"}{" "}
               {parsed.badRoles.map((row) => row.line).join(", ")} named a role this organisation
-              cannot grant — only {roleLabel("supervisor").toLowerCase()} or{" "}
-              {roleLabel("admin").toLowerCase()}. Those rows are left out.
+              cannot give. Only {roleLabel("supervisor").toLowerCase()} or{" "}
+              {roleLabel("admin").toLowerCase()} can be invited, so those rows are left out.
             </p>
           ) : null}
         </div>

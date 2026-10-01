@@ -70,7 +70,7 @@ export function Organizations() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Organisations"
-        description="Institutions and partners. Both run sittings; the mode is what differs."
+        description="Institutions and partners. Both run exams; they differ in how their exams are run."
         icon={LuBuilding2}
         actions={
           <Button variant="primary" onClick={() => setProvisioning(true)}>
@@ -156,7 +156,7 @@ export function Organizations() {
               : {
                   title: "No organisations yet",
                   description:
-                    "Provision one to give a customer its workspace.",
+                    "Create one to give a customer their own space.",
                 }
         }
       >

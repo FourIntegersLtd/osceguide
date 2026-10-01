@@ -58,8 +58,7 @@ export function CandidateDecision({
   if (!traineeId) {
     return (
       <Alert tone="warning">
-        This candidate sat the examination but is not on the roster, and a decision is recorded
-        against a roster row. Add them to the roster to record one.
+        This candidate took the exam but is not on your trainee list. Add them to the list, then record the decision.
       </Alert>
     );
   }
@@ -150,7 +149,7 @@ function Form({
         <Badge variant="success">Released</Badge>
         <p className="text-osce-caption text-b2b-mid">
           {decision?.released_at ? `Released ${new Date(decision.released_at).toLocaleString()}.` : "Released."}{" "}
-          A released decision is final; a correction is a new revision.
+          Once released, a decision cannot be edited. Any correction is saved as a new version.
         </p>
         {decision?.rationale ? (
           <p className="text-osce-body text-b2b-graphite">{decision.rationale}</p>
@@ -173,8 +172,7 @@ function Form({
       {stale && !failure ? (
         <Alert tone="warning" title="This decision has changed since you loaded it">
           <p>
-            Somebody else saved a revision while this form was open, so your draft was not written and
-            nothing here was lost. Load the latest version and reapply your change to it.
+            Someone else saved a change while you had this open, so yours was not saved. Nothing is lost. Load the latest version and make your change again.
           </p>
           <Button
             themeType="b2b"
@@ -223,7 +221,7 @@ function Form({
           maxLength={4000}
           disabled={signedOff}
           onChange={(event) => setRationale(event.target.value)}
-          placeholder="Why this outcome — in the words you would use to a candidate, or to an appeal."
+          placeholder="Why this outcome, in the words you would use to a candidate or an appeal panel."
           className={`${b2bTokens.b2bInputBase} mt-1 w-full`}
         />
       </label>
@@ -295,8 +293,7 @@ function Form({
 
       {signedOff ? (
         <p className="text-osce-caption text-b2b-mid">
-          Signed off against the marking as it stood. If a station has been re-marked since,
-          releasing is refused and it has to be reviewed and signed off again.
+          Sign-off covers the marks as they were at the time. If a station is re-marked afterwards, the result must be reviewed and signed off again before it can be released.
         </p>
       ) : null}
     </div>

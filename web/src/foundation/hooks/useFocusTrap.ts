@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { getFocusable } from "@/foundation/ui/modalDom";
 
 interface FocusTrapOptions {
@@ -12,11 +12,20 @@ interface FocusTrapOptions {
 /**
  * Keeps Tab focus inside `containerRef`, moves focus in on mount and restores
  * the previously focused element on unmount. Escape calls `onEscape`.
+ *
+ * `onEscape` is read through a ref, never as an effect dependency: callers pass
+ * a fresh closure every render, and re-running the trap on each keystroke in a
+ * field moved focus out of that field after every character typed.
  */
 export function useFocusTrap(
   containerRef: RefObject<HTMLElement | null>,
   { enabled = true, initialFocusRef, onEscape }: FocusTrapOptions = {},
 ) {
+  const onEscapeRef = useRef(onEscape);
+  useEffect(() => {
+    onEscapeRef.current = onEscape;
+  });
+
   useEffect(() => {
     if (!enabled) return;
     const container = containerRef.current;
@@ -44,9 +53,10 @@ export function useFocusTrap(
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        if (onEscape) {
+        const escape = onEscapeRef.current;
+        if (escape) {
           event.stopPropagation();
-          onEscape();
+          escape();
         }
         return;
       }
@@ -76,5 +86,5 @@ export function useFocusTrap(
         previouslyFocused.focus();
       }
     };
-  }, [containerRef, enabled, initialFocusRef, onEscape]);
+  }, [containerRef, enabled, initialFocusRef]);
 }

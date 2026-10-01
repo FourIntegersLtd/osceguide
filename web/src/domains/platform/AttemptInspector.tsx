@@ -92,12 +92,12 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
                     </Panel>
 
                     <Panel
-                      title="Marking jobs"
-                      description="Every job the queue has held for this attempt, newest first."
+                      title="Marking runs"
+                      description="Each time this attempt was sent for marking, newest first."
                       padding="none"
                     >
                       {attempt.jobs.length === 0 ? (
-                        <EmptyPanel bare title="Nothing was ever queued" />
+                        <EmptyPanel bare title="It was never sent for marking" />
                       ) : (
                         <RowList flush>
                           {attempt.jobs.map((job) => (
@@ -162,12 +162,12 @@ function attemptFacts(
 ): { label: string; value: string }[] {
   const facts = [
     {
-      label: "Definition frozen",
+      label: "Station loaded",
       value: attempt.has_definition
         ? formatMoment(attempt.definition_frozen_at)
-        : "Never — the worker did not fetch it",
+        : "Never. The AI patient did not load the station",
     },
-    { label: "Turns received", value: String(attempt.chunk_count) },
+    { label: "Lines of conversation received", value: String(attempt.chunk_count) },
     {
       label: "Transcript delivered",
       value: attempt.transcript_complete
@@ -216,7 +216,7 @@ function Actions({
           <InlineAction
             label="Fail this attempt"
             tone="danger"
-            description="Ends it so a fresh attempt can start. The recording, such as it is, stays."
+            description="Ends this attempt so the person can start a new one. Whatever was recorded is kept."
             onConfirm={async (reason) => {
               onChanged(await failAttempt(attempt.id, reason));
               toast.success("Attempt failed", "They can start again.");
@@ -230,16 +230,16 @@ function Actions({
       </p>
       {markable ? (
         <InlineAction
-          label="Re-queue the marking"
+          label="Mark it again"
           requireReason={false}
-          reasonLabel="Policy version (optional)"
-          description="Twice is once: a marking already waiting is left waiting, and a result already written is kept. Name a different policy version to mark again beside the old result."
+          reasonLabel="Marking version (optional)"
+          description="Safe to press more than once: marking that is already waiting is not repeated, and an existing result is kept. To mark it again alongside the old result, enter a different marking version."
           onConfirm={async (version) => {
             const result = await rescoreAttempt(attempt.id, version || null);
             toast.success(
               result.queued
-                ? "Marking queued"
-                : `Not queued: ${result.reason?.replace(/_/g, " ")}`,
+                ? "Sent for marking"
+                : `Not sent:  ${result.reason?.replace(/_/g, " ")}`,
             );
             await reload();
           }}
@@ -250,19 +250,19 @@ function Actions({
           label="Salvage the transcript"
           requireReason={false}
           reasonLabel="Note (optional)"
-          description="Treats the turns that arrived as the transcript the worker never delivered, and queues the marking."
+          description="The full transcript never arrived, so this uses the part that was recorded and sends it for marking."
           onConfirm={async () => {
             onChanged(await salvageAttempt(attempt.id));
             toast.success(
               "Transcript salvaged",
-              "The marking has been queued.",
+              "It has been sent for marking.",
             );
           }}
         />
       ) : null}
       {terminal && !markable ? (
         <p className="text-osce-meta text-ink-subtle">
-          A failed attempt is final; start a fresh one.
+          A failed attempt cannot be restarted. The person can start a new one.
         </p>
       ) : null}
     </ActionRail>
@@ -283,7 +283,7 @@ function TranscriptSection({
   return (
     <Panel
       title="Transcript"
-      description="What was said, in order — the turns that reached us."
+      description="What was said, in order, as far as it was recorded."
     >
       {!available ? (
         <EmptyPanel bare title="No turns were received" />

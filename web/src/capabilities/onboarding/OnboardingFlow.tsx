@@ -109,8 +109,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
       {voice.error && (
         <Alert tone="warning">
-          {errorMessage(voice.error)} You can still read through the demo — {voice.assistantName} just
-          will not speak.{" "}
+          {errorMessage(voice.error)} You can still read through the demo, but {voice.assistantName} will not speak.{" "}
           <Button size="sm" variant="secondary" onClick={() => void voice.start()}>
             Try voice again
           </Button>

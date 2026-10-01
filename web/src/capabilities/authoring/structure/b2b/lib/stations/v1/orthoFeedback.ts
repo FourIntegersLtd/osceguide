@@ -24,7 +24,7 @@ export function orthoFeedbackTemplateV1(): StationStructure {
           ...orthoCompetencyBlocks(
             "clinical_skills",
             "clinical_skills_communication_information_gathering",
-            "Communication — information gathering",
+            "Communication: information gathering",
           ),
           ...orthoCompetencyBlocks(
             "clinical_skills",
@@ -34,7 +34,7 @@ export function orthoFeedbackTemplateV1(): StationStructure {
           ...orthoCompetencyBlocks(
             "clinical_skills",
             "clinical_skills_communication_information_giving",
-            "Communication — information giving",
+            "Communication: information giving",
           ),
         ],
       },
@@ -66,7 +66,7 @@ export function orthoFeedbackTemplateV1(): StationStructure {
           ...orthoCompetencyBlocks(
             "prioritisation_skills",
             "prioritisation_skills_communication_information_gathering",
-            "Communication — information gathering",
+            "Communication: information gathering",
           ),
         ],
       },
@@ -78,12 +78,12 @@ export function orthoFeedbackTemplateV1(): StationStructure {
           ...orthoCompetencyBlocks(
             "communication_skills",
             "communication_skills_communication_information_gathering",
-            "Communication — information gathering",
+            "Communication: information gathering",
           ),
           ...orthoCompetencyBlocks(
             "communication_skills",
             "communication_skills_communication_information_giving",
-            "Communication — information giving",
+            "Communication: information giving",
           ),
           ...orthoCompetencyBlocks(
             "communication_skills",
@@ -125,7 +125,7 @@ export function orthoFeedbackTemplateV1(): StationStructure {
           ...orthoCompetencyBlocks(
             "portfolio_skills",
             "portfolio_skills_communication_information_giving",
-            "Communication — information giving",
+            "Communication: information giving",
           ),
           ...orthoCompetencyBlocks(
             "portfolio_skills",

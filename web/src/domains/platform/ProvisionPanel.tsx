@@ -42,7 +42,7 @@ export function ProvisionForm({
           slug: slug.trim(),
           orgType,
         });
-        toast.success(`Provisioned ${organization.slug}`, "Seat its first administrator next.");
+        toast.success(`Created ${organization.slug}`, "Next, add its first administrator.");
         setName("");
         setSlug("");
         setSlugEdited(false);
@@ -79,14 +79,14 @@ export function ProvisionForm({
           setSlugEdited(true);
           setSlug(event.target.value);
         }}
-        hint="Appears in every URL for this workspace. It cannot be changed afterwards."
+        hint="Appears in every web address for this organisation. It cannot be changed afterwards."
       />
 
       <Select
         label="Type"
           value={orgType}
           onChange={(event) => setOrgType(event.target.value)}
-          hint="An employer is an institution running exam-mode sittings, not a third kind."
+          hint="For an employer, choose Institution: employers run exams the same way."
         >
           {ORG_TYPES.map((type) => (
             <option key={type.value} value={type.value}>
@@ -102,7 +102,7 @@ export function ProvisionForm({
           </Button>
         ) : null}
         <Button type="submit" disabled={busy || !name.trim() || !slug.trim()}>
-          {busy ? "Provisioning…" : "Provision"}
+          {busy ? "Creating…" : "Create organisation"}
         </Button>
       </div>
     </form>
@@ -129,7 +129,7 @@ export function ProvisionModal({
   return (
     <Modal
       onClose={onClose}
-      title="Provision an organisation"
+      title="Create an organisation"
       width="min(32rem, 96vw)"
     >
       <div className="p-4 lg:p-6">

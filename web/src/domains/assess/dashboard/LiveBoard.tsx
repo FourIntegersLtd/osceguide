@@ -238,8 +238,7 @@ function Row({ circuit }: { circuit: LiveCircuit }) {
         <Alert tone="danger">
           <span className="inline-flex items-center gap-2">
             <HiOutlineExclamationTriangle className="h-4 w-4 shrink-0" aria-hidden />
-            A consultation is running and nothing is recording it. Open the circuit and resend the
-            patient.
+            A consultation is running but is not being recorded. Open the circuit and send the patient in again.
           </span>
         </Alert>
       ) : null}

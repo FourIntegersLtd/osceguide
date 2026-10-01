@@ -132,7 +132,7 @@ function AttemptRow({
                 ? `Marking ${attempt.scoring_job.status}`
                 : attempt.failed_reason
                   ? `Failed: ${attempt.failed_reason}`
-                  : "—"}
+                  : "-"}
         </p>
       </Link>
       <div className="flex shrink-0 items-center gap-2">

@@ -103,12 +103,11 @@ function Overview({
             <Link className="underline" href={hrefFor(`/trainee/sittings/${sentTo.id}`)}>
               Open it
             </Link>
-            {sentTo.can_join ? " — the room is open now." : "."}
+            {sentTo.can_join ? ". The room is open now." : "."}
           </Alert>
         ) : (
           <Alert tone="warning">
-            That link names a station you are no longer rostered onto. Everything you are
-            on is listed below.
+            That link is for a station you are no longer booked on. Everything you are booked on is listed below.
           </Alert>
         )
       ) : null}
@@ -129,7 +128,7 @@ function Overview({
         <p className={b2bTokens.b2bEyebrow}>Your sittings</p>
         {ordered.length === 0 ? (
           <EmptyState
-            title="You are not rostered onto anything yet"
+            title="You are not booked on anything yet"
             description="When your organisation adds you to a sitting it appears here, and you are told when it opens."
           />
         ) : (

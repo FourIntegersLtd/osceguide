@@ -233,7 +233,7 @@ export function heroStats(
         key: "perSignup",
         label: spendCopy.spendPerSignup.label,
         value:
-          spend.costPerAcquisitionPence === null ? "—" : formatGbpPence(spend.costPerAcquisitionPence),
+          spend.costPerAcquisitionPence === null ? "-" : formatGbpPence(spend.costPerAcquisitionPence),
         tone: "orange",
         tooltip: spendCopy.spendPerSignup.tooltip,
       },
@@ -337,7 +337,7 @@ export function seriesIsFlat(points: SeriesPoint[]): boolean {
 
 /** The API names an empty campaign "unknown"; the dashboard has always shown a dash. */
 export function campaignLabel(value: string | null | undefined): string {
-  return !value || value === "unknown" ? "—" : value;
+  return !value || value === "unknown" ? "-" : value;
 }
 
 /** The partner's display name in prose ("bmj" is "BMJ On Exam"). */

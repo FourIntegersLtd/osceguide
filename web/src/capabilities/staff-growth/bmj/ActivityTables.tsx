@@ -18,7 +18,7 @@ const CELL = "px-4 py-3 sm:px-6";
 const MONO = "font-mono text-osce-meta";
 
 function dash(value: string | null | undefined): string {
-  return value ? value : "—";
+  return value ? value : "-";
 }
 
 /** "Link visits": every landing, newest first. The search is answered by the server. */
@@ -76,7 +76,7 @@ export function ArrivalsTable({
                 {rows.map((row) => (
                   <tr key={row.arrival_id}>
                     <td className={`${CELL} whitespace-nowrap text-ink`}>{formatUtcDateTime(row.landed_at)}</td>
-                    <td className={`${CELL} text-ink-muted`}>{row.exam_code ? row.exam_code.toUpperCase() : "—"}</td>
+                    <td className={`${CELL} text-ink-muted`}>{row.exam_code ? row.exam_code.toUpperCase() : "-"}</td>
                     <td className={`${CELL} text-ink-muted`}>{campaignLabel(row.utm_campaign)}</td>
                     <td className={`${CELL} ${MONO} text-ink-muted`}>{dash(row.visitor_key)}</td>
                     <td className={`${CELL} text-ink-muted`}>{dash(row.landing_path)}</td>
@@ -130,7 +130,7 @@ export function AcquiredUsersTable({
                   <tr key={row.user_id}>
                     <td className={`${CELL} whitespace-nowrap text-ink`}>{formatUtcDateTime(row.acquired_at)}</td>
                     <td className={`${CELL} ${MONO} text-ink-muted`}>{row.user_id}</td>
-                    <td className={`${CELL} text-ink-muted`}>{row.exam_code ? row.exam_code.toUpperCase() : "—"}</td>
+                    <td className={`${CELL} text-ink-muted`}>{row.exam_code ? row.exam_code.toUpperCase() : "-"}</td>
                     <td className={`${CELL} text-ink-muted`}>{campaignLabel(row.utm_campaign)}</td>
                     <td className={`${CELL} ${MONO} text-ink-muted`}>{dash(row.visitor_key)}</td>
                   </tr>

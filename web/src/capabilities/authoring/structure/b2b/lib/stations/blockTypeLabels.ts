@@ -120,7 +120,7 @@ export const STATION_BLOCK_FORMS_ORDER: StationBlockFormsMeta[] = [
     group: "scoring",
     formsLabel: "R/A/G criterion",
     description:
-      "Red, Amber, or Green score with supporting phrase and explanation — one SCA toolkit skill.",
+      "Red, Amber, or Green score with supporting phrase and explanation, for one SCA toolkit skill.",
     icon: HiSignal,
   },
 ];

@@ -57,9 +57,7 @@ export function InvitePlatformAdminModal({
         {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
         <p className="text-osce-data text-ink-muted">
-          Same flow as seating the first administrator of a new organisation: no password is typed
-          here. New addresses receive an email with a link to choose a password and must do that
-          before signing in.
+          You do not set a password here. If they are new, they get an email with a link to choose one, and must do that before they can sign in.
         </p>
 
         <Input

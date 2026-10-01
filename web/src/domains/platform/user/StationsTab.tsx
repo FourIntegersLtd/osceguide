@@ -44,7 +44,7 @@ export function StationsTab({ userId }: { userId: string }) {
   return (
     <Panel
       title="Station progress"
-      description="Every station this person has sat. The counter is what the attempt limit counts."
+      description="Every station this person has taken. Their attempt limit is checked against this count."
       padding="none"
     >
       <AsyncBoundary
@@ -95,7 +95,7 @@ function StationRow({
       toast.success(
         `Attempts reset for ${row.title}`,
         change.entries_reset === 0
-          ? "No practice set holds this station, so there was no counter to zero."
+          ? "This station is not in any of their practice sets, so there was no count to reset."
           : `${change.entries_reset} counter${change.entries_reset === 1 ? "" : "s"} set to 0. The attempts are kept.`,
       );
       setConfirmReset(false);

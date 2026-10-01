@@ -106,7 +106,7 @@ export function AccessPanel({
       {canManage ? (
         <PanelCard
           title="Grant exam access"
-          subtitle="For practice between sittings. An exam-day slot does not need a grant."
+          subtitle="Lets trainees practise between sittings. They do not need it to take an exam they are booked on."
           icon={<HiOutlineKey className="h-5 w-5" aria-hidden />}
         >
           <form
@@ -198,7 +198,7 @@ export function AccessPanel({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search grants by person or exam…"
+          placeholder="Search by person or exam…"
           className={b2bTokens.b2bInputBase}
         />
       </div>
@@ -207,7 +207,7 @@ export function AccessPanel({
         {(entitlements) =>
           entitlements.length === 0 && !query ? (
             <p className="text-osce-body text-b2b-mid">
-              Nothing granted yet. Trainees still sit everything they are rostered onto.
+              No practice access given yet. Trainees can still take every exam they are booked on.
             </p>
           ) : (
             <>

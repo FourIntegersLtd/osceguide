@@ -121,7 +121,7 @@ export function PlatformOverview() {
                     <RowLink
                       href={hrefFor("/organizations")}
                       title="Organisations"
-                      subtitle="The directory, and provisioning a new tenant"
+                      subtitle="Find an organisation, or set up a new one"
                       icon={LuBuilding2}
                     />
                     <RowLink

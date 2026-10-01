@@ -262,7 +262,7 @@ export function BlockInspector({
               {!catalogHint ? (
                 <p className={inspectorHint}>
                   This field is not in the exam catalog (common for blank templates and new
-                  fields). Add your own instructions here — they are saved on the template.
+                  fields). Add your own instructions here. They are saved on the template.
                 </p>
               ) : (
                 <p className={inspectorHint}>

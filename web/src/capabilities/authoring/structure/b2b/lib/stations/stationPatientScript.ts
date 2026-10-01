@@ -71,7 +71,7 @@ export function patientScriptSections(extraHistory: StationBlock[] = []): Statio
         label: "Expanded history",
         required: true,
         placeholder:
-          "Full history the patient reveals when asked — not the opening line.",
+          "Full history the patient reveals when asked, not the opening line.",
       },
       {
         id: "past_med_history_allergies",

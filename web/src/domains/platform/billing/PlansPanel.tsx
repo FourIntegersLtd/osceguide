@@ -55,7 +55,7 @@ export function PlansPanel() {
   return (
     <Panel
       title="Prices"
-      description="Each plan is sold at full price and, with a referral code, at 10% off. Stripe prices are created for you."
+      description="Each plan is sold at full price, or at 10% off with a referral code. Both prices are set up in Stripe for you."
       actions={
         <Button size="sm" onClick={() => setCreating(true)}>
           New price
@@ -235,7 +235,7 @@ function NewPlanModal({
           value={code}
           onChange={(event) => setCode(event.target.value.toLowerCase())}
           disabled={busy}
-          hint="Lowercase letters, digits and underscores; never reused. e.g. sca_1m"
+          hint="A short internal name using lowercase letters, numbers and underscores, such as sca_1m. It cannot be reused."
           autoComplete="off"
         />
         <div className="flex justify-end gap-2 pt-1">

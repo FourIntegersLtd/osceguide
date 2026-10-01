@@ -180,8 +180,8 @@ export function ReferralPayouts() {
       />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
       <Panel
-        title="The queue"
-        description="Settled outside the product. This is the record of whether a transfer was made, not a way to make one."
+        title="Owed and paid"
+        description="Payments are made outside OSCE Guide, by bank transfer. This page records whether each one was sent; it does not send money."
         actions={
           <B2CSegmentedTabs
             items={FILTERS}
@@ -290,8 +290,7 @@ export function ReferralPayouts() {
                           {settling.referrer_email} as paid
                         </p>
                         <p className="mt-2 text-osce-meta text-ink-subtle">
-                          The transfer&rsquo;s own reference, so this row can be
-                          found on a statement later. Optional.
+                          The bank transfer reference, so you can match it on a statement later. Optional.
                         </p>
                       </div>
                       <Input

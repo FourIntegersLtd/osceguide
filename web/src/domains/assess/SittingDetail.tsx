@@ -64,8 +64,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               {(sitting.circuits ?? []).length === 0 ? (
                 <div className="flex flex-col items-start gap-3">
                   <p className="text-sm text-ink-muted">
-                    No circuits yet. A sitting runs its circuits, so it needs at least one before
-                    anybody can sit it.
+                    No circuits yet. Add at least one circuit so candidates can take this sitting.
                   </p>
                   <ButtonLink size="sm" href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}>
                     Add a circuit

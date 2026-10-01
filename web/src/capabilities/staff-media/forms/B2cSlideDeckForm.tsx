@@ -100,7 +100,7 @@ export function B2cSlideDeckForm({
         value={typeof content.specialty === "string" ? content.specialty : ""}
         onChange={(e) => patch({ specialty: e.target.value })}
       >
-        <option value="">—</option>
+        <option value="">-</option>
         {MEDICAL_SPECIALTY_NAMES.map((name) => (
           <option key={name} value={name}>
             {name}

@@ -27,7 +27,7 @@ export function scaStationTemplateV1(): StationStructure {
         role: "candidate_brief",
         label: "Recent Notes",
         placeholder:
-          "Past GP visits only — not today's story. e.g. No recent GP visits; or Seen 2 months ago for medication review.",
+          "Past GP visits only, not today's story. e.g. No recent GP visits; or Seen 2 months ago for medication review.",
       },
       {
         id: "current_medications",

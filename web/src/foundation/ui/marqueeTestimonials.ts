@@ -121,7 +121,7 @@ export const MARQUEE_TESTIMONIALS: MarqueeTestimonial[] = [
     name: "Dr R",
     role: "Passed SCA",
     excerpt:
-      "Amazing idea — the AI is fast and responsive. I no longer need to search for a study group. I passed my exam.",
+      "Amazing idea. The AI is fast and responsive. I no longer need to search for a study group. I passed my exam.",
     highlight: "I passed my exam",
   },
   {

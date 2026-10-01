@@ -14,7 +14,7 @@ type DeliveryFilter = "refused" | "all";
 
 const DELIVERY_TABS: B2CSegmentedTabItem<DeliveryFilter>[] = [
   { id: "refused", label: "Refused" },
-  { id: "all", label: "Every delivery" },
+  { id: "all", label: "Every payment update" },
 ];
 
 /** What the platform sells, then the webhook ledger; refused deliveries first, because they are the queue. */
@@ -25,13 +25,13 @@ export function BillingQueue() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Billing"
-        description="Prices on sale, and every Stripe delivery — refused ones first, because paid with no access is the queue."
+        description="Plans on sale, and every payment update from Stripe. Failed ones come first: they are people who paid but did not get access."
         icon={LuReceipt}
       />
       <PlansPanel />
       <BillingEvents
-        title="Stripe deliveries"
-        description="A refused delivery is money taken with no access given. Fix its cause, then replay it."
+        title="Payment updates from Stripe"
+        description="A failed update means someone paid but did not get access. Fix the problem, then try it again."
         failedOnly={filter === "refused"}
         actions={
           <B2CSegmentedTabs
@@ -39,18 +39,18 @@ export function BillingQueue() {
             value={filter}
             onChange={setFilter}
             compact
-            aria-label="Deliveries shown"
+            aria-label="Payment updates shown"
           />
         }
         empty={
           filter === "refused"
             ? {
                 title: "Nothing to reconcile",
-                description: "Every delivery was applied.",
+                description: "Every payment gave access.",
               }
             : {
-                title: "No deliveries",
-                description: "Stripe has sent nothing yet.",
+                title: "No payment updates",
+                description: "No payments have come in from Stripe yet.",
               }
         }
       />

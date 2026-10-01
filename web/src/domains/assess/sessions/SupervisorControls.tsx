@@ -170,7 +170,7 @@ export function SupervisorControls({
             }
             className="h-4 w-4 rounded border-b2b-border text-b2b-accent"
           />
-          Move to the next station on the clock. Off, the circuit waits for you at every boundary.
+          Moves to the next station automatically when time is up. When off, the circuit waits for you before each new station.
         </label>
       ) : null}
 

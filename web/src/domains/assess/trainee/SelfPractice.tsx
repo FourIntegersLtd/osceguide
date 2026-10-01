@@ -39,7 +39,7 @@ export function SelfPractice({ orgSlug }: { orgSlug: string }) {
         empty={{
           title: "No published stations yet",
           description:
-            "Your organisation has not published any station cases. Until it does, the platform library is still open to you.",
+            "Your organisation has not added any stations yet. Until it does, you can still practise with the OSCE Guide library.",
         }}
       >
         {(stations) => <StationList stations={stations} />}

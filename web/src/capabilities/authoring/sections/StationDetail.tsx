@@ -205,8 +205,7 @@ export function StationDetail({
 
         {!structure && templateVersionId ? (
           <p className="mt-3 text-osce-caption text-ink-muted">
-            Template structure is not available in the catalogue — reload templates or edit from the
-            template list.
+            Template structure is not available in the catalogue. Reload templates or edit from the template list.
           </p>
         ) : null}
         {!structure && !templateVersionId ? (
@@ -277,7 +276,7 @@ export function StationDetail({
             Version {version}.
             {isDraft
               ? " Edit sections below, then save or publish."
-              : " Published — same sections as B2C admin (read only). Create a new draft version to edit."}
+              : " Published, so it is read only. Create a new draft version to edit."}
           </p>
           <LegacyStationMeta content={editContent} stationTitle={station.title} />
           <StationInstanceContentPanel

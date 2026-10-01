@@ -59,7 +59,7 @@ export function SlotReview({
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Mark this station" description="Your judgement, beside the machine's." />
+      <PageHeader title="Mark this station" description="Your marks, next to the automatic marking." />
       {attemptId ? null : (
         /*
          * Without an attempt there is no engine marking to set the form
@@ -67,7 +67,7 @@ export function SlotReview({
          * rather than "this candidate was never dispatched". Say which it is.
          */
         <Alert tone="warning">
-          This slot has no consultation on record, so there is nothing to mark against yet.
+          Nobody has taken this station yet, so there is nothing to mark.
         </Alert>
       )}
       <AsyncBoundary state={state}>
@@ -189,7 +189,7 @@ function Editor({
         {/* The lead's review is one per station and the observers' are one
             each, so they are separate panels rather than tabs of the same
             thing — a reviewer should be able to see both at once. */}
-        <Card title="The lead's review" description="One per station, and the one that counts.">
+        <Card title="The lead's review" description="One overall mark for the station. This is the mark that counts.">
           <GpLeadReview orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} />
         </Card>
 
@@ -206,8 +206,8 @@ function Editor({
           <Card>
             <p className="text-osce-body text-b2b-mid">
               {result
-                ? "This attempt was marked before its exam had a rubric, so the machine's marking cannot be drawn."
-                : "No machine marking for this attempt yet. It appears here when scoring finishes."}
+                ? "This station was taken before the exam had a marking scheme, so there are no automatic marks to show."
+                : "Automatic marking is not ready yet. It appears here when it finishes."}
             </p>
           </Card>
         )}

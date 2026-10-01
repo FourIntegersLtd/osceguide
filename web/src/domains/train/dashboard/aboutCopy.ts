@@ -27,7 +27,7 @@ function mixAbout(): AboutContent {
     sectionTone: "sky",
     items: [
       { marker: "success", title: "Competent", description: "Marks at the best grade: the standard expected in the exam." },
-      { marker: "plain", title: "Developing", description: "Marks on their way there — the quickest ground to make up." },
+      { marker: "plain", title: "Developing", description: "Marks close to the line. These are the quickest to improve." },
       { marker: "danger", title: "Development", description: "Marks at the lowest grade. Practise these areas next." },
     ],
   };

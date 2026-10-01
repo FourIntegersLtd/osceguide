@@ -24,7 +24,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
         isEmpty={(page) => page.items.length === 0}
         empty={{
           title: "No sittings yet",
-          description: "Schedule one against a programme to get started.",
+          description: "Schedule your first one to get started.",
         }}
       >
         {(page) => (

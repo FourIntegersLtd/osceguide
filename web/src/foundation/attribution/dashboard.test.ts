@@ -120,8 +120,8 @@ describe("what a partner may see", () => {
 
 describe("labels", () => {
   it("shows an empty or unknown campaign as a dash", () => {
-    assert.equal(campaignLabel("unknown"), "—");
-    assert.equal(campaignLabel(null), "—");
+    assert.equal(campaignLabel("unknown"), "-");
+    assert.equal(campaignLabel(null), "-");
     assert.equal(campaignLabel("spring"), "spring");
   });
 

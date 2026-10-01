@@ -33,7 +33,7 @@ export function ArticlesLibrary({
       <B2CEmptyState
         icon={HiOutlineNewspaper}
         title="No articles found"
-        description="New articles are published regularly — check back soon."
+        description="New articles are published regularly, so check back soon."
       />
     );
   }

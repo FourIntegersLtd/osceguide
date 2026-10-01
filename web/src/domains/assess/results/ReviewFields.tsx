@@ -36,8 +36,7 @@ export function ReviewFields({
   if (!form || domains.length === 0) {
     return (
       <p className="text-osce-body text-b2b-mid">
-        This station&rsquo;s rubric has nothing to rate, so there is nothing to agree or disagree
-        with. Notes are still recorded.
+        This station&rsquo;s marking scheme has nothing to rate, so there is nothing to agree or disagree with. Your notes are still saved.
       </p>
     );
   }

@@ -72,7 +72,7 @@ export function CohortsPanel({
   return (
     <PanelCard
       title="Cohorts"
-      subtitle="An intake. Everyone on the roster belongs to at most one, and it is set when they are added."
+      subtitle="An intake, such as a start date. Each trainee can be in one cohort, chosen when they are added."
       icon={<HiOutlineRectangleGroup className="h-5 w-5" aria-hidden />}
     >
       {error ? (

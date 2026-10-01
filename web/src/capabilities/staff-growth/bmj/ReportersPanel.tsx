@@ -186,7 +186,7 @@ function AddViewerModal({
         >
           <ModalLead
             title={`Add ${label} viewer`}
-            description="They will get an email with a password. They can only see this dashboard — not the exam product."
+            description="They will get an email with a password. They can only see this dashboard, not the exam product."
           />
           <div className="mt-5">
             <Input

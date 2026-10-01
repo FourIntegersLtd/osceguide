@@ -116,7 +116,7 @@ export function StationTemplatesSection() {
         }
       >
         Define layout and fields for clinical stations. Saved drafts and published
-        versions appear below—not the starting layouts on the new-template wizard.
+        versions appear below, but not the starting layouts on the new-template wizard.
       </AuthoringSectionLead>
 
       <AuthoringCatalogFilterBar
@@ -139,7 +139,7 @@ export function StationTemplatesSection() {
         empty={{
           title: "No saved templates yet",
           description:
-            "The layouts on New template are starting points only—they are not added here until you finish the wizard (Save draft), then Publish from this list.",
+            "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list.",
         }}
       >
         {items.map((template) => {

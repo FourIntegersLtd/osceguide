@@ -469,7 +469,7 @@ export default function PrivacyPolicy() {
                 later, giving you a window to change your mind. A peer
                 practice recording is shared with the other person in it, so
                 it is deleted once both of you are erased, or immediately if
-                you were the only person in it — otherwise it is kept for
+                you were the only person in it. Otherwise it is kept for
                 them until they close their own account too. You can also
                 contact us at{" "}
                 <a
@@ -484,16 +484,14 @@ export default function PrivacyPolicy() {
                 What is kept past that point: payment and receipt records, for
                 the 6 years the law requires, and the fact that an attempt took
                 place (with its marks) where an organisation&apos;s own results
-                depend on it — never its content.
+                depend on it, but never its content.
               </p>
             </div>
 
             <div>
               <h3 className="font-semibold mb-4">Downloading Your Data</h3>
               <p className="text-osce-ink-700 leading-relaxed">
-                From Settings, you can download everything your account owns —
-                your profile, your attempts with their transcripts and marks,
-                and your payments — as one file, at any time, without waiting
+                From Settings, you can download everything your account owns (your profile, your attempts with their transcripts and marks, and your payments) as one file, at any time, without waiting
                 on a request.
               </p>
             </div>

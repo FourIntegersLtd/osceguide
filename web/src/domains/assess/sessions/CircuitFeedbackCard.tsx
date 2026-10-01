@@ -91,8 +91,7 @@ function FeedbackForm({
     <section className="space-y-3 rounded-lg border border-b2b-border bg-white p-4 sm:p-5">
       <h2 className={b2bTokens.b2bSectionTitle}>Share this circuit&apos;s feedback</h2>
       <p className="text-osce-body text-b2b-mid">
-        Publishes one summary from everything marked across this circuit. Candidates read it as
-        their circuit feedback; publishing again after an edit replaces it.
+        Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one.
       </p>
       <p className="text-osce-caption font-medium text-b2b-headline">
         Marked on {marked} of {total} station{total === 1 ? "" : "s"}
@@ -121,7 +120,7 @@ function FeedbackForm({
 
       {marked === 0 ? (
         <p className="text-osce-caption text-b2b-mid">
-          Publishing stays off until at least one station has been marked.
+          You can share feedback once at least one station has been marked.
         </p>
       ) : null}
 

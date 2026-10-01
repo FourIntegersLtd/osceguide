@@ -17,10 +17,10 @@ import { cn } from "@/foundation/ui/cn";
 function stationCreatedAtLabel(station: Station): string {
   const raw = station.content?.created_at;
   const iso = typeof raw === "string" ? raw : null;
-  if (!iso) return "—";
+  if (!iso) return "-";
   const normalized = /[zZ]$/.test(iso) || /[+-]\d{2}/.test(iso) ? iso : `${iso}Z`;
   const date = new Date(normalized);
-  if (!Number.isFinite(date.getTime())) return "—";
+  if (!Number.isFinite(date.getTime())) return "-";
   return date.toLocaleString("en-GB");
 }
 

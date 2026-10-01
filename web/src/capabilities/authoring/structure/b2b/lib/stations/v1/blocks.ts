@@ -42,23 +42,23 @@ export function domainSummaryBlocks(pathStem: string, label: string): StationBlo
     {
       id: `${base}_score`,
       type: "singleSelect",
-      label: `${label} — Overall score`,
+      label: `${label}: Overall score`,
       options: [...SCA_RAG_OPTIONS],
     },
     {
       id: `${base}_strengths`,
       type: "list",
-      label: `${label} — Strengths`,
+      label: `${label}: Strengths`,
     },
     {
       id: `${base}_improvements`,
       type: "list",
-      label: `${label} — Improvements`,
+      label: `${label}: Improvements`,
     },
     {
       id: `${base}_suggested_actions`,
       type: "list",
-      label: `${label} — Suggested actions`,
+      label: `${label}: Suggested actions`,
     },
   ];
 }
@@ -71,31 +71,31 @@ export function plabCompetencyBlocks(
 ): StationBlock[] {
   const prefix = `${domainId}_${competencyId}`;
   return [
-    scaleBlock(`${prefix}_score`, `${label} — Score`, 0, 1),
+    scaleBlock(`${prefix}_score`, `${label}: Score`, 0, 1),
     {
       id: `${prefix}_completed`,
       type: "list",
-      label: `${label} — Completed`,
+      label: `${label}: Completed`,
     },
     {
       id: `${prefix}_supporting_phrase`,
       type: "list",
-      label: `${label} — Supporting phrases`,
+      label: `${label}: Supporting phrases`,
     },
     {
       id: `${prefix}_missed`,
       type: "list",
-      label: `${label} — Missed`,
+      label: `${label}: Missed`,
     },
     {
       id: `${prefix}_suggested_actions`,
       type: "list",
-      label: `${label} — Suggested actions`,
+      label: `${label}: Suggested actions`,
     },
     {
       id: `${prefix}_critical_flags`,
       type: "list",
-      label: `${label} — Critical flags`,
+      label: `${label}: Critical flags`,
     },
   ];
 }
@@ -108,26 +108,26 @@ export function orthoCompetencyBlocks(
 ): StationBlock[] {
   const prefix = rubricCompetencyId.replace(/\./g, "_");
   return [
-    scaleBlock(`${prefix}_score`, `${label} — Score`, 0, 10),
+    scaleBlock(`${prefix}_score`, `${label}: Score`, 0, 10),
     {
       id: `${prefix}_score_justification`,
       type: "longText",
-      label: `${label} — Score justification`,
+      label: `${label}: Score justification`,
     },
     {
       id: `${prefix}_evidence_points`,
       type: "list",
-      label: `${label} — Evidence points`,
+      label: `${label}: Evidence points`,
     },
     {
       id: `${prefix}_completed`,
       type: "list",
-      label: `${label} — Completed`,
+      label: `${label}: Completed`,
     },
     {
       id: `${prefix}_suggested_actions`,
       type: "list",
-      label: `${label} — Suggested actions`,
+      label: `${label}: Suggested actions`,
     },
   ];
 }

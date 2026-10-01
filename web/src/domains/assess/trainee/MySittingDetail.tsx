@@ -56,7 +56,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
       <AsyncBoundary state={initial} isEmpty={() => mine.length === 0}
         empty={{
           title: "We could not find that sitting",
-          description: "You may have been taken off it, or it belongs to another workspace.",
+          description: "You may have been taken off it, or it belongs to another organisation.",
         }}
       >
         {() => (
@@ -99,8 +99,8 @@ function Circuit({ sitting }: { sitting: MySitting }) {
 
       <Alert tone="info" title={exam ? "Before you start" : "How a practice circuit works"}>
         {exam
-          ? "Your station opens on the supervisor's signal. Go straight in — the patient joins when the reading time ends, and the room has to be occupied before then."
-          : "Your supervisor opens the room. Only the person on turn speaks with the patient; the circuit's feedback appears once it is published."}
+          ? "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."
+          : "Your supervisor opens the room. Only the person whose turn it is speaks with the patient. Feedback appears here once your supervisor shares it."}
       </Alert>
 
       {sitting.can_join ? (

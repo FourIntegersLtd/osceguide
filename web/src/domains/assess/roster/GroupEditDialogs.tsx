@@ -84,7 +84,7 @@ function RenameForm({
     <Dialog
       open
       title="Rename group"
-      lead={`Everyone still in “${initial}” keeps their place — the name is the only thing that changes.`}
+      lead={`Everyone still in “${initial}” stays in it. Only the name changes.`}
       error={error}
       busy={busy}
       commitLabel="Rename"

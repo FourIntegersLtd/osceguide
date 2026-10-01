@@ -17,7 +17,7 @@ export function RubricDashboardPreview(props: RubricDashboardPreviewProps) {
   return (
     <div className="space-y-4">
       <p className="text-osce-meta text-osce-ink-500">
-        {view.title} — drawn from one sample result, so the trend only shows the axes and pass line.
+        {view.title}, drawn from one sample result, so the trend only shows the axes and pass line.
       </p>
       <DomainPerformanceCard chart={view.domainChart} loading={false} />
       <TrendCard scale={view.trend} loading={false} />

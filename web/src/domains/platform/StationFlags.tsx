@@ -86,8 +86,8 @@ export function StationFlags() {
       />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
       <Panel
-        title="The queue"
-        description="A closed report stays listed: that we looked, and it was deliberate, is the answer the next reader's report needs."
+        title="Reports"
+        description="Closed reports stay listed, so if someone reports the same thing again you can see it was already checked."
         actions={
           <B2CSegmentedTabs
             items={FILTERS}
@@ -184,7 +184,7 @@ export function StationFlags() {
                           label="What was done"
                           value={note}
                           maxLength={2000}
-                          placeholder="Fixed in version 3. / Deliberate — the brief reads this way on purpose."
+                          placeholder="Fixed in version 3. / Deliberate: the brief reads this way on purpose."
                           onChange={(event) => setNote(event.target.value)}
                         />
                         <div className="flex items-center gap-2">

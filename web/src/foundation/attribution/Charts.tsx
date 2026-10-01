@@ -86,13 +86,13 @@ export function FunnelSection({
                     <p className="text-osce-body font-medium text-ink">{step.label}</p>
                     {index > 0 ? (
                       <p className="text-osce-caption text-ink-subtle">
-                        {step.percentOfVisits === null ? "—" : `${step.percentOfVisits}% of visits`}
+                        {step.percentOfVisits === null ? "-" : `${step.percentOfVisits}% of visits`}
                       </p>
                     ) : null}
                   </div>
                 </div>
                 <p className="shrink-0 text-osce-body font-semibold tabular-nums text-ink">
-                  {step.count === null ? "—" : step.count}
+                  {step.count === null ? "-" : step.count}
                 </p>
               </li>
             ))}

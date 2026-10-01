@@ -274,7 +274,7 @@ function OrganizationActions({
           </Button>
           <p className="text-osce-meta text-ink-subtle">
             {suspended
-              ? "Restoring sets the status to active, not back to what it was before."
+              ? "Restoring makes the organisation active, even if it was on a trial before."
               : "Blocks every member's sign-in. Nothing is deleted."}
           </p>
         </>

@@ -152,8 +152,7 @@ function Editor({
 
       {stale ? (
         <Alert tone="warning">
-          Somebody else has changed this review since you opened it. Reload the page and apply your
-          changes to theirs — saving over it is what this stops.
+          Someone else changed this review while you had it open. Reload the page and make your changes again, so theirs are not lost.
         </Alert>
       ) : failure ? (
         <Alert tone="danger">{failure}</Alert>
@@ -208,8 +207,7 @@ function Editor({
       </div>
 
       <p className="text-osce-caption text-b2b-mid">
-        Completing needs every required domain rated — a half-marked review shown to a candidate is worse
-        than one openly still in progress.
+        Rate every required area before completing the review, so candidates never see a half-finished one.
       </p>
     </div>
   );

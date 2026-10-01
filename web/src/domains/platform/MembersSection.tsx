@@ -30,7 +30,7 @@ export function MembersSection({ slug }: { slug: string }) {
   return (
     <Panel
       title="Members"
-      description="Move a role, revoke, or restore — the same audited service the organisation's own admins use."
+      description="Change someone’s role, remove their access or give it back. Every change is logged, just as when the organisation’s own admins make it."
       padding="none"
     >
       <AsyncBoundary
@@ -38,7 +38,7 @@ export function MembersSection({ slug }: { slug: string }) {
         isEmpty={(page) => page.items.length === 0}
         empty={{
           title: "No members",
-          description: "This organisation has no memberships yet.",
+          description: "Nobody has joined this organisation yet.",
           bare: true,
         }}
       >

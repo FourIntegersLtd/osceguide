@@ -84,7 +84,7 @@ export function asContractDate(value: string): string | null {
 
 /** "3 Sept 2026" — the console's date, for a row rather than a field. */
 export function formatDay(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Date(iso).toLocaleDateString(undefined, {
       day: "numeric",
@@ -178,22 +178,22 @@ export function diagnoseAttempt(attempt: {
   }
   if (status === "running") {
     if (attempt.has_definition === false) {
-      return { problem: "The worker never fetched this attempt; nothing was frozen to mark against.", action: "fail" };
+      return { problem: "The AI patient never loaded this station, so there is nothing to mark.", action: "fail" };
     }
     if ((attempt.chunk_count ?? 1) === 0) {
-      return { problem: "The session opened but no turns were received.", action: "fail" };
+      return { problem: "The session opened but nothing that was said was recorded.", action: "fail" };
     }
     return {
-      problem: "Turns arrived but the worker never delivered the final transcript.",
+      problem: "Part of the conversation was recorded, but the full transcript never arrived.",
       action: "salvage",
     };
   }
   // interaction_complete: the transcript is in; the marking is the question.
   if (attempt.result_policy_versions.length > 0) return null;
   const job = attempt.scoring_job;
-  if (!job) return { problem: "The transcript arrived but no marking was ever queued.", action: "rescore" };
+  if (!job) return { problem: "The transcript arrived but it was never sent for marking.", action: "rescore" };
   if (job.status === "failed" || job.status === "aborted") {
-    return { problem: "The marking job failed.", action: "rescore" };
+    return { problem: "The marking failed.", action: "rescore" };
   }
   return null;
 }
@@ -222,7 +222,7 @@ export function formatMoney(pence: number, currency: string): string {
 
 /** "3 Sept 2026, 14:05" — for a row where the time of day matters. */
 export function formatMoment(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Date(iso).toLocaleString(undefined, {
       day: "numeric",
