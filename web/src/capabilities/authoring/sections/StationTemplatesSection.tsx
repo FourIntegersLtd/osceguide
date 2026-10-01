@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineArchiveBox,
@@ -23,7 +23,7 @@ import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRo
 import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
 import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
 import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
-import { useCursorPages } from "@/foundation/hooks";
+import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import {
   addStationTemplateVersion,
   archiveStationTemplateVersion,
@@ -75,14 +75,9 @@ export function StationTemplatesSection() {
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
+  const query = useSearchQuery(search);
   const [pendingConfirm, setPendingConfirm] = useState<TemplateRowConfirm | null>(null);
   const [importing, setImporting] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
 
   // A page at a time, searched and exam-filtered in SQL — mirrors
   // StationsSection. Changing the exam filter or the search is in `deps`, so

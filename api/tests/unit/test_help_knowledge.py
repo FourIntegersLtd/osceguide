@@ -58,7 +58,7 @@ async def test_answers_use_only_unlocked_exam_material(monkeypatch, has_access, 
     monkeypatch.setattr(openai, "AsyncOpenAI", lambda **kwargs: manager)
     result = await service.answer(
         None,
-        KnowledgeChat(messages=[{"role": "user", "content": "Hypertension?"}]),
+        KnowledgeChat(exam_code="sca", messages=[{"role": "user", "content": "Hypertension?"}]),
         user_id=uuid4(),
         now=datetime.now(UTC),
         index=None,

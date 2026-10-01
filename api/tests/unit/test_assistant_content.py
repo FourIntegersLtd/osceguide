@@ -84,7 +84,10 @@ def test_the_admin_pack_is_only_for_an_admin() -> None:
 def test_the_exam_comes_from_the_account_not_the_clients_claim() -> None:
     profile = resolve_client_profile({"client": {"surface": "exam"}, "exam_code": "PLAB"})
     assert profile.exam == "plab"
-    assert resolve_client_profile({"client": {}}).exam == "sca"
+    # No exam on the account means no exam's wording: the shared pack alone.
+    without_exam = resolve_client_profile({"client": {}})
+    assert without_exam.exam == ""
+    assert resolve_content_pack(without_exam).faq
 
 
 def test_an_overlay_that_targets_an_entry_nobody_has_is_a_mistake_worth_raising() -> None:

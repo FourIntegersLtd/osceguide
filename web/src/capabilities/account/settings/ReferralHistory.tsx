@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { HiInformationCircle, HiOutlineArrowPath, HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import Table, { type Column, type FetchPageResult } from "@/foundation/table/Table";
 import {
@@ -9,7 +9,7 @@ import {
   Button,
   Panel,
 } from "@/foundation/ui";
-import { useCursorPages } from "@/foundation/hooks";
+import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { readReferralHistory, type ReferralHistoryRow } from "@/capabilities/account/api";
 
@@ -30,12 +30,7 @@ export function referralDetailPath(referralId: string): string {
 export default function ReferralHistory() {
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
-
+  const query = useSearchQuery(search);
   const pages = useCursorPages(
     (cursor, signal) =>
       readReferralHistory({ cursor, limit: PAGE_LIMIT, search: query || null }, signal),

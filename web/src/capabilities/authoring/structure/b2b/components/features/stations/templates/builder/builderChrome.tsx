@@ -254,14 +254,8 @@ const CHROME: BuilderChrome = {
 
 const BuilderChromeContext = createContext<BuilderChrome>(CHROME);
 
-/** No longer switches palettes — one `osce-*` palette serves both arms. */
-export function BuilderChromeProvider({
-  children,
-}: {
-  /** @deprecated Ignored; kept so callers compile. */
-  lightGray?: boolean;
-  children: ReactNode;
-}) {
+/** Hands the builder its colours and borders. One `osce-*` palette serves both arms. */
+export function BuilderChromeProvider({ children }: { children: ReactNode }) {
   return (
     <BuilderChromeContext.Provider value={CHROME}>
       {children}

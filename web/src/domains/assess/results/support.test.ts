@@ -171,7 +171,7 @@ function readout(over: Partial<SittingReadout> = {}): SittingReadout {
 test("the read-out is the markdown document the retiring screen handed over", () => {
   const document = readoutAsMarkdown(readout());
 
-  assert.match(document, /^# Autumn sitting — examination read-out\n/);
+  assert.match(document, /^# Autumn sitting: examination read-out\n/);
   assert.ok(document.includes("## Cohort"), document);
   assert.ok(document.includes("| Cohort size | 2 |"), document);
   assert.ok(document.includes("## Candidates"), document);

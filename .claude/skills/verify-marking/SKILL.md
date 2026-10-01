@@ -41,9 +41,9 @@ make guards                     # includes test_domain_rules_are_reachable
 `tests/fixtures/legacy_*` is a change in what candidates are marked against:
 say so in the report, never update the fixture.
 
-An engine change needs the local engine installed first:
-`make engine-dev` (ENGINE defaults to the sibling checkout),
-then also `cd assessment-platform && poetry run pytest -q`.
+The api installs the engine straight from `assessment/packages/osce_assessment`,
+so an engine change needs no install step. After one, also run
+`cd assessment && poetry run pytest -q`.
 
 A change to the seed, the generator or `seeds/rubric_hints/*.json`: rerun
 `PYTHONPATH=. poetry run python scripts/generate_platform_seed.py`, then

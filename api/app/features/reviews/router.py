@@ -95,6 +95,7 @@ async def submit_my_review(
     )
 
 
+# Read the GP lead's review of one sitting slot.
 @router.get(
     "/orgs/{org_slug}/slots/{slot_id}/gp-lead-review",
     response_model=schemas.GpLeadReviewRead,

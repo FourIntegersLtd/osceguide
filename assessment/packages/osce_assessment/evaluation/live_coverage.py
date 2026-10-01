@@ -81,7 +81,7 @@ class CoverageSnapshot(Frozen):
         return {item.competency_id: item for item in self.items}
 
     def covered_ids(self) -> frozenset[str]:
-        return frozenset(i.competency_id for i in self.items if i.state is CoverageState.COVERED)
+        return frozenset(item.competency_id for item in self.items if item.state is CoverageState.COVERED)
 
 
 class LiveCoverageError(RuntimeError):
@@ -98,7 +98,7 @@ def live_competency_ids(framework: Any, domains: Sequence[str] | None = None) ->
     coverage at all.
     """
     wanted = set(domains) if domains is not None else set(framework.live_domain_ids)
-    return tuple(c.id for c in framework.competencies if c.domain_id in wanted)
+    return tuple(competency.id for competency in framework.competencies if competency.domain_id in wanted)
 
 
 def recent_window(messages: Sequence[TranscriptMessage], *, turns: int = DEFAULT_WINDOW_TURNS) -> tuple[TranscriptMessage, ...]:
@@ -156,7 +156,7 @@ def _result_schema(open_ids: Sequence[str]) -> dict[str, Any]:
                     "required": ["competency_id", "state", "quote"],
                     "properties": {
                         "competency_id": {"type": "string", "enum": list(open_ids)},
-                        "state": {"type": "string", "enum": [s.value for s in CoverageState]},
+                        "state": {"type": "string", "enum": [state.value for state in CoverageState]},
                         "quote": {
                             "type": "string",
                             "description": "The doctor's own words, copied verbatim from the excerpt.",
@@ -177,7 +177,7 @@ def _normalise(text: str) -> str:
 
 
 def _doctor_text(messages: Iterable[TranscriptMessage]) -> str:
-    return _normalise(" ".join(m.message for m in messages if m.role is MessageRole.USER))
+    return _normalise(" ".join(message.message for message in messages if message.role is MessageRole.USER))
 
 
 def _is_grounded(quote: str, doctor_text: str) -> bool:
@@ -222,7 +222,7 @@ class LiveCoverageDetector:
         """
         framework = self._frameworks.get(snapshot.framework_id)
         window = recent_window(messages, turns=window_turns)
-        if not any(m.role is MessageRole.USER for m in window):
+        if not any(message.role is MessageRole.USER for message in window):
             return snapshot  # nothing the doctor said; nothing can be earned
 
         open_ids = self._open_ids(framework, snapshot)
@@ -238,11 +238,13 @@ class LiveCoverageDetector:
     # -- internals -----------------------------------------------------------
 
     def _open_ids(self, framework: Any, snapshot: CoverageSnapshot) -> tuple[str, ...]:
+        """The live competency ids the doctor has not yet been recorded as covering."""
         covered = snapshot.covered_ids()
-        return tuple(i for i in live_competency_ids(framework, self._domains) if i not in covered)
+        return tuple(open_id for open_id in live_competency_ids(framework, self._domains) if open_id not in covered)
 
     def _user_prompt(self, framework: Any, open_ids: Sequence[str], window: Sequence[TranscriptMessage]) -> str:
-        labels = {c.id: c.label for c in framework.competencies}
+        """Build the user message: the still-open behaviours, then the recent excerpt."""
+        labels = {competency.id: competency.label for competency in framework.competencies}
         listed = "\n".join(f"- {cid}: {labels.get(cid, cid)}" for cid in open_ids)
         return (
             "<not_yet_demonstrated>\n"
@@ -260,6 +262,7 @@ class LiveCoverageDetector:
         window: Sequence[TranscriptMessage],
         policy: EvaluationPolicy,
     ) -> dict[str, Any] | None:
+        """Ask the primary model, then the fallback, and return the parsed answer or None when neither gives one."""
         system = policy.system_prompt_override or SYSTEM_PROMPT
         user = self._user_prompt(framework, open_ids, window)
         schema = _result_schema(open_ids)
@@ -283,6 +286,7 @@ class LiveCoverageDetector:
 
     @staticmethod
     def _call_primary(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
+        """Call an OpenAI-style chat model with a strict JSON schema and return the parsed object."""
         kwargs: dict[str, Any] = {
             "model": policy.primary_model,
             "messages": [
@@ -311,6 +315,7 @@ class LiveCoverageDetector:
 
     @staticmethod
     def _call_fallback(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
+        """Call an Anthropic-style model through a forced tool call and return the tool input object."""
         response = client.messages.create(
             model=policy.fallback_model,
             max_tokens=policy.fallback_max_tokens,
@@ -339,7 +344,7 @@ class LiveCoverageDetector:
         allowed = set(live_competency_ids(framework, self._domains))
         current = snapshot.by_id
         doctor_text = _doctor_text(window)
-        last_seq = max((m.seq for m in window), default=snapshot.last_seq)
+        last_seq = max((message.seq for message in window), default=snapshot.last_seq)
         changed = False
 
         for raw in payload.get("newly_demonstrated") or []:
@@ -378,7 +383,7 @@ class LiveCoverageDetector:
         if not changed and last_seq <= snapshot.last_seq:
             return snapshot
 
-        ordered = tuple(sorted(current.values(), key=lambda i: (i.seq, i.competency_id)))
+        ordered = tuple(sorted(current.values(), key=lambda item: (item.seq, item.competency_id)))
         return CoverageSnapshot(framework_id=snapshot.framework_id, items=ordered, last_seq=last_seq)
 
 

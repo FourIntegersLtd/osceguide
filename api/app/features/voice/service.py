@@ -39,6 +39,18 @@ _SESSION_TYPE_BY_KIND = {
 NOT_JOINABLE = frozenset({"interaction_complete", "evaluated", "failed"})
 
 
+async def _own_attempt(
+    session: AsyncSession, attempt_id: uuid.UUID, requester_id: uuid.UUID
+) -> attempts.AttemptRef:
+    """The attempt, or a refusal when it does not exist or belongs to somebody else."""
+    attempt = await attempts.attempt_ref(session, attempt_id)
+    if attempt is None:
+        raise AttemptNotFound()
+    if attempt.user_id != requester_id:
+        raise AttemptNotYours()
+    return attempt
+
+
 async def grant_for_attempt(
     session: AsyncSession,
     attempt_id: uuid.UUID,
@@ -54,11 +66,7 @@ async def grant_for_attempt(
     When both are full it returns the candidate's place in line instead of a
     token: a room with no worker free to take it is a patient who never comes.
     """
-    attempt = await attempts.attempt_ref(session, attempt_id)
-    if attempt is None:
-        raise AttemptNotFound()
-    if attempt.user_id != requester_id:
-        raise AttemptNotYours()
+    attempt = await _own_attempt(session, attempt_id, requester_id)
     if attempt.status in NOT_JOINABLE:
         raise errors.AttemptNotJoinable()
     if not settings.livekit_url:
@@ -135,11 +143,7 @@ async def ensure_queue_watchable(
     200 and then dies looks like a network fault rather than a refusal.
     """
     async with open_session() as session:
-        attempt = await attempts.attempt_ref(session, attempt_id)
-    if attempt is None:
-        raise AttemptNotFound()
-    if attempt.user_id != requester_id:
-        raise AttemptNotYours()
+        attempt = await _own_attempt(session, attempt_id, requester_id)
     return attempt.room_name or domain.room_name_for(str(attempt.id))
 
 
@@ -163,7 +167,7 @@ async def leave_queue(room: str, *, bus: EventBus) -> None:
     # re-reads their place on the stream's next heartbeat.
     try:
         await bus.publish(voice_queue_topic(), "seat_freed")
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 - leaving the line is best effort; the waiter expires anyway
         log.warning("seat_freed publish failed", room=room, exc_info=True)
 
 
@@ -181,11 +185,7 @@ async def close_own_room(
     supervisor, not the candidate, decides when that room ends.
     """
     async with open_session() as session:
-        attempt = await attempts.attempt_ref(session, attempt_id)
-    if attempt is None:
-        raise AttemptNotFound()
-    if attempt.user_id != requester_id:
-        raise AttemptNotYours()
+        attempt = await _own_attempt(session, attempt_id, requester_id)
     own_room = domain.room_name_for(str(attempt.id))
     if attempt.room_name not in (None, own_room):
         return

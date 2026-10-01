@@ -39,8 +39,8 @@ async def read_my_slot_review(
     "not found" rather than "forbidden", if the slot is not this person's own
     or either is missing — the same privacy posture `SlotNotFound` uses."""
     # `results` imports this module, so its import has to wait until call time.
-    from app.features.results import errors as results_errors  # noqa: PLC0415
-    from app.features.results import service_candidate as results_candidate  # noqa: PLC0415
+    from app.features.results import errors as results_errors
+    from app.features.results import service_candidate as results_candidate
 
     pair = await sittings.slot_and_circuit_for_owner(session, slot_id, user_id)
     if pair is None:

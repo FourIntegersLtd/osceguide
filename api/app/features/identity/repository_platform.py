@@ -15,6 +15,7 @@ from sqlalchemy import Select, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.identity.models import RefreshChain, User
 
 
@@ -39,8 +40,7 @@ def _facets(
     what a missing one means.
     """
     if query:
-        term = f"%{query.strip()}%"
-        stmt = stmt.where(or_(User.email.ilike(term), User.name.ilike(term)))
+        stmt = stmt.where(or_(contains_text(User.email, query), contains_text(User.name, query)))
     if platform_admin is not None:
         stmt = stmt.where(User.is_platform_admin.is_(platform_admin))
     if status:

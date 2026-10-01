@@ -35,8 +35,8 @@ let sharedLoad: { userId: string; startedAt: number; request: Promise<Dashboard>
 /**
  * Ask for `/me/dashboard` once for everybody mounting at the same time.
  *
- * Each of the ~28 screens and nav items using this hook fetched it on its own,
- * so a dashboard load sent about a dozen identical requests (BACKLOG W-3). A
+ * About 28 screens and nav items use this hook. Without sharing, one dashboard
+ * load would send about a dozen identical requests. A
  * failed request is not shared, so the next caller asks again.
  */
 function loadDashboardOnce(userId: string): Promise<Dashboard> {

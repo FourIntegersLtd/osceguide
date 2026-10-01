@@ -273,31 +273,12 @@ make lint-leakage  # the consumer-agnostic guard on its own
 End-to-end tests are marked `e2e` and excluded by default; they run only when
 `LIVEKIT_E2E_URL`, `LIVEKIT_E2E_KEY` and `LIVEKIT_E2E_SECRET` are set.
 
-## Consuming the engine from the backends
+## How the api uses the engine
 
-`b2c-api` and `b2b-api` deploy from their own directories, so they vendor the
-engine rather than depend on a sibling path.
-
-To pick up an engine change, run this in the consumer, with a clean working
-tree and this repo checked out alongside it:
-
-```bash
-make engine-sync
-```
-
-That is the whole procedure. Nothing needs doing in this repo first.
-
-Under the hood `git subtree` can only pull from a branch whose root *is* the
-engine folder, so `engine-sync` generates one from `packages/osce_assessment`,
-pulls it, and deletes it again. That branch is a machine-made view: it is never
-pushed, reviewed or merged. Merging it would be refused as unrelated history,
-and forcing it through would empty the package contents into the repository
-root.
-
-The consumer adds `vendor/osce-assessment` to its import path, so
-`import osce_assessment` resolves to the vendored copy. Each consumer's CI
-validation asserts `osce_assessment.__version__` against its pinned minimum,
-so a stale vendor copy fails loudly instead of drifting.
+The api installs the engine straight from `packages/osce_assessment` as a
+Poetry path dependency. There is no copy to keep in step and no version tag:
+an engine change and the api change that needs it land in one commit, and a
+change here runs the api's checks too.
 
 ## End-to-end tests and the parity harness
 
@@ -374,6 +355,3 @@ and, with the `K8S_AUTO_DEPLOY` repository variable set, rolls it out to
 **staging** (`k8s/overlays/staging`). Production changes only through the
 **Promote workers to production** workflow, which ships the image staging already runs.
 The whole flow, and how to set up an environment, is in `k8s/README.md`.
-Both backends must vendor an engine that carries
-`AIInteractionProfile.tool_context` (refresh with `make engine-sync` in the
-consumer).

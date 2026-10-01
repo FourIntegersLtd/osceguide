@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Alert, AsyncBoundary, Button, Input, Panel } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { formatGbpPence } from "@/foundation/attribution/presets";
+import { formatMoney } from "@/foundation/format";
 import {
   readPilotConfig,
   updatePilotConfig,
@@ -77,7 +77,7 @@ function PilotForm({ partner, initial }: { partner: string; initial: PilotConfig
         </div>
       </div>
       <p className="text-osce-caption text-ink-subtle">
-        We&apos;re using {formatGbpPence(config.cost_per_click_pence)} per link visit for
+        We&apos;re using {formatMoney(config.cost_per_click_pence)} per link visit for
         estimates. Alerts go to admin emails when estimated spend crosses one of those amounts.
       </p>
       {error ? <Alert tone="danger">{error}</Alert> : null}

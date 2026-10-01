@@ -4,22 +4,22 @@ import { useMemo } from "react";
 import { LuTrendingUp } from "react-icons/lu";
 import { AsyncBoundary, B2CSegmentedTabs, PlatformPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { useAttributionState } from "@/foundation/attribution/useAttributionFilters";
-import { getDashboardCopy } from "@/foundation/attribution/copy";
-import { filterScope, tabsForMode } from "@/foundation/attribution/tabs";
-import { bucketForRange, funnelCounts, internalHeroFigures } from "@/foundation/attribution/viewModel";
-import { DashboardFilterBar } from "@/foundation/attribution/DashboardFilterBar";
-import { SpendDisclaimerBanner } from "@/foundation/attribution/Banners";
-import { Hero } from "@/foundation/attribution/Hero";
-import { Methodology } from "@/foundation/attribution/Methodology";
-import { LoadFailure } from "@/foundation/attribution/LoadFailure";
-import { UpdatedAt } from "@/foundation/attribution/UpdatedAt";
+import { useAttributionState } from "@/capabilities/attribution-dashboard/useAttributionFilters";
+import { getDashboardCopy } from "@/capabilities/attribution-dashboard/copy";
+import { filterScope, tabsForMode } from "@/capabilities/attribution-dashboard/tabs";
+import { bucketForRange, funnelCounts, internalHeroFigures } from "@/capabilities/attribution-dashboard/viewModel";
+import { DashboardFilterBar } from "@/capabilities/attribution-dashboard/DashboardFilterBar";
+import { SpendDisclaimerBanner } from "@/capabilities/attribution-dashboard/Banners";
+import { Hero } from "@/capabilities/attribution-dashboard/Hero";
+import { Methodology } from "@/capabilities/attribution-dashboard/Methodology";
+import { LoadFailure } from "@/capabilities/attribution-dashboard/LoadFailure";
+import { UpdatedAt } from "@/capabilities/attribution-dashboard/UpdatedAt";
 import {
   CostVsRevenueSection,
   FunnelSection,
   RevenueByPlanSection,
   RevenueOverTimeSection,
-} from "@/foundation/attribution/Charts";
+} from "@/capabilities/attribution-dashboard/Charts";
 import {
   readDashboardSummary,
   readPartnerFunnel,

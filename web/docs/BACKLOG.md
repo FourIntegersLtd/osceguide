@@ -30,6 +30,20 @@ Checked against the code on 2026-09-29.
 - Drafting a station from a prompt with no template is platform-only (`POST /platform/generate/station`). An organisation generates through its autogenerate-draft route, which needs a published template.
 - A platform exam cannot be deleted; it is retired. An organisation's exam can (`DELETE /orgs/{org_slug}/exams/{exam_id}`, refused with `exam_in_use`). A template is removed only when its last draft version is deleted.
 
+### Code quality audit leftovers (2026-10-01)
+
+| # | Item | State |
+|---|---|---|
+| Q-1 | `StationScreen.tsx` still holds nine pieces of state | The leave guard and the station-source helpers were split out. Turning the rest into one step reducer needs a walk through a live station in a browser first, as there are no component tests |
+| Q-2 | Three api files still name an exam in code | `assistant/content/packs/__init__.py` (per-exam wording belongs in the exam's data), `media_production/slide_av.py` and `slide_renderer.py`. Listed in `STILL_NAMES_AN_EXAM`, which only shrinks |
+| Q-3 | `media_production/slide_renderer.py` (1,700 lines) is exempt from type checks | Leave it until it is next changed, then split it and type it |
+| Q-4 | The mock screens other than `MockUpdate` load the whole station list to show titles | `MockEnd`, `MockDetail`, `SetStation` and `useMockWorkspace` should ask the server for only the stations they show |
+| Q-5 | The assessment folder has no lint or type check in CI | Adding ruff needs a new Poetry dependency, which is the owner's call |
+| Q-6 | Some `# noqa: BLE001` comments give no reason | `health/service.py`, `rubrics/service.py` and `app/migration/*`: say why the broad catch is right, or narrow it |
+| Q-7 | Two-factor sign-in is switched off | The code was removed rather than left commented out. Whether it returns is a product decision |
+| Q-8 | Peer practice session lengths now come from each exam's settings | Run `seed_platform.py --republish` on staging, then production, so PLAB 2, CASC and the orthopaedics exam get their own lengths. Until then they use the default lengths |
+| Q-9 | Security report ids (`SEC-0xx`) remain in code comments | Kept on purpose: they point at `api/docs/security/SECURITY-ASSESSMENT-2026-09.md`. Drop them once the report is closed |
+
 ### Rubric templates (Stage 3 leftovers, 2026-09-30)
 
 | # | Item | State |

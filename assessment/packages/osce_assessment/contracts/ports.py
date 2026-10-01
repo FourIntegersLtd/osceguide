@@ -33,14 +33,18 @@ class ScenarioProvider(Protocol):
 
     def resolve(
         self, scenario_ref: ScenarioRef, attempt_context: Mapping[str, str]
-    ) -> Scenario: ...
+    ) -> Scenario:
+        """Return the scenario that the reference points to."""
+        ...
 
 
 @runtime_checkable
 class FrameworkProvider(Protocol):
     """Resolves a framework id to its definition (platform catalogue, org-authored, ...)."""
 
-    def get(self, framework_id: str) -> CompetencyFramework: ...
+    def get(self, framework_id: str) -> CompetencyFramework:
+        """Return the framework with this id."""
+        ...
 
 
 @runtime_checkable
@@ -55,7 +59,9 @@ class ProfileBuilder(Protocol):
 
     def build(
         self, definition: AssessmentDefinition, scenario: Scenario
-    ) -> AIInteractionProfile: ...
+    ) -> AIInteractionProfile:
+        """Return the finished instructions for this definition and scenario."""
+        ...
 
 
 @runtime_checkable
@@ -67,15 +73,23 @@ class InteractionAdapter(Protocol):
     partial transcript behind.
     """
 
-    async def connect(self) -> None: ...
+    async def connect(self) -> None:
+        """Open the connection to the interaction."""
+        ...
 
-    async def send_greeting(self, text: str) -> None: ...
+    async def send_greeting(self, text: str) -> None:
+        """Say the opening greeting before the interaction runs."""
+        ...
 
     async def run(
         self, profile: AIInteractionProfile, on_message: MessageCallback
-    ) -> None: ...
+    ) -> None:
+        """Run the interaction to its end, passing each turn to ``on_message``."""
+        ...
 
-    async def disconnect(self) -> None: ...
+    async def disconnect(self) -> None:
+        """Close the connection, whether the interaction ended well or not."""
+        ...
 
 
 @runtime_checkable
@@ -84,11 +98,15 @@ class TranscriptSink(Protocol):
 
     def append(
         self, attempt_id: str, message: TranscriptMessage
-    ) -> Awaitable[None] | None: ...
+    ) -> Awaitable[None] | None:
+        """Store one message as soon as it is captured."""
+        ...
 
     def complete(
         self, attempt_id: str, transcript: Transcript
-    ) -> Awaitable[None] | None: ...
+    ) -> Awaitable[None] | None:
+        """Store the completed transcript."""
+        ...
 
 
 @runtime_checkable
@@ -102,11 +120,17 @@ class Evaluator(Protocol):
         transcript: Transcript,
         policy: EvaluationPolicy,
         scenario: Scenario,
-    ) -> AssessmentResult | Awaitable[AssessmentResult]: ...
+    ) -> AssessmentResult | Awaitable[AssessmentResult]:
+        """Return the result of marking this transcript against the policy."""
+        ...
 
 
 @runtime_checkable
 class ResultSink(Protocol):
+    """Stores a finished assessment result."""
+
     def save_result(
         self, result: AssessmentResult, attempt_context: Mapping[str, str]
-    ) -> Awaitable[None] | None: ...
+    ) -> Awaitable[None] | None:
+        """Save the result for this attempt."""
+        ...

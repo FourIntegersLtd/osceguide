@@ -72,7 +72,7 @@ async def list_memberships(
         org_id,
         limit=limit,
         cursor=cursor,
-        role_pattern=f"%{term}%" if term else None,
+        role_search=term or None,
         matching_user_ids=matching_user_ids,
         exact_user_id=exact_user_id,
         status=status,

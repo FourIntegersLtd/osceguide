@@ -87,7 +87,7 @@ function withQuery(path: string, query: RequestOptions["query"]): string {
 
 function apiUnreachableDevMessage(status: number): string {
   return (
-    `Request failed (${status}) — platform-api was not reached. ` +
+    `Request failed (${status}). The API was not reached. ` +
     "Use http://localhost:3100 (not :3000). " +
     "Start the API: cd api && make start. " +
     "In web/.env.local set PLATFORM_API_URL=http://127.0.0.1:8002 and restart npm run dev:webpack."

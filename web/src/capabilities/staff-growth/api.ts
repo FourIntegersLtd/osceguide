@@ -1,5 +1,5 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
-import type { AttributionQuery, RevenueTimeBucket } from "@/foundation/attribution/types";
+import type { AttributionQuery, RevenueTimeBucket } from "@/capabilities/attribution-dashboard/types";
 
 type S = components["schemas"];
 
@@ -16,7 +16,8 @@ export type Reporter = S["ReporterRead"];
 export type PilotConfig = S["PilotConfigRead"];
 export type PilotConfigUpdate = S["UpdatePilotConfig"];
 
-const growth = (partner: string) =>
+/** Where one partner's growth reports live on the API. */
+export const growthPartnerPath = (partner: string) =>
   `/api/v1/growth/partners/${encodeURIComponent(partner)}`;
 
 /** The summary every Overview, Revenue and How-we-count figure comes from. */
@@ -25,7 +26,7 @@ export function readDashboardSummary(
   query: AttributionQuery,
   signal?: AbortSignal,
 ): Promise<DashboardSummary> {
-  return platformRequest<DashboardSummary>(`${growth(partner)}/summary`, { query: { ...query }, signal });
+  return platformRequest<DashboardSummary>(`${growthPartnerPath(partner)}/summary`, { query: { ...query }, signal });
 }
 
 export function readPartnerFunnel(
@@ -33,7 +34,7 @@ export function readPartnerFunnel(
   query: AttributionQuery,
   signal?: AbortSignal,
 ): Promise<FunnelRead> {
-  return platformRequest<FunnelRead>(`${growth(partner)}/funnel`, { query: { ...query }, signal });
+  return platformRequest<FunnelRead>(`${growthPartnerPath(partner)}/funnel`, { query: { ...query }, signal });
 }
 
 export function readRevenueOverTime(
@@ -42,7 +43,7 @@ export function readRevenueOverTime(
   bucket: RevenueTimeBucket,
   signal?: AbortSignal,
 ): Promise<RevenueOverTime> {
-  return platformRequest<RevenueOverTime>(`${growth(partner)}/revenue-over-time`, {
+  return platformRequest<RevenueOverTime>(`${growthPartnerPath(partner)}/revenue-over-time`, {
     query: { ...query, bucket },
     signal,
   });
@@ -55,7 +56,7 @@ export function listArrivals(
   options: { search: string; cursor: string | null },
   signal?: AbortSignal,
 ): Promise<ArrivalPage> {
-  return platformRequest<ArrivalPage>(`${growth(partner)}/arrivals`, {
+  return platformRequest<ArrivalPage>(`${growthPartnerPath(partner)}/arrivals`, {
     query: { ...query, search: options.search || undefined, cursor: options.cursor },
     signal,
   });
@@ -68,7 +69,7 @@ export function listAcquiredUsers(
   cursor: string | null,
   signal?: AbortSignal,
 ): Promise<AcquiredUserPage> {
-  return platformRequest<AcquiredUserPage>(`${growth(partner)}/acquired-users`, {
+  return platformRequest<AcquiredUserPage>(`${growthPartnerPath(partner)}/acquired-users`, {
     query: { ...query, cursor },
     signal,
   });
@@ -78,35 +79,35 @@ export function listPartnerRefIds(
   partner: string,
   signal?: AbortSignal,
 ): Promise<TrackingPage> {
-  return platformRequest<TrackingPage>(`${growth(partner)}/ref-ids`, { signal });
+  return platformRequest<TrackingPage>(`${growthPartnerPath(partner)}/ref-ids`, { signal });
 }
 
 export function listPartnerReporters(partner: string, signal?: AbortSignal): Promise<Reporter[]> {
-  return platformRequest<Reporter[]>(`${growth(partner)}/reporters`, { signal });
+  return platformRequest<Reporter[]>(`${growthPartnerPath(partner)}/reporters`, { signal });
 }
 
 export function addPartnerReporter(partner: string, email: string): Promise<void> {
-  return platformRequest<void>(`${growth(partner)}/reporters`, {
+  return platformRequest<void>(`${growthPartnerPath(partner)}/reporters`, {
     method: "POST",
     body: { email },
   });
 }
 
 export function revokePartnerReporter(partner: string, email: string): Promise<void> {
-  return platformRequest<void>(`${growth(partner)}/reporters/${encodeURIComponent(email)}`, {
+  return platformRequest<void>(`${growthPartnerPath(partner)}/reporters/${encodeURIComponent(email)}`, {
     method: "DELETE",
   });
 }
 
 export function readPilotConfig(partner: string, signal?: AbortSignal): Promise<PilotConfig> {
-  return platformRequest<PilotConfig>(`${growth(partner)}/pilot-config`, { signal });
+  return platformRequest<PilotConfig>(`${growthPartnerPath(partner)}/pilot-config`, { signal });
 }
 
 export function updatePilotConfig(
   partner: string,
   update: PilotConfigUpdate,
 ): Promise<PilotConfig> {
-  return platformRequest<PilotConfig>(`${growth(partner)}/pilot-config`, {
+  return platformRequest<PilotConfig>(`${growthPartnerPath(partner)}/pilot-config`, {
     method: "PATCH",
     body: update,
   });

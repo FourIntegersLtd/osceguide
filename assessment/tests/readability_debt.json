@@ -1,0 +1,15 @@
+{
+  "packages/livekit_assessment_worker/adapter.py": 2,
+  "packages/livekit_assessment_worker/metadata.py": 1,
+  "packages/livekit_assistant_worker/gpt_live_policy.py": 2,
+  "packages/livekit_assistant_worker/handlers.py": 3,
+  "packages/livekit_assistant_worker/metadata.py": 2,
+  "packages/livekit_assistant_worker/ui_guidance/actions.py": 2,
+  "packages/livekit_assistant_worker/ui_guidance/geometry.py": 2,
+  "packages/osce_assessment/prompts/consultation_pacing.py": 1,
+  "packages/osce_assessment/prompts/station.py": 2,
+  "packages/osce_assessment/runtime/attempt_runtime.py": 1,
+  "packages/osce_assessment/schemas/validate.py": 7,
+  "packages/voice_infra/config.py": 1,
+  "packages/voice_infra/latency.py": 1
+}

@@ -38,7 +38,7 @@ async def expire_if_due(
 
     A no-op for anything not still `pending_accept`, or not yet past its
     `accept_expires_at` — the common case, checked on every read so a session
-    nobody is polling still resolves itself the next time somebody looks.
+    nobody is watching still resolves itself the next time somebody looks.
     """
     if practice_session.status != "pending_accept" or practice_session.accept_expires_at is None:
         return practice_session
@@ -49,8 +49,7 @@ async def expire_if_due(
     refreshed = await repository_sessions.session_by_id(session, practice_session.id)
     assert refreshed is not None
     # Whoever isn't the one reading right now (a partner sitting on the
-    # session screen, or one polling no longer) learns the window closed
-    # without having to ask again.
+    # session screen) learns the window closed without having to ask again.
     for participant in (practice_session.doctor_user_id, practice_session.patient_user_id):
         publish_after_commit(
             session, user_topic(participant), SESSION_UPDATED, {"session_id": str(refreshed.id)}
@@ -117,9 +116,8 @@ async def decline_match(
     await _requeue_the_still_interested(session, practice_session, exclude_user_id=user_id, now=now)
     refreshed = await repository_sessions.session_by_id(session, session_id)
     assert refreshed is not None
-    # The partner is still waiting on the pending-accept screen; without this
-    # they learn the match fell through only by polling, which is the poll
-    # this event replaces (BACKLOG P-3).
+    # The partner is still waiting on the pending-accept screen; this event
+    # is how they learn the match fell through.
     for participant in (practice_session.doctor_user_id, practice_session.patient_user_id):
         publish_after_commit(
             session, user_topic(participant), SESSION_UPDATED, {"session_id": str(session_id)}

@@ -109,7 +109,9 @@ target-version = "py311"
 src = ["."]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "N", "S", "T20", "SIM"]
+# BLE (no bare `except Exception`) is on so that every broad catch carries a
+# `noqa: BLE001 - why` beside it: the reason is the documentation.
+select = ["E", "F", "I", "B", "UP", "N", "S", "T20", "SIM", "BLE"]
 ignore = ["S101", "N818"]  # assert is fine in tests; error classes are named for how they read at the raise site
 
 [tool.ruff.lint.per-file-ignores]
@@ -129,6 +131,9 @@ ignore = ["S101", "N818"]  # assert is fine in tests; error classes are named fo
 # they read at the raise site and in the handler that maps them to a status.
 # An `Error` suffix on each buys nothing there; they all subclass `AppError`.
 "app/core/errors.py" = ["N818"]
+# The slide renderer is a verbatim port (see the mypy override below); its
+# broad catches are kept as they were rather than re-reasoned line by line.
+"app/features/media_production/slide_renderer.py" = ["BLE001"]
 
 [tool.mypy]
 python_version = "3.11"

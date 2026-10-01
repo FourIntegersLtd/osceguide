@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { HiOutlineArrowRight } from "react-icons/hi2";
 import Table from "@/foundation/table/Table";
 import { AsyncBoundary, Button, SectionSearchField, cn } from "@/foundation/ui";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { useCursorPages } from "@/foundation/hooks";
+import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
+import { formatLongDateTime } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
 import {
-  formatAttemptDate,
   kindLabel,
   listTranscribableAttempts,
   TRANSCRIPT_PAGE_LIMIT,
@@ -35,12 +35,7 @@ type TranscriptRow = RecentAttempt & { rowNumber: number };
  */
 export function TranscriptList() {
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const query = useSearchQuery(search);
 
   const pages = useCursorPages(
     (cursor, signal) =>
@@ -117,7 +112,7 @@ function TranscriptTable({
         header: "Date",
         key: "created_at" as keyof TranscriptRow,
         render: (attempt: TranscriptRow) => (
-          <span className={b2cTableCellText}>{formatAttemptDate(attempt.created_at)}</span>
+          <span className={b2cTableCellText}>{formatLongDateTime(attempt.created_at)}</span>
         ),
       },
       {

@@ -19,7 +19,7 @@ def get_voice_tokens() -> VoiceTokens:
     Imported inside the function so a test can override the dependency
     without the SDK installed, which is the same reason `assistant` does it.
     """
-    from app.features.voice.service import get_voice_tokens as build  # noqa: PLC0415
+    from app.features.voice.service import get_voice_tokens as build
 
     return build()
 

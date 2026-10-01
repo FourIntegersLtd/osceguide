@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AsyncBoundary, LoadMore, Panel, PlatformFilterSearch } from "@/foundation/ui";
-import { useCursorPages } from "@/foundation/hooks";
-import { formatUtcDateTime } from "@/foundation/attribution/presets";
-import { campaignLabel } from "@/foundation/attribution/viewModel";
-import type { AttributionQuery } from "@/foundation/attribution/types";
+import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
+import { formatUtcDateTime } from "@/capabilities/attribution-dashboard/presets";
+import { campaignLabel } from "@/capabilities/attribution-dashboard/viewModel";
+import type { AttributionQuery } from "@/capabilities/attribution-dashboard/types";
 import {
   listAcquiredUsers,
   listArrivals,
@@ -32,12 +32,7 @@ export function ArrivalsTable({
   description: string;
 }) {
   const [typed, setTyped] = useState("");
-  const [search, setSearch] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => setSearch(typed.trim()), 300);
-    return () => clearTimeout(timer);
-  }, [typed]);
-
+  const search = useSearchQuery(typed);
   const pages = useCursorPages<ArrivalRow>(
     (cursor, signal) => listArrivals(partner, query, { search, cursor }, signal),
     [partner, query.from_date, query.to_date, query.exam_code, query.utm_campaign, search],

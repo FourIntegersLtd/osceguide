@@ -25,17 +25,19 @@ _TYPE_CHECKS = {
 
 
 def validate_against_schema(payload: Any, schema: dict[str, Any]) -> list[str]:
+    """Check a payload against a schema and return every problem found; empty means valid."""
     problems: list[str] = []
     _check(payload, schema, root=schema, path="$", problems=problems, depth=0)
     return problems
 
 
 def _check(value: Any, node: dict[str, Any], *, root: dict[str, Any], path: str, problems: list[str], depth: int) -> None:
+    """Check one value against one schema node, recursing into children and appending problems."""
     if depth > 64:
         problems.append(f"{path}: schema nesting too deep")
         return
     if "$ref" in node:
-        merged = {**resolve_ref(root, node["$ref"]), **{k: v for k, v in node.items() if k != "$ref"}}
+        merged = {**resolve_ref(root, node["$ref"]), **{key: value for key, value in node.items() if key != "$ref"}}
         _check(value, merged, root=root, path=path, problems=problems, depth=depth + 1)
         return
     if "const" in node and value != node["const"]:
@@ -55,7 +57,7 @@ def _check(value: Any, node: dict[str, Any], *, root: dict[str, Any], path: str,
 
     kind = node.get("type")
     kinds = kind if isinstance(kind, list) else ([kind] if kind else [])
-    if kinds and not any(_TYPE_CHECKS.get(k, lambda v: True)(value) for k in kinds):
+    if kinds and not any(_TYPE_CHECKS.get(type_name, lambda candidate: True)(value) for type_name in kinds):
         problems.append(f"{path}: expected {'/'.join(kinds)}, got {type(value).__name__}")
         return
 

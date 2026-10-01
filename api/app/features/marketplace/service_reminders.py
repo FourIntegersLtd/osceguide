@@ -1,8 +1,6 @@
 """Emailing both participants of a peer session before it starts.
 
-Ported from legacy `b2c-api`'s `marketplace_reminder_service.py`, which polled
-Firestore on a dynamic sleep and sent through `EmailService` directly. Here
-the schedule is a Procrastinate periodic task (`jobs.py`) and the send is a
+The schedule is a Procrastinate periodic task (`jobs.py`) and the send is a
 row in the notifications outbox (`notifications.service.enqueue_email`) —
 queued in the same transaction that claims the session, so a reminder that
 never leaves the outbox because the process died mid-send still leaves a

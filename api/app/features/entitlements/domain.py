@@ -68,8 +68,7 @@ class Decision:
 def trial_available(trial: TrialState, *, now: datetime) -> bool:
     """The free trial: three stations, each sat up to three times, within fourteen days.
 
-    Stations are counted, not attempts, as legacy b2c counted them (`mocked_station_ids` and
-    `station_progress`): retrying a trial station never uses up another one. Set stations and
+    Stations are counted, not attempts: retrying a trial station never uses up another one. Set stations and
     completed stations are compared separately rather than summed, and the account age
     comparison is strict, so an account exactly fourteen days old still has its trial.
     """

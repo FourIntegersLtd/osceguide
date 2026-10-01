@@ -18,6 +18,7 @@ router = APIRouter()
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Read the patient's script for an attempt, so the learner can play the patient.
 @router.get(
     "/attempts/{attempt_id}/roleplay",
     response_model=PatientRoleplayRead,

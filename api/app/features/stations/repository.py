@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import owned_by, owner_kind_for, visible_to
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.stations.models import Station, StationVersion
 
 
@@ -177,7 +178,7 @@ async def list_for_org(
         # Matched the same way the library's search is (`library_page`): a
         # title fragment, in SQL, so a term matches the whole catalogue rather
         # than only the page the screen had already walked.
-        stmt = stmt.where(Station.title.ilike(f"%{search.strip()}%"))
+        stmt = stmt.where(contains_text(Station.title, search))
     if not include_archived:
         stmt = stmt.where(Station.status != "archived")
     return await _station_page(session, stmt, limit=limit, cursor=cursor)
@@ -294,6 +295,6 @@ async def version_ids_matching_title(session: AsyncSession, search: str) -> list
     stmt = (
         select(StationVersion.id)
         .join(Station, Station.id == StationVersion.station_id)
-        .where(Station.title.ilike(f"%{search}%"))
+        .where(contains_text(Station.title, search))
     )
     return list((await session.execute(stmt)).scalars())

@@ -38,9 +38,12 @@ def all_articles() -> list[HelpArticle]:
 
 
 def list_articles(
-    exam_code: str, category: str | None = None, search: str | None = None
+    exam_code: str | None, category: str | None = None, search: str | None = None
 ) -> list[HelpArticle]:
     """This exam's published articles, in this category if one is given.
+
+    An article is written either for every exam or for the exams it lists.
+    With no exam, or one no article names, only the first kind is returned.
 
     `search` matches a fragment of the title or the body, case-insensitively —
     this catalogue is a small, cached, in-memory list rather than a database
@@ -59,7 +62,7 @@ def list_articles(
     )
 
 
-def list_categories(exam_code: str) -> list[HelpCategory]:
+def list_categories(exam_code: str | None) -> list[HelpCategory]:
     """This exam's categories, each carrying how many of its articles apply."""
     counts = Counter(article.category_slug for article in list_articles(exam_code))
     return sorted(
@@ -72,7 +75,7 @@ def list_categories(exam_code: str) -> list[HelpCategory]:
     )
 
 
-def read_article(slug: str, exam_code: str) -> HelpArticle:
+def read_article(slug: str, exam_code: str | None) -> HelpArticle:
     """One article by slug, with any related link this exam cannot see removed."""
     candidate = next((article for article in list_articles(exam_code) if article.slug == slug), None)
     if candidate is None:

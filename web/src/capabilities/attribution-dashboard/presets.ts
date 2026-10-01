@@ -3,7 +3,7 @@ import type {
   AttributionMode,
   AttributionQuery,
   RevenueTimeBucket,
-} from "@/foundation/attribution/types";
+} from "@/capabilities/attribution-dashboard/types";
 
 /** The first day with any pilot data, so earlier dates are refused. */
 export const EARLIEST_DATE = "2026-01-01";
@@ -112,10 +112,6 @@ export function formatActiveFilterSummary(
   if (filters.utmCampaign) parts.push(filters.utmCampaign);
   parts.push(formatDateRangeLabel(filters.fromDate, filters.toDate));
   return parts.join(" · ");
-}
-
-export function formatGbpPence(pence: number): string {
-  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 }
 
 export function formatChartPeriodLabel(period: string, bucket: RevenueTimeBucket): string {

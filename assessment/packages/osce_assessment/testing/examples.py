@@ -19,12 +19,14 @@ def example_payload_for(schema: dict[str, Any]) -> Any:
 
 
 def _resolve(node: dict[str, Any], defs: dict[str, Any]) -> dict[str, Any]:
+    """Follow ``$ref`` links until reaching a schema node that is not a reference."""
     while "$ref" in node:
         node = defs[node["$ref"].rsplit("/", 1)[-1]]
     return node
 
 
 def _build(node: dict[str, Any], defs: dict[str, Any], *, depth: int) -> Any:
+    """Build the smallest valid value for one schema node, recursing into nested nodes."""
     if depth > _MAX_DEPTH:
         raise RecursionError("schema nesting exceeds the example generator's limit")
     node = _resolve(node, defs)
@@ -34,8 +36,8 @@ def _build(node: dict[str, Any], defs: dict[str, Any], *, depth: int) -> Any:
         return node["enum"][0]
     for combinator in ("anyOf", "oneOf"):
         if combinator in node:
-            options = [_resolve(o, defs) for o in node[combinator]]
-            preferred = [o for o in options if o.get("type") != "null"] or options
+            options = [_resolve(option, defs) for option in node[combinator]]
+            preferred = [option for option in options if option.get("type") != "null"] or options
             return _build(preferred[0], defs, depth=depth + 1)
     if "allOf" in node:
         merged: dict[str, Any] = {}
@@ -44,7 +46,7 @@ def _build(node: dict[str, Any], defs: dict[str, Any], *, depth: int) -> Any:
         return _build(merged, defs, depth=depth + 1)
     kind = node.get("type")
     if isinstance(kind, list):
-        kind = next((k for k in kind if k != "null"), kind[0])
+        kind = next((entry for entry in kind if entry != "null"), kind[0])
     if kind is None and "properties" in node:
         kind = "object"
     if kind == "object":
@@ -66,6 +68,7 @@ def _build(node: dict[str, Any], defs: dict[str, Any], *, depth: int) -> Any:
 
 
 def _string(node: dict[str, Any]) -> str:
+    """A string that satisfies the node's pattern, format and length limits."""
     pattern = node.get("pattern")
     if pattern is not None:
         for candidate in _PATTERN_CANDIDATES:
@@ -98,6 +101,7 @@ def example_framework(framework_id: str = "example-framework") -> "CompetencyFra
     from ..contracts.framework import Competency, CompetencyDomain, CompetencyFramework
 
     def scored() -> dict[str, Any]:
+        """The schema for one scored competency: a score, a supporting phrase and an explanation."""
         return {
             "type": "object",
             "additionalProperties": False,

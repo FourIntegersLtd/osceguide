@@ -19,11 +19,14 @@ GPT_LIVE_LATE_ITEMS_S = 2.0
 
 
 class TranscriptRecorder:
+    """Collects the messages of one assistant session as they happen."""
+
     def __init__(self, session_id: str) -> None:
         self.session_id = session_id
         self.messages: list[TranscriptMessage] = []
 
     def add(self, role: MessageRole, text: str) -> TranscriptMessage:
+        """Record one message with a fresh id and the next sequence number."""
         message = TranscriptMessage(role=role, message=text, timestamp=datetime.now(timezone.utc), message_id=str(uuid.uuid4()), seq=len(self.messages))
         self.messages.append(message)
         return message
@@ -45,6 +48,7 @@ class TranscriptDelivery:
         self.delivered = False
 
     async def deliver_once(self, *, settle_s: float = 0.0) -> bool:
+        """Post the transcript with retries, returning True once delivered (or already delivered) and False if every attempt failed."""
         async with self._lock:
             if self.delivered:
                 return True

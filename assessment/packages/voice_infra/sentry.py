@@ -22,6 +22,7 @@ def _dsn() -> str:
 
 
 def _environment() -> str:
+    """The Sentry environment name: the configured one, else livekit-cloud when hosted there, else development."""
     value = os.getenv("SENTRY_ENVIRONMENT", "").strip()
     if value:
         return value
@@ -35,6 +36,7 @@ def _release() -> str | None:
 
 
 def _traces_sampler(sampling_context: dict[str, Any]) -> float:
+    """Sample no health checks, follow the parent's decision, and otherwise sample 20% in production and all elsewhere."""
     name = str(sampling_context.get("transaction_context", {}).get("name", ""))
     if "/health" in name or name in {"/", "health"}:
         return 0.0
@@ -45,6 +47,7 @@ def _traces_sampler(sampling_context: dict[str, Any]) -> float:
 
 
 def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
+    """Drop errors caused by the process being stopped on purpose, and send everything else."""
     exc_info = hint.get("exc_info")
     if exc_info and issubclass(exc_info[0], (KeyboardInterrupt, SystemExit)):
         return None
@@ -52,6 +55,7 @@ def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] 
 
 
 def _reset_for_tests() -> None:
+    """Allow ``init_sentry`` to run again, so a test can start from a clean state."""
     global _initialized
     _initialized = False
 
@@ -85,6 +89,7 @@ def init_sentry(*, worker: str | None = None) -> bool:
 
 
 def raise_sentry_verify_error_if_requested() -> None:
+    """Raise a deliberate error when ``SENTRY_VERIFY_ERROR=1``, to prove errors reach Sentry."""
     if os.getenv("SENTRY_VERIFY_ERROR", "").strip() != "1":
         return
     marker = os.getenv("SENTRY_VERIFY_MARKER", "").strip() or "livekit-setup"

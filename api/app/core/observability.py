@@ -21,7 +21,7 @@ def configure_sentry(settings: Settings) -> bool:
     if not settings.sentry_dsn.strip():
         return False
     try:
-        import sentry_sdk  # noqa: PLC0415 - optional at runtime, and only here
+        import sentry_sdk  # optional at runtime, and only here
     except ImportError:
         log.warning("SENTRY_DSN is set but sentry-sdk is not installed")
         return False

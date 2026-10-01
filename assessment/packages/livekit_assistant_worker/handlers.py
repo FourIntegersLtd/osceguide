@@ -30,13 +30,16 @@ RenderScene = Callable[[dict[str, Any]], Awaitable[str]]
 
 
 def wire_transcript_capture(agent: Any, recorder: TranscriptRecorder) -> None:
+    """Record each final user utterance and each assistant message into the transcript."""
     @agent.on("user_input_transcribed")
     def _on_user(ev: Any) -> None:
+        """Record a finished spoken turn from the user."""
         if getattr(ev, "is_final", False) and str(getattr(ev, "transcript", "")).strip():
             recorder.add(MessageRole.USER, ev.transcript.strip())
 
     @agent.on("conversation_item_added")
     def _on_item(ev: Any) -> None:
+        """Record a message the assistant has added to the conversation."""
         item = getattr(ev, "item", None)
         text = getattr(item, "text_content", None)
         if getattr(item, "role", None) == "assistant" and text:
@@ -53,8 +56,10 @@ def wire_delivery_on_end(ctx: Any, deliver: Callable[[], Awaitable[None]]) -> No
 
 
 def wire_navigation_mode_choice(ctx: Any, agent: Any, navigation: NavigationModeState) -> None:
+    """When the browser sends a navigation mode choice, store it and have the agent acknowledge it."""
     @ctx.room.on("data_received")
     def _on_choice(data_packet: Any) -> None:
+        """Handle a data message from the browser, ignoring our own and unrelated ones."""
         participant = getattr(data_packet, "participant", None)
         if participant is not None and participant.identity == ctx.room.local_participant.identity:
             return
@@ -75,6 +80,7 @@ def wire_guidance_progress(agent: Any, progress: GuidanceProgress) -> None:
 
     @agent.on("agent_state_changed")
     def _on_agent_state(ev: Any) -> None:
+        """Lower the progress panel when the agent starts speaking."""
         if getattr(ev, "new_state", None) == "speaking":
             asyncio.create_task(progress.done())
 
@@ -85,6 +91,7 @@ def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
 
     @ctx.room.on("data_received")
     def _on_scene_change(data_packet: Any) -> None:
+        """Start an announcement when the browser reports a scene we have not announced yet."""
         msg = json_packet(data_packet)
         if not msg or msg.get("type") != DATA_TYPE_SCENE_CHANGE:
             return
@@ -99,6 +106,7 @@ def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
 
 
 async def _announce_scene(agent: Any, render_scene: RenderScene, scene: dict[str, Any]) -> None:
+    """Render the instructions for a new scene, cut off any speech in progress, and introduce it."""
     try:
         instructions = await render_scene(scene)
     except Exception as exc:  # noqa: BLE001 — the session continues on the previous scene
@@ -113,6 +121,7 @@ async def _announce_scene(agent: Any, render_scene: RenderScene, scene: dict[str
 
 
 async def _reply(agent: Any, *, what: str, **kwargs: Any) -> None:
+    """Ask the agent to speak, giving up after a timeout so a lost reply never ends the session."""
     try:
         await asyncio.wait_for(agent.generate_reply(**kwargs), timeout=REPLY_TIMEOUT_S)
     except Exception as exc:  # noqa: BLE001 — a lost reply must not end the session

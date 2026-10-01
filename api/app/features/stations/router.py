@@ -157,6 +157,7 @@ async def autogenerate_station_draft(
     return schemas.AutogenerateStationDraftResult(**draft_result)
 
 
+# Add a new version to one of an organisation's stations.
 @router.post(
     "/orgs/{org_slug}/stations/{station_id}/versions",
     response_model=schemas.StationVersionRead,

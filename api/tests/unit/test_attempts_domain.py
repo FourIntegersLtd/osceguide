@@ -7,6 +7,7 @@ bootstrap, and both freeze it even when the render was degraded.
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime
 
 import pytest
@@ -330,3 +331,73 @@ def test_patient_gender_is_read_from_whichever_key_the_station_uses() -> None:
     assert domain_definition.patient_gender({"patient_information": {"persona": "x"}}) is None
     assert domain_definition.patient_gender({}) is None
     assert domain_definition.patient_gender(None) is None
+
+
+# --------------------------------------------------------------------------
+# The free trial counts stations, not attempts
+# --------------------------------------------------------------------------
+
+STATION_ONE, STATION_TWO = uuid.uuid4(), uuid.uuid4()
+FIRST_VERSION, SECOND_VERSION, OTHER_VERSION = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+# Two versions of the first station, one of the second.
+STATION_BY_VERSION = {FIRST_VERSION: STATION_ONE, SECOND_VERSION: STATION_ONE, OTHER_VERSION: STATION_TWO}
+
+
+def _trial_attempt(
+    version_id: uuid.UUID | None, status: str = "evaluated", kind: str = "practice"
+) -> domain.TrialAttempt:
+    return domain.TrialAttempt(
+        attempt_id=uuid.uuid4(), kind=kind, status=status, station_version_id=version_id
+    )
+
+
+def test_retrying_a_station_does_not_use_up_another_trial_station() -> None:
+    sat = [_trial_attempt(FIRST_VERSION), _trial_attempt(SECOND_VERSION), _trial_attempt(FIRST_VERSION)]
+
+    counts = domain.count_trial_use(
+        sat, station_by_version=STATION_BY_VERSION, starting_station_id=STATION_ONE
+    )
+
+    assert counts == domain.TrialCounts(
+        set_stations=0, completed_stations=1, started_this_station=True, completed_on_this_station=3
+    )
+
+
+def test_an_unfinished_attempt_is_a_start_but_not_a_completion() -> None:
+    sat = [_trial_attempt(FIRST_VERSION, status="running"), _trial_attempt(OTHER_VERSION)]
+
+    counts = domain.count_trial_use(
+        sat, station_by_version=STATION_BY_VERSION, starting_station_id=STATION_ONE
+    )
+
+    assert counts == domain.TrialCounts(
+        set_stations=0, completed_stations=1, started_this_station=True, completed_on_this_station=0
+    )
+
+
+def test_a_station_never_sat_is_not_a_retry() -> None:
+    sat = [_trial_attempt(FIRST_VERSION)]
+
+    counts = domain.count_trial_use(
+        sat, station_by_version=STATION_BY_VERSION, starting_station_id=STATION_TWO
+    )
+
+    assert counts.started_this_station is False
+    assert counts.completed_on_this_station == 0
+
+
+def test_set_stations_and_stationless_attempts_are_each_counted_once() -> None:
+    sat = [
+        _trial_attempt(FIRST_VERSION, kind="set_station"),
+        _trial_attempt(SECOND_VERSION, kind="set_station", status="running"),
+        _trial_attempt(OTHER_VERSION, kind="set_station", status="failed"),
+        # No station at all: each of these is a station of its own.
+        _trial_attempt(None),
+        _trial_attempt(None),
+    ]
+
+    counts = domain.count_trial_use(sat, station_by_version=STATION_BY_VERSION, starting_station_id=None)
+
+    assert counts == domain.TrialCounts(
+        set_stations=2, completed_stations=3, started_this_station=False, completed_on_this_station=0
+    )

@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - "assessment/**"
+      # The browser's half of the guidance contract that tests/test_ui_guidance_contract_drift.py compares.
+      - "web/src/foundation/livekit/guidance/contracts.ts"
       - ".github/workflows/ci-assessment.yml"
       - ".github/workflows/publish-workers.yml"
       - ".github/workflows/promote-workers.yml"
@@ -19,6 +21,8 @@ on:
     branches: [main]
     paths:
       - "assessment/**"
+      # The browser's half of the guidance contract that tests/test_ui_guidance_contract_drift.py compares.
+      - "web/src/foundation/livekit/guidance/contracts.ts"
       - ".github/workflows/ci-assessment.yml"
       - ".github/workflows/publish-workers.yml"
       - ".github/workflows/promote-workers.yml"

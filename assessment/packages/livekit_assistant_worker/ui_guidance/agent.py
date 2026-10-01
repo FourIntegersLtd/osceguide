@@ -17,6 +17,8 @@ from .toolset import ComputerToolset
 
 
 class GuidanceAgent(Agent):
+    """An agent that keeps pointer tags out of the spoken and written reply and acts on them."""
+
     def __init__(self, *, toolset: ComputerToolset, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._toolset = toolset

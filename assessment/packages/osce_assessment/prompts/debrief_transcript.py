@@ -10,6 +10,8 @@ moment it means; it quotes the words rather than an id.
 from typing import List, Dict, Optional
 
 class TranscriptFormatter:
+    """Turns a transcript object into the plain markdown text the debrief tutor reads."""
+
     DEFAULT_TRANSCRIPT = """
     ## Consultation Transcript
     No transcript available. This might be because:

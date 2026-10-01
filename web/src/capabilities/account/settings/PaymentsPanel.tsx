@@ -7,6 +7,7 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
+import { formatLongDate } from "@/foundation/format";
 import { useCurrentExam } from "@/foundation/session";
 import {
   listEntitlements,
@@ -92,7 +93,7 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
   const rows: { label: string; value: string }[] = [
     { label: "Plan", value: plan },
     ...(latest?.plan_start_date ? [{ label: "Started", value: latest.plan_start_date }] : []),
-    ...(endsAt ? [{ label: "Valid until", value: formatDate(endsAt) }] : []),
+    ...(endsAt ? [{ label: "Valid until", value: formatLongDate(endsAt) }] : []),
   ];
   const purchased = live.some((entitlement) => entitlement.source === "purchase");
 
@@ -108,7 +109,7 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
         </div>
         <ModalHelper className="mt-1">
           {endsAt
-            ? `Full access until ${formatDate(endsAt)}.`
+            ? `Full access until ${formatLongDate(endsAt)}.`
             : "You have full access to all premium features."}
         </ModalHelper>
       </div>
@@ -198,10 +199,4 @@ function grantLabel(live: Entitlement[]): string {
   };
   const source = live[0]?.source ?? "";
   return named[source] ?? source.replace(/_/g, " ");
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "-";
-  return date.toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" });
 }

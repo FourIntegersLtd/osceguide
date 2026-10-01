@@ -22,6 +22,7 @@ router = APIRouter(tags=["results"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Read the result decision for one candidate in a sitting.
 @router.get(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision",
     response_model=schemas.DecisionRead,

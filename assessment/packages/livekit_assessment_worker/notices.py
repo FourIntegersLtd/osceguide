@@ -23,6 +23,7 @@ SECONDS_LEFT_KEY = "secondsLeft"
 
 
 def time_remaining_notice(seconds_left: int) -> str:
+    """The note added to the model's context when the interaction is close to ending."""
     return (
         f"[Notice: this interaction ends in about {seconds_left} seconds. Stay in character. "
         "Keep any remaining replies brief, do not raise new concerns or open new topics, "
@@ -31,6 +32,7 @@ def time_remaining_notice(seconds_left: int) -> str:
 
 
 def seconds_left_from(msg: dict[str, Any]) -> int | None:
+    """The seconds left in a time warning, or None when the value is missing or not positive."""
     try:
         value = int(msg.get(SECONDS_LEFT_KEY, 0) or 0)
     except (TypeError, ValueError):
@@ -39,8 +41,10 @@ def seconds_left_from(msg: dict[str, Any]) -> int | None:
 
 
 def wire_time_warnings(ctx: Any, session: Any, candidate_identity: str) -> None:
+    """Listen for time warnings from the candidate and add a wind-down note to the session."""
     @ctx.room.on("data_received")
     def _on_data(data_packet: Any) -> None:
+        """Apply a time warning packet if it came from the candidate and is well formed."""
         if packet_sender_identity(data_packet) != candidate_identity:
             return
         msg = json_packet(data_packet)

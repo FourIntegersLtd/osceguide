@@ -146,7 +146,7 @@ def build_material_index(session: AsyncSession) -> MaterialIndex | None:
     """
     if not get_settings().openai_api_key:
         return None
-    from app.features.tutor_memory.embedder import EmbeddingFailed, build_embedder  # noqa: PLC0415
+    from app.features.tutor_memory.embedder import EmbeddingFailed, build_embedder
 
     try:
         return PgVectorMaterialIndex(session, build_embedder())

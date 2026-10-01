@@ -9,6 +9,8 @@ from .modes import is_faq_help, mode_profile
 
 
 class VoiceRuntime(StrEnum):
+    """The two ways a voice session can run: separate speech models, or one speech-to-speech model."""
+
     PIPELINE = "pipeline"
     GPT_LIVE = "gpt-live"
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineCloudArrowUp, HiOutlinePlusCircle } from "react-icons/hi2";
 import { useSurface } from "@/capabilities";
@@ -13,7 +13,7 @@ import {
   AUTHORING_ALL_EXAMS,
   matchesExamFilter,
 } from "@/capabilities/authoring/parts/examCatalogFilter";
-import { useAsync, useCursorPages } from "@/foundation/hooks";
+import { useAsync, useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import {
   archiveStationVersion,
   listStations,
@@ -44,7 +44,7 @@ export function StationsSection() {
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
+  const query = useSearchQuery(search);
   const [open, setOpen] = useState<Station | null>(null);
   const [importing, setImporting] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState<{
@@ -52,11 +52,6 @@ export function StationsSection() {
     title: string;
     version: number;
   } | null>(null);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
 
   // A page at a time, searched and exam-filtered in SQL. This used to walk up
   // to 25 pages of 100 before drawing anything, and quietly stopped at 2,500

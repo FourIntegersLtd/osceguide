@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { getDashboardCopy } from "@/foundation/attribution/copy";
+import { getDashboardCopy } from "@/capabilities/attribution-dashboard/copy";
 import {
   dateRangeForPreset,
   detectRangePreset,
   formatActiveFilterSummary,
   validateCustomRange,
-} from "@/foundation/attribution/presets";
-import { filterScope, parseAttributionTab, tabsForMode } from "@/foundation/attribution/tabs";
+} from "@/capabilities/attribution-dashboard/presets";
+import { filterScope, parseAttributionTab, tabsForMode } from "@/capabilities/attribution-dashboard/tabs";
 import {
   bucketForRange,
   campaignLabel,
@@ -17,7 +17,7 @@ import {
   partnerHeroFigures,
   signedUpPercent,
   visibleDefinitions,
-} from "@/foundation/attribution/viewModel";
+} from "@/capabilities/attribution-dashboard/viewModel";
 
 const NOW = new Date("2026-09-30T10:00:00Z");
 

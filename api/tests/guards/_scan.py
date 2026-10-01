@@ -55,6 +55,19 @@ def is_migration(path: Path) -> bool:
     return MIGRATION_ROOT in path.parents
 
 
+# Decorators that make a function an HTTP route.
+ROUTE_METHODS = {"get", "post", "put", "patch", "delete", "api_route", "websocket"}
+
+
+def is_route_handler(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True when the function is decorated as an HTTP route, e.g. `@router.get(...)`."""
+    for decorator in function.decorator_list:
+        target = decorator.func if isinstance(decorator, ast.Call) else decorator
+        if isinstance(target, ast.Attribute) and target.attr in ROUTE_METHODS:
+            return True
+    return False
+
+
 def parse(path: Path) -> ast.Module:
     return ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 

@@ -20,6 +20,7 @@ import {
   Panel,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
+import { formatLongDateTime } from "@/foundation/format";
 import { useCurrentExam } from "@/foundation/session";
 import { readReferralHistory, type ReferralHistoryRow } from "@/capabilities/account/api";
 
@@ -61,20 +62,6 @@ function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; val
       </div>
     </div>
   );
-}
-
-/** The old `formatDate`: "26 September 2026 at 18:44". */
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "No date provided";
-  const date = new Date(iso);
-  if (!Number.isFinite(date.getTime())) return "Invalid date";
-  return date.toLocaleDateString("en-GB", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function payoutStatusIcon(status: string): ReactNode {
@@ -135,7 +122,7 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
             <DetailRow
               icon={<HiOutlineCalendarDays className="h-4 w-4" />}
               label="Date created"
-              value={formatDate(referral.redeemed_at)}
+              value={formatLongDateTime(referral.redeemed_at)}
             />
             <DetailRow
               icon={<HiOutlineCodeBracket className="h-4 w-4" />}

@@ -57,6 +57,30 @@ async def summaries_by_version_id(
     }
 
 
+@dataclass(frozen=True)
+class VersionStation:
+    """The station a version belongs to, and that station's exam."""
+
+    station_id: uuid.UUID
+    exam_id: uuid.UUID
+
+
+async def stations_by_version_id(
+    session: AsyncSession, version_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, VersionStation]:
+    """Which station and exam each of these versions belongs to, whoever owns the station.
+
+    For a caller that holds version ids and must group or check by station:
+    the free trial counts stations, and an exam slot is marked against its
+    station's exam. A version that does not exist is simply absent.
+    """
+    pairs = await repository.versions_with_stations_any_owner(session, list(version_ids))
+    return {
+        version.id: VersionStation(station_id=station.id, exam_id=station.exam_id)
+        for version, station in pairs
+    }
+
+
 async def version_ids_matching_title(session: AsyncSession, search: str) -> list[uuid.UUID]:
     """Station version ids whose title contains `search`, so another slice can search by title in SQL."""
     return await repository.version_ids_matching_title(session, search)

@@ -12,6 +12,7 @@ import {
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
+import { formatMoney } from "@/foundation/format";
 import { hasCode } from "@/foundation/platform-client";
 import { startCheckout, type Plan } from "@/capabilities/account/api";
 
@@ -269,11 +270,4 @@ export function planTitle(plan: Plan): string {
 
 export function planDescription(plan: Plan): string {
   return PLAN_COPY[planMonths(plan)]?.description ?? `${plan.duration_days} days of practice`;
-}
-
-export function formatMoney(pence: number, currency: string): string {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(pence / 100);
 }

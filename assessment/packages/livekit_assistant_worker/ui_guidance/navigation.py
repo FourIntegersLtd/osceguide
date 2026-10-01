@@ -15,6 +15,8 @@ DEFAULT_NAVIGATION_MODE: NavigationMode = "guide"
 
 
 class NavigationModeState:
+    """Holds the navigation mode the user chose for one session."""
+
     def __init__(self, mode: NavigationMode = DEFAULT_NAVIGATION_MODE) -> None:
         self._mode: NavigationMode = mode
 

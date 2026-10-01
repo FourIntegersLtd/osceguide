@@ -54,10 +54,6 @@ NOTHING_IN_MATERIAL = (
 # contents: `frontend/src/shared/livekit-ui-guidance/contracts.ts` validates it.
 CARD_SCHEMA_VERSION = 2
 
-# The media kinds whose citations open by slug. Spelled here rather than read
-# from `service_material`, which imports this module's neighbours.
-MEDIA_CORPORA = ("summary", "slide_deck", "podcast", "blog")
-
 
 async def answer_question(
     session: AsyncSession,
@@ -133,14 +129,14 @@ async def _slugs(session: AsyncSession, passages: Sequence[Passage]) -> dict[str
     At most `SEARCH_LIMIT` reads, so one per item rather than a bulk call. An
     item gone since the last re-index keeps its citation, without a link.
     """
-    from app.features.media import errors as media_errors  # noqa: PLC0415 - avoids an import cycle
-    from app.features.media import service as media  # noqa: PLC0415
+    from app.features.media import errors as media_errors  # avoids an import cycle
+    from app.features.media import service as media
 
     slugs: dict[str, str] = {}
     for passage in passages:
         if passage.corpus == domain.HELP_CORPUS:
             slugs[passage.source_id] = help_slug(passage.source_id)
-        elif passage.corpus in MEDIA_CORPORA and passage.source_id not in slugs:
+        elif passage.corpus in domain.MEDIA_KINDS and passage.source_id not in slugs:
             try:
                 media_item = await media.read_by_id(
                     session, uuid.UUID(passage.source_id), viewer_is_admin=True

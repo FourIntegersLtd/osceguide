@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, AsyncBoundary, Badge, cn, getInputClassName, SectionSearchField } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { useAsync, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { copyRubric, listRubricStartingPoints, type RubricStartingPoint } from "@/capabilities/authoring/api";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
@@ -34,13 +34,8 @@ export function RubricStartScreen() {
   const titleId = useId();
   const [title, setTitle] = useState("");
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
+  const query = useSearchQuery(search);
   const [chosen, setChosen] = useState<string>("blank");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
 
   const points = useAsync((signal) => listRubricStartingPoints(scope, query, signal), [scope.base, query]);
   const keyOf = (point: RubricStartingPoint) => (point.kind === "blank" ? "blank" : `${point.rubric_id}:${point.version}`);

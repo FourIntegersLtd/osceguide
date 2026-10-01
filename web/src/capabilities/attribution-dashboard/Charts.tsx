@@ -12,9 +12,10 @@ import {
   chartColors,
 } from "@/foundation/charts";
 import type { components } from "@/foundation/platform-client";
-import type { DashboardCopy } from "@/foundation/attribution/copy";
-import { formatChartPeriodLabel, formatGbpPence } from "@/foundation/attribution/presets";
-import { seriesColors } from "@/foundation/attribution/theme";
+import type { DashboardCopy } from "@/capabilities/attribution-dashboard/copy";
+import { formatChartPeriodLabel } from "@/capabilities/attribution-dashboard/presets";
+import { formatMoney } from "@/foundation/format";
+import { seriesColors } from "@/capabilities/attribution-dashboard/theme";
 import {
   asBucket,
   costVsRevenueBars,
@@ -28,7 +29,7 @@ import {
   seriesIsFlat,
   type FunnelCounts,
   type SeriesPoint,
-} from "@/foundation/attribution/viewModel";
+} from "@/capabilities/attribution-dashboard/viewModel";
 import { CHART_HEIGHT } from "@/foundation/charts";
 
 type S = components["schemas"];
@@ -122,7 +123,7 @@ export function CostVsRevenueSection({
         <ComparisonBars
           data={costVsRevenueBars(spend)}
           seriesName="Amount"
-          formatValue={formatGbpPence}
+          formatValue={(pence) => formatMoney(pence)}
           formatTick={(value) => `£${value / 100}`}
         />
       )}
@@ -157,8 +158,8 @@ export function RevenueOverTimeSection({
           formatTick={(value) => `£${value / 100}`}
           formatValue={(value, payments) =>
             payments === undefined
-              ? formatGbpPence(value)
-              : `${formatGbpPence(value)} (${payments} payment${payments === 1 ? "" : "s"})`
+              ? formatMoney(value)
+              : `${formatMoney(value)} (${payments} payment${payments === 1 ? "" : "s"})`
           }
         />
       )}
@@ -197,7 +198,7 @@ export function RevenueByPlanSection({
                   </div>
                 </div>
                 <p className="shrink-0 text-osce-body font-semibold tabular-nums text-success">
-                  {formatGbpPence(row.gross_revenue_pence)}
+                  {formatMoney(row.gross_revenue_pence)}
                 </p>
               </li>
             ))}
@@ -211,7 +212,7 @@ export function RevenueByPlanSection({
                 color: seriesColors.revenue,
               }))}
               seriesName="Revenue"
-              formatValue={formatGbpPence}
+              formatValue={(pence) => formatMoney(pence)}
               formatTick={(value) => `£${value / 100}`}
             />
           </div>
@@ -330,7 +331,7 @@ export function FeeOverTimeSection({
           yAxisWidth={48}
           formatTick={(value) => `£${value / 100}`}
           formatValue={(value, visits) =>
-            visits === undefined ? formatGbpPence(value) : `${formatGbpPence(value)} (${visits} visits)`
+            visits === undefined ? formatMoney(value) : `${formatMoney(value)} (${visits} visits)`
           }
         />
       )}

@@ -83,6 +83,20 @@ class GenerationSettings(BaseModel):
         return stripped or None
 
 
+class PeerPracticeSettings(BaseModel):
+    """How long each phase of a peer practice session runs for an exam, in seconds.
+
+    Two candidates read the station, one consults the other, and then they
+    talk it over. An exam that says nothing gets these defaults.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    preparation_seconds: int = Field(default=180, ge=1, le=3600)
+    consultation_seconds: int = Field(default=720, ge=1, le=7200)
+    debrief_seconds: int = Field(default=900, ge=1, le=7200)
+
+
 class ExamSettings(BaseModel):
     """Everything that differs between exams apart from the rubric, as data.
 
@@ -107,6 +121,8 @@ class ExamSettings(BaseModel):
     help_modes: list[HelpMode] = Field(default_factory=lambda: _default_help_modes())
     # Whether the "a colleague is waiting for peer practice" email is offered.
     peer_waiting_email: bool = False
+    # How long each phase of a peer practice session runs.
+    peer_practice: PeerPracticeSettings = Field(default_factory=PeerPracticeSettings)
     generation: GenerationSettings = Field(default_factory=GenerationSettings)
 
     def subtype(self, key: str | None) -> StationSubtype | None:

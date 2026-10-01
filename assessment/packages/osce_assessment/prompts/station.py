@@ -158,15 +158,15 @@ def _text_from_value(val: Any, fields: Sequence[Mapping[str, Any]] | None = None
                 parts.append(item.strip())
             elif isinstance(item, dict):
                 parts.append(_text_from_value(item))
-        return "\n".join(p for p in parts if p)
+        return "\n".join(part for part in parts if part)
     if isinstance(val, dict):
         # Slate / tiptap rich-text blobs: drill into 'text' or 'children'
         if "text" in val:
             return str(val["text"]).strip()
         if "children" in val:
             return _text_from_value(val["children"])
-        pieces = [_text_from_value(v) for v in val.values()]
-        return "\n".join(p for p in pieces if p)
+        pieces = [_text_from_value(child) for child in val.values()]
+        return "\n".join(piece for piece in pieces if piece)
     return str(val).strip() if val is not None else ""
 
 
@@ -331,6 +331,7 @@ def _station_title(title: str, persona: str) -> str:
 
 
 def _how_to_answer(persona: str) -> str:
+    """The prompt section telling the persona how to respond to the person it is speaking with."""
     if persona == "examiner":
         return (
             "<how_to_answer>\n"

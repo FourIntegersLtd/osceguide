@@ -17,6 +17,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.tenancy.models import AuditEntry, Membership, Organization
 
 
@@ -148,14 +149,14 @@ async def list_memberships(
     *,
     limit: int,
     cursor: dict[str, Any] | None = None,
-    role_pattern: str | None = None,
+    role_search: str | None = None,
     matching_user_ids: Sequence[uuid.UUID] | None = None,
     exact_user_id: uuid.UUID | None = None,
     status: str | None = None,
 ) -> tuple[list[Membership], str | None]:
     """A page of an organisation's memberships, oldest first, optionally only those with `status`.
 
-    `role_pattern`, `matching_user_ids` and `exact_user_id` are the three ways
+    `role_search`, `matching_user_ids` and `exact_user_id` are the three ways
     a search term can match a row — its role by `ILIKE`, its person's email or
     name (resolved to ids by `identity` before this call), or its person's id
     typed in exactly — combined with `OR`. The caller passes all three or none:
@@ -165,8 +166,8 @@ async def list_memberships(
     stmt = select(Membership).where(Membership.org_id == org_id)
     if status is not None:
         stmt = stmt.where(Membership.status == status)
-    if role_pattern is not None:
-        conditions: list[Any] = [Membership.role.ilike(role_pattern)]
+    if role_search is not None:
+        conditions: list[Any] = [contains_text(Membership.role, role_search)]
         if matching_user_ids:
             conditions.append(Membership.user_id.in_(list(matching_user_ids)))
         if exact_user_id is not None:

@@ -80,17 +80,21 @@ async def generate_station(
     )
 
 
+def _exam_line(exam_code: str | None) -> str:
+    """The line telling the model which exam a draft is for, or nothing when none was chosen."""
+    return f"Exam: {exam_code}\n\n" if exam_code else ""
+
+
 async def generate_summary(
     *, prompt: str, exam_code: str | None, session: AsyncSession, settings: Settings
 ) -> dict[str, Any]:
     """Drafts a condition summary, normalised to the platform's summary draft keys."""
-    exam = exam_code or "sca"
     exam_settings = await catalog.exam_settings_for_code(session, exam_code)
     system = exam_prompts.summary_system_prompt(exam_settings) + _SUMMARY_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
-        user=f"Exam: {exam}\n\n{prompt}",
+        user=f"{_exam_line(exam_code)}{prompt}",
     )
     return normalize_summary_response(raw)
 
@@ -99,37 +103,34 @@ async def generate_blog(
     *, prompt: str, exam_code: str | None, session: AsyncSession, settings: Settings
 ) -> dict[str, Any]:
     """Drafts a blog post, normalised to the platform's blog draft keys."""
-    exam = exam_code or "sca"
     exam_settings = await catalog.exam_settings_for_code(session, exam_code)
     system = exam_prompts.blog_system_prompt(exam_settings) + _BLOG_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
-        user=f"Exam: {exam}\n\n{prompt}",
+        user=f"{_exam_line(exam_code)}{prompt}",
     )
     return normalize_blog_response(raw)
 
 
 async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
     """Drafts a slide deck, normalised to the platform's slide deck draft keys."""
-    exam = exam_code or "sca"
     system = exam_prompts.slide_system_prompt() + _SLIDE_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
-        user=f"Exam: {exam}\n\n{prompt}",
+        user=f"{_exam_line(exam_code)}{prompt}",
     )
     return normalize_slide_deck_response(raw)
 
 
 async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
     """Drafts a two-host podcast script from source material, normalised to the platform's `script` key."""
-    exam = exam_code or "sca"
     system = exam_prompts.podcast_system_prompt(prompt) + _PODCAST_JSON_APPENDIX
     raw = await _json_completion(
         settings=settings,
         system=system,
-        user=f"Exam: {exam}\n\nSource material:\n{prompt}",
+        user=f"{_exam_line(exam_code)}Source material:\n{prompt}",
     )
     return normalize_podcast_response(raw)
 
@@ -163,7 +164,7 @@ async def _json_completion(*, settings: Settings, system: str, user: str) -> dic
                 ],
             )
             text = response.choices[0].message.content or "{}"
-        except Exception:
+        except Exception:  # noqa: BLE001 - any failure of the first provider falls through to the second
             text = None
 
     if text is None:

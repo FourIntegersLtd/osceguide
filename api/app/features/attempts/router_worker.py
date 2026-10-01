@@ -30,6 +30,7 @@ router = APIRouter(
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Hand the voice worker everything it needs to run one attempt.
 @router.get(
     "/attempts/{attempt_id}",
     response_model=schemas.WorkerBootstrap,

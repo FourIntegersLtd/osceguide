@@ -19,6 +19,8 @@ __all__ = ["ASYNC_TOOL_HANDLING", "AgentBuild", "build_assistant_agent"]
 
 @dataclass(frozen=True)
 class AgentBuild:
+    """An assistant agent ready to start: the session, the agent definition, the runtime in use and any opening instruction."""
+
     session: AgentSession
     definition: Agent
     runtime: VoiceRuntime
@@ -49,6 +51,7 @@ def build_assistant_agent(
     gpt_live_vad: vad.VAD | None = None,
     guidance_toolset: ComputerToolset | None = None,
 ) -> AgentBuild:
+    """Build the agent session and definition for the chosen runtime, either speech-to-speech or the speech-to-text pipeline."""
     if runtime is VoiceRuntime.GPT_LIVE:
         if gpt_live_instructions is None:
             raise ValueError("GPT-Live instructions are required for GPT-Live sessions")

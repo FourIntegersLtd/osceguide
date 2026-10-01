@@ -23,27 +23,37 @@ from ._base import Frozen
 
 
 class ScenarioSource(str, Enum):
+    """Where a scenario comes from: the shared library, an organisation, or inline in the request."""
+
     LIBRARY = "library"
     ORG = "org"
     INLINE = "inline"
 
 
 class InteractionMode(str, Enum):
+    """Whether the AI plays the patient or acts as a tutor."""
+
     PATIENT = "patient"
     TUTOR = "tutor"
 
 
 class RuntimeHint(str, Enum):
+    """Which kind of voice pipeline the profile prefers: separate speech stages or one realtime model."""
+
     PIPELINE = "pipeline"
     REALTIME = "realtime"
 
 
 class MessageRole(str, Enum):
+    """Who said a transcript message: the user or the assistant."""
+
     USER = "user"
     ASSISTANT = "assistant"
 
 
 class AttemptStatus(str, Enum):
+    """How far an attempt has got, from created through to evaluated."""
+
     CREATED = "created"
     RUNNING = "running"
     INTERACTION_COMPLETE = "interaction_complete"
@@ -158,6 +168,8 @@ class AssessmentAttempt(BaseModel):
 
 
 class TranscriptMessage(Frozen):
+    """One line of the conversation, with who said it, when, and its position in order."""
+
     role: MessageRole
     message: str
     timestamp: datetime
@@ -166,6 +178,8 @@ class TranscriptMessage(Frozen):
 
 
 class Transcript(Frozen):
+    """The ordered messages of one attempt, and whether the conversation has finished."""
+
     attempt_id: str
     messages: tuple[TranscriptMessage, ...] = ()
     complete: bool = False

@@ -137,8 +137,8 @@ async def get_session() -> AsyncIterator[AsyncSession]:
     The exception is an `AppError` marked `persist_effects`, which commits and
     still fails the request — see `AppError.persist_effects`.
     """
-    from app.core.errors import AppError  # noqa: PLC0415 - avoids an import cycle
-    from app.core.events import flush_pending  # noqa: PLC0415 - avoids an import cycle
+    from app.core.errors import AppError  # avoids an import cycle
+    from app.core.events import flush_pending  # avoids an import cycle
 
     factory = get_session_factory()
     async with factory() as session:
@@ -171,7 +171,7 @@ async def job_session() -> AsyncIterator[AsyncSession]:
     The request dependency cannot serve here: a task has no request. Same
     rule though — commit on success, roll back on error.
     """
-    from app.core.events import flush_pending  # noqa: PLC0415 - avoids an import cycle
+    from app.core.events import flush_pending  # avoids an import cycle
 
     factory = get_session_factory()
     async with factory() as session, session.begin():

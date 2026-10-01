@@ -45,7 +45,6 @@ export function StructureBuilder({
   title,
   onTitleChange,
   kind = "station",
-  flatChrome = false,
   examCode,
   allowCustomGenerationPrompt = false,
 }: {
@@ -54,8 +53,6 @@ export function StructureBuilder({
   title?: string;
   onTitleChange?: (title: string) => void;
   kind?: TemplateKind;
-  /** @deprecated One palette serves both arms now. */
-  flatChrome?: boolean;
   examCode?: string | null;
   allowCustomGenerationPrompt?: boolean;
 }) {
@@ -101,7 +98,7 @@ export function StructureBuilder({
   );
 
   return (
-    <BuilderChromeProvider lightGray={flatChrome}>
+    <BuilderChromeProvider>
       <DndContext
         sensors={builder.sensors}
         collisionDetection={closestCenter}

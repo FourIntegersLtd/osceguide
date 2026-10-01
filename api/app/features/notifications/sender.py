@@ -20,7 +20,7 @@ class ResendSender:
             raise EmailDeliveryFailed("No Resend API key is configured.")
 
         try:
-            import resend  # noqa: PLC0415 - optional dependency
+            import resend  # optional dependency
         except ImportError as exc:  # pragma: no cover - depends on deployment extras
             raise EmailDeliveryFailed("The Resend SDK is not installed") from exc
 

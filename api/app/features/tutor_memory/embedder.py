@@ -45,7 +45,7 @@ class OpenAIEmbedder:
 
     async def embed(self, texts: Sequence[str]) -> list[list[float]]:
         """One vector per text, in `EMBED_BATCH`-sized requests to stay within the API's limits."""
-        import asyncio  # noqa: PLC0415
+        import asyncio
 
         wanted = list(texts)
         if not wanted:
@@ -87,7 +87,7 @@ def build_embedder() -> Embedder:
     if not settings.openai_api_key:
         raise EmbeddingFailed("No OPENAI_API_KEY, so nothing can be embedded.")
     try:
-        from openai import OpenAI  # noqa: PLC0415 - optional dependency
+        from openai import OpenAI  # optional dependency
     except ImportError as exc:
         raise EmbeddingFailed("The openai package is not installed.") from exc
     return OpenAIEmbedder(OpenAI(api_key=settings.openai_api_key))

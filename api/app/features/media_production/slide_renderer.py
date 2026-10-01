@@ -36,9 +36,9 @@ def utc_now_iso_z() -> str:
 
 
 class SlideService:
-    """Renders a slide deck's narration audio and teaching video with MoviePy, ported from the
-    B2C slide service. It reads and writes the deck as a local JSON file; the legacy
-    Firestore store it once mirrored to is gone.
+    """Renders a slide deck's narration audio and teaching video with MoviePy.
+
+    It reads and writes the deck as a local JSON file.
     """
 
     def __init__(self, settings: Settings | None = None):

@@ -79,7 +79,7 @@ class EngineProfileRenderer:
 def build_renderer() -> ProfileRenderer:
     """Wire the engine, or say plainly that it is not there."""
     try:
-        from osce_assessment.prompts import (  # noqa: PLC0415
+        from osce_assessment.prompts import (
             EXAMINER_GREETINGS,
             PATIENT_GREETINGS,
             create_station_prompt,

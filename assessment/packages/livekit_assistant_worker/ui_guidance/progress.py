@@ -97,6 +97,8 @@ def filler(ctx: Any, policy: ProgressPolicy):
 
 
 class _no_filler:
+    """An async context manager that does nothing, used when an action needs no filler speech."""
+
     async def __aenter__(self) -> None:
         return None
 
@@ -116,6 +118,7 @@ class GuidanceProgress:
         return self._active
 
     async def enter(self, step: str, *, label: str | None = None) -> None:
+        """Show this step on the browser's progress panel."""
         self._active = step
         await self._publish(step, label)
 
@@ -127,6 +130,7 @@ class GuidanceProgress:
         await self._publish(PROGRESS_STEP_DONE, None)
 
     async def _publish(self, step: str, label: str | None) -> None:
+        """Send the step to the browser as a data message."""
         payload: dict[str, Any] = {
             "type": DATA_TYPE_GUIDANCE_PROGRESS,
             "schemaVersion": UI_GUIDANCE_SCHEMA_VERSION,

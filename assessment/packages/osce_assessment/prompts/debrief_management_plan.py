@@ -3,6 +3,8 @@ from typing import Any, Dict, List, Optional
 
 
 class ManagementPlanFormatter:
+    """Turns a station's management plan into prompt text, with a default plan when none is given."""
+
     DEFAULT_PLAN = """
     ## Management Plan
     Basic consultation requirements:

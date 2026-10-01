@@ -190,7 +190,7 @@ export function readoutAsMarkdown(readout: SittingReadout): string {
   const stamp = (value: string) => new Date(value).toLocaleString("en-GB");
   const lines: string[] = [];
 
-  lines.push(`# ${sitting.name} — examination read-out`, "");
+  lines.push(`# ${sitting.name}: examination read-out`, "");
   lines.push(
     `Sitting \`${sitting.sitting_id}\` · organisation \`${readout.org_slug}\` · read-out v${readout.readout_version}`,
     "",

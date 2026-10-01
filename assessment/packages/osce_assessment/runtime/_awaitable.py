@@ -9,6 +9,7 @@ T = TypeVar("T")
 
 
 async def maybe_await(value: Any) -> Any:
+    """Return the value, awaiting it first when it is awaitable."""
     if inspect.isawaitable(value):
         return await value
     return value

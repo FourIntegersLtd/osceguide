@@ -106,7 +106,7 @@ class CompetencyFramework(Frozen):
         if len(set(competency_ids)) != len(competency_ids):
             raise ValueError(f"framework {self.id} has duplicate competency ids")
         orphans = sorted(
-            {c.id for c in self.competencies if c.domain_id not in set(domain_ids)}
+            {competency.id for competency in self.competencies if competency.domain_id not in set(domain_ids)}
         )
         if orphans:
             raise ValueError(
@@ -115,9 +115,9 @@ class CompetencyFramework(Frozen):
         scale = set(self.scale)
         off_scale = sorted(
             {
-                f"{c.id}.{key}"
-                for c in self.competencies
-                for key in c.descriptors
+                f"{competency.id}.{key}"
+                for competency in self.competencies
+                for key in competency.descriptors
                 if self.rating.is_enumerated and key not in scale
             }
         )
@@ -149,7 +149,7 @@ class CompetencyFramework(Frozen):
 
     def competencies_in(self, domain_id: str) -> tuple[Competency, ...]:
         """The competencies marked under one domain."""
-        return tuple(c for c in self.competencies if c.domain_id == domain_id)
+        return tuple(competency for competency in self.competencies if competency.domain_id == domain_id)
 
     def scores_in(self, result: Mapping[str, Any]) -> dict[str, Any]:
         """Every competency's rating in a result, keyed by competency id.

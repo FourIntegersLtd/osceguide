@@ -11,6 +11,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.media.models import MediaItem
 
 
@@ -100,9 +101,7 @@ def _catalog_filters(
         conditions.append(or_(MediaItem.exam_id == exam_id, MediaItem.exam_id.is_(None)))
     term = (search or "").strip()
     if term:
-        # Matched like the station library's title filter, including its LIKE
-        # wildcards: a `%` typed into a search box widens the query here too.
-        conditions.append(or_(MediaItem.title.ilike(f"%{term}%"), MediaItem.summary.ilike(f"%{term}%")))
+        conditions.append(or_(contains_text(MediaItem.title, term), contains_text(MediaItem.summary, term)))
     if specialty:
         conditions.append(MediaItem.specialty == specialty)
     if has_specialty is not None:

@@ -117,7 +117,7 @@ async def login_with_memberships(
     if user.status != "active":
         raise AccountSuspended()
     memberships = await memberships_for(session, user.id)
-    from app.features.identity.service_mfa import finish_password_sign_in  # noqa: PLC0415
+    from app.features.identity.service_mfa import finish_password_sign_in
 
     return await finish_password_sign_in(session, user, settings=settings, now=now, memberships=memberships)
 

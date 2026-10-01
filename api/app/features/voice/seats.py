@@ -23,15 +23,12 @@ admit a candidate the workers then refuse — which is no worse than before.
 from __future__ import annotations
 
 import time
-from collections.abc import Awaitable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, cast
 
 from app.core.logging import get_logger
-from app.core.redis import get_redis
 from app.core.settings import Settings
-from app.features.voice.capacity import CLOUD_SLOTS_KEY
+from app.features.voice.capacity import CLOUD_SLOTS_KEY, run_script
 
 log = get_logger(__name__)
 
@@ -210,17 +207,6 @@ def _line_keys() -> tuple[str, str, str, str]:
     return (CLOUD_SLOTS_KEY, SEATS_KEY, QUEUE_KEY, SEEN_KEY)
 
 
-async def _run(script: str, keys: tuple[str, ...], *args: object) -> Any:
-    """Run one script, or raise. Arguments go as strings; Lua's `tonumber` reads them back."""
-    client = get_redis()
-    if client is None:
-        raise ConnectionError("redis is not configured")
-    return await cast(
-        "Awaitable[Any]",
-        client.eval(script, len(keys), *keys, *[str(argument) for argument in args]),
-    )
-
-
 async def admit(settings: Settings, room: str, *, use_cloud: bool) -> Admission:
     """Seat this room, preferring Cloud when `use_cloud`, or put it in line.
 
@@ -233,7 +219,7 @@ async def admit(settings: Settings, room: str, *, use_cloud: bool) -> Admission:
     waiter_expiry = int(now) + settings.livekit_queue_waiter_ttl_seconds
     cloud_max = max(1, settings.livekit_cloud_max_concurrent) if use_cloud else 0
     try:
-        raw = await _run(
+        raw = await run_script(
             ADMIT,
             _line_keys(),
             room,
@@ -257,7 +243,7 @@ async def standing(settings: Settings, room: str, *, use_cloud: bool) -> Standin
     now = int(time.time())
     cloud_max = max(1, settings.livekit_cloud_max_concurrent) if use_cloud else 0
     try:
-        raw = await _run(
+        raw = await run_script(
             STANDING,
             _line_keys(),
             room,
@@ -276,8 +262,8 @@ async def hold(settings: Settings, room: str) -> None:
     """Count a circuit's room against our seats. Best effort: a circuit never waits on it."""
     expiry = int(time.time()) + max(60, settings.livekit_cloud_slot_pending_ttl_seconds)
     try:
-        await _run(HOLD, (SEATS_KEY,), room, expiry)
-    except Exception:  # noqa: BLE001
+        await run_script(HOLD, (SEATS_KEY,), room, expiry)
+    except Exception:  # noqa: BLE001 - a circuit never waits on the count
         log.warning("seat hold failed", room=room, exc_info=True)
 
 
@@ -285,8 +271,8 @@ async def extend(settings: Settings, room: str) -> bool:
     """Lengthen a room's seat to a whole session. False when it holds none here."""
     expiry = int(time.time()) + max(60, settings.livekit_cloud_slot_ttl_seconds)
     try:
-        return bool(int(await _run(EXTEND, (SEATS_KEY,), room, expiry)))
-    except Exception:  # noqa: BLE001
+        return bool(int(await run_script(EXTEND, (SEATS_KEY,), room, expiry)))
+    except Exception:  # noqa: BLE001 - the pending seat still expires on its own
         log.warning("seat extend failed", room=room, exc_info=True)
         return False
 
@@ -294,21 +280,21 @@ async def extend(settings: Settings, room: str) -> bool:
 async def release(room: str) -> bool:
     """Give a room's seat back. The expiry score reclaims it if this never arrives."""
     try:
-        return bool(int(await _run(RELEASE, (SEATS_KEY,), room)))
-    except Exception:  # noqa: BLE001
+        return bool(int(await run_script(RELEASE, (SEATS_KEY,), room)))
+    except Exception:  # noqa: BLE001 - the expiry score reclaims it either way
         log.warning("seat release failed", room=room, exc_info=True)
         return False
 
 
 async def leave(room: str) -> bool:
     """Take this room out of line. False when it was not in line, which is not an error."""
-    return bool(int(await _run(LEAVE, (QUEUE_KEY, SEEN_KEY), room)))
+    return bool(int(await run_script(LEAVE, (QUEUE_KEY, SEEN_KEY), room)))
 
 
 async def line_counts() -> LineCounts | None:
     """Seats taken and the line's length right now; None when Redis cannot say."""
     try:
-        raw = await _run(COUNTS, _line_keys(), int(time.time()))
+        raw = await run_script(COUNTS, _line_keys(), int(time.time()))
     except Exception:  # noqa: BLE001 - a count nobody acts on automatically
         log.warning("seat count failed", exc_info=True)
         return None

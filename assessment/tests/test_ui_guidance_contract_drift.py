@@ -13,8 +13,7 @@ import pytest
 
 from livekit_assistant_worker.ui_guidance import contracts
 
-# The frontend is a separate repository checked out beside this one. When it is
-# not there, there is nothing to drift against.
+# The browser's copy of the contract, in the same repository.
 CONTRACTS_TS = Path(__file__).resolve().parents[2] / "web/src/foundation/livekit/guidance/contracts.ts"
 
 _STRING_CONST = re.compile(r'export const (\w+)\s*=\s*"([^"]*)"\s*as const;')

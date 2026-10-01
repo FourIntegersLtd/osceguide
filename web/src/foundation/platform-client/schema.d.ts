@@ -1734,9 +1734,10 @@ export interface paths {
          *     `practice.accepted`, `cv.read`, `media.updated`, `station_import.updated`, `coverage`, ...) and
          *     carries just enough of a payload — an id — for a screen to tell whether it
          *     is the one being talked about; it still re-reads its own resource rather
-         *     than trusting the frame's content as truth. This replaces the polling
-         *     intervals every screen used to run on its own: marking status, a partner's
-         *     answer, a CV finishing, a live coverage panel, media production status.
+         *     than trusting the frame's content as truth. Every screen that waits on
+         *     something listens here and never asks on a timer: marking status, a
+         *     partner's answer, a CV finishing, a live coverage panel, media production
+         *     status.
          *
          *     Unlike `/attempts/{id}/stream` or `/sittings/stream`, there is no single
          *     read model behind this route to snapshot, so it is built on
@@ -9336,7 +9337,7 @@ export interface components {
          *
          *     A domain's tone comes from its value as a share of its maximum, read
          *     against the display's tones. `red`/`amber`/`green` are the poor, fair and
-         *     good-or-better counts, kept until platform-web reads `tones` (Stage 3).
+         *     good-or-better counts, kept until the web app reads `tones`.
          */
         DomainComposition: {
             /** Amber */
@@ -9654,6 +9655,7 @@ export interface components {
             generation?: components["schemas"]["GenerationSettings"];
             /** Help Modes */
             help_modes?: ("navigate" | "knowledge_base")[];
+            peer_practice?: components["schemas"]["PeerPracticeSettings"];
             /**
              * Peer Waiting Email
              * @default false
@@ -10364,12 +10366,8 @@ export interface components {
         };
         /** KnowledgeChat */
         KnowledgeChat: {
-            /**
-             * Exam Code
-             * @default sca
-             * @enum {string}
-             */
-            exam_code: "sca" | "plab" | "casc" | "ortho";
+            /** Exam Code */
+            exam_code?: string | null;
             /** Messages */
             messages: components["schemas"]["ChatMessage"][];
         };
@@ -11745,6 +11743,30 @@ export interface components {
             bank_name: string;
             /** Sort Code */
             sort_code: string;
+        };
+        /**
+         * PeerPracticeSettings
+         * @description How long each phase of a peer practice session runs for an exam, in seconds.
+         *
+         *     Two candidates read the station, one consults the other, and then they
+         *     talk it over. An exam that says nothing gets these defaults.
+         */
+        PeerPracticeSettings: {
+            /**
+             * Consultation Seconds
+             * @default 720
+             */
+            consultation_seconds: number;
+            /**
+             * Debrief Seconds
+             * @default 900
+             */
+            debrief_seconds: number;
+            /**
+             * Preparation Seconds
+             * @default 180
+             */
+            preparation_seconds: number;
         };
         /** PeerSessionRead */
         PeerSessionRead: {
@@ -13856,7 +13878,7 @@ export interface components {
          *     Per domain, every completed review's ratings in it combine as one
          *     (`rubrics.scoring.combine_reviewers`: the majority, ties to the worse).
          *     The overall is the worst domain: one weak domain is what a reader must see.
-         *     The name keeps `rag` until platform-web moves to the native fields (Stage 3).
+         *     The name keeps `rag` until the web app reads the rubric's own rating fields.
          */
         SlotRagSummary: {
             /** By Domain */
@@ -19746,7 +19768,7 @@ export interface operations {
     assistant_articles: {
         parameters: {
             query?: {
-                exam_code?: "sca" | "plab" | "casc" | "ortho";
+                exam_code?: string | null;
                 category?: string | null;
                 /** @description A fragment of a title or a body. */
                 search?: string | null;
@@ -19789,7 +19811,7 @@ export interface operations {
     assistant_article: {
         parameters: {
             query?: {
-                exam_code?: "sca" | "plab" | "casc" | "ortho";
+                exam_code?: string | null;
             };
             header?: never;
             path: {
@@ -19840,7 +19862,7 @@ export interface operations {
     assistant_categories: {
         parameters: {
             query?: {
-                exam_code?: "sca" | "plab" | "casc" | "ortho";
+                exam_code?: string | null;
             };
             header?: never;
             path?: never;

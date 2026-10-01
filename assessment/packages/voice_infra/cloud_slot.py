@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 async def _post_slot(action: str, room_name: str, endpoints: BackendEndpoints) -> None:
+    """Tell the backend to release or extend this room's cloud slot, logging instead of raising on failure."""
     room = (room_name or "").strip()
     if not room:
         return

@@ -376,7 +376,8 @@ async def seat_redis(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[object]:
 
     The Lua scripts are what is under test, so a fake that re-implements them
     would only prove the fake. Redis stays disabled for the rest of the app;
-    only `voice.seats` is pointed here. Skipped when no Redis is reachable
+    only the voice seat and Cloud slot counters are pointed here, since they
+    share one script runner. Skipped when no Redis is reachable
     (`docker compose up -d` serves one on :6380), as the `db` tests skip
     without Postgres.
     """
@@ -384,7 +385,7 @@ async def seat_redis(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[object]:
 
     from redis.asyncio import Redis
 
-    from app.features.voice import seats
+    from app.features.voice import capacity, seats
 
     url = os.environ.get("TEST_REDIS_URL", "redis://localhost:6380/15")
     client = Redis.from_url(url, decode_responses=True, socket_connect_timeout=0.5)
@@ -404,7 +405,8 @@ async def seat_redis(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[object]:
     }
     for constant, key in keys.items():
         monkeypatch.setattr(seats, constant, key)
-    monkeypatch.setattr(seats, "get_redis", lambda: client)
+    monkeypatch.setattr(capacity, "CLOUD_SLOTS_KEY", keys["CLOUD_SLOTS_KEY"])
+    monkeypatch.setattr(capacity, "get_redis", lambda: client)
     try:
         yield client
     finally:

@@ -25,6 +25,7 @@ router = APIRouter(tags=["worker"], dependencies=[Depends(require_worker_secret)
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
+# Hand the assistant worker everything it needs to run one assistant session.
 @router.get(
     "/assistant-sessions/{session_id}",
     response_model=schemas.WorkerSessionPayload,

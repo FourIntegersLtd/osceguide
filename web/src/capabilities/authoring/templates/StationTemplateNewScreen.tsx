@@ -153,7 +153,6 @@ function CreateStationTemplateWizardBody({
             onChange={setStructure}
             title={title}
             onTitleChange={setTitle}
-            flatChrome
             allowCustomGenerationPrompt
           />
         )}

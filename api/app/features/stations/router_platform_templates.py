@@ -70,6 +70,7 @@ async def create_platform_station_template(
     )
 
 
+# Add a new version to a platform station template.
 @router.post(
     "/platform/station-templates/{template_id}/versions",
     response_model=schemas.StationTemplateVersionRead,
@@ -128,6 +129,7 @@ async def archive_platform_station_template_version(
     )
 
 
+# Delete one version of a platform station template.
 @router.delete(
     "/platform/station-templates/{template_id}/versions/{version}",
     status_code=status.HTTP_204_NO_CONTENT,

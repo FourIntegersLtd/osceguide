@@ -1,5 +1,10 @@
 # Plan: Rubrics as templates — one model for marking, feedback and dashboards
 
+> **Status: built.** All four stages landed on 2026-09-30. This file is kept as the record of
+> the design and why it was chosen. Paths in it are from before the move to one repository
+> (`backend/platform-api/` is now `api/`). What is still owed is in `web/docs/BACKLOG.md`
+> (R-1, R-4, R-5, R-8); add nothing new here.
+>
 > Supersedes the earlier draft of this file (all of its content is carried here). A standalone plan
 > to build on: 4 stages, each shippable on its own.
 

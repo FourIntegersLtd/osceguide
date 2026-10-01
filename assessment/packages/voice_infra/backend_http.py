@@ -20,6 +20,7 @@ USER_AGENT = "osceguide-voice-worker/1"
 
 
 def request_headers(headers: dict[str, str] | None = None) -> dict[str, str]:
+    """The given headers plus our User-Agent, which the caller's values may override."""
     merged = {"User-Agent": USER_AGENT}
     merged.update(headers or {})
     return merged
@@ -31,6 +32,8 @@ class WorkerApiAuthError(RuntimeError):
 
 @dataclass(frozen=True)
 class SyncGetResult:
+    """What a blocking JSON request returned: success, status code, parsed object and whether auth was refused."""
+
     ok: bool
     status: int | None
     data: dict[str, Any] | None
@@ -46,9 +49,10 @@ def sync_get_json(
     timeout: float = 15.0,
     log_prefix: str = "worker_api",
 ) -> SyncGetResult:
-    qs = f"?{urllib.parse.urlencode(query)}" if query else ""
+    """GET a path on the backend with optional query parameters and read a JSON object back."""
+    query_string = f"?{urllib.parse.urlencode(query)}" if query else ""
     return sync_get_json_url(
-        f"{base_url.rstrip('/')}{path}{qs}",
+        f"{base_url.rstrip('/')}{path}{query_string}",
         headers=headers,
         timeout=timeout,
         log_prefix=log_prefix,
@@ -62,6 +66,7 @@ def sync_get_json_url(
     timeout: float = 15.0,
     log_prefix: str = "worker_api",
 ) -> SyncGetResult:
+    """GET a full URL and read a JSON object back; failures come back in the result, not as exceptions."""
     req = urllib.request.Request(url, headers=request_headers(headers), method="GET")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -83,6 +88,7 @@ async def post_json(
     headers: dict[str, str] | None = None,
     timeout: float = 5.0,
 ) -> int:
+    """POST a JSON body and return only the HTTP status."""
     req_headers = request_headers({"Content-Type": "application/json", **(headers or {})})
     async with aiohttp.ClientSession() as session:
         async with session.post(
@@ -130,8 +136,8 @@ def sync_post_json_url(
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return SyncGetResult(ok=True, status=resp.status, data=data if isinstance(data, dict) else None)
+            parsed = json.loads(resp.read().decode("utf-8"))
+            return SyncGetResult(ok=True, status=resp.status, data=parsed if isinstance(parsed, dict) else None)
     except urllib.error.HTTPError as exc:
         auth_failed = exc.code in {401, 403}
         (logger.error if auth_failed else logger.warning)("[%s] POST %s HTTP %s", log_prefix, url, exc.code)

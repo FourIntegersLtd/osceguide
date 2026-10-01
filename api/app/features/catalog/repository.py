@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.catalog.domain import ExamStatus
 from app.features.catalog.models import Exam, Programme
 
@@ -167,8 +168,7 @@ async def exam_codes_by_id(session: AsyncSession, exam_ids: set[uuid.UUID]) -> d
 async def exam_ids_matching_code(session: AsyncSession, term: str) -> list[uuid.UUID]:
     """Ids of every exam whose code contains `term`, case-insensitively. For
     another slice's own search filter, so it never queries `exams` itself."""
-    pattern = f"%{term}%"
-    stmt = select(Exam.id).where(Exam.code.ilike(pattern))
+    stmt = select(Exam.id).where(contains_text(Exam.code, term))
     return list((await session.execute(stmt)).scalars())
 
 

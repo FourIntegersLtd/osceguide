@@ -42,8 +42,8 @@ class SsoBrokers:
         if its secret is not configured on this deployment."""
         # Imported here, not at module load: a deployment with neither
         # provider configured must still be able to import this module.
-        from app.features.sso.clerk import build_clerk_broker  # noqa: PLC0415
-        from app.features.sso.entra import build_entra_broker  # noqa: PLC0415
+        from app.features.sso.clerk import build_clerk_broker
+        from app.features.sso.entra import build_entra_broker
 
         builder = build_clerk_broker if provider is domain.Provider.CLERK else build_entra_broker
         try:

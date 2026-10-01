@@ -67,4 +67,10 @@ def test_browser_endpoint_contract():
         assert detail.status_code == 200
         assert detail.json()["article"]["body_md"]
         assert client.get("/api/v1/help/articles/missing").status_code == 404
-        assert client.get("/api/v1/help/categories?exam_code=invalid").status_code == 422
+        # An exam nothing was written for, and no exam at all, both get the
+        # guides written for every exam and none written for one.
+        for query in ("?exam_code=an-institutions-own-exam", ""):
+            general = client.get(f"/api/v1/help/articles{query}")
+            assert general.status_code == 200
+            assert general.json()["articles"]
+            assert all("all" in article["exam_codes"] for article in general.json()["articles"])

@@ -130,7 +130,7 @@ async def list_stations(
 
 async def _exam_code(session: AsyncSession, station: Station) -> str:
     """The exam code this station's exam id resolves to, or empty if it no longer does."""
-    from app.features.catalog.service import exam_code_by_id  # noqa: PLC0415 - import cycle
+    from app.features.catalog.service import exam_code_by_id  # import cycle
 
     return await exam_code_by_id(session, station.exam_id) or ""
 

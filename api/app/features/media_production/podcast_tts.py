@@ -44,7 +44,7 @@ def generate_script(settings: Settings, source_text: str) -> str:
     """
     prompt = PODCAST_PROMPT.format(text=source_text)
     if settings.openai_api_key.strip():
-        from openai import OpenAI  # noqa: PLC0415 - optional dependency
+        from openai import OpenAI  # optional dependency
 
         client = OpenAI(api_key=settings.openai_api_key)
         try:
@@ -64,7 +64,7 @@ def generate_script(settings: Settings, source_text: str) -> str:
                 exc_info=True,
             )
 
-    from anthropic import Anthropic  # noqa: PLC0415 - optional dependency
+    from anthropic import Anthropic  # optional dependency
 
     fallback_client = Anthropic(api_key=settings.anthropic_api_key)
     fallback_response = fallback_client.messages.create(

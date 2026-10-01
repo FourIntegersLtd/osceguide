@@ -125,8 +125,6 @@ export function TemplateLayoutGallery({
   sectionLabel?: string;
   embedded?: boolean;
   resolveStructure?: (startPoint: StationTemplateStartPoint) => StationStructure;
-  /** @deprecated Cards share one chrome. */
-  flatCards?: boolean;
 }) {
   const orderedOptions = useMemo(
     () => orderedStartOptions(orgSlug, options),
@@ -174,7 +172,6 @@ export function TemplateStartPanel({
   onStartPointChange: (next: StationTemplateStartPoint) => void;
   options: readonly StationTemplateStartOption[];
   resolveStructure?: (startPoint: StationTemplateStartPoint) => StationStructure;
-  flatCards?: boolean;
   layoutSectionLabel?: string;
   layoutHint?: string;
   examField?: ReactNode;

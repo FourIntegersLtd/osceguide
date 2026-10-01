@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from app.core.settings import Settings
-from app.features.voice import seats
+from app.features.voice import capacity, seats
 from app.features.voice.seats import Admission, Placement, Standing
 
 
@@ -96,7 +96,7 @@ async def test_a_circuit_holds_a_seat_and_only_held_seats_are_extended() -> None
 
 async def test_without_redis_candidates_are_served_by_our_workers(monkeypatch: pytest.MonkeyPatch) -> None:
     """A cache outage must not turn every candidate away, as the Cloud counter never has."""
-    monkeypatch.setattr(seats, "get_redis", lambda: None)
+    monkeypatch.setattr(capacity, "get_redis", lambda: None)
     settings = small_settings()
 
     assert await seats.admit(settings, "room_a", use_cloud=True) == Admission(Placement.SELF_HOSTED, 0)

@@ -53,6 +53,8 @@ class ProviderError(RuntimeError):
 
 
 class LLMEvaluator:
+    """Marks a transcript by asking a model for structured output, falling back to a second provider."""
+
     def __init__(
         self,
         *,
@@ -96,6 +98,7 @@ class LLMEvaluator:
         policy: EvaluationPolicy,
         scenario: Scenario,
     ) -> AssessmentResult:
+        """Mark the transcript against the policy's framework and return the validated result."""
         framework = self._frameworks.get(policy.framework_id)
         if not framework.result_schema:
             raise EvaluationError(f"framework {framework.id!r} has no result schema to score against")
@@ -166,6 +169,7 @@ class LLMEvaluator:
 
     @staticmethod
     def _score_primary(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
+        """Ask the primary provider for a JSON object matching the schema."""
         kwargs: dict[str, Any] = {
             "model": policy.primary_model,
             "messages": [
@@ -192,6 +196,7 @@ class LLMEvaluator:
 
     @staticmethod
     def _score_fallback(client: Any, policy: EvaluationPolicy, schema: dict[str, Any], name: str, system: str, user: str) -> dict[str, Any]:
+        """Ask the fallback provider for the same object by forcing it to call a recording tool."""
         response = client.messages.create(
             model=policy.fallback_model,
             max_tokens=policy.fallback_max_tokens,
@@ -208,6 +213,7 @@ class LLMEvaluator:
 
 
 def _as_object(value: Any) -> dict[str, Any]:
+    """Return the value if it is a JSON object, otherwise raise a provider error."""
     if not isinstance(value, dict):
         raise ProviderError(f"structured output was {type(value).__name__}, not an object")
     return value

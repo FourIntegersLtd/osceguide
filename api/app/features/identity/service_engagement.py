@@ -1,9 +1,6 @@
 """The "come try a station" nudge for someone who signed up and never practised.
 
-Ported from legacy `b2c-api`'s `InactiveUserEngagementService`, which polled
-Firestore every 24 hours across all four `APP_TYPES` and sent through
-`EmailService.send_inactive_user_engagement_email`. Here it is a single daily
-Procrastinate task (`jobs.py`) against the one `users` table, gated by
+It is a single daily Procrastinate task (`jobs.py`) against the `users` table, gated by
 `settings.engagement_email_enabled` so it cannot fire until the owner turns it
 on: see `docs/ENVIRONMENT.md`, `ENGAGEMENT_EMAIL_ENABLED`.
 
@@ -80,11 +77,13 @@ async def send_due_engagement_emails(session: AsyncSession, *, now: datetime) ->
         if not await repository.claim_engagement_email(session, candidate.id, now=now):
             # Already sent by an earlier or overlapping run: nothing to do.
             continue
-        exam_name = (candidate.exam_code or "SCA").upper()
+        # An account that never chose an exam is asked about "your first station".
+        exam_name = (candidate.exam_code or "").upper()
+        first_station = f"first {exam_name} station" if exam_name else "first station"
         await notifications.enqueue_email(
             session,
             recipient=candidate.email,
-            subject=f"OSCE Guide - Ready to complete your first {exam_name} station?",
+            subject=f"OSCE Guide - Ready to complete your {first_station}?",
             template_key="inactive_user_engagement",
             payload={
                 "display_name": candidate.name or candidate.email.split("@", 1)[0],

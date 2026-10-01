@@ -4810,7 +4810,7 @@
         "type": "object"
       },
       "DomainComposition": {
-        "description": "How many marked attempts landed in each tone on one domain.\n\nA domain's tone comes from its value as a share of its maximum, read\nagainst the display's tones. `red`/`amber`/`green` are the poor, fair and\ngood-or-better counts, kept until platform-web reads `tones` (Stage 3).",
+        "description": "How many marked attempts landed in each tone on one domain.\n\nA domain's tone comes from its value as a share of its maximum, read\nagainst the display's tones. `red`/`amber`/`green` are the poor, fair and\ngood-or-better counts, kept until the web app reads `tones`.",
         "properties": {
           "amber": {
             "title": "Amber",
@@ -5776,6 +5776,9 @@
             },
             "title": "Help Modes",
             "type": "array"
+          },
+          "peer_practice": {
+            "$ref": "#/components/schemas/PeerPracticeSettings"
           },
           "peer_waiting_email": {
             "default": false,
@@ -7392,15 +7395,17 @@
       "KnowledgeChat": {
         "properties": {
           "exam_code": {
-            "default": "sca",
-            "enum": [
-              "sca",
-              "plab",
-              "casc",
-              "ortho"
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Exam Code",
-            "type": "string"
+            "title": "Exam Code"
           },
           "messages": {
             "items": {
@@ -11064,6 +11069,34 @@
           "sort_code"
         ],
         "title": "PayoutDetailsWrite",
+        "type": "object"
+      },
+      "PeerPracticeSettings": {
+        "description": "How long each phase of a peer practice session runs for an exam, in seconds.\n\nTwo candidates read the station, one consults the other, and then they\ntalk it over. An exam that says nothing gets these defaults.",
+        "properties": {
+          "consultation_seconds": {
+            "default": 720,
+            "maximum": 7200.0,
+            "minimum": 1.0,
+            "title": "Consultation Seconds",
+            "type": "integer"
+          },
+          "debrief_seconds": {
+            "default": 900,
+            "maximum": 7200.0,
+            "minimum": 1.0,
+            "title": "Debrief Seconds",
+            "type": "integer"
+          },
+          "preparation_seconds": {
+            "default": 180,
+            "maximum": 3600.0,
+            "minimum": 1.0,
+            "title": "Preparation Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "PeerPracticeSettings",
         "type": "object"
       },
       "PeerSessionRead": {
@@ -16374,7 +16407,7 @@
         "type": "object"
       },
       "SlotRagSummary": {
-        "description": "What several reviewers of one slot agreed, or did not, in the rubric's own rating.\n\nPer domain, every completed review's ratings in it combine as one\n(`rubrics.scoring.combine_reviewers`: the majority, ties to the worse).\nThe overall is the worst domain: one weak domain is what a reader must see.\nThe name keeps `rag` until platform-web moves to the native fields (Stage 3).",
+        "description": "What several reviewers of one slot agreed, or did not, in the rubric's own rating.\n\nPer domain, every completed review's ratings in it combine as one\n(`rubrics.scoring.combine_reviewers`: the majority, ties to the worse).\nThe overall is the worst domain: one weak domain is what a reader must see.\nThe name keeps `rag` until the web app reads the rubric's own rating fields.",
         "properties": {
           "by_domain": {
             "additionalProperties": {
@@ -27886,15 +27919,17 @@
             "name": "exam_code",
             "required": false,
             "schema": {
-              "default": "sca",
-              "enum": [
-                "sca",
-                "plab",
-                "casc",
-                "ortho"
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ],
-              "title": "Exam Code",
-              "type": "string"
+              "title": "Exam Code"
             }
           },
           {
@@ -27998,15 +28033,17 @@
             "name": "exam_code",
             "required": false,
             "schema": {
-              "default": "sca",
-              "enum": [
-                "sca",
-                "plab",
-                "casc",
-                "ortho"
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ],
-              "title": "Exam Code",
-              "type": "string"
+              "title": "Exam Code"
             }
           }
         ],
@@ -28079,15 +28116,17 @@
             "name": "exam_code",
             "required": false,
             "schema": {
-              "default": "sca",
-              "enum": [
-                "sca",
-                "plab",
-                "casc",
-                "ortho"
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
               ],
-              "title": "Exam Code",
-              "type": "string"
+              "title": "Exam Code"
             }
           }
         ],
@@ -29697,7 +29736,7 @@
     },
     "/api/v1/me/events": {
       "get": {
-        "description": "One stream, every kind of thing that happens to this person.\n\nThe one live-update connection a signed-in tab holds. Each frame names\nwhat happened (`attempt`, `practice.session_updated`, `practice.matched`,\n`practice.accepted`, `cv.read`, `media.updated`, `station_import.updated`, `coverage`, ...) and\ncarries just enough of a payload \u2014 an id \u2014 for a screen to tell whether it\nis the one being talked about; it still re-reads its own resource rather\nthan trusting the frame's content as truth. This replaces the polling\nintervals every screen used to run on its own: marking status, a partner's\nanswer, a CV finishing, a live coverage panel, media production status.\n\nUnlike `/attempts/{id}/stream` or `/sittings/stream`, there is no single\nread model behind this route to snapshot, so it is built on\n`fan_in_stream` rather than `event_stream` \u2014 see `app.core.sse` for why.",
+        "description": "One stream, every kind of thing that happens to this person.\n\nThe one live-update connection a signed-in tab holds. Each frame names\nwhat happened (`attempt`, `practice.session_updated`, `practice.matched`,\n`practice.accepted`, `cv.read`, `media.updated`, `station_import.updated`, `coverage`, ...) and\ncarries just enough of a payload \u2014 an id \u2014 for a screen to tell whether it\nis the one being talked about; it still re-reads its own resource rather\nthan trusting the frame's content as truth. Every screen that waits on\nsomething listens here and never asks on a timer: marking status, a\npartner's answer, a CV finishing, a live coverage panel, media production\nstatus.\n\nUnlike `/attempts/{id}/stream` or `/sittings/stream`, there is no single\nread model behind this route to snapshot, so it is built on\n`fan_in_stream` rather than `event_stream` \u2014 see `app.core.sse` for why.",
         "operationId": "identity_stream_my_events",
         "parameters": [
           {

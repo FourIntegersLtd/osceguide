@@ -159,6 +159,7 @@ async def list_my_sessions(
     return Page(items=peer_sessions, next_cursor=next_cursor)
 
 
+# Join a scheduled peer practice session.
 @router.post(
     "/me/peer-sessions/{session_id}/join",
     response_model=schemas.PeerSessionRead,

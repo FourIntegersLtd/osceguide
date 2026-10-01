@@ -13,11 +13,17 @@ import {
   Button,
   productTokens,
 } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
-import { loadStationCatalogue, readSet, updateSet, type StationSet } from "@/domains/train/api";
+import { errorMessage, useAsync, useSearchQuery } from "@/foundation/hooks";
+import { browseLibrary } from "@/capabilities/stations";
+import { readSet, updateSet, type StationSet } from "@/domains/train/api";
 import { entriesInOrder } from "@/domains/train/mocks/model";
 
 const { b2cFieldLabel, b2cInputBase } = productTokens;
+
+/** How many stations the search list shows at once. Typing narrows it on the server. */
+const SEARCH_RESULTS_LIMIT = 25;
+/** The most station titles one request may ask for. */
+const TITLES_LIMIT = 100;
 
 /** A station as this page lists it: the version the set points at, and its title. */
 interface PickableStation {
@@ -28,25 +34,33 @@ interface PickableStation {
 /**
  * The pencil's page: the retiring client's `UpdateMock`, control for control.
  *
- * A name field, a search box whose list offers every station of the session's
- * exam that is not in it yet, and the chosen stations with a remove button
+ * A name field, a search box that asks the server for stations of the session's
+ * exam matching what was typed, and the chosen stations with a remove button
  * each. One PATCH saves the name and the list together.
  */
 export function MockUpdate({ setId }: { setId: string }) {
   const state = useAsync(
     async (signal) => {
       const set = await readSet(setId, signal);
-      const library = await loadStationCatalogue(set.exam_code, signal);
-      const catalogue: PickableStation[] = library.map((station) => ({
-        versionId: station.version_id,
-        name: station.title,
-      }));
-      const titles = new Map(catalogue.map((station) => [station.versionId, station.name]));
-      const selected: PickableStation[] = entriesInOrder(set).map((entry) => ({
+      // Only the titles of the stations already in the session, not the whole library.
+      const entries = entriesInOrder(set);
+      const chosen =
+        entries.length > 0
+          ? await browseLibrary(
+              {
+                examCode: set.exam_code,
+                versionIds: entries.map((entry) => entry.station_version_id),
+                limit: TITLES_LIMIT,
+              },
+              signal,
+            )
+          : { items: [] };
+      const titles = new Map(chosen.items.map((station) => [station.version_id, station.title]));
+      const selected: PickableStation[] = entries.map((entry) => ({
         versionId: entry.station_version_id,
         name: titles.get(entry.station_version_id) ?? "Station",
       }));
-      return { set, catalogue, selected };
+      return { set, selected };
     },
     [setId],
   );
@@ -55,9 +69,7 @@ export function MockUpdate({ setId }: { setId: string }) {
     <>
       <Back />
       <AsyncBoundary state={state}>
-        {({ set, catalogue, selected }) => (
-          <UpdateForm set={set} catalogue={catalogue} initialStations={selected} />
-        )}
+        {({ set, selected }) => <UpdateForm set={set} initialStations={selected} />}
       </AsyncBoundary>
     </>
   );
@@ -65,11 +77,9 @@ export function MockUpdate({ setId }: { setId: string }) {
 
 function UpdateForm({
   set,
-  catalogue,
   initialStations,
 }: {
   set: StationSet;
-  catalogue: PickableStation[];
   initialStations: PickableStation[];
 }) {
   const [mockName, setMockName] = useState(set.name);
@@ -94,13 +104,16 @@ function UpdateForm({
   }, []);
 
   const selectedIds = new Set(currentMockStations.map((station) => station.versionId));
-  const searchTerm = stationSearch.toLowerCase().trim();
-  const searchedStations = catalogue.filter(
-    (station) =>
-      station.name.length > 0 &&
-      !selectedIds.has(station.versionId) &&
-      station.name.toLowerCase().trim().includes(searchTerm),
+  // What the server is asked for: the box, once typing pauses. The match is
+  // made in the database, so a station is found however large the library is.
+  const query = useSearchQuery(stationSearch);
+  const matches = useAsync(
+    (signal) => browseLibrary({ examCode: set.exam_code, search: query, limit: SEARCH_RESULTS_LIMIT }, signal),
+    [set.exam_code, query],
   );
+  const searchedStations: PickableStation[] = (matches.data?.items ?? [])
+    .filter((station) => station.title.length > 0 && !selectedIds.has(station.version_id))
+    .map((station) => ({ versionId: station.version_id, name: station.title }));
 
   const handleStationSelect = (station: PickableStation) => {
     setCurrentMockStations((previous) => [...previous, station]);

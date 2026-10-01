@@ -187,7 +187,7 @@ def _refuse_unless_password_route(request: Request) -> None:
     is not something fifty routers can be trusted to remember — the rule was
     once written and tested but never actually wired to a route.
     """
-    from app.core.openapi import operation_id  # noqa: PLC0415 - avoids an import cycle
+    from app.core.openapi import operation_id  # avoids an import cycle
 
     if not _password_gate:
         raise RuntimeError("No password gate bound. app.main.create_app must call bind_password_gate.")

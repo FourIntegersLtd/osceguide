@@ -19,7 +19,7 @@ def primary_client() -> Any | None:
     if not settings.openai_api_key:
         return None
     try:
-        from openai import OpenAI  # noqa: PLC0415 - optional dependency
+        from openai import OpenAI  # optional dependency
     except ImportError:
         return None
     return OpenAI(api_key=settings.openai_api_key)
@@ -31,7 +31,7 @@ def fallback_client() -> Any | None:
     if not settings.anthropic_api_key:
         return None
     try:
-        from anthropic import Anthropic  # noqa: PLC0415 - optional dependency
+        from anthropic import Anthropic  # optional dependency
     except ImportError:
         return None
     return Anthropic(api_key=settings.anthropic_api_key)

@@ -54,7 +54,7 @@ def prompt_text(prompt_id: str) -> str:
 
 
 def available_prompt_ids() -> tuple[str, ...]:
-    return tuple(sorted(p.name[:-4] for p in resources.files(__name__).iterdir() if p.name.endswith(".txt")))
+    return tuple(sorted(entry.name[:-4] for entry in resources.files(__name__).iterdir() if entry.name.endswith(".txt")))
 
 
 def system_prompt(prompt_id: str) -> str:

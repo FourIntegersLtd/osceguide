@@ -38,6 +38,7 @@ def filler_line(step: int) -> str:
 
 
 def filler_kwargs() -> dict[str, float | int | None | Callable[[int], str]]:
+    """The delay, interval and step limit for filler speech, as keyword arguments for ``with_filler``."""
     return {
         "delay": FILLER_DELAY_SECONDS,
         "interval": FILLER_INTERVAL_SECONDS,

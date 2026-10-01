@@ -15,7 +15,9 @@ main_logger = logging.getLogger(__name__)
 
 
 def build_offer_navigation_modes_tool(ctx: JobContext):
+    """Build the tool that asks the user, on screen, how they want to be guided."""
     async def _offer_navigation_modes_impl(run_ctx: RunContext) -> str:
+        """Publish the navigation choice prompt to the room and tell the model what to do next."""
         # No ctx.update here: publishing a data packet takes milliseconds, and the
         # first update would make the tool non-blocking, deferring the line that
         # tells the user to choose to whenever the session next falls idle.

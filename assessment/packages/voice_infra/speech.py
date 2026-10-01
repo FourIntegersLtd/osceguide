@@ -46,6 +46,8 @@ CARTESIA_MALE_VOICE_ID = "95856005-0332-41b0-935f-352e296aa0df"
 
 @dataclass(frozen=True)
 class SpeechSettings:
+    """The model, voice and style choices for speech, each overridable from the environment."""
+
     stt_model: str = "nova-3-medical"
     # Both chosen by measurement, not recency: see scripts/model_bench.py. The
     # patient stayed on gpt-4o-mini because gpt-5.4-nano tied on role adherence
@@ -91,6 +93,7 @@ class SpeechSettings:
 
 
 def build_stt(settings: SpeechSettings | None = None) -> deepgram.STT:
+    """Build the speech-to-text model."""
     settings = settings or SpeechSettings.from_env()
     return deepgram.STT(model=settings.stt_model, language="en", punctuate=True, interim_results=True)
 

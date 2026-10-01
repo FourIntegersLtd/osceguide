@@ -13,6 +13,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.roster.domain import normalize_email
 from app.features.roster.models import Cohort, Trainee
 
@@ -87,13 +88,12 @@ async def list_trainees(
         )
     term = (search or "").strip()
     if term:
-        pattern = f"%{term}%"
         stmt = stmt.outerjoin(Cohort, Trainee.cohort_id == Cohort.id).where(
             or_(
-                Trainee.first_name.ilike(pattern),
-                Trainee.last_name.ilike(pattern),
-                Trainee.email.ilike(pattern),
-                Cohort.name.ilike(pattern),
+                contains_text(Trainee.first_name, term),
+                contains_text(Trainee.last_name, term),
+                contains_text(Trainee.email, term),
+                contains_text(Cohort.name, term),
             )
         )
     return await keyset_page(

@@ -1,7 +1,7 @@
 "use client";
 
 import { HiOutlineInformationCircle } from "react-icons/hi2";
-import { formatGbpPence } from "@/foundation/attribution/presets";
+import { formatMoney } from "@/foundation/format";
 
 function Note({
   tone,
@@ -40,7 +40,7 @@ export function SpendDisclaimerBanner({
   return (
     <Note tone="warning" title="Rough BMJ spend estimate (internal only)">
       {spend.billing_disclaimer} We&apos;re using{" "}
-      <strong>{formatGbpPence(spend.cost_per_click_pence)}</strong> per link visit for this
+      <strong>{formatMoney(spend.cost_per_click_pence)}</strong> per link visit for this
       estimate.
     </Note>
   );
@@ -63,7 +63,7 @@ export function FeeDisclaimerBanner({
   return (
     <Note tone="warning" title="Estimated fee (guide only)">
       {fee.billing_disclaimer} We&apos;re using{" "}
-      <strong>{formatGbpPence(fee.cost_per_click_pence)}</strong> per link visit.
+      <strong>{formatMoney(fee.cost_per_click_pence)}</strong> per link visit.
     </Note>
   );
 }

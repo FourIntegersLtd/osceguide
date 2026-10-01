@@ -77,7 +77,7 @@ def _client() -> Any:
     if not settings.openai_api_key:
         raise TranscriptionFailed("No OpenAI key is configured, so nothing can be transcribed")
     try:
-        from openai import OpenAI  # noqa: PLC0415 - optional dependency
+        from openai import OpenAI  # optional dependency
     except ImportError as exc:  # pragma: no cover - depends on deployment extras
         raise TranscriptionFailed("The OpenAI SDK is not installed") from exc
     return OpenAI(api_key=settings.openai_api_key)

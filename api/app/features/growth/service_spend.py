@@ -33,7 +33,7 @@ SPEND_ALERT_TEMPLATE = "partner_spend_alert"
 
 def get_event_counts(settings: SettingsDep) -> EventCounts:
     """The Mixpanel adapter this deployment allows, as a route dependency. Overridden in tests."""
-    from app.features.growth.mixpanel import build_event_counts  # noqa: PLC0415
+    from app.features.growth.mixpanel import build_event_counts
 
     return build_event_counts(settings)
 
@@ -53,8 +53,8 @@ async def reconcile_landings(
     Oracle: b2c `reconcile_landing_counts`. The two should roughly agree; a gap
     is something to look at, not something this decides about.
     """
-    partner_key = _require_partner(partner)
-    _require_range(from_date, to_date)
+    partner_key = require_partner(partner)
+    require_range(from_date, to_date)
     landed_from, landed_before = domain.ledger_bounds(from_date, to_date)
     ledger_count = await repository.count_arrivals_between(
         session,
@@ -102,8 +102,8 @@ async def read_spend(
 ) -> PartnerSpendRead:
     """Estimated spend on this partner's clicks in a range, against what the people
     it sent in that range paid. A read: judging the alert thresholds is the job's."""
-    partner_key = _require_partner(partner)
-    _require_range(from_date, to_date)
+    partner_key = require_partner(partner)
+    require_range(from_date, to_date)
     config = await read_config(session, partner=partner_key)
     return await _spend(
         session, partner_key, from_date, to_date, cost_per_click_pence=config.cost_per_click_pence
@@ -112,7 +112,7 @@ async def read_spend(
 
 async def read_config(session: AsyncSession, *, partner: str) -> PilotConfigRead:
     """This partner's pilot settings, or b2c's defaults if nobody has saved any."""
-    partner_key = _require_partner(partner)
+    partner_key = require_partner(partner)
     stored = await repository.pilot_config(session, partner_key)
     if stored is None:
         return PilotConfigRead(
@@ -272,7 +272,7 @@ async def _spend(
     )
 
 
-def _require_partner(partner: str) -> str:
+def require_partner(partner: str) -> str:
     """The partner key, lower-cased, or `unknown_partner` if it is not in the pilot."""
     partner_key = (partner or "").strip().lower()
     if partner_key not in domain.PILOT_PARTNERS:
@@ -280,7 +280,15 @@ def _require_partner(partner: str) -> str:
     return partner_key
 
 
-def _require_range(from_date: date, to_date: date) -> None:
+def require_bucket(bucket: str) -> str:
+    """The bucket name, or `InvalidInput` if it names none of day/week/month."""
+    try:
+        return domain.validate_bucket(bucket)
+    except domain.InvalidBucket as error:
+        raise errors.InvalidBucketError(str(error)) from error
+
+
+def require_range(from_date: date, to_date: date) -> None:
     """Refuse a range that ends before it begins."""
     try:
         domain.ensure_date_range(from_date, to_date)

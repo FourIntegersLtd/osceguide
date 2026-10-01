@@ -91,7 +91,7 @@ async def stop_recording_and_queue(
     run against a state that then rolled back — and the recording it was told
     to fetch would be one nothing had stopped.
     """
-    from app.features.peer_practice.jobs import enqueue_transcription  # noqa: PLC0415
+    from app.features.peer_practice.jobs import enqueue_transcription
 
     if practice_session.recording_state != "recording" or not practice_session.egress_id:
         return

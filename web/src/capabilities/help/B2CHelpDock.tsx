@@ -159,7 +159,7 @@ function HelpChoiceScreen({
 }
 
 function NavigateHelpPanel({
-  appType,
+  examCode,
   navItems,
   onClose,
   onBack,
@@ -168,7 +168,7 @@ function NavigateHelpPanel({
   launch,
   onLaunched,
 }: {
-  appType: string;
+  examCode?: string;
   navItems: HelpNavItem[];
   onClose: () => void;
   onBack: () => void;
@@ -259,7 +259,7 @@ function NavigateHelpPanel({
         ) : null}
 
         {!inCall || helpArticle ? (
-          <HelpArticleBrowse key={helpArticle ?? "browse"} appType={appType} initialArticle={helpArticle ?? undefined} />
+          <HelpArticleBrowse key={helpArticle ?? "browse"} examCode={examCode} initialArticle={helpArticle ?? undefined} />
         ) : null}
 
         {!inCall && <div className="mb-3 hidden shrink-0 flex-col items-center justify-center lg:mt-6 lg:flex"><AthenaIdentity description="Or ask Athena by voice below" /></div>}
@@ -328,8 +328,8 @@ export interface B2CHelpDockProps {
   setIsExpanded: (value: boolean) => void;
   isWide: boolean;
   setIsWide: (value: boolean) => void;
-  /** Help article pack; consumer defaults to the signed-in exam code. */
-  appType?: string;
+  /** Whose help to show. Defaults to the signed-in person's exam; with none, the general guides. */
+  examCode?: string;
 }
 
 /**
@@ -342,11 +342,11 @@ export function B2CHelpDock({
   setIsExpanded,
   isWide,
   setIsWide,
-  appType: appTypeOverride,
+  examCode: examCodeOverride,
 }: B2CHelpDockProps) {
   const { session } = useSession();
   const { code, settings } = useCurrentExam();
-  const appType = (appTypeOverride ?? code ?? "sca").toLowerCase();
+  const examCode = (examCodeOverride ?? code)?.toLowerCase();
   // Whether there is a choice to offer at all (`settings.help_modes`,
   // `app/core/exam_settings.py`). An exam that only lists one mode skips the
   // choice screen and opens straight into it.
@@ -415,13 +415,13 @@ export function B2CHelpDock({
             </button>
           </div>
         </div>
-        <KnowledgeBaseChat appType={appType} />
+        <KnowledgeBaseChat examCode={examCode} />
       </div>
     );
   } else {
     panel = (
       <NavigateHelpPanel
-        appType={appType}
+        examCode={examCode}
         navItems={navItems}
         onClose={handleClose}
         onBack={offersHelpChoice ? () => setHelpMode(null) : handleClose}

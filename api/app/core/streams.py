@@ -109,12 +109,6 @@ def _principal_from_claims(claims: dict[str, Any]) -> Principal:
         raise Unauthenticated("Malformed ticket claims") from exc
 
 
-def decode_stream_ticket(ticket: str, *, settings: Settings) -> Principal:
-    """Verify a ticket and read who it is for. Does not enforce single use —
-    that is `get_stream_principal`'s job, since the replay guard is async."""
-    return _principal_from_claims(_verified_claims(ticket, settings=settings))
-
-
 async def _claim_ticket_or_refuse(claims: dict[str, Any]) -> None:
     """SEC-016: burn this ticket's `jti`, or refuse a replay.
 
@@ -151,7 +145,7 @@ async def get_stream_principal(
     (SEC-016). A caller that can set headers sends its bearer token instead;
     that token is not single-use, because it never lands in a URL.
     """
-    from app.core.auth import decode_access_token  # noqa: PLC0415 - avoids an import cycle
+    from app.core.auth import decode_access_token  # avoids an import cycle
 
     if ticket:
         claims = _verified_claims(ticket, settings=settings)

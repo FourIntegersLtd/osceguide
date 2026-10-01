@@ -74,7 +74,7 @@ class EngineEvaluator:
         engine, and translates its result back. Raises `EvaluationFailed` if the rubric carries no
         framework or the engine itself fails.
         """
-        from osce_assessment.contracts.models import (  # noqa: PLC0415
+        from osce_assessment.contracts.models import (
             AIInteractionProfile,
             AssessmentAttempt,
             AssessmentDefinition,
@@ -171,7 +171,7 @@ class FrozenFrameworkProvider:
     """
 
     def __init__(self, framework: dict[str, Any]) -> None:
-        from osce_assessment.contracts import CompetencyFramework  # noqa: PLC0415
+        from osce_assessment.contracts import CompetencyFramework
 
         self._framework = CompetencyFramework.model_validate(framework)
 
@@ -187,14 +187,14 @@ class FrozenFrameworkProvider:
 def build_evaluator() -> Evaluator:
     """Wire the engine, or say plainly that it is not there."""
     try:
-        from osce_assessment.evaluation.evaluator import LLMEvaluator  # noqa: PLC0415
+        from osce_assessment.evaluation.evaluator import LLMEvaluator
     except ImportError as exc:
         raise EvaluationFailed(
             "The osce_assessment engine is not installed. Run `poetry install`; "
             "it comes from assessment/packages/osce_assessment in this repository."
         ) from exc
 
-    from app.features.attempts.llm_clients import (  # noqa: PLC0415
+    from app.features.attempts.llm_clients import (
         fallback_client,
         primary_client,
     )

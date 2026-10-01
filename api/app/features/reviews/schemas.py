@@ -31,7 +31,7 @@ class SlotRagSummary(BaseModel):
     Per domain, every completed review's ratings in it combine as one
     (`rubrics.scoring.combine_reviewers`: the majority, ties to the worse).
     The overall is the worst domain: one weak domain is what a reader must see.
-    The name keeps `rag` until platform-web moves to the native fields (Stage 3).
+    The name keeps `rag` until the web app reads the rubric's own rating fields.
     """
 
     slot_id: uuid.UUID

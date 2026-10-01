@@ -208,18 +208,6 @@ export function atRiskLabel(reason: string): string {
   return AT_RISK_LABELS[reason] ?? reason.replace(/_/g, " ");
 }
 
-/** "£24.99" from pence, in the payment's own currency. */
-export function formatMoney(pence: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-GB", {
-      style: "currency",
-      currency: currency.toUpperCase(),
-    }).format(pence / 100);
-  } catch {
-    return `${(pence / 100).toFixed(2)} ${currency.toUpperCase()}`;
-  }
-}
-
 /** "3 Sept 2026, 14:05" — for a row where the time of day matters. */
 export function formatMoment(iso: string | null | undefined): string {
   if (!iso) return "-";

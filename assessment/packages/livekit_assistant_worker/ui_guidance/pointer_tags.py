@@ -37,6 +37,8 @@ _MAX_TAG_CHARS = 120
 
 @dataclass(frozen=True)
 class PointerTag:
+    """A pointer the model asked for: where to point, in capture pixels, and what to call it."""
+
     x: float
     y: float
     label: str
@@ -65,10 +67,12 @@ class PointerTagFilter:
         return text + remainder, tags
 
     def _drain(self, *, final: bool) -> tuple[str, list[PointerTag]]:
+        """Release the text that cannot be part of a tag, hold back what might still become one, and collect finished tags."""
         out: list[str] = []
         tags: list[PointerTag] = []
 
         def emit(text: str) -> None:
+            """Add text to the output, dropping a leading space when the removed tag left one stranded."""
             if self._drop_next_space:
                 text = text.lstrip(" ")
                 if not text:
@@ -113,6 +117,7 @@ class PointerTagFilter:
 
     @staticmethod
     def _may_still_close(buffer: str) -> bool:
+        """Whether the buffered text could still grow into a complete tag."""
         if len(buffer) > _MAX_TAG_CHARS:
             return False
         lowered = buffer.lower()
@@ -155,6 +160,7 @@ async def strip_pointer_tags(
 
 
 async def _report(on_pointer: OnPointer | None, tag: PointerTag) -> None:
+    """Hand a completed tag to the callback, which may be plain or async."""
     if on_pointer is None:
         return
     result = on_pointer(tag)

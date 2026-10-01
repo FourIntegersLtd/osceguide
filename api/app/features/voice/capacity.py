@@ -75,16 +75,25 @@ return 0
 """
 
 
-async def _run(script: str, *args: object) -> Any:
-    """Run one of the scripts, or raise. Arguments go as strings, as redis-py puts
-    on the wire anyway; Lua's `tonumber` reads them back.
+async def run_script(script: str, keys: tuple[str, ...], *args: object) -> Any:
+    """Run one Lua script against Redis, or raise.
+
+    Arguments go as strings, as redis-py puts on the wire anyway; Lua's
+    `tonumber` reads them back. Shared with `seats`, which counts our own
+    workers the same way.
     """
     client = get_redis()
     if client is None:
         raise ConnectionError("redis is not configured")
     return await cast(
-        "Awaitable[Any]", client.eval(script, 1, CLOUD_SLOTS_KEY, *[str(argument) for argument in args])
+        "Awaitable[Any]",
+        client.eval(script, len(keys), *keys, *[str(argument) for argument in args]),
     )
+
+
+async def _run(script: str, *args: object) -> Any:
+    """Run one of this module's scripts, which all read the Cloud slots key alone."""
+    return await run_script(script, (CLOUD_SLOTS_KEY,), *args)
 
 
 @dataclass(frozen=True)
@@ -152,7 +161,7 @@ async def extend(settings: Settings, room: str) -> bool:
     expiry = int(time.time()) + max(60, settings.livekit_cloud_slot_ttl_seconds)
     try:
         raw = await _run(EXTEND, room, expiry)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 - the pending slot still expires on its own
         log.warning("cloud slot extend failed", room=room, exc_info=True)
         return False
     extended = bool(int(raw))

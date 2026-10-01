@@ -31,7 +31,12 @@ DEDUP_WINDOW = timedelta(minutes=10)
 MAX_FACT_CHARS = 300
 
 EVENT_KINDS = frozenset({"viewed", "practised", "listened"})
-REF_KINDS = frozenset({"summary", "slide_deck", "podcast", "blog", "station", "management_plan"})
+# The kinds of study material the tutor can search and cite, each filed in the
+# search index under a corpus of the same name. A podcast's content is a
+# transcript and a blog's is prose, so both search usefully; any other kind is
+# added here only once somebody has decided what a citation to it should say.
+MEDIA_KINDS = ("summary", "slide_deck", "podcast", "blog")
+REF_KINDS = frozenset({*MEDIA_KINDS, "station", "management_plan"})
 NOTE_KINDS = frozenset({"session_summary", "stated_fact"})
 
 

@@ -107,6 +107,7 @@ async def set_access(
     )
 
 
+# List an organisation's cohorts.
 @router.get(
     "/orgs/{org_slug}/cohorts",
     response_model=Page[schemas.CohortRead],
@@ -130,6 +131,7 @@ async def add_cohort(body: schemas.CreateCohort, workspace: OrgAdmin, session: S
     )
 
 
+# List an organisation's trainee groups.
 @router.get(
     "/orgs/{org_slug}/trainee-groups",
     response_model=Page[schemas.GroupRead],
@@ -139,6 +141,7 @@ async def list_groups(workspace: OrgReader, session: Session) -> Page[schemas.Gr
     return Page(items=await service_groups.list_groups(session, workspace.org_id), next_cursor=None)
 
 
+# Add a trainee group to an organisation.
 @router.post(
     "/orgs/{org_slug}/trainee-groups",
     response_model=schemas.GroupRead,

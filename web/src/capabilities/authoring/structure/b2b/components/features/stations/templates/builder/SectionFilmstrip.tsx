@@ -263,6 +263,3 @@ export function SectionChipStrip({
     </div>
   );
 }
-
-/** @deprecated Use {@link SectionOutline}; kept so existing imports compile. */
-export const SectionFilmstrip = SectionOutline;

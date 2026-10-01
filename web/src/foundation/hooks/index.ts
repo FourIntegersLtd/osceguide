@@ -5,3 +5,4 @@ export { useToast } from "@/foundation/hooks/useToast";
 export { useFocusTrap } from "@/foundation/hooks/useFocusTrap";
 export { useModalHistory } from "@/foundation/hooks/useModalHistory";
 export { useCursorPages, type CursorPage, type CursorPages } from "@/foundation/hooks/useCursorPages";
+export { useSearchQuery } from "@/foundation/hooks/useSearchQuery";

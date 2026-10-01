@@ -21,11 +21,13 @@ _MAX_DEPTH = 64
 
 
 def to_strict_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """A deep copy of the schema, reshaped for a provider's strict structured-output mode."""
     root = copy.deepcopy(schema)
     return _ensure_strict(root, root=root, depth=0)
 
 
 def _ensure_strict(node: Any, *, root: dict[str, Any], depth: int) -> dict[str, Any]:
+    """Apply the strict rules to this schema node and everything nested inside it, in place."""
     if not isinstance(node, dict):
         raise TypeError(f"expected a schema object, got {type(node).__name__}")
     if depth > _MAX_DEPTH:
@@ -53,7 +55,7 @@ def _ensure_strict(node: Any, *, root: dict[str, Any], depth: int) -> dict[str, 
 
     any_of = node.get("anyOf")
     if isinstance(any_of, list):
-        node["anyOf"] = [_ensure_strict(v, root=root, depth=depth + 1) for v in any_of]
+        node["anyOf"] = [_ensure_strict(option, root=root, depth=depth + 1) for option in any_of]
 
     all_of = node.get("allOf")
     if isinstance(all_of, list):
@@ -61,7 +63,7 @@ def _ensure_strict(node: Any, *, root: dict[str, Any], depth: int) -> dict[str, 
             node.update(_ensure_strict(all_of[0], root=root, depth=depth + 1))
             node.pop("allOf")
         else:
-            node["allOf"] = [_ensure_strict(v, root=root, depth=depth + 1) for v in all_of]
+            node["allOf"] = [_ensure_strict(option, root=root, depth=depth + 1) for option in all_of]
 
     if node.get("default", _NOT_GIVEN) is None:
         node.pop("default")
@@ -77,6 +79,7 @@ def _ensure_strict(node: Any, *, root: dict[str, Any], depth: int) -> dict[str, 
 
 
 def resolve_ref(root: dict[str, Any], ref: str) -> dict[str, Any]:
+    """Return the schema object a local ``#/...`` reference points to."""
     if not ref.startswith("#/"):
         raise ValueError(f"unsupported $ref {ref!r}; only local references are supported")
     node: Any = root
@@ -92,16 +95,17 @@ def inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
     root = copy.deepcopy(schema)
 
     def walk(node: Any, depth: int) -> Any:
+        """Copy a schema node with every reference replaced by its target."""
         if depth > _MAX_DEPTH:
             raise RecursionError("schema nesting exceeds the inlining limit")
         if isinstance(node, dict):
             if "$ref" in node:
                 resolved = copy.deepcopy(resolve_ref(root, node["$ref"]))
-                merged = {**resolved, **{k: v for k, v in node.items() if k != "$ref"}}
+                merged = {**resolved, **{key: value for key, value in node.items() if key != "$ref"}}
                 return walk(merged, depth + 1)
-            return {k: walk(v, depth + 1) for k, v in node.items() if k not in ("$defs", "definitions")}
+            return {key: walk(value, depth + 1) for key, value in node.items() if key not in ("$defs", "definitions")}
         if isinstance(node, list):
-            return [walk(v, depth + 1) for v in node]
+            return [walk(item, depth + 1) for item in node]
         return node
 
     return walk(root, 0)

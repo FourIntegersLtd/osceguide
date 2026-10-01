@@ -136,6 +136,7 @@ async def list_replies(
     return Page(items=replies, next_cursor=None)
 
 
+# Reply to a community question.
 @router.post(
     "/community/questions/{question_id}/replies",
     response_model=schemas.PostRead,
@@ -165,6 +166,7 @@ async def like(post_id: uuid.UUID, principal: CurrentPrincipal, session: Session
     return await service.set_like(session, post_id, user_id=principal.user_id, liked=True)
 
 
+# Take back a like on a community post.
 @router.delete(
     "/community/posts/{post_id}/like",
     response_model=schemas.PostRead,

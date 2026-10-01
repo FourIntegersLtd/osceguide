@@ -81,6 +81,7 @@ async def list_org_trial_candidates(
     )
 
 
+# Read one of an organisation's rubrics.
 @router.get(
     "/orgs/{org_slug}/rubrics/{rubric_id}",
     response_model=schemas.RubricRead,
@@ -123,6 +124,7 @@ async def create_org_rubric(
     )
 
 
+# Add a new version to one of an organisation's rubrics.
 @router.post(
     "/orgs/{org_slug}/rubrics/{rubric_id}/versions",
     response_model=schemas.RubricVersionRead,

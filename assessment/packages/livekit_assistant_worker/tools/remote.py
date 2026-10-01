@@ -46,6 +46,7 @@ def build_remote_tools(endpoints: BackendEndpoints, session_id: str, specs: Iter
 
 
 def _build(endpoints: BackendEndpoints, session_id: str, spec: RemoteTool, publish: Publish):
+    """Make one function tool that forwards its calls to the backend."""
     tool_url = endpoints.assistant_tool_url(session_id, spec.name)
 
     async def _impl(raw_arguments: dict[str, Any], context: RunContext) -> str:  # noqa: ARG001 — injected by the runtime
@@ -76,12 +77,12 @@ async def call_backend_tool(
         logger.warning("[assistant_tool] %s failed after %d ms: %s", name, _elapsed_ms(started), exc)
         return TOOL_UNAVAILABLE
     _log_round_trip(name, started)
-    data = result.data if result.ok and isinstance(result.data, dict) else None
-    text = data.get("result") if data else None
+    response_body = result.data if result.ok and isinstance(result.data, dict) else None
+    text = response_body.get("result") if response_body else None
     if not isinstance(text, str) or not text.strip():
         logger.warning("[assistant_tool] %s answered HTTP %s without a result", name, result.status)
         return TOOL_UNAVAILABLE
-    display = data.get("display")
+    display = response_body.get("display")
     if isinstance(display, dict) and display.get("type"):
         await publish(display)
     return text

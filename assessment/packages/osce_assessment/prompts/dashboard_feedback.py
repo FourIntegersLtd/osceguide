@@ -19,6 +19,8 @@ COACH_NEVER = (
 
 
 class DashboardFeedbackPromptFormatter:
+    """Builds the dashboard conversation prompt from a doctor's recent consultation feedback."""
+
     CONSULTATION_PROMPT_TEMPLATE = (
         role_lock(persona="a peer discussing their recent work", counterpart="the doctor", never=COACH_NEVER)
         + "\n\n"
@@ -152,7 +154,7 @@ Close by agreeing one thing worth practising.
             # Sort feedback by creation date and take most recent 6 feedbacks
             sorted_feedback = sorted(
                 feedback_list,
-                key=lambda x: x.get("created_at", datetime.min.isoformat()),
+                key=lambda feedback_item: feedback_item.get("created_at", datetime.min.isoformat()),
                 reverse=True,
             )[:12]
 

@@ -216,7 +216,7 @@ function refusalFor(cause: unknown): string {
     return `Already on this circuit, so nothing was added. ${message}`;
   }
   if (hasCode(cause, "station_not_on_circuit")) {
-    return `That station is not on this circuit — pick one from the list, or leave it to the station being run. ${message}`;
+    return `That station is not on this circuit. Pick one from the list, or leave it to the station being run. ${message}`;
   }
   if (hasCode(cause, "not_permitted_in_mode")) {
     return "An examination cannot take a late arrival: it is one candidate through every station.";

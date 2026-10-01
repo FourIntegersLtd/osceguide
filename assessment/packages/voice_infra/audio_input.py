@@ -11,6 +11,7 @@ _AUDIO_SAMPLE_RATE = 48000
 
 
 def build_room_options(**kwargs: object) -> room_io.RoomOptions:
+    """Room options with noise cancellation on the audio input; extra keyword arguments pass through."""
     return room_io.RoomOptions(
         audio_input=room_io.AudioInputOptions(noise_cancellation=noise_cancellation.NC(), sample_rate=_AUDIO_SAMPLE_RATE),
         **kwargs,

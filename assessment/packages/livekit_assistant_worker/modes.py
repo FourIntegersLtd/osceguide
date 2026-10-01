@@ -16,6 +16,8 @@ from typing import Literal
 
 
 class WorkerType(StrEnum):
+    """The kinds of assistant session the worker can run."""
+
     HELP = "help"
     ONBOARDING = "onboarding"
     DASHBOARD = "dashboard"
@@ -29,6 +31,8 @@ HELP_FAQ_INTENT = "faq"
 
 @dataclass(frozen=True)
 class ModeProfile:
+    """The switches that decide how one assistant mode behaves: its model tier, tools and extras."""
+
     worker_type: WorkerType
     llm: LlmTier
     max_tool_steps: int

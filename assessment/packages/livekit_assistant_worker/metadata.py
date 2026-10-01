@@ -13,12 +13,15 @@ class MetadataError(ValueError):
 
 @dataclass(frozen=True)
 class DispatchMetadata:
+    """The job metadata a backend sends: the session, which backend sent it, and who the candidate is."""
+
     session_id: str
     backend: str
     candidate_ref: str = ""
 
 
 def _pick(data: dict[str, Any], *keys: str) -> str:
+    """The first non-blank value among the given keys, as text, or an empty string."""
     for key in keys:
         value = data.get(key)
         if value is not None and str(value).strip():

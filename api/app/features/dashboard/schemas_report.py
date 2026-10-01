@@ -31,8 +31,8 @@ class StationReport(BaseModel):
     # Marked by the engine: the attempt reached `evaluated`.
     marked: bool
     # What the completed human reviews agreed, in the rubric's own rating: per
-    # domain the reviewers combined, overall the worst domain. Renamed from
-    # `rag` when platform-web moves to native ratings (Stage 3).
+    # domain the reviewers combined, overall the worst domain. The name keeps
+    # `rag` until the web app reads the rubric's own rating fields.
     overall_rag: RatingValueRead | None
     by_domain: dict[str, RatingValueRead] = Field(default_factory=dict)
     # 0-100 after any GP-lead review (the cohort ranking's number), and whether it passes.

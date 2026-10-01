@@ -1,4 +1,4 @@
-import type { AttributionMode } from "@/foundation/attribution/types";
+import type { AttributionMode } from "@/capabilities/attribution-dashboard/types";
 
 export type AttributionTab =
   | "overview"

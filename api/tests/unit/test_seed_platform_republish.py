@@ -13,7 +13,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
-from seed_platform import needs_republish, undescribed  # noqa: E402
+from seed_platform import needs_republish, settings_to_add, undescribed  # noqa: E402
+
+from app.core.exam_settings import ExamSettings  # noqa: E402
 
 V2_STRUCTURE = {
     "schemaVersion": 2,
@@ -60,3 +62,22 @@ def test_competencies_with_no_anchors_are_named_by_domain() -> None:
 def test_a_range_rating_has_no_anchors_to_miss() -> None:
     ranged = {**V2_STRUCTURE, "rating": {"kind": "range", "field": "score", "minimum": 0, "maximum": 10}}
     assert undescribed(ranged) == []
+
+
+def test_a_setting_the_exam_never_stored_is_added_from_the_seed() -> None:
+    seeded = ExamSettings.model_validate({"peer_practice": {"preparation_seconds": 120}})
+    added = settings_to_add({"date_label": "Interview date"}, seeded)
+    assert added["peer_practice"] == {
+        "preparation_seconds": 120,
+        "consultation_seconds": 720,
+        "debrief_seconds": 900,
+    }
+    assert "date_label" not in added
+
+
+def test_a_setting_already_stored_is_never_overwritten() -> None:
+    seeded = ExamSettings.model_validate({"peer_practice": {"preparation_seconds": 120}})
+    stored = ExamSettings.model_validate({"peer_practice": {"preparation_seconds": 240}}).model_dump(
+        mode="json"
+    )
+    assert settings_to_add(stored, seeded) == {}

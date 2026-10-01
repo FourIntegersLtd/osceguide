@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { HiOutlineKey } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Button, b2bTokens } from "@/foundation/ui";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
-import { errorMessage, useAsync, useCursorPages } from "@/foundation/hooks";
+import { errorMessage, useAsync, useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { PanelCard, formatWhen } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import {
@@ -46,12 +46,7 @@ export function AccessPanel({
 
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
-
+  const query = useSearchQuery(search);
   const pages = useCursorPages(
     (cursor, signal) => listEntitlements(orgSlug, signal, { cursor, search: query || null }),
     [orgSlug, query],
@@ -133,7 +128,7 @@ export function AccessPanel({
                 <option value="">Choose a trainee…</option>
                 {sortTrainees(trainees).map((trainee) => (
                   <option key={trainee.id} value={trainee.email}>
-                    {displayName(trainee)} — {trainee.email}
+                    {displayName(trainee)} ({trainee.email})
                   </option>
                 ))}
               </select>

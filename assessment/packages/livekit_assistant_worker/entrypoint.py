@@ -33,11 +33,13 @@ DEFAULT_DRAIN_TIMEOUT = 840
 
 
 def prewarm(proc: JobProcess) -> None:
+    """Build the voice activity detector once per worker process when the realtime model is enabled."""
     if gpt_live_enabled():
         proc.userdata["gpt_live_vad"] = build_gpt_live_vad()
 
 
 def validate_environment() -> BackendRegistry:
+    """Fail at startup if required settings are missing, and return the configured backends."""
     required_deepgram_api_key()
     return BackendRegistry.from_env()
 
@@ -48,6 +50,7 @@ async def _entrypoint(ctx: JobContext) -> None:
 
 
 def build_worker_options() -> WorkerOptions:
+    """Gather the LiveKit worker options (agent name, port, drain time, load limits) from the environment."""
     validate_environment()
 
     options: dict = {
@@ -65,6 +68,7 @@ def build_worker_options() -> WorkerOptions:
 
 
 def cli_main() -> None:
+    """Start the assistant worker from the command line."""
     load_dotenv()
     init_sentry(worker=WORKER_NAME)
     raise_sentry_verify_error_if_requested()

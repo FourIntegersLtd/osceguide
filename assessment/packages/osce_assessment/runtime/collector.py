@@ -30,6 +30,8 @@ def new_message_id() -> str:
 
 
 class TranscriptCollector:
+    """Builds the transcript as messages arrive and streams each one to the sink."""
+
     def __init__(
         self,
         attempt_id: str,
@@ -52,6 +54,7 @@ class TranscriptCollector:
         return tuple(self._messages)
 
     async def on_message(self, role: MessageRole, text: str) -> None:
+        """Number and timestamp a new message, keep it, and send it to the sink without failing the session."""
         message = TranscriptMessage(
             role=role,
             message=text,
@@ -72,6 +75,7 @@ class TranscriptCollector:
             )
 
     def snapshot(self, *, complete: bool) -> Transcript:
+        """The transcript so far, marked complete or not."""
         return Transcript(
             attempt_id=self._attempt_id,
             messages=self.messages,

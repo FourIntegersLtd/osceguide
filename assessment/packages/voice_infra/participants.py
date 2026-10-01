@@ -21,6 +21,7 @@ _NO_MATCH, _SUBSTRING, _EXACT = 0, 1, 2
 
 
 def _match_rank(identity: str, candidate_ref: str) -> int:
+    """How well an identity matches the candidate reference: exact, substring, or not at all."""
     identity = (identity or "").strip()
     candidate_ref = (candidate_ref or "").strip()
     if not identity or not candidate_ref or identity.startswith(AGENT_IDENTITY_PREFIX):
@@ -83,6 +84,7 @@ async def wait_for_candidate(
     future: asyncio.Future = loop.create_future()
 
     def consider(participant: Any) -> None:
+        """Settle the wait when this participant outranks us or is the candidate."""
         if future.done():
             return
         if outranks(participant.identity, my_identity):
@@ -136,7 +138,7 @@ async def agents_with_priority(
     contenders: list[str] = []
     for attempt in range(attempts):
         contenders = sorted(
-            p.identity for p in room.remote_participants.values() if outranks(p.identity, my_identity)
+            remote.identity for remote in room.remote_participants.values() if outranks(remote.identity, my_identity)
         )
         if not contenders or attempt == attempts - 1:
             break

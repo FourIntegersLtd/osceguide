@@ -15,6 +15,8 @@ class InteractionFailure(RuntimeError):
 
 
 class FakeInteractionAdapter:
+    """An interaction adapter that plays a fixed script of turns and records how it was called."""
+
     def __init__(
         self,
         script: Sequence[Turn] = (),
@@ -30,6 +32,7 @@ class FakeInteractionAdapter:
         self.profiles: list[AIInteractionProfile] = []
 
     async def connect(self) -> None:
+        """Mark the adapter connected and count the call."""
         self.connected = True
         self.connect_calls += 1
 
@@ -37,6 +40,7 @@ class FakeInteractionAdapter:
         self.greetings.append(text)
 
     async def run(self, profile: AIInteractionProfile, on_message: MessageCallback) -> None:
+        """Record the profile and replay each scripted turn, failing early when ``fail_after`` says to."""
         self.profiles.append(profile)
         for index, (role, text) in enumerate(self.script):
             if self.fail_after is not None and index == self.fail_after:
@@ -44,5 +48,6 @@ class FakeInteractionAdapter:
             await maybe_await(on_message(role, text))
 
     async def disconnect(self) -> None:
+        """Mark the adapter disconnected and count the call."""
         self.connected = False
         self.disconnect_calls += 1

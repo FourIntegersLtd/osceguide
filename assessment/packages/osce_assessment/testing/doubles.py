@@ -21,11 +21,14 @@ from ..contracts import (
 
 
 class StaticFrameworkProvider:
+    """Serves a fixed set of competency frameworks by id and records each lookup."""
+
     def __init__(self, *frameworks: CompetencyFramework) -> None:
-        self._by_id = {fw.id: fw for fw in frameworks}
+        self._by_id = {framework.id: framework for framework in frameworks}
         self.calls: list[str] = []
 
     def get(self, framework_id: str) -> CompetencyFramework:
+        """Return the framework with this id, or raise LookupError if there is none."""
         self.calls.append(framework_id)
         try:
             return self._by_id[framework_id]
@@ -34,11 +37,14 @@ class StaticFrameworkProvider:
 
 
 class StaticScenarioProvider:
+    """Always returns the one scenario it was given and records each request."""
+
     def __init__(self, scenario: Scenario) -> None:
         self.scenario = scenario
         self.calls: list[tuple[ScenarioRef, dict[str, str]]] = []
 
     def resolve(self, scenario_ref: ScenarioRef, attempt_context: Mapping[str, str]) -> Scenario:
+        """Return the fixed scenario whatever reference is asked for."""
         self.calls.append((scenario_ref, dict(attempt_context)))
         return self.scenario
 
@@ -47,6 +53,7 @@ class SimpleProfileBuilder:
     """Fills ``instructions`` from the scenario; keeps everything else as defined."""
 
     def build(self, definition: AssessmentDefinition, scenario: Scenario) -> AIInteractionProfile:
+        """Return the definition's profile with instructions written from the scenario title, mode and brief."""
         template = definition.interaction_profile
         brief_lines = [f"{key}: {value}" for key, value in scenario.patient_brief.items()]
         instructions = "\n".join(
@@ -56,6 +63,8 @@ class SimpleProfileBuilder:
 
 
 class InMemoryTranscriptSink:
+    """Keeps appended messages and completed transcripts in lists, and can be told to fail."""
+
     def __init__(self, *, fail_complete_times: int = 0, fail_append: bool = False) -> None:
         self.appended: list[tuple[str, TranscriptMessage]] = []
         self.completed: list[tuple[str, Transcript]] = []
@@ -64,11 +73,13 @@ class InMemoryTranscriptSink:
         self._fail_append = fail_append
 
     def append(self, attempt_id: str, message: TranscriptMessage) -> None:
+        """Store one streamed message, or raise if the sink was set to fail appends."""
         if self._fail_append:
             raise ConnectionError("append sink unavailable")
         self.appended.append((attempt_id, message))
 
     def complete(self, attempt_id: str, transcript: Transcript) -> None:
+        """Store the finished transcript, failing the first few calls if the sink was set to."""
         self.complete_calls += 1
         if self._fail_complete_times > 0:
             self._fail_complete_times -= 1
@@ -77,6 +88,8 @@ class InMemoryTranscriptSink:
 
 
 class FakeEvaluator:
+    """Returns a canned result without calling any model, or raises when set to fail."""
+
     def __init__(
         self,
         payload: dict[str, Any] | None = None,
@@ -98,6 +111,7 @@ class FakeEvaluator:
         policy: EvaluationPolicy,
         scenario: Scenario,
     ) -> AssessmentResult:
+        """Record the call and return the canned payload wrapped as an assessment result."""
         self.calls.append((attempt, transcript, policy, scenario))
         if self.fail:
             raise RuntimeError("evaluator unavailable")
@@ -114,6 +128,8 @@ class FakeEvaluator:
 
 
 class InMemoryResultSink:
+    """Keeps saved results in a list so a test can read them back."""
+
     def __init__(self) -> None:
         self.saved: list[tuple[AssessmentResult, dict[str, str]]] = []
 

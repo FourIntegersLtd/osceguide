@@ -11,7 +11,6 @@ export function TemplateBuilderShell({
   toolbarActions,
   subheader,
   children,
-  flatChrome: _flatChrome = false,
 }: {
   title?: string;
   onTitleChange?: (title: string) => void;
@@ -21,8 +20,6 @@ export function TemplateBuilderShell({
   /** Rendered full-width between the toolbar and the columns (narrow-screen section chips). */
   subheader?: ReactNode;
   children: ReactNode;
-  /** @deprecated One palette serves both arms now. */
-  flatChrome?: boolean;
 }) {
   return (
     <div

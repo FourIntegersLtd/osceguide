@@ -63,7 +63,7 @@ export function ImportOutcome({
           <ul className="mt-2 space-y-1 text-osce-body text-b2b-graphite">
             {skipped.map((row) => (
               <li key={row.email}>
-                <span className="font-medium text-b2b-headline">{row.email}</span> —{" "}
+                <span className="font-medium text-b2b-headline">{row.email}</span>:{" "}
                 {describe(row.code)}
               </li>
             ))}

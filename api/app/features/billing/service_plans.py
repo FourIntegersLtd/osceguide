@@ -29,7 +29,7 @@ def get_stripe_prices(settings: SettingsDep) -> CheckoutSessions:
     Its own dependency rather than `service_checkout.get_checkout`, so a deployment with no
     Stripe key answers `price_creation_failed` here, not a customer's `checkout_failed`.
     """
-    from app.features.billing.checkout import build_checkout  # noqa: PLC0415
+    from app.features.billing.checkout import build_checkout
 
     try:
         return build_checkout(settings)

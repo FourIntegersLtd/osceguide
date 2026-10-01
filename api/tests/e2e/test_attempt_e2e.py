@@ -62,7 +62,7 @@ def _harness(root: str) -> Any:
     with "cannot import name _harness". The first run of this test is what
     caught it, which is the argument for running it.
     """
-    import importlib.util  # noqa: PLC0415
+    import importlib.util
 
     path = Path(root)
     if str(path / "packages") not in sys.path:

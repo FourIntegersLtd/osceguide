@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class UserTurnMetrics:
+    """The timing figures from one user turn, in milliseconds, kept until the assistant replies."""
+
     end_of_turn_delay_ms: float | None = None
     transcription_delay_ms: float | None = None
     on_user_turn_completed_delay_ms: float | None = None
@@ -31,17 +33,19 @@ class ConversationLatencyTracker:
     _user_turn_metrics: UserTurnMetrics = field(default_factory=UserTurnMetrics, init=False)
 
     def attach(self, agent: "AgentSession") -> None:
+        """Start logging latency on this session as conversation items are added."""
         @agent.on("conversation_item_added")
         def _on_conversation_item_added(ev: ConversationItemAddedEvent) -> None:
+            """Remember a user turn's timings, or log the latency of an assistant reply."""
             item = ev.item
             if not isinstance(item, ChatMessage):
                 return
             report: MetricsReport = item.metrics
             if item.role == "user":
                 self._user_turn_metrics = UserTurnMetrics(
-                    end_of_turn_delay_ms=_ms(report.get("end_of_turn_delay")),
-                    transcription_delay_ms=_ms(report.get("transcription_delay")),
-                    on_user_turn_completed_delay_ms=_ms(report.get("on_user_turn_completed_delay")),
+                    end_of_turn_delay_ms=_seconds_to_milliseconds(report.get("end_of_turn_delay")),
+                    transcription_delay_ms=_seconds_to_milliseconds(report.get("transcription_delay")),
+                    on_user_turn_completed_delay_ms=_seconds_to_milliseconds(report.get("on_user_turn_completed_delay")),
                 )
                 return
             if item.role != "assistant":
@@ -53,10 +57,11 @@ class ConversationLatencyTracker:
 
 
 def format_assistant_latency_log_parts(*, room: str | None, assistant_report: Any, user_metrics: UserTurnMetrics) -> list[str]:
+    """Build the ``key=value`` pieces of one latency log line for an assistant reply."""
     parts: list[str] = []
     if room:
         parts.append(f"room={room}")
-    e2e = _ms(assistant_report.get("e2e_latency"))
+    e2e = _seconds_to_milliseconds(assistant_report.get("e2e_latency"))
     if e2e is not None:
         parts.append(f"e2e_latency={e2e:.0f}ms")
     if user_metrics.transcription_delay_ms is not None:
@@ -66,11 +71,11 @@ def format_assistant_latency_log_parts(*, room: str | None, assistant_report: An
     if user_metrics.on_user_turn_completed_delay_ms is not None:
         parts.append(f"user_turn_completed={user_metrics.on_user_turn_completed_delay_ms:.0f}ms")
     for key, name in (("llm_node_ttft", "llm_ttft"), ("tts_node_ttfb", "tts_ttfb"), ("playback_latency", "playback_latency")):
-        value = _ms(assistant_report.get(key))
+        value = _seconds_to_milliseconds(assistant_report.get(key))
         if value is not None:
             parts.append(f"{name}={value:.0f}ms")
     return parts
 
 
-def _ms(value: float | None) -> float | None:
+def _seconds_to_milliseconds(value: float | None) -> float | None:
     return None if value is None else value * 1000

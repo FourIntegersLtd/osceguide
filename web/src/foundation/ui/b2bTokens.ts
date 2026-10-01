@@ -27,9 +27,6 @@ export const b2bDropdownItemDanger =
 export const b2bLink =
   "font-medium text-b2b-accent hover:text-b2b-accent-hover";
 export const b2bLinkMuted = "font-medium text-b2b-mid hover:text-b2b-headline";
-/** @deprecated Focus styling belongs to the shared control. */
-export const b2bInputFocus =
-  "focus:border-osce-accent focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle";
 export const b2bInputBase = getInputClassName();
 export const b2bCard = getCardSurfaceClasses({ themeType: "b2b" }); /** * Design language v3. Cursor-inspired calm surfaces. * See `docs/DESIGN.md`. */ /** Section label above grouped content (e.g. "User API Keys", "Source Control") */
 export const b2bEyebrow =

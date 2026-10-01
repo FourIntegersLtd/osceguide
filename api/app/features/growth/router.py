@@ -16,7 +16,15 @@ from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, EventCounts
 from app.core.rate_limit import USER_WRITE, TooManyRequests, per_user
 from app.core.tenancy import PlatformAdmin
-from app.features.growth import errors, schemas, service, service_dashboard, service_payouts, service_spend
+from app.features.growth import (
+    errors,
+    schemas,
+    service,
+    service_dashboard,
+    service_partner_reports,
+    service_payouts,
+    service_spend,
+)
 
 router = APIRouter(tags=["growth"])
 
@@ -141,6 +149,7 @@ async def issue_code(principal: CurrentPrincipal, session: Session) -> schemas.R
     return await service.issue_code(session, user_id=principal.user_id)
 
 
+# Read the signed-in person's own referrals.
 @router.get(
     "/me/referrals",
     response_model=schemas.ReferralRead,
@@ -533,7 +542,7 @@ async def read_partner_reporting_summary(
 ) -> schemas.PartnerDashboardSummaryRead:
     """A partner's own view of its pilot: visits, signups, its own fee. No revenue, ever."""
     await _ensure_partner_reporter(session, partner=partner, principal=principal)
-    return await service_dashboard.read_partner_summary(
+    return await service_partner_reports.read_partner_summary(
         session,
         partner=partner,
         from_date=from_date,
@@ -566,7 +575,7 @@ async def read_partner_visits_over_time(
     utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
 ) -> schemas.CountOverTimeReport:
     await _ensure_partner_reporter(session, partner=partner, principal=principal)
-    return await service_dashboard.read_visits_over_time(
+    return await service_partner_reports.read_visits_over_time(
         session,
         partner=partner,
         from_date=from_date,
@@ -600,7 +609,7 @@ async def read_partner_signups_over_time(
     utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
 ) -> schemas.CountOverTimeReport:
     await _ensure_partner_reporter(session, partner=partner, principal=principal)
-    return await service_dashboard.read_signups_over_time(
+    return await service_partner_reports.read_signups_over_time(
         session,
         partner=partner,
         from_date=from_date,
@@ -634,7 +643,7 @@ async def read_partner_fee_over_time(
     utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
 ) -> schemas.FeeOverTimeReport:
     await _ensure_partner_reporter(session, partner=partner, principal=principal)
-    return await service_dashboard.read_fee_over_time(
+    return await service_partner_reports.read_fee_over_time(
         session,
         partner=partner,
         from_date=from_date,

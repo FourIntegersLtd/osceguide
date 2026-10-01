@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { LuBuilding2 } from "react-icons/lu";
 import {
   AsyncBoundary,
@@ -15,7 +15,7 @@ import {
   RowLink,
   RowList,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { useAsync, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
   listAllOrganizations,
@@ -45,13 +45,8 @@ export function Organizations() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [search, setSearch] = useState("");
   // What the server is asked: the box, once typing pauses.
-  const [query, setQuery] = useState("");
+  const query = useSearchQuery(search);
   const [provisioning, setProvisioning] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
 
   const state = useAsync(
     (signal) =>

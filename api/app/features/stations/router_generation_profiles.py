@@ -13,6 +13,7 @@ from app.features.stations import errors, service_generation_profiles
 router = APIRouter(tags=["station-generation-profiles"])
 
 
+# List the station generation profiles an author can choose from.
 @router.get(
     "/station-generation-profiles",
     responses=error_responses(Unauthenticated),
@@ -21,6 +22,7 @@ async def list_station_generation_profiles(_principal: CurrentPrincipal) -> dict
     return {"items": service_generation_profiles.list_profiles()}
 
 
+# Read one station generation profile.
 @router.get(
     "/station-generation-profiles/{profile_key}",
     responses=error_responses(Unauthenticated, errors.GenerationProfileNotFound),

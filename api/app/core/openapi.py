@@ -110,7 +110,7 @@ def document_shared_auth_errors(app: FastAPI) -> None:
     Written onto `route.responses`, not the finished document, so it and
     `tests/support/declared_codes.py` — which reads the route — agree.
     """
-    from app.core.errors import ErrorResponse  # noqa: PLC0415 - avoids an import cycle
+    from app.core.errors import ErrorResponse  # avoids an import cycle
 
     for route in app.routes:
         if not isinstance(route, APIRoute) or not _org_scoped(route):
@@ -168,7 +168,7 @@ def sse_responses(frame: type[Any], *errors: type[Any]) -> dict[int | str, dict[
     response model; a stream with no polling equivalent should probably not
     exist.
     """
-    from app.core.errors import error_responses  # noqa: PLC0415 - avoids an import cycle
+    from app.core.errors import error_responses  # avoids an import cycle
 
     responses = error_responses(*errors)
     responses[200] = {
@@ -201,7 +201,7 @@ def fan_in_responses(*errors: type[Any]) -> dict[int | str, dict[str, Any]]:
 
     See `sse_responses` for the single-snapshot case this is the fan-in counterpart of.
     """
-    from app.core.errors import error_responses  # noqa: PLC0415 - avoids an import cycle
+    from app.core.errors import error_responses  # avoids an import cycle
 
     responses = error_responses(*errors)
     responses[200] = {

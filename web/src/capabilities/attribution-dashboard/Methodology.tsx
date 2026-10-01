@@ -16,10 +16,10 @@ import {
   HiOutlineShieldCheck,
   HiOutlineUserPlus,
 } from "react-icons/hi2";
-import { DefinitionCard } from "@/foundation/attribution/MetricCard";
-import type { DashboardCopy, MethodologyDefinition } from "@/foundation/attribution/copy";
-import type { AttributionMode } from "@/foundation/attribution/types";
-import { visibleDefinitions, type MetricTone } from "@/foundation/attribution/viewModel";
+import { DefinitionCard } from "@/capabilities/attribution-dashboard/MetricCard";
+import type { DashboardCopy, MethodologyDefinition } from "@/capabilities/attribution-dashboard/copy";
+import type { AttributionMode } from "@/capabilities/attribution-dashboard/types";
+import { visibleDefinitions, type MetricTone } from "@/capabilities/attribution-dashboard/viewModel";
 
 const DEFINITION_ICONS: Record<string, IconType> = {
   "Link visit": HiOutlineLink,

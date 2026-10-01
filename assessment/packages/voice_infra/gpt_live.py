@@ -13,6 +13,7 @@ GPT_LIVE_RESPONSES_MODEL = "gpt-5.6-luna"
 
 
 def build_gpt_live_model(*, backend_instructions: str) -> GPTLiveModel:
+    """Build the GPT-Live model, passing the backend's instructions to its responses model."""
     return GPTLiveModel(
         model=GPT_LIVE_MODEL,
         voice=TUTOR_VOICE,

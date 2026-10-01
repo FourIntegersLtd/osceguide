@@ -58,6 +58,7 @@ async def create_set(
     )
 
 
+# Read one of the signed-in person's practice sets.
 @router.get(
     "/me/station-sets/{set_id}",
     response_model=schemas.SetRead,
@@ -150,6 +151,7 @@ async def list_flagged_stations(
     return Page(items=flagged, next_cursor=next_cursor)
 
 
+# Start an attempt at one station in a practice set.
 @router.post(
     "/me/station-sets/{set_id}/entries/{entry_id}/attempts",
     response_model=schemas.StartedAttempt,

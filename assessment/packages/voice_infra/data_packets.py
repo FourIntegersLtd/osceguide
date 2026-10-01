@@ -19,6 +19,7 @@ def json_packet(data_packet: Any) -> dict[str, Any] | None:
 
 
 def packet_sender_identity(data_packet: Any) -> str | None:
+    """The identity of the participant who sent the packet, or None when it is unknown."""
     participant = getattr(data_packet, "participant", None)
     identity = getattr(participant, "identity", None)
     return str(identity) if identity else None

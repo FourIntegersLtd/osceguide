@@ -101,6 +101,7 @@ async def list_platform_trial_candidates(
     return await service.trial_candidates(session, None, limit=page.limit, cursor=page.cursor, search=search)
 
 
+# Read one platform rubric.
 @router.get(
     "/platform/rubrics/{rubric_id}",
     response_model=schemas.RubricRead,
@@ -124,6 +125,7 @@ async def rename_platform_rubric(
     return await service.rename_rubric(session, None, rubric_id, title=body.title)
 
 
+# Add a new version to a platform rubric.
 @router.post(
     "/platform/rubrics/{rubric_id}/versions",
     response_model=schemas.RubricVersionRead,

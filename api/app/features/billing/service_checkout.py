@@ -27,7 +27,7 @@ def get_checkout(settings: SettingsDep) -> CheckoutSessions:
     `SettingsDep` rather than a bare `Settings`: FastAPI reads a dependency's own signature, and
     an un-annotated pydantic model there is taken for a second request body.
     """
-    from app.features.billing.checkout import build_checkout  # noqa: PLC0415
+    from app.features.billing.checkout import build_checkout
 
     try:
         return build_checkout(settings)

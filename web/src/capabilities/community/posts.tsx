@@ -4,6 +4,7 @@ import { Fragment, useCallback, useState } from "react";
 import { AiFillLike, AiOutlineLike } from "react-icons/ai";
 import { HiOutlineTrash } from "react-icons/hi2";
 import { cn, linkifyOptions } from "@/foundation/ui";
+import { parseApiDate } from "@/foundation/format";
 import { useSession } from "@/foundation/session";
 import { like, unlike, type Post } from "@/capabilities/community/api";
 import { SPECIALTY_TAGS_SORTED } from "@/capabilities/community/specialtyTags";
@@ -17,21 +18,12 @@ import { SPECIALTY_TAGS_SORTED } from "@/capabilities/community/specialtyTags";
  * the server.
  */
 
-/** Naive ISO strings from the API are UTC, like Python's `utcnow().isoformat()`. */
-function apiDate(iso: string | null | undefined): Date | null {
-  if (!iso) return null;
-  const raw = String(iso).trim();
-  const hasZone = /[zZ]$/.test(raw) || /[+-]\d{2}:?\d{2}$/.test(raw);
-  const parsed = new Date(hasZone || !raw.includes("T") ? raw : `${raw}Z`);
-  return Number.isFinite(parsed.getTime()) ? parsed : null;
-}
-
 export function formatPostedDate(iso: string | null | undefined): string {
-  return apiDate(iso)?.toLocaleDateString() ?? "";
+  return parseApiDate(iso)?.toLocaleDateString() ?? "";
 }
 
 export function formatPostedAt(iso: string | null | undefined): string {
-  return apiDate(iso)?.toLocaleString() ?? "";
+  return parseApiDate(iso)?.toLocaleString() ?? "";
 }
 
 /** The signed-in person, as these screens need them. */

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { HiInformationCircle } from "react-icons/hi";
 import { HiOutlineArrowPath, HiOutlineMagnifyingGlass } from "react-icons/hi2";
 import Table, { type Column, type FetchPageResult } from "@/foundation/table/Table";
@@ -12,8 +12,9 @@ import {
   B2CPanelCardHeader,
   Button,
   productTokens,
+  iconSearchInputClassName,
 } from "@/foundation/ui";
-import { errorMessage, useCursorPages, useToast } from "@/foundation/hooks";
+import { errorMessage, useCursorPages, useToast, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { flagSetEntry, listFlaggedStations, type FlaggedEntry } from "@/domains/train/api";
 import { flaggedEntryPath } from "@/domains/train/mocks/model";
@@ -46,12 +47,7 @@ export function FlaggedStations() {
 
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
-
+  const query = useSearchQuery(search);
   const pages = useCursorPages(
     (cursor, signal) =>
       listFlaggedStations({ cursor, limit: PAGE_LIMIT, search: query || null }, signal),
@@ -181,7 +177,7 @@ export function FlaggedStations() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search flagged stations..."
-            className="w-full appearance-none rounded-lg border border-b2c-border bg-b2c-surface-muted py-2.5 pl-10 pr-3 text-osce-body text-osce-ink-900 outline-none placeholder:text-osce-ink-400 focus:border-osce-accent focus:bg-osce-surface focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+            className={iconSearchInputClassName}
           />
         </label>
       </div>

@@ -12,6 +12,7 @@ export { Select } from "@/foundation/ui/Select";
 export { Textarea } from "@/foundation/ui/Textarea";
 export { Checkbox } from "@/foundation/ui/Checkbox";
 export { SectionSearchField } from "@/foundation/ui/SectionSearchField";
+export { iconSearchInputClassName } from "@/foundation/ui/inputStyles";
 export type { InputProps, InputSize } from "@/foundation/ui/Input";
 export { Badge } from "@/foundation/ui/Badge";
 export type { BadgeProps, BadgeVariant, BadgeTone, BadgeSize } from "@/foundation/ui/Badge";

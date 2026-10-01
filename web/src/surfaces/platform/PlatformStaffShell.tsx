@@ -114,7 +114,6 @@ export function PlatformStaffShell({ manifest, basePath, children }: PlatformSta
           setIsExpanded={setHelpExpanded}
           isWide={helpWide}
           setIsWide={setHelpWide}
-          appType="platform"
         />
       </div>
     </SurfaceProvider>

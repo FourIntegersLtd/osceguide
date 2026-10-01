@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import owned_by, owner_kind_for, visible_to
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.stations.models import StationTemplate, StationTemplateVersion
 
 
@@ -60,7 +61,7 @@ async def templates_visible_to(
     """
     stmt = select(StationTemplate).where(visible_to(StationTemplate, org_id))
     if search and search.strip():
-        stmt = stmt.where(StationTemplate.title.ilike(f"%{search.strip()}%"))
+        stmt = stmt.where(contains_text(StationTemplate.title, search))
     if exam_id is not None:
         stmt = stmt.where(or_(StationTemplate.exam_id == exam_id, StationTemplate.exam_id.is_(None)))
     if published_only:

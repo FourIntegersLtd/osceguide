@@ -43,6 +43,7 @@ async def _entrypoint(ctx: JobContext) -> None:
 
 
 def build_worker_options() -> WorkerOptions:
+    """Check the environment and build the LiveKit worker options from it."""
     validate_environment()
 
     options: dict = {
@@ -59,6 +60,7 @@ def build_worker_options() -> WorkerOptions:
 
 
 def cli_main() -> None:
+    """Command line entry: load settings, start error reporting and run the worker."""
     load_dotenv()
     init_sentry(worker=WORKER_NAME)
     raise_sentry_verify_error_if_requested()

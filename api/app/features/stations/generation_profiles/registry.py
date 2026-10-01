@@ -39,10 +39,6 @@ class GenerationProfile:
         return generation.station_prompt_for_key(self.meta.profile_key)
 
 
-def _json_path_for_key(profile_key: str) -> Path:
-    return _GENERATED_DIR / f"{profile_key.replace('.', '_')}.json"
-
-
 @lru_cache(maxsize=1)
 def _load_all_profiles() -> dict[str, GenerationProfile]:
     """Every generation profile shipped in `_generated/`, read from disk once and cached."""

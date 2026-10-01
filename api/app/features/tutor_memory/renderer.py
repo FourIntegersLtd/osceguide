@@ -47,7 +47,7 @@ class EngineTutorPromptRenderer:
 def build_renderer() -> TutorPromptRenderer:
     """Wire the engine, or say plainly that it is not there."""
     try:
-        from osce_assessment.prompts import DashboardTutorFormatter  # noqa: PLC0415
+        from osce_assessment.prompts import DashboardTutorFormatter
     except ImportError as exc:
         raise RenderFailed(
             "The osce_assessment engine is not installed, so no tutor prompt can be rendered. "

@@ -7,6 +7,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -125,7 +126,7 @@ async def register(
         session, email=email, name=name, password_hash=hash_password(password), exam_code=exam_code
     )
     await _announce_registration(session, user.id, user.email)
-    from app.features.identity.service_mfa import finish_password_sign_in  # noqa: PLC0415
+    from app.features.identity.service_mfa import finish_password_sign_in
 
     # Registration is a password sign-in. A new account is not a platform admin
     # and holds no membership, so this mints a session; the gate is the same
@@ -190,6 +191,42 @@ async def upload_avatar(
     return user_read(user, memberships)
 
 
+# What a person can only ever set. Sending nothing for one of these leaves it as it is.
+_SET_ONLY_PROFILE_FIELDS = (
+    "name",
+    "needs_extra_time",
+    "ai_training_consent",
+    "colleague_waiting_email",
+    "replay_onboarding",
+)
+# What a person can also set back to nothing, by sending it empty.
+_CLEARABLE_PROFILE_FIELDS = ("exam_date", "exam_time", "custom_reading_seconds", "custom_simulation_seconds")
+
+
+def profile_changes(body: UpdateMe, fields_sent: set[str], *, exam_code: str | None) -> dict[str, Any]:
+    """The account columns this request changes, and the value each one gets.
+
+    A field the request did not mention is left out, so it is not touched.
+    That is the difference between "not mentioned" and "set to nothing":
+    without it, an exam date or a custom timer could never be cleared.
+    `exam_code` is the exam to set, already decided by `_exam_to_set`.
+    """
+    changes: dict[str, Any] = {}
+    for field_name in _SET_ONLY_PROFILE_FIELDS:
+        value = getattr(body, field_name)
+        if field_name in fields_sent and value is not None:
+            changes[field_name] = value
+    for field_name in _CLEARABLE_PROFILE_FIELDS:
+        if field_name in fields_sent:
+            changes[field_name] = getattr(body, field_name)
+    if exam_code is not None:
+        changes["exam_code"] = exam_code
+    if "exam_date" in changes and changes["exam_date"] is None:
+        # A time with no date names nothing, so clearing the date clears the time too.
+        changes["exam_time"] = None
+    return changes
+
+
 async def update_me(
     session: AsyncSession,
     *,
@@ -210,33 +247,10 @@ async def update_me(
     The exam is set here once, by an account that has none, and never changed: see
     `_exam_to_set`.
     """
-    user = await repository.update_profile(
-        session,
-        principal.user_id,
-        name=body.name,
-        exam_date=body.exam_date,
-        needs_extra_time=body.needs_extra_time,
-        custom_reading_seconds=body.custom_reading_seconds,
-        custom_simulation_seconds=body.custom_simulation_seconds,
-        exam_time=body.exam_time,
-        exam_code=await _exam_to_set(session, principal.user_id, body.exam_code),
-        ai_training_consent=body.ai_training_consent if "ai_training_consent" in fields_sent else None,
-        colleague_waiting_email=(
-            body.colleague_waiting_email if "colleague_waiting_email" in fields_sent else None
-        ),
-        replay_onboarding=body.replay_onboarding if "replay_onboarding" in fields_sent else None,
-        # A PATCH that cannot tell "not mentioned" from "set to nothing" makes
-        # clearing any of these impossible. Clearing `exam_date` also clears
-        # `exam_time`: a time with no date names nothing.
-        clear_exam_date="exam_date" in fields_sent and body.exam_date is None,
-        clear_exam_time="exam_time" in fields_sent and body.exam_time is None,
-        clear_custom_reading_seconds=(
-            "custom_reading_seconds" in fields_sent and body.custom_reading_seconds is None
-        ),
-        clear_custom_simulation_seconds=(
-            "custom_simulation_seconds" in fields_sent and body.custom_simulation_seconds is None
-        ),
+    changes = profile_changes(
+        body, fields_sent, exam_code=await _exam_to_set(session, principal.user_id, body.exam_code)
     )
+    user = await repository.update_profile(session, principal.user_id, changes)
     if user is None:
         raise InvalidCredentials()
     memberships = await memberships_for(session, principal.user_id)

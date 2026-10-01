@@ -10,7 +10,7 @@ import {
   PlatformTabbedScreen,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
-import { useCursorPages, useToast } from "@/foundation/hooks";
+import { useCursorPages, useToast, useSearchQuery } from "@/foundation/hooks";
 import {
   isMediaKind,
   MEDIA_KIND_LABELS,
@@ -45,12 +45,7 @@ export function MediaAuthoringHome() {
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const query = useSearchQuery(search);
 
   // A page at a time, scoped and searched in SQL. This used to walk every
   // cursor up front and re-filter by exam and search text in the browser.

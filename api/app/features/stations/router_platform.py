@@ -135,6 +135,7 @@ async def autogenerate_platform_station_draft(
     return schemas.AutogenerateStationDraftResult(**draft_result)
 
 
+# Add a new version to a platform station.
 @router.post(
     "/platform/stations/{station_id}/versions",
     response_model=schemas.StationVersionRead,
@@ -147,6 +148,7 @@ async def add_platform_station_version(
     return await service_versions.add_version(session, None, station_id)
 
 
+# Edit the content of one version of a platform station.
 @router.patch(
     "/platform/stations/{station_id}/versions/{version}",
     response_model=schemas.StationVersionRead,

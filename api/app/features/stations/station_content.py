@@ -193,66 +193,97 @@ _RICH_SHAPES: dict[str, tuple[Callable[[Any], bool], str]] = {
 }
 
 
-def validate_station_content(structure: Any, content: Any) -> tuple[bool, list[str]]:
-    """Validate that content matches the station template structure."""
-    errors: list[str] = []
+def _text_problems(block: dict[str, Any], value: Any) -> list[str]:
+    """A short or long text block holds a string."""
+    return [] if isinstance(value, str) else ["must be a string"]
 
+
+def _array_problems(block: dict[str, Any], value: Any) -> list[str]:
+    """A list or multi-select block holds an array."""
+    return [] if isinstance(value, list) else ["must be an array"]
+
+
+def _checklist_problems(block: dict[str, Any], value: Any) -> list[str]:
+    """A checklist holds the ids of the items that were ticked."""
+    return [] if isinstance(value, list) else ["must be an array of item ids"]
+
+
+def _single_select_problems(block: dict[str, Any], value: Any) -> list[str]:
+    """A single-select holds one of the block's options, or any string when it lists none."""
+    options = [str(option) for option in (block.get("options") or []) if option is not None]
+    if isinstance(value, str) and (not options or value in options):
+        return []
+    return [f"must be one of: {options}"]
+
+
+def _scale_problems(block: dict[str, Any], value: Any) -> list[str]:
+    """A scale holds a number inside the block's own minimum and maximum."""
+    if not isinstance(value, (int, float)):
+        return ["must be a number"]
+    problems: list[str] = []
+    minimum = block.get("min")
+    maximum = block.get("max")
+    if isinstance(minimum, (int, float)) and value < minimum:
+        problems.append(f"must be >= {minimum}")
+    if isinstance(maximum, (int, float)) and value > maximum:
+        problems.append(f"must be <= {maximum}")
+    return problems
+
+
+def _rich_problems(block: dict[str, Any], value: Any) -> list[str]:
+    """A media, records, question-and-answer or grouped block holds that block's own shape."""
+    has_shape, shape_in_words = _RICH_SHAPES[str(block.get("type"))]
+    return [] if has_shape(value) else [f"must be {shape_in_words}"]
+
+
+# What is wrong with a value, by the type of block it fills. Each check answers
+# with the rest of the sentence "Block '<id>' ...", and with nothing when the
+# value fits. A block type that is not listed accepts any value.
+_BLOCK_CHECKS: dict[str, Callable[[dict[str, Any], Any], list[str]]] = {
+    "shortText": _text_problems,
+    "longText": _text_problems,
+    "list": _array_problems,
+    "multiSelect": _array_problems,
+    "checklist": _checklist_problems,
+    "singleSelect": _single_select_problems,
+    "scale": _scale_problems,
+    **dict.fromkeys(_RICH_SHAPES, _rich_problems),
+}
+
+
+def _template_blocks(structure: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every block of a template that has an id, section by section, skipping anything malformed."""
+    return [
+        block
+        for section in structure.get("sections") or []
+        if isinstance(section, dict)
+        for block in section.get("blocks") or []
+        if isinstance(block, dict) and block.get("id")
+    ]
+
+
+def validate_station_content(structure: Any, content: Any) -> tuple[bool, list[str]]:
+    """Check a station's content against its template: whether it fits, and what does not.
+
+    A required block must be filled. A block that is filled must hold the
+    shape its type calls for. A block left empty and not required is fine.
+    """
     if not isinstance(content, dict):
         return False, ["content must be an object"]
-
     if not isinstance(structure, dict):
         return False, ["structure must be an object"]
 
-    sections = structure.get("sections") or []
-    for section in sections:
-        if not isinstance(section, dict):
+    errors: list[str] = []
+    for block in _template_blocks(structure):
+        block_id = block["id"]
+        value = content.get(block_id)
+        if block.get("required") and is_station_block_value_empty(value):
+            errors.append(f"Block '{block_id}' is required but missing or empty")
             continue
-        for block in section.get("blocks") or []:
-            if not isinstance(block, dict):
-                continue
-            block_id = block.get("id")
-            block_type = block.get("type")
-            required = bool(block.get("required"))
-
-            if not block_id:
-                continue
-
-            value = content.get(block_id)
-
-            if required and is_station_block_value_empty(value):
-                errors.append(f"Block '{block_id}' is required but missing or empty")
-                continue
-
-            if value is None:
-                continue
-
-            if block_type in ("shortText", "longText") and not isinstance(value, str):
-                errors.append(f"Block '{block_id}' must be a string")
-            elif block_type == "list" and not isinstance(value, list):
-                errors.append(f"Block '{block_id}' must be an array")
-            elif block_type == "singleSelect":
-                options = [str(option) for option in (block.get("options") or []) if option is not None]
-                if not isinstance(value, str) or (options and value not in options):
-                    errors.append(f"Block '{block_id}' must be one of: {options}")
-            elif block_type == "multiSelect":
-                if not isinstance(value, list):
-                    errors.append(f"Block '{block_id}' must be an array")
-            elif block_type == "checklist":
-                if not isinstance(value, list):
-                    errors.append(f"Block '{block_id}' must be an array of item ids")
-            elif block_type in _RICH_SHAPES and not _RICH_SHAPES[block_type][0](value):
-                errors.append(f"Block '{block_id}' must be {_RICH_SHAPES[block_type][1]}")
-            elif block_type == "scale":
-                if not isinstance(value, (int, float)):
-                    errors.append(f"Block '{block_id}' must be a number")
-                else:
-                    minimum = block.get("min")
-                    maximum = block.get("max")
-                    if isinstance(minimum, (int, float)) and value < minimum:
-                        errors.append(f"Block '{block_id}' must be >= {minimum}")
-                    if isinstance(maximum, (int, float)) and value > maximum:
-                        errors.append(f"Block '{block_id}' must be <= {maximum}")
-
+        check = _BLOCK_CHECKS.get(str(block.get("type")))
+        if value is None or check is None:
+            continue
+        errors.extend(f"Block '{block_id}' {problem}" for problem in check(block, value))
     return len(errors) == 0, errors
 
 

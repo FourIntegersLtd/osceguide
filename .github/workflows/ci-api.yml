@@ -11,12 +11,22 @@ on:
     paths:
       - "api/**"
       - "assessment/packages/osce_assessment/**"
+      # The engine's golden prompt files that tests/contract compares against.
+      - "assessment/tests/fixtures/**"
+      # The browser's copies of the rubric word lists that tests/contract/test_shared_vocabulary.py compares.
+      - "web/src/capabilities/authoring/rubrics/rubricVocabulary.ts"
+      - "web/src/capabilities/feedback/rubricView.ts"
       - ".github/workflows/ci-api.yml"
   push:
     branches: [main]
     paths:
       - "api/**"
       - "assessment/packages/osce_assessment/**"
+      # The engine's golden prompt files that tests/contract compares against.
+      - "assessment/tests/fixtures/**"
+      # The browser's copies of the rubric word lists that tests/contract/test_shared_vocabulary.py compares.
+      - "web/src/capabilities/authoring/rubrics/rubricVocabulary.ts"
+      - "web/src/capabilities/feedback/rubricView.ts"
       - ".github/workflows/ci-api.yml"
 
 permissions:

@@ -13,7 +13,6 @@ from app.features.catalog import service as catalog
 from app.features.peer_practice import domain, repository_sessions, service_recording
 from app.features.peer_practice.models import PracticeSession
 from app.features.peer_practice.station_pick import pick_station_version_id
-from app.features.peer_practice.timers import durations_for
 
 SESSION_UPDATED = "practice.session_updated"
 
@@ -91,17 +90,17 @@ async def advance_phases_if_due(
         return practice_session
     if now < practice_session.phase_ends_at:
         return practice_session
-    durs = durations_for(exam_code)
+    durations = (await catalog.exam_settings_by_id(session, practice_session.exam_id)).peer_practice
     next_phase: str | None = None
     next_end: datetime | None = None
     started_at: datetime | None = None
     if practice_session.current_phase == "preparation":
         next_phase = "consultation"
-        next_end = now + timedelta(seconds=durs.consultation)
+        next_end = now + timedelta(seconds=durations.consultation_seconds)
         started_at = now
     elif practice_session.current_phase == "consultation":
         next_phase = "debrief"
-        next_end = now + timedelta(seconds=durs.debrief)
+        next_end = now + timedelta(seconds=durations.debrief_seconds)
         started_at = practice_session.started_at
     elif practice_session.current_phase == "debrief":
         next_phase = "completed"
@@ -163,8 +162,8 @@ async def record_presence(
     doctor_in = practice_session.doctor_joined_at is not None
     patient_in = practice_session.patient_joined_at is not None
     if doctor_in and patient_in and practice_session.preparation_started_at is None:
-        durs = durations_for(exam_code)
-        prep_end = now + timedelta(seconds=durs.preparation)
+        durations = (await catalog.exam_settings_by_id(session, practice_session.exam_id)).peer_practice
+        prep_end = now + timedelta(seconds=durations.preparation_seconds)
         await repository_sessions.advance_phase(
             session,
             practice_session.id,

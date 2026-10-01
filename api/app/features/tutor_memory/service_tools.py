@@ -158,9 +158,9 @@ async def _suggest_by_slug(
     session: AsyncSession, *, user_id: uuid.UUID, slug: str, reason: str, now: datetime
 ) -> ToolResult:
     """A help page this account's exam shows, or a published media item of an exam they hold."""
-    from app.features.assistant import service_help  # noqa: PLC0415 - avoids an import cycle
-    from app.features.media import errors as media_errors  # noqa: PLC0415
-    from app.features.media import service as media  # noqa: PLC0415
+    from app.features.assistant import service_help  # avoids an import cycle
+    from app.features.media import errors as media_errors
+    from app.features.media import service as media
 
     slug = service_search.help_slug(slug)
     user = await identity.user_by_id(session, user_id)

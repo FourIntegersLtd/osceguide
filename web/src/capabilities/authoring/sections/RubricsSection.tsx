@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { HiOutlineChevronRight, HiOutlinePlusCircle } from "react-icons/hi2";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/foundation/ui";
@@ -14,7 +14,7 @@ import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRo
 import { AuthoringCatalogFilterBar } from "@/capabilities/authoring/parts/AuthoringCatalogFilterBar";
 import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
 import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
-import { useCursorPages } from "@/foundation/hooks";
+import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { listRubrics, STATION_PAGE_LIMIT } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
@@ -38,12 +38,7 @@ export function RubricsSection() {
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const query = useSearchQuery(search);
 
   // A page at a time, searched and exam-filtered in SQL — mirrors
   // StationsSection. Changing the exam filter or the search is in `deps`, so

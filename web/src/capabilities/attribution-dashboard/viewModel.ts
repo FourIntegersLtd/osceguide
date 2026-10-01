@@ -1,8 +1,8 @@
 import type { components } from "@/foundation/platform-client";
-import { funnelStepColors, examColor, seriesColors } from "@/foundation/attribution/theme";
-import type { DashboardCopy } from "@/foundation/attribution/copy";
-import { formatGbpPence } from "@/foundation/attribution/presets";
-import type { AttributionMode, RevenueTimeBucket } from "@/foundation/attribution/types";
+import { funnelStepColors, examColor, seriesColors } from "@/capabilities/attribution-dashboard/theme";
+import type { DashboardCopy } from "@/capabilities/attribution-dashboard/copy";
+import { formatMoney } from "@/foundation/format";
+import type { AttributionMode, RevenueTimeBucket } from "@/capabilities/attribution-dashboard/types";
 
 type S = components["schemas"];
 
@@ -193,7 +193,7 @@ export function heroStats(
       {
         key: "fee",
         label: metrics.estimatedFee.label,
-        value: formatGbpPence(figures.feePence),
+        value: formatMoney(figures.feePence),
         tone: "orange",
         tooltip: metrics.estimatedFee.tooltip,
       },
@@ -207,7 +207,7 @@ export function heroStats(
     {
       key: "revenue",
       label: metrics.revenue.label,
-      value: formatGbpPence(figures.internal?.revenuePence ?? 0),
+      value: formatMoney(figures.internal?.revenuePence ?? 0),
       tone: "amber",
       tooltip: metrics.revenue.tooltip,
     },
@@ -218,14 +218,14 @@ export function heroStats(
       {
         key: "spend",
         label: spendCopy.estimatedSpend.label,
-        value: formatGbpPence(spend.estimatedSpendPence),
+        value: formatMoney(spend.estimatedSpendPence),
         tone: "amber",
         tooltip: spendCopy.estimatedSpend.tooltip,
       },
       {
         key: "margin",
         label: spendCopy.moneyLeftOver.label,
-        value: formatGbpPence(spend.netMarginPence),
+        value: formatMoney(spend.netMarginPence),
         tone: spend.netMarginPence >= 0 ? "emerald" : "amber",
         tooltip: spendCopy.moneyLeftOver.tooltip,
       },
@@ -233,7 +233,7 @@ export function heroStats(
         key: "perSignup",
         label: spendCopy.spendPerSignup.label,
         value:
-          spend.costPerAcquisitionPence === null ? "-" : formatGbpPence(spend.costPerAcquisitionPence),
+          spend.costPerAcquisitionPence === null ? "-" : formatMoney(spend.costPerAcquisitionPence),
         tone: "orange",
         tooltip: spendCopy.spendPerSignup.tooltip,
       },

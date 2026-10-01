@@ -10,7 +10,6 @@ import {
   statusTone,
   attemptStatusTone,
   diagnoseAttempt,
-  formatMoney,
   jobStatusTone,
 } from "@/domains/platform/support";
 
@@ -92,6 +91,5 @@ describe("the support view's diagnosis", () => {
     assert.equal(attemptStatusTone("failed"), "danger");
     assert.equal(jobStatusTone("failed"), "danger");
     assert.equal(jobStatusTone("succeeded"), "success");
-    assert.equal(formatMoney(2499, "gbp"), "£24.99");
   });
 });

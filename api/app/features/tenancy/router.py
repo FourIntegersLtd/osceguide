@@ -50,6 +50,7 @@ async def provision_organization(
     )
 
 
+# Suspend an organisation, as a platform admin.
 @router.post(
     "/platform/organizations/{org_slug}/suspend",
     response_model=schemas.OrganizationRead,
@@ -61,6 +62,7 @@ async def suspend_organization(
     return await service.suspend_organization(session, org_id=workspace.org_id, actor=admin, now=clock.now())
 
 
+# Read one organisation.
 @router.get(
     "/orgs/{org_slug}",
     response_model=schemas.OrganizationRead,
@@ -317,6 +319,7 @@ async def switch_workspace(
     )
 
 
+# Read which features the signed-in person may use.
 @router.get(
     "/me/capabilities",
     response_model=schemas.Capabilities,

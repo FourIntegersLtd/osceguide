@@ -24,7 +24,7 @@ import {
 } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { useCurrentExam } from "@/foundation/session";
-import { useCursorPages } from "@/foundation/hooks";
+import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
 import { createSet } from "@/domains/train/api";
 import { incompleteVersionIds } from "@/domains/train/mocks/model";
@@ -72,12 +72,7 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
   }, [workspace, examCode]);
 
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(stationSearch.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [stationSearch]);
-
+  const query = useSearchQuery(stationSearch);
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {

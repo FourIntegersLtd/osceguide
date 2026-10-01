@@ -13,6 +13,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.tenancy.models import AuditEntry, Organization
 
 
@@ -35,12 +36,10 @@ async def list_organizations(
     if org_type is not None:
         stmt = stmt.where(Organization.org_type == org_type)
     if search and search.strip():
-        # autoescape, so a typed `%` or `_` is a character, not a wildcard.
-        term = search.strip()
         stmt = stmt.where(
             or_(
-                Organization.name.icontains(term, autoescape=True),
-                Organization.slug.icontains(term, autoescape=True),
+                contains_text(Organization.name, search),
+                contains_text(Organization.slug, search),
             )
         )
     return await keyset_page(
@@ -96,9 +95,9 @@ async def list_audit_across_orgs(
     if org_id is not None:
         stmt = stmt.where(AuditEntry.org_id == org_id)
     if actor_email:
-        stmt = stmt.where(AuditEntry.actor_email.ilike(actor_email.strip()))
+        stmt = stmt.where(func.lower(AuditEntry.actor_email) == actor_email.strip().lower())
     if action:
-        stmt = stmt.where(AuditEntry.action.like(f"{action.strip()}%"))
+        stmt = stmt.where(AuditEntry.action.startswith(action.strip(), autoescape=True))
     return await keyset_page(
         session, stmt, sort_col=AuditEntry.at, id_col=AuditEntry.id, limit=limit, cursor=cursor
     )

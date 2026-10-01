@@ -7,16 +7,16 @@ import {
   parseAttributionFilters,
   toAttributionQuery,
   type ConcreteRangePreset,
-} from "@/foundation/attribution/presets";
+} from "@/capabilities/attribution-dashboard/presets";
 import {
   parseAttributionTab,
   type AttributionTab,
-} from "@/foundation/attribution/tabs";
+} from "@/capabilities/attribution-dashboard/tabs";
 import type {
   AttributionFilters,
   AttributionMode,
   AttributionQuery,
-} from "@/foundation/attribution/types";
+} from "@/capabilities/attribution-dashboard/types";
 
 /**
  * The dashboard's filters and tab, kept in the URL.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Button,
@@ -13,7 +13,7 @@ import Table, { type FetchPageResult } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import { hasCode } from "@/foundation/platform-client";
-import { errorMessage, useCursorPages } from "@/foundation/hooks";
+import { errorMessage, useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import {
@@ -78,12 +78,7 @@ export function TraineesPanel({
 
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const query = useSearchQuery(search);
 
   // A page at a time, searched in SQL, rather than the whole roster walked and
   // filtered in the browser.
@@ -353,7 +348,7 @@ export function TraineesPanel({
             ? deleting
               ? "You can only delete a trainee with no results recorded. If they have been examined, remove their access instead."
               : anonymising
-                ? `${named}'s name and email address will be scrubbed and their access revoked. Any decision already recorded about them is kept — this cannot be undone.`
+                ? `${named}'s name and email address will be scrubbed and their access revoked. Any decision already recorded about them is kept. This cannot be undone.`
                 : revoking
                   ? `${named} will not be able to sign in or sit anything, and stays on the roster with their results intact.`
                   : `${named} will be able to sign in and sit again.`

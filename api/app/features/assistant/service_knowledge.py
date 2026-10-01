@@ -33,7 +33,7 @@ class KnowledgeUnavailable(AppError):
 
 def get_vector_index(session: Annotated[AsyncSession, Depends(get_session)]) -> VectorIndex:
     """The dependency the router wires. Overridden in tests with a fake."""
-    from app.features.media.service_search import get_vector_index as _build  # noqa: PLC0415
+    from app.features.media.service_search import get_vector_index as _build
 
     return _build(session)
 
@@ -86,7 +86,7 @@ async def answer(
     # holds this backend to ADR 0013's claim that importing the engine pulls in
     # no LLM SDK, and an eager import here is also startup time every process
     # pays — including the worker, which never answers a knowledge question.
-    from openai import AsyncOpenAI, OpenAIError  # noqa: PLC0415 - optional dependency
+    from openai import AsyncOpenAI, OpenAIError  # optional dependency
 
     system = (
         "You are Athena, OSCE Guide's exam revision assistant. "

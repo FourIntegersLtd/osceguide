@@ -28,7 +28,13 @@ TUTOR_NEVER = (
 )
 
 # Fallback wording when the consumer gives no label for its own material.
-DEFAULT_LABELS = {"summaries": "the condition summaries", "slides": "the slides", "stations": "the practice stations"}
+DEFAULT_LABELS = {
+    "summaries": "the condition summaries",
+    "slides": "the slides",
+    "stations": "the practice stations",
+    "podcast": "the podcast",
+    "articles": "the articles",
+}
 
 TOOL_ROLES = ("recall", "search", "suggest", "remember", "mark_done")
 
@@ -43,10 +49,13 @@ MAX_TOPIC_CHARS = 200
 
 
 class DashboardTutorFormatter:
+    """Builds the system prompt for the dashboard tutor from a learner brief."""
+
     @staticmethod
     def create_prompt(brief: Mapping[str, Any] | None, *, labels: Mapping[str, str] | None = None) -> str:
+        """Return the full prompt text for this brief and these labels."""
         brief = brief or {}
-        labels = {**DEFAULT_LABELS, **{k: v for k, v in (labels or {}).items() if str(v or "").strip()}}
+        labels = {**DEFAULT_LABELS, **{key: value for key, value in (labels or {}).items() if str(value or "").strip()}}
         tools = _tool_names(brief.get("tool_names"))
         who = _who_you_are_talking_to(brief, labels)
         topic = _topic_title(brief)
@@ -86,8 +95,8 @@ def _topic_source(brief: Mapping[str, Any], labels: Mapping[str, str]) -> str:
     return {
         "summary": labels["summaries"],
         "slide_deck": labels["slides"],
-        "podcast": "the podcast",
-        "blog": "the articles",
+        "podcast": labels["podcast"],
+        "blog": labels["articles"],
     }.get(kind, "")
 
 
@@ -151,12 +160,14 @@ def _menu_labels(raw: Any) -> list[str]:
 
 
 def _tool_names(raw: Any) -> dict[str, str]:
+    """Map each tool role to the tool name the consumer registered, keeping only roles with a non-empty name."""
     if not isinstance(raw, Mapping):
         return {}
     return {role: str(raw[role]).strip() for role in TOOL_ROLES if str(raw.get(role) or "").strip()}
 
 
 def _what_this_is() -> str:
+    """The opening block that tells the model who it is and how it speaks from its notes."""
     return (
         "<what_this_is>\n"
         "You are this doctor's tutor and you have worked with them before. What you remember about "
@@ -170,6 +181,7 @@ def _what_this_is() -> str:
 
 
 def _how_to_use_tools(tools: Mapping[str, str], labels: Mapping[str, str]) -> str:
+    """The block that says when to look something up, or that nothing can be looked up when no tools were given."""
     if not tools:
         return (
             "<how_to_use_what_you_know>\n"

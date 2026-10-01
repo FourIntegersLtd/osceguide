@@ -109,7 +109,7 @@ class DomainComposition(BaseModel):
 
     A domain's tone comes from its value as a share of its maximum, read
     against the display's tones. `red`/`amber`/`green` are the poor, fair and
-    good-or-better counts, kept until platform-web reads `tones` (Stage 3).
+    good-or-better counts, kept until the web app reads `tones`.
     """
 
     id: str

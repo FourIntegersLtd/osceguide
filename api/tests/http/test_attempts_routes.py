@@ -172,7 +172,12 @@ async def test_a_new_user_gets_the_free_trial(client: AsyncClient, make_actor) -
 async def test_the_trial_runs_out_after_three_attempts(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    """Three, counted the legacy way. Ported verbatim as the oracle."""
+    """Three finished stations end the trial.
+
+    These attempts name no station, and each such attempt counts as a station
+    of its own. The retry rule (the same station again) is tested through the
+    database in `test_a_trial_station_can_be_retried_without_using_another`.
+    """
     from app.features.attempts import repository as attempts_repo
     from app.features.identity import repository as identity_repo
 
@@ -197,6 +202,61 @@ async def test_the_trial_runs_out_after_three_attempts(
     assert refused.status_code == 403, refused.text
     assert refused.json()["code"] == "not_entitled"
     assert refused.json()["details"]["reason"] == "trial_exhausted"
+
+
+async def test_a_trial_station_can_be_retried_without_using_another(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The trial counts stations: a station may be finished three times, and that is one station used."""
+    from app.features.attempts import repository as attempts_repo
+    from app.features.attempts import service as attempts_service
+    from app.features.identity import repository as identity_repo
+    from app.features.stations import repository as stations_repo
+
+    await make_actor("retrier@example.com")
+    user = await identity_repo.user_by_email(db_session, "retrier@example.com")
+    exam = await ensure_exam(db_session, "sca")
+    assert user is not None and exam is not None
+    version_ids = []
+    for title in ("Chest pain", "Low mood"):
+        station = await stations_repo.create_station(db_session, None, exam_id=exam.id, title=title)
+        version = await stations_repo.add_version(
+            db_session, None, station_id=station.id, version=1, content={"station_name": title}
+        )
+        version_ids.append(version.id)
+    retried, untouched = version_ids
+
+    async def finish_one(station_version_id: uuid.UUID) -> None:
+        attempt = await attempts_repo.create_attempt(
+            db_session,
+            kind="practice",
+            user_id=user.id,
+            exam_id=exam.id,
+            station_version_id=station_version_id,
+        )
+        await attempts_repo.set_status(db_session, attempt.id, status="running", at=NOW)
+        await attempts_repo.set_status(db_session, attempt.id, status="interaction_complete", at=NOW)
+
+    async def trial(station_version_id: uuid.UUID):  # type: ignore[no-untyped-def]
+        state = await attempts_service.trial_state_for(
+            db_session, user_id=user.id, exam_id=exam.id, station_version_id=station_version_id
+        )
+        assert state is not None
+        return state
+
+    await finish_one(retried)
+    await finish_one(retried)
+    await db_session.flush()
+
+    after_two = await trial(retried)
+    assert (after_two.completed_station_count, after_two.completed_on_this_station) == (1, 2)
+    # A station not sat yet is not a retry, and only one trial station is used so far.
+    fresh = await trial(untouched)
+    assert (fresh.completed_station_count, fresh.completed_on_this_station) == (1, None)
+
+    await finish_one(retried)
+    await db_session.flush()
+    assert (await trial(retried)).completed_on_this_station == 3
 
 
 async def test_an_old_account_has_no_trial_left(

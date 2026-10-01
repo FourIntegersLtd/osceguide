@@ -14,5 +14,5 @@ RUNNING = frozenset({GENERATING_AUDIO, GENERATING_VIDEO, GENERATING_PODCAST})
 
 
 def is_running(status: str | None) -> bool:
-    """Whether a production job is still in flight for this status, so a caller knows to poll again."""
+    """Whether a production job is still in flight for this status, so a caller knows to keep waiting."""
     return (status or "") in RUNNING

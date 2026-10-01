@@ -13,25 +13,14 @@ from pathlib import Path
 
 import pytest
 
-from tests.guards._scan import APP_ROOT, parse, python_files, rel
+from tests.guards._scan import APP_ROOT, is_route_handler, parse, python_files, rel
 
 # Two-letter names that are words or standard abbreviations in this codebase.
 TWO_LETTER_WORDS = {"id", "db", "tz", "s3", "ip", "at", "to", "by", "os", "re", "io", "uk", "gp", "cv"}
-# Decorators that make a function an HTTP route.
-ROUTE_METHODS = {"get", "post", "put", "patch", "delete", "api_route", "websocket"}
 # Placeholder names that never say what the thing is.
 PLACEHOLDERS = {
     "data", "obj", "tmp", "val", "res", "ret", "foo", "idx", "opts", "cfg", "cnt", "num", "fn", "cb", "el",
 }  # fmt: skip
-
-
-def is_route_handler(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    """True when the function is decorated as an HTTP route, e.g. `@router.get(...)`."""
-    for decorator in function.decorator_list:
-        target = decorator.func if isinstance(decorator, ast.Call) else decorator
-        if isinstance(target, ast.Attribute) and target.attr in ROUTE_METHODS:
-            return True
-    return False
 
 
 def vague_names(tree: ast.Module) -> list[tuple[int, str]]:

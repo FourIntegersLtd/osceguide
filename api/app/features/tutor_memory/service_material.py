@@ -20,16 +20,11 @@ from app.features.media import service as media
 from app.features.media.schemas import MediaRead
 from app.features.stations import service_reads as stations
 from app.features.tutor_memory import chunking
-from app.features.tutor_memory.domain import HELP_CORPUS
+from app.features.tutor_memory.domain import HELP_CORPUS, MEDIA_KINDS
 
 log = get_logger(__name__)
 
 STATION_CORPUS = "station"
-# The media kinds worth reading out. A podcast's `content` is a transcript and
-# a blog's is prose, so both search usefully; anything else is indexed only
-# once somebody has decided what a citation to it should say.
-MEDIA_CORPORA = ("summary", "slide_deck", "podcast", "blog")
-
 MEDIA_PAGE = 200
 
 # Three is what a spoken answer can carry. A fourth passage is not read out --
@@ -69,13 +64,13 @@ async def reindex(session: AsyncSession, *, index: MaterialIndex | None = None) 
     twice costs the embeddings and changes nothing, and a run that failed half
     way is repaired by the next one rather than needing to be unwound.
     """
-    from app.features.tutor_memory.index import NoMaterialIndex, build_material_index  # noqa: PLC0415
+    from app.features.tutor_memory.index import NoMaterialIndex, build_material_index
 
     # Nothing configured: walk the material, index none of it, and say so in
     # the log rather than failing a nightly job on every deployment without a key.
     index = index or build_material_index(session) or NoMaterialIndex()
     sources = passages = 0
-    seen: dict[str, set[str]] = {corpus: set() for corpus in (STATION_CORPUS, *MEDIA_CORPORA, HELP_CORPUS)}
+    seen: dict[str, set[str]] = {corpus: set() for corpus in (STATION_CORPUS, *MEDIA_KINDS, HELP_CORPUS)}
 
     for station in await stations.published_material(session):
         source_id = str(station.version_id)
@@ -91,7 +86,7 @@ async def reindex(session: AsyncSession, *, index: MaterialIndex | None = None) 
         sources += 1
 
     for media_item, exam_id in await _published_media(session):
-        if media_item.kind not in MEDIA_CORPORA:
+        if media_item.kind not in MEDIA_KINDS:
             continue
         seen[media_item.kind].add(str(media_item.id))
         passages += await _index_published_media_item(index, media_item=media_item, exam_id=exam_id)
@@ -121,8 +116,8 @@ async def reindex_media_item(
 
     Does not retire other sources — that is only safe on a full re-index walk.
     """
-    from app.features.catalog import service as catalog  # noqa: PLC0415 - avoids an import cycle
-    from app.features.tutor_memory.index import NoMaterialIndex, build_material_index  # noqa: PLC0415
+    from app.features.catalog import service as catalog  # avoids an import cycle
+    from app.features.tutor_memory.index import NoMaterialIndex, build_material_index
 
     read = await media.read_by_id(session, media_item_id, viewer_is_admin=True)
     if read.status != "published":
@@ -139,7 +134,7 @@ async def _index_published_media_item(
     index: MaterialIndex, *, media_item: MediaRead, exam_id: str | None
 ) -> int:
     """Hand one published media item to the index when its kind is tutor-searchable."""
-    if media_item.kind not in MEDIA_CORPORA:
+    if media_item.kind not in MEDIA_KINDS:
         return 0
     return await _index_one(
         index,
@@ -178,8 +173,8 @@ async def _help_sources(session: AsyncSession) -> list[tuple[str, str | None, He
     it reaches only the people who hold that exam — the same article the help
     browser shows them. An exam this deployment does not have is skipped.
     """
-    from app.features.assistant import service_help  # noqa: PLC0415 - avoids an import cycle
-    from app.features.catalog import service as catalog  # noqa: PLC0415
+    from app.features.assistant import service_help  # avoids an import cycle
+    from app.features.catalog import service as catalog
 
     help_sources: list[tuple[str, str | None, HelpArticle]] = []
     for article in service_help.all_articles():
@@ -211,7 +206,7 @@ async def _retire(index: MaterialIndex, seen: dict[str, set[str]]) -> int:
 
 async def _published_media(session: AsyncSession) -> list[tuple[MediaRead, str | None]]:
     """Every published media item, with the exam it belongs to, in one walk."""
-    from app.features.catalog import service as catalog  # noqa: PLC0415 - avoids an import cycle
+    from app.features.catalog import service as catalog  # avoids an import cycle
 
     media_with_exam: list[tuple[MediaRead, str | None]] = []
     codes: dict[str, uuid.UUID] = {}

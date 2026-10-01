@@ -7,7 +7,7 @@ import { useLocalParticipant, useParticipants, useTracks, VideoTrack } from "@li
 import { Track } from "livekit-client";
 import { Alert } from "@/foundation/ui";
 
-/** Video layout ported from B2C LivekitHumanPracticeService.RoomContent. */
+/** The video layout for two people practising together. */
 export function PeerVideoPanel({ role }: { role: "doctor" | "patient" }) {
   const participants = useParticipants();
   const tracks = useTracks([Track.Source.Camera, Track.Source.Microphone], { onlySubscribed: false });

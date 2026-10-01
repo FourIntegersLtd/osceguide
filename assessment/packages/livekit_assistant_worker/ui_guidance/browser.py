@@ -28,7 +28,7 @@ class BrowserChannel:
     @property
     def identity(self) -> str | None:
         """The remote participant to address, or None when nobody is connected."""
-        return next((p.identity for p in self._room.remote_participants.values()), None)
+        return next((participant.identity for participant in self._room.remote_participants.values()), None)
 
     @asynccontextmanager
     async def exclusive(self) -> AsyncIterator[None]:

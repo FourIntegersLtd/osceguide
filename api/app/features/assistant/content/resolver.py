@@ -21,7 +21,6 @@ from .models import (
 )
 from .overlay import apply
 
-DEFAULT_EXAM = "sca"
 NAV_PLACEHOLDER = re.compile(r"\{nav\.([A-Za-z0-9_-]+)\}")
 
 
@@ -55,7 +54,8 @@ def resolve_client_profile(record: Mapping[str, Any]) -> ClientProfile:
     )
     return ClientProfile(
         surface=surface,
-        exam=(_str(record.get("exam_code")) or DEFAULT_EXAM).lower(),
+        # A session with no exam gets the base pack alone: no exam overlay applies.
+        exam=_str(record.get("exam_code")).lower(),
         role=role,
         route=_str(client.get("route")),
         navigation=navigation,

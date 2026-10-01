@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { Alert, AsyncBoundary, B2CSegmentedTabs, Badge, cn, SectionSearchField, Textarea } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { useAsync, useSearchQuery } from "@/foundation/hooks";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { listTrialCandidates, type TrialCandidate, type TrialMarkRequest } from "@/capabilities/authoring/api";
@@ -122,12 +122,7 @@ function AttemptPicker({
 }) {
   const scope = useAuthoringScope();
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const query = useSearchQuery(search);
 
   const candidates = useAsync(
     (signal) => listTrialCandidates(scope, { search: query, limit: 20 }, signal),

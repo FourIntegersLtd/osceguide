@@ -15,6 +15,7 @@ from app.features.attempts.schemas import CoverageRead
 router = APIRouter()
 
 
+# Read which marking points a consultation covered, for the person who sat it.
 @router.get(
     "/attempts/{attempt_id}/coverage",
     response_model=CoverageRead,

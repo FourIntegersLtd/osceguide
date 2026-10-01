@@ -19,6 +19,7 @@ from app.features.catalog.service import resolve_exam
 from app.features.entitlements import service as entitlements
 from app.features.identity import service as identity
 from app.features.stations import service as stations
+from app.features.stations import service_reads as stations_reads
 
 
 async def start_attempt(
@@ -123,7 +124,23 @@ async def trial_state_for(
     user = await identity.user_ref_by_id(session, user_id)
     if user is None:
         return None
-    counts = await repository.trial_counts(session, user_id, exam_id, station_version_id=station_version_id)
+    trial_attempts = await repository.attempts_counted_by_trial(session, user_id, exam_id)
+    version_ids = {
+        trial_attempt.station_version_id
+        for trial_attempt in trial_attempts
+        if trial_attempt.station_version_id is not None
+    }
+    if station_version_id is not None:
+        version_ids.add(station_version_id)
+    version_stations = await stations_reads.stations_by_version_id(session, list(version_ids))
+    station_by_version = {
+        version_id: version_station.station_id for version_id, version_station in version_stations.items()
+    }
+    counts = domain.count_trial_use(
+        trial_attempts,
+        station_by_version=station_by_version,
+        starting_station_id=station_by_version.get(station_version_id) if station_version_id else None,
+    )
     return entitlements.TrialState(
         set_station_count=counts.set_stations,
         completed_station_count=counts.completed_stations,
@@ -211,10 +228,12 @@ async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID
     """
     if station_version_id is None:
         raise errors.UnknownExamError("The slot has no station, so there is nothing to run.")
-    exam_id = await repository.exam_for_station_version(session, station_version_id)
-    if exam_id is None:
+    version_station = (await stations_reads.stations_by_version_id(session, [station_version_id])).get(
+        station_version_id
+    )
+    if version_station is None:
         raise errors.UnknownExamError("The slot's station is not bound to an exam.")
-    return exam_id
+    return version_station.exam_id
 
 
 async def latest_attempt_for_set_entry(session: AsyncSession, set_entry_id: uuid.UUID) -> uuid.UUID | None:

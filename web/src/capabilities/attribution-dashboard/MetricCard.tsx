@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { IconType } from "react-icons";
 import { HiOutlineInformationCircle } from "react-icons/hi2";
-import type { MetricTone } from "@/foundation/attribution/viewModel";
+import type { MetricTone } from "@/capabilities/attribution-dashboard/viewModel";
 
 /** Semantic classes per tone, so the platform skin owns the actual colour. */
 const TONES: Record<MetricTone, { well: string; value: string }> = {

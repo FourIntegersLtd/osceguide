@@ -244,7 +244,6 @@ def _partner_spend_alert(escaped_fields: dict[str, str]) -> str:
 def _marketplace_session_reminder(escaped_fields: dict[str, str]) -> str:
     """The body reminding both sides of a peer practice session it starts in an hour.
 
-    Ported from legacy `b2c-api`'s `EmailService.send_marketplace_session_reminder_email`.
     `escaped_fields` carries the payload `service_reminders.py` builds: the recipient's
     own display name, their partner's, when the session starts, and which exam it is for.
     """
@@ -261,14 +260,14 @@ def _marketplace_session_reminder(escaped_fields: dict[str, str]) -> str:
 def _inactive_user_engagement(escaped_fields: dict[str, str]) -> str:
     """The body nudging a signed-up but never-practised person to try their first station.
 
-    Ported from legacy `b2c-api`'s `EmailService.send_inactive_user_engagement_email`.
     `escaped_fields` carries the payload `identity.service_engagement` builds: the
     recipient's display name and the exam their account is set to.
     """
     link = f"{get_settings().frontend_url.rstrip('/')}/dashboard"
-    exam_name = escaped_fields.get("exam_name", "SCA")
+    exam_name = escaped_fields.get("exam_name", "")
+    first_station = f"first {exam_name} station" if exam_name else "first station"
     return (
-        f"<h1>Ready to complete your first {exam_name} station?</h1>"
+        f"<h1>Ready to complete your {first_station}?</h1>"
         f"<p>Hi {escaped_fields.get('display_name', 'Doctor')}, you signed up but have not yet "
         "run through a practice station. It only takes a few minutes to see how it works.</p>"
         f'<p><a href="{link}">Start your first station</a></p>'

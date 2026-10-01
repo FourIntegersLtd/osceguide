@@ -19,7 +19,7 @@ import {
   RowList,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
-import { partnerDisplayName } from "@/foundation/attribution/viewModel";
+import { partnerDisplayName } from "@/capabilities/attribution-dashboard/viewModel";
 import {
   addPartnerReporter,
   listPartnerReporters,

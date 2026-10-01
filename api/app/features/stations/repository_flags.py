@@ -14,6 +14,7 @@ from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.stations.models import Station, StationFlag
 
 
@@ -49,7 +50,7 @@ async def for_reporter_page(
 ) -> tuple[list[StationFlag], str | None]:
     """One page of what this person has reported, newest first.
 
-    `search` is an ILIKE on the reported station's title, joined in only to
+    `search` is matched against the reported station's title, joined in only to
     filter — `keyset_page` still returns plain `StationFlag` scalars, so the
     caller resolves titles the same way the staff queue does, with
     `titles_by_ids`.
@@ -57,7 +58,7 @@ async def for_reporter_page(
     stmt = select(StationFlag).where(StationFlag.user_id == user_id)
     if search:
         stmt = stmt.join(Station, Station.id == StationFlag.station_id).where(
-            Station.title.ilike(f"%{search}%")
+            contains_text(Station.title, search)
         )
     return await keyset_page(
         session, stmt, sort_col=StationFlag.created_at, id_col=StationFlag.id, limit=limit, cursor=cursor

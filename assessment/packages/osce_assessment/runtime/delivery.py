@@ -33,6 +33,8 @@ class RetryPolicy:
 
 
 class DeliveryError(RuntimeError):
+    """Raised when a transcript could not be delivered after every retry."""
+
     def __init__(self, attempt_id: str, attempts: int, last_error: Exception) -> None:
         super().__init__(
             f"transcript delivery failed for attempt {attempt_id} "
@@ -44,6 +46,8 @@ class DeliveryError(RuntimeError):
 
 
 class TranscriptDelivery:
+    """Delivers each attempt's transcript to the sink at most once, retrying on failure."""
+
     def __init__(
         self,
         sink: TranscriptSink,

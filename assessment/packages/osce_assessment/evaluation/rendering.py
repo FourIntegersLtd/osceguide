@@ -13,6 +13,7 @@ _LABELS = {MessageRole.USER: "DOCTOR", MessageRole.ASSISTANT: "PATIENT"}
 
 
 def render_transcript_for_marking(transcript: Transcript) -> str:
+    """The transcript as tagged DOCTOR and PATIENT blocks, skipping empty turns."""
     blocks = []
     for message in transcript.messages:
         text = message.message.strip()

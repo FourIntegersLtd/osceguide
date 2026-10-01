@@ -32,6 +32,8 @@ DATA_TYPE_SESSION_ENDED = "gpt_live_session_ended"
 
 
 class SessionEndReason(StrEnum):
+    """Why a GPT-Live session ended, as reported to the frontend and the backend."""
+
     USER_DISCONNECT = "user_disconnect"
     IDLE_TIMEOUT = "idle_timeout"
     HARD_TIMEOUT = "hard_timeout"
@@ -40,6 +42,8 @@ class SessionEndReason(StrEnum):
 
 @dataclass(frozen=True)
 class GptLiveSessionPolicyConfig:
+    """The time limits for one GPT-Live session, in seconds."""
+
     max_seconds: float = MAX_SECONDS
     hard_warning_seconds: float = HARD_WARNING_SECONDS
     idle_warning_seconds: float = IDLE_WARNING_SECONDS
@@ -48,7 +52,7 @@ class GptLiveSessionPolicyConfig:
     @classmethod
     def from_env(cls) -> "GptLiveSessionPolicyConfig":
         """The defaults above, overridden by ``GPT_LIVE_<FIELD>`` where set."""
-        return cls(**{f.name: optional_float(f"GPT_LIVE_{f.name.upper()}", getattr(cls, f.name)) for f in fields(cls)})
+        return cls(**{field.name: optional_float(f"GPT_LIVE_{field.name.upper()}", getattr(cls, field.name)) for field in fields(cls)})
 
 
 class GptLiveSessionController:
@@ -84,16 +88,19 @@ class GptLiveSessionController:
         return self._end_reason
 
     def attach(self) -> None:
+        """Start the time-limit and idle timers and listen for user and agent activity."""
         self._tasks.append(asyncio.create_task(self._hard_cap_timer()))
         self._tasks.append(asyncio.create_task(self._idle_monitor()))
 
         @self._agent.on("user_input_transcribed")
         def _on_user_input(ev: UserInputTranscribedEvent) -> None:
+            """Count a finished piece of user speech as activity."""
             if ev.is_final:
                 self._record_user_activity()
 
         @self._agent.on("agent_state_changed")
         def _on_agent_state_changed(ev: Any) -> None:
+            """Track whether the agent is busy, since a busy agent means the user is not idle."""
             state = getattr(ev, "new_state", None)
             self._agent_busy = str(state) in {"thinking", "speaking"}
             if self._agent_busy:
@@ -102,6 +109,7 @@ class GptLiveSessionController:
         self._ctx.add_shutdown_callback(self._report_usage_on_shutdown)
 
     def _record_user_activity(self) -> None:
+        """Note that the user just spoke, so the idle clock restarts."""
         self._last_user_activity = time.monotonic()
         self._idle_warning_sent = False
 
@@ -109,11 +117,13 @@ class GptLiveSessionController:
         return time.monotonic() - self._started_at
 
     def _idle_elapsed(self) -> float:
+        """Seconds since the user last did anything; zero while the agent is thinking or speaking."""
         if self._agent_busy:
             return 0.0
         return time.monotonic() - self._last_user_activity
 
     async def _hard_cap_timer(self) -> None:
+        """Warn the user near the time limit, then end the session when the limit is reached."""
         warning_at = self._config.max_seconds - self._config.hard_warning_seconds
         if warning_at > 0:
             await asyncio.sleep(warning_at)
@@ -137,6 +147,7 @@ class GptLiveSessionController:
         await self.close(SessionEndReason.HARD_TIMEOUT)
 
     async def _idle_monitor(self) -> None:
+        """Warn the user after a quiet spell, then end the session if they stay silent."""
         while not self._closing:
             await asyncio.sleep(0.25)
             if self._closing:
@@ -162,6 +173,7 @@ class GptLiveSessionController:
                 return
 
     async def _send_warning(self, *, reason: str, message: str) -> None:
+        """Tell the frontend and the user, out loud, that the session is about to end."""
         await self._publish_data(
             {
                 "type": DATA_TYPE_SESSION_WARNING,
@@ -173,6 +185,7 @@ class GptLiveSessionController:
         await self._speak_commentary(message)
 
     async def _speak_commentary(self, message: str) -> None:
+        """Speak a message to the user, using the live voice session when there is one."""
         try:
             duplex = self._agent.current_agent.duplex_session
             if isinstance(duplex, GPTLiveSession):
@@ -187,6 +200,7 @@ class GptLiveSessionController:
             main_logger.warning("[gpt_live_policy] warning speech failed: %s", exc)
 
     async def _publish_data(self, payload: dict[str, Any]) -> None:
+        """Send a JSON message to everyone in the room, logging a failure instead of raising."""
         try:
             await self._ctx.room.local_participant.publish_data(
                 json.dumps(payload).encode("utf-8"),
@@ -196,6 +210,7 @@ class GptLiveSessionController:
             main_logger.warning("[gpt_live_policy] publish_data failed: %s", exc)
 
     async def close(self, reason: SessionEndReason) -> None:
+        """End the session once: stop the timers, tell the room, then shut down the agent and job."""
         if self._closing:
             return
         self._closing = True
@@ -224,6 +239,7 @@ class GptLiveSessionController:
             main_logger.warning("[gpt_live_policy] ctx shutdown failed: %s", exc)
 
     async def _report_usage_on_shutdown(self) -> None:
+        """Log the usage figures and report the session as complete when the job shuts down."""
         usage = getattr(self._agent, "usage", None)
         main_logger.info(
             "[gpt_live_policy] session=%s worker_type=%s end_reason=%s usage=%s",
@@ -235,6 +251,7 @@ class GptLiveSessionController:
         await self._post_session_completion(usage)
 
     async def _post_session_completion(self, usage: Any) -> None:
+        """Post the end reason, elapsed time and usage to the backend, never raising on failure."""
         if self._endpoints is None:
             return
         payload = {
@@ -257,6 +274,7 @@ class GptLiveSessionController:
 
 
 def serialize_usage(usage: Any) -> dict[str, Any]:
+    """Turn the framework's usage object into a plain dict that can be sent as JSON."""
     if usage is None:
         return {}
     value = _jsonable(usage)
@@ -271,13 +289,13 @@ def _jsonable(value: Any) -> Any:
     if hasattr(value, "model_dump"):
         return value.model_dump(mode="json")
     if is_dataclass(value) and not isinstance(value, type):
-        return {f.name: _jsonable(getattr(value, f.name)) for f in fields(value)}
+        return {field.name: _jsonable(getattr(value, field.name)) for field in fields(value)}
     if isinstance(value, dict):
-        return {str(k): _jsonable(v) for k, v in value.items()}
+        return {str(key): _jsonable(item) for key, item in value.items()}
     if isinstance(value, (list, tuple, set)):
-        return [_jsonable(v) for v in value]
+        return [_jsonable(item) for item in value]
     if hasattr(value, "__dict__"):
-        return {k: _jsonable(v) for k, v in vars(value).items() if not k.startswith("_")}
+        return {key: _jsonable(item) for key, item in vars(value).items() if not key.startswith("_")}
     return str(value)
 
 
@@ -290,6 +308,7 @@ def register_gpt_live_session_policy(
     endpoints: BackendEndpoints | None = None,
     config: GptLiveSessionPolicyConfig | None = None,
 ) -> GptLiveSessionController:
+    """Create the session controller for one GPT-Live session and start its timers."""
     controller = GptLiveSessionController(ctx=ctx, agent=agent, session_id=session_id, worker_type=worker_type, endpoints=endpoints, config=config)
     controller.attach()
     return controller

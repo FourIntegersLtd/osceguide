@@ -13,9 +13,9 @@ import { DiscussWithAthena } from "./DiscussWithAthena";
 const helpPanelFooter = "shrink-0 border-t border-osce-border-light bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4";
 
 export function KnowledgeBaseChat({
-  appType,
+  examCode,
 }: {
-  appType: string;
+  examCode?: string;
 }) {
   const [messages, setMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
@@ -39,7 +39,7 @@ export function KnowledgeBaseChat({
     setLoading(true);
     try {
       const nextMessages = [...messages, userMessage];
-      const data = await askKnowledge(nextMessages, appType);
+      const data = await askKnowledge(nextMessages, examCode);
       const reply =
         (data?.reply || "").trim() ||
         "I could not generate a response. Please try again.";

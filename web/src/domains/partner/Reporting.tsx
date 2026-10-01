@@ -5,7 +5,11 @@ import { LuMail, LuPlus } from "react-icons/lu";
 import { Alert, AsyncBoundary, Button, Card, EmptyState, Input, PageHeader } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
-import { addReporter, listRefIds, type RefIdPage } from "@/domains/partner/api";
+import {
+  addPartnerReporter,
+  listPartnerRefIds,
+  type TrackingPage,
+} from "@/capabilities/staff-growth/api";
 
 /**
  * The links a partner publishes, and who may read the numbers.
@@ -17,7 +21,7 @@ import { addReporter, listRefIds, type RefIdPage } from "@/domains/partner/api";
  */
 export function PartnerReporting({ partner }: { partner: string }) {
   const { session } = useSession();
-  const refIds = useAsync((signal) => listRefIds(partner, signal), [partner]);
+  const refIds = useAsync((signal) => listPartnerRefIds(partner, signal), [partner]);
   /*
    * A reporter is appointed by OSCE Guide staff, not by the partner — the
    * backend route is platform-admin only ("partners do not appoint their own
@@ -47,7 +51,7 @@ export function PartnerReporting({ partner }: { partner: string }) {
   );
 }
 
-function RefIds({ data }: { data: RefIdPage }) {
+function RefIds({ data }: { data: TrackingPage }) {
   const items = data.items ?? [];
 
   return (
@@ -87,7 +91,7 @@ function AddReporter({ partner }: { partner: string }) {
       setBusy(true);
       setError(null);
       try {
-        await addReporter(partner, email);
+        await addPartnerReporter(partner, email);
         setAdded(email);
         setEmail("");
       } catch (cause) {

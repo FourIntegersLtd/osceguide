@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RuntimeOutcome:
+    """What one attempt produced: the final attempt state, the transcript, any result, and the error if it failed."""
+
     attempt: AssessmentAttempt
     transcript: Transcript
     result: AssessmentResult | None = None
@@ -48,6 +50,8 @@ class RuntimeOutcome:
 
 
 class AttemptRuntime:
+    """Runs one attempt end to end, using the ports it is given for every outside step."""
+
     def __init__(
         self,
         *,
@@ -78,6 +82,7 @@ class AttemptRuntime:
         return await self._delivery.deliver(transcript)
 
     async def run(self, attempt: AssessmentAttempt) -> RuntimeOutcome:
+        """Run the attempt through interaction, transcript delivery and, when an evaluator is set, marking, and return the outcome. Failures are recorded on the outcome rather than raised."""
         attempt = attempt.model_copy(
             update={"status": AttemptStatus.RUNNING, "started_at": self._clock()}
         )
@@ -142,6 +147,7 @@ class AttemptRuntime:
     def _finish(
         self, outcome: RuntimeOutcome, status: AttemptStatus, *, error: str | None = None
     ) -> RuntimeOutcome:
+        """Stamp the outcome's attempt with its final status, end time and error, and return it."""
         outcome.attempt = outcome.attempt.model_copy(
             update={"status": status, "ended_at": self._clock()}
         )

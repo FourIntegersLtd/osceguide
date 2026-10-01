@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { HiOutlineChevronDown } from "react-icons/hi2";
-import { CustomDateRangeModal } from "@/foundation/attribution/CustomDateRangeModal";
+import { CustomDateRangeModal } from "@/capabilities/attribution-dashboard/CustomDateRangeModal";
 import {
   RANGE_PRESET_LABELS,
   RANGE_PRESET_ORDER,
@@ -11,14 +11,14 @@ import {
   formatDateRangeLabel,
   hasActiveFilters,
   type ConcreteRangePreset,
-} from "@/foundation/attribution/presets";
-import type { FilterScope } from "@/foundation/attribution/tabs";
+} from "@/capabilities/attribution-dashboard/presets";
+import type { FilterScope } from "@/capabilities/attribution-dashboard/tabs";
 import {
   PILOT_EXAMS,
   PILOT_PARTNERS,
   type AttributionFilters,
   type AttributionMode,
-} from "@/foundation/attribution/types";
+} from "@/capabilities/attribution-dashboard/types";
 
 interface DashboardFilterBarProps {
   filters: AttributionFilters;

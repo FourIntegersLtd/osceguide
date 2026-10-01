@@ -98,7 +98,7 @@ def _livekit_api() -> Any:
     if not (settings.livekit_url and settings.livekit_api_key and settings.livekit_api_secret):
         raise VoiceUnavailable("LiveKit credentials are not configured")
     try:
-        from livekit import api  # noqa: PLC0415
+        from livekit import api
     except ImportError as exc:  # pragma: no cover - depends on deployment extras
         raise VoiceUnavailable("The LiveKit SDK is not installed") from exc
     return api

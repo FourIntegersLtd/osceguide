@@ -40,6 +40,8 @@ OPENING_REPLY_TIMEOUT_S = 30.0
 
 
 class AssistantVoiceSession:
+    """Runs one assistant job from dispatch metadata to a spoken opening, and holds the state that job builds up."""
+
     def __init__(self, registry: BackendRegistry, *, candidate_timeout: float = CANDIDATE_TIMEOUT_S) -> None:
         self._registry = registry
         self._candidate_timeout = candidate_timeout
@@ -57,6 +59,7 @@ class AssistantVoiceSession:
     # -- lifecycle ---------------------------------------------------------------
 
     async def entrypoint(self, ctx: Any) -> AssistantSession | None:
+        """Run one job: read the metadata, fetch the session, wait for the candidate, start the agent and open the conversation. Returns the session, or None when the job is rejected or cannot start."""
         try:
             metadata = parse_dispatch_metadata(getattr(ctx.job, "metadata", None))
         except MetadataError as exc:
@@ -112,6 +115,7 @@ class AssistantVoiceSession:
     # -- setup --------------------------------------------------------------------
 
     def _tools_for(self, ctx: Any, session: AssistantSession) -> list:
+        """Assemble the tools this mode and session call for: navigation, screen guidance, the clock and the backend's own tools."""
         tools: list = []
         if session.mode.ui_guidance and session.extras.screen_ui_guidance:
             tools.append(build_offer_navigation_modes_tool(ctx))
@@ -136,6 +140,7 @@ class AssistantVoiceSession:
         return tools
 
     def _build(self, ctx: Any, session: AssistantSession, instructions: str, tools: list, runtime: VoiceRuntime) -> AgentBuild:
+        """Build the agent for the chosen runtime, reusing a voice activity detector warmed up at process start when there is one."""
         proc_userdata = getattr(getattr(ctx, "proc", None), "userdata", None)
         prewarmed = proc_userdata.get("gpt_live_vad") if isinstance(proc_userdata, dict) else None
         return build_assistant_agent(
@@ -152,6 +157,7 @@ class AssistantVoiceSession:
         )
 
     async def _start_agent(self, ctx: Any, session: AssistantSession, instructions: str, tools: list) -> AgentBuild:
+        """Start the agent, falling back to the pipeline runtime if the speech-to-speech one fails to start."""
         build = self._build(ctx, session, instructions, tools, self.runtime)
         try:
             return await self._start(ctx, session, build)
@@ -163,6 +169,7 @@ class AssistantVoiceSession:
             return await self._start(ctx, session, self._build(ctx, session, instructions, tools, VoiceRuntime.PIPELINE))
 
     async def _start(self, ctx: Any, session: AssistantSession, build: AgentBuild) -> AgentBuild:
+        """Attach latency logging when needed and start the agent session in the room."""
         if build.runtime is VoiceRuntime.PIPELINE:
             ConversationLatencyTracker(label=f"assistant:{session.worker_type.value}", room=ctx.room.name).attach(build.session)
         await build.session.start(room=ctx.room, agent=build.definition, room_options=build_room_options())
@@ -171,6 +178,7 @@ class AssistantVoiceSession:
     # -- events -------------------------------------------------------------------
 
     def _wire_handlers(self, ctx: Any, agent: Any, session: AssistantSession) -> None:
+        """Connect the event handlers this mode needs: transcript capture, scene changes, navigation choices and guidance progress."""
         if self.recorder is not None:
             handlers.wire_transcript_capture(agent, self.recorder)
             handlers.wire_delivery_on_end(ctx, self._deliver_transcript_once)
@@ -196,10 +204,12 @@ class AssistantVoiceSession:
             logger.error("initial greeting failed: %s", exc)
 
     async def _render_scene(self, scene: dict[str, Any]) -> str:
+        """Ask the backend for the instructions that fit a newly announced scene."""
         assert self.session is not None and self._endpoints is not None
         return await asyncio.to_thread(fetch_scene_instructions, self._endpoints, self.session.session_id, scene)
 
     async def _deliver_transcript_once(self) -> None:
+        """Send the transcript to the backend, once, however many teardown paths call this."""
         if self.delivery is None:
             return
         await self.delivery.deliver_once(settle_s=GPT_LIVE_LATE_ITEMS_S if self.runtime is VoiceRuntime.GPT_LIVE else 0.0)

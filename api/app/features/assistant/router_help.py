@@ -17,17 +17,19 @@ from app.features.assistant import service_help, service_knowledge
 router = APIRouter(tags=["assistant"])
 
 
+# List the help categories for one exam. With no exam, only the ones written for every exam.
 @router.get(
     "/help/categories",
     response_model=schemas.HelpCategories,
     responses=error_responses(Unauthenticated),
 )
 async def categories(
-    principal: CurrentPrincipal, exam_code: schemas.ExamCode = "sca"
+    principal: CurrentPrincipal, exam_code: schemas.HelpExamCode | None = None
 ) -> schemas.HelpCategories:
     return schemas.HelpCategories(categories=service_help.list_categories(exam_code))
 
 
+# List the help articles for one exam, optionally in one category or matching a search.
 @router.get(
     "/help/articles",
     response_model=schemas.HelpArticles,
@@ -35,7 +37,7 @@ async def categories(
 )
 async def articles(
     principal: CurrentPrincipal,
-    exam_code: schemas.ExamCode = "sca",
+    exam_code: schemas.HelpExamCode | None = None,
     category: str | None = None,
     search: Annotated[
         str | None, Query(max_length=300, description="A fragment of a title or a body.")
@@ -44,13 +46,14 @@ async def articles(
     return schemas.HelpArticles(articles=service_help.list_articles(exam_code, category, search))
 
 
+# Read one help article.
 @router.get(
     "/help/articles/{slug}",
     response_model=schemas.HelpArticleDetail,
     responses=error_responses(NotFound, Unauthenticated),
 )
 async def article(
-    slug: str, principal: CurrentPrincipal, exam_code: schemas.ExamCode = "sca"
+    slug: str, principal: CurrentPrincipal, exam_code: schemas.HelpExamCode | None = None
 ) -> schemas.HelpArticleDetail:
     return schemas.HelpArticleDetail(article=service_help.read_article(slug, exam_code))
 

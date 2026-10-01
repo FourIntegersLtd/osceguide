@@ -11,6 +11,7 @@ import {
   Button,
   cn,
   productTokens as t,
+  iconSearchInputClassName,
 } from "@/foundation/ui";
 import { useCursorPages, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
@@ -153,7 +154,7 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
               value={term}
               onChange={(event) => setTerm(event.target.value)}
               aria-label="Search study material"
-              className="w-full appearance-none rounded-lg border border-b2c-border bg-b2c-surface-muted py-2.5 pl-10 pr-24 text-left text-osce-body text-osce-ink-900 outline-none placeholder:text-osce-ink-400 focus:border-osce-accent focus:bg-osce-surface focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+              className={cn(iconSearchInputClassName, "pr-24 text-left")}
             />
             <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
               {term ? (

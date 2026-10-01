@@ -63,6 +63,7 @@ async def update_me(
     )
 
 
+# Read the signed-in person's account and the workspaces they belong to.
 @router.get("/me", response_model=schemas.UserRead, responses=error_responses(Unauthenticated))
 async def read_me(
     principal: CurrentPrincipal,
@@ -152,9 +153,10 @@ async def stream_my_events(
     `practice.accepted`, `cv.read`, `media.updated`, `station_import.updated`, `coverage`, ...) and
     carries just enough of a payload — an id — for a screen to tell whether it
     is the one being talked about; it still re-reads its own resource rather
-    than trusting the frame's content as truth. This replaces the polling
-    intervals every screen used to run on its own: marking status, a partner's
-    answer, a CV finishing, a live coverage panel, media production status.
+    than trusting the frame's content as truth. Every screen that waits on
+    something listens here and never asks on a timer: marking status, a
+    partner's answer, a CV finishing, a live coverage panel, media production
+    status.
 
     Unlike `/attempts/{id}/stream` or `/sittings/stream`, there is no single
     read model behind this route to snapshot, so it is built on

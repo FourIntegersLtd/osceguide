@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
-from datetime import date, datetime, time
+from collections.abc import Mapping, Sequence
+from datetime import datetime
+from typing import Any
 
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.search import contains_text
 from app.features.identity.domain import normalize_email
 from app.features.identity.models import (
     PasswordResetToken,
@@ -65,8 +67,7 @@ async def user_ids_matching(session: AsyncSession, term: str) -> list[uuid.UUID]
     """Ids of every account whose name or email contains `term`,
     case-insensitively. For another slice to narrow its own list by person
     without joining `users` itself."""
-    pattern = f"%{term}%"
-    stmt = select(User.id).where(or_(User.email.ilike(pattern), User.name.ilike(pattern)))
+    stmt = select(User.id).where(or_(contains_text(User.email, term), contains_text(User.name, term)))
     return list((await session.execute(stmt)).scalars())
 
 
@@ -335,65 +336,18 @@ async def set_avatar_url(session: AsyncSession, user_id: uuid.UUID, *, avatar_ur
 
 
 async def update_profile(
-    session: AsyncSession,
-    user_id: uuid.UUID,
-    *,
-    name: str | None,
-    exam_date: date | None,
-    clear_exam_date: bool,
-    exam_code: str | None = None,
-    ai_training_consent: bool | None = None,
-    colleague_waiting_email: bool | None = None,
-    replay_onboarding: bool | None = None,
-    exam_time: time | None = None,
-    clear_exam_time: bool = False,
-    needs_extra_time: bool | None = None,
-    custom_reading_seconds: int | None = None,
-    clear_custom_reading_seconds: bool = False,
-    custom_simulation_seconds: int | None = None,
-    clear_custom_simulation_seconds: bool = False,
+    session: AsyncSession, user_id: uuid.UUID, changes: Mapping[str, Any]
 ) -> User | None:
-    """Write only what was sent.
+    """Write these columns on one account, and nothing else. None when there is no such account.
 
-    `None` means "leave it" for every field, which is why clearing an exam date, an exam time or
-    either custom timer each needs its own flag: a PATCH that cannot distinguish "not mentioned"
-    from "set to nothing" makes clearing impossible. Clearing `exam_date` also clears
-    `exam_time` (a time with no date names nothing), whether or not the caller asked for that
-    explicitly.
+    The caller decides what changes (`service.profile_changes`), so a column
+    that was not mentioned is never touched and one sent as nothing is cleared.
     """
     user = await session.get(User, user_id)
     if user is None:
         return None
-    if name is not None:
-        user.name = name
-    if exam_code is not None:
-        user.exam_code = exam_code
-    if ai_training_consent is not None:
-        user.ai_training_consent = ai_training_consent
-    if colleague_waiting_email is not None:
-        user.colleague_waiting_email = colleague_waiting_email
-    if replay_onboarding is not None:
-        user.replay_onboarding = replay_onboarding
-    if needs_extra_time is not None:
-        user.needs_extra_time = needs_extra_time
-    if clear_custom_reading_seconds:
-        user.custom_reading_seconds = None
-    elif custom_reading_seconds is not None:
-        user.custom_reading_seconds = custom_reading_seconds
-    if clear_custom_simulation_seconds:
-        user.custom_simulation_seconds = None
-    elif custom_simulation_seconds is not None:
-        user.custom_simulation_seconds = custom_simulation_seconds
-    if clear_exam_date:
-        user.exam_date = None
-        user.exam_time = None
-    else:
-        if exam_date is not None:
-            user.exam_date = exam_date
-        if clear_exam_time:
-            user.exam_time = None
-        elif exam_time is not None:
-            user.exam_time = exam_time
+    for column, value in changes.items():
+        setattr(user, column, value)
     await session.flush()
     return user
 

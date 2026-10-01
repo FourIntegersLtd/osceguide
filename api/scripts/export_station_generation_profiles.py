@@ -52,29 +52,29 @@ def main() -> None:
         raise SystemExit(f"b2c-api not found at {B2C_API}")
     sys.path.insert(0, str(B2C_API))
 
-    from b2c.casc.models.station.CascStationModel import (  # noqa: PLC0415
+    from b2c.casc.models.station.CascStationModel import (
         CascDoctorInformationModel,
         CascManagementPlanModel,
         CascPatientInformationModel,
     )
-    from b2c.ortho.models.stations.OrthoClinicalStationModel import (  # noqa: PLC0415
+    from b2c.ortho.models.stations.OrthoClinicalStationModel import (
         OrthoClinicalStationModel,
     )
-    from b2c.ortho.models.stations.OrthoCommunicationStationModel import (  # noqa: PLC0415
+    from b2c.ortho.models.stations.OrthoCommunicationStationModel import (
         OrthoCommunicationStationModel,
     )
-    from b2c.ortho.models.stations.OrthoPortfolioStationModel import (  # noqa: PLC0415
+    from b2c.ortho.models.stations.OrthoPortfolioStationModel import (
         OrthoPortfolioStationModel,
     )
-    from b2c.ortho.models.stations.OrthoPrioritisationStationModel import (  # noqa: PLC0415
+    from b2c.ortho.models.stations.OrthoPrioritisationStationModel import (
         OrthoPrioritisationStationModel,
     )
-    from b2c.plab.models.station.PlabStationModel import (  # noqa: PLC0415
+    from b2c.plab.models.station.PlabStationModel import (
         PlabDoctorInformationModel,
         PlabManagementModel,
         PlabPatientInformationModel,
     )
-    from b2c.sca.models.stations.StationModel import (  # noqa: PLC0415
+    from b2c.sca.models.stations.StationModel import (
         ScaDoctorInformationModel,
         ScaManagementPlanModel,
         ScaPatientInformationModel,

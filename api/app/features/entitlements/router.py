@@ -75,6 +75,7 @@ async def grant_org_entitlement(
     )
 
 
+# Revoke an access grant an organisation gave to one of its people.
 @router.post(
     "/orgs/{org_slug}/entitlements/{entitlement_id}/revoke",
     response_model=schemas.EntitlementRead,

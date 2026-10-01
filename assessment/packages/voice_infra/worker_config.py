@@ -10,6 +10,7 @@ def optional_agent_name(variable: str) -> str | None:
 
 
 def required_agent_name(variable: str) -> str:
+    """The dispatch agent name from the environment, failing loudly if it is unset."""
     value = optional_agent_name(variable)
     if value is None:
         raise RuntimeError(f"{variable} must be set to a named dispatch agent")
@@ -17,13 +18,15 @@ def required_agent_name(variable: str) -> str:
 
 
 def required_choice(variable: str, choices: tuple[str, ...]) -> str:
+    """The environment value, lower-cased, which must be one of the allowed choices."""
     value = os.getenv(variable, "").strip().lower()
     if value not in choices:
-        raise RuntimeError(f"{variable} must be one of {', '.join(repr(c) for c in choices)}")
+        raise RuntimeError(f"{variable} must be one of {', '.join(repr(choice) for choice in choices)}")
     return value
 
 
 def worker_port(variable: str, default: int) -> int:
+    """The health-check port from the environment, or the default, checked to be a valid port number."""
     raw = os.getenv(variable, str(default)).strip()
     try:
         port = int(raw)
@@ -35,6 +38,7 @@ def worker_port(variable: str, default: int) -> int:
 
 
 def required_deepgram_api_key() -> str:
+    """The Deepgram API key from the environment, failing loudly if it is missing."""
     value = (os.getenv("DEEPGRAM_API_KEY") or "").strip()
     if not value:
         raise RuntimeError("DEEPGRAM_API_KEY must be set for direct Deepgram STT/TTS")

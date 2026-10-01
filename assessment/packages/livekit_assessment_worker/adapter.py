@@ -41,6 +41,8 @@ def voice_gender(profile: AIInteractionProfile, default: str | None) -> str:
 
 
 class LiveKitInteractionAdapter:
+    """Runs one interaction (greeting, conversation, end) on a LiveKit room for the engine."""
+
     def __init__(self, ctx: Any, *, candidate_identity: str, gender: str | None = None, label: str = "assessment") -> None:
         self._ctx = ctx
         self._candidate_identity = candidate_identity
@@ -60,6 +62,7 @@ class LiveKitInteractionAdapter:
         self._greeting = text
 
     async def run(self, profile: AIInteractionProfile, on_message: MessageCallback) -> None:
+        """Start the voice session, speak the greeting, and wait until the interaction ends."""
         loop = asyncio.get_running_loop()
         self._ended = loop.create_future()
         role = role_for(profile)
@@ -98,6 +101,7 @@ class LiveKitInteractionAdapter:
         await self._ended
 
     async def disconnect(self) -> None:
+        """Stop the clock and close the voice session, ignoring errors from an already closed one."""
         clock, self._clock = self._clock, None
         if clock is not None:
             await clock.cancel()
@@ -112,13 +116,16 @@ class LiveKitInteractionAdapter:
     # -- wiring ----------------------------------------------------------------
 
     def _wire_transcript(self, session: AgentSession, on_message: MessageCallback) -> None:
+        """Pass each finished user and assistant utterance to the engine's message callback."""
         @session.on("user_input_transcribed")
         def _on_user(ev: Any) -> None:
+            """Report a finished user utterance to the engine."""
             if getattr(ev, "is_final", False) and str(getattr(ev, "transcript", "")).strip():
                 asyncio.create_task(maybe_await(on_message(MessageRole.USER, ev.transcript.strip())))
 
         @session.on("conversation_item_added")
         def _on_item(ev: Any) -> None:
+            """Report a finished assistant reply to the engine."""
             item = getattr(ev, "item", None)
             if getattr(item, "role", None) != "assistant":
                 return
@@ -127,13 +134,16 @@ class LiveKitInteractionAdapter:
                 asyncio.create_task(maybe_await(on_message(MessageRole.ASSISTANT, str(text).strip())))
 
     def _wire_end_signals(self) -> None:
+        """End the interaction when the candidate leaves, the room closes or the job shuts down."""
         def end(reason: str) -> None:
+            """Finish the interaction once, recording why it ended."""
             if self._ended is not None and not self._ended.done():
                 logger.info("interaction ended: %s", reason)
                 self._ended.set_result(reason)
 
         @self._ctx.room.on("participant_disconnected")
         def _on_participant_disconnected(participant: Any) -> None:
+            """End the interaction when the departing participant is the candidate."""
             if getattr(participant, "identity", None) == self._candidate_identity:
                 end("candidate disconnected")
 

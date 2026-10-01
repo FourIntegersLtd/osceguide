@@ -43,3 +43,12 @@ export function getInputClassName({
     sizeClasses[size],
   );
 }
+
+/**
+ * A search box with a magnifying glass drawn inside its left edge.
+ *
+ * The left padding leaves room for the icon, and the browser's own clear
+ * button is hidden so it does not sit on top of anything placed on the right.
+ */
+export const iconSearchInputClassName =
+  "w-full appearance-none rounded-lg border border-b2c-border bg-b2c-surface-muted py-2.5 pl-10 pr-3 text-osce-body text-osce-ink-900 outline-none placeholder:text-osce-ink-400 focus:border-osce-accent focus:bg-osce-surface focus:outline-none focus:ring-2 focus:ring-osce-accent-subtle [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden";

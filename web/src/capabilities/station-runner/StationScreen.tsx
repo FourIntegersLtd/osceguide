@@ -49,15 +49,13 @@ import {
   useStationAttempt,
   type StationAction,
 } from "@/capabilities/station-runner/useStationAttempt";
+import { useOptionalPendingFeedback } from "@/capabilities/pending-feedback";
+import { useLeaveGuard } from "@/capabilities/station-runner/useLeaveGuard";
 import {
-  useOptionalPendingFeedback,
-  feedbackReviewHref,
-} from "@/capabilities/pending-feedback";
-
-export type StationSource =
-  | { kind: "set"; setId: string; entryId: string }
-  | { kind: "practice"; stationId: string }
-  | { kind: "self_practice"; orgSlug: string; stationId: string };
+  feedbackPathFor,
+  stationKeyFor,
+  type StationSource,
+} from "@/capabilities/station-runner/stationSource";
 
 export interface StationScreenProps {
   source: StationSource;
@@ -120,9 +118,7 @@ export function StationScreen(props: StationScreenProps) {
 
   const [step, setStep] = useState<StationStep>(initialStep ?? "patient");
   const [confirmingStart, setConfirmingStart] = useState(false);
-  const [readingUp, setReadingUp] = useState(false);
   const [marking, setMarking] = useState(false);
-  const [leaving, setLeaving] = useState(false);
   const [isLeavingRoom, setIsLeavingRoom] = useState(false);
   const [simulationTimeUp, setSimulationTimeUp] = useState(false);
   const [completeSessionConfirm, setCompleteSessionConfirm] = useState(false);
@@ -130,18 +126,12 @@ export function StationScreen(props: StationScreenProps) {
   const [hasFeedbackReady, setHasFeedbackReady] = useState(false);
   const [finishedAttemptId, setFinishedAttemptId] = useState<string | null>(null);
 
-  const pendingHref = useRef<string | null>(null);
   const endReasonRef = useRef<EndReason>(null);
   const hasConsultedRef = useRef(false);
   const timeUpHandledRef = useRef(false);
   const pendingKeyRef = useRef<string | null>(null);
 
-  const stationKey =
-    source.kind === "set"
-      ? `${source.setId}:${source.entryId}`
-      : source.kind === "practice"
-        ? `practice:${source.stationId}`
-        : `self:${source.orgSlug}:${source.stationId}`;
+  const stationKey = stationKeyFor(source);
 
   const attempt = useStationAttempt({
     key: stationKey,
@@ -154,15 +144,7 @@ export function StationScreen(props: StationScreenProps) {
 
   const registerBackgroundMarking = useCallback(() => {
     if (!pendingFeedback || !hasConsultedRef.current || !attempt.attemptId) return;
-    const reviewHref =
-      source.kind === "set"
-        ? hrefFor(feedbackReviewHref(source.setId, source.entryId, attempt.attemptId))
-        : source.kind === "practice"
-          ? hrefFor(
-              `/stations/${source.stationId}/practise?action=review&tab=feedback&attempt=${attempt.attemptId}`,
-            )
-          : hrefFor(`/attempts/${attempt.attemptId}`);
-
+    const reviewHref = hrefFor(feedbackPathFor(source, attempt.attemptId));
     const key = `${stationKey}:${attempt.attemptId}`;
     pendingKeyRef.current = key;
     pendingFeedback.register({
@@ -206,6 +188,7 @@ export function StationScreen(props: StationScreenProps) {
   const effectiveAction = attempt.exhausted || finishedAttemptId ? "review" : action;
   const steps = stepsFor(effectiveAction);
   const live = session.phase === "connecting" || session.phase === "live";
+  const leaveGuard = useLeaveGuard(live);
 
   useEffect(() => {
     if (session.phase === "live") hasConsultedRef.current = true;
@@ -235,7 +218,6 @@ export function StationScreen(props: StationScreenProps) {
   const enterConsultation = useCallback(() => {
     setStepAndUrl("simulation");
     setConfirmingStart(false);
-    setReadingUp(false);
   }, [setStepAndUrl]);
 
   const handleTabChange = useCallback(
@@ -295,7 +277,6 @@ export function StationScreen(props: StationScreenProps) {
     if (isCompletingSession) return;
     setIsCompletingSession(true);
     setCompleteSessionConfirm(false);
-    setReadingUp(false);
     if (!hasConsultedRef.current) {
       finishWithoutFeedback();
       setIsCompletingSession(false);
@@ -310,44 +291,6 @@ export function StationScreen(props: StationScreenProps) {
     endActiveConsultation,
     executeCompletionProcess,
   ]);
-
-  const leaveTo = useCallback(
-    (href: string) => {
-      if (live) {
-        pendingHref.current = href;
-        setLeaving(true);
-        return;
-      }
-      router.push(href);
-    },
-    [live, router],
-  );
-
-  useEffect(() => {
-    if (!live) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    const interceptLink = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const target = event.target instanceof Element ? event.target : null;
-      const anchor = target?.closest<HTMLAnchorElement>("a[href]");
-      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
-      const url = new URL(anchor.href, window.location.href);
-      if (url.origin !== window.location.origin || url.href === window.location.href) return;
-      event.preventDefault();
-      event.stopPropagation();
-      pendingHref.current = url.pathname + url.search + url.hash;
-      setLeaving(true);
-    };
-    window.addEventListener("beforeunload", warn);
-    document.addEventListener("click", interceptLink, true);
-    return () => {
-      window.removeEventListener("beforeunload", warn);
-      document.removeEventListener("click", interceptLink, true);
-    };
-  }, [live]);
 
   if (attempt.loading) {
     return (
@@ -417,7 +360,7 @@ export function StationScreen(props: StationScreenProps) {
             isLast
               ? handleCompleteSessionIntent()
               : onReading
-                ? leaveTo(nextHref!)
+                ? leaveGuard.leaveTo(nextHref!)
                 : handleNextStation()
           }
           disabled={live}
@@ -538,14 +481,6 @@ export function StationScreen(props: StationScreenProps) {
       />
 
       <ConfirmModal
-        isOpen={readingUp && !marking && !completeSessionConfirm}
-        onCancel={() => setReadingUp(false)}
-        onConfirm={enterConsultation}
-        message="Reading time is up. Moving you on to the consultation."
-        cancelButton={false}
-      />
-
-      <ConfirmModal
         title="End session"
         isOpen={completeSessionConfirm}
         onCancel={() => setCompleteSessionConfirm(false)}
@@ -582,19 +517,15 @@ export function StationScreen(props: StationScreenProps) {
       />
 
       <LeaveConfirmModal
-        isOpen={leaving}
+        isOpen={leaveGuard.asking}
         title="Leave this consultation?"
         message="The station will end now and you'll get feedback on what you've said so far. You can't resume it."
         leaveText="End and leave"
         stayText="Stay"
         isLeaving={isLeavingRoom}
-        onStay={() => {
-          pendingHref.current = null;
-          setLeaving(false);
-        }}
+        onStay={leaveGuard.stay}
         onLeave={() => {
-          const href = pendingHref.current;
-          setLeaving(false);
+          const href = leaveGuard.confirmLeave();
           setIsLeavingRoom(true);
           endReasonRef.current = "manual";
           void session.end().then(() => {

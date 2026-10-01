@@ -28,8 +28,6 @@ from app.core.secrets_at_rest import decrypt_text, encrypt_text
 from app.core.settings import Settings
 from app.features.identity import repository
 from app.features.identity.domain import (
-    MFA_ENROL_TTL_SECONDS,  # noqa: F401 (2FA switched off for now)
-    MFA_VERIFY_TTL_SECONDS,  # noqa: F401
     MfaMembership,
     mfa_required_reason,
 )
@@ -46,10 +44,8 @@ from app.features.identity.models import User, UserMfa
 from app.features.identity.schemas import (
     AuthResult,
     MfaEnrolmentConfirmed,
-    MfaEnrolmentRequiredResponse,  # noqa: F401
     MfaEnrolmentStart,
     MfaRecoveryCodesRead,
-    MfaRequiredResponse,  # noqa: F401
     MfaStatusRead,
     SignInResult,
 )
@@ -58,7 +54,6 @@ from app.features.identity.tokens import (
     MFA_CHALLENGE_TYPE,
     MFA_ENROL_TYPE,
     hash_password,
-    issue_mfa_challenge,  # noqa: F401
     read_mfa_challenge,
     verify_password,
 )
@@ -175,37 +170,8 @@ async def finish_password_sign_in(
     Not called by `sign_in_external`: the identity provider already performed
     the second factor, and asking again would lock out every SSO organisation.
     """
-    # Two-factor sign-in is switched off for now: every password sign-in gets a
-    # session straight away. Uncomment the block below to turn it back on.
-    # flags = await tenancy.staff_mfa_flags(session, user.id)
-    # reason = mfa_required_reason(
-    #     is_platform_admin=user.is_platform_admin,
-    #     memberships=[MfaMembership(role=role, org_requires_staff_mfa=required) for role, required in flags],
-    # )
-    # row = await repository.mfa_by_user(session, user.id)
-    # enrolled = row is not None and row.confirmed_at is not None
-    # if enrolled:
-    #     return MfaRequiredResponse(
-    #         challenge_token=issue_mfa_challenge(
-    #             user.id,
-    #             token_type=MFA_CHALLENGE_TYPE,
-    #             ttl_seconds=MFA_VERIFY_TTL_SECONDS,
-    #             settings=settings,
-    #             now=now,
-    #         ),
-    #         expires_in=MFA_VERIFY_TTL_SECONDS,
-    #     )
-    # if reason is not None:
-    #     return MfaEnrolmentRequiredResponse(
-    #         challenge_token=issue_mfa_challenge(
-    #             user.id,
-    #             token_type=MFA_ENROL_TYPE,
-    #             ttl_seconds=MFA_ENROL_TTL_SECONDS,
-    #             settings=settings,
-    #             now=now,
-    #         ),
-    #         expires_in=MFA_ENROL_TTL_SECONDS,
-    #     )
+    # Two-factor sign-in is switched off: every password sign-in gets a session.
+    # Enrolment and verification below still work for an account that has it.
     return await _issue_session(
         session, user, settings=settings, now=now, memberships=memberships, count_as_login=count_as_login
     )
@@ -225,7 +191,7 @@ async def _issue_session(
         await repository.record_login(session, user.id, now)
         user.last_login_at = now
     tokens = await issue(session, user, settings=settings, now=now, memberships=memberships)
-    from app.features.identity.service import user_read  # noqa: PLC0415 - one direction at import
+    from app.features.identity.service import user_read  # one direction at import
 
     return AuthResult(**tokens.model_dump(), user=user_read(user, memberships))
 

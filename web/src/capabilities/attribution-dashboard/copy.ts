@@ -1,4 +1,4 @@
-import type { AttributionMode, RevenueTimeBucket } from "@/foundation/attribution/types";
+import type { AttributionMode, RevenueTimeBucket } from "@/capabilities/attribution-dashboard/types";
 
 /** Seconds-free lifetime of the first-touch acquisition cookie, in days (mirrors the backend). */
 export const ACQUISITION_COOKIE_MAX_AGE_DAYS = 90;

@@ -18,5 +18,6 @@ def build_assistant_llm(mode: ModeProfile) -> llm.LLM:
 
 
 def build_assistant_tts(mode: ModeProfile, *, voice_help_intent: str | None = None) -> tts.TTS:
+    """The voice for an assistant session: OpenAI for voice-only FAQ help, Deepgram otherwise."""
     primary = "openai" if is_faq_help(mode.worker_type, voice_help_intent) else "deepgram"
     return build_tts("tutor", primary=primary)

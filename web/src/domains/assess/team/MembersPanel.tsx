@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert, Button, EmptyState, PlatformFilterBar, PlatformFilterSearch, b2bTokens } from "@/foundation/ui";
 import Table, { type FetchPageResult } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
-import { errorMessage, useCursorPages } from "@/foundation/hooks";
+import { errorMessage, useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import {
   changeMemberRole,
@@ -59,12 +59,7 @@ export function MembersPanel({
 
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const query = useSearchQuery(search);
 
   // A page at a time, searched in SQL, rather than the whole team walked and
   // filtered in the browser.

@@ -14,7 +14,8 @@ import {
   recordRefund,
   type PlatformPayment,
 } from "@/domains/platform/support/api";
-import { formatMoment, formatMoney } from "@/domains/platform/support";
+import { formatMoney } from "@/foundation/format";
+import { formatMoment } from "@/domains/platform/support";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
 
 const PAYMENTS_PAGE_LIMIT = 25;

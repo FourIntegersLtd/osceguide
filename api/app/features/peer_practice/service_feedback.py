@@ -116,6 +116,6 @@ async def _failed(session: AsyncSession, session_id: uuid.UUID, *, reason: str) 
 
 def _transcriber() -> Transcriber:
     """The real transcriber, built on demand so tests can pass a fake instead."""
-    from app.features.peer_practice.transcriber import build_transcriber  # noqa: PLC0415
+    from app.features.peer_practice.transcriber import build_transcriber
 
     return build_transcriber()

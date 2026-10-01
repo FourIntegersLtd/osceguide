@@ -214,7 +214,8 @@ async def _marking_for_debrief(
     snapshot = domain_definition.rubric_for(source.definition)
     scoring_rubric = rubrics.frozen_scoring_rubric(snapshot)
     if scoring_rubric is None:
-        # Only an attempt frozen before Stage 2, or an imported one, reaches the database here.
+        # Only an attempt whose snapshot has no rubric structure (the oldest, or an
+        # imported one) reaches the database here.
         exam = await catalog.exam_for_attempt(session, source.exam_id)
         scoring_rubric = await rubrics.scoring_rubric(
             session, snapshot, exam_rubric_version_id=exam.rubric_version_id

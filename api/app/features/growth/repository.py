@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.growth.models import (
     Acquisition,
     PartnerArrival,
@@ -473,8 +474,9 @@ async def arrivals_page(
     if utm_campaign is not None:
         stmt = stmt.where(PartnerArrival.utm["utm_campaign"].astext == utm_campaign)
     if search:
-        pattern = f"%{search.strip()}%"
-        stmt = stmt.where(PartnerArrival.visitor_key.ilike(pattern) | PartnerArrival.ref_id.ilike(pattern))
+        stmt = stmt.where(
+            contains_text(PartnerArrival.visitor_key, search) | contains_text(PartnerArrival.ref_id, search)
+        )
     return await keyset_page(
         session,
         stmt,
@@ -513,12 +515,6 @@ async def acquired_users_page(
         cursor=cursor,
         descending=True,
     )
-
-
-async def arrival_by_id(session: AsyncSession, arrival_id: uuid.UUID) -> PartnerArrival | None:
-    """One arrival by its id, for enriching an acquired-user row with where they landed from."""
-    stmt = select(PartnerArrival).where(PartnerArrival.id == arrival_id)
-    return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def arrivals_by_ids(

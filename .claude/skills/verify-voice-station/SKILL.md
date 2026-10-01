@@ -20,7 +20,7 @@ shows up in a live room: CI stayed green here while real bugs shipped.
 ## Level 1 — the repo's own tests (seconds)
 
 ```bash
-cd assessment-platform && poetry run pytest -q        # ~750 tests, ~11s
+cd assessment && poetry run pytest -q        # ~750 tests, ~11s
 cd api && poetry run pytest -q -k "voice or livekit or sittings"   # backend side, if touched
 ```
 
@@ -55,7 +55,7 @@ comes back. It is the only thing that proves the two halves agree.
    `api/tests/e2e/conftest.py`. LiveKit creds,
    `OPENAI_API_KEY` and `DEEPGRAM_API_KEY` are in `assessment/.env`.
    Also set `ASSESSMENT_PLATFORM_PYTHON` to assessment-platform's interpreter
-   (`cd assessment-platform && poetry env info --path`)/bin/python — otherwise
+   (`cd assessment && poetry env info --path`)/bin/python — otherwise
    the worker dies on `No module named livekit.agents` and the test only says
    "no turns".
    The test's own vars: `PLATFORM_E2E_BASE_URL`, `PLATFORM_E2E_TOKEN` (mint one

@@ -13,9 +13,9 @@ import {
   HiOutlineUsers,
 } from "react-icons/hi2";
 import { OutcomeDonut } from "@/foundation/charts";
-import { MetricCard } from "@/foundation/attribution/MetricCard";
-import type { DashboardCopy } from "@/foundation/attribution/copy";
-import type { AttributionMode } from "@/foundation/attribution/types";
+import { MetricCard } from "@/capabilities/attribution-dashboard/MetricCard";
+import type { DashboardCopy } from "@/capabilities/attribution-dashboard/copy";
+import type { AttributionMode } from "@/capabilities/attribution-dashboard/types";
 import {
   funnelDonutSlices,
   heroHasData,
@@ -24,7 +24,7 @@ import {
   type FunnelCounts,
   type HeroFigures,
   type HeroIcon,
-} from "@/foundation/attribution/viewModel";
+} from "@/capabilities/attribution-dashboard/viewModel";
 
 const ICONS: Record<HeroIcon, IconType> = {
   visits: HiOutlineLink,

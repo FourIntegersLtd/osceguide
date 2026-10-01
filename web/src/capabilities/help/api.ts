@@ -114,65 +114,44 @@ export function assistantVoiceToken(sessionId: string, signal?: AbortSignal): Pr
   );
 }
 
-export interface HelpCategory {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  icon_key: string;
-  sort_order: number;
-  app_types: string[];
-  article_count: number;
-}
+export type HelpCategory = components["schemas"]["HelpCategory"];
+export type HelpArticle = components["schemas"]["HelpArticle"];
 
-export interface HelpArticleListItem {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string;
-  app_types: string[];
-  category_slug: string;
-  category_title?: string | null;
-  sort_order: number;
-}
-
-export interface HelpArticleDetail extends HelpArticleListItem {
-  body_md: string;
-  related_slugs: string[];
-}
-
-/** Published B2C help content served by the platform API. */
-export function fetchHelpCategories(appType: string): Promise<HelpCategory[]> {
+/**
+ * Published help content served by the platform API. With no exam, only the
+ * guides written for every exam come back.
+ */
+export function fetchHelpCategories(examCode?: string): Promise<HelpCategory[]> {
   return platformRequest<{ categories: HelpCategory[] }>("/api/v1/help/categories", {
-    query: { app_type: appType },
+    query: examCode ? { exam_code: examCode } : {},
   }).then((data) => data.categories ?? []);
 }
 
 /** `search` is matched against title, summary and category in SQL. */
 export function fetchHelpArticles(
-  appType: string,
+  examCode?: string,
   categorySlug?: string,
   search?: string,
-): Promise<HelpArticleListItem[]> {
-  return platformRequest<{ articles: HelpArticleListItem[] }>("/api/v1/help/articles", {
+): Promise<HelpArticle[]> {
+  return platformRequest<{ articles: HelpArticle[] }>("/api/v1/help/articles", {
     query: {
-      app_type: appType,
+      ...(examCode ? { exam_code: examCode } : {}),
       ...(categorySlug ? { category: categorySlug } : {}),
       ...(search?.trim() ? { search: search.trim() } : {}),
     },
   }).then((data) => data.articles ?? []);
 }
 
-export function fetchHelpArticle(slug: string, appType: string): Promise<HelpArticleDetail> {
-  return platformRequest<{ article: HelpArticleDetail }>(
+export function fetchHelpArticle(slug: string, examCode?: string): Promise<HelpArticle> {
+  return platformRequest<{ article: HelpArticle }>(
     `/api/v1/help/articles/${encodeURIComponent(slug)}`,
-    { query: { app_type: appType } },
+    { query: examCode ? { exam_code: examCode } : {} },
   ).then((data) => data.article);
 }
 
 export interface KnowledgeMessage { role: "user" | "assistant"; content: string }
-export function askKnowledge(messages: KnowledgeMessage[], appType: string): Promise<{ reply: string }> {
-  return platformRequest("/api/v1/help/knowledge-chat", { method: "POST", body: { messages: messages.slice(-40), app_type: appType } });
+export function askKnowledge(messages: KnowledgeMessage[], examCode?: string): Promise<{ reply: string }> {
+  return platformRequest("/api/v1/help/knowledge-chat", { method: "POST", body: { messages: messages.slice(-40), exam_code: examCode } });
 }
 
 export type SendMessageInput = components["schemas"]["SendMessage"];

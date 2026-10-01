@@ -10,7 +10,9 @@ Pure rules; the worker contract and the scoring job both depend on them.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import uuid
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -117,3 +119,70 @@ def should_score(*, scored_versions: frozenset[str] | set[str], policy_version: 
     never a replacement, so a candidate's history stays readable.
     """
     return policy_version not in scored_versions
+
+
+@dataclass(frozen=True)
+class TrialAttempt:
+    """One attempt as the free-trial rule sees it."""
+
+    attempt_id: uuid.UUID
+    kind: str
+    status: str
+    # None for an attempt that ran without a station.
+    station_version_id: uuid.UUID | None
+
+
+@dataclass(frozen=True)
+class TrialCounts:
+    """What the free-trial rule needs from this person's attempts on one exam."""
+
+    # Distinct stations sat as part of a practice set.
+    set_stations: int
+    # Distinct stations finished at least once.
+    completed_stations: int
+    # Whether the station being started already has an attempt, so starting it is a retry.
+    started_this_station: bool
+    # How many times the station being started has been finished.
+    completed_on_this_station: int
+
+
+# The statuses that mean the candidate got to the end of the station.
+_FINISHED = frozenset({Status.INTERACTION_COMPLETE, Status.EVALUATED})
+
+
+def count_trial_use(
+    trial_attempts: Sequence[TrialAttempt],
+    *,
+    station_by_version: Mapping[uuid.UUID, uuid.UUID],
+    starting_station_id: uuid.UUID | None,
+) -> TrialCounts:
+    """The free-trial counters, counted by station rather than by attempt.
+
+    Two attempts at two versions of one station are the same station, which is
+    why `station_by_version` is needed. An attempt with no station counts as a
+    station of its own, so it uses up one of the trial's stations.
+    `starting_station_id` is the station about to be started, or None when the
+    question is only whether any trial is left.
+    """
+    set_stations: set[uuid.UUID] = set()
+    completed_stations: set[uuid.UUID] = set()
+    attempts_on_this_station = 0
+    completed_on_this_station = 0
+    for trial_attempt in trial_attempts:
+        station_key = trial_attempt.attempt_id
+        if trial_attempt.station_version_id is not None:
+            station_key = station_by_version.get(trial_attempt.station_version_id, trial_attempt.attempt_id)
+        finished = trial_attempt.status in _FINISHED
+        if trial_attempt.kind == Kind.SET_STATION:
+            set_stations.add(station_key)
+        if finished:
+            completed_stations.add(station_key)
+        if starting_station_id is not None and station_key == starting_station_id:
+            attempts_on_this_station += 1
+            completed_on_this_station += int(finished)
+    return TrialCounts(
+        set_stations=len(set_stations),
+        completed_stations=len(completed_stations),
+        started_this_station=attempts_on_this_station > 0,
+        completed_on_this_station=completed_on_this_station,
+    )

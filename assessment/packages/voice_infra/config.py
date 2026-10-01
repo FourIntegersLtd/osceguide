@@ -63,6 +63,8 @@ class BackendRegistryError(RuntimeError):
 
 @dataclass(frozen=True)
 class BackendEndpoints:
+    """One backend's address, credentials and route templates, read from environment variables on use."""
+
     label: str
     base_url_env: str
     secret_env: str
@@ -93,20 +95,24 @@ class BackendEndpoints:
             )
 
     def base_url(self) -> str | None:
+        """The backend's base URL without a trailing slash, or None when it is not set."""
         url = (os.getenv(self.base_url_env) or "").strip().rstrip("/")
         return url or None
 
     def required_base_url(self) -> str:
+        """The backend's base URL, raising when it is not set."""
         url = self.base_url()
         if not url:
             raise BackendRegistryError(f"{self.base_url_env} must be set for backend {self.label!r}")
         return url
 
     def secret_headers(self) -> dict[str, str]:
+        """The authentication header for this backend, or an empty dict when no secret is set."""
         secret = (os.getenv(self.secret_env) or "").strip()
         return {self.secret_header: secret} if secret else {}
 
     def slot_endpoint(self, action: str) -> str | None:
+        """The full URL for releasing or extending a cloud slot, or None when no base URL is set."""
         base = self.base_url()
         if not base:
             return None
@@ -142,6 +148,7 @@ class BackendEndpoints:
         return self.url(self.assistant_transcript_path.format(session_id=session_id))
 
     def assistant_tool_url(self, session_id: str, tool_name: str) -> str:
+        """URL of one assistant tool route for a session."""
         return self.url(
             self.assistant_tool_path.format(session_id=session_id, tool_name=tool_name)
         )
@@ -170,11 +177,14 @@ _OPTIONAL_PATH_KEYS = (*_PATH_TEMPLATE_KEYS, *_ASSISTANT_PATH_TEMPLATE_KEYS)
 
 
 class BackendRegistry:
+    """The set of configured backends, looked up by label."""
+
     def __init__(self, backends: dict[str, BackendEndpoints]) -> None:
         self._backends = dict(backends)
 
     @classmethod
     def from_json(cls, raw: str) -> "BackendRegistry":
+        """Build the registry from the JSON text, checking every backend's required keys and route templates."""
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
@@ -196,6 +206,7 @@ class BackendRegistry:
 
     @classmethod
     def from_env(cls) -> "BackendRegistry":
+        """Build the registry from the ``VOICE_BACKENDS_JSON`` environment variable."""
         raw = (os.getenv(BACKENDS_ENV) or "").strip()
         if not raw:
             raise BackendRegistryError(f"{BACKENDS_ENV} must be set")
@@ -205,6 +216,7 @@ class BackendRegistry:
         return tuple(self._backends)
 
     def get(self, label: str) -> BackendEndpoints:
+        """The backend with this label, raising when it is not configured."""
         try:
             return self._backends[label]
         except KeyError:

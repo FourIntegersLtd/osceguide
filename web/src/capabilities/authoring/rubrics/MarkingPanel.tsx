@@ -97,7 +97,7 @@ export function MarkingPanel({
           {layoutRequired ? " Platform catalogue rubrics need one before they can be published." : ""}
         </p>
         <div className={cn("mt-3 rounded-osce-md border border-osce-border bg-osce-surface p-3", readOnly && "pointer-events-none opacity-80")}>
-          <StructureBuilder kind="feedback" value={markingLayout} onChange={onMarkingLayout} title={title} flatChrome />
+          <StructureBuilder kind="feedback" value={markingLayout} onChange={onMarkingLayout} title={title} />
         </div>
       </div>
     </div>

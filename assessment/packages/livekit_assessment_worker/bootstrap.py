@@ -25,6 +25,8 @@ class BootstrapError(RuntimeError):
 
 @dataclass(frozen=True)
 class Bootstrap:
+    """What the backend sends a worker at the start of a job: the attempt and its scenario."""
+
     attempt: AssessmentAttempt
     scenario: Scenario
 

@@ -31,6 +31,8 @@ def candidate_timeout_from_env() -> float:
 
 
 class _BootstrappedScenario:
+    """A scenario provider that returns the scenario the backend already sent in the bootstrap."""
+
     def __init__(self, scenario: Scenario) -> None:
         self._scenario = scenario
 
@@ -46,12 +48,15 @@ class _RenderedProfile:
 
 
 class AssessmentSession:
+    """One job's run of an assessment room, from joining to handing back the transcript."""
+
     def __init__(self, registry: BackendRegistry, *, candidate_timeout: float | None = None, settle: float = SETTLE_S) -> None:
         self._registry = registry
         self._candidate_timeout = candidate_timeout_from_env() if candidate_timeout is None else candidate_timeout
         self._settle = settle
 
     async def entrypoint(self, ctx: Any) -> RuntimeOutcome | None:
+        """Run the job: read the dispatch metadata, join the room, and run the interaction unless another worker holds it."""
         try:
             metadata = parse_dispatch_metadata(getattr(ctx.job, "metadata", None))
         except MetadataError as exc:

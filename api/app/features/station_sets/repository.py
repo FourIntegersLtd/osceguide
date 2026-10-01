@@ -11,6 +11,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.station_sets.models import StationSet, StationSetEntry
 
 
@@ -289,7 +290,7 @@ async def flagged_entries_page(
     if search:
         stmt = stmt.where(
             or_(
-                StationSet.name.ilike(f"%{search}%"),
+                contains_text(StationSet.name, search),
                 StationSetEntry.station_version_id.in_(matching_version_ids or []),
             )
         )

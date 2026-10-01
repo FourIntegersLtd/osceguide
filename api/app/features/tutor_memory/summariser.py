@@ -37,7 +37,7 @@ class OpenAISummariser:
         instructions: str,
     ) -> dict[str, object]:
         """Turn a transcript into the shape `schema` describes, tagged with which model wrote it."""
-        import asyncio  # noqa: PLC0415
+        import asyncio
 
         body = "\n".join(f"{turn.get('role')}: {turn.get('message')}" for turn in transcript)
         if not body.strip():
@@ -76,7 +76,7 @@ def build_summariser() -> TranscriptSummariser:
     if not settings.openai_api_key:
         raise SummaryFailed("No OPENAI_API_KEY, so nothing can be summarised.")
     try:
-        from openai import OpenAI  # noqa: PLC0415 - optional dependency
+        from openai import OpenAI  # optional dependency
     except ImportError as exc:
         raise SummaryFailed("The openai package is not installed.") from exc
     return OpenAISummariser(OpenAI(api_key=settings.openai_api_key))

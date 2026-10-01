@@ -50,6 +50,8 @@ async def publish_pointer(
 
 
 class GuidanceActions:
+    """The things the model can do to the user's page: point at a control, click, and scroll."""
+
     def __init__(
         self,
         browser: BrowserChannel,
@@ -61,12 +63,14 @@ class GuidanceActions:
         self._viewport = viewport
 
     async def show_pointer(self, coordinate: list, label: str) -> str:
+        """Highlight a control on the user's screen and describe the result for the model."""
         placed = await publish_pointer(self._browser, self._viewport(), coordinate[0], coordinate[1], label)
         if placed is None:
             return as_text(messages.POINTER_FAILED)
         return as_text(messages.POINTER_PLACED.format(label=label or "that", x=placed[0], y=placed[1]))
 
     async def perform_click(self, coordinate: list, label: str) -> str:
+        """Click at a spot on the user's screen, only when the user chose hands-off navigation."""
         if self._navigation.mode != "automate":
             return as_text(messages.CLICK_NEEDS_AUTOMATE)
 
@@ -96,6 +100,7 @@ class GuidanceActions:
         return as_text(template.format(label=named, x=x_vp, y=y_vp, path=path))
 
     async def scroll(self, direction: str, amount_px: Any = None) -> str:
+        """Scroll the user's page in one direction and describe the result for the model."""
         direction = str(direction or "").strip().lower()
         if direction not in SCROLL_DIRECTIONS:
             return as_text(messages.SCROLL_NEEDS_DIRECTION)

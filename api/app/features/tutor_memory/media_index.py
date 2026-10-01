@@ -18,8 +18,8 @@ from app.core.logging import get_logger
 from app.core.ports import VectorIndex
 from app.features.tutor_memory import repository_index
 from app.features.tutor_memory.chunking import chunk
+from app.features.tutor_memory.domain import MEDIA_KINDS
 from app.features.tutor_memory.embedder import build_embedder
-from app.features.tutor_memory.service_material import MEDIA_CORPORA
 
 log = get_logger(__name__)
 
@@ -87,7 +87,7 @@ class PgVectorMediaIndex:
             # No filter, deliberately, and spelled `None` rather than reached
             # by passing an empty list: see `media.service_search.get_vector_index`.
             exam_ids=None,
-            corpus=kind if kind else MEDIA_CORPORA,
+            corpus=kind if kind else MEDIA_KINDS,
             limit=limit * _PASSAGE_FACTOR,
         )
         best: dict[str, float] = {}

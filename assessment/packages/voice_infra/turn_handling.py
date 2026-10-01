@@ -28,6 +28,7 @@ def turn_detector_version() -> TurnDetectorVersion:
 
 
 def build_turn_handling_options(*, preemptive: bool = False, max_endpoint_delay: float = 1.8) -> TurnHandlingOptions:
+    """Build the turn detection, endpointing and interruption settings for a voice session."""
     return TurnHandlingOptions(
         turn_detection=TurnDetector(version=turn_detector_version()),
         endpointing={"mode": "dynamic", "min_delay": 0.5, "max_delay": max_endpoint_delay, "alpha": 0.82},

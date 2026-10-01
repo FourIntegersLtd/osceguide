@@ -16,7 +16,7 @@ import {
   EARLIEST_DATE,
   utcDateString,
   validateCustomRange,
-} from "@/foundation/attribution/presets";
+} from "@/capabilities/attribution-dashboard/presets";
 
 interface CustomDateRangeModalProps {
   open: boolean;

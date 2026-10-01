@@ -77,6 +77,7 @@ class SessionCap:
         return None if self._started_at is None else time.monotonic() - self._started_at
 
     async def _run(self) -> None:
+        """Wait out the cap, then shut the job down."""
         try:
             await asyncio.sleep(self._max_seconds)
         except asyncio.CancelledError:

@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.stations.models import Station, StationVersion
 
 
@@ -40,7 +41,7 @@ async def library_page(
     if search and search.strip():
         # Matched like the console's other title filters, including its LIKE
         # wildcards: a `%` typed into a search box widens the query here too.
-        stmt = stmt.where(Station.title.ilike(f"%{search.strip()}%"))
+        stmt = stmt.where(contains_text(Station.title, search))
     if version_ids:
         stmt = stmt.where(Station.current_version_id.in_(list(version_ids)))
     return await keyset_page(

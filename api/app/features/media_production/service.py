@@ -135,7 +135,7 @@ async def run_summary_podcast_job(
             media_id=str(media_id),
         )
         await replace_content(session, media_id, content)
-    except Exception:
+    except Exception:  # noqa: BLE001 - any render failure is recorded on the item as failed
         failed = dict(item.content)
         failed["status"] = domain.FAILED
         await replace_content(session, media_id, failed)
@@ -159,7 +159,7 @@ async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID, *, reques
             exam_code=exam_code,
         )
         await replace_content(session, media_id, content)
-    except Exception:
+    except Exception:  # noqa: BLE001 - any render failure is recorded on the item as failed
         # Re-read the item: the render may have already written partial content
         # we still want preserved alongside the failed status.
         current = await production_item(session, media_id)
@@ -186,7 +186,7 @@ async def run_podcast_audio_job(
             media_id=str(media_id),
         )
         await replace_content(session, media_id, content)
-    except Exception:
+    except Exception:  # noqa: BLE001 - any render failure is recorded on the item as failed
         failed = dict(item.content)
         failed["status"] = domain.FAILED
         await replace_content(session, media_id, failed)

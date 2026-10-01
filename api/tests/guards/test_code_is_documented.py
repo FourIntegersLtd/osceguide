@@ -3,7 +3,9 @@
 A module needs a docstring (an empty `__init__.py` is fine). A function or class needs a docstring, or a
 `#` comment directly above it. Route handlers, Pydantic models and enums use the `#` comment, because
 their docstrings are published in openapi.json and would change the API document. Exempt: dunder
-methods, classes in `schemas*.py`, and one-line functions whose name already says everything.
+methods, classes in `schemas*.py`, and one-line functions whose name already says everything. A route
+handler is never exempt, however short: it is the first thing a new engineer reads to learn what a
+URL does.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.guards._scan import APP_ROOT, python_files, rel
+from tests.guards._scan import APP_ROOT, is_route_handler, python_files, rel
 
 # Classes whose docstring reaches openapi.json, so they are commented with `#` and never required to
 # have a docstring.
@@ -44,7 +46,7 @@ def undocumented(source: str, file_name: str) -> list[str]:
             base_names = {getattr(base, "id", getattr(base, "attr", "")) for base in node.bases}
             if file_name.startswith("schemas") or base_names & API_DOCUMENT_BASES:
                 continue
-        elif is_one_liner(node):
+        elif is_one_liner(node) and not is_route_handler(node):
             continue
         first_line = min([decorator.lineno for decorator in node.decorator_list] + [node.lineno])
         if first_line >= 2 and lines[first_line - 2].strip().startswith("#"):
@@ -69,6 +71,11 @@ def test_code_is_documented(path: Path) -> None:
 def test_the_guard_catches_a_bare_function() -> None:
     source = '"""Prices."""\n\ndef total(prices):\n    subtotal = sum(prices)\n    return subtotal\n'
     assert undocumented(source, "service.py") == ["total (line 3)"]
+
+
+def test_the_guard_catches_a_one_line_route_with_no_comment() -> None:
+    source = '"""Routes."""\n\n@router.get("/plans")\nasync def list_plans():\n    return []\n'
+    assert undocumented(source, "router.py") == ["list_plans (line 4)"]
 
 
 def test_the_guard_accepts_a_comment_above_a_route() -> None:

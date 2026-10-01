@@ -29,6 +29,8 @@ CHUNK_TIMEOUT_SECONDS = 30.0
 
 @dataclass(frozen=True)
 class Screenshot:
+    """A captured page image as base64 text, with its media type and the viewport it was taken at."""
+
     image_b64: str
     media_type: str
     viewport: Viewport
@@ -43,19 +45,22 @@ class _Pending:
     complete: asyncio.Event = field(default_factory=asyncio.Event)
 
     def add(self, index: int, fragment: str) -> None:
+        """Store one chunk and check whether the capture is now complete."""
         self.chunks[index] = fragment
         self._settle()
 
     def expect(self, total: int) -> None:
+        """Record how many chunks to wait for, which the RPC reply reports."""
         self.expected = total
         self._settle()
 
     def _settle(self) -> None:
+        """Mark the capture complete once every expected chunk has arrived."""
         if self.expected is not None and len(self.chunks) >= self.expected:
             self.complete.set()
 
     def assemble(self) -> str:
-        return "".join(self.chunks[i] for i in range(self.expected or 0))
+        return "".join(self.chunks[index] for index in range(self.expected or 0))
 
 
 class ScreenshotCapture:
@@ -80,6 +85,7 @@ class ScreenshotCapture:
     # -- listener lifecycle ------------------------------------------------------
 
     def attach(self) -> None:
+        """Start listening for screenshot chunks on the room; safe to call twice."""
         if self._attached:
             return
         self._room.on("data_received", self._on_data_received)
@@ -93,6 +99,7 @@ class ScreenshotCapture:
         self._attached = False
 
     def _on_data_received(self, data_packet: Any) -> None:
+        """Route an incoming chunk to the capture that is waiting for it."""
         message = json_packet(data_packet)
         if not message or message.get("type") != DATA_TYPE_SCREENSHOT_CHUNK:
             return

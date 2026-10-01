@@ -60,25 +60,3 @@ export function listTranscribableAttempts(
     signal,
   );
 }
-
-/**
- * API timestamps, in the product's format.
- *
- * Naive ISO strings from the backend are UTC — Python's `utcnow().isoformat()`
- * — and reading them as local time shifted every date in the retiring client
- * by an hour each summer.
- */
-export function formatAttemptDate(iso: string | null | undefined): string {
-  if (!iso) return "No date provided";
-  const normalised =
-    /[zZ]$/.test(iso) || /[+-]\d{2}:?\d{2}$/.test(iso) || !iso.includes("T") ? iso : `${iso}Z`;
-  const date = new Date(normalised);
-  if (!Number.isFinite(date.getTime())) return "Invalid date";
-  return date.toLocaleDateString("en-GB", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}

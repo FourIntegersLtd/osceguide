@@ -151,8 +151,8 @@ class ScoringRubric:
 def frozen_scoring_rubric(snapshot: Mapping[str, Any] | None) -> ScoringRubric | None:
     """The scoring rubric frozen onto an attempt, or None if it predates freezing one.
 
-    Snapshots taken since rubric-templates Stage 2 carry `structure` and
-    `display` beside the framework. Older ones only carry the framework.
+    A snapshot carries `structure` and `display` beside the framework. The
+    oldest attempts carry only the framework, and get None here.
     """
     if not isinstance(snapshot, Mapping) or not isinstance(snapshot.get("structure"), Mapping):
         return None
@@ -241,7 +241,7 @@ def engine_framework(scoring_rubric: ScoringRubric) -> dict[str, Any]:
     """The scoring rubric as the engine's `CompetencyFramework` payload.
 
     Built from the structure rather than read from the snapshot's frozen
-    framework, because a framework frozen before Stage 2 lacks the rating and
+    framework, because the oldest frozen frameworks lack the rating and
     the field roles the engine's by-role renderer needs; the structure is the
     source of truth for both. Used by the debrief tutor's `render_marking`.
     """

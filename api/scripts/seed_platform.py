@@ -84,27 +84,30 @@ PLATFORM_EXAM_SETTINGS: dict[str, ExamSettings] = {
     ),
     "plab": ExamSettings.model_validate(
         {
+            "peer_practice": {"preparation_seconds": 120, "consultation_seconds": 480},
             "generation": {
                 "station_prompt": "plab.station",
                 "summary_prompt": "sca.summary",
                 "blog_prompt": "plab.blog",
                 "default_profile": "plab.station",
-            }
+            },
         }
     ),
     "casc": ExamSettings.model_validate(
         {
+            "peer_practice": {"preparation_seconds": 300, "consultation_seconds": 420},
             "generation": {
                 "station_prompt": "casc.station",
                 "summary_prompt": "casc.summary",
                 "blog_prompt": "sca.blog",
                 "default_profile": "casc.station",
-            }
+            },
         }
     ),
     "ortho": ExamSettings.model_validate(
         {
             "date_label": "Interview date",
+            "peer_practice": {"preparation_seconds": 300, "consultation_seconds": 600},
             "session_modes": ["debrief"],
             "station_subtypes": [
                 {"key": subtype, "label": subtype.capitalize(), "generation_profile": f"ortho.{subtype}"}
@@ -167,6 +170,29 @@ def needs_republish(stored_structure: dict[str, Any], stored_prompt: str, spec: 
     return stored_structure != spec["structure"] or stored_prompt != spec["system_prompt"]
 
 
+def settings_to_add(stored: dict[str, Any], seeded: ExamSettings | None) -> dict[str, Any]:
+    """The seed's settings an existing exam has never stored, by top-level key.
+
+    A setting added in a later release is missing from a row written before
+    it, and would read as the default. Only missing keys are returned, so a
+    setting somebody has since changed in the console is never overwritten.
+    """
+    if seeded is None:
+        return {}
+    return {key: value for key, value in seeded.model_dump(mode="json").items() if key not in stored}
+
+
+async def add_missing_settings(session: Any, code: str) -> bool:
+    """Store the seed's settings this exam lacks. False when it already has them all."""
+    exam = await catalog.resolve_exam(session, code)
+    stored = dict(exam.settings or {})
+    missing = settings_to_add(stored, PLATFORM_EXAM_SETTINGS.get(code))
+    if not missing:
+        return False
+    await exams.update_exam(session, exam.id, settings={**stored, **missing})
+    return True
+
+
 async def republish_existing(session: Any, code: str, spec: dict[str, Any], now: datetime) -> bool:
     """Publish the seed's rubric as a new version of `code`'s rubric, and repoint the exam at it.
 
@@ -206,6 +232,7 @@ async def seed(*, path: Path, dry_run: bool, report: bool, republish: bool = Fal
     entries = load(path)
     now = datetime.now(UTC)
     created, skipped, republished, gaps = [], [], [], {}
+    settings_filled: list[str] = []
 
     factory = get_session_factory()
     try:
@@ -220,8 +247,11 @@ async def seed(*, path: Path, dry_run: bool, report: bool, republish: bool = Fal
                     # Left exactly as it is — a second run must not re-mark
                     # anybody, nor replace a rubric since edited — unless
                     # asked to republish the seed's rubric.
+                    settings_added = republish and await add_missing_settings(session, code)
                     if republish and await republish_existing(session, code, entry["rubric"], now):
                         republished.append(code)
+                    elif settings_added:
+                        settings_filled.append(code)
                     else:
                         skipped.append(code)
                     missing = undescribed(entry["rubric"]["structure"])
@@ -265,6 +295,9 @@ async def seed(*, path: Path, dry_run: bool, report: bool, republish: bool = Fal
     except _Rollback:
         pass
 
+    if settings_filled:
+        verb = "would add missing settings to" if dry_run else "added missing settings to"
+        print(f"{verb}: {', '.join(settings_filled)}")  # noqa: T201
     return _report(created, skipped, republished, gaps, dry_run=dry_run, report=report)
 
 

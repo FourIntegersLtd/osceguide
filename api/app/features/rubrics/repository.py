@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import owned_by, owner_kind_for, visible_to
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.rubrics.models import Rubric, RubricVersion
 
 
@@ -75,7 +76,7 @@ async def list_rubrics(
     """
     stmt = select(Rubric).where(visible_to(Rubric, org_id))
     if search:
-        stmt = stmt.where(Rubric.title.ilike(f"%{search}%"))
+        stmt = stmt.where(contains_text(Rubric.title, search))
     if rubric_version_id:
         matching_version = select(RubricVersion.id).where(
             RubricVersion.rubric_id == Rubric.id,
@@ -117,7 +118,7 @@ async def published_current_versions(
         .limit(limit)
     )
     if search:
-        stmt = stmt.where(Rubric.title.ilike(f"%{search}%"))
+        stmt = stmt.where(contains_text(Rubric.title, search))
     rows = (await session.execute(stmt)).all()
     return [(rubric, version) for rubric, version in rows]
 

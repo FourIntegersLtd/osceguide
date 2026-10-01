@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
 
 class StartSession(BaseModel):
@@ -94,7 +94,12 @@ class Accepted(BaseModel):
 
 # --- Help catalogue and knowledge chat contracts.
 
-ExamCode = Literal["sca", "plab", "casc", "ortho"]
+# Which exam's help to show: any exam's code, lowercased. An institution's own
+# exam is as valid here as a platform one; it simply has no guides written
+# only for it, so it sees the guides written for every exam.
+HelpExamCode = Annotated[
+    str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=64)
+]
 
 
 class HelpCategory(BaseModel):
@@ -139,7 +144,8 @@ class ChatMessage(BaseModel):
 
 
 class KnowledgeChat(BaseModel):
-    exam_code: ExamCode = "sca"
+    # The exam the learner is studying. Without one there is nothing to ground an answer in.
+    exam_code: HelpExamCode | None = None
     messages: list[ChatMessage] = Field(min_length=1, max_length=40)
 
 

@@ -62,6 +62,7 @@ class ComputerToolset:
     # -- tool ----------------------------------------------------------------------
 
     async def handle(self, raw_arguments: dict, ctx: RunContext) -> str:
+        """Check one call to the computer tool, then run the action it asked for."""
         action = str(raw_arguments.get("action") or "screenshot")
         coordinate = _coordinate(raw_arguments.get("coordinate"))
         label = str(raw_arguments.get("label") or "").strip()
@@ -102,6 +103,7 @@ class ComputerToolset:
             )
 
     async def _screenshot(self) -> str:
+        """Capture the user's screen and return the image to the model, or a failure message."""
         shot = await self.capture.capture()
         if shot is None:
             await self.progress.done()
@@ -125,6 +127,7 @@ class ComputerToolset:
             on_duplicate="reject",
         )
         async def computer(raw_arguments: dict, ctx: RunContext) -> str:
+            """The tool the model calls to look at the screen, point, click or scroll."""
             log_llm_tool_use_shape("computer", raw_arguments, run_ctx=ctx)
             return await self.handle(raw_arguments, ctx)
 

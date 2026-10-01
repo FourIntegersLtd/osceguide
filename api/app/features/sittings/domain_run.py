@@ -119,9 +119,8 @@ def _reading_or_finished(index: int, slot_count: int) -> Step:
 def step_window(step: Step, *, timing: Timing, now: datetime) -> tuple[datetime, datetime]:
     """When a step that starts now ends.
 
-    The deadline is server-side (D-6), written on the circuit so every screen
-    reads the same value; it used to live in the supervisor's browser, lost on
-    refresh.
+    The deadline is server-side, written on the circuit so every screen reads
+    the same value and a refresh cannot lose it.
     """
     minutes = _minutes_for(step, timing)
     if minutes <= 0:

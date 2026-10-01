@@ -3,7 +3,7 @@ import type { StationBlock } from "@/capabilities/authoring/structure/b2b/types/
 import { formsLabelForStationBlockType } from "@/capabilities/authoring/structure/b2b/lib/stations/blockTypeLabels";
 import { RagGradePreviewRow } from "@/capabilities/authoring/structure/b2b/components/features/feedback/RagGradeControls";
 
-/** WYSIWYG preview of a single block (ported from legacy StructureEditor Preview). */
+/** Shows one block the way a candidate will see it. */
 export function BlockPreviewContent({
   block,
   showLabel = true,

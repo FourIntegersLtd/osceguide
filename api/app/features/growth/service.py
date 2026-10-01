@@ -115,12 +115,6 @@ async def ensure_reporter(
         raise errors.NotAReporter()
 
 
-async def _purchases_for(session: AsyncSession, partner: str) -> int:
-    """How many of a partner's people have paid."""
-    user_ids = await repository.acquired_user_ids(session, partner)
-    return await billing.count_payments_for_users(session, user_ids) if user_ids else 0
-
-
 async def read_funnel(
     session: AsyncSession,
     *,

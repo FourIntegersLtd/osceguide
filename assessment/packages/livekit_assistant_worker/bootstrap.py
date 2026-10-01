@@ -15,6 +15,8 @@ from .modes import ModeProfile, WorkerType, mode_profile
 
 
 class BootstrapError(RuntimeError):
+    """The session could not be fetched or was not usable. ``auth_failed`` marks a rejected worker credential."""
+
     def __init__(self, message: str, *, auth_failed: bool = False) -> None:
         super().__init__(message)
         self.auth_failed = auth_failed
@@ -39,6 +41,7 @@ class RemoteTool(BaseModel):
     @field_validator("name")
     @classmethod
     def _well_formed_name(cls, value: str) -> str:
+        """Reject a tool name that does not match the allowed pattern."""
         if not TOOL_NAME.match(value):
             raise ValueError(f"tool name {value!r} must match {TOOL_NAME.pattern}")
         return value
@@ -46,6 +49,7 @@ class RemoteTool(BaseModel):
     @field_validator("parameters")
     @classmethod
     def _object_schema(cls, value: dict[str, Any]) -> dict[str, Any]:
+        """Reject tool parameters that are not a JSON schema of type object."""
         if value.get("type") != "object":
             raise ValueError("tool parameters must be a JSON schema of type object")
         return value
@@ -95,8 +99,9 @@ class AssistantSession(BaseModel):
     @field_validator("tools")
     @classmethod
     def _distinct_names(cls, value: tuple[RemoteTool, ...]) -> tuple[RemoteTool, ...]:
+        """Reject a tool list that names the same tool twice."""
         names = [tool.name for tool in value]
-        duplicates = sorted({n for n in names if names.count(n) > 1})
+        duplicates = sorted({name for name in names if names.count(name) > 1})
         if duplicates:
             raise ValueError(f"tools named more than once: {duplicates}")
         return value
@@ -107,6 +112,7 @@ class AssistantSession(BaseModel):
 
 
 def parse_bootstrap(payload: Any) -> AssistantSession:
+    """Check a bootstrap payload and return the session in it, raising ``BootstrapError`` when it is malformed or has no instructions."""
     if not isinstance(payload, dict):
         raise BootstrapError("bootstrap payload must be an object")
     try:
