@@ -73,6 +73,11 @@ export function RubricFeedback({
   // it belongs with the headline rather than after every domain.
   const selectors = sections.filter((section) => section.answers.every((answer) => answer.role === "selector"));
   const narrative = sections.filter((section) => !selectors.includes(section));
+  // A list that sits at the top of the result on its own (a v1 rubric's
+  // actionable feedback and clinical analysis) is one card, not a section:
+  // those share a single dropdown, side by side, instead of one dropdown each.
+  const loneLists = narrative.filter((section) => section.answers.length === 1 && section.answers[0]?.type === "list");
+  const fullSections = narrative.filter((section) => !loneLists.includes(section));
 
   return (
     <section className="space-y-6">
@@ -118,7 +123,17 @@ export function RubricFeedback({
         </Dropdown>
       ) : null}
 
-      {narrative.map((section) => (
+      {loneLists.length > 0 ? (
+        <Dropdown
+          defaultOpen
+          title={loneLists.map((section) => section.title).join(" and ")}
+          icon={<HiOutlineListBullet aria-hidden />}
+        >
+          <SectionAnswers answers={loneLists.flatMap((section) => section.answers)} />
+        </Dropdown>
+      ) : null}
+
+      {fullSections.map((section) => (
         <Dropdown key={section.id} defaultOpen title={section.title} icon={<HiOutlineListBullet aria-hidden />}>
           <SectionAnswers answers={section.answers} />
         </Dropdown>
@@ -250,12 +265,12 @@ const ROLE_ICON: Partial<Record<FieldRole, { icon: IconType; className: string }
 
 /** How a section-level list reads as a legacy clinical-analysis card: dot, tint and bullet by role. */
 const ROLE_CARD: Partial<Record<FieldRole, { dot: string; body: string; bullet: string }>> = {
-  strength: { dot: "bg-osce-success-icon", body: "bg-osce-success-bg/60", bullet: "•" },
-  improvement: { dot: "bg-osce-warning-text", body: "bg-osce-warning-bg/60", bullet: "→" },
-  action: { dot: "bg-osce-accent", body: "bg-osce-accent-muted/60", bullet: "→" },
-  flag: { dot: "bg-osce-danger", body: "bg-osce-danger-bg/60", bullet: "!" },
+  strength: { dot: "bg-osce-success-icon", body: "bg-osce-success-bg", bullet: "•" },
+  improvement: { dot: "bg-osce-warning-text", body: "bg-osce-warning-bg", bullet: "→" },
+  action: { dot: "bg-osce-accent", body: "bg-osce-accent-muted", bullet: "→" },
+  flag: { dot: "bg-osce-danger", body: "bg-osce-danger-bg", bullet: "!" },
 };
-const PLAIN_ROLE_CARD = { dot: "bg-b2c-text-muted", body: "bg-osce-accent-muted/60", bullet: "•" };
+const PLAIN_ROLE_CARD = { dot: "bg-b2c-text-muted", body: "bg-osce-accent-muted", bullet: "•" };
 
 /** The three columns of a legacy category card, in their order, by the role of the list they hold. */
 const CATEGORY_COLUMNS: Array<{ role: FieldRole; border: string; title: string; bullet: string }> = [

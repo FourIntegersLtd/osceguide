@@ -9,6 +9,37 @@ const sharedContent = path.join(
   "../frontend/src/shared/**/*.{ts,tsx}",
 );
 
+type ColourTree = { [name: string]: string | ColourTree };
+
+/**
+ * Makes the product palette accept an opacity suffix (`bg-osce-surface/80`,
+ * `focus:ring-osce-accent/20`).
+ *
+ * These colours are whole CSS variables (`var(--osce-accent)`), and Tailwind
+ * cannot put an alpha into one: for years a class like `bg-osce-accent-muted/60`
+ * generated no CSS at all, so tints, focus rings and translucent overlays
+ * across the app were silently missing. With a suffix the colour is now mixed
+ * with transparent; without one the output is the plain variable, exactly as
+ * before, so nothing that already worked changes.
+ */
+function alphaReady(tree: ColourTree): ColourTree {
+  return Object.fromEntries(
+    Object.entries(tree).map(([name, value]) => {
+      if (typeof value !== "string") return [name, alphaReady(value)];
+      if (!value.startsWith("var(")) return [name, value];
+      const colour = ({ opacityValue }: { opacityValue?: string | number }) => {
+        const opacity = String(opacityValue ?? "");
+        // No suffix: Tailwind passes its own `var(--tw-…-opacity)` here.
+        if (opacity === "" || opacity.startsWith("var(")) return value;
+        // The transparent end Tailwind derives for a gradient's `from-*`.
+        if (Number(opacity) === 0) return "rgb(255 255 255 / 0)";
+        return `color-mix(in srgb, ${value} calc(${opacity} * 100%), transparent)`;
+      };
+      return [name, colour as unknown as string];
+    }),
+  );
+}
+
 /**
  * Two palettes, on purpose.
  *
@@ -38,7 +69,7 @@ const config: Config = {
   ],
   theme: {
     extend: {
-      colors: {
+      colors: alphaReady({
         /* The semantic set: overridden per surface. */
         canvas: "rgb(var(--color-canvas) / <alpha-value>)",
         surface: "rgb(var(--color-surface) / <alpha-value>)",
@@ -345,7 +376,7 @@ const config: Config = {
             },
           },
         },
-      },
+      }),
       /* Preflight uses this for uncoloured `border` — not currentColor/ink. */
       borderColor: {
         DEFAULT: "rgb(var(--color-border) / <alpha-value>)",
