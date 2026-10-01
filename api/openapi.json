@@ -17666,6 +17666,18 @@
       },
       "StationTemplateRead": {
         "properties": {
+          "copied_from_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Copied From Id"
+          },
           "exam_code": {
             "anyOf": [
               {
@@ -47136,6 +47148,97 @@
           }
         ],
         "summary": "Archive Station Template Version",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/station-versions/{version_id}/sections": {
+      "get": {
+        "description": "A station version as the staff running a sitting read it: every audience's sections.\n\nThe candidate's brief, the patient's script with what they hold back, the\nexaminer's notes and the faculty's own material. Empty for a station bound\nto no template.",
+        "operationId": "stations_read_staff_sections",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AudienceSectionRead"
+                  },
+                  "title": "Response Stations Read Staff Sections",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "version_not_found",
+            "x-codes": [
+              "version_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Staff Sections",
         "tags": [
           "stations"
         ]

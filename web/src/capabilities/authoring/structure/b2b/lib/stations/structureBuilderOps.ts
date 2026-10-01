@@ -151,6 +151,7 @@ const ROLE_AUDIENCE: Record<StationBlockRole, StationSectionAudience> = {
   candidate_brief: "candidate",
   examiner: "examiner",
   faculty: "faculty",
+  debrief: "faculty",
 };
 
 export function removeSection(

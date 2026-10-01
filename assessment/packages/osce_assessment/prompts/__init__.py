@@ -36,7 +36,12 @@ from .debrief_management_plan import ManagementPlanFormatter
 from .debrief_prompt import DebriefPromptFormatter
 from .debrief_transcript import TranscriptFormatter
 from .greetings import DEBRIEF_GREETING, EXAMINER_GREETINGS, PATIENT_GREETINGS
-from .station import StationPromptFormatter, create_station_prompt, station_examiner_context
+from .station import (
+    StationPromptFormatter,
+    create_station_prompt,
+    station_debrief_context,
+    station_examiner_context,
+)
 
 USER_PROMPT_TEMPLATE_ID = "feedback_evaluation_v1"
 
@@ -93,6 +98,7 @@ __all__ = [
     "available_prompt_ids",
     "create_station_prompt",
     "format_structured_cv_for_llm",
+    "station_debrief_context",
     "station_examiner_context",
     "prompt_text",
     "render_user_prompt",

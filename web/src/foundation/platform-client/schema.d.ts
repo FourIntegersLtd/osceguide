@@ -4738,6 +4738,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orgs/{org_slug}/station-versions/{version_id}/sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Staff Sections
+         * @description A station version as the staff running a sitting read it: every audience's sections.
+         *
+         *     The candidate's brief, the patient's script with what they hold back, the
+         *     examiner's notes and the faculty's own material. Empty for a station bound
+         *     to no template.
+         */
+        get: operations["stations_read_staff_sections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orgs/{org_slug}/stations": {
         parameters: {
             query?: never;
@@ -14382,6 +14406,8 @@ export interface components {
         };
         /** StationTemplateRead */
         StationTemplateRead: {
+            /** Copied From Id */
+            copied_from_id?: string | null;
             /** Exam Code */
             exam_code: string | null;
             /**
@@ -30877,6 +30903,57 @@ export interface operations {
             };
             /** @description not_archivable */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_read_staff_sections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AudienceSectionRead"][];
+                };
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description version_not_found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -61,6 +61,15 @@ Keep your own turns short: one point per turn, in two or three spoken sentences 
 The session lasts about ten minutes, which is time to work through the whole plan. You will be told when it is nearly over. Until then, do not rush, announce the time, or start wrapping up, and never ask for their takeaways or say goodbye before you are told, even when one part feels finished or they thank you: always reply, and bring in the next heading not yet covered. When you are told, ask them to say the one or two things they will take away, add anything safety-critical they have left out, and close warmly.
 </how_the_debrief_goes>"""
 
+# The author's own debrief, from a simulation scenario's template. It guides the
+# walk-through; it does not replace the management plan as what is taught.
+_DEBRIEF_POINTS = """<debrief_points>
+The station's author wrote these for the debrief. Ask their questions in the part of the debrief they belong to, in your own words and one at a time, and make sure their teaching points are covered before the end.
+
+{points}
+</debrief_points>"""
+
+
 class DebriefPromptFormatter:
     """Builds the debrief tutor's system prompt for one finished consultation."""
 
@@ -77,6 +86,7 @@ class DebriefPromptFormatter:
         transcript: Optional[str],
         management_plan: Optional[str],
         marking: Optional[str] = None,
+        debrief_points: Optional[str] = None,
     ) -> str:
         """The tutor prompt for one finished consultation.
 
@@ -85,6 +95,9 @@ class DebriefPromptFormatter:
         by-role rendering of the scored result (``render_marking``), already
         rendered to text before it reaches this formatter. Nothing here knows
         which exam it is, or renders marking text itself.
+        ``debrief_points`` is what the station's author wrote for the debrief
+        (``station_debrief_context``): questions and teaching points the
+        tutor works in where they fit.
         """
         parts = [
             role_lock(
@@ -102,4 +115,6 @@ class DebriefPromptFormatter:
         # A station marked by no framework, or not yet marked, has no marking block.
         if str(marking or "").strip():
             parts.append(f"<marking>\n{marking.strip()}\n</marking>")
+        if str(debrief_points or "").strip():
+            parts.append(_DEBRIEF_POINTS.format(points=debrief_points.strip()))
         return "\n\n".join(parts)

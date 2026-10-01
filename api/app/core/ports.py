@@ -224,7 +224,7 @@ class ProfileRenderer(Protocol):
         greeting: str | None = None,
         mode: str,
     ) -> dict[str, object]:
-        """Return `{"instructions", "greeting", "examiner_context"}`.
+        """Return `{"instructions", "greeting", "examiner_context", "debrief_context"}`.
 
         `layout` is the station template's ordered block list, which says what
         each block of the station is for.

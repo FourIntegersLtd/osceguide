@@ -20,6 +20,9 @@ TModel = TypeVar("TModel", bound=BaseModel)
 STATION_AUTOGENERATE_MODEL = "o3"
 STATION_AUTOGENERATE_FALLBACK_MODEL = "claude-sonnet-4-5"
 PARSE_TIMEOUT_SEC = 480
+# Room for the whole answer. Transcribing a long station document writes most
+# of the document back out, which 4096 tokens cut off part-way.
+FALLBACK_MAX_TOKENS = 32_000
 
 
 async def parse_ai_structured(
@@ -124,7 +127,7 @@ async def _parse_with_anthropic(
     try:
         response = await client.messages.create(  # type: ignore[call-overload]
             model=model,
-            max_tokens=4096,
+            max_tokens=FALLBACK_MAX_TOKENS,
             system=system or omit,
             messages=user_messages,
             tools=[
@@ -137,6 +140,8 @@ async def _parse_with_anthropic(
             tool_choice={"type": "tool", "name": tool_name},
             timeout=PARSE_TIMEOUT_SEC,
         )
+        if response.stop_reason == "max_tokens":
+            return None, "Fallback model ran out of room before it finished its answer"
         tool_use = next((block for block in response.content if block.type == "tool_use"), None)
         if tool_use is None:
             return None, "Fallback model returned no structured result"

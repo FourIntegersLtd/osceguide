@@ -17,6 +17,8 @@ marking order — carry the ``examiner`` role and never reach the patient prompt
 They are handed to the marker separately through
 :func:`station_examiner_context`. An examiner persona is given them too: they
 are the questions it asks, and a viva run without them has nothing to ask.
+Blocks with the ``debrief`` role go to neither: they are the debrief tutor's,
+through :func:`station_debrief_context`.
 """
 from __future__ import annotations
 
@@ -29,13 +31,16 @@ __all__ = [
     "KNOWN_ROLES",
     "StationPromptFormatter",
     "create_station_prompt",
+    "station_debrief_context",
     "station_examiner_context",
 ]
 
 # What a block may be for. A template's author picks one per block; anything
 # else is held back and read out only on request. `faculty` is the one role
 # that goes nowhere: it is known, so its block is never a leftover read to the
-# patient, and neither the live persona nor the marker is given it.
+# patient, and neither the live persona nor the marker is given it. `debrief`
+# is faculty material the debrief tutor is also given: the author's debriefing
+# and teaching points.
 KNOWN_ROLES = (
     "persona",
     "complaint",
@@ -48,6 +53,7 @@ KNOWN_ROLES = (
     "candidate_brief",
     "hidden",
     "faculty",
+    "debrief",
 )
 
 # Block ids recognised when a station has no template layout: the common
@@ -141,16 +147,32 @@ def _records_text(records: Sequence[Any], fields: Sequence[Mapping[str, Any]]) -
     return "\n\n".join(rows)
 
 
-def _text_from_value(val: Any, fields: Sequence[Mapping[str, Any]] | None = None) -> str:
-    """A plain string, whether the block holds text, a list, a table or rich text.
+def _groups_text(groups: Mapping[str, Any]) -> str:
+    """A grouped list as each group's name over its points, in the order given."""
+    return "\n\n".join(
+        f"{name}:\n{text}" for name, items in groups.items() if (text := _text_from_value(items))
+    )
 
-    ``fields`` is a table block's column list; with it each row is written
-    with its column names.
+
+def _block_text(value: Any, block: Mapping[str, Any]) -> str:
+    """A layout block's value as text, read by what the template says the block is.
+
+    A table is written with its column names and a grouped list with its group
+    names: without them a row of observations is bare numbers, and debrief
+    questions lose the stage of the debrief they belong to.
     """
+    fields = block.get("fields")
+    if isinstance(fields, list) and fields and isinstance(value, list):
+        return _records_text(value, fields)
+    if block.get("type") == "groupedList" and isinstance(value, Mapping):
+        return _groups_text(value)
+    return _text_from_value(value)
+
+
+def _text_from_value(val: Any) -> str:
+    """A plain string, whether the block holds text, a list or rich text."""
     if isinstance(val, str):
         return val.strip()
-    if fields and isinstance(val, list):
-        return _records_text(val, fields)
     if isinstance(val, list):
         parts = []
         for item in val:
@@ -193,8 +215,7 @@ def _by_role(
             if not block_id or role not in roles:
                 continue
             claimed.add(block_id)
-            fields = block.get("fields")
-            text = _text_from_value(content.get(block_id), fields if isinstance(fields, list) else None)
+            text = _block_text(content.get(block_id), block)
             if text:
                 roles[role].append(text)
     else:
@@ -293,6 +314,21 @@ class StationPromptFormatter:
         body = "\n\n".join(blocks)
         return f"\n\n<examiner_notes>\n{body}\n</examiner_notes>"
 
+    @staticmethod
+    def debrief_context(
+        station: Mapping[str, Any], layout: Sequence[Mapping[str, Any]] | None = None
+    ) -> str | None:
+        """What the station's author wrote for the debrief: blocks the layout gives the ``debrief`` role.
+
+        ``None`` when the station has none, which is every station but a
+        simulation scenario's.
+        """
+        content = station.get("content") or {}
+        if not isinstance(content, Mapping):
+            return None
+        roles, _ = _by_role(content, layout)
+        return "\n\n".join(roles["debrief"]) or None
+
 
 def _examiner_material(blocks: Sequence[str]) -> str:
     """The station's questions and expected answers, as the examiner running the viva holds them.
@@ -371,3 +407,10 @@ def station_examiner_context(
 ) -> str | None:
     """Module-level convenience wrapper."""
     return StationPromptFormatter.examiner_context(station, layout)
+
+
+def station_debrief_context(
+    station: Mapping[str, Any], layout: Sequence[Mapping[str, Any]] | None = None
+) -> str | None:
+    """Module-level convenience wrapper."""
+    return StationPromptFormatter.debrief_context(station, layout)

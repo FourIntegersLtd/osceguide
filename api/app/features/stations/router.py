@@ -16,7 +16,7 @@ from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_resp
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.settings import SettingsDep
-from app.core.tenancy import OrgAdmin, OrgReader, may_run_circuit_policy
+from app.core.tenancy import OrgAdmin, OrgReader, OrgStaff, may_run_circuit_policy
 from app.features.stations import (
     errors,
     schemas,
@@ -102,6 +102,23 @@ async def list_stations(
         include_archived=include_archived,
     )
     return Page(items=items, next_cursor=next_cursor)
+
+
+@router.get(
+    "/orgs/{org_slug}/station-versions/{version_id}/sections",
+    response_model=list[schemas.AudienceSectionRead],
+    responses=error_responses(Forbidden, errors.VersionNotFound),
+)
+async def read_staff_sections(
+    workspace: OrgStaff, session: Session, version_id: uuid.UUID
+) -> list[schemas.AudienceSectionRead]:
+    """A station version as the staff running a sitting read it: every audience's sections.
+
+    The candidate's brief, the patient's script with what they hold back, the
+    examiner's notes and the faculty's own material. Empty for a station bound
+    to no template.
+    """
+    return await service.staff_sections(session, workspace.org_id, version_id)
 
 
 # Author a new station on this org's own template version.

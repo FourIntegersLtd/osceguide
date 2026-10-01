@@ -639,3 +639,93 @@ async def test_an_archived_version_accepts_nothing_at_all(client: AsyncClient, m
     )
     assert response.status_code == 409
     assert response.json()["code"] == "not_editable"
+
+
+# --------------------------------------------------------------------------
+# The whole document by audience, for the staff running a sitting
+# --------------------------------------------------------------------------
+
+SECTIONED = {
+    "schemaVersion": 1,
+    "sections": [
+        {
+            "id": "brief",
+            "title": "Brief",
+            "audience": "candidate",
+            "blocks": [{"id": "task", "type": "longText", "label": "Task", "role": "candidate_brief"}],
+        },
+        {
+            "id": "faculty",
+            "title": "Faculty",
+            "audience": "faculty",
+            "blocks": [{"id": "debrief", "type": "list", "label": "Debrief", "role": "debrief"}],
+        },
+    ],
+}
+
+
+async def published_version(client: AsyncClient, token: str, station: dict) -> str:
+    response = await client.post(
+        f"/api/v1/orgs/kings/stations/{station['id']}/versions/1/publish", headers=bearer(token)
+    )
+    assert response.status_code == 200, response.text
+    return str(response.json()["id"])
+
+
+async def test_a_supervisor_reads_every_audience_of_a_station(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor)
+    owner = await member(make_actor, org_id, "kings", "owner")
+    template = await client.post(
+        "/api/v1/orgs/kings/station-templates",
+        json={"title": "Scenario", "exam_code": "sca", "structure": SECTIONED},
+        headers=bearer(owner),
+    )
+    assert template.status_code == 201, template.text
+    published = await client.post(
+        f"/api/v1/orgs/kings/station-templates/{template.json()['id']}/publish", headers=bearer(owner)
+    )
+    assert published.status_code == 200, published.text
+    created = await client.post(
+        "/api/v1/orgs/kings/stations",
+        json={
+            "title": "Annual review",
+            "exam_code": "sca",
+            "content": {"task": "Review this patient.", "debrief": ["Ask how it felt."]},
+            "template_version_id": template.json()["versions"][0]["id"],
+        },
+        headers=bearer(owner),
+    )
+    assert created.status_code == 201, created.text
+    version_id = await published_version(client, owner, created.json())
+    path = f"/api/v1/orgs/kings/station-versions/{version_id}/sections"
+
+    read = await client.get(path, headers=bearer(await member(make_actor, org_id, "kings", "supervisor")))
+    assert read.status_code == 200, read.text
+    assert [
+        (section["audience"], [block["id"] for block in section["blocks"]]) for section in read.json()
+    ] == [
+        ("candidate", ["task"]),
+        ("faculty", ["debrief"]),
+    ]
+
+    trainee = await client.get(path, headers=bearer(await member(make_actor, org_id, "kings", "trainee")))
+    assert trainee.status_code == 403, trainee.text
+
+
+async def test_an_untemplated_station_has_no_sections_and_an_unknown_version_is_not_found(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor)
+    owner = await member(make_actor, org_id, "kings", "owner")
+    version_id = await published_version(client, owner, await make_station(client, owner))
+
+    read = await client.get(
+        f"/api/v1/orgs/kings/station-versions/{version_id}/sections", headers=bearer(owner)
+    )
+    assert read.status_code == 200, read.text
+    assert read.json() == []
+
+    missing = await client.get(
+        f"/api/v1/orgs/kings/station-versions/{uuid.uuid4()}/sections", headers=bearer(owner)
+    )
+    assert missing.status_code == 404, missing.text

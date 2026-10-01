@@ -3,15 +3,18 @@
 import Markdown from "react-markdown";
 import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
+import { AudienceSections } from "@/capabilities/attempt-runner";
 import { listOrgStations, type OrgStation } from "@/domains/assess/trainee/api";
-import type { CircuitConsole } from "@/domains/assess/sessions/api";
+import { readStaffSections, type CircuitConsole, type StaffSection } from "@/domains/assess/sessions/api";
 
 /**
- * The reading brief for the supervisor console.
+ * The station the supervisor console is running, as its staff read it.
  *
- * The backend returns full station content for staff/admin through the org
- * station list. The supervisor sees the whole document — not just the
- * candidate-safe `reading_brief` — matched by `station_version_id`.
+ * A templated station is read by its template's sections: the candidate's
+ * brief, the patient's script, the examiner's notes and the faculty's own
+ * material (set-up, faculty script, debrief), each block drawn by its type. A
+ * station bound to no template has no sections, and falls back to its string
+ * fields from the org station list, matched by `station_version_id`.
  *
  * Shown when the circuit has an active slot, so the supervisor can see what
  * the candidate is reading while the station runs.
@@ -36,6 +39,35 @@ export function SupervisorReadingBrief({
 }
 
 function SupervisorBrief({
+  orgSlug,
+  versionId,
+  title,
+}: {
+  orgSlug: string;
+  versionId: string;
+  title?: string | null;
+}) {
+  const state = useAsync((signal) => readStaffSections(orgSlug, versionId, signal), [orgSlug, versionId]);
+  return (
+    <AsyncBoundary state={state}>
+      {(sections: StaffSection[]) =>
+        sections.length > 0 ? (
+          <section className="space-y-2">
+            <h2 className="text-osce-eyebrow font-semibold text-b2b-mid uppercase tracking-wide">
+              Station content{title ? `: ${title}` : ""}
+            </h2>
+            <AudienceSections sections={sections} variant="collapsible" />
+          </section>
+        ) : (
+          <UntemplatedBrief orgSlug={orgSlug} versionId={versionId} title={title} />
+        )
+      }
+    </AsyncBoundary>
+  );
+}
+
+/** An untemplated station's string fields, the only shape it has. */
+function UntemplatedBrief({
   orgSlug,
   versionId,
   title,

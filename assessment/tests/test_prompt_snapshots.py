@@ -96,6 +96,28 @@ def test_a_table_block_is_read_with_its_column_names() -> None:
     assert "HR: 72\nBP: 128/76" in prompt and "ETCO2" not in prompt
 
 
+def test_debrief_blocks_reach_only_the_debrief_tutor() -> None:
+    """The author's debrief points are written under their group names, for the tutor alone."""
+    station = {
+        "title": "Annual review",
+        "content": {
+            "notes": "Stroke.",
+            "debriefing_points": {"Reaction": ["How did that feel?"], "Analysis": ["What cues did you use?"]},
+        },
+    }
+    layout = [{"id": "notes", "role": "examiner"}, {"id": "debriefing_points", "role": "debrief", "type": "groupedList"}]
+    assert StationPromptFormatter.debrief_context(station, layout) == (
+        "Reaction:\nHow did that feel?\n\nAnalysis:\nWhat cues did you use?"
+    )
+    assert "How did that feel" not in (StationPromptFormatter.examiner_context(station, layout) or "")
+    assert "How did that feel" not in create_station_prompt(station, layout)
+    prompt = DebriefPromptFormatter.create_prompt(
+        transcript="[1] DOCTOR: Hello.", management_plan=None, debrief_points="Reaction:\nHow did that feel?"
+    )
+    assert "<debrief_points>" in prompt and "Reaction:\nHow did that feel?" in prompt
+    assert "<debrief_points>" not in DebriefPromptFormatter.create_prompt(transcript="[1] DOCTOR: Hello.", management_plan=None)
+
+
 def test_the_examiner_persona_holds_the_examiner_blocks() -> None:
     """An examiner running a viva is given the questions it asks; the patient never is."""
     station = _load("stations/templated_station.json")

@@ -166,7 +166,11 @@ export function StationTemplatesSection() {
             busy={action.busy}
             editHref={editHref}
             onCopy={
-              scope.kind === "org" && template.owner_kind === "platform" && published
+              scope.kind === "org" &&
+              template.owner_kind === "platform" &&
+              published &&
+              // Copied already: copying again would only give back the same copy.
+              !items.some((own) => own.copied_from_id === template.id)
                 ? () =>
                     void action.run(`copy:${template.id}`, () =>
                       copyStationTemplate(scope, template.id),

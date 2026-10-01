@@ -104,3 +104,14 @@ def test_rich_values_in_the_wrong_shape_are_refused() -> None:
         "Block 'viva' must be an array of {question, answer} objects",
         "Block 'order' must be an object of groups, each an array of text or {title, reasons}",
     ]
+
+
+def test_a_grouped_list_names_its_groups_as_text() -> None:
+    def structure(groups: object) -> dict:
+        block = {"id": "debrief", "type": "groupedList", "label": "Debrief", "groups": groups}
+        return {"schemaVersion": 1, "sections": [{"id": "main", "title": "Main", "blocks": [block]}]}
+
+    assert validate_station_structure(structure(["Reaction", "Analysis"]))[0]
+    ok, errs = validate_station_structure(structure(["Reaction", ""]))
+    assert not ok and any("groups" in e for e in errs)
+    assert not validate_station_structure(structure("Reaction"))[0]

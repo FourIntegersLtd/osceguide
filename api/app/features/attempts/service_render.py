@@ -68,10 +68,12 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
         )
         if attempt.kind == "debrief":
             context = rendered.get("examiner_context")
+            points = rendered.get("debrief_context")
             rendered = await render_debrief(
                 session,
                 attempt,
                 examiner_context=context if isinstance(context, str) else None,
+                debrief_points=points if isinstance(points, str) else None,
             )
     except RenderFailed as exc:
         raise errors.AttemptNotReady(str(exc)) from exc
@@ -149,12 +151,17 @@ async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) 
 
 
 async def render_debrief(
-    session: AsyncSession, attempt: Attempt, *, examiner_context: str | None
+    session: AsyncSession,
+    attempt: Attempt,
+    *,
+    examiner_context: str | None,
+    debrief_points: str | None = None,
 ) -> dict[str, Any]:
     """Render the tutor's prompt from the source consultation's transcript and results.
 
     Never the patient's own prompt: a debrief talks *about* the consultation, so it is built from
-    what was said and how it was scored, not from the persona that said it.
+    what was said and how it was scored, not from the persona that said it. `debrief_points` is
+    what the station's author wrote for the debrief, when its template has any.
     """
     source = (
         await repository.attempt_by_id(session, attempt.source_attempt_id)
@@ -189,6 +196,7 @@ async def render_debrief(
             transcript=transcript,
             management_plan=frozen_context or examiner_context,
             marking=marking,
+            debrief_points=debrief_points,
         ),
         "greeting": DEBRIEF_GREETING,
         "examiner_context": frozen_context or examiner_context,

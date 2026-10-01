@@ -129,7 +129,7 @@ def test_faculty_blocks_reach_the_faculty_audience_and_nobody_else() -> None:
 
 def test_the_engine_layout_carries_table_columns_and_makes_faculty_sections_faculty() -> None:
     """The editor's flat block list has neither; both come from the sections."""
-    from app.features.stations.service import _engine_layout
+    from app.features.stations.station_content import engine_layout
 
     columns = [{"key": "hr", "label": "HR"}]
     sections = [
@@ -144,6 +144,7 @@ def test_the_engine_layout_carries_table_columns_and_makes_faculty_sections_facu
             "blocks": [
                 {"id": "debrief", "type": "list"},
                 {"id": "answers", "type": "list", "role": "examiner"},
+                {"id": "points", "type": "groupedList", "role": "debrief"},
             ],
         },
     ]
@@ -151,10 +152,33 @@ def test_the_engine_layout_carries_table_columns_and_makes_faculty_sections_facu
         {"id": "states", "role": "examination"},
         {"id": "debrief", "role": "hidden"},
         {"id": "answers", "role": "examiner"},
+        {"id": "points", "role": "debrief"},
     ]
 
-    assert _engine_layout(flat, sections) == [
-        {"id": "states", "role": "examination", "fields": columns},
-        {"id": "debrief", "role": "faculty"},
-        {"id": "answers", "role": "examiner"},
+    assert engine_layout(flat, sections) == [
+        {"id": "states", "type": "records", "role": "examination", "fields": columns},
+        {"id": "debrief", "type": "list", "role": "faculty"},
+        {"id": "answers", "type": "list", "role": "examiner"},
+        {"id": "points", "type": "groupedList", "role": "debrief"},
     ]
+
+
+def test_debrief_blocks_are_faculty_material() -> None:
+    """The debrief tutor's points are for the people running the simulation, not the learner."""
+    sections = [
+        *PRIORITISATION_SECTIONS,
+        {
+            "id": "faculty",
+            "title": "Faculty",
+            "audience": "faculty",
+            "blocks": [{"id": "points", "label": "Debrief", "type": "groupedList", "role": "debrief"}],
+        },
+    ]
+    content = {**CONTENT, "points": {"Reaction": ["How did that feel?"]}}
+
+    def reads_points(audience: str) -> bool:
+        projected = sections_for(sections, content, audience, include_hidden=True)
+        return any(block.id == "points" for section in projected for block in section.blocks)
+
+    assert reads_points("faculty")
+    assert not any(reads_points(audience) for audience in ("candidate", "patient", "examiner"))

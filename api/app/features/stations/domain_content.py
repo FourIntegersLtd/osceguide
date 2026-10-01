@@ -110,4 +110,29 @@ def content_for_template(content: Mapping[str, Any] | None, sections: list[Any])
             elif block_id and block_id.removeprefix(prefix) in nested:
                 lifted[block_id] = nested[block_id.removeprefix(prefix)]
     kept = {key: value for key, value in source.items() if key not in consumed}
-    return kept | lifted
+    return _in_template_group_order(kept | lifted, sections)
+
+
+def _in_template_group_order(content: dict[str, Any], sections: list[Any]) -> dict[str, Any]:
+    """Each grouped list with its groups in the order its template block declares (`groups`).
+
+    Postgres keeps a stored object's keys in an order of its own, not the
+    author's, so a debrief's reaction, description, analysis and summary come
+    back shuffled. Names match ignoring case; a group the template does not
+    name keeps its place after the named ones.
+    """
+    for section in sections:
+        if not isinstance(section, Mapping):
+            continue
+        for block in section.get("blocks") or []:
+            if not isinstance(block, Mapping) or not isinstance(block.get("groups"), list):
+                continue
+            block_id = str(block.get("id") or "")
+            groups = content.get(block_id)
+            if not isinstance(groups, Mapping):
+                continue
+            rank = {str(name).casefold(): index for index, name in enumerate(block["groups"])}
+            content[block_id] = dict(
+                sorted(groups.items(), key=lambda group: rank.get(str(group[0]).casefold(), len(rank)))
+            )
+    return content

@@ -34,12 +34,28 @@ class StationTemplate(Base, UUIDPrimaryKey, Timestamps):
     """
 
     __tablename__ = "station_templates"
-    __table_args__ = (CheckConstraint(_OWNER_MATCHES_ORG, name="ck_station_templates_owner_matches_org"),)
+    __table_args__ = (
+        CheckConstraint(_OWNER_MATCHES_ORG, name="ck_station_templates_owner_matches_org"),
+        # One copy of a platform template per organisation.
+        Index(
+            "uq_station_templates_org_copied_from",
+            "org_id",
+            "copied_from_id",
+            unique=True,
+            postgresql_where=text("copied_from_id IS NOT NULL"),
+        ),
+    )
 
     owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
     org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
     exam_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("exams.id", ondelete="SET NULL"))
     title: Mapped[str] = mapped_column(String(200), nullable=False)
+    # The platform template an organisation's copy was made from, so copying it
+    # again gives back this copy, and the organisation's copy of the standard
+    # template is found by what it is rather than by a title the org may change.
+    copied_from_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("station_templates.id", ondelete="SET NULL")
+    )
 
 
 class StationTemplateVersion(Base, UUIDPrimaryKey, Timestamps):

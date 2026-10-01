@@ -22,14 +22,33 @@ from app.features.stations.models import StationTemplate, StationTemplateVersion
 
 
 async def create_template(
-    session: AsyncSession, org_id: uuid.UUID | None, *, exam_id: uuid.UUID | None, title: str
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    *,
+    exam_id: uuid.UUID | None,
+    title: str,
+    copied_from_id: uuid.UUID | None = None,
 ) -> StationTemplate:
     """Create a new template shell, with no versions yet."""
-    template = StationTemplate(owner_kind=owner_kind_for(org_id), org_id=org_id, exam_id=exam_id, title=title)
+    template = StationTemplate(
+        owner_kind=owner_kind_for(org_id),
+        org_id=org_id,
+        exam_id=exam_id,
+        title=title,
+        copied_from_id=copied_from_id,
+    )
     session.add(template)
     await session.flush()
     await session.refresh(template)
     return template
+
+
+async def copy_of(session: AsyncSession, org_id: uuid.UUID, source_id: uuid.UUID) -> StationTemplate | None:
+    """The organisation's copy of this platform template, if it has made one."""
+    stmt = select(StationTemplate).where(
+        StationTemplate.org_id == org_id, StationTemplate.copied_from_id == source_id
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def template_by_id(

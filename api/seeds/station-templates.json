@@ -1401,13 +1401,14 @@
               {
                 "id": "debriefing_points",
                 "type": "groupedList",
-                "role": "faculty",
-                "label": "Debriefing points: reaction, description, analysis, summary"
+                "role": "debrief",
+                "label": "Debriefing points: reaction, description, analysis, summary",
+                "groups": ["Reaction", "Description", "Analysis", "Summary"]
               },
               {
                 "id": "teaching_points",
                 "type": "list",
-                "role": "faculty",
+                "role": "debrief",
                 "label": "Teaching points"
               },
               {

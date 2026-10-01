@@ -90,3 +90,20 @@ def test_the_projection_discloses_nothing_the_review_owns() -> None:
     carry it."""
     review_only = {"management_plan", "patient_brief"}
     assert not review_only & domain_content.CANDIDATE_FACING_KEYS
+
+
+def test_a_grouped_list_comes_back_in_the_order_its_template_names_the_groups() -> None:
+    """Postgres hands a JSONB object back in its own key order, not the author's."""
+    sections = [
+        {
+            "id": "faculty",
+            "blocks": [
+                {"id": "debrief", "type": "groupedList", "groups": ["Reaction", "Description", "Analysis"]}
+            ],
+        }
+    ]
+    stored = {"debrief": {"Other": ["d"], "analysis": ["c"], "Reaction": ["a"], "Description": ["b"]}}
+
+    content = domain_content.content_for_template(stored, sections)
+
+    assert list(content["debrief"]) == ["Reaction", "Description", "analysis", "Other"]

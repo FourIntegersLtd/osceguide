@@ -51,6 +51,7 @@ ImportedBlockRole = Literal[
     "candidate_brief",
     "hidden",
     "faculty",
+    "debrief",
 ]
 ImportedAudience = Literal["candidate", "patient", "examiner", "faculty"]
 ImportedPersona = Literal["patient", "examiner"]
@@ -70,7 +71,10 @@ class ImportedBlock(BaseModel):
     )
     role: ImportedBlockRole = Field(description="What the field is to the station, from the roles given")
     fields: list[str] = Field(
-        description="For records only: the table's column headings, in order. Empty for every other type."
+        description=(
+            "For records: the table's column headings, in order. For groupedList: the sub-headings, "
+            "in order. Empty for every other type."
+        )
     )
 
 
@@ -116,8 +120,8 @@ _TEMPLATE_RULES = (
     "debriefing points, teaching notes, references, classification).\n"
     "- type: shortText for a single line (name, age, setting), longText for prose, "
     "list for bullet points or numbered items, records for a table with column headings "
-    "(give the headings in fields), groupedList for bullet points filed under sub-headings. "
-    "fields is [] for every type but records.\n"
+    "(give the headings in fields), groupedList for bullet points filed under sub-headings "
+    "(give the sub-headings in fields). fields is [] for every other type.\n"
     "- role, one per block:\n"
     "  candidate_brief: the candidate's instructions or task.\n"
     "  persona: who the patient is (name, age, occupation, manner).\n"
@@ -130,7 +134,9 @@ _TEMPLATE_RULES = (
     "  hidden: what the patient only reveals when asked (ideas, concerns, expectations, "
     "a hidden agenda).\n"
     "  examiner: anything written for the examiner, including the whole mark scheme.\n"
-    "  faculty: every block of a faculty section.\n"
+    "  debrief: debriefing points and teaching points, in a faculty section. The debrief tutor "
+    "is given these.\n"
+    "  faculty: every other block of a faculty section.\n"
     "- persona: examiner when the station is a viva or a structured oral with no patient to "
     "talk to, otherwise patient.\n"
     "- title: a short name for this document format, for example 'History taking station'. "
@@ -161,8 +167,9 @@ _TRANSCRIBE_RULES = (
     "Each cell's key is a key from the block's fields and its value is that cell's text copied "
     "exactly. Leave out a cell the document has nothing for.\n"
     "- qaList: rows, each with a cell keyed question and a cell keyed answer.\n"
-    "- groupedList: groups, one per sub-heading under the block's heading, named as the document "
-    "words the sub-heading, with one item per bullet point beneath it.\n"
+    "- groupedList: groups, one per sub-heading under the block's heading, with one item per "
+    "bullet point beneath it. Name each group as the block's groups name it, or as the document "
+    "words the sub-heading when the block gives none.\n"
     "- Leave out page numbers, running headers and footers, and the heading itself.\n"
     "- title: the station's title as the document gives it.\n"
 )
@@ -289,21 +296,21 @@ def _block_from_imported(imported_block: ImportedBlock, audience: str, used_ids:
     """One stored template block for a block the model described.
 
     A block in a faculty section is a faculty block whatever role the model
-    gave it, and a faculty block anywhere else would be hidden from the reader
-    its section names, so the section decides. A table the model named no
-    columns for is stored as a list, which needs none.
+    gave it, unless it is debrief material, and a faculty or debrief block
+    anywhere else would be hidden from the reader its section names, so the
+    section decides. A table the model named no columns for is stored as a
+    list, which needs none.
     """
+    headings = [heading.strip() for heading in imported_block.fields if heading.strip()]
     column_keys: set[str] = set()
     fields = [
-        {"key": _unique_id(column, column_keys, fallback="column"), "label": column.strip()}
-        for column in imported_block.fields
-        if column.strip()
+        {"key": _unique_id(column, column_keys, fallback="column"), "label": column} for column in headings
     ]
     block_type = imported_block.type if imported_block.type != "records" or fields else "list"
     role: str = imported_block.role
     if audience == "faculty":
-        role = "faculty"
-    elif role == "faculty":
+        role = "debrief" if role == "debrief" else "faculty"
+    elif role in ("faculty", "debrief"):
         role = "examiner" if audience == "examiner" else "hidden"
     block: dict[str, Any] = {
         "id": _unique_id(imported_block.label, used_ids, fallback="field"),
@@ -314,6 +321,8 @@ def _block_from_imported(imported_block: ImportedBlock, audience: str, used_ids:
     }
     if block_type == "records":
         block["fields"] = fields
+    if block_type == "groupedList" and headings:
+        block["groups"] = headings
     return block
 
 

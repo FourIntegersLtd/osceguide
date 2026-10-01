@@ -21,6 +21,20 @@ export function readConsole(
   return platformRequest<CircuitConsole>(`${circuit(slug, circuitId)}/console`, { signal });
 }
 
+/** A station version as the staff running it read it: every audience's sections, empty when untemplated. */
+export function readStaffSections(
+  slug: string,
+  versionId: string,
+  signal?: AbortSignal,
+): Promise<StaffSection[]> {
+  return platformRequest<StaffSection[]>(
+    `${orgPath(slug)}/station-versions/${encodeURIComponent(versionId)}/sections`,
+    { signal },
+  );
+}
+
+export type StaffSection = components["schemas"]["AudienceSectionRead"];
+
 export function consoleStreamPath(slug: string, circuitId: string): string {
   return `${circuit(slug, circuitId)}/console/stream`;
 }

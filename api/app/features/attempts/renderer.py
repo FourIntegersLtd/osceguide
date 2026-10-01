@@ -27,9 +27,12 @@ log = get_logger(__name__)
 class EngineProfileRenderer:
     """Renders a station with `osce_assessment.prompts`."""
 
-    def __init__(self, formatter: Any, examiner_context: Any, greetings: Mapping[str, Any]) -> None:
+    def __init__(
+        self, formatter: Any, examiner_context: Any, debrief_context: Any, greetings: Mapping[str, Any]
+    ) -> None:
         self._formatter = formatter
         self._examiner_context = examiner_context
+        self._debrief_context = debrief_context
         self._greetings = greetings
 
     def render(
@@ -54,6 +57,7 @@ class EngineProfileRenderer:
         try:
             instructions = self._formatter(document, layout, persona=persona)
             examiner_context = self._examiner_context(document, layout)
+            debrief_context = self._debrief_context(document, layout)
         except Exception as exc:  # noqa: BLE001 - any formatter failure is the same failure here
             raise RenderFailed(f"The station could not be rendered: {exc}") from exc
 
@@ -68,6 +72,8 @@ class EngineProfileRenderer:
             # answers a template marks `examiner`. Was the ortho formatter's
             # private business, so no other exam could have any.
             "examiner_context": examiner_context,
+            # The station author's debrief points, for the debrief tutor alone.
+            "debrief_context": debrief_context,
         }
 
     def _greeting(self, mode: str) -> str | None:
@@ -83,6 +89,7 @@ def build_renderer() -> ProfileRenderer:
             EXAMINER_GREETINGS,
             PATIENT_GREETINGS,
             create_station_prompt,
+            station_debrief_context,
             station_examiner_context,
         )
     except ImportError as exc:
@@ -95,6 +102,7 @@ def build_renderer() -> ProfileRenderer:
     return EngineProfileRenderer(
         create_station_prompt,
         station_examiner_context,
+        station_debrief_context,
         {"patient": _first(PATIENT_GREETINGS), "examiner": _first(EXAMINER_GREETINGS)},
     )
 

@@ -112,23 +112,26 @@ function ImportStationDialogBody({
     ),
   );
 
-  // The platform's standard template, when this organisation has no copy of it yet.
-  const standardToCopy = useMemo(
-    () => (scope.kind === "org" ? uncopiedStandard(templates.data?.items ?? []) : null),
+  // The platform's standard template, which an organisation fills only through its own copy.
+  const standard = useMemo(
+    () => (scope.kind === "org" ? platformStandard(templates.data?.items ?? []) : null),
     [templates.data, scope.kind],
   );
   const publishedTemplates = useMemo(
     () =>
       publishedTemplateOptions(templates.data?.items ?? [], examCode).filter(
-        (option) =>
-          // An organisation fills its own copy of the standard, never the platform's.
-          scope.kind !== "org" || option.ownerKind !== "platform" || option.title !== STANDARD_TEMPLATE_TITLE,
+        (option) => option.templateId !== standard?.id,
       ),
-    [templates.data, examCode, scope.kind],
+    [templates.data, examCode, standard],
   );
+  // Found by what it was copied from, not by a title the organisation may have changed.
   const ownStandard = publishedTemplates.find(
-    (option) => option.ownerKind === "org" && option.title === STANDARD_TEMPLATE_TITLE,
+    (option) => standard !== null && option.copiedFromId === standard.id,
   );
+  const standardToCopy =
+    standard !== null && !(templates.data?.items ?? []).some((template) => template.copied_from_id === standard.id)
+      ? standard
+      : null;
   const offersCopy = standardToCopy !== null && ownStandard === undefined;
   // A pick that is no longer offered (the exam changed, or the standard was
   // copied in another tab) gives way to the default.
@@ -420,28 +423,45 @@ function CheckNotes({ stationImport }: { stationImport: StationImport }) {
   );
 }
 
+type TemplateOption = {
+  templateId: string;
+  versionId: string;
+  title: string;
+  ownerKind: string;
+  copiedFromId: string | null;
+};
+
 /** Published templates the picker offers, narrowed to one exam when one is chosen. */
 function publishedTemplateOptions(
   templates: readonly StationTemplate[],
   examCode: string,
-): { versionId: string; title: string; ownerKind: string }[] {
-  const options: { versionId: string; title: string; ownerKind: string }[] = [];
+): TemplateOption[] {
+  const options: TemplateOption[] = [];
   for (const template of templates) {
     const { published } = latestOf(template.versions);
     if (!published) continue;
     if (!matchesExamFilter(template.exam_code, examCode, { includeUnscoped: true })) continue;
-    options.push({ versionId: published.id, title: template.title, ownerKind: template.owner_kind });
+    options.push({
+      templateId: template.id,
+      versionId: published.id,
+      title: template.title,
+      ownerKind: template.owner_kind,
+      copiedFromId: template.copied_from_id ?? null,
+    });
   }
   return options;
 }
 
-/** The platform's published standard template, unless this organisation already has its copy. */
-function uncopiedStandard(templates: readonly StationTemplate[]): StationTemplate | null {
-  const standards = templates.filter(
-    (template) => template.title === STANDARD_TEMPLATE_TITLE && latestOf(template.versions).published,
+/** The platform's published standard template. Its title is the key the seed writes it under. */
+function platformStandard(templates: readonly StationTemplate[]): StationTemplate | null {
+  return (
+    templates.find(
+      (template) =>
+        template.owner_kind === "platform" &&
+        template.title === STANDARD_TEMPLATE_TITLE &&
+        latestOf(template.versions).published !== null,
+    ) ?? null
   );
-  if (standards.some((template) => template.owner_kind === "org")) return null;
-  return standards.find((template) => template.owner_kind === "platform") ?? null;
 }
 
 function statusLine(status: string): string {

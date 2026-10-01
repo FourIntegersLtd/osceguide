@@ -22,6 +22,7 @@ from app.features.stations import (
     errors,
     repository,
     repository_templates,
+    station_content,
 )
 from app.features.stations import service_templates as templates
 from app.features.stations.models import Station, StationVersion
@@ -239,43 +240,6 @@ async def runnable_station(
     )
 
 
-def _engine_layout(blocks: list[Any], sections: list[Any]) -> list[dict[str, Any]]:
-    """The block list the engine places by role, completed from the template's sections.
-
-    The flat `blocks` list the template editor saves carries only id, label and
-    role. Two things the engine needs are in the sections: a table's columns,
-    without which its rows are read as bare values, and the section's audience.
-    Every block of a `faculty` section is given the `faculty` role, so a block
-    an author left without a role there is not read to the patient as a leftover.
-    An `examiner` block keeps its role wherever it is filed, as it does for the
-    audiences (`domain_audience`), so the marker still gets it.
-    """
-    fields_by_id: dict[str, Any] = {}
-    faculty_ids: set[str] = set()
-    for section in sections:
-        if not isinstance(section, dict):
-            continue
-        for block in section.get("blocks") or []:
-            if not isinstance(block, dict) or not block.get("id"):
-                continue
-            if isinstance(block.get("fields"), list):
-                fields_by_id[str(block["id"])] = block["fields"]
-            if section.get("audience") == "faculty":
-                faculty_ids.add(str(block["id"]))
-    layout: list[dict[str, Any]] = []
-    for block in blocks:
-        if not isinstance(block, dict):
-            continue
-        placed = dict(block)
-        block_id = str(placed.get("id") or "")
-        if block_id in fields_by_id:
-            placed.setdefault("fields", fields_by_id[block_id])
-        if block_id in faculty_ids and placed.get("role") != "examiner":
-            placed["role"] = "faculty"
-        layout.append(placed)
-    return layout
-
-
 async def _presentation(
     session: AsyncSession, template_version_id: uuid.UUID | None, content: dict[str, Any]
 ) -> tuple[list[dict[str, Any]] | None, str, str | None, dict[str, Any], list[Any]]:
@@ -303,7 +267,7 @@ async def _presentation(
             if isinstance(block, dict)
         ]
     presentation = structure.get("layout") or {}
-    layout = _engine_layout(blocks, sections)
+    layout = station_content.engine_layout(blocks, sections)
     persona = str(presentation.get("persona") or "patient")
     greeting = presentation.get("greeting")
     content = domain_content.content_for_template(content, sections)
@@ -363,6 +327,31 @@ async def audience_sections(
             else:
                 existing.blocks.extend(blocks)
     return list(by_id.values())
+
+
+# Every audience, in the order a supervisor reads a station: what the candidate was told, how the
+# patient is played, what the examiner marks against, then what only the faculty hold.
+_STAFF_AUDIENCES = ("candidate", "patient", "examiner", "faculty")
+
+
+async def staff_sections(
+    session: AsyncSession, org_id: uuid.UUID, version_id: uuid.UUID
+) -> list[AudienceSectionRead]:
+    """A station version's whole document by audience, hidden material included, for the staff running it.
+
+    Empty for a station bound to no template, which has no audiences to read it by.
+    """
+    found = await repository.version_for_attempt(session, org_id, version_id)
+    if found is None:
+        raise errors.VersionNotFound()
+    version, _ = found
+    return await audience_sections(
+        session,
+        version.template_version_id,
+        dict(version.content or {}),
+        _STAFF_AUDIENCES,
+        include_hidden=True,
+    )
 
 
 def candidate_brief_text(sections: list[domain_audience.AudienceSection]) -> str | None:

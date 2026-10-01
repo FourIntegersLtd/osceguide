@@ -27,12 +27,11 @@ from typing import Any
 # roleplay script and the peer-practice patient actor do.
 _HIDDEN_ROLE = "hidden"
 _EXAMINER_ROLE = "examiner"
-# What the people running a simulation hold: the needs assessment, the set-up,
-# the faculty script, the debrief. No learner read asks for this audience, and
-# the engine gives the role to neither the persona nor the marker.
-_FACULTY_ROLE = "faculty"
-# A block with one of these roles is read by the audience of the same name and nobody else.
-_OWN_AUDIENCE_ROLES = (_EXAMINER_ROLE, _FACULTY_ROLE)
+# A block with one of these roles is read by this audience and nobody else, whatever section it
+# is filed in. `faculty` and `debrief` are what the people running a simulation hold: the needs
+# assessment, the set-up, the faculty script, the debrief. No learner read asks for the faculty
+# audience; the engine gives `debrief` blocks to the debrief tutor alone, and `faculty` to nobody.
+_ROLE_AUDIENCE = {"examiner": "examiner", "faculty": "faculty", "debrief": "faculty"}
 
 
 @dataclass(frozen=True)
@@ -149,10 +148,10 @@ def _visible(role: str, section_audience: str, audience: str, *, include_hidden:
     An `examiner`-role block is the model answer wherever an author filed it —
     the Ortho prioritisation template keeps its suggested order inside a
     candidate section — so it reaches the examiner audience and nobody else.
-    A `faculty`-role block is held the same way, for the faculty audience.
+    `faculty` and `debrief` blocks are held the same way, for the faculty audience.
     """
-    if role in _OWN_AUDIENCE_ROLES:
-        return audience == role
+    if role in _ROLE_AUDIENCE:
+        return audience == _ROLE_AUDIENCE[role]
     if section_audience != audience:
         return False
     return role != _HIDDEN_ROLE or include_hidden

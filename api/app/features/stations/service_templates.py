@@ -49,6 +49,7 @@ async def create_template(
     title: str,
     exam_code: str | None,
     structure: dict[str, Any],
+    copied_from_id: uuid.UUID | None = None,
 ) -> StationTemplateRead:
     """A template and its first draft version, ready to edit or publish."""
     _ensure_valid_structure(structure)
@@ -60,7 +61,9 @@ async def create_template(
         except CatalogUnknownExam as exc:
             raise errors.UnknownExamError(str(exc)) from exc
         exam_id, code = exam.id, exam.code
-    template = await repository.create_template(session, org_id, exam_id=exam_id, title=title)
+    template = await repository.create_template(
+        session, org_id, exam_id=exam_id, title=title, copied_from_id=copied_from_id
+    )
     version = await repository.add_template_version(
         session, org_id, template_id=template.id, version=1, structure=structure
     )
@@ -190,10 +193,14 @@ async def copy_template(
 
     The copy is the organisation's from then on: it edits and versions it like
     a template it wrote, and later changes to the platform's original do not
-    reach it. Refused when the platform has no such template, or has not
-    published it.
+    reach it. Copying the same template again gives back the copy it already
+    has. Refused when the platform has no such template, or has not published it.
     """
     source = await _require_template(session, None, template_id)
+    existing = await repository.copy_of(session, org_id, template_id)
+    if existing is not None:
+        versions = await repository.template_versions(session, org_id, existing.id)
+        return _template_read(existing, await _exam_code(session, existing), versions)
     published = [
         version
         for version in await repository.template_versions(session, None, template_id)
@@ -207,6 +214,7 @@ async def copy_template(
         title=source.title,
         exam_code=await _exam_code(session, source),
         structure=dict(published[-1].structure),
+        copied_from_id=source.id,
     )
     version = await publish_version(session, org_id, copy.id, actor_id=actor_id, now=now)
     return copy.model_copy(update={"versions": [version]})
@@ -308,6 +316,7 @@ def _template_read(
         id=template.id,
         title=template.title,
         owner_kind=template.owner_kind,
+        copied_from_id=template.copied_from_id,
         exam_code=exam_code,
         versions=[_version_read(version) for version in versions],
     )

@@ -10,6 +10,7 @@ import {
 import {
   groupedItemsFromText,
   groupedItemsToText,
+  inGroupOrder,
   isObject,
   type GroupedItem,
   type QaPair,
@@ -76,7 +77,12 @@ export function RichBlockEditor({
           onChange={onChange}
         />
       ) : (
-        <GroupsEditor groups={isObject(value) ? value : {}} readOnly={readOnly} onChange={onChange} />
+        <GroupsEditor
+          groups={isObject(value) ? value : {}}
+          order={block.type === "groupedList" ? block.groups : undefined}
+          readOnly={readOnly}
+          onChange={onChange}
+        />
       )}
     </Field>
   );
@@ -237,14 +243,16 @@ function QaEditor({
 /** A heading per group; its items typed one per line, "- " lines as reasons under the item above. */
 function GroupsEditor({
   groups,
+  order,
   readOnly,
   onChange,
 }: {
   groups: Record<string, unknown>;
+  order: readonly string[] | undefined;
   readOnly: boolean;
   onChange: (next: Record<string, GroupedItem[]>) => void;
 }) {
-  const entries = Object.entries(groups).map(([name, items]) => [name, (Array.isArray(items) ? items : []) as GroupedItem[]] as const);
+  const entries = inGroupOrder(groups, order).map(([name, items]) => [name, (Array.isArray(items) ? items : []) as GroupedItem[]] as const);
   const write = (next: (readonly [string, GroupedItem[]])[]) => onChange(Object.fromEntries(next));
   return (
     <div className="space-y-3">

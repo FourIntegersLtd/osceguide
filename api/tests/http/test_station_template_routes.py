@@ -353,6 +353,12 @@ async def test_a_platform_template_is_copied_into_the_organisation_published(
     assert copy["exam_code"] is None
     assert [(version["version"], version["status"]) for version in copy["versions"]] == [(1, "published")]
     assert copy["versions"][0]["structure"] == STRUCTURE
+    assert copy["copied_from_id"] == source_id
+
+    # Copying it again gives back the copy the organisation already has.
+    again = await client.post(f"/api/v1/orgs/kings/station-templates/{source_id}/copy", headers=bearer(admin))
+    assert again.status_code == 201, again.text
+    assert again.json()["id"] == copy["id"]
 
     # The copy is the organisation's own: it can start a new draft of it, which it cannot of the platform's.
     own_draft = await client.post(

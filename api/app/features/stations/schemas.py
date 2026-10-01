@@ -100,6 +100,8 @@ class StationTemplateRead(BaseModel):
     title: str
     # `platform` or `org`: an organisation copies a platform template, it does not edit it.
     owner_kind: str
+    # The platform template an organisation's copy was made from; null for one it wrote itself.
+    copied_from_id: uuid.UUID | None = None
     exam_code: str | None
     versions: list[StationTemplateVersionRead]
 

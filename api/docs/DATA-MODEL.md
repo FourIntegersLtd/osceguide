@@ -457,8 +457,9 @@ that branched on the exam's code, which is why a new exam needed engine code.
 | `org_id` | `uuid null` → `organizations.id` CASCADE | null exactly when `owner_kind='platform'` |
 | `exam_id` | `uuid null` → `exams.id` SET NULL | a label, not a binding |
 | `title` | `varchar(200) not null` | |
+| `copied_from_id` | `uuid null` → `station_templates.id` SET NULL | the platform template an org's copy was made from |
 
-CHECK `ck_station_templates_owner_matches_org`.
+CHECK `ck_station_templates_owner_matches_org`; UNIQUE `(org_id, copied_from_id)` where `copied_from_id` is set: one copy of a platform template per org.
 
 (`station_schemas` is gone. It was a second document-shaped table for the same
 idea — "what a station of this kind contains" — with no repository, service,

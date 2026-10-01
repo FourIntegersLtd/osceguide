@@ -124,6 +124,13 @@ def validate_station_structure(structure: Any) -> tuple[bool, list[str]]:
                 ):
                     errors.append(f"{block_path}.fields must be a list of {{key, label}} objects")
 
+            if block_type == "groupedList" and "groups" in block:
+                groups = block.get("groups")
+                if not isinstance(groups, list) or not all(
+                    isinstance(group, str) and group.strip() for group in groups
+                ):
+                    errors.append(f"{block_path}.groups must be a list of group names")
+
             generation_hint = block.get("generationHint")
             if generation_hint is not None and not isinstance(generation_hint, str):
                 errors.append(f"{block_path}.generationHint must be a string when set")

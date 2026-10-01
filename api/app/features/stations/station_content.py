@@ -287,6 +287,46 @@ def validate_station_content(structure: Any, content: Any) -> tuple[bool, list[s
     return len(errors) == 0, errors
 
 
+# What a block keeps of its role in a `faculty` section: the marker's notes stay
+# the marker's and the debrief tutor's points stay the tutor's.
+_ROLES_KEPT_IN_FACULTY = ("examiner", "debrief")
+
+
+def engine_layout(blocks: list[Any], sections: list[Any]) -> list[dict[str, Any]]:
+    """The block list the engine places by role, completed from the template's sections.
+
+    The flat `blocks` list the template editor saves carries only id, label and
+    role. What else the engine needs is in the sections: a block's type and a
+    table's columns, without which a table's rows are read as bare values and a
+    grouped list loses its group names, and the section's audience. Every block
+    of a `faculty` section is given the `faculty` role, so a block an author
+    left without a role there is not read to the patient as a leftover. An
+    `examiner` or `debrief` block keeps its role wherever it is filed, as it
+    does for the audiences (`domain_audience`).
+    """
+    described: dict[str, dict[str, Any]] = {}
+    faculty_ids: set[str] = set()
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        for block in section.get("blocks") or []:
+            if not isinstance(block, dict) or not block.get("id"):
+                continue
+            described[str(block["id"])] = {key: block[key] for key in ("type", "fields") if key in block}
+            if section.get("audience") == "faculty":
+                faculty_ids.add(str(block["id"]))
+    layout: list[dict[str, Any]] = []
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        block_id = str(block.get("id") or "")
+        placed = described.get(block_id, {}) | block
+        if block_id in faculty_ids and placed.get("role") not in _ROLES_KEPT_IN_FACULTY:
+            placed["role"] = "faculty"
+        layout.append(placed)
+    return layout
+
+
 def structure_spec(structure: Any) -> dict[str, Any]:
     """Compact template shape sent to the model for autogeneration."""
     if not isinstance(structure, dict):
@@ -324,6 +364,8 @@ def structure_spec(structure: Any) -> dict[str, Any]:
                 if block.get("type") == "records" and isinstance(block.get("fields"), list):
                     # Without its columns a model cannot know what one row of the table holds.
                     compact_block["fields"] = block.get("fields")
+                if block.get("type") == "groupedList" and isinstance(block.get("groups"), list):
+                    compact_block["groups"] = block.get("groups")
                 if block.get("type") == "scale":
                     compact_block["min"] = block.get("min")
                     compact_block["max"] = block.get("max")

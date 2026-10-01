@@ -10,6 +10,10 @@ export { useCountdown, formatClock } from "@/capabilities/attempt-runner/useCoun
 export { usePracticeTimers, type PhaseSeconds } from "@/capabilities/attempt-runner/extraReading";
 export { ExamClock } from "@/capabilities/attempt-runner/ExamClock";
 export { StationBrief } from "@/capabilities/attempt-runner/material/StationBrief";
+export {
+  AudienceSections,
+  type AudienceSection,
+} from "@/capabilities/attempt-runner/material/AudienceSections";
 export { ManagementPlan as ManagementPlanView } from "@/capabilities/attempt-runner/material/ManagementPlan";
 export {
   DoctorInfoSection,

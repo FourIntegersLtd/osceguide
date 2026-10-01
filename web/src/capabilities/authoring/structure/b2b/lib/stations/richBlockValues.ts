@@ -46,6 +46,19 @@ export const RICH_SHAPES: Partial<Record<StationBlockType, { accepts: (value: un
 };
 
 /**
+ * A grouped list's groups in the order its block names them (`groups`). The
+ * stored object comes back from Postgres in an order of its own; names match
+ * ignoring case, and a group the block does not name keeps its place after.
+ */
+export function inGroupOrder<T>(groups: Record<string, T>, order: readonly string[] | undefined): [string, T][] {
+  const entries = Object.entries(groups);
+  if (!order?.length) return entries;
+  const rank = new Map(order.map((name, index) => [name.toLowerCase(), index]));
+  const at = (name: string) => rank.get(name.toLowerCase()) ?? order.length;
+  return entries.sort(([a], [b]) => at(a) - at(b));
+}
+
+/**
  * One group's items as text an author can type: an item per line, and a line
  * starting "- " is a reason under the item above it.
  */

@@ -33,7 +33,8 @@ export type StationBlockRole =
   | "hidden"
   | "candidate_brief"
   | "examiner"
-  | "faculty";
+  | "faculty"
+  | "debrief";
 
 /**
  * Who a section is written for: the three classic parts of a station, and the
@@ -86,7 +87,11 @@ export type StationBlock =
   | (StationBlockBase & { type: "media" })
   | (StationBlockBase & { type: "records"; fields?: RecordField[] })
   | (StationBlockBase & { type: "qaList" })
-  | (StationBlockBase & { type: "groupedList" });
+  | (StationBlockBase & {
+      type: "groupedList";
+      /** The groups' names in reading order; the stored object keeps no order of its own. */
+      groups?: string[];
+    });
 export type StationSection = {
   id: string;
   title: string;

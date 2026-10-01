@@ -152,6 +152,13 @@ export const STATION_BLOCK_ROLES: RoleMeta[] = [
     description: "For the people running the station. The patient, the marker and the learner never get it.",
     icon: HiOutlineInformationCircle,
   },
+  {
+    id: "debrief",
+    audience: "faculty",
+    label: "Debrief guide",
+    description: "Debriefing and teaching points. The AI debrief tutor works through them; the learner never sees them.",
+    icon: HiOutlineInformationCircle,
+  },
 ];
 
 const ROLE_BY_ID = Object.fromEntries(STATION_BLOCK_ROLES.map((r) => [r.id, r])) as Record<

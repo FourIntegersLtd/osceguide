@@ -5,6 +5,7 @@ import {
   columnsFromLabels,
   groupedItemsFromText,
   groupedItemsToText,
+  inGroupOrder,
 } from "./richBlockValues";
 
 test("a theatre list round-trips through the text an author edits", () => {
@@ -38,4 +39,16 @@ test("rich shapes accept what the backend accepts", () => {
   assert.equal(RICH_SHAPES.groupedList?.accepts({ trauma: ["Bed 1", { title: "Bed 2", reasons: ["x"] }] }), true);
   assert.equal(RICH_SHAPES.groupedList?.accepts({ trauma: "Bed 1" }), false);
   assert.equal(RICH_SHAPES.records?.accepts([{ age: 70 }]), true);
+});
+
+test("a grouped list reads in its block's group order, ignoring case, unnamed groups last", () => {
+  const stored = { Other: ["d"], analysis: ["c"], Reaction: ["a"], Description: ["b"] };
+  assert.deepEqual(
+    inGroupOrder(stored, ["Reaction", "Description", "Analysis"]).map(([name]) => name),
+    ["Reaction", "Description", "analysis", "Other"],
+  );
+  assert.deepEqual(
+    inGroupOrder({ b: 1, a: 2 }, undefined).map(([name]) => name),
+    ["b", "a"],
+  );
 });
