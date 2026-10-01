@@ -79,7 +79,10 @@ const LiveCoverageFeed: React.FC<LiveCoverageFeedProps> = ({
       >
         {items.length === 0 ? (
           <p className="text-osce-meta leading-relaxed text-b2c-text-muted">
-            {isLive
+            {/* A rubric with no live domains answers supported=false; "Listening" then hid that nothing would ever arrive. */}
+            {coverage?.supported === false
+              ? "Live marking isn't available for this station. Your feedback comes at the end."
+              : isLive
               ? "Listening. Things you cover will appear here as you go."
               : "Your consultation will be marked here as it happens."}
           </p>
