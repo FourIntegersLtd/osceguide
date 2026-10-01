@@ -11,6 +11,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.schemas import AudienceBlockRead, AudienceSectionRead, RecordFieldRead
+from app.features.stations.domain_imports import ImportStatus
 
 __all__ = ["AudienceBlockRead", "AudienceSectionRead", "RecordFieldRead"]
 
@@ -97,6 +98,8 @@ class StationTemplateVersionRead(BaseModel):
 class StationTemplateRead(BaseModel):
     id: uuid.UUID
     title: str
+    # `platform` or `org`: an organisation copies a platform template, it does not edit it.
+    owner_kind: str
     exam_code: str | None
     versions: list[StationTemplateVersionRead]
 
@@ -133,6 +136,33 @@ class AutogenerateStationDraft(BaseModel):
 class AutogenerateStationDraftResult(BaseModel):
     suggested_title: str = ""
     content: dict[str, Any] = Field(default_factory=dict)
+
+
+class StationImportRead(BaseModel):
+    """One uploaded station document and how far its drafting has got."""
+
+    id: uuid.UUID
+    status: ImportStatus
+    original_filename: str
+    exam_code: str
+    # The template drafted from the document (or picked at upload), for the
+    # author to review and publish. Null while the first job is still running.
+    template_id: uuid.UUID | None = None
+    template_version_id: uuid.UUID | None = None
+    # The draft station. Null until the second step completes.
+    station_id: uuid.UUID | None = None
+    # Blocks the document had nothing for, left empty rather than invented.
+    empty_block_ids: list[str] = Field(default_factory=list)
+    # Blocks whose text is not in the document word for word, for a person to check.
+    reworded_block_ids: list[str] = Field(default_factory=list)
+    error: str | None = None
+    created_at: datetime
+
+
+class StationImportList(BaseModel):
+    """This owner's most recent imports, newest first."""
+
+    imports: list[StationImportRead]
 
 
 # --- what readers report about a station ------------------------------------

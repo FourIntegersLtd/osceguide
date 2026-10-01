@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   HiOutlineArchiveBox,
   HiOutlineArrowUpTray,
+  HiOutlineCloudArrowUp,
   HiOutlineDocumentDuplicate,
+  HiOutlineDocumentPlus,
   HiOutlinePencilSquare,
   HiOutlinePlusCircle,
   HiOutlineTrash,
@@ -25,6 +27,7 @@ import { useCursorPages } from "@/foundation/hooks";
 import {
   addStationTemplateVersion,
   archiveStationTemplateVersion,
+  copyStationTemplate,
   deleteStationTemplateVersion,
   listStationTemplatesPage,
   STATION_PAGE_LIMIT,
@@ -35,6 +38,7 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { PublishStatusLine } from "@/capabilities/authoring/parts/StatusPills";
+import { ImportStationDialog } from "@/capabilities/authoring/imports/ImportStationDialog";
 import { latestOf } from "@/capabilities/authoring/sections/versions";
 import {
   stationTemplateEditPath,
@@ -73,6 +77,7 @@ export function StationTemplatesSection() {
   // What the server is asked for: the box, once typing pauses.
   const [query, setQuery] = useState("");
   const [pendingConfirm, setPendingConfirm] = useState<TemplateRowConfirm | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(search.trim()), 300);
@@ -104,15 +109,26 @@ export function StationTemplatesSection() {
     <div className="space-y-4">
       <AuthoringSectionLead
         action={
-          <AuthoringButton
-            variant="commit"
-            size="sm"
-            className="gap-2"
-            onClick={() => router.push(newHref)}
-          >
-            <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-            Create station template
-          </AuthoringButton>
+          <div className="flex flex-wrap items-center gap-2">
+            <AuthoringButton
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => setImporting(true)}
+            >
+              <HiOutlineCloudArrowUp className="h-4 w-4 shrink-0" aria-hidden />
+              Import from PDF or Word
+            </AuthoringButton>
+            <AuthoringButton
+              variant="commit"
+              size="sm"
+              className="gap-2"
+              onClick={() => router.push(newHref)}
+            >
+              <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+              Create station template
+            </AuthoringButton>
+          </div>
         }
       >
         Define layout and fields for clinical stations. Saved drafts and published
@@ -154,6 +170,14 @@ export function StationTemplatesSection() {
             template={template}
             busy={action.busy}
             editHref={editHref}
+            onCopy={
+              scope.kind === "org" && template.owner_kind === "platform" && published
+                ? () =>
+                    void action.run(`copy:${template.id}`, () =>
+                      copyStationTemplate(scope, template.id),
+                    )
+                : undefined
+            }
             onAddVersion={() =>
               void action.run(`add:${template.id}`, () =>
                 addStationTemplateVersion(scope, template.id),
@@ -208,6 +232,12 @@ export function StationTemplatesSection() {
           </AuthoringButton>
         </div>
       ) : null}
+
+      <ImportStationDialog
+        open={importing}
+        onClose={() => setImporting(false)}
+        onChanged={templates.reload}
+      />
 
       <ConfirmModal
         isOpen={pendingConfirm !== null}
@@ -280,6 +310,7 @@ function TemplateRow({
   template,
   busy,
   editHref,
+  onCopy,
   onAddVersion,
   onPublish,
   onDeleteDraft,
@@ -288,12 +319,15 @@ function TemplateRow({
   template: StationTemplate;
   busy: string | null;
   editHref: string | null;
+  /** Set on a platform template seen from an organisation, which copies it rather than edits it. */
+  onCopy?: () => void;
   onAddVersion: () => void;
   onPublish: () => void;
   onDeleteDraft?: () => void;
   onArchivePublished?: () => void;
 }) {
   const { published, draft, archivedOnly } = latestOf(template.versions);
+  const copyBusy = busy === `copy:${template.id}`;
   const addBusy = busy === `add:${template.id}`;
   const publishBusy = busy === `publish:${template.id}`;
   const archiveBusy = busy === `archive:${template.id}`;
@@ -304,7 +338,7 @@ function TemplateRow({
       title={template.title}
       detail={
         <PublishStatusLine
-          kindLabel={template.exam_code}
+          kindLabel={onCopy ? [template.exam_code, "OSCE Guide"].filter(Boolean).join(" · ") : template.exam_code}
           published={published}
           draft={draft}
           archivedOnly={archivedOnly}
@@ -312,6 +346,17 @@ function TemplateRow({
       }
     >
       <AuthoringRowActions>
+        {onCopy ? (
+          <AuthoringIconAction
+            label="Copy to my organisation"
+            busy={copyBusy}
+            busyLabel="Copying…"
+            disabled={busy !== null}
+            onClick={onCopy}
+          >
+            <HiOutlineDocumentPlus className="h-4 w-4" aria-hidden />
+          </AuthoringIconAction>
+        ) : null}
         <AuthoringIconAction
           label="New draft"
           busy={addBusy}

@@ -32,7 +32,7 @@ export type AudienceMeta = {
   icon: Icon;
 };
 
-/** The three parts of a station, in the order they are read. */
+/** The parts of a station, in the order they are read. */
 export const STATION_AUDIENCES: AudienceMeta[] = [
   {
     id: "patient",
@@ -54,6 +54,14 @@ export const STATION_AUDIENCES: AudienceMeta[] = [
     description: "Model answers and marking notes for the examiner after the station.",
     defaultRole: "examiner",
     icon: HiOutlineAcademicCap,
+  },
+  {
+    id: "faculty",
+    label: "Faculty",
+    description:
+      "Setup, debrief and teaching notes for the people running the station. Never shown to the learner or used by the AI.",
+    defaultRole: "faculty",
+    icon: HiOutlineInformationCircle,
   },
 ];
 
@@ -136,6 +144,13 @@ export const STATION_BLOCK_ROLES: RoleMeta[] = [
     label: "Examiner notes",
     description: "Expected answers and marking points. Not shown to the patient.",
     icon: HiOutlineClipboardDocumentCheck,
+  },
+  {
+    id: "faculty",
+    audience: "faculty",
+    label: "Faculty notes",
+    description: "For the people running the station. The patient, the marker and the learner never get it.",
+    icon: HiOutlineInformationCircle,
   },
 ];
 

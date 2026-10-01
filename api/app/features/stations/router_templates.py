@@ -125,6 +125,27 @@ async def publish_station_template(
     )
 
 
+# Take the organisation's own editable copy of a platform template.
+@router.post(
+    "/orgs/{org_slug}/station-templates/{template_id}/copy",
+    response_model=schemas.StationTemplateRead,
+    status_code=status.HTTP_201_CREATED,
+    responses=error_responses(
+        Forbidden,
+        errors.StationTemplateNotFound,
+        errors.TemplateNotPublishedError,
+        errors.UnknownExamError,
+    ),
+)
+async def copy_station_template(
+    template_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.StationTemplateRead:
+    """Copies a platform template's published version into this org, published and ready to use."""
+    return await service_templates.copy_template(
+        session, workspace.org_id, template_id, actor_id=workspace.principal.user_id, now=clock.now()
+    )
+
+
 # Retire a published template version.
 @router.post(
     "/orgs/{org_slug}/station-templates/{template_id}/versions/{version}/archive",

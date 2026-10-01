@@ -162,3 +162,65 @@ class StationFlag(Base, UUIDPrimaryKey, Timestamps):
     resolution_note: Mapped[str | None] = mapped_column(Text)
     resolved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class StationImport(Base, UUIDPrimaryKey, Timestamps):
+    """One uploaded station document (a PDF or Word file), and what was drafted from it.
+
+    An organisation that already has a station library uploads it instead of
+    retyping it. The file itself is not kept: its text is pulled on upload and
+    the drafts are what the product shows. The row is written before any model
+    is called, so a person who closes the tab comes back to a result.
+
+    Two steps, each a background job. With no template named, the first drafts
+    a *template* from the document's shape and stops at `template_ready` for a
+    person to review and publish it. The second copies the document's words
+    into a published template's blocks and leaves a draft *station*.
+    """
+
+    __tablename__ = "station_imports"
+    __table_args__ = (
+        CheckConstraint(_OWNER_MATCHES_ORG, name="ck_station_imports_owner_matches_org"),
+        # The list is "this owner's imports, newest first".
+        Index("ix_station_imports_org_created_at", "org_id", "created_at"),
+    )
+
+    owner_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"))
+    # Who uploaded it: the person whose `/me/events` stream hears each step finish.
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+
+    # The exam the drafted station belongs to. A code rather than an id, because
+    # it is resolved again at each step in the owner's own scope.
+    exam_code: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    # What the person called the file. Kept for the list, never re-opened.
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False, server_default=text("''"))
+
+    # The text pulled from the document on upload: what both jobs read, and what
+    # the drafted station is checked against word for word.
+    extracted_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # `drafting_template`, `template_ready`, `drafting_station`, `completed` or
+    # `failed`. A string rather than an enum the database knows: the only reader
+    # is this slice, and the value travels to the client, which switches on it.
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    # The template drafted from this document, or the one the uploader picked.
+    template_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("station_templates.id", ondelete="SET NULL")
+    )
+    template_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("station_template_versions.id", ondelete="SET NULL")
+    )
+    # The draft station. Null until the second job completes.
+    station_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("stations.id", ondelete="SET NULL"))
+
+    # What the author should look at before publishing the station:
+    # `{"empty": [block ids], "reworded": [block ids]}`. A block with nothing in
+    # the document is left empty rather than invented, and a block whose text is
+    # not found word for word in the document is named so a person checks it.
+    review_notes: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+    # Why it failed, for the person to read. Null unless `status` is `failed`.
+    error: Mapped[str | None] = mapped_column(Text)

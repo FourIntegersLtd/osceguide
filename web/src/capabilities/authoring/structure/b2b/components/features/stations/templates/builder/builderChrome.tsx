@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { getButtonClassName } from "@/capabilities/authoring/structure/shared/ui/buttonStyles";
+import type { StationSectionAudience } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 
 /**
  * The builder's visual vocabulary, on the canonical `osce-*` tokens.
@@ -58,10 +59,11 @@ const TONES: BuilderTone[] = [
 ];
 
 /** Station sections are coloured by who reads them, so the colour means something. */
-export const toneForAudience: Record<"patient" | "candidate" | "examiner", BuilderTone> = {
+export const toneForAudience: Record<StationSectionAudience, BuilderTone> = {
   patient: "primary",
   candidate: "emerald",
   examiner: "amber",
+  faculty: "violet",
 };
 
 export function toneForIndex(index: number): BuilderTone {

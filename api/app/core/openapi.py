@@ -186,8 +186,8 @@ class MeEventEnvelope(BaseModel):
 
     Every other stream's frame is the same shape as its `GET`'s response model, named by
     `sse_responses`. `/me/events` multiplexes many differently-shaped events (`attempt`,
-    `practice.session_updated`, `cv.read`, `media.updated`, `coverage`, ...) onto one
-    connection, so there is no single response model to point at. This envelope documents
+    `practice.session_updated`, `cv.read`, `media.updated`, `station_import.updated`, `coverage`,
+    ...) onto one connection, so there is no single response model to point at. This envelope documents
     the shape every frame shares instead: the event's name, and a small object of the ids
     naming what changed — never the changed data itself, which the client re-fetches.
     """
@@ -208,7 +208,8 @@ def fan_in_responses(*errors: type[Any]) -> dict[int | str, dict[str, Any]]:
         "description": (
             "An SSE stream multiplexing this user's own events onto one connection: "
             "`connected`, then a named event (`attempt`, `practice.session_updated`, "
-            "`cv.read`, `media.updated`, `coverage`, ...) each time something changes, "
+            "`cv.read`, `media.updated`, `station_import.updated`, `coverage`, ...) each time "
+            "something changes, "
             "whose shape is `MeEventEnvelope`, and `ping` every 25 seconds."
         ),
         "content": {SSE_MEDIA_TYPE: {"schema": {"$ref": "#/components/schemas/MeEventEnvelope"}}},

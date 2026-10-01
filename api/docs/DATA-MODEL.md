@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-76 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+77 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -443,7 +443,7 @@ reads, so the two cannot drift apart.
 
 ---
 
-## stations — 4 tables
+## stations — 5 tables
 
 ### `station_templates`
 A station shape: what a station of this kind contains, and what each block of
@@ -531,6 +531,32 @@ UNIQUE `(station_id, user_id)`: a second tap on the button is the same report,
 and the legacy answer to a repeat was a 400 the client surfaced as a failure.
 CHECK `ck_station_flags_status`; index `(status, created_at)` — the queue is
 "what is still open, oldest first".
+
+### `station_imports`
+One uploaded station document (a PDF or a Word file) and what was drafted from
+it, for an institution that already has a station library and should not have
+to retype it. The file is not kept: its text is pulled on upload. Two
+background jobs with a person between them: the first drafts a template and
+stops for it to be reviewed and published, the second copies the document's
+words into that template and leaves a draft station.
+
+| Field | Type | Notes |
+|---|---|---|
+| `owner_kind` | `varchar(16) not null` | `platform` \| `org` |
+| `org_id` | `uuid null` → `organizations.id` CASCADE | null for the platform's own imports |
+| `created_by` | `uuid null` → `users.id` SET NULL | whose `/me/events` stream hears each step finish |
+| `exam_code` | `varchar(32) not null` | the exam the drafted station belongs to; a code, resolved again at each step in the owner's scope |
+| `original_filename` | `varchar(255) not null default ''` | for the list; never re-opened |
+| `extracted_text` | `text not null` | what both jobs read, and what the draft is checked against word for word |
+| `status` | `varchar(32) not null` | `drafting_template` \| `template_ready` \| `drafting_station` \| `completed` \| `failed` |
+| `template_id` | `uuid null` → `station_templates.id` SET NULL | the template drafted from the document, or the one picked at upload |
+| `template_version_id` | `uuid null` → `station_template_versions.id` SET NULL | must be published before the station step runs |
+| `station_id` | `uuid null` → `stations.id` SET NULL | the draft station; null until the second job completes |
+| `review_notes` | `jsonb null` | `{"empty": [block ids], "reworded": [block ids]}`: blocks the document had nothing for, and blocks whose text is not in the document word for word |
+| `error` | `text null` | why it failed, in words the uploader reads |
+
+CHECK `ck_station_imports_owner_matches_org`; index `(org_id, created_at)`:
+the list is "this owner's imports, newest first".
 
 `feedback_templates`/`feedback_template_versions` (a narrowing of a rubric)
 were dropped 2026-09-24, migration `45481a44b73d`: authored but never

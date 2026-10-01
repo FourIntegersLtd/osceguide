@@ -152,6 +152,27 @@ class PhotoNotOnStationError(NotFound):
     default_message = "That image is not on this station"
 
 
+class InvalidImportFileError(InvalidInput):
+    """An upload that cannot be imported as a station: wrong type, wrong size, or nothing to read."""
+
+    code = "invalid_import_file"
+    default_message = "That file cannot be imported as a station"
+
+
+class StationImportNotFound(NotFound):
+    """No such station import for this owner."""
+
+    code = "station_import_not_found"
+    default_message = "No such station import"
+
+
+class ImportNotReadyError(Conflict):
+    """A station was asked for from an import that has no template yet, or is already being drafted."""
+
+    code = "import_not_ready"
+    default_message = "That import is not ready for a station to be drafted"
+
+
 class PhotoStorageUnavailable(Unavailable):
     """No object storage is configured, so a photo upload or delete cannot proceed."""
 

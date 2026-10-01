@@ -9,7 +9,11 @@ and portfolio stations are different documents (b2c kept a Pydantic model for
 each). Every block of those models' station content is a block here — station
 metadata (id, name, created, approved) lives on the station row instead.
 
-`seeds/station-templates.json` is platform-web's builder presets
+The eighth belongs to no exam: "Simulation scenario (ASPiH)", the standard
+template an institution copies into its own library, with the faculty sections
+a simulation briefing carries. It is written in the seed file only.
+
+`seeds/station-templates.json` is otherwise platform-web's builder presets
 (`structureFromStartPoint` in `stationTemplatePresets.ts`) exported as they
 stand, so a template seeded here and one an admin starts from the builder are
 the same shape. Regenerate it when a preset changes.
@@ -72,14 +76,17 @@ async def seed(*, apply: bool) -> int:
             if publisher_id is None:
                 raise SystemExit("No platform admin in this database to publish as.")
             for entry in entries:
-                label = f"{entry['exam_code']}: {entry['title']}"
+                label = f"{entry['exam_code'] or 'any exam'}: {entry['title']}"
+                same_exam = (
+                    StationTemplate.exam_id.is_(None)
+                    if entry["exam_code"] is None
+                    else StationTemplate.exam_id.in_(select(Exam.id).where(Exam.code == entry["exam_code"]))
+                )
                 existing = await session.scalar(
-                    select(StationTemplate.id)
-                    .join(Exam, Exam.id == StationTemplate.exam_id)
-                    .where(
+                    select(StationTemplate.id).where(
                         StationTemplate.org_id.is_(None),
                         StationTemplate.title == entry["title"],
-                        Exam.code == entry["exam_code"],
+                        same_exam,
                     )
                 )
                 if existing is not None:

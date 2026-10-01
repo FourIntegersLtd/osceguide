@@ -24,7 +24,7 @@ import procrastinate
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import libpq_url
+from app.core.db import libpq_url, savepoint
 from app.core.settings import get_settings
 
 _app: procrastinate.App | None = None
@@ -134,7 +134,7 @@ async def defer_in_transaction(
         from sqlalchemy.exc import IntegrityError
 
         try:
-            async with session.begin_nested():
+            async with savepoint(session):
                 await session.execute(stmt, params)
         except IntegrityError:
             pass

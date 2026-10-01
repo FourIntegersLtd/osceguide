@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HiOutlinePlusCircle } from "react-icons/hi2";
+import { HiOutlineCloudArrowUp, HiOutlinePlusCircle } from "react-icons/hi2";
 import { useSurface } from "@/capabilities";
 import { stationNewPath } from "@/capabilities/authoring/stations/paths";
 import { Alert, ConfirmModal } from "@/foundation/ui";
@@ -24,6 +24,7 @@ import {
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
+import { ImportStationDialog } from "@/capabilities/authoring/imports/ImportStationDialog";
 import { StationDetail } from "@/capabilities/authoring/sections/StationDetail";
 import { StationsTable } from "@/capabilities/authoring/sections/StationsTable";
 import { StationUsedBy } from "@/capabilities/authoring/sections/StationUsedBy";
@@ -45,6 +46,7 @@ export function StationsSection() {
   // What the server is asked for: the box, once typing pauses.
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<Station | null>(null);
+  const [importing, setImporting] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState<{
     id: string;
     title: string;
@@ -100,15 +102,26 @@ export function StationsSection() {
     <div className="space-y-4">
       <AuthoringSectionLead
         action={
-          <AuthoringButton
-            variant="commit"
-            size="sm"
-            className="gap-2"
-            onClick={() => router.push(stationNewPath(hrefFor))}
-          >
-            <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-            New station
-          </AuthoringButton>
+          <div className="flex flex-wrap items-center gap-2">
+            <AuthoringButton
+              variant="secondary"
+              size="sm"
+              className="gap-2"
+              onClick={() => setImporting(true)}
+            >
+              <HiOutlineCloudArrowUp className="h-4 w-4 shrink-0" aria-hidden />
+              Import from PDF or Word
+            </AuthoringButton>
+            <AuthoringButton
+              variant="commit"
+              size="sm"
+              className="gap-2"
+              onClick={() => router.push(stationNewPath(hrefFor))}
+            >
+              <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+              New station
+            </AuthoringButton>
+          </div>
         }
       >
         Published station cases for sessions and practice.
@@ -175,6 +188,15 @@ export function StationsSection() {
           </AuthoringButton>
         </div>
       ) : null}
+
+      <ImportStationDialog
+        open={importing}
+        onClose={() => setImporting(false)}
+        onChanged={() => {
+          stations.reload();
+          templates.reload();
+        }}
+      />
 
       <ConfirmModal
         isOpen={archiveConfirm !== null}

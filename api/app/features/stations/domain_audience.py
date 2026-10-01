@@ -1,7 +1,7 @@
 """Building a station's document into what one audience may read of it.
 
-A template's structure names each section's audience — `candidate`, `patient`
-or `examiner` — and each block's role. This turns a station's content (already
+A template's structure names each section's audience — `candidate`, `patient`,
+`examiner` or `faculty` — and each block's role. This turns a station's content (already
 lifted onto block ids by `domain_content.content_for_template`) into the
 sections one audience may see, in the order the template lists them.
 
@@ -27,6 +27,12 @@ from typing import Any
 # roleplay script and the peer-practice patient actor do.
 _HIDDEN_ROLE = "hidden"
 _EXAMINER_ROLE = "examiner"
+# What the people running a simulation hold: the needs assessment, the set-up,
+# the faculty script, the debrief. No learner read asks for this audience, and
+# the engine gives the role to neither the persona nor the marker.
+_FACULTY_ROLE = "faculty"
+# A block with one of these roles is read by the audience of the same name and nobody else.
+_OWN_AUDIENCE_ROLES = (_EXAMINER_ROLE, _FACULTY_ROLE)
 
 
 @dataclass(frozen=True)
@@ -143,9 +149,10 @@ def _visible(role: str, section_audience: str, audience: str, *, include_hidden:
     An `examiner`-role block is the model answer wherever an author filed it —
     the Ortho prioritisation template keeps its suggested order inside a
     candidate section — so it reaches the examiner audience and nobody else.
+    A `faculty`-role block is held the same way, for the faculty audience.
     """
-    if role == _EXAMINER_ROLE:
-        return audience == _EXAMINER_ROLE
+    if role in _OWN_AUDIENCE_ROLES:
+        return audience == role
     if section_audience != audience:
         return False
     return role != _HIDDEN_ROLE or include_hidden

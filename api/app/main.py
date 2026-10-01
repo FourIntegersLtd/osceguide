@@ -79,6 +79,7 @@ from app.features.station_sets.router_platform import router as platform_station
 from app.features.stations.router import router as stations_router
 from app.features.stations.router_flags import router as station_flags_router
 from app.features.stations.router_generation_profiles import router as station_generation_profiles_router
+from app.features.stations.router_imports import router as station_imports_router
 from app.features.stations.router_photos import router as station_photos_router
 from app.features.stations.router_platform import router as platform_stations_router
 from app.features.stations.router_platform_templates import router as platform_station_templates_router
@@ -127,6 +128,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(platform_stations_router)
     router.include_router(station_photos_router)
     router.include_router(platform_station_templates_router)
+    router.include_router(station_imports_router)
     router.include_router(attempts_router)
     router.include_router(attempts_coverage_router)
     router.include_router(attempts_roleplay_router)

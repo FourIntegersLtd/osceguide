@@ -149,7 +149,7 @@ async def stream_my_events(
 
     The one live-update connection a signed-in tab holds. Each frame names
     what happened (`attempt`, `practice.session_updated`, `practice.matched`,
-    `practice.accepted`, `cv.read`, `media.updated`, `coverage`, ...) and
+    `practice.accepted`, `cv.read`, `media.updated`, `station_import.updated`, `coverage`, ...) and
     carries just enough of a payload — an id — for a screen to tell whether it
     is the one being talked about; it still re-reads its own resource rather
     than trusting the frame's content as truth. This replaces the polling

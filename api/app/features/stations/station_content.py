@@ -6,9 +6,9 @@ from collections.abc import Callable
 from typing import Any
 
 
-def collect_station_block_ids(structure: Any) -> set[str]:
-    """Return all block ids declared in a station template structure."""
-    ids: set[str] = set()
+def station_block_ids(structure: Any) -> list[str]:
+    """Every block id declared in a station template structure, in template order."""
+    ids: list[str] = []
     if not isinstance(structure, dict):
         return ids
     for section in structure.get("sections") or []:
@@ -18,8 +18,13 @@ def collect_station_block_ids(structure: Any) -> set[str]:
             if isinstance(block, dict):
                 block_id = block.get("id")
                 if isinstance(block_id, str) and block_id:
-                    ids.add(block_id)
+                    ids.append(block_id)
     return ids
+
+
+def collect_station_block_ids(structure: Any) -> set[str]:
+    """Return all block ids declared in a station template structure."""
+    return set(station_block_ids(structure))
 
 
 def collect_required_station_block_ids(structure: Any) -> list[str]:
@@ -285,6 +290,9 @@ def structure_spec(structure: Any) -> dict[str, Any]:
                         for checklist_item in checklist_items
                         if isinstance(checklist_item, dict)
                     ]
+                if block.get("type") == "records" and isinstance(block.get("fields"), list):
+                    # Without its columns a model cannot know what one row of the table holds.
+                    compact_block["fields"] = block.get("fields")
                 if block.get("type") == "scale":
                     compact_block["min"] = block.get("min")
                     compact_block["max"] = block.get("max")

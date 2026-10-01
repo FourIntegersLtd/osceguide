@@ -89,6 +89,19 @@ export function createStationTemplate(
   });
 }
 
+/**
+ * An organisation's own editable copy of a platform template, published and
+ * ready to build stations on. Later changes to the original do not reach it.
+ */
+export function copyStationTemplate(
+  scope: AuthoringScope,
+  template: string,
+): Promise<StationTemplate> {
+  return platformRequest(`${scope.base}/station-templates/${pathId(template)}/copy`, {
+    method: "POST",
+  });
+}
+
 export function publishStationTemplate(
   scope: AuthoringScope,
   template: string,

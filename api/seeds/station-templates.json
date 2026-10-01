@@ -1147,6 +1147,334 @@
           "profileKey": "ortho.portfolio"
         }
       }
+    },
+    {
+      "exam_code": null,
+      "title": "Simulation scenario (ASPiH)",
+      "start_point": "simulation_aspih",
+      "structure": {
+        "schemaVersion": 1,
+        "layout": {
+          "persona": "patient"
+        },
+        "sections": [
+          {
+            "id": "learner_brief",
+            "title": "Learner brief",
+            "audience": "candidate",
+            "blocks": [
+              {
+                "id": "instruction_to_learner",
+                "type": "list",
+                "role": "candidate_brief",
+                "label": "Instruction to learner"
+              },
+              {
+                "id": "presenting_history",
+                "type": "longText",
+                "role": "candidate_brief",
+                "label": "Presenting history (learner storyboard)"
+              }
+            ]
+          },
+          {
+            "id": "patient",
+            "title": "Patient",
+            "audience": "patient",
+            "blocks": [
+              {
+                "id": "patient_name",
+                "type": "shortText",
+                "role": "persona",
+                "label": "Name"
+              },
+              {
+                "id": "patient_age",
+                "type": "shortText",
+                "role": "persona",
+                "label": "Age"
+              },
+              {
+                "id": "gender",
+                "type": "singleSelect",
+                "role": "persona",
+                "label": "Gender",
+                "options": [
+                  "male",
+                  "female"
+                ]
+              },
+              {
+                "id": "role_script",
+                "type": "longText",
+                "role": "instructions",
+                "label": "Role script: mindset, agenda, behaviour"
+              },
+              {
+                "id": "clinical_history",
+                "type": "list",
+                "role": "history",
+                "label": "Clinical history, if asked"
+              },
+              {
+                "id": "previous_medical_history",
+                "type": "longText",
+                "role": "history",
+                "label": "Previous medical history"
+              },
+              {
+                "id": "current_medication",
+                "type": "longText",
+                "role": "medications",
+                "label": "Current medication"
+              },
+              {
+                "id": "known_allergies",
+                "type": "longText",
+                "role": "medications",
+                "label": "Known allergies"
+              },
+              {
+                "id": "patient_states",
+                "type": "records",
+                "role": "examination",
+                "label": "Patient states",
+                "fields": [
+                  {
+                    "key": "state",
+                    "label": "State"
+                  },
+                  {
+                    "key": "transition",
+                    "label": "Transition"
+                  },
+                  {
+                    "key": "hr",
+                    "label": "HR"
+                  },
+                  {
+                    "key": "spo2",
+                    "label": "SpO2"
+                  },
+                  {
+                    "key": "etco2",
+                    "label": "ETCO2"
+                  },
+                  {
+                    "key": "rr",
+                    "label": "RR"
+                  },
+                  {
+                    "key": "bp",
+                    "label": "BP"
+                  },
+                  {
+                    "key": "temp",
+                    "label": "Temp"
+                  },
+                  {
+                    "key": "presentation",
+                    "label": "Presentation and behaviour"
+                  },
+                  {
+                    "key": "airway_breathing",
+                    "label": "Airway and breathing"
+                  },
+                  {
+                    "key": "circulation",
+                    "label": "Circulation"
+                  },
+                  {
+                    "key": "disability",
+                    "label": "Disability"
+                  },
+                  {
+                    "key": "resources",
+                    "label": "State resources"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "objectives",
+            "title": "Objectives and expected actions",
+            "audience": "examiner",
+            "blocks": [
+              {
+                "id": "learning_objectives",
+                "type": "records",
+                "role": "examiner",
+                "label": "Learning objectives",
+                "fields": [
+                  {
+                    "key": "type",
+                    "label": "Type"
+                  },
+                  {
+                    "key": "description",
+                    "label": "Description"
+                  },
+                  {
+                    "key": "evaluation",
+                    "label": "Evaluation"
+                  },
+                  {
+                    "key": "modality",
+                    "label": "Modality"
+                  }
+                ]
+              },
+              {
+                "id": "learners_should",
+                "type": "list",
+                "role": "examiner",
+                "label": "Learners should"
+              }
+            ]
+          },
+          {
+            "id": "faculty",
+            "title": "Faculty",
+            "audience": "faculty",
+            "blocks": [
+              {
+                "id": "description",
+                "type": "longText",
+                "role": "faculty",
+                "label": "Description"
+              },
+              {
+                "id": "needs_assessment",
+                "type": "longText",
+                "role": "faculty",
+                "label": "Needs assessment"
+              },
+              {
+                "id": "other_roles",
+                "type": "records",
+                "role": "faculty",
+                "label": "Other roles",
+                "fields": [
+                  {
+                    "key": "role",
+                    "label": "Role"
+                  },
+                  {
+                    "key": "notes",
+                    "label": "Notes"
+                  }
+                ]
+              },
+              {
+                "id": "setup_and_resources",
+                "type": "records",
+                "role": "faculty",
+                "label": "Required setup and resources",
+                "fields": [
+                  {
+                    "key": "item",
+                    "label": "Item"
+                  },
+                  {
+                    "key": "description",
+                    "label": "Description"
+                  },
+                  {
+                    "key": "linked_document",
+                    "label": "Linked document"
+                  }
+                ]
+              },
+              {
+                "id": "faculty_script",
+                "type": "list",
+                "role": "faculty",
+                "label": "Faculty script"
+              },
+              {
+                "id": "facilitators_should",
+                "type": "list",
+                "role": "faculty",
+                "label": "Facilitators should"
+              },
+              {
+                "id": "debriefing_points",
+                "type": "groupedList",
+                "role": "faculty",
+                "label": "Debriefing points: reaction, description, analysis, summary"
+              },
+              {
+                "id": "teaching_points",
+                "type": "list",
+                "role": "faculty",
+                "label": "Teaching points"
+              },
+              {
+                "id": "references",
+                "type": "list",
+                "role": "faculty",
+                "label": "References"
+              }
+            ]
+          },
+          {
+            "id": "classification",
+            "title": "Classification",
+            "audience": "faculty",
+            "blocks": [
+              {
+                "id": "curriculum_mapping",
+                "type": "shortText",
+                "role": "faculty",
+                "label": "Curriculum mapping"
+              },
+              {
+                "id": "schools",
+                "type": "shortText",
+                "role": "faculty",
+                "label": "Schools"
+              },
+              {
+                "id": "parent_speciality",
+                "type": "shortText",
+                "role": "faculty",
+                "label": "Parent speciality"
+              },
+              {
+                "id": "learner_type",
+                "type": "shortText",
+                "role": "faculty",
+                "label": "Learner type"
+              },
+              {
+                "id": "target_learner_group",
+                "type": "shortText",
+                "role": "faculty",
+                "label": "Target learner group"
+              },
+              {
+                "id": "patient_group",
+                "type": "shortText",
+                "role": "faculty",
+                "label": "Patient group"
+              },
+              {
+                "id": "organ_system",
+                "type": "shortText",
+                "role": "faculty",
+                "label": "Organ system"
+              },
+              {
+                "id": "human_factors",
+                "type": "shortText",
+                "role": "faculty",
+                "label": "Human factors"
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

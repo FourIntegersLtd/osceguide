@@ -178,6 +178,40 @@ async def publish_version(
     return _version_read(await _version(session, org_id, template_id, latest.version))
 
 
+async def copy_template(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    template_id: uuid.UUID,
+    *,
+    actor_id: uuid.UUID,
+    now: datetime,
+) -> StationTemplateRead:
+    """Give an organisation its own published copy of a platform template.
+
+    The copy is the organisation's from then on: it edits and versions it like
+    a template it wrote, and later changes to the platform's original do not
+    reach it. Refused when the platform has no such template, or has not
+    published it.
+    """
+    source = await _require_template(session, None, template_id)
+    published = [
+        version
+        for version in await repository.template_versions(session, None, template_id)
+        if version.status == "published"
+    ]
+    if not published:
+        raise errors.TemplateNotPublishedError()
+    copy = await create_template(
+        session,
+        org_id,
+        title=source.title,
+        exam_code=await _exam_code(session, source),
+        structure=dict(published[-1].structure),
+    )
+    version = await publish_version(session, org_id, copy.id, actor_id=actor_id, now=now)
+    return copy.model_copy(update={"versions": [version]})
+
+
 async def archive_version(
     session: AsyncSession,
     org_id: uuid.UUID | None,
@@ -273,6 +307,7 @@ def _template_read(
     return StationTemplateRead(
         id=template.id,
         title=template.title,
+        owner_kind=template.owner_kind,
         exam_code=exam_code,
         versions=[_version_read(version) for version in versions],
     )

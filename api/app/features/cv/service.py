@@ -9,12 +9,12 @@ or not the person keeps the tab open.
 
 from __future__ import annotations
 
-import io
 import uuid
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.document_text import UnreadableDocument, extract_pdf_text
 from app.core.events import publish_after_commit, user_topic
 from app.core.settings import Settings
 from app.features.cv import domain, errors, llm, repository, schemas
@@ -28,19 +28,6 @@ CV_READ = "cv.read"
 UPLOAD_MESSAGE = "CV uploaded. We're reading it now and it will appear here shortly."
 
 
-def _extract_text(content: bytes) -> str:
-    """The text of a PDF, page by page.
-
-    `pypdf` is imported here rather than at the top so the API starts and serves
-    every route that is not a CV upload on a machine without it — the same
-    tolerance the LiveKit SDK is given.
-    """
-    from pypdf import PdfReader
-
-    reader = PdfReader(io.BytesIO(content))
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
-
-
 async def upload(
     session: AsyncSession, *, user_id: uuid.UUID, filename: str, content: bytes
 ) -> schemas.CvUploadResult:
@@ -51,9 +38,9 @@ async def upload(
         raise errors.InvalidCvFile(str(exc)) from exc
 
     try:
-        raw = _extract_text(content)
-    except Exception as exc:  # noqa: BLE001 - a PDF pypdf cannot read is the person's problem, not a 500
-        raise errors.InvalidCvFile("That file could not be read as a PDF.") from exc
+        raw = extract_pdf_text(content)
+    except UnreadableDocument as exc:
+        raise errors.InvalidCvFile(str(exc)) from exc
 
     try:
         text = domain.ensure_enough_text(raw)

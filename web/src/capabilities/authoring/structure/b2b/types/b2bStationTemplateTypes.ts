@@ -32,10 +32,15 @@ export type StationBlockRole =
   | "instructions"
   | "hidden"
   | "candidate_brief"
-  | "examiner";
+  | "examiner"
+  | "faculty";
 
-/** Who a section is written for — the three classic parts of a station. */
-export type StationSectionAudience = "patient" | "candidate" | "examiner";
+/**
+ * Who a section is written for: the three classic parts of a station, and the
+ * faculty running it. Faculty material is never read to the patient, the
+ * marker or the learner.
+ */
+export type StationSectionAudience = "patient" | "candidate" | "examiner" | "faculty";
 
 /** LLM autogenerate settings stored on the template version structure. */
 export type StationStructureGeneration = {

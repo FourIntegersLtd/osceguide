@@ -15,6 +15,7 @@ import uuid
 import pytest
 from httpx import AsyncClient
 
+from app.core.document_text import extract_pdf_text
 from app.core.settings import get_settings
 from app.features.cv import domain, repository, service
 from tests.support.tokens import bearer
@@ -67,7 +68,7 @@ def _upload(client: AsyncClient, token: str, *, filename: str = "My CV.pdf", con
 async def test_pypdf_reads_the_text_back_out_of_the_built_pdf() -> None:
     """A guard on the fixture itself: if this PDF stops parsing, every test below is meaningless."""
     assert len(_pdf(_BODY)) > domain.MIN_BYTES
-    assert len(service._extract_text(_pdf(_BODY))) >= domain.MIN_TEXT_CHARS
+    assert len(extract_pdf_text(_pdf(_BODY))) >= domain.MIN_TEXT_CHARS
 
 
 async def test_uploading_a_cv_creates_a_processing_row(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

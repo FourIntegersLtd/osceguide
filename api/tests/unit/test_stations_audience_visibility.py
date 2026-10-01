@@ -105,3 +105,56 @@ def test_records_blocks_carry_their_template_columns() -> None:
         {"key": "age", "label": "Age"},
         {"key": "summary", "label": "summary"},
     ]
+
+
+def test_faculty_blocks_reach_the_faculty_audience_and_nobody_else() -> None:
+    sections = [
+        *PRIORITISATION_SECTIONS,
+        {
+            "id": "faculty",
+            "title": "Faculty",
+            "audience": "faculty",
+            "blocks": [{"id": "debrief", "label": "Debrief", "type": "list", "role": "faculty"}],
+        },
+    ]
+    content = {**CONTENT, "debrief": ["Ask how the scenario felt."]}
+
+    def reads_debrief(audience: str) -> bool:
+        projected = sections_for(sections, content, audience, include_hidden=True)
+        return any(block.id == "debrief" for section in projected for block in section.blocks)
+
+    assert reads_debrief("faculty")
+    assert not any(reads_debrief(audience) for audience in ("candidate", "patient", "examiner"))
+
+
+def test_the_engine_layout_carries_table_columns_and_makes_faculty_sections_faculty() -> None:
+    """The editor's flat block list has neither; both come from the sections."""
+    from app.features.stations.service import _engine_layout
+
+    columns = [{"key": "hr", "label": "HR"}]
+    sections = [
+        {
+            "id": "patient",
+            "audience": "patient",
+            "blocks": [{"id": "states", "type": "records", "role": "examination", "fields": columns}],
+        },
+        {
+            "id": "faculty",
+            "audience": "faculty",
+            "blocks": [
+                {"id": "debrief", "type": "list"},
+                {"id": "answers", "type": "list", "role": "examiner"},
+            ],
+        },
+    ]
+    flat = [
+        {"id": "states", "role": "examination"},
+        {"id": "debrief", "role": "hidden"},
+        {"id": "answers", "role": "examiner"},
+    ]
+
+    assert _engine_layout(flat, sections) == [
+        {"id": "states", "role": "examination", "fields": columns},
+        {"id": "debrief", "role": "faculty"},
+        {"id": "answers", "role": "examiner"},
+    ]

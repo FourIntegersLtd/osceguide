@@ -65,6 +65,37 @@ def test_the_examiner_blocks_never_reach_the_patient() -> None:
     assert context is not None and "cessation support" in context
 
 
+def test_faculty_blocks_reach_neither_the_persona_nor_the_marker() -> None:
+    """Faculty material is known to the layout, so it is not read out as a leftover either."""
+    station = {
+        "title": "Annual review",
+        "content": {"brief": "Review this patient.", "debrief": "Ask how the scenario felt.", "notes": "Stroke."},
+    }
+    layout = [
+        {"id": "brief", "role": "candidate_brief"},
+        {"id": "debrief", "role": "faculty"},
+        {"id": "notes", "role": "examiner"},
+    ]
+    context = StationPromptFormatter.examiner_context(station, layout)
+    assert context is not None and "Stroke." in context and "how the scenario felt" not in context
+    for persona in ("patient", "examiner"):
+        assert "how the scenario felt" not in create_station_prompt(station, layout, persona=persona)
+
+
+def test_a_table_block_is_read_with_its_column_names() -> None:
+    # Stored the way Postgres hands JSONB back: keys shortest first, not in column order.
+    station = {"title": "Annual review", "content": {"states": [{"bp": "128/76", "hr": "72", "etco2": ""}]}}
+    layout = [
+        {
+            "id": "states",
+            "role": "examination",
+            "fields": [{"key": "hr", "label": "HR"}, {"key": "bp", "label": "BP"}, {"key": "etco2", "label": "ETCO2"}],
+        }
+    ]
+    prompt = create_station_prompt(station, layout)
+    assert "HR: 72\nBP: 128/76" in prompt and "ETCO2" not in prompt
+
+
 def test_the_examiner_persona_holds_the_examiner_blocks() -> None:
     """An examiner running a viva is given the questions it asks; the patient never is."""
     station = _load("stations/templated_station.json")

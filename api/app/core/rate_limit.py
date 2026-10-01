@@ -111,6 +111,10 @@ AI_SPEND = Limit(name="ai-spend", allowance=30, window_seconds=600)
 # show for it but the preview. Counted per organisation (per person for the
 # platform), so a builder pressing "Trial" in a loop cannot spend without end.
 TRIAL_MARK = Limit(name="trial-mark", allowance=20, window_seconds=3600)
+# Uploading a station document to import: a parse in the request and one or two
+# long model calls behind it. Sixty an hour lets an author bring a whole library
+# across in a sitting, one file per station, and stops a loop from spending.
+STATION_IMPORT = Limit(name="station-import", allowance=60, window_seconds=3600)
 # Sends an email to somebody other than the caller: an invitation, a resend, a
 # report to support. A bulk upload is one call however many rows it carries;
 # the limit is on a loop of calls, which is how an inbox gets flooded.

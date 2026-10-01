@@ -180,6 +180,18 @@ async def job_session() -> AsyncIterator[AsyncSession]:
 
 
 @asynccontextmanager
+async def savepoint(session: AsyncSession) -> AsyncIterator[None]:
+    """A part of the open transaction that can fail alone.
+
+    An error inside undoes only this part's writes, flushed or not, and the
+    surrounding transaction carries on, so the caller can still record what
+    went wrong.
+    """
+    async with session.begin_nested():
+        yield
+
+
+@asynccontextmanager
 async def stream_session() -> AsyncIterator[AsyncSession]:
     """One snapshot's worth of reading, inside a stream that lives for minutes.
 

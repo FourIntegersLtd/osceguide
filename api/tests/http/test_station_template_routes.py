@@ -323,3 +323,71 @@ async def test_templates_are_listed_a_page_at_a_time(client: AsyncClient, make_a
     assert rest.json()["next_cursor"] is None
     listed_ids = [template["id"] for template in first.json()["items"] + rest.json()["items"]]
     assert sorted(listed_ids) == sorted(created_ids)
+
+
+async def test_a_platform_template_is_copied_into_the_organisation_published(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    root = await make_actor("root3-kings@osceguide.com", platform_admin=True)
+    standard = await client.post(
+        "/api/v1/platform/station-templates",
+        json={"title": "Simulation scenario", "structure": STRUCTURE},
+        headers=bearer(root),
+    )
+    assert standard.status_code == 201, standard.text
+    source_id = standard.json()["id"]
+
+    published = await client.post(
+        f"/api/v1/platform/station-templates/{source_id}/publish", headers=bearer(root)
+    )
+    assert published.status_code == 200, published.text
+
+    copied = await client.post(
+        f"/api/v1/orgs/kings/station-templates/{source_id}/copy", headers=bearer(admin)
+    )
+    assert copied.status_code == 201, copied.text
+    copy = copied.json()
+    assert copy["id"] != source_id
+    assert copy["title"] == "Simulation scenario"
+    assert copy["exam_code"] is None
+    assert [(version["version"], version["status"]) for version in copy["versions"]] == [(1, "published")]
+    assert copy["versions"][0]["structure"] == STRUCTURE
+
+    # The copy is the organisation's own: it can start a new draft of it, which it cannot of the platform's.
+    own_draft = await client.post(
+        f"/api/v1/orgs/kings/station-templates/{copy['id']}/versions", headers=bearer(admin)
+    )
+    assert own_draft.status_code == 201, own_draft.text
+    platform_draft = await client.post(
+        f"/api/v1/orgs/kings/station-templates/{source_id}/versions", headers=bearer(admin)
+    )
+    assert platform_draft.status_code == 404, platform_draft.text
+
+
+async def test_an_organisations_own_template_is_not_a_platform_template_to_copy(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    own = await a_template(client, admin)
+    refused = await client.post(
+        f"/api/v1/orgs/kings/station-templates/{own['id']}/copy", headers=bearer(admin)
+    )
+    assert refused.status_code == 404, refused.text
+
+
+async def test_a_platform_template_that_is_still_a_draft_cannot_be_copied(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    root = await make_actor("root3-kings@osceguide.com", platform_admin=True)
+    draft = await client.post(
+        "/api/v1/platform/station-templates",
+        json={"title": "Simulation scenario", "structure": STRUCTURE},
+        headers=bearer(root),
+    )
+    refused = await client.post(
+        f"/api/v1/orgs/kings/station-templates/{draft.json()['id']}/copy", headers=bearer(admin)
+    )
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["code"] == "template_not_published"

@@ -33,7 +33,9 @@ __all__ = [
 ]
 
 # What a block may be for. A template's author picks one per block; anything
-# else is held back and read out only on request.
+# else is held back and read out only on request. `faculty` is the one role
+# that goes nowhere: it is known, so its block is never a leftover read to the
+# patient, and neither the live persona nor the marker is given it.
 KNOWN_ROLES = (
     "persona",
     "complaint",
@@ -45,6 +47,7 @@ KNOWN_ROLES = (
     "examiner",
     "candidate_brief",
     "hidden",
+    "faculty",
 )
 
 # Block ids recognised when a station has no template layout: the common
@@ -117,10 +120,37 @@ _PERSONAE = {
 }
 
 
-def _text_from_value(val: Any) -> str:
-    """A plain string, whether the block holds text, a list or rich text."""
+def _records_text(records: Sequence[Any], fields: Sequence[Mapping[str, Any]]) -> str:
+    """A table's rows as `Column: value` lines, a blank line between rows.
+
+    Without the column names a row of observations reads as bare numbers, and
+    the persona cannot tell a heart rate from a respiratory rate. Columns are
+    written in the template's order, since a stored row's keys come back in
+    whatever order the database keeps them; a key the template does not name
+    goes last.
+    """
+    labels = {str(field.get("key")): str(field.get("label") or field.get("key")) for field in fields}
+    rows = []
+    for record in records:
+        if not isinstance(record, Mapping):
+            continue
+        keys = [key for key in labels if key in record] + [str(key) for key in record if str(key) not in labels]
+        lines = [f"{labels.get(key, key)}: {text}" for key in keys if (text := _text_from_value(record.get(key)))]
+        if lines:
+            rows.append("\n".join(lines))
+    return "\n\n".join(rows)
+
+
+def _text_from_value(val: Any, fields: Sequence[Mapping[str, Any]] | None = None) -> str:
+    """A plain string, whether the block holds text, a list, a table or rich text.
+
+    ``fields`` is a table block's column list; with it each row is written
+    with its column names.
+    """
     if isinstance(val, str):
         return val.strip()
+    if fields and isinstance(val, list):
+        return _records_text(val, fields)
     if isinstance(val, list):
         parts = []
         for item in val:
@@ -163,7 +193,8 @@ def _by_role(
             if not block_id or role not in roles:
                 continue
             claimed.add(block_id)
-            text = _text_from_value(content.get(block_id))
+            fields = block.get("fields")
+            text = _text_from_value(content.get(block_id), fields if isinstance(fields, list) else None)
             if text:
                 roles[role].append(text)
     else:

@@ -27,6 +27,12 @@ Catalog: `GET /api/v1/station-generation-profiles`. Detail responses return **ef
 - As an **org admin**, I draft a station template, publish a version, and archive an old one.
 - As an **org admin**, I write a station against a published template — my own or
   the platform's — and publish it.
+- As an **org admin or platform admin** with a library written elsewhere, I upload
+  a station as a PDF or Word file. The first upload drafts a template for me to
+  review and publish; that file, and every later one, is then copied into the
+  published template as a draft station. Nothing is invented: a part the file
+  has no text for stays empty, and both empty and reworded parts are listed for
+  me to check (`router_imports.py`, `service_imports.py`).
 - As a **trainee or supervisor**, I browse the stations available to my organisation,
   which includes the platform library.
 - As **anyone following a link to one library station**, I am told what it is
