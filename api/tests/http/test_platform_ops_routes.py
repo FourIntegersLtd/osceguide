@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import uuid
 
 import pytest
@@ -87,3 +89,39 @@ async def test_the_machinery_is_refused_to_anybody_but_a_platform_admin(
     someone = await make_actor("someone@example.com")
     for path in ("/api/v1/platform/jobs", "/api/v1/platform/health", "/api/v1/platform/voice/capacity"):
         assert (await client.get(path, headers=bearer(someone))).status_code == 403, path
+
+
+async def test_the_machinery_page_is_pushed_as_one_snapshot(
+    streaming_client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The page loads once and then listens: health, capacity and the asked-for tab arrive together."""
+    from tests.http.test_streams import frames
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    attempt_id = str(uuid.uuid4())
+    await queued(db_session, attempt_id=attempt_id)
+    await db_session.commit()
+
+    async with streaming_client.stream(
+        "GET", "/api/v1/platform/machinery/stream?status=todo", headers=bearer(root)
+    ) as response:
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/event-stream")
+        received = await asyncio.wait_for(frames(response.aiter_lines(), 2), timeout=10)
+
+    assert [event for event, _ in received] == ["connected", "snapshot"]
+    body = json.loads(received[1][1])
+    assert body["health"]["checks"]["database"] == "ok"
+    assert body["health"]["jobs_by_status"]["todo"] >= 1
+    assert body["capacity"]["active"] is None
+    assert attempt_id in [job["args"].get("attempt_id") for job in body["jobs"]["items"]]
+
+
+async def test_the_machinery_stream_is_refused_to_anybody_but_a_platform_admin(
+    streaming_client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    someone = await make_actor("someone@example.com")
+    async with streaming_client.stream(
+        "GET", "/api/v1/platform/machinery/stream", headers=bearer(someone)
+    ) as response:
+        assert response.status_code == 403

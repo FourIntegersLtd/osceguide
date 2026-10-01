@@ -10,11 +10,18 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionOpenerDep, get_session
 from app.core.errors import Forbidden, error_responses
+from app.core.events import get_event_bus
+from app.core.openapi import sse_responses
+from app.core.ports import EventBus
 from app.core.redis import get_redis
+from app.core.settings import SettingsDep
+from app.core.sse import MEDIA_TYPE, SSE_HEADERS
+from app.core.streams import StreamPrincipal
 from app.core.tenancy import PlatformAdmin
 from app.features.health import schemas, service
 
@@ -57,3 +64,47 @@ async def list_jobs(
     """
     _ = admin
     return await service.list_jobs(session, status=status, task_name=task, before_id=before_id, limit=limit)
+
+
+@router.get(
+    "/platform/machinery",
+    response_model=schemas.Machinery,
+    responses=error_responses(Forbidden),
+)
+async def read_machinery(
+    admin: PlatformAdmin,
+    session: Session,
+    settings: SettingsDep,
+    status: Annotated[
+        str | None, Query(pattern=STATUS_PATTERN, description="Which tab of the queue to send")
+    ] = None,
+) -> schemas.Machinery:
+    """The machinery page in one read; its stream sends this same shape whenever it changes."""
+    _ = admin
+    return await service.machinery(session, get_redis(), settings, job_status=status)
+
+
+@router.get(
+    "/platform/machinery/stream",
+    responses=sse_responses(schemas.Machinery, Forbidden),
+    response_class=StreamingResponse,
+)
+async def stream_machinery(
+    principal: StreamPrincipal,
+    settings: SettingsDep,
+    bus: Annotated[EventBus, Depends(get_event_bus)],
+    open_session: SessionOpenerDep,
+    status: Annotated[
+        str | None, Query(pattern=STATUS_PATTERN, description="Which tab of the queue to send")
+    ] = None,
+) -> StreamingResponse:
+    """The machinery page, live: health, voice capacity and the queue, re-sent as they change."""
+    if not principal.is_platform_admin:
+        raise Forbidden()
+    return StreamingResponse(
+        service.machinery_stream(
+            job_status=status, open_session=open_session, redis=get_redis(), settings=settings, bus=bus
+        ),
+        media_type=MEDIA_TYPE,
+        headers=SSE_HEADERS,
+    )

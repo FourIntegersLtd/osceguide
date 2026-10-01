@@ -7934,6 +7934,111 @@
         "title": "LogoutRequest",
         "type": "object"
       },
+      "Machinery": {
+        "description": "Everything the console's machinery page shows, as one frame of its stream.\n\nThe same three read models the separate `GET` routes return, so the page\nkeeps one set of types whether it reads them or is sent them.",
+        "properties": {
+          "capacity": {
+            "$ref": "#/components/schemas/MachineryCapacity"
+          },
+          "health": {
+            "$ref": "#/components/schemas/PlatformHealth"
+          },
+          "job_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Status"
+          },
+          "jobs": {
+            "$ref": "#/components/schemas/JobsPage"
+          }
+        },
+        "required": [
+          "health",
+          "capacity",
+          "jobs",
+          "job_status"
+        ],
+        "title": "Machinery",
+        "type": "object"
+      },
+      "MachineryCapacity": {
+        "description": "How full LiveKit Cloud, our own workers and the waiting line are, as the machinery page shows it.\n\nDeclared here rather than borrowed from `voice`, so the two slices' contracts can change apart.\nNone means Redis could not be asked; the self-hosted total is configuration, so always known.",
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "free": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Free"
+          },
+          "max_concurrent": {
+            "title": "Max Concurrent",
+            "type": "integer"
+          },
+          "overflow_enabled": {
+            "title": "Overflow Enabled",
+            "type": "boolean"
+          },
+          "queue_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Length"
+          },
+          "self_hosted_seats_taken": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Self Hosted Seats Taken"
+          },
+          "self_hosted_seats_total": {
+            "title": "Self Hosted Seats Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "overflow_enabled",
+          "max_concurrent",
+          "active",
+          "free",
+          "self_hosted_seats_total",
+          "self_hosted_seats_taken",
+          "queue_length"
+        ],
+        "title": "MachineryCapacity",
+        "type": "object"
+      },
       "MarkedResultRead": {
         "description": "One marked result, with the numbers its own rubric makes of it.",
         "properties": {
@@ -52229,6 +52334,177 @@
           }
         ],
         "summary": "List Jobs",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/platform/machinery": {
+      "get": {
+        "description": "The machinery page in one read; its stream sends this same shape whenever it changes.",
+        "operationId": "health_read_machinery",
+        "parameters": [
+          {
+            "description": "Which tab of the queue to send",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(todo|doing|succeeded|failed|cancelled|aborting|aborted)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Which tab of the queue to send",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Machinery"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Machinery",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/platform/machinery/stream": {
+      "get": {
+        "description": "The machinery page, live: health, voice capacity and the queue, re-sent as they change.",
+        "operationId": "health_stream_machinery",
+        "parameters": [
+          {
+            "description": "Which tab of the queue to send",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(todo|doing|succeeded|failed|cancelled|aborting|aborted)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Which tab of the queue to send",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "A stream ticket from POST /auth/stream-ticket",
+            "in": "query",
+            "name": "ticket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A stream ticket from POST /auth/stream-ticket",
+              "title": "Ticket"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Machinery"
+                }
+              }
+            },
+            "description": "An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `Machinery` each time the state changes, and `ping` every 25 seconds."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Machinery",
         "tags": [
           "health"
         ]

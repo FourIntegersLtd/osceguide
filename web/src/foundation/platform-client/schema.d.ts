@@ -5729,6 +5729,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/machinery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Machinery
+         * @description The machinery page in one read; its stream sends this same shape whenever it changes.
+         */
+        get: operations["health_read_machinery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/machinery/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Machinery
+         * @description The machinery page, live: health, voice capacity and the queue, re-sent as they change.
+         */
+        get: operations["health_stream_machinery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/moderation/posts": {
         parameters: {
             query?: never;
@@ -10414,6 +10454,43 @@ export interface components {
         LogoutRequest: {
             /** Refresh Token */
             refresh_token?: string | null;
+        };
+        /**
+         * Machinery
+         * @description Everything the console's machinery page shows, as one frame of its stream.
+         *
+         *     The same three read models the separate `GET` routes return, so the page
+         *     keeps one set of types whether it reads them or is sent them.
+         */
+        Machinery: {
+            capacity: components["schemas"]["MachineryCapacity"];
+            health: components["schemas"]["PlatformHealth"];
+            /** Job Status */
+            job_status: string | null;
+            jobs: components["schemas"]["JobsPage"];
+        };
+        /**
+         * MachineryCapacity
+         * @description How full LiveKit Cloud, our own workers and the waiting line are, as the machinery page shows it.
+         *
+         *     Declared here rather than borrowed from `voice`, so the two slices' contracts can change apart.
+         *     None means Redis could not be asked; the self-hosted total is configuration, so always known.
+         */
+        MachineryCapacity: {
+            /** Active */
+            active: number | null;
+            /** Free */
+            free: number | null;
+            /** Max Concurrent */
+            max_concurrent: number;
+            /** Overflow Enabled */
+            overflow_enabled: boolean;
+            /** Queue Length */
+            queue_length: number | null;
+            /** Self Hosted Seats Taken */
+            self_hosted_seats_taken: number | null;
+            /** Self Hosted Seats Total */
+            self_hosted_seats_total: number;
         };
         /**
          * MarkedResultRead
@@ -33712,6 +33789,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobsPage"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_read_machinery: {
+        parameters: {
+            query?: {
+                /** @description Which tab of the queue to send */
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Machinery"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    health_stream_machinery: {
+        parameters: {
+            query?: {
+                /** @description Which tab of the queue to send */
+                status?: string | null;
+                /** @description A stream ticket from POST /auth/stream-ticket */
+                ticket?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An SSE stream: `connected`, then a `snapshot` frame whose `data` is a `Machinery` each time the state changes, and `ping` every 25 seconds. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["Machinery"];
                 };
             };
             /** @description forbidden */

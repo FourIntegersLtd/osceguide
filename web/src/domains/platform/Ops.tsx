@@ -15,12 +15,12 @@ import {
   RowList,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync, useEventStream } from "@/foundation/hooks";
 import {
-  listJobs,
-  readCloudCapacity,
-  readPlatformHealth,
+  machineryStreamPath,
+  readMachinery,
   reindexTutorMemory,
+  type Machinery,
   type TutorMemoryReindex,
 } from "@/domains/platform/support/api";
 import { formatMoment, jobStatusTone } from "@/domains/platform/support";
@@ -38,22 +38,34 @@ const JOB_TABS: B2CSegmentedTabItem<JobStatus>[] = (
   Object.keys(JOB_LABELS) as JobStatus[]
 ).map((id) => ({ id, label: JOB_LABELS[id] }));
 
-/** Is the platform working, not only up: the queue, the worker, the Cloud cap. */
+/**
+ * Is the platform working, not only up: the queue, the worker, the Cloud cap.
+ *
+ * Read once, then pushed: the stream re-sends the whole page every few seconds
+ * and the moment a voice seat frees, so nothing here needs a reload.
+ */
 export function Ops() {
-  const health = useAsync((signal) => readPlatformHealth(signal), []);
-  const capacity = useAsync((signal) => readCloudCapacity(signal), []);
   const [status, setStatus] = useState<JobStatus>("failed");
-  const jobs = useAsync(
-    (signal) => listJobs({ status, limit: 100 }, signal),
-    [status],
-  );
+  const initial = useAsync((signal) => readMachinery(status, signal), [status]);
+  const stream = useEventStream<Machinery>(machineryStreamPath(status));
+  // Straight after a tab switch the last frame is still the old tab's.
+  const pushed = stream.data?.job_status === status ? stream.data : null;
+  const machinery = { ...initial, data: pushed ?? initial.data };
+  const health = { ...machinery, data: machinery.data?.health ?? null };
+  const capacity = { ...machinery, data: machinery.data?.capacity ?? null };
+  const jobs = { ...machinery, data: machinery.data?.jobs ?? null };
 
   return (
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
-        title="Machinery"
-        description="The queue, the worker, and LiveKit Cloud."
+        title="System health"
+        description="Background tasks, marking, and how many live voice sessions we can run."
         icon={LuActivity}
+        actions={
+          <Badge tone={stream.connected ? "success" : "warning"}>
+            {stream.connected ? "Live" : "Reconnecting"}
+          </Badge>
+        }
       />
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
@@ -64,7 +76,7 @@ export function Ops() {
                 items={[
                   { label: "Status", value: `${h.status} · v${h.version}` },
                   {
-                    label: "Worker last seen",
+                    label: "Background tasks last checked in",
                     value: h.worker_seen_at
                       ? formatMoment(h.worker_seen_at)
                       : "Never",
@@ -76,7 +88,7 @@ export function Ops() {
                       .join(" · "),
                   },
                   {
-                    label: "Queue",
+                    label: "Background tasks",
                     value:
                       Object.entries(h.jobs_by_status)
                         .filter(([, count]) => count > 0)
@@ -95,23 +107,23 @@ export function Ops() {
               <FactList
                 items={[
                   {
-                    label: "LiveKit Cloud",
+                    label: "Voice sessions (LiveKit Cloud)",
                     value:
                       c.active === null
-                        ? "Unknown — new sessions go self-hosted"
+                        ? "Unknown, so new sessions use our own servers"
                         : `${c.active} of ${c.max_concurrent} held · ${c.free} free`,
                   },
                   {
-                    label: "Overflow metering",
+                    label: "Extra paid capacity",
                     value: c.overflow_enabled ? "On" : "Off",
                   },
                   {
-                    label: "Our workers",
-                    value: `${c.self_hosted_seats_taken ?? "—"} of ${c.self_hosted_seats_total} seats taken`,
+                    label: "Our own servers",
+                    value: `${c.self_hosted_seats_taken ?? "-"} of ${c.self_hosted_seats_total} seats taken`,
                   },
                   {
                     label: "Waiting line",
-                    value: `${c.queue_length ?? "—"} in line`,
+                    value: `${c.queue_length ?? "-"} in line`,
                   },
                 ]}
               />
@@ -121,15 +133,15 @@ export function Ops() {
       </div>
 
       <Panel
-        title="Jobs"
-        description="No retry here: a failed marking is re-queued from the attempt it was about."
+        title="Background tasks"
+        description="To retry a failed marking, open the attempt it belongs to."
         actions={
           <B2CSegmentedTabs
             items={JOB_TABS}
             value={status}
             onChange={setStatus}
             compact
-            aria-label="Job status"
+            aria-label="Task status"
           />
         }
         padding="none"
@@ -138,7 +150,7 @@ export function Ops() {
           state={jobs}
           isEmpty={(page) => page.items.length === 0}
           empty={{
-            title: "No jobs",
+            title: "No tasks",
             description: `Nothing is ${JOB_LABELS[status].toLowerCase()}.`,
             bare: true,
           }}
@@ -193,7 +205,7 @@ function TutorIndex() {
   return (
     <Panel
       title="Tutor material index"
-      description="What the tutor may quote. It rebuilds nightly; rebuild now when a correction has to be true straight away."
+      description="The material the AI tutor can quote from. It updates every night. Update it now if a correction needs to take effect straight away."
       actions={
         <Button
           variant="secondary"
@@ -216,8 +228,7 @@ function TutorIndex() {
       ) : null}
       {!reindex && !failure ? (
         <p className="text-osce-meta text-ink-subtle">
-          Runs to completion in the browser rather than returning a job to poll,
-          so a large library takes a while here on purpose.
+          Keep this page open until it finishes. A large library can take a few minutes.
         </p>
       ) : null}
     </Panel>

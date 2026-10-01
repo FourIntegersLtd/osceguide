@@ -3,19 +3,37 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
+from app.core.db import SessionOpener
+from app.core.events import voice_queue_topic
 from app.core.logging import get_logger
-from app.core.settings import get_settings
+from app.core.ports import EventBus
+from app.core.settings import Settings, get_settings
+from app.core.sse import Snapshot, event_stream
 from app.features.health import repository, repository_jobs
 from app.features.health.repository_jobs import JobRef
-from app.features.health.schemas import CheckState, HealthResponse, JobRead, JobsPage, PlatformHealth
+from app.features.health.schemas import (
+    CheckState,
+    HealthResponse,
+    JobRead,
+    JobsPage,
+    Machinery,
+    MachineryCapacity,
+    PlatformHealth,
+)
+from app.features.voice import service as voice_service
 
 log = get_logger(__name__)
 CHECK_TIMEOUT_SECONDS = 2.0
+# How often the machinery stream re-reads what changes with nobody announcing
+# it: a job finishing, a worker's heartbeat, a Cloud slot lapsing.
+MACHINERY_REFRESH_SECONDS = 5.0
+MACHINERY_JOB_PAGE = 100
 
 
 async def check_database(session: AsyncSession) -> CheckState:
@@ -83,6 +101,51 @@ async def list_jobs(
     return JobsPage(
         items=[_read(job) for job in page],
         next_before_id=page[-1].id if len(jobs) > limit else None,
+    )
+
+
+async def machinery(
+    session: AsyncSession, redis: Redis | None, settings: Settings, *, job_status: str | None
+) -> Machinery:
+    """The whole machinery page at this moment: health, voice capacity and one status of the queue."""
+    capacity = await voice_service.cloud_capacity(settings)
+    return Machinery(
+        health=await platform_health(session, redis),
+        capacity=MachineryCapacity.model_validate(capacity.model_dump()),
+        jobs=await list_jobs(
+            session, status=job_status, task_name=None, before_id=None, limit=MACHINERY_JOB_PAGE
+        ),
+        job_status=job_status,
+    )
+
+
+def machinery_stream(
+    *,
+    job_status: str | None,
+    open_session: SessionOpener,
+    redis: Redis | None,
+    settings: Settings,
+    bus: EventBus,
+) -> AsyncIterator[str]:
+    """The machinery page, pushed: health, voice capacity and one tab of the queue.
+
+    Woken at once when a voice seat is freed, and re-read every few seconds as
+    well, because the queue and the worker's heartbeat change in procrastinate's
+    tables with no event on the bus. The browser only listens; it never polls.
+    """
+
+    async def snapshot() -> Snapshot:
+        """One frame of the whole page, read in its own short transaction."""
+        async with open_session() as session:
+            page = await machinery(session, redis, settings, job_status=job_status)
+        return Snapshot(page.model_dump_json())
+
+    return event_stream(
+        topics=[voice_queue_topic()],
+        snapshot=snapshot,
+        bus=bus,
+        heartbeat_seconds=MACHINERY_REFRESH_SECONDS,
+        snapshot_on_heartbeat=True,
     )
 
 
