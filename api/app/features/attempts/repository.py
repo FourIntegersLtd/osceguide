@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -216,31 +217,68 @@ async def attempt_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
     return list((await session.execute(stmt)).scalars())
 
 
-async def trial_counts(session: AsyncSession, user_id: uuid.UUID, exam_id: uuid.UUID) -> tuple[int, int]:
-    """`(set stations used, attempts completed)` for the free-trial rule.
+@dataclass(frozen=True)
+class TrialCounts:
+    """What the free-trial rule needs from this person's attempts on one exam."""
+
+    # Distinct stations sat as part of a practice set.
+    set_stations: int
+    # Distinct stations finished at least once.
+    completed_stations: int
+    # Whether the station being started already has an attempt, so starting it is a retry.
+    started_this_station: bool
+    # How many times the station being started has been finished.
+    completed_on_this_station: int
+
+
+async def trial_counts(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    *,
+    station_version_id: uuid.UUID | None = None,
+) -> TrialCounts:
+    """The free-trial counters, counted by station rather than by attempt.
 
     Counted per exam, not per account: b2c held a person as four separate documents, one per product,
-    each with its own trial, so somebody who used their SCA trial still had a PLAB one.
+    each with its own trial, so somebody who used their SCA trial still had a PLAB one. An attempt
+    with no station counts as a station of its own. Debriefs are not station attempts and are left out.
+    Raw SQL so this slice does not import the stations models.
     """
-    set_stations = await session.scalar(
-        select(func.count())
-        .select_from(Attempt)
-        .where(
-            Attempt.user_id == user_id,
-            Attempt.exam_id == exam_id,
-            Attempt.kind == "set_station",
-        )
+    stmt = text(
+        "WITH mine AS ("
+        " SELECT a.kind, a.status, COALESCE(v.station_id, a.id) AS station_key"
+        " FROM attempts a LEFT JOIN station_versions v ON v.id = a.station_version_id"
+        " WHERE a.user_id = :user_id AND a.exam_id = :exam_id AND a.kind <> 'debrief'"
+        "), this_station AS ("
+        " SELECT station_id FROM station_versions WHERE id = CAST(:station_version_id AS uuid)"
+        ") SELECT"
+        " COUNT(DISTINCT station_key) FILTER (WHERE kind = 'set_station'),"
+        " COUNT(DISTINCT station_key) FILTER (WHERE status IN ('interaction_complete', 'evaluated')),"
+        " COUNT(*) FILTER (WHERE station_key = (SELECT station_id FROM this_station)),"
+        " COUNT(*) FILTER (WHERE station_key = (SELECT station_id FROM this_station)"
+        "   AND status IN ('interaction_complete', 'evaluated'))"
+        " FROM mine"
     )
-    completed = await session.scalar(
-        select(func.count())
-        .select_from(Attempt)
-        .where(
-            Attempt.user_id == user_id,
-            Attempt.exam_id == exam_id,
-            Attempt.status.in_(("interaction_complete", "evaluated")),
+    row = (
+        await session.execute(
+            stmt,
+            {
+                "user_id": user_id,
+                "exam_id": exam_id,
+                "station_version_id": str(station_version_id) if station_version_id else None,
+            },
         )
+    ).one()
+    set_stations, completed_stations, started_on_station, completed_on_station = (
+        int(value or 0) for value in row
     )
-    return int(set_stations or 0), int(completed or 0)
+    return TrialCounts(
+        set_stations=set_stations,
+        completed_stations=completed_stations,
+        started_this_station=started_on_station > 0,
+        completed_on_this_station=completed_on_station,
+    )
 
 
 async def exam_for_station_version(session: AsyncSession, station_version_id: uuid.UUID) -> uuid.UUID | None:

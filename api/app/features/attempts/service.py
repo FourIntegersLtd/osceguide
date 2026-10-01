@@ -55,7 +55,9 @@ async def start_attempt(
         user_id=user_id,
         exam_id=exam.id,
         now=now,
-        trial=await trial_state_for(session, user_id=user_id, exam_id=exam.id),
+        trial=await trial_state_for(
+            session, user_id=user_id, exam_id=exam.id, station_version_id=station_version_id
+        ),
     )
 
     attempt = await repository.create_attempt(
@@ -106,7 +108,11 @@ async def require_entitlement(
 
 
 async def trial_state_for(
-    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    station_version_id: uuid.UUID | None = None,
 ) -> entitlements.TrialState | None:
     """What the free-trial rule needs to know about this person.
 
@@ -117,10 +123,11 @@ async def trial_state_for(
     user = await identity.user_ref_by_id(session, user_id)
     if user is None:
         return None
-    set_stations, completed = await repository.trial_counts(session, user_id, exam_id)
+    counts = await repository.trial_counts(session, user_id, exam_id, station_version_id=station_version_id)
     return entitlements.TrialState(
-        set_station_count=set_stations,
-        completed_attempt_count=completed,
+        set_station_count=counts.set_stations,
+        completed_station_count=counts.completed_stations,
+        completed_on_this_station=counts.completed_on_this_station if counts.started_this_station else None,
         account_created_at=user.created_at,
     )
 

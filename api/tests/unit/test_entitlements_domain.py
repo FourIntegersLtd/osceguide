@@ -77,12 +77,31 @@ def test_with_no_grants_the_reason_says_so() -> None:
 # --------------------------------------------------------------------------
 
 
-def trial(*, set_stations: int = 0, completed: int = 0, age_days: int = 0):  # type: ignore[no-untyped-def]
+def trial(*, set_stations: int = 0, completed: int = 0, age_days: int = 0, this_station: int | None = None):  # type: ignore[no-untyped-def]
     return domain.TrialState(
         set_station_count=set_stations,
-        completed_attempt_count=completed,
+        completed_station_count=completed,
         account_created_at=NOW - timedelta(days=age_days),
+        completed_on_this_station=this_station,
     )
+
+
+@pytest.mark.parametrize("finished", [0, 1, 2])
+def test_a_trial_station_can_be_retried_after_all_three_are_used(finished: int) -> None:
+    """Three stations, three attempts each: finishing all three stations still leaves their retries."""
+    assert domain.trial_available(trial(set_stations=3, completed=3, this_station=finished), now=NOW)
+
+
+def test_a_trial_station_finished_three_times_is_used_up() -> None:
+    assert not domain.trial_available(trial(completed=1, this_station=3), now=NOW)
+
+
+def test_a_fourth_station_is_refused() -> None:
+    assert not domain.trial_available(trial(completed=3, this_station=None), now=NOW)
+
+
+def test_a_retry_after_fourteen_days_is_refused() -> None:
+    assert not domain.trial_available(trial(age_days=15, this_station=0), now=NOW)
 
 
 def test_a_new_account_with_no_activity_is_inside_the_trial() -> None:
@@ -96,7 +115,7 @@ def test_three_set_stations_exhausts_the_trial(count: int) -> None:
 
 
 @pytest.mark.parametrize("count", [3, 4, 10])
-def test_three_completed_attempts_exhausts_the_trial(count: int) -> None:
+def test_three_completed_stations_exhausts_the_trial(count: int) -> None:
     """Oracle: `completed_station_count >= ALLOWED_STATION_ATTEMPTS`."""
     assert not domain.trial_available(trial(completed=count), now=NOW)
 

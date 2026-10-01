@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 # Ported verbatim from `b2c/shared/constants/shared_constants.py:89`.
 ALLOWED_TRIAL_STATIONS = 3
 TRIAL_DAYS = 14
+# Each trial station may be sat this many times, matching the mock's per-station limit.
+TRIAL_ATTEMPTS_PER_STATION = 3
 
 SOURCES = frozenset({"purchase", "org_grant", "trial", "sso_tenant", "admin"})
 
@@ -46,8 +48,11 @@ class TrialState:
     this module has no business reading either table."""
 
     set_station_count: int
-    completed_attempt_count: int
+    completed_station_count: int
     account_created_at: datetime
+    # The station being started, when it is already one of this person's trial stations:
+    # how many times they have finished it. None for a station they have not started yet.
+    completed_on_this_station: int | None = None
 
 
 @dataclass(frozen=True)
@@ -61,14 +66,21 @@ class Decision:
 
 
 def trial_available(trial: TrialState, *, now: datetime) -> bool:
-    """The legacy free trial rule. Set stations and completed attempts are compared separately
-    rather than summed, and the account age comparison is strict, so an account exactly
-    fourteen days old still has its trial."""
+    """The free trial: three stations, each sat up to three times, within fourteen days.
+
+    Stations are counted, not attempts, as legacy b2c counted them (`mocked_station_ids` and
+    `station_progress`): retrying a trial station never uses up another one. Set stations and
+    completed stations are compared separately rather than summed, and the account age
+    comparison is strict, so an account exactly fourteen days old still has its trial.
+    """
+    if trial.account_created_at < now - timedelta(days=TRIAL_DAYS):
+        return False
+    if trial.completed_on_this_station is not None:
+        # A retry of a station already in the trial: only its own limit applies.
+        return trial.completed_on_this_station < TRIAL_ATTEMPTS_PER_STATION
     if trial.set_station_count >= ALLOWED_TRIAL_STATIONS:
         return False
-    if trial.completed_attempt_count >= ALLOWED_TRIAL_STATIONS:
-        return False
-    return trial.account_created_at >= now - timedelta(days=TRIAL_DAYS)
+    return trial.completed_station_count < ALLOWED_TRIAL_STATIONS
 
 
 def decide(
