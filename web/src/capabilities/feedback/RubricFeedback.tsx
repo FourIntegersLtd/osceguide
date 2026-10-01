@@ -8,9 +8,12 @@ import {
   HiOutlineChatBubbleLeftEllipsis,
   HiOutlineExclamationTriangle,
   HiOutlineLightBulb,
+  HiOutlineListBullet,
   HiOutlineSparkles,
+  HiOutlineSquare3Stack3D,
   HiOutlineXCircle,
 } from "react-icons/hi2";
+import { Dropdown } from "@/foundation/table";
 import { Badge, B2CEmptyState, B2CPanelCard, B2CPanelCardBody, B2CPanelCardHeader, cn, productTokens } from "@/foundation/ui";
 import { GradeCircle } from "@/capabilities/feedback/GradeCircle";
 import { toneVariant, type MarkedResult, type MarkingRubric } from "@/capabilities/feedback/rubric";
@@ -106,20 +109,19 @@ export function RubricFeedback({
       </div>
 
       {domains.length > 0 ? (
-        <div className={cn("grid grid-cols-1 gap-4", !narrow && domains.length > 1 && "md:grid-cols-2 xl:grid-cols-3")}>
-          {domains.map((domain) => (
-            <DomainCard key={domain.id} domain={domain} />
-          ))}
-        </div>
+        <Dropdown defaultOpen title="Domains Feedback" icon={<HiOutlineSquare3Stack3D aria-hidden />}>
+          <div className={cn("grid grid-cols-1 gap-4", !narrow && domains.length > 1 && "md:grid-cols-2 xl:grid-cols-3")}>
+            {domains.map((domain) => (
+              <DomainCard key={domain.id} domain={domain} />
+            ))}
+          </div>
+        </Dropdown>
       ) : null}
 
       {narrative.map((section) => (
-        <B2CPanelCard key={section.id} className="mt-0">
-          <B2CPanelCardHeader>{section.title}</B2CPanelCardHeader>
-          <B2CPanelCardBody className="space-y-4">
-            <Answers answers={section.answers} />
-          </B2CPanelCardBody>
-        </B2CPanelCard>
+        <Dropdown key={section.id} defaultOpen title={section.title} icon={<HiOutlineListBullet aria-hidden />}>
+          <SectionAnswers answers={section.answers} />
+        </Dropdown>
       ))}
 
       <p className="rounded-lg bg-osce-accent-muted px-4 py-3 text-center text-osce-body font-medium text-osce-accent-hover">
@@ -160,8 +162,34 @@ function DomainCard({ domain }: { domain: DomainView }) {
             <Answers answers={domain.answers} />
           </div>
         ) : null}
+        <GradeCounts competencies={domain.competencies} />
       </B2CPanelCardBody>
     </B2CPanelCard>
+  );
+}
+
+/**
+ * The foot of a domain card: how many competencies got each grade, as the
+ * legacy domain cards showed. Only scale grades are counted; a domain marked
+ * with numbers or ticks has no foot.
+ */
+function GradeCounts({ competencies }: { competencies: CompetencyView[] }) {
+  const countByGrade = new Map<string, { tone: string | null; count: number }>();
+  for (const competency of competencies) {
+    if (competency.rating?.shape !== "grade") continue;
+    const tally = countByGrade.get(competency.rating.text) ?? { tone: competency.rating.tone, count: 0 };
+    countByGrade.set(competency.rating.text, { ...tally, count: tally.count + 1 });
+  }
+  if (countByGrade.size === 0) return null;
+  return (
+    <div className="mt-auto flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-b2c-border pt-4">
+      {[...countByGrade].map(([grade, tally]) => (
+        <span key={grade} className="inline-flex items-center text-osce-body text-b2c-text-secondary">
+          <GradeCircle grade={grade} tone={tally.tone} />
+          <span className="font-semibold text-osce-ink-900">{tally.count}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -219,6 +247,119 @@ const ROLE_ICON: Partial<Record<FieldRole, { icon: IconType; className: string }
   flag: { icon: HiOutlineExclamationTriangle, className: "text-osce-danger" },
   evidence: { icon: HiOutlineChatBubbleLeftEllipsis, className: "text-b2c-text-muted" },
 };
+
+/** How a section-level list reads as a legacy clinical-analysis card: dot, tint and bullet by role. */
+const ROLE_CARD: Partial<Record<FieldRole, { dot: string; body: string; bullet: string }>> = {
+  strength: { dot: "bg-osce-success-icon", body: "bg-osce-success-bg/60", bullet: "•" },
+  improvement: { dot: "bg-osce-warning-text", body: "bg-osce-warning-bg/60", bullet: "→" },
+  action: { dot: "bg-osce-accent", body: "bg-osce-accent-muted/60", bullet: "→" },
+  flag: { dot: "bg-osce-danger", body: "bg-osce-danger-bg/60", bullet: "!" },
+};
+const PLAIN_ROLE_CARD = { dot: "bg-b2c-text-muted", body: "bg-osce-accent-muted/60", bullet: "•" };
+
+/** The three columns of a legacy category card, in their order, by the role of the list they hold. */
+const CATEGORY_COLUMNS: Array<{ role: FieldRole; border: string; title: string; bullet: string }> = [
+  { role: "strength", border: "border-osce-success-icon", title: "text-osce-success-text", bullet: "" },
+  { role: "improvement", border: "border-osce-danger", title: "text-osce-danger-hover", bullet: "" },
+  { role: "action", border: "border-osce-accent-light", title: "text-osce-accent-hover", bullet: "→ " },
+];
+
+type ListAnswer = Extract<AnswerView, { type: "list" }>;
+type GroupAnswer = Extract<AnswerView, { type: "group" }>;
+
+/** A group is a category when it holds a strengths, improvements or actions list. */
+function isCategory(answer: AnswerView): answer is GroupAnswer {
+  return (
+    answer.type === "group" &&
+    answer.answers.some(
+      (child) => child.type === "list" && CATEGORY_COLUMNS.some((column) => column.role === child.role),
+    )
+  );
+}
+
+/**
+ * A narrative section's answers, laid out as the legacy feedback screen: each
+ * list a tinted card in a two-column grid (clinical analysis), each category
+ * group a card of strengths / improvements / actions columns, and anything
+ * else by its own type. Decided by field type and role, never by exam.
+ */
+function SectionAnswers({ answers }: { answers: AnswerView[] }) {
+  const lists = answers.filter((answer): answer is ListAnswer => answer.type === "list");
+  const categories = answers.filter(isCategory);
+  const others = answers.filter((answer) => answer.type !== "list" && !isCategory(answer));
+  return (
+    <div className="space-y-4">
+      {others.length > 0 ? <Answers answers={others} /> : null}
+      {lists.length > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {lists.map((list) => (
+            <ListCard key={list.label} answer={list} />
+          ))}
+        </div>
+      ) : null}
+      {categories.map((category) => (
+        <CategoryCard key={category.label} answer={category} />
+      ))}
+    </div>
+  );
+}
+
+function ListCard({ answer }: { answer: ListAnswer }) {
+  const look = ROLE_CARD[answer.role] ?? PLAIN_ROLE_CARD;
+  return (
+    <B2CPanelCard className="mt-0">
+      <B2CPanelCardHeader>
+        <span className={cn("h-2 w-2 shrink-0 rounded-full", look.dot)} aria-hidden />
+        {answer.label}
+      </B2CPanelCardHeader>
+      <B2CPanelCardBody className={look.body}>
+        <ul className="space-y-2">
+          {answer.items.map((item, index) => (
+            <li key={index} className="flex gap-2 text-osce-body leading-relaxed text-b2c-text-secondary">
+              <span className="shrink-0 font-semibold" aria-hidden>
+                {look.bullet}
+              </span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </B2CPanelCardBody>
+    </B2CPanelCard>
+  );
+}
+
+function CategoryCard({ answer }: { answer: GroupAnswer }) {
+  const columns = CATEGORY_COLUMNS.flatMap((column) => {
+    const list = answer.answers.find(
+      (child): child is ListAnswer => child.type === "list" && child.role === column.role,
+    );
+    return list ? [{ ...column, list }] : [];
+  });
+  const rest = answer.answers.filter((child) => !columns.some((column) => column.list === child));
+  return (
+    <B2CPanelCard className="mt-0">
+      <B2CPanelCardHeader>{answer.label}</B2CPanelCardHeader>
+      <B2CPanelCardBody className="space-y-4">
+        {rest.length > 0 ? <Answers answers={rest} /> : null}
+        <div className="flex flex-col gap-6 lg:flex-row">
+          {columns.map((column) => (
+            <div key={column.role} className={cn("w-full border-l-4 pl-4 lg:flex-1", column.border)}>
+              <h4 className={cn("mb-4 font-medium", column.title)}>{column.list.label}</h4>
+              <ul className="space-y-2">
+                {column.list.items.map((item, index) => (
+                  <li key={index} className="text-osce-body leading-relaxed text-b2c-text-secondary">
+                    {column.bullet}
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </B2CPanelCardBody>
+    </B2CPanelCard>
+  );
+}
 
 function Answers({ answers }: { answers: AnswerView[] }) {
   return (

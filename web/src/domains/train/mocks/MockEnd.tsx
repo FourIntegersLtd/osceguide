@@ -203,7 +203,11 @@ export function MockEnd({ setId }: { setId: string }) {
                       </ul>
                     )}
 
-                    <StationOutcomes rows={rows} feedbackHref={feedbackHref} />
+                    {/* A station already listed above (marking, or just marked) is not listed twice. */}
+                    <StationOutcomes
+                      rows={rows.filter((row) => !markingRows.includes(row) && !readyRows.includes(row))}
+                      feedbackHref={feedbackHref}
+                    />
 
                     {(stationsCompleted > 0 || badgeCount > 0) && (
                       <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-b2c-border pt-4 text-osce-body">

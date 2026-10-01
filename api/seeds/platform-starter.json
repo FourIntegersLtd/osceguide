@@ -132,7 +132,7 @@
               "title": "Tasks",
               "instructions": "Detailed assessment of clinical task performance OF THE DOCTOR with RAG scoring.",
               "kind": "domain",
-              "live": false,
+              "live": true,
               "competencies": [
                 {
                   "id": "opens_consultation",
@@ -278,7 +278,7 @@
               "title": "Relating to others",
               "instructions": "Interpersonal and communication skill analysis OF THE DOCTOR   with RAG scoring.",
               "kind": "domain",
-              "live": false,
+              "live": true,
               "competencies": [
                 {
                   "id": "clarifies_cues",

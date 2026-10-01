@@ -55,6 +55,8 @@ export function ConsultationPanel({
 
       {session.phase === "live" && session.grant ? (
         <VoiceRoom
+          // Bottom-aligned as the legacy room: the stage sits just above the controls.
+          className="flex min-h-0 w-full flex-1 flex-col justify-end gap-4"
           grant={session.grant}
           onConnected={session.attachRoom}
           onError={session.reportError}
@@ -145,7 +147,7 @@ function ConsultationLiveStage({
       : (AGENT_STATE_LABEL[state] ?? state);
 
   return (
-    <div className="flex w-full flex-1 flex-col gap-4">
+    <div className="flex w-full shrink-0 flex-col gap-4">
       <div className="relative flex w-full shrink-0 flex-col items-center justify-center overflow-hidden py-2">
         <div className="z-10 w-full max-w-md px-2">
           <ConsultationPatientHeader patient={patient} className="mb-2" />
@@ -171,7 +173,7 @@ function ConsultationLiveStage({
         </div>
       </div>
 
-      <div className="mt-auto w-full px-2">
+      <div className="w-full px-2">
         <ConsultationConnectionStatus />
         {isStarting ? (
           <Button
