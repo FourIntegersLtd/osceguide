@@ -86,7 +86,7 @@ function SuggestionCard({
         <p className="text-osce-meta font-medium text-osce-accent">{link?.eyebrow ?? "Suggested"}</p>
         <Dismiss onClick={onDismiss} />
       </header>
-      <p className="mt-1 text-osce-body font-semibold text-osce-ink-900">{card.title}</p>
+      <p className="mt-1 font-sans text-osce-body font-medium leading-snug text-osce-ink-900">{card.title}</p>
       {card.reason ? (
         <p className="mt-1 text-osce-meta leading-relaxed text-osce-ink-600">{card.reason}</p>
       ) : null}

@@ -66,7 +66,7 @@ export function AthenaIdentity({
       >
         {avatar}
         <div className="min-w-0">
-          <p className={cn(b2cGroupedRowTitle, "truncate font-semibold leading-tight")}>
+          <p className={cn(b2cGroupedRowTitle, "truncate font-heading font-semibold leading-tight")}>
             {title}
           </p>
           {description != null ? (

@@ -1,6 +1,7 @@
 "use client";
 import { LuMousePointer2, LuWand } from "react-icons/lu";
 import { AthenaIdentity } from "@/foundation/ui";
+import { helpType } from "@/foundation/ui/helpType";
 import { HelpTranscriptions } from "@/foundation/livekit/HelpTranscriptions";
 import { isUiGuidanceEnabled, UiGuidanceOverlay, GuidanceProgressPanel, AssistantCards } from "@/foundation/livekit/guidance";
 import { useSurface } from "@/capabilities/SurfaceContext";
@@ -29,7 +30,7 @@ export function HelpVoiceContent({
                 <span className="w-1.5 h-1.5 rounded-full bg-osce-accent-light animate-bounce [animation-delay:150ms]" />
                 <span className="w-1.5 h-1.5 rounded-full bg-osce-accent-light animate-bounce [animation-delay:300ms]" />
               </div>
-              <p className="text-osce-accent text-osce-caption">
+              <p className="text-osce-meta text-osce-accent">
                 {navigationMode === "automate" && isUiGuidanceEnabled()
                   ? "Hands-off navigation in progress…"
                   : "Capturing and analysing your screen…"}
@@ -39,7 +40,7 @@ export function HelpVoiceContent({
 
           {state !== "disconnected" && (
             <div className="mb-3 flex min-h-[160px] flex-col overflow-hidden rounded-lg border border-osce-border">
-              <div className="shrink-0 border-b bg-osce-canvas p-2 font-medium text-osce-ink-600">
+              <div className={`shrink-0 border-b border-osce-border-light bg-osce-canvas px-3 py-2 ${helpType.groupLabel}`}>
                 Transcription
               </div>
               <HelpTranscriptions className="min-h-[120px] flex-1" />
@@ -57,10 +58,10 @@ export function HelpVoiceContent({
               aria-label="Navigation style"
             >
               <div className="mb-3">
-                <p className="text-osce-body font-semibold text-osce-ink-900">
+                <p className={helpType.title}>
                   How should Athena navigate?
                 </p>
-                <p className="mt-1 text-osce-meta leading-relaxed text-osce-ink-500">
+                <p className={`mt-1 ${helpType.support}`}>
                   Choose a mode for this chat. You can change it anytime.
                 </p>
               </div>
@@ -88,7 +89,7 @@ export function HelpVoiceContent({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
-                      <span className="text-osce-body font-semibold text-osce-ink-900">
+                      <span className={helpType.rowTitle}>
                         Guide me
                       </span>
                       <span
@@ -100,7 +101,7 @@ export function HelpVoiceContent({
                         aria-hidden
                       />
                     </span>
-                    <span className="mt-1 block text-osce-meta leading-relaxed text-osce-ink-500">
+                    <span className={`mt-1 block ${helpType.support}`}>
                       Athena highlights what to tap. You take each step.
                     </span>
                   </span>
@@ -128,7 +129,7 @@ export function HelpVoiceContent({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2">
-                      <span className="text-osce-body font-semibold text-osce-ink-900">
+                      <span className={helpType.rowTitle}>
                         Navigate for me
                       </span>
                       <span
@@ -140,7 +141,7 @@ export function HelpVoiceContent({
                         aria-hidden
                       />
                     </span>
-                    <span className="mt-1 block text-osce-meta leading-relaxed text-osce-ink-500">
+                    <span className={`mt-1 block ${helpType.support}`}>
                       Athena clicks for you while you stay on voice.
                     </span>
                   </span>

@@ -6,6 +6,7 @@ import { BsInfoCircleFill } from "react-icons/bs";
 import { B2CPanelCard, B2CPanelCardHeader, Button } from "@/foundation/ui";
 import MarkdownRenderer from "@/foundation/ui/MarkdownRenderer";
 import mdStyles from "@/foundation/ui/markdown.module.css";
+import { helpType } from "@/foundation/ui/helpType";
 import { errorMessage } from "@/foundation/hooks";
 import { askKnowledge } from "./api";
 import { DiscussWithAthena } from "./DiscussWithAthena";
@@ -80,19 +81,19 @@ export function KnowledgeBaseChat({
               <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-osce-accent-muted text-osce-accent">
                 <MdMenuBook className="h-5 w-5" aria-hidden />
               </span>
-              <h3 className="text-osce-body font-semibold text-osce-ink-900">
+              <h3 className={helpType.title}>
                 Knowledge base
               </h3>
-              <p className="mt-1 max-w-[18rem] text-osce-meta leading-relaxed text-osce-ink-500">
+              <p className={`mt-1 max-w-[18rem] ${helpType.support}`}>
                 Ask about conditions, management, and clinical content from our
                 summaries.
               </p>
             </div>
 
-            <h3 className="text-osce-body font-semibold tracking-tight text-osce-ink-900">
+            <h3 className={helpType.title}>
               Try asking
             </h3>
-            <p className="mt-0.5 text-osce-meta text-osce-ink-500">
+            <p className={`mt-0.5 ${helpType.support}`}>
               Tap a suggestion or type your own question below
             </p>
 
@@ -110,7 +111,7 @@ export function KnowledgeBaseChat({
                       disabled={loading}
                       className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-osce-canvas disabled:opacity-60"
                     >
-                      <span className="min-w-0 flex-1 text-osce-body font-medium leading-snug text-osce-ink-900">
+                      <span className={`min-w-0 flex-1 ${helpType.rowTitle}`}>
                         {q}
                       </span>
                       <HiOutlineChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-osce-ink-400" />
@@ -130,7 +131,7 @@ export function KnowledgeBaseChat({
                 <div
                   className={`max-w-[90%] rounded-xl px-3.5 py-2.5 ${
                     m.role === "user"
-                      ? "bg-osce-accent-muted text-osce-body leading-relaxed text-osce-accent-hover"
+                      ? `bg-osce-accent-muted ${helpType.prose} text-osce-accent-hover`
                       : "border border-osce-border-light bg-white text-osce-ink-800 shadow-sm"
                   }`}
                 >
@@ -147,7 +148,7 @@ export function KnowledgeBaseChat({
             ))}
             {loading ? (
               <div className="flex justify-start shrink-0">
-                <div className="rounded-xl border border-osce-border-light bg-white px-3.5 py-2.5 text-osce-meta text-osce-ink-500 shadow-sm">
+                <div className="rounded-xl border border-osce-border-light bg-white px-3.5 py-2.5 text-osce-meta leading-relaxed text-osce-ink-500 shadow-sm">
                   Searching knowledge base…
                 </div>
               </div>

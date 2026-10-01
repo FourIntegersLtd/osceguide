@@ -17,6 +17,7 @@ import {
 import type { IconType } from "react-icons";
 import MarkdownRenderer from "@/foundation/ui/MarkdownRenderer";
 import mdStyles from "@/foundation/ui/markdown.module.css";
+import { helpType } from "@/foundation/ui/helpType";
 import {
   fetchHelpArticle,
   fetchHelpArticles,
@@ -237,10 +238,10 @@ function BrowsePanel({
 
   return (
     <div className="w-full pb-2">
-      <h3 className="text-osce-body font-semibold tracking-tight text-osce-ink-900">
+      <h3 className={helpType.title}>
         Help topics
       </h3>
-      <p className="mt-0.5 text-osce-meta text-osce-ink-500">
+      <p className={`mt-0.5 ${helpType.support}`}>
         Search guides or browse by category
       </p>
 
@@ -273,7 +274,7 @@ function BrowsePanel({
                 : "No results"}
           </B2CPanelCardHeader>
           {searching ? null : searchResults.length === 0 ? (
-            <p className="px-4 py-4 text-osce-meta text-osce-ink-500">
+            <p className={`px-4 py-4 ${helpType.support}`}>
               Try different words or browse categories below.
             </p>
           ) : (
@@ -289,16 +290,16 @@ function BrowsePanel({
                     className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-b2c-surface-muted"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-osce-body font-medium text-osce-ink-900">
+                      <span className={`block ${helpType.rowTitle}`}>
                         {article.title}
                       </span>
                       {article.summary ? (
-                        <span className="mt-0.5 block text-osce-meta leading-relaxed text-osce-ink-500">
+                        <span className={`mt-0.5 block ${helpType.support}`}>
                           {article.summary}
                         </span>
                       ) : null}
                       {article.category_title ? (
-                        <span className="mt-1 block text-osce-caption text-osce-ink-400">
+                        <span className="mt-1 block text-osce-meta text-osce-ink-400">
                           {article.category_title}
                         </span>
                       ) : null}
@@ -337,10 +338,10 @@ function BrowsePanel({
                         <Icon className="h-4 w-4" aria-hidden />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-osce-body font-medium text-osce-ink-900">
+                        <span className={`block ${helpType.rowTitle}`}>
                           {cat.title}
                         </span>
-                        <span className="mt-0.5 block text-osce-meta leading-relaxed text-osce-ink-500">
+                        <span className={`mt-0.5 block ${helpType.support}`}>
                           {cat.description}
                         </span>
                       </span>
@@ -407,11 +408,11 @@ function CategoryPanel({
 
   return (
     <div className="w-full pb-2">
-      <h3 className="text-osce-body font-semibold tracking-tight text-osce-ink-900">
+      <h3 className={helpType.title}>
         {heading}
       </h3>
       {sub ? (
-        <p className="mt-0.5 text-osce-meta leading-relaxed text-osce-ink-500">{sub}</p>
+        <p className={`mt-0.5 ${helpType.support}`}>{sub}</p>
       ) : null}
 
       {loading ? (
@@ -440,11 +441,11 @@ function CategoryPanel({
                   className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-b2c-surface-muted"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block text-osce-body font-medium text-osce-ink-900">
+                    <span className={`block ${helpType.rowTitle}`}>
                       {article.title}
                     </span>
                     {article.summary ? (
-                      <span className="mt-0.5 block text-osce-meta leading-relaxed text-osce-ink-500">
+                      <span className={`mt-0.5 block ${helpType.support}`}>
                         {article.summary}
                       </span>
                     ) : null}
@@ -529,7 +530,7 @@ function ArticlePanel({
 
   return (
     <div className="w-full pb-2">
-      <h3 className="text-osce-body font-semibold leading-snug tracking-[-0.02em] text-osce-ink-900">
+      <h3 className={helpType.title}>
         {article.title}
       </h3>
       <div className="mt-3">
@@ -540,7 +541,7 @@ function ArticlePanel({
       </div>
       {article.related_slugs?.length ? (
         <div className="mt-7 border-t border-osce-border-light pt-5">
-          <p className="text-osce-body font-semibold tracking-[-0.01em] text-osce-ink-900">
+          <p className={helpType.title}>
             Related
           </p>
           <ul className="mt-2.5 space-y-2">
@@ -549,7 +550,7 @@ function ArticlePanel({
                 <button
                   type="button"
                   onClick={() => onOpenArticle(relatedSlug)}
-                  className="text-left text-osce-meta font-medium text-osce-accent underline-offset-2 hover:underline"
+                  className={`text-left ${helpType.link}`}
                 >
                   {relatedTitles[relatedSlug] ||
                     relatedSlug.replace(/-/g, " ")}

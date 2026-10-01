@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMaybeRoomContext } from "@livekit/components-react";
 import { RoomEvent, type Participant, type TranscriptionSegment } from "livekit-client";
+import { helpType } from "@/foundation/ui/helpType";
 
 interface StoredTranscription {
   segment: TranscriptionSegment;
@@ -72,19 +73,19 @@ export function HelpTranscriptions({ className }: { className?: string }) {
                   <div className="flex items-start overflow-hidden">
                     {!isUser && (
                       <div className="mr-2 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-osce-border-light">
-                        <span className=" font-medium text-osce-ink-600">A</span>
+                        <span className="text-osce-meta font-medium text-osce-ink-500">A</span>
                       </div>
                     )}
 
                     <div
-                      className={` w-auto max-w-[80%] rounded-lg px-2.5 py-1.5 ${
+                      className={`w-auto max-w-[80%] rounded-lg px-2.5 py-1.5 ${helpType.prose} ${
                         isUser
                           ? "bg-osce-accent-subtle text-osce-accent-hover"
                           : "bg-osce-border-light text-osce-ink-900"
                       } overflow-hidden whitespace-pre-wrap break-words`}
                     >
-                      <p className=" ">{segment.text}</p>
-                      <span className="mt-0.5 block text-osce-ink-500">
+                      <p>{segment.text}</p>
+                      <span className="mt-0.5 block text-osce-meta text-osce-ink-500">
                         {(() => {
                           const v = segment.firstReceivedTime;
                           const d =
@@ -103,7 +104,7 @@ export function HelpTranscriptions({ className }: { className?: string }) {
 
                     {isUser && (
                       <div className="ml-2 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-osce-accent-subtle">
-                        <span className=" font-medium text-osce-accent">Y</span>
+                        <span className="text-osce-meta font-medium text-osce-accent">Y</span>
                       </div>
                     )}
                   </div>
@@ -113,7 +114,7 @@ export function HelpTranscriptions({ className }: { className?: string }) {
         </div>
       ) : (
         <div className="h-full flex items-center justify-center">
-          <p className="text-osce-ink-400  text-center italic">
+          <p className={`text-center ${helpType.support}`}>
             Transcript will appear here
           </p>
         </div>

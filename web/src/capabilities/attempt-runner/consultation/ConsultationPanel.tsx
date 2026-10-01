@@ -11,12 +11,11 @@ import { HiOutlineMicrophone, HiOutlinePhoneXMark } from "react-icons/hi2";
 import { Alert, Button, ConfirmModal, Spinner, cn, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { VoiceRoom, useMicPreflight } from "@/foundation/livekit";
-import LivekitIdleState from "@/foundation/livekit/LivekitIdleState";
+import LivekitIdleState, { LivekitAvatarMotif } from "@/foundation/livekit/LivekitIdleState";
 import { ConsultationConnectionStatus } from "@/capabilities/attempt-runner/consultation/ConsultationConnectionStatus";
 import { AGENT_STATE_LABEL } from "@/foundation/livekit/types";
 import type { AttemptSession } from "@/capabilities/attempt-runner/useAttemptSession";
 import type { ConsultationPatient } from "@/capabilities/attempt-runner/consultation/patientIdentity";
-import { ConsultationPatientHeader } from "@/capabilities/attempt-runner/consultation/ConsultationPatientHeader";
 import { WaitingInLine } from "@/capabilities/attempt-runner/WaitingInLine";
 
 const { b2cLivekitEndButton } = productTokens;
@@ -31,7 +30,7 @@ export interface ConsultationPanelProps {
 
 /**
  * Left-hand consultation column — layout matches legacy `LivekitConsultationService`:
- * patient header and visualiser above; Connecting… or End Consultation below.
+ * patient monogram and visualiser above; Connecting… or End Consultation below.
  */
 export function ConsultationPanel({
   session,
@@ -65,7 +64,7 @@ export function ConsultationPanel({
           }}
         >
           <ConsultationLiveStage
-            patient={patient}
+            initials={patient.initials}
             onRequestEnd={() => setConfirmingEnd(true)}
           />
         </VoiceRoom>
@@ -84,8 +83,6 @@ export function ConsultationPanel({
         <>
           <LivekitIdleState
             avatar={{ kind: "monogram", initials: patient.initials }}
-            title={patient.name}
-            subtitle={patient.detail || undefined}
             durationMinutes={Math.round(durationSeconds / 60)}
             showReadiness={!disabledReason && session.phase !== "ended"}
           />
@@ -124,10 +121,10 @@ export function ConsultationPanel({
 
 /** Visualiser + controls; must render inside `VoiceRoom`. */
 function ConsultationLiveStage({
-  patient,
+  initials,
   onRequestEnd,
 }: {
-  patient: ConsultationPatient;
+  initials: string;
   onRequestEnd: () => void;
 }) {
   const { state, audioTrack } = useVoiceAssistant();
@@ -150,7 +147,8 @@ function ConsultationLiveStage({
     <div className="flex w-full shrink-0 flex-col gap-4">
       <div className="relative flex w-full shrink-0 flex-col items-center justify-center overflow-hidden py-2">
         <div className="z-10 w-full max-w-md px-2">
-          <ConsultationPatientHeader patient={patient} className="mb-2" />
+          {/* The same ringed monogram as before the call starts; no biodata line. */}
+          <LivekitAvatarMotif avatar={{ kind: "monogram", initials }} className="mx-auto mb-2" />
           <div className="h-28 w-full lg:h-20">
             <BarVisualizer
               state={state}

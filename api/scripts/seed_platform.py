@@ -189,7 +189,9 @@ async def republish_existing(session: Any, code: str, spec: dict[str, Any], now:
         structure=spec["structure"],
         system_prompt=spec["system_prompt"],
         pacing=dict(spec["pacing"]),
-        marking_layout=current.marking_layout,
+        # A version bound before layouts existed has none, and a platform
+        # rubric cannot publish without one: fall back as a fresh seed does.
+        marking_layout=current.marking_layout or spec.get("marking_layout") or DEFAULT_MARKING_LAYOUT,
     )
     published = await rubrics.publish_version(
         session, None, current.rubric_id, draft.version, actor_id=None, now=now

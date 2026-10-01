@@ -226,7 +226,8 @@ export default function LivekitIdleState({
   className = "",
 }: {
   avatar: LivekitIdleAvatar;
-  title: string;
+  /** Omitted where the avatar alone says who this is (the consultation column). */
+  title?: string;
   subtitle?: string;
   durationMinutes?: number;
   showReadiness?: boolean;
@@ -241,14 +242,16 @@ export default function LivekitIdleState({
     >
       <LivekitAvatarMotif avatar={avatar} />
 
-      <div className="min-w-0">
-        <p className={cn(b2cGroupedRowTitle, "truncate font-semibold")}>
-          {title}
-        </p>
-        {subtitle ? (
-          <p className={cn(b2cBodyTextMuted, "mt-0.5")}>{subtitle}</p>
-        ) : null}
-      </div>
+      {title ? (
+        <div className="min-w-0">
+          <p className={cn(b2cGroupedRowTitle, "truncate font-semibold")}>
+            {title}
+          </p>
+          {subtitle ? (
+            <p className={cn(b2cBodyTextMuted, "mt-0.5")}>{subtitle}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       {showReadiness ? (
         <LivekitReadinessChecklist durationMinutes={durationMinutes} />

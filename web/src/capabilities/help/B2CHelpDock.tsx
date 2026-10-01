@@ -25,6 +25,7 @@ import { errorMessage } from "@/foundation/hooks";
 import { useSession, useCurrentExam, helpModeChoice } from "@/foundation/session";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { assistantSurfaceFor } from "@/capabilities/surface";
+import { helpType } from "@/foundation/ui/helpType";
 import { KnowledgeBaseChat } from "./KnowledgeBaseChat";
 import HelpArticleBrowse from "@/capabilities/help/HelpArticleBrowse";
 import { AthenaFab } from "@/capabilities/help/AthenaFab";
@@ -90,7 +91,7 @@ function HelpChoiceScreen({
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
           </div>
-          <span className="font-medium text-white">Athena</span>
+          <span className={helpType.barTitle}>Athena</span>
         </div>
         <div className="flex items-center gap-0.5">
           <HelpWideToggle isWide={isWide} onToggle={onToggleWide} />
@@ -102,10 +103,10 @@ function HelpChoiceScreen({
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
         <AthenaIdentity className="mb-4" />
-        <h3 className="text-osce-body font-semibold tracking-tight text-osce-ink-900">
+        <h3 className={helpType.title}>
           How can we help?
         </h3>
-        <p className="mt-0.5 text-osce-meta text-osce-ink-500">Choose one option to get started</p>
+        <p className={`mt-0.5 ${helpType.support}`}>Choose one option to get started</p>
 
         <B2CPanelCard className="mt-4">
           <B2CPanelCardHeader>Options</B2CPanelCardHeader>
@@ -120,10 +121,10 @@ function HelpChoiceScreen({
                   <LuCircleHelp className="h-4 w-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-osce-body font-medium text-osce-ink-900">
+                  <span className={`block ${helpType.rowTitle}`}>
                     Talk to Athena
                   </span>
-                  <span className="mt-0.5 block text-osce-meta leading-relaxed text-osce-ink-500">
+                  <span className={`mt-0.5 block ${helpType.support}`}>
                     Ask about your practice, a condition or the app, or browse the guides
                   </span>
                 </span>
@@ -140,10 +141,10 @@ function HelpChoiceScreen({
                   <MdMenuBook className="h-4 w-4" aria-hidden />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-osce-body font-medium text-osce-ink-900">
+                  <span className={`block ${helpType.rowTitle}`}>
                     Ask our knowledge base
                   </span>
-                  <span className="mt-0.5 block text-osce-meta leading-relaxed text-osce-ink-500">
+                  <span className={`mt-0.5 block ${helpType.support}`}>
                     Questions about conditions and management
                   </span>
                 </span>
@@ -235,7 +236,7 @@ function NavigateHelpPanel({
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
           </div>
-          <span className="font-medium text-white">Athena</span>
+          <span className={helpType.barTitle}>Athena</span>
         </div>
         <div className="flex items-center gap-0.5">
           <HelpWideToggle isWide={isWide} onToggle={onToggleWide} />
@@ -310,7 +311,7 @@ function NavigateHelpPanel({
         )}
         {!inCall && screenGuidanceAvailable && <Button type="button" variant="secondary" size="md" fullWidth disabled={starting} className="mt-2 gap-1.5" onClick={() => void startVoice("guide", "help")}><LuMousePointer2 className="h-4 w-4" /><span>Guide me on screen</span></Button>}
         <div className="mt-2 px-1 text-center sm:px-2">
-          <p className="text-osce-meta text-osce-ink-500">
+          <p className={helpType.support}>
             {inCall
               ? "If you still need further help, keep talking with Athena"
               : "Search guides above for instant answers"}
@@ -405,7 +406,7 @@ export function B2CHelpDock({
             <div className="rounded-full bg-white/20 p-1.5">
               <MdMenuBook className="h-4 w-4 text-white" />
             </div>
-            <span className="font-medium text-white">Knowledge base</span>
+            <span className={helpType.barTitle}>Knowledge base</span>
           </div>
           <div className="flex items-center gap-0.5">
             <HelpWideToggle isWide={isWide} onToggle={toggleWide} />
