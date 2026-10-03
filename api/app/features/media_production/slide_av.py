@@ -24,6 +24,7 @@ from PIL import Image
 
 from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
+from app.features.media_production.podcast_tts import ffmpeg_binary
 from app.features.media_production.s3 import s3_client
 from app.features.media_production.slide_narration import (
     is_question,
@@ -344,10 +345,7 @@ def _frame(takes: list[_Take], starts: list[float], total: float, moment: float)
 
 def _film(takes: list[_Take], total: float, soundtrack: Path, destination: Path) -> None:
     """Draws every frame and has ffmpeg encode them with the soundtrack into an mp4."""
-    ffmpeg = shutil.which("ffmpeg")
-    if not ffmpeg:
-        raise AvUnavailable("ffmpeg is not installed")
-    command = [ffmpeg, "-y", "-loglevel", "error"]
+    command = [ffmpeg_binary(), "-y", "-loglevel", "error"]
     command += ["-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{WIDTH}x{HEIGHT}", "-r", str(FPS), "-i", "-"]
     command += ["-i", str(soundtrack), "-c:v", "libx264", "-preset", "medium", "-crf", "20"]
     command += ["-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart"]

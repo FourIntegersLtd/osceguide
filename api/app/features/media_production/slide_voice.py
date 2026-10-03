@@ -5,7 +5,6 @@ into the same folder is reused, so re-rendering a deck's look does not pay for i
 from __future__ import annotations
 
 import hashlib
-import io
 import wave
 from pathlib import Path
 
@@ -15,7 +14,7 @@ from pydub.silence import detect_leading_silence
 
 from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
-from app.features.media_production.podcast_tts import dialogue_mp3
+from app.features.media_production.podcast_tts import dialogue_mp3, mp3_audio
 
 SILENCE_THRESHOLD_DBFS = -45.0
 LEAD_IN_MS = 40
@@ -51,7 +50,7 @@ def speak(
     finally:
         if owned:
             http.close()
-    speech = _trim_silence(AudioSegment.from_mp3(io.BytesIO(mp3)))
+    speech = _trim_silence(mp3_audio(mp3))
     pause = AudioSegment.silent(duration=TAIL_PAUSE_MS, frame_rate=speech.frame_rate)
     clip = (speech + pause).set_channels(2).set_frame_rate(SAMPLE_RATE).set_sample_width(2)
     # Written under another name first: a half-written file must never be taken for a voiced line.

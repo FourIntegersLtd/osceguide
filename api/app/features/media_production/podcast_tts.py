@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import io
 import re
+import shutil
 import time
 from pathlib import Path
 from typing import Any
 
 import httpx
+from moviepy.config import FFMPEG_BINARY
 from pydub import AudioSegment
 
 from app.core.settings import Settings
@@ -25,6 +27,20 @@ DIALOGUE_STABILITY = 0.5
 _SUMMARY_SECTIONS = ("red_flags", "examinations", "brief_management", "psychosocial_aspects")
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _MAX_ATTEMPTS = 8
+
+
+def ffmpeg_binary() -> str:
+    """The system ffmpeg when there is one, else the copy MoviePy bundles: the api's Railway
+    image installs no system packages, so a worker there has only the bundled one."""
+    return shutil.which("ffmpeg") or str(FFMPEG_BINARY)
+
+
+AudioSegment.converter = ffmpeg_binary()
+
+
+def mp3_audio(mp3: bytes) -> AudioSegment:
+    """Decodes mp3 bytes. Naming the codec stops pydub asking ffprobe, which the bundled ffmpeg lacks."""
+    return AudioSegment.from_file(io.BytesIO(mp3), format="mp3", codec="mp3")
 
 
 def _require_av_settings(settings: Settings) -> None:
@@ -111,7 +127,7 @@ def synthesize_podcast_mp3(settings: Settings, script: str, work_dir: Path, base
     combined = AudioSegment.empty()
     with httpx.Client(timeout=httpx.Timeout(180.0)) as client:
         for chunk in _chunks(turns):
-            combined += AudioSegment.from_mp3(io.BytesIO(dialogue_mp3(settings, client, chunk)))
+            combined += mp3_audio(dialogue_mp3(settings, client, chunk))
     mp3 = work_dir / f"{basename}.mp3"
     combined.set_frame_rate(44100).set_channels(2).export(mp3, format="mp3", bitrate="192k")
     return mp3

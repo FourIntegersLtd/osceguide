@@ -1,6 +1,6 @@
-"""Copy already-generated v4 podcast audio URLs from one database to another, without
-generating anything. Rows are matched by (kind, slug), so the target must hold the same
-summaries and podcasts as the source.
+"""Copy already-generated v4 podcast audio URLs and narrated slide decks from one database to
+another, without generating anything. Rows are matched by (kind, slug), so the target must hold
+the same summaries, podcasts and slide decks as the source.
 
     R="railway run -s platform-postgres -e staging poetry run python scripts/copy_podcast_urls.py"
     $R export urls.json --database-url-env RAILWAY_PROXY
@@ -11,6 +11,7 @@ summaries and podcasts as the source.
     $R apply urls.json --database-url-env RAILWAY_PROXY --live     # writes
 
 Only content.podcast_url (summaries) or content.audio_url (podcasts), plus content.script, change.
+A slide deck narrated in Ben's voice is copied whole: its video, narration, speaker notes and pictures.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import regenerate_podcasts as rp  # same folder; loads .env and the app
+from regenerate_slides import NARRATION_MARK  # noqa: E402  # same folder
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
@@ -31,6 +33,7 @@ from app.core.settings import get_settings  # noqa: E402
 from app.features.media.models import MediaItem  # noqa: E402
 
 URL_KEY = {"summary": "podcast_url", "podcast": "audio_url"}
+SLIDE_DECK = "slide_deck"
 
 
 async def _run(args: argparse.Namespace) -> int:
@@ -42,7 +45,9 @@ async def _run(args: argparse.Namespace) -> int:
     print(f"database host: {host} ({'local' if is_local else 'REMOTE'})")  # noqa: T201
     engine = get_engine()
     async with AsyncSession(engine, expire_on_commit=False) as session:
-        rows = (await session.scalars(select(MediaItem).where(MediaItem.kind.in_(tuple(URL_KEY))))).all()
+        rows = (
+            await session.scalars(select(MediaItem).where(MediaItem.kind.in_((*URL_KEY, SLIDE_DECK))))
+        ).all()
         if args.command == "export":
             items = [
                 {
@@ -52,10 +57,14 @@ async def _run(args: argparse.Namespace) -> int:
                     "script": r.content.get("script"),
                 }
                 for r in rows
-                if rp.V4_MARK in str(r.content.get(URL_KEY[r.kind]) or "")
+                if r.kind in URL_KEY and rp.V4_MARK in str(r.content.get(URL_KEY[r.kind]) or "")
+            ] + [
+                {"kind": r.kind, "slug": r.slug, "content": r.content}
+                for r in rows
+                if r.kind == SLIDE_DECK and r.content.get("narration_voice") == NARRATION_MARK
             ]
             Path(args.file).write_text(json.dumps(items, indent=1))
-            print(f"exported {len(items)} v4 urls to {args.file}")  # noqa: T201
+            print(f"exported {len(items)} podcast urls and narrated slide decks to {args.file}")  # noqa: T201
         else:
             if not is_local and not args.live and not args.dry_run:
                 sys.exit("refusing to write to a remote database without --live")
@@ -65,6 +74,9 @@ async def _run(args: argparse.Namespace) -> int:
             print(f"{len(matched)} of {len(items)} match a row here")  # noqa: T201
             if args.live:
                 for row, item in matched:
+                    if row.kind == SLIDE_DECK:
+                        row.content = item["content"]
+                        continue
                     update = {URL_KEY[row.kind]: item["url"]}
                     if item.get("script"):
                         update["script"] = item["script"]
