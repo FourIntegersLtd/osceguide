@@ -1,5 +1,7 @@
 "use client";
 
+import { useSession } from "@/foundation/session";
+import { practiceTimers } from "@/capabilities/attempt-runner";
 import { memo, type ReactNode } from "react";
 import Link from "next/link";
 import { HiArrowRight } from "react-icons/hi";
@@ -99,13 +101,14 @@ const SessionCard = memo(function SessionCard({
 }) {
   const { hrefFor } = useSurface();
   const state = sessionState(set);
+  const { session } = useSession();
   const minutes = sessionMinutes(
     set.total_entries,
     exam
-      ? {
+      ? practiceTimers(session?.user, {
           readingSeconds: exam.default_reading_seconds,
           simulationSeconds: exam.default_simulation_seconds,
-        }
+        })
       : null,
   );
 

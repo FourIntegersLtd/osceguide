@@ -26,8 +26,8 @@ const DEFAULT_SIMULATION_SECONDS = 12 * 60;
  * Access arrangements, AI consent and the waiting-colleague email.
  *
  * A card of switches and a card of the two custom timers, saved together with
- * one button (canvas `train-settings-prefs`). The timers only apply while
- * "Extra reading time" is on (`users.needs_extra_time`).
+ * one button (canvas `train-settings-prefs`). The timers apply to practice
+ * whether or not "Extra reading time" is on.
  *
  * It applies to a person's own practice only. An institution's circuit runs on
  * one clock for everybody on it, and stretching it for one candidate would

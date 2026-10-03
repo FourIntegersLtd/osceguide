@@ -12,6 +12,8 @@ import {
 } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { useAsync } from "@/foundation/hooks";
+import { useSession } from "@/foundation/session";
+import { practiceTimers } from "@/capabilities/attempt-runner";
 import { hasCode } from "@/foundation/platform-client";
 import { listExams } from "@/capabilities/stations";
 import { loadStationCatalogue, readSet } from "@/domains/train/api";
@@ -39,6 +41,7 @@ function Stat({ label, value }: { label: string; value: string }) {
  */
 export function MockDetail({ setId }: { setId: string }) {
   const { hrefFor } = useSurface();
+  const { session } = useSession();
   const [micReady, setMicReady] = useState(false);
   const state = useAsync(
     async (signal) => {
@@ -85,17 +88,14 @@ export function MockDetail({ setId }: { setId: string }) {
           }
           const { set, rows, exam } = loaded;
           const attempted = set.attempted_entries > 0;
-          const readingMinutes = Math.round((exam?.default_reading_seconds ?? 180) / 60);
-          const simulationMinutes = Math.round((exam?.default_simulation_seconds ?? 720) / 60);
-          const duration = sessionMinutes(
-            set.total_entries,
-            exam
-              ? {
-                  readingSeconds: exam.default_reading_seconds,
-                  simulationSeconds: exam.default_simulation_seconds,
-                }
-              : null,
-          );
+          // The person's own timers, when their access arrangement is on, replace the exam's.
+          const timers = practiceTimers(session?.user, {
+            readingSeconds: exam?.default_reading_seconds ?? 180,
+            simulationSeconds: exam?.default_simulation_seconds ?? 720,
+          });
+          const readingMinutes = Math.round(timers.readingSeconds / 60);
+          const simulationMinutes = Math.round(timers.simulationSeconds / 60);
+          const duration = sessionMinutes(set.total_entries, exam ? timers : null);
           const stationsLabel = `${set.total_entries} ${set.total_entries === 1 ? "station" : "stations"}`;
           const first = rows[0]?.entry ?? null;
           const startsHere = !attempted && !set.locked;
