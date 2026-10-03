@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LuBuilding2 } from "react-icons/lu";
 import {
   AsyncBoundary,
   Button,
@@ -66,7 +65,6 @@ export function Organizations() {
       <PlatformPageHeader
         title="Organisations"
         description="Institutions and partners. Both run exams; they differ in how their exams are run."
-        icon={LuBuilding2}
         actions={
           <Button variant="primary" onClick={() => setProvisioning(true)}>
             Provision

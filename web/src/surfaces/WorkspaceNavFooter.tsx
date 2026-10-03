@@ -5,6 +5,7 @@ import { LuLogOut } from "react-icons/lu";
 import { PiSparkle } from "react-icons/pi";
 import { cn } from "@/foundation/ui";
 import { b2cIconButton, b2cNavUpgradeButton } from "@/foundation/ui/productTokens";
+import { PERSONAL_WORKSPACE, workspaceBasePath } from "@/foundation/routing";
 import { isPlatformAdmin, useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { holdsPaidAccess } from "@/capabilities/account/access";
@@ -19,9 +20,11 @@ import { useAsync } from "@/foundation/hooks";
  */
 export function WorkspaceNavFooter({
   consumer,
+  staff = false,
   collapsed = false,
 }: {
   consumer: boolean;
+  staff?: boolean;
   collapsed?: boolean;
 }) {
   const { session, signOut } = useSession();
@@ -98,14 +101,21 @@ export function WorkspaceNavFooter({
         <p className="px-3 py-2 text-osce-meta font-medium text-osce-ink-900">{meta}</p>
       ) : null}
 
-      {isPlatformAdmin(session) && (
+      {staff ? (
+        <Link
+          href={workspaceBasePath(PERSONAL_WORKSPACE)}
+          className="block px-3 pb-2 text-osce-meta font-medium text-osce-accent hover:text-osce-accent-hover"
+        >
+          My practice
+        </Link>
+      ) : isPlatformAdmin(session) ? (
         <Link
           href="/staff"
           className="block px-3 pb-2 text-osce-meta font-medium text-osce-accent hover:text-osce-accent-hover"
         >
           Staff console
         </Link>
-      )}
+      ) : null}
 
       <div className="mt-2 flex items-center gap-2 border-t border-b2c-border pl-2.5 pr-1.5 pt-2.5">
         <span className="flex min-w-0 flex-1 items-center gap-2.5">

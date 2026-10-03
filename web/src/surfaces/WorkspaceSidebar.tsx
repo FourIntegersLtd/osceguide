@@ -19,6 +19,8 @@ export interface WorkspaceSidebarProps {
   detail: string | null;
   /** Train only: the upgrade button and exam countdown at the foot. */
   consumer: boolean;
+  /** The staff console: a fixed name instead of the workspace switcher. */
+  staff?: boolean;
   basePath: string;
   groups: NavRailGroups;
   navCollapsed: boolean;
@@ -36,6 +38,7 @@ export function WorkspaceSidebar({
   label,
   detail,
   consumer,
+  staff = false,
   basePath,
   groups,
   navCollapsed,
@@ -107,7 +110,20 @@ export function WorkspaceSidebar({
             <Logo variant="light" />
           </div>
           <div className={cn("mb-1.5 md:hidden", navCollapsed ? "lg:hidden" : "lg:block")}>
-            <WorkspaceSwitcher current={workspace} detail={detail} />
+            {staff ? (
+              <div className="flex min-h-11 items-center px-2.5">
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block truncate text-[13.5px] font-semibold leading-[18px] text-osce-ink-900">
+                    Platform console
+                  </span>
+                  <span className="block truncate text-osce-caption font-normal text-b2c-text-muted">
+                    OSCE Guide staff
+                  </span>
+                </span>
+              </div>
+            ) : (
+              <WorkspaceSwitcher current={workspace} detail={detail} />
+            )}
           </div>
         </div>
 
@@ -118,7 +134,7 @@ export function WorkspaceSidebar({
           collapsed
           onNavigate={closeMenu}
           ariaLabel={ariaLabel}
-          footer={<WorkspaceNavFooter consumer={consumer} collapsed />}
+          footer={<WorkspaceNavFooter consumer={consumer} staff={staff} collapsed />}
         />
         <NavRailList
           className="hidden lg:flex"
@@ -127,7 +143,7 @@ export function WorkspaceSidebar({
           collapsed={navCollapsed}
           onNavigate={closeMenu}
           ariaLabel={ariaLabel}
-          footer={<WorkspaceNavFooter consumer={consumer} collapsed={navCollapsed} />}
+          footer={<WorkspaceNavFooter consumer={consumer} staff={staff} collapsed={navCollapsed} />}
         />
         <NavRailList
           className="flex md:hidden"
@@ -136,7 +152,7 @@ export function WorkspaceSidebar({
           collapsed={false}
           onNavigate={closeMenu}
           ariaLabel={ariaLabel}
-          footer={<WorkspaceNavFooter consumer={consumer} />}
+          footer={<WorkspaceNavFooter consumer={consumer} staff={staff} />}
         />
       </div>
       {menuOpen ? (

@@ -1,8 +1,8 @@
 # Marketplace and live peer practice
 
 ## Sub-features
-- `/app/me/marketplace` (SCA only; `/peers` is gone): tabs **All Sessions**,
-  **My Sessions**, **Upcoming Sessions**; **Post Availability** (date grid,
+- `/app/me/marketplace` (SCA only; `/peers` is gone): tabs **All sessions**,
+  **My sessions**, **Upcoming sessions**; **Post Availability** (date grid,
   "Choose a time" listbox, **Select & continue**); **Claim slot** with a
   confirm modal; cancelling an upcoming booking.
 - **Live Practice** prompt → **Join now** → "Searching for a practice partner"

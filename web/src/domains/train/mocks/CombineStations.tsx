@@ -134,7 +134,7 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
 
       {incompleteIds.length === 0 ? null : (
         <form onSubmit={handleCreate} className="max-w-3xl">
-          <B2CPanelCard className="mt-0">
+          <B2CPanelCard className="mt-0 !overflow-visible">
             <B2CPanelCardHeader className={productTokens.b2cSectionTitle}>Session details</B2CPanelCardHeader>
             <B2CPanelCardBody className="space-y-5">
               <div>
@@ -163,7 +163,7 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
                   className={cn(productTokens.b2cInputBase, "mt-1.5")}
                 />
                 {isDropdownOpen && filteredStations.length > 0 ? (
-                  <div className="absolute z-10 mt-1.5 max-h-60 w-full overflow-auto rounded-control border border-b2c-border bg-osce-surface p-1 shadow-[0_8px_24px_rgba(16,24,40,0.08)]">
+                  <div className="absolute z-20 mt-1.5 max-h-60 w-full overflow-auto rounded-control border border-b2c-border bg-osce-surface p-1 shadow-[0_8px_24px_rgba(16,24,40,0.08)]">
                     {filteredStations.map((station) => (
                       <button
                         key={station.version_id}

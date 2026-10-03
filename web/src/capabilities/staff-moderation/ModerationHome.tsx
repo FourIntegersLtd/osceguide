@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { LuShield } from "react-icons/lu";
 import {
   AsyncBoundary,
   Button,
@@ -59,7 +58,6 @@ export function ModerationHome() {
       <PlatformPageHeader
         title="Moderation"
         description="Recent community posts. Remove anything that should not stay public."
-        icon={LuShield}
       />
 
       <Panel title="Last seven days" padding="none">

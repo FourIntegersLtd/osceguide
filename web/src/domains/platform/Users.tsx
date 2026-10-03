@@ -60,7 +60,6 @@ export function Users() {
       <PlatformPageHeader
         title="Users"
         description="Everyone with an account, grouped by the exam they are here for."
-        icon={LuUsers}
       />
 
       <AsyncBoundary state={summary}>

@@ -19,6 +19,7 @@ import {
   listAllMedia,
   podcastUrl,
   psychosocialAspects,
+  specialtiesOf,
   summarySections,
   type MediaItem,
 } from "@/capabilities/media/api";
@@ -57,6 +58,7 @@ export function SummaryView({
   return (
     <div className="w-full text-left">
       <B2CPageHeader
+        eyebrow={specialtiesOf(item)[0]}
         title={item.title}
         back={{ href: hrefFor(studyListPath("summary")), label: STUDY_KIND_LABEL.summary }}
         action={

@@ -2,7 +2,6 @@
 
 import { HiOutlineChartBar } from "react-icons/hi2";
 import { B2CGroupedRow, B2CGroupedSection } from "@/foundation/ui";
-import { openAthena } from "@/capabilities/help/api";
 
 export interface InsightItem {
   text: string;
@@ -20,13 +19,6 @@ export function InsightsList({ items, loading = false }: { items: InsightItem[];
   return (
     <B2CGroupedSection
       eyebrow="What to work on"
-      action={
-        displayItems.length > 0 ? (
-          <button type="button" onClick={() => openAthena()} className="text-osce-accent hover:text-osce-accent-hover">
-            Practise with Athena
-          </button>
-        ) : null
-      }
     >
       {loading ? (
         <div className="h-[162px] animate-pulse bg-b2c-surface-muted" role="status" aria-label="Loading" />

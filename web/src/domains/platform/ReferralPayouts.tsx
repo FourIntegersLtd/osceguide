@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { LuHandCoins } from "react-icons/lu";
 import {
   Alert,
   AsyncBoundary,
@@ -176,7 +175,6 @@ export function ReferralPayouts() {
       <PlatformPageHeader
         title="Referral payouts"
         description="What referrers are owed, and what has been sent to them."
-        icon={LuHandCoins}
       />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
       <Panel

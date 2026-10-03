@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { LuStethoscope } from "react-icons/lu";
 import {
   B2CEmptyState,
@@ -20,9 +20,12 @@ type SummaryView = "az" | "specialty";
 export function SummaryIndex({
   items,
   hrefFor,
+  search,
 }: {
   items: MediaItem[];
   hrefFor: (path: string) => string;
+  /** The page's search field, drawn beside the tabs. */
+  search?: ReactNode;
 }) {
   const [view, setView] = useState<SummaryView>("az");
 
@@ -34,20 +37,22 @@ export function SummaryIndex({
       <B2CHero
         eyebrow="Revise"
         title="Conditions, written for primary care"
-        action={
-          <B2CSegmentedTabs
-            items={[
-              { id: "az", label: "A to Z" },
-              { id: "specialty", label: "Specialty" },
-            ]}
-            value={view}
-            onChange={setView}
-            aria-label="Summary view"
-          />
-        }
       >
         Each summary has a clinical and a psychosocial side, and you can talk it through with Athena.
       </B2CHero>
+
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <B2CSegmentedTabs
+          items={[
+            { id: "az", label: "A to Z" },
+            { id: "specialty", label: "Specialty" },
+          ]}
+          value={view}
+          onChange={setView}
+          aria-label="Summary view"
+        />
+        {search}
+      </div>
 
       {keys.length === 0 && view === "specialty" ? (
         <B2CEmptyState
@@ -58,12 +63,12 @@ export function SummaryIndex({
       ) : null}
 
       {view === "az" && keys.length > 1 ? (
-        <nav aria-label="Jump to letter" className="flex flex-wrap gap-1">
+        <nav aria-label="Jump to letter" className="flex flex-wrap gap-0.5">
           {keys.map((key) => (
             <a
               key={key}
               href={`#summary-${key}`}
-              className="flex h-8 min-w-8 items-center justify-center rounded-control px-2 font-mono text-osce-meta text-b2c-text-muted transition-colors hover:bg-b2c-surface-muted hover:text-osce-ink-900"
+              className="flex h-8 min-w-8 items-center justify-center rounded-osce-md px-2 text-osce-meta font-medium text-b2c-text-muted transition-colors hover:bg-b2c-surface-muted hover:text-osce-ink-900"
             >
               {key}
             </a>
@@ -82,6 +87,7 @@ export function SummaryIndex({
                 icon={LuStethoscope}
                 title={item.title}
                 meta={view === "az" && specialty ? specialty : undefined}
+                trailing={item.locked ? <span className="text-osce-meta text-b2c-text-muted">Locked</span> : undefined}
               />
             );
           })}
@@ -92,7 +98,8 @@ export function SummaryIndex({
 }
 
 function groupByLetter(items: MediaItem[]): Record<string, MediaItem[]> {
-  return items.reduce<Record<string, MediaItem[]>>((acc, item) => {
+  const sorted = [...items].sort((a, b) => a.title.localeCompare(b.title));
+  return sorted.reduce<Record<string, MediaItem[]>>((acc, item) => {
     const letter = item.title.charAt(0).toUpperCase();
     (acc[letter] ??= []).push(item);
     return acc;

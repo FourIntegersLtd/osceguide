@@ -118,6 +118,9 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
   );
   const searchEnabled = kind !== "slide_deck";
   const showSearchResults = searchEnabled && urlQuery.length > 0;
+  // The A to Z draws its search beside its own tabs (canvas `train-atoz`),
+  // once there is an index to draw it in.
+  const searchInIndex = kind === "summary" && !showSearchResults && (state.data?.length ?? 0) > 0;
 
   useEffect(() => {
     setTerm(urlQuery);
@@ -128,54 +131,56 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
     router.replace(hrefFor(studyListPath(kind)), { scroll: false });
   };
 
+  const searchForm = (className: string) => (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        const next = term.trim();
+        if (next === "") return;
+        router.replace(hrefFor(studySearchPath(kind, next)), { scroll: false });
+      }}
+      className={className}
+      role="search"
+    >
+      <div className="relative w-full">
+        <HiOutlineMagnifyingGlass
+          className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-osce-ink-400"
+          aria-hidden
+        />
+        <input
+          type="search"
+          placeholder="Search for a topic or condition"
+          value={term}
+          onChange={(event) => setTerm(event.target.value)}
+          aria-label="Search study material"
+          className={cn(iconSearchInputClassName, "pr-24 text-left")}
+        />
+        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
+          {term ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="rounded-md p-1.5 text-osce-ink-400 transition-colors hover:bg-osce-border-light hover:text-osce-ink-600"
+              aria-label="Clear search"
+            >
+              <HiOutlineXMark className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ) : null}
+          {term.trim() !== "" ? (
+            <button type="submit" className={t.b2cButtonPrimarySm}>
+              Search
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </form>
+  );
+
   return (
     <div className="w-full text-left">
       <B2CPageHeader title={copy.title} subtitle={copy.subtitle} />
 
-      {searchEnabled ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const next = term.trim();
-            if (next === "") return;
-            router.replace(hrefFor(studySearchPath(kind, next)), { scroll: false });
-          }}
-          className="mb-6"
-          role="search"
-        >
-          <div className="relative w-full">
-            <HiOutlineMagnifyingGlass
-              className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-osce-ink-400"
-              aria-hidden
-            />
-            <input
-              type="search"
-              placeholder="Search for a topic or condition"
-              value={term}
-              onChange={(event) => setTerm(event.target.value)}
-              aria-label="Search study material"
-              className={cn(iconSearchInputClassName, "pr-24 text-left")}
-            />
-            <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
-              {term ? (
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  className="rounded-md p-1.5 text-osce-ink-400 transition-colors hover:bg-osce-border-light hover:text-osce-ink-600"
-                  aria-label="Clear search"
-                >
-                  <HiOutlineXMark className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              ) : null}
-              {term.trim() !== "" ? (
-                <button type="submit" className={t.b2cButtonPrimarySm}>
-                  Search
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </form>
-      ) : null}
+      {searchEnabled && !searchInIndex ? searchForm("mb-6") : null}
 
       {showSearchResults ? (
         <MediaSearchResults
@@ -201,7 +206,7 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
                     }
                   />
                 ) : kind === "summary" ? (
-                  <SummaryIndex items={items} hrefFor={hrefFor} />
+                  <SummaryIndex items={items} hrefFor={hrefFor} search={searchForm("w-full sm:max-w-[520px]")} />
                 ) : kind === "slide_deck" ? (
                   <SlidesLibrary
                     items={items}

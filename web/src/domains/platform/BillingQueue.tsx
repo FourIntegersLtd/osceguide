@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { LuReceipt } from "react-icons/lu";
 import {
   B2CSegmentedTabs,
   PlatformPageHeader,
@@ -26,7 +25,6 @@ export function BillingQueue() {
       <PlatformPageHeader
         title="Billing"
         description="Plans on sale, and every payment update from Stripe. Failed ones come first: they are people who paid but did not get access."
-        icon={LuReceipt}
       />
       <PlansPanel />
       <BillingEvents

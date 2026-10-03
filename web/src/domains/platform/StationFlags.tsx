@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { LuFlag } from "react-icons/lu";
 import {
   Alert,
   AsyncBoundary,
@@ -82,7 +81,6 @@ export function StationFlags() {
       <PlatformPageHeader
         title="Station reports"
         description="Cases readers said were wrong, and what was done about them."
-        icon={LuFlag}
       />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
       <Panel

@@ -127,7 +127,7 @@ export function Messages() {
 
   return (
     <div className="space-y-6">
-      <B2CPageHeader title="Contact and feedback" />
+      <B2CPageHeader title="Contact & Feedback" />
       <div className="max-w-3xl space-y-6">
         <B2CSegmentedTabs
           items={tabItems}

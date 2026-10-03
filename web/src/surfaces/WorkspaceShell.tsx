@@ -19,11 +19,12 @@ import type { HelpNavItem } from "@/capabilities/help/api";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
 import { WorkspaceSidebar } from "@/surfaces/WorkspaceSidebar";
 import { WorkspaceToolbar } from "@/surfaces/WorkspaceToolbar";
-import type { Workspace } from "@/foundation/routing";
+import { PERSONAL_WORKSPACE, type Workspace } from "@/foundation/routing";
 
 export interface WorkspaceShellProps {
   manifest: SurfaceManifest;
-  workspace: Workspace;
+  /** Absent on the staff console, which belongs to no workspace. */
+  workspace?: Workspace;
   basePath: string;
   children: ReactNode;
 }
@@ -36,12 +37,13 @@ export interface WorkspaceShellProps {
  */
 export function WorkspaceShell({
   manifest,
-  workspace,
+  workspace = PERSONAL_WORKSPACE,
   basePath,
   children,
 }: WorkspaceShellProps) {
   const { session } = useSession();
   const isTrain = manifest.id === "train";
+  const staff = manifest.id === "platform";
   // The marketplace is SCA-only in navigation, like the retiring `scaOnly`.
   const { code: examCode } = useCurrentExam();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -117,6 +119,7 @@ export function WorkspaceShell({
             label={manifest.label}
             detail={isTrain ? (examCode ? examCode.toUpperCase() : null) : manifest.label}
             consumer={isTrain}
+            staff={staff}
             basePath={basePath}
             groups={groups}
             navCollapsed={navCollapsed}
@@ -129,10 +132,9 @@ export function WorkspaceShell({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-osce-surface md:border-l md:border-osce-border">
           <WorkspaceToolbar
             items={items}
-            rootLabel={isTrain ? "Practice" : workspace.name}
+            rootLabel={isTrain ? "Practice" : staff ? "Platform console" : workspace.name}
             sectionLabels={NAV_SECTION_LABELS}
             basePath={basePath}
-            onAskAthena={() => setHelpExpanded(true)}
           />
           <main
             id="main"

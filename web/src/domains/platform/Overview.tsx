@@ -3,7 +3,6 @@
 import Link from "next/link";
 import {
   LuBuilding2,
-  LuGauge,
   LuPencilRuler,
   LuTriangleAlert,
   LuUserCog,
@@ -62,7 +61,6 @@ export function PlatformOverview() {
       <PlatformPageHeader
         title={firstName ? `Hello, ${firstName}.` : "Platform"}
         description="Everything, across every organisation."
-        icon={LuGauge}
       />
 
       <AsyncBoundary state={state}>

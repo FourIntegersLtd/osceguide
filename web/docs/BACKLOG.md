@@ -67,6 +67,30 @@ Checked against the code on 2026-09-29.
 |---|---|---|
 | W-1 | Enforcing the CSP is still unproven | Middleware now mints a nonce per request and forwards it so Next can stamp its scripts. The policy still ships Report-Only unless `PLATFORM_WEB_CSP_ENFORCE` is set: a nonce policy forces dynamic rendering, and a page that stays static fails closed (blank page, found on staging 2026-09-26). Prove the whole journey on staging before setting the variable |
 
+### Canvas screens with no backend (2026-10-03)
+
+Board elements in the quiet canvas (claude.ai/artifact/N1BqEe2yaLUbht9ePqt7xZ) that the API cannot feed. They are left out of the build, not faked. `field` means add to an existing response, no migration. Delete a row when the backend lands and the UI is built.
+
+| # | Screen | Missing element | Needs |
+|---|---|---|---|
+| U-1 | Overview | Stations sat today tile; Every arm counts; attention items for station reports, failed Stripe updates and voice capacity | field; affiliates and white label also need a route |
+| U-2 | User detail | Sign in as (there is no impersonation route); attempts table station name, score, band | route and auth decision; field |
+| U-3 | Attempt | Station name and user name in the title and back link; event timeline (only timestamps exist) | field |
+| U-4 | Organisations | Members column; Employer type (the API accepts institution and partner only) | field; migration |
+| U-5 | Organisation detail | Seats used, sittings this year, stations sat; exam access; bonus pool and gift credits panels | field; migration and route for credits |
+| U-6 | Create organisation | First admin's email and contract end date on create (there is no bootstrap-admin route) | route and field |
+| U-7 | Team | Role and two-factor columns | field |
+| U-8 | Billing | Four-stat strip (taken, refunds, failed, payouts); Stations column on prices | route for aggregates; field |
+| U-9 | Payouts | The board is a Stripe Connect payout run (payee types, Stripe status, due dates, batches, rules, second approval, confirm page). Today's page is a manual bank ledger that shows bank details the board says we never store | migration, route and product decision |
+| U-10 | Affiliates, affiliate detail, white label | All three screens (no models, no routes) | migration and route |
+| U-11 | Growth | Sign-ups by week chart, partner fee stat | field |
+| U-12 | Machinery | Deploy sha and age; patient workers n of m and longest wait; email outbox and failed-today counts; tutor index documents and last rebuilt | field |
+| U-13 | Audit | Names instead of emails; readable targets | field |
+| U-14 | Media item | Locked for trial users setting (lock is computed per reader); specialty select | migration; field |
+| U-15 | Messages | Tab counts; star rating and may-quote-with-name | field; migration |
+| U-16 | Moderation | Flagged by N users, Keep action, flagged-only list (posts have no flag entity) | migration |
+| U-17 | Assess and hire | Programme purpose and pages; trainee programme view; self-serve organisation sign-up; organisation settings and SSO tabs; shared review; candidate accept page (invitation emails link to /accept-invitation, web has no route) | migration and route |
+
 ## Open: enterprise readiness
 
 What an institution's procurement and IT security review will ask for and we

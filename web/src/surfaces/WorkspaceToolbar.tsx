@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { LuChevronRight, LuSearch } from "react-icons/lu";
-import { PiSparkle } from "react-icons/pi";
 import { isNavActive } from "@/foundation/navigation/isNavActive";
 import type { NavItem } from "@/surfaces/contract";
 import { WorkspaceJumpTo } from "@/surfaces/WorkspaceJumpTo";
@@ -29,7 +28,6 @@ export interface WorkspaceToolbarProps {
   rootLabel: string;
   sectionLabels: Record<string, string>;
   basePath: string;
-  onAskAthena: () => void;
 }
 
 /**
@@ -41,7 +39,6 @@ export function WorkspaceToolbar({
   rootLabel,
   sectionLabels,
   basePath,
-  onAskAthena,
 }: WorkspaceToolbarProps) {
   const pathname = usePathname() ?? "";
   const [jumpOpen, setJumpOpen] = useState(false);
@@ -94,14 +91,6 @@ export function WorkspaceToolbar({
         className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-osce-md text-b2c-text-secondary hover:bg-b2c-secondary lg:hidden"
       >
         <LuSearch className="h-4 w-4" aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={onAskAthena}
-        className="inline-flex h-[30px] items-center gap-1.5 rounded-osce-md px-2.5 text-[13px] font-medium text-osce-ink-700 hover:bg-b2c-secondary hover:text-osce-ink-900"
-      >
-        <PiSparkle className="h-4 w-4 text-b2c-text-muted" aria-hidden />
-        Ask Athena
       </button>
       {jumpOpen ? <WorkspaceJumpTo items={items} onClose={() => setJumpOpen(false)} /> : null}
     </div>

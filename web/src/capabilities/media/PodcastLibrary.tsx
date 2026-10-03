@@ -4,19 +4,19 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HiOutlinePlay } from "react-icons/hi2";
 import { LuHeadphones } from "react-icons/lu";
-import {
-  B2CEmptyState,
-  Badge,
-} from "@/foundation/ui";
+import { B2CEmptyState, productTokens as t } from "@/foundation/ui";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import {
   audioUrl,
+  bodyMarkdown,
   podcastGroupLabel,
   podcastSeries,
   type MediaItem,
 } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
+import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 import { EpisodePanel } from "@/capabilities/media/EpisodePanel";
+import { Prose } from "@/capabilities/media/Prose";
 import { podcastEpisodePath } from "@/capabilities/media/studyPaths";
 import type { Episode } from "@/capabilities/media/PodcastPlayer";
 import { B2CGroupedRowLink, B2CGroupedSection } from "@/foundation/ui/B2CGroupedList";
@@ -109,9 +109,10 @@ function PodcastLibraryBody({
   };
 
   const groups = groupPodcasts(items);
+  const notes = bodyMarkdown(current);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <EpisodePanel episodes={playerEpisodes} index={currentIndex} onIndexChange={onIndexChange} current={current} />
 
       {groups.map((group) => (
@@ -123,16 +124,29 @@ function PodcastLibraryBody({
                 key={episode.id}
                 href={episodeHref(episode.slug)}
                 scroll={false}
-                active={active}
                 icon={HiOutlinePlay}
                 title={episode.title}
                 meta={audioUrl(episode) !== null ? "Ready to play" : "Audio not available"}
-                trailing={active ? <Badge tone="accent">Now playing</Badge> : null}
+                trailing={
+                  active ? (
+                    <span className="inline-flex h-[22px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-osce-sm bg-b2c-surface-muted px-2 text-osce-caption font-medium text-osce-ink-900">
+                      <span className="h-1.5 w-1.5 rounded-full bg-osce-accent" aria-hidden />
+                      Now playing
+                    </span>
+                  ) : null
+                }
               />
             );
           })}
         </B2CGroupedSection>
       ))}
+
+      <DiscussWithAthena topic={{ title: current.title, kind: "podcast", slug: current.slug }} />
+      {notes ? (
+        <div className={t.b2cProseMeasureWide}>
+          <Prose content={notes} />
+        </div>
+      ) : null}
     </div>
   );
 }

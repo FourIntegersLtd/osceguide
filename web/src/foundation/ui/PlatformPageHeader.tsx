@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { IconType } from "react-icons";
 import { HiOutlineChevronLeft } from "react-icons/hi2";
 
 /**
@@ -17,13 +16,11 @@ import { HiOutlineChevronLeft } from "react-icons/hi2";
 export function PlatformPageHeader({
   title,
   description,
-  icon: Icon,
   actions,
   back,
 }: {
   title: ReactNode;
   description?: ReactNode;
-  icon?: IconType;
   actions?: ReactNode;
   /** A link back to the listing this screen drilled in from. */
   back?: { href: string; label?: string };
@@ -39,15 +36,10 @@ export function PlatformPageHeader({
           {back.label ?? "Back"}
         </Link>
       ) : null}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          {Icon ? (
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-osce-md bg-accent-subtle text-accent">
-              <Icon className="h-4 w-4" aria-hidden />
-            </span>
-          ) : null}
           <div className="min-w-0">
-            <h1 className="truncate font-heading text-osce-title font-semibold tracking-tight text-ink">
+            <h1 className="truncate text-osce-title font-medium text-ink">
               {title}
             </h1>
             {description ? (

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { LuTrendingUp } from "react-icons/lu";
 import { AsyncBoundary, B2CSegmentedTabs, PlatformPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useAttributionState } from "@/capabilities/attribution-dashboard/useAttributionFilters";
@@ -76,7 +75,6 @@ export function BmjDashboard() {
       <PlatformPageHeader
         title="BMJ dashboard"
         description="Visits, sign-ups, and money from BMJ links."
-        icon={LuTrendingUp}
       />
       <B2CSegmentedTabs
         items={tabsForMode("internal").map((item) => ({ id: item.id, label: item.label }))}

@@ -12,9 +12,9 @@ import { useRoom, useRoomName } from "@/capabilities/community/useRoom";
 type CommunityTab = "allQuestions" | "myQuestions" | "myAnswers";
 
 const COMMUNITY_TABS: B2CSegmentedTabItem<CommunityTab>[] = [
-  { id: "allQuestions", label: "All Questions" },
-  { id: "myQuestions", label: "My Questions" },
-  { id: "myAnswers", label: "My Answers" },
+  { id: "allQuestions", label: "All questions" },
+  { id: "myQuestions", label: "My questions" },
+  { id: "myAnswers", label: "My answers" },
 ];
 
 /**

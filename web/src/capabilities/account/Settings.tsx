@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { HiOutlineCog6Tooth } from "react-icons/hi2";
 import {
   B2CPageHeader,
   B2CSegmentedTabs,
@@ -173,7 +172,6 @@ function SettingsFrame({
       <PlatformTabbedScreen
         title="Settings"
         description="Your own account: profile, sign-in and preferences."
-        icon={HiOutlineCog6Tooth}
         tabs={items}
         value={tab}
         onChange={handleTabChange}
@@ -188,7 +186,7 @@ function SettingsFrame({
   return (
     // The consumer screen is one 960px column (canvas `train-settings`); an
     // institution's extra tabs hold tables and keep the full width.
-    <div className={surface === "train" ? "mx-auto w-full max-w-[960px]" : undefined}>
+    <div className={surface === "train" ? "w-full max-w-[960px]" : undefined}>
       <B2CPageHeader title="Settings" />
       <B2CSegmentedTabs
         className="mb-6"

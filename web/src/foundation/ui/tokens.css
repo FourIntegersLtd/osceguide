@@ -121,6 +121,8 @@
   --osce-accent-muted: #f5f5f7;
   --osce-accent-subtle: #ebebef;
   --osce-accent-light: #4547f0;
+  /* A focused field's border: the skin's accent, lightened. */
+  --osce-focus-border: color-mix(in srgb, var(--osce-accent) 40%, white);
   --osce-commit: #1719eb;
   --osce-commit-hover: #1113c4;
 

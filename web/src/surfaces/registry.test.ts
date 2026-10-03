@@ -204,7 +204,7 @@ describe("surface registry", () => {
     ]);
     assert.deepEqual(bySection("revenue"), [
       "Billing",
-      "Referral payouts",
+      "Payouts",
       "Growth",
     ]);
     assert.deepEqual(bySection("catalogue"), [

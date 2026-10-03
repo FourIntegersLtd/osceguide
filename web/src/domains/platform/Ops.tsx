@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { LuActivity } from "react-icons/lu";
 import {
   Alert,
   AsyncBoundary,
@@ -60,7 +59,6 @@ export function Ops() {
       <PlatformPageHeader
         title="System health"
         description="Background tasks, marking, and how many live voice sessions we can run."
-        icon={LuActivity}
         actions={
           <Badge tone={stream.connected ? "success" : "warning"}>
             {stream.connected ? "Live" : "Reconnecting"}

@@ -6,10 +6,10 @@ import { RequireCapability, RequireSession } from "@/foundation/session";
 import { surfaceManifest } from "@/surfaces";
 import { ShellFallback } from "@/surfaces/ShellFallback";
 
-const PlatformStaffShell = dynamic(
+const WorkspaceShell = dynamic(
   () =>
-    import("@/surfaces/platform/PlatformStaffShell").then((mod) => ({
-      default: mod.PlatformStaffShell,
+    import("@/surfaces/WorkspaceShell").then((mod) => ({
+      default: mod.WorkspaceShell,
     })),
   { loading: () => <ShellFallback /> },
 );
@@ -19,15 +19,15 @@ const staffManifest = surfaceManifest("platform");
 /**
  * The OSCE Guide staff console.
  *
- * Uses `PlatformStaffShell` directly (not `SurfaceShell`) so staff routes do not
- * pull the institution/consumer shell code into the dev bundle.
+ * The one workspace shell, without a workspace: the sidebar names the console
+ * and the footer links back to the staff member's own practice.
  */
 export default function StaffLayout({ children }: { children: ReactNode }) {
   return (
     <RequireSession>
-      <PlatformStaffShell manifest={staffManifest} basePath="/staff">
+      <WorkspaceShell manifest={staffManifest} basePath="/staff">
         <RequireCapability permission="administer_platform">{children}</RequireCapability>
-      </PlatformStaffShell>
+      </WorkspaceShell>
     </RequireSession>
   );
 }

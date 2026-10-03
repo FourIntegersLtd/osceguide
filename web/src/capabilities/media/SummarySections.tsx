@@ -14,14 +14,8 @@ import {
 } from "react-icons/hi2";
 import { LuBaby, LuBrain, LuHeartHandshake } from "react-icons/lu";
 import type { IconType } from "react-icons";
-import {
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardHeader,
-  ModalHelper,
-  cn,
-  productTokens as t,
-} from "@/foundation/ui";
+import type { ReactNode } from "react";
+import { cn, productTokens as t } from "@/foundation/ui";
 import type { SummarySection } from "@/capabilities/media/api";
 
 const CLINICAL: Record<SummarySection["key"], { title: string; icon: IconType; tone: keyof typeof t.b2cReadingTones }> = {
@@ -43,27 +37,45 @@ const ASPECT_ICONS: IconType[] = [
   LuBaby,
 ];
 
+/**
+ * One tinted block (canvas `train-summary`): no border (the tone's card
+ * class only colours one), the heading in the tone's ink, the list in body text.
+ */
+function ToneBlock({
+  tone,
+  icon: Icon,
+  title,
+  children,
+}: {
+  tone: keyof typeof t.b2cReadingTones;
+  icon: IconType;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <article className={cn("rounded-osce-lg px-[18px] py-4", t.b2cReadingTones[tone].card)}>
+      <h2 className={cn("flex items-center gap-2 text-osce-body font-semibold", t.b2cReadingTones[tone].title)}>
+        <Icon className="h-4 w-4 shrink-0" aria-hidden />
+        {title}
+      </h2>
+      <div className="mt-2 text-osce-body leading-[22px] text-osce-ink-700">{children}</div>
+    </article>
+  );
+}
+
 export function ClinicalSections({ sections }: { sections: SummarySection[] }) {
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", t.b2cProseMeasureWide)}>
       {sections.map((section) => {
         const meta = CLINICAL[section.key];
-        const tone = t.b2cReadingTones[meta.tone];
-        const Icon = meta.icon;
         return (
-          <B2CPanelCard key={section.key} className={cn("mt-0", tone.card)}>
-            <B2CPanelCardHeader className={tone.header}>
-              <Icon className="h-4 w-4 shrink-0" aria-hidden />
-              <span className={t.b2cSectionTitle}>{meta.title}</span>
-            </B2CPanelCardHeader>
-            <B2CPanelCardBody>
-              <ul className={cn("list-disc space-y-2 pl-5", t.b2cBodyText, tone.list)}>
-                {section.items.map((entry, index) => (
-                  <li key={index}>{entry}</li>
-                ))}
-              </ul>
-            </B2CPanelCardBody>
-          </B2CPanelCard>
+          <ToneBlock key={section.key} tone={meta.tone} icon={meta.icon} title={meta.title}>
+            <ul className="list-disc pl-[18px]">
+              {section.items.map((entry, index) => (
+                <li key={index}>{entry}</li>
+              ))}
+            </ul>
+          </ToneBlock>
         );
       })}
     </div>
@@ -92,44 +104,28 @@ function splitAspect(aspect: string): { title: string; items: string[] } {
 
 export function PsychosocialSections({ aspects }: { aspects: string[] }) {
   if (aspects.length === 0) {
-    return (
-      <B2CPanelCard className="mt-0">
-        <B2CPanelCardHeader>Psychosocial</B2CPanelCardHeader>
-        <B2CPanelCardBody>
-          <ModalHelper className="mt-0">No psychosocial information available</ModalHelper>
-        </B2CPanelCardBody>
-      </B2CPanelCard>
-    );
+    return <p className={t.b2cBodyTextMuted}>No psychosocial information available</p>;
   }
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", t.b2cProseMeasureWide)}>
       {aspects.map((aspect, index) => {
         const { title, items } = splitAspect(aspect);
         const toneKey =
           t.b2cPsychosocialReadingToneKeys[index % t.b2cPsychosocialReadingToneKeys.length] ??
           "history";
-        const tone = t.b2cReadingTones[toneKey];
         const Icon = ASPECT_ICONS[index % ASPECT_ICONS.length] ?? HiOutlineUsers;
 
         return (
-          <B2CPanelCard key={index} className={cn("mt-0", tone.card)}>
-            <B2CPanelCardHeader className={tone.header}>
-              <Icon className="h-4 w-4 shrink-0" aria-hidden />
-              <span className={t.b2cSectionTitle}>{title}</span>
-            </B2CPanelCardHeader>
-            <B2CPanelCardBody>
-              {items.length > 0 ? (
-                <ul className={cn("list-disc space-y-2 pl-5", t.b2cBodyText, tone.list)}>
-                  {items.map((entry, idx) => (
-                    <li key={idx}>{entry}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={cn(t.b2cBodyText, tone.list)}>{title}</p>
-              )}
-            </B2CPanelCardBody>
-          </B2CPanelCard>
+          <ToneBlock key={index} tone={toneKey} icon={Icon} title={title}>
+            {items.length > 0 ? (
+              <ul className="list-disc pl-[18px]">
+                {items.map((entry, idx) => (
+                  <li key={idx}>{entry}</li>
+                ))}
+              </ul>
+            ) : null}
+          </ToneBlock>
         );
       })}
     </div>

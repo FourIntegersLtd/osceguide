@@ -67,3 +67,9 @@ export function formatPublished(
 export function leadsWithHeading(content: string): boolean {
   return /^\s*(#\s|<h1[\s>])/i.test(content);
 }
+
+/** Seconds as a player shows them: 171 reads "02:51". */
+export function clockTime(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds));
+  return `${String(Math.floor(whole / 60)).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
+}

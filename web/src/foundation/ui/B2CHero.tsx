@@ -41,7 +41,7 @@ export function B2CHero({
         >
           {title}
         </Title>
-        {children ? <p className="max-w-[580px] text-osce-body text-b2c-text-muted">{children}</p> : null}
+        {children ? <p className="max-w-[720px] text-osce-body text-b2c-text-muted">{children}</p> : null}
         {action ? <div className="mt-3.5 flex flex-wrap items-center gap-2">{action}</div> : null}
       </div>
       {aside ? <div className="flex shrink-0 gap-3">{aside}</div> : null}

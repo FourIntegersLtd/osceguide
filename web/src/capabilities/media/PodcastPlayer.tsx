@@ -11,7 +11,6 @@ import {
 } from "react-icons/hi2";
 import { LuPodcast } from "react-icons/lu";
 import { recordActivity } from "@/capabilities/account/api";
-import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 import {
   ModalContent,
   ModalFooterActions,
@@ -102,12 +101,6 @@ export function PodcastPlayer({
           {byline}
         </p>
       )}
-
-      {current?.slug ? (
-        <div>
-          <DiscussWithAthena topic={{ title: current.title, kind: "podcast", slug: current.slug }} />
-        </div>
-      ) : null}
 
       <ModalSection>
         {current?.url ? (

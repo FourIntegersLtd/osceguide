@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { LuInbox } from "react-icons/lu";
 import {
   Alert,
   AsyncBoundary,
@@ -68,7 +67,6 @@ export function MessagesInbox() {
       <PlatformPageHeader
         title="Messages"
         description="What people have written to the platform, and whether anybody has answered."
-        icon={LuInbox}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">

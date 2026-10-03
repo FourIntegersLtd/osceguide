@@ -46,6 +46,9 @@ const helpHeaderIconBtn =
 const helpPanelFooter =
   "shrink-0 border-t border-osce-border-light bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4";
 
+/** Study material and the review of a marked attempt: the screens where "discuss this with Athena" makes sense. */
+const CLINICAL_ROUTE = /\/(library|summary|slides|podcast|articles|debriefs|attempts|transcripts)(\/|$)/;
+
 type HelpMode = null | "navigate" | "knowledge";
 
 function HelpWideToggle({
@@ -348,6 +351,7 @@ export function B2CHelpDock({
   initialLaunch = null,
 }: B2CHelpDockProps) {
   const { session } = useSession();
+  const pathname = usePathname();
   const { code, settings } = useCurrentExam();
   const examCode = (examCodeOverride ?? code)?.toLowerCase();
   // Whether there is a choice to offer at all (`settings.help_modes`,
@@ -377,7 +381,8 @@ export function B2CHelpDock({
 
   if (!session) return null;
 
-  if (!isExpanded) return <AthenaFab onClick={() => setIsExpanded(true)} />;
+  // The floating button only shows where there is something clinical to discuss.
+  if (!isExpanded) return CLINICAL_ROUTE.test(pathname) ? <AthenaFab onClick={() => setIsExpanded(true)} /> : null;
 
   const panelShell =
     "fixed inset-0 z-50 flex h-[100dvh] max-h-[100dvh] w-full flex-col lg:static lg:z-auto lg:h-full lg:max-h-none lg:w-auto";

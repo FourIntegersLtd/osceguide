@@ -57,7 +57,7 @@ function nav({ href }: NavContext): NavItem[] {
     },
     {
       key: "referralPayouts",
-      label: "Referral payouts",
+      label: "Payouts",
       href: href("/referral-payouts"),
       icon: LuHandCoins,
       section: "revenue",

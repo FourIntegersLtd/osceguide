@@ -34,6 +34,7 @@ export const PAGE_SIZE = 100;
  */
 export function QuestionList({ room, roomName }: { room: Room; roomName: string | null }) {
   const [tag, setTag] = useState<string | null>(null);
+  const { surface } = useSurface();
   const state = useAsync(
     (signal) => listQuestions({ room, limit: PAGE_SIZE, tag }, signal),
     [room.visibility, room.orgId, tag],
@@ -42,6 +43,8 @@ export function QuestionList({ room, roomName }: { room: Room; roomName: string 
   return (
     <div className="space-y-6">
       <B2CHero
+        // The train arm's composer sits on the page itself, with no grey panel behind it.
+        className={surface === "train" ? "!bg-transparent !p-0" : undefined}
         eyebrow="Ask a question"
         title={
           roomName

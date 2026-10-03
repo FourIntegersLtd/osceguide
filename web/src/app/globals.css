@@ -35,6 +35,22 @@
   :focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-canvas;
   }
+  /*
+   * A field you type in shows focus as one light-blue border and nothing
+   * else: the ring above, drawn round a border that had also turned blue,
+   * read as a double outline. A field in error keeps its red border.
+   */
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"]):focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"]):not([aria-invalid="true"], [class*="border-osce-danger"]):focus,
+  textarea:not([aria-invalid="true"], [class*="border-osce-danger"]):focus,
+  select:not([aria-invalid="true"], [class*="border-osce-danger"]):focus {
+    border-color: var(--osce-focus-border);
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════════════

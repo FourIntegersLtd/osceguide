@@ -125,7 +125,7 @@ export function SlotSections({
   );
 }
 
-/** The "My Sessions" tab: the slots this person offered, and nothing else. */
+/** The "My sessions" tab: the slots this person offered, and nothing else. */
 export function MySlots({ slots, actions }: { slots: Slot[]; actions: SlotActions }) {
   const mine = slots.filter((slot) => slot.is_mine).sort(byMostRecent);
   if (mine.length === 0) {

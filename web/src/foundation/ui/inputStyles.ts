@@ -25,8 +25,9 @@ const sizeClasses: Record<InputSize, string> = {
  * built from this, so inputs, selects and textareas match across the app and
  * the B2B workspace.
  *
- * Focus is a single accent border. A ring on top of the border reads as a
- * double outline; keep `outline-none` paired with `focus:border-osce-accent`.
+ * Focus is a single light-blue border, set for every text field in
+ * `globals.css` (`--osce-focus-border`). A ring on top of the border reads as
+ * a double outline.
  */
 export function getInputClassName({
   size = "md",

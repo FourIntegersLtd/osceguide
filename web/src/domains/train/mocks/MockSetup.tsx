@@ -151,7 +151,6 @@ export function MockSetup({
                   readOnly
                   className={cn(productTokens.b2cInputBase, "bg-b2c-surface-muted text-osce-ink-700")}
                 />
-                <span className="text-osce-meta text-b2c-text-muted">Named for you. Rename it later.</span>
               </label>
 
               <label htmlFor="requested_station_count" className="flex flex-col gap-1.5">
@@ -167,9 +166,6 @@ export function MockSetup({
                   className={productTokens.b2cInputBase}
                   required
                 />
-                {stations.length > 0 ? (
-                  <span className="text-osce-meta text-b2c-text-muted">Up to {stations.length} available.</span>
-                ) : null}
               </label>
 
               {hasLockedSets ? (

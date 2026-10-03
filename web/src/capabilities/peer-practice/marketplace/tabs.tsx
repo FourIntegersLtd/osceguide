@@ -12,7 +12,7 @@ export const MARKETPLACE_TABS: B2CSegmentedTabItem<MarketplaceTab>[] = [
     label: (
       <span className="inline-flex items-center gap-1.5">
         <HiOutlineCalendarDays className="h-4 w-4" aria-hidden />
-        All Sessions
+        All sessions
       </span>
     ),
   },
@@ -21,7 +21,7 @@ export const MARKETPLACE_TABS: B2CSegmentedTabItem<MarketplaceTab>[] = [
     label: (
       <span className="inline-flex items-center gap-1.5">
         <HiOutlineUser className="h-4 w-4" aria-hidden />
-        My Sessions
+        My sessions
       </span>
     ),
   },
@@ -30,7 +30,7 @@ export const MARKETPLACE_TABS: B2CSegmentedTabItem<MarketplaceTab>[] = [
     label: (
       <span className="inline-flex items-center gap-1.5">
         <HiOutlineClock className="h-4 w-4" aria-hidden />
-        Upcoming Sessions
+        Upcoming sessions
       </span>
     ),
   },

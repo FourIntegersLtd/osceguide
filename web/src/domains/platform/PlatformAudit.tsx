@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { LuScrollText } from "react-icons/lu";
 import {
   AsyncBoundary,
   Panel,
@@ -30,7 +29,6 @@ export function PlatformAudit() {
       <PlatformPageHeader
         title="Audit log"
         description="Activity in every organisation, plus changes made by OSCE Guide staff."
-        icon={LuScrollText}
       />
       <PlatformFilterBar>
         <PlatformFilterSearch
