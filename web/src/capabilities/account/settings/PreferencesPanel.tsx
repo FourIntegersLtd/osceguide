@@ -25,9 +25,9 @@ const DEFAULT_SIMULATION_SECONDS = 12 * 60;
 /**
  * Access arrangements, AI consent and the waiting-colleague email.
  *
- * A card of switches and a card of the two custom timers, saved together with
- * one button (canvas `train-settings-prefs`). The timers apply to practice
- * whether or not "Extra reading time" is on.
+ * A card of switches, saved with one button (canvas `train-settings-prefs`).
+ * Turning "Extra reading time" on opens a modal for the two custom timers; they
+ * apply to practice only while it is on.
  *
  * It applies to a person's own practice only. An institution's circuit runs on
  * one clock for everybody on it, and stretching it for one candidate would
@@ -65,9 +65,30 @@ function PreferencesForm({ me }: { me: Me }) {
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [timersOpen, setTimersOpen] = useState(false);
+  const [draftReading, setDraftReading] = useState(reading);
+  const [draftSimulation, setDraftSimulation] = useState(simulation);
 
   const readingSeconds = parseTimer(reading);
   const simulationSeconds = parseTimer(simulation);
+
+  const draftReadingSeconds = parseTimer(draftReading);
+  const draftSimulationSeconds = parseTimer(draftSimulation);
+
+  const openTimers = () => {
+    setDraftReading(reading);
+    setDraftSimulation(simulation);
+    setTimersOpen(true);
+  };
+
+  /** Turning the switch on only counts once the timers are confirmed; closing the modal leaves it as it was. */
+  const confirmTimers = () => {
+    if (draftReadingSeconds === null || draftSimulationSeconds === null) return;
+    setReading(formatTimer(draftReadingSeconds));
+    setSimulation(formatTimer(draftSimulationSeconds));
+    setExtraTime(true);
+    setTimersOpen(false);
+  };
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -117,11 +138,24 @@ function PreferencesForm({ me }: { me: Me }) {
               icon={HiOutlineClock}
               title="Extra reading time"
               meta={
-                readingSeconds !== null && simulationSeconds !== null
-                  ? `Uses your own timers: ${describeTimer(readingSeconds)} reading, ${describeTimer(simulationSeconds)} consultation`
-                  : "Uses your own timers"
+                extraTime && readingSeconds !== null && simulationSeconds !== null
+                  ? `Your timers: ${describeTimer(readingSeconds)} reading, ${describeTimer(simulationSeconds)} consultation`
+                  : "Off: each station uses the exam's own timers"
               }
-              trailing={<Switch checked={extraTime} onChange={setExtraTime} label="Extra reading time" />}
+              trailing={
+                <span className="flex items-center gap-3">
+                  {extraTime ? (
+                    <Button variant="secondary" size="sm" onClick={() => openTimers()}>
+                      Edit
+                    </Button>
+                  ) : null}
+                  <Switch
+                    checked={extraTime}
+                    onChange={(next) => (next ? openTimers() : setExtraTime(false))}
+                    label="Extra reading time"
+                  />
+                </span>
+              }
             />
             {offersWaitingEmail ? (
               <SettingsRow
@@ -151,35 +185,46 @@ function PreferencesForm({ me }: { me: Me }) {
           </SettingsRows>
         </SettingsCard>
 
-        <SettingsCard title="Custom timer durations">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Reading timer (doctor information)"
-              name="readingTimer"
-              inputMode="numeric"
-              placeholder="04:00"
-              value={reading}
-              onChange={(event) => setReading(event.target.value)}
-              error={readingSeconds === null ? "Minutes and seconds, such as 04:00" : null}
-            />
-            <Input
-              label="Simulation timer (consultation)"
-              name="simulationTimer"
-              inputMode="numeric"
-              placeholder="14:00"
-              value={simulation}
-              onChange={(event) => setSimulation(event.target.value)}
-              error={simulationSeconds === null ? "Minutes and seconds, such as 14:00" : null}
-            />
-          </div>
-        </SettingsCard>
-
         <div className="flex justify-end">
           <Button type="submit" isLoading={saving}>
             Save preferences
           </Button>
         </div>
       </form>
+
+      {timersOpen ? (
+        <Modal width="min(95vw, 480px)" height="fit-content" title="Extra reading time" onClose={() => setTimersOpen(false)}>
+          <div className="space-y-4 p-1">
+            <p className="text-osce-body text-b2c-text-muted">
+              Set your own timers for practice stations. They replace the exam&apos;s default times while this is on.
+            </p>
+            <Input
+              label="Reading timer (doctor information)"
+              name="readingTimer"
+              inputMode="numeric"
+              placeholder="04:00"
+              value={draftReading}
+              onChange={(event) => setDraftReading(event.target.value)}
+              error={draftReadingSeconds === null ? "Minutes and seconds, such as 04:00" : null}
+            />
+            <Input
+              label="Simulation timer (consultation)"
+              name="simulationTimer"
+              inputMode="numeric"
+              placeholder="14:00"
+              value={draftSimulation}
+              onChange={(event) => setDraftSimulation(event.target.value)}
+              error={draftSimulationSeconds === null ? "Minutes and seconds, such as 14:00" : null}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setTimersOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={confirmTimers}>Use these timers</Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
 
       {showOnboarding ? (
         <Modal width="min(95vw, 560px)" height="fit-content" title="Athena onboarding" onClose={closeOnboarding}>

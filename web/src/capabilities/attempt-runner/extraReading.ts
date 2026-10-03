@@ -11,9 +11,11 @@ export interface PhaseSeconds {
 /**
  * A person's own timers, for their own practice.
  *
- * A custom reading or consultation length carried on `/me`
- * (`custom_reading_seconds`, `custom_simulation_seconds`) replaces the exam's
- * own for every station. A timer that was never set keeps the exam's length.
+ * While "Extra reading time" is on (`users.needs_extra_time`), a custom reading
+ * or consultation length (`custom_reading_seconds`, `custom_simulation_seconds`)
+ * replaces the exam's own for every station. A timer that was never set keeps
+ * the exam's length, and switching it off keeps the saved timers but stops
+ * using them.
  *
  * It never touches a circuit's clock: a circuit runs one clock for everybody on
  * it, so stretching it for one candidate would stretch it for the rest. An
@@ -26,10 +28,10 @@ export function usePracticeTimers(defaults: PhaseSeconds): PhaseSeconds {
 
 /** The same rule as {@link usePracticeTimers}, for a screen that only knows the exam's lengths once they have loaded. */
 export function practiceTimers(
-  user: { custom_reading_seconds?: number | null; custom_simulation_seconds?: number | null } | null | undefined,
+  user: { needs_extra_time?: boolean | null; custom_reading_seconds?: number | null; custom_simulation_seconds?: number | null } | null | undefined,
   defaults: PhaseSeconds,
 ): PhaseSeconds {
-  if (!user) return defaults;
+  if (!user?.needs_extra_time) return defaults;
   return {
     readingSeconds: positiveOr(user.custom_reading_seconds, defaults.readingSeconds),
     simulationSeconds: positiveOr(user.custom_simulation_seconds, defaults.simulationSeconds),
