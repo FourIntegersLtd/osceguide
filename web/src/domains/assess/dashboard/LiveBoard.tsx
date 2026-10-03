@@ -8,9 +8,11 @@ import {
   B2CGroupedRow,
   B2CGroupedRowLink,
   B2CGroupedSection,
+  B2CHero,
   B2CPageHeader,
   Badge,
   Button,
+  ButtonLink,
   EmptyState,
 } from "@/foundation/ui";
 import { useAsync, useCursorPages, useEventStream } from "@/foundation/hooks";
@@ -48,12 +50,13 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
   const initial = useAsync((signal) => readLiveBoard(orgSlug, signal), [orgSlug]);
   const stream = useEventStream<Board>(liveBoardStreamPath(orgSlug));
   const board = stream.data ?? initial.data;
+  const { hrefFor } = useSurface();
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-5">
       <B2CPageHeader
         title="Now running"
-        subtitle="Every examination this organisation has in progress."
+        subtitle="Every circuit that is live in your organisation."
         action={
           <Badge variant={stream.connected ? "success" : "warning"} dot>
             {stream.connected ? "Live" : "Reconnecting"}
@@ -74,6 +77,21 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
           }
           return (
             <div className="flex flex-col gap-3">
+              <B2CHero
+                eyebrow="Live"
+                title={`${circuits.length} ${circuits.length === 1 ? "circuit" : "circuits"} running`}
+                action={
+                  <ButtonLink
+                    href={hrefFor(`/circuits/${circuits[0]!.circuit_id}`)}
+                    themeType="b2b"
+                    variant="commit"
+                  >
+                    Open console
+                  </ButtonLink>
+                }
+              >
+                {circuits[0]!.sitting_name}
+              </B2CHero>
               <B2CGroupedSection eyebrow="Running">
                 {circuits.map((circuit) => (
                   <Row key={circuit.circuit_id} circuit={circuit} />

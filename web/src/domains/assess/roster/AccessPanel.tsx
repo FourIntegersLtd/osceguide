@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { Alert, AsyncBoundary, Button, b2bTokens } from "@/foundation/ui";
+import Table, { type Column, type TableMore } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import { errorMessage, useAsync, useCursorPages, useSearchQuery } from "@/foundation/hooks";
@@ -203,30 +204,13 @@ export function AccessPanel({
               No practice access given yet. Trainees can still take every exam they are booked on.
             </p>
           ) : (
-            <>
-              <GrantsTable
-                entitlements={entitlements}
-                trainees={trainees}
-                canManage={canManage}
-                onRevoke={(entitlement) => void revoke(entitlement)}
-              />
-              {pages.moreError ? (
-                <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
-              ) : null}
-              {pages.hasMore ? (
-                <div className="flex justify-center">
-                  <Button
-                    themeType="b2b"
-                    variant="secondary"
-                    size="sm"
-                    disabled={pages.loadingMore}
-                    onClick={pages.loadMore}
-                  >
-                    {pages.loadingMore ? "Loading…" : "Load more"}
-                  </Button>
-                </div>
-              ) : null}
-            </>
+            <GrantsTable
+              entitlements={entitlements}
+              more={pages}
+              trainees={trainees}
+              canManage={canManage}
+              onRevoke={(entitlement) => void revoke(entitlement)}
+            />
           )
         }
       </AsyncBoundary>
@@ -244,11 +228,13 @@ export function AccessPanel({
  */
 function GrantsTable({
   entitlements,
+  more,
   trainees,
   canManage,
   onRevoke,
 }: {
   entitlements: Entitlement[];
+  more: TableMore;
   trainees: Trainee[];
   canManage: boolean;
   onRevoke: (entitlement: Entitlement) => void;
@@ -275,63 +261,66 @@ function GrantsTable({
     [byUserId],
   );
 
+  const columns = useMemo<Column<Entitlement>[]>(
+    () => [
+      {
+        header: "Who",
+        key: (entitlement) => (
+          <span className={cn(b2cTableCellText, "font-medium")}>{whoLabel(entitlement)}</span>
+        ),
+        priority: "primary",
+      },
+      {
+        header: "Exam",
+        key: (entitlement) => <span className="text-b2b-graphite">{entitlement.exam_code}</span>,
+      },
+      {
+        header: "Status",
+        key: (entitlement) =>
+          entitlement.live ? (
+            <span className="text-osce-caption font-medium text-b2b-success-text">Live</span>
+          ) : (
+            <span className="text-osce-caption font-medium text-b2b-warning-text/90">
+              {entitlement.revoked_at ? "Revoked" : "Expired"}
+            </span>
+          ),
+      },
+      {
+        header: "From",
+        key: (entitlement) => <span className="text-b2b-mid">{formatWhen(entitlement.starts_at)}</span>,
+        priority: "detail",
+      },
+      {
+        header: "Until",
+        key: (entitlement) => (
+          <span className="text-b2b-mid">
+            {entitlement.ends_at ? formatWhen(entitlement.ends_at) : "No end date"}
+          </span>
+        ),
+        priority: "detail",
+      },
+      {
+        header: "Actions",
+        key: (entitlement) =>
+          canManage && entitlement.live ? (
+            <Button themeType="b2b" variant="secondary" size="sm" onClick={() => onRevoke(entitlement)}>
+              Revoke
+            </Button>
+          ) : null,
+      },
+    ],
+    [whoLabel, canManage, onRevoke],
+  );
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="border-b border-b2b-border">
-            <th className="py-2 pr-4 text-osce-caption font-semibold text-b2b-mid">Who</th>
-            <th className="py-2 pr-4 text-osce-caption font-semibold text-b2b-mid">Exam</th>
-            <th className="py-2 pr-4 text-osce-caption font-semibold text-b2b-mid">Status</th>
-            <th className="hidden py-2 pr-4 text-osce-caption font-semibold text-b2b-mid md:table-cell">
-              From
-            </th>
-            <th className="hidden py-2 pr-4 text-osce-caption font-semibold text-b2b-mid md:table-cell">
-              Until
-            </th>
-            <th className="py-2 text-osce-caption font-semibold text-b2b-mid">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entitlements.map((entitlement) => (
-            <tr key={entitlement.id} className="border-b border-b2b-border/60">
-              <td className={cn(b2cTableCellText, "py-2 pr-4 font-medium text-osce-ink-900")}>
-                {whoLabel(entitlement)}
-              </td>
-              <td className={cn(b2cTableCellText, "py-2 pr-4 text-b2b-graphite")}>
-                {entitlement.exam_code}
-              </td>
-              <td className="py-2 pr-4">
-                {entitlement.live ? (
-                  <span className="text-osce-caption font-medium text-b2b-success-text">Live</span>
-                ) : (
-                  <span className="text-osce-caption font-medium text-b2b-warning-text/90">
-                    {entitlement.revoked_at ? "Revoked" : "Expired"}
-                  </span>
-                )}
-              </td>
-              <td className={cn(b2cTableCellText, "hidden py-2 pr-4 text-b2b-mid md:table-cell")}>
-                {formatWhen(entitlement.starts_at)}
-              </td>
-              <td className={cn(b2cTableCellText, "hidden py-2 pr-4 text-b2b-mid md:table-cell")}>
-                {entitlement.ends_at ? formatWhen(entitlement.ends_at) : "No end date"}
-              </td>
-              <td className="py-2">
-                {canManage && entitlement.live ? (
-                  <Button
-                    themeType="b2b"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => onRevoke(entitlement)}
-                  >
-                    Revoke
-                  </Button>
-                ) : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Table<Entitlement>
+      rows={entitlements}
+      more={more}
+      themeType="b2b"
+      columns={columns}
+      idField="id"
+      minWidthClassName="min-w-[640px]"
+      empty={{ title: "No grants match." }}
+    />
   );
 }

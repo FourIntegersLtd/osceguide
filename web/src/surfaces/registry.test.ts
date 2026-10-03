@@ -209,9 +209,9 @@ describe("surface registry", () => {
     ]);
     assert.deepEqual(bySection("catalogue"), [
       "Station reports",
-      "Authoring",
       "Study material",
       "Moderation",
+      "Authoring",
     ]);
     assert.deepEqual(bySection("operations"), [
       "Platform team",

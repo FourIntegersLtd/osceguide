@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { LiveCircuit, OrgDashboard, OrgSetup } from "@/domains/assess/dashboard/api";
+import type { LiveCircuit, OrgSetup } from "@/domains/assess/dashboard/api";
 import {
   runsByDay,
   boardOrder,
   candidatesLabel,
   circuitStatus,
-  dashboardLead,
   nextStep,
   recordingMissing,
   setupProgress,
@@ -50,25 +49,6 @@ function circuit(over: Partial<LiveCircuit> & { circuit_id: string }): LiveCircu
   } as LiveCircuit;
 }
 
-function dashboard(over: Partial<OrgDashboard> = {}): OrgDashboard {
-  return {
-    org_id: "o1",
-    slug: "st-marys",
-    name: "St Mary's",
-    counts: {
-      trainees: 0,
-      stations: 0,
-      library_stations: 0,
-      staff: 0,
-      programmes_with_markable_exam: 0,
-      sittings: 0,
-    },
-    setup: setup(),
-    recent_sittings: [],
-    ...over,
-  } as OrgDashboard;
-}
-
 test("the next step is the first one not done, in order", () => {
   assert.equal(nextStep(setup())?.key, "team");
   assert.equal(nextStep(setup({ team_invited: true }))?.key, "trainees");
@@ -100,14 +80,6 @@ test("the station step follows what is available, not what was authored", () => 
   const not = setupSteps(setup()).find((step) => step.key === "stations");
   assert.equal(done?.done, true);
   assert.equal(not?.done, false);
-});
-
-test("the lead says how much is left, then what to do next", () => {
-  assert.match(dashboardLead(dashboard()), /4 steps left/);
-  assert.match(
-    dashboardLead(dashboard({ setup: setup({ ready_to_run: true }) })),
-    /Schedule a sitting/,
-  );
 });
 
 test("a consultation with no attempt behind it is a station nobody is recording", () => {

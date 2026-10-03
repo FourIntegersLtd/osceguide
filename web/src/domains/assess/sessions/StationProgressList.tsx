@@ -3,6 +3,7 @@
 import { HiMiniSignal } from "react-icons/hi2";
 import { Badge, ButtonLink, EmptyState, b2bTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
+import { ExamClock } from "@/capabilities/attempt-runner";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import {
   PROGRESS_LABEL,
@@ -42,6 +43,7 @@ export function StationProgressList({
             <th scope="col" className="px-4 py-3 font-medium">Candidate</th>
             <th scope="col" className="px-4 py-3 font-medium">Station</th>
             <th scope="col" className="px-4 py-3 font-medium">Phase</th>
+            <th scope="col" className="px-4 py-3 font-medium">Left</th>
             <th scope="col" className="px-4 py-3"><span className="sr-only">Marking</span></th>
           </tr>
         </thead>
@@ -52,6 +54,8 @@ export function StationProgressList({
               slot={slot}
               position={index + 1}
               isActive={slot.id === data.circuit.active_slot_id}
+              secondsLeft={slot.id === data.circuit.active_slot_id ? data.circuit.remaining_seconds : null}
+              paused={data.circuit.paused}
               agentLive={agentLive && slot.id === data.circuit.active_slot_id}
             />
           ))}
@@ -71,11 +75,15 @@ function Row({
   slot,
   position,
   isActive,
+  secondsLeft,
+  paused,
   agentLive,
 }: {
   slot: ConsoleSlot;
   position: number;
   isActive: boolean;
+  secondsLeft: number | null | undefined;
+  paused: boolean | undefined;
   agentLive: boolean;
 }) {
   const { hrefFor } = useSurface();
@@ -113,6 +121,11 @@ function Row({
           <Badge variant={progressTone(progress)} dot>{PROGRESS_LABEL[progress]}</Badge>
           {slot.has_review ? <Badge variant="accent">Marked</Badge> : null}
         </div>
+      </td>
+      <td className="px-4 py-3 font-mono text-osce-body text-b2b-mid">
+        {secondsLeft !== null && secondsLeft !== undefined ? (
+          <ExamClock secondsLeft={secondsLeft} label={PROGRESS_LABEL[progress]} tick paused={paused === true} />
+        ) : null}
       </td>
       <td className="px-4 py-3 text-right">
         {/* Marking opens once the station has actually been sat. Offering it

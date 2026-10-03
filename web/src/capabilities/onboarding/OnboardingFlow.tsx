@@ -5,7 +5,8 @@ import { HiOutlineArrowLeft, HiOutlineArrowRight } from "react-icons/hi2";
 import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalSection, cn, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
-import { AgentTile, MicrophoneCheck, VoiceRoom } from "@/foundation/livekit";
+import { BarVisualizer, useVoiceAssistant } from "@livekit/components-react";
+import { MicrophoneCheck, VoiceRoom, agentStateLabel } from "@/foundation/livekit";
 import type { OnboardingScene } from "@/capabilities/onboarding/api";
 import { useOnboardingVoice } from "@/capabilities/onboarding/useOnboardingVoice";
 
@@ -60,21 +61,24 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-xl space-y-5">
-      <ol className="grid grid-cols-3 gap-2" aria-label="Onboarding steps">
+    <VoiceRoom
+      className="mx-auto w-full max-w-xl space-y-8"
+      grant={step === "invitation" ? null : voice.grant}
+      onConnected={voice.onConnected}
+    >
+      <ol className="flex items-center justify-center" aria-label="Onboarding steps">
         {STEPS.map((entry, index) => (
           <li
             key={entry.id}
             aria-current={entry.id === step ? "step" : undefined}
+            title={entry.label}
             className={cn(
-              "rounded-osce-lg border px-3 py-2.5",
-              entry.id === step ? "border-osce-ink-900 bg-osce-surface" : "border-osce-border bg-b2c-surface-muted",
+              "border-l border-osce-border px-6 font-mono text-osce-body tabular-nums first:border-l-0",
+              entry.id === step ? "font-semibold text-osce-ink-900" : "text-b2c-text-muted",
             )}
           >
-            <span className="font-mono text-osce-meta tabular-nums text-b2c-text-muted">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <p className="text-osce-meta font-medium text-osce-ink-900">{entry.label}</p>
+            {String(index + 1).padStart(2, "0")}
+            <span className="sr-only"> {entry.label}</span>
           </li>
         ))}
       </ol>
@@ -110,6 +114,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       {step === "demo" && scene && (
         <InteractiveDemo
           scene={scene}
+          assistantName={voice.assistantName}
           isFirst={sceneIndex === 0}
           isLast={sceneIndex === voice.scenes.length - 1}
           onPrevious={() => setSceneIndex((index) => Math.max(0, index - 1))}
@@ -121,7 +126,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       )}
 
       {step === "invitation" && (
-        <div className={`${b2cCard} ${b2cCardPadding} space-y-4 text-center`}>
+        <div className={`${b2cCard} ${b2cCardPadding} space-y-6 text-center`}>
           <AthenaIdentity
             title={voice.assistantName}
             description="You've seen how Athena analyzes a consultation. Ready to start practicing and get your own personalized feedback?"
@@ -139,13 +144,28 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
         </Alert>
       )}
       {voice.mic.message && <Alert tone="warning">{voice.mic.message}</Alert>}
+    </VoiceRoom>
+  );
+}
 
-      {step !== "invitation" && (
-        <VoiceRoom grant={voice.grant} onConnected={voice.onConnected}>
-          <AgentTile name={voice.assistantName} detail="Your AI examiner" speaker={voice.assistantName} />
-        </VoiceRoom>
-      )}
-
+/** Athena's voice as bars. The state is read out, not printed. */
+function AthenaVoice({ assistantName }: { assistantName: string }) {
+  const { state, audioTrack } = useVoiceAssistant();
+  return (
+    <div className="flex justify-center py-2">
+      {/* LiveKit's stylesheet sizes the visualiser to its parent, so the box is the parent's. */}
+      <div className="h-12 w-40">
+        <BarVisualizer
+          state={state}
+          barCount={7}
+          trackRef={audioTrack}
+          className="[--lk-fg:rgb(var(--color-accent))] [--lk-va-bar-bg:rgb(var(--color-ink)/0.2)] [--lk-va-bar-gap:8px] [--lk-va-bar-width:6px]"
+          options={{ minHeight: 16 }}
+        />
+      </div>
+      <p aria-live="polite" className="sr-only">
+        {agentStateLabel(state, assistantName)}
+      </p>
     </div>
   );
 }
@@ -162,11 +182,12 @@ function MeetAthena({
   onNext: () => void;
 }) {
   return (
-    <div className={`${b2cCard} ${b2cCardPadding} space-y-4 text-center`}>
+    <div className={`${b2cCard} ${b2cCardPadding} space-y-6 text-center`}>
       <AthenaIdentity
         title={assistantName}
         description={`Listen to ${assistantName} introduce herself${userName ? `, ${userName}` : ""}, then continue when you are ready.`}
       />
+      <AthenaVoice assistantName={assistantName} />
       <MicrophoneCheck variant="plain" className="text-left" />
       <Button onClick={onNext} isLoading={connecting}>
         Show me how it works <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
@@ -177,25 +198,28 @@ function MeetAthena({
 
 function InteractiveDemo({
   scene,
+  assistantName,
   isFirst,
   isLast,
   onPrevious,
   onNext,
 }: {
   scene: OnboardingScene;
+  assistantName: string;
   isFirst: boolean;
   isLast: boolean;
   onPrevious: () => void;
   onNext: () => void;
 }) {
   return (
-    <div className={`${b2cCard} ${b2cCardPadding} space-y-4`}>
+    <div className={`${b2cCard} ${b2cCardPadding} space-y-6`}>
       <header className="space-y-1 text-center">
         <h2 className="font-semibold text-ink">See Athena in action</h2>
         <p className="text-sm text-ink-muted">
           Respond to the patient out loud, and Athena will give instant feedback.
         </p>
       </header>
+      <AthenaVoice assistantName={assistantName} />
       <ModalSection title="Patient">
         <p className="leading-relaxed text-ink">{scene.patientLine}</p>
       </ModalSection>

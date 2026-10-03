@@ -26,7 +26,7 @@ No tables of its own. Work is keyed by a `media` aggregate id.
 | Task | Queue | Notes |
 |------|-------|-------|
 | `produce_summary_podcast` | `media` | Script + TTS for a summary |
-| `regenerate_slide_av` | `media` | Slide video export (MoviePy + Cartesia) |
+| `regenerate_slide_av` | `media` | Slide video: Ben's ElevenLabs voice, Pillow frames, ffmpeg |
 | `produce_podcast_audio` | `media` | Audio-only podcast |
 
 Podcasts are voiced by ElevenLabs Eleven v4 (text-to-dialogue). Regenerate them all with
@@ -36,7 +36,7 @@ Run `make worker` beside `make start`. **ffmpeg** must be on `PATH` for slide vi
 
 ## Cross-slice dependencies
 - **`media`**: reads and updates the media row and `content` payload.
-- **`core.settings`**: model and AV keys (`OPENAI_API_KEY`, `ELEVENLABS_API_KEY` and voice ids, `CARTESIA_API_KEY` for slides, AWS S3).
+- **`core.settings`**: model and AV keys (`OPENAI_API_KEY`, `ELEVENLABS_API_KEY` and voice ids, AWS S3).
 
 ## Local setup
 
@@ -46,6 +46,9 @@ From `api`, copy AV keys from the B2C `.env`:
 poetry run python scripts/sync_av_env_from_b2c.py
 ```
 
-Slide video uses the ported B2C `SlideService` (`b2c_slide_service.py`). Bundled assets:
-`assets/slides/images/bg.png`, `assets/fonts/Poppins-*.ttf`. Override fonts with
-`MEDIA_AV_FONT_DIR` if needed.
+Slide video: `slide_narration.py` writes Ben's words per slide moment and plans the talk
+(section cards, three takeaways, sign-off), `slide_voice.py` voices each line, `slide_scenes.py`
+draws the frames and `slide_av.py` times them and pipes them to ffmpeg. Re-render decks with
+`poetry run python scripts/regenerate_slides.py --help`. Bundled assets:
+`assets/slides/images/bg.png` (the logo is cut from it), `assets/fonts/Poppins-*.ttf`. Override
+fonts with `MEDIA_AV_FONT_DIR` if needed.

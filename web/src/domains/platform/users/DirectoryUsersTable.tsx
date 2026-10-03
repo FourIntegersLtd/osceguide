@@ -53,7 +53,7 @@ export function DirectoryUsersTable({
         ...filters,
         limit: params.perPage,
         cursor: params.cursor ?? undefined,
-        q: filters.q?.trim() || params.search.trim() || undefined,
+        q: filters.q?.trim() || undefined,
       });
       return {
         items: page.items,
@@ -145,8 +145,6 @@ export function DirectoryUsersTable({
       fetchPage={fetchPage}
       columns={columns}
       idField="id"
-      nameField="email"
-      showSearch={false}
       defaultItemsPerPage={10}
       empty={empty}
     />

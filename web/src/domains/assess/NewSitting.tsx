@@ -23,7 +23,7 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
       <B2CPageHeader
         back={{ href: hrefFor("/sittings"), label: "Sittings" }}
         title="Schedule a sitting"
-        subtitle="An examination or a training session."
+        subtitle="A sitting is one day of examining. Add circuits to it next."
       />
       <AsyncBoundary state={programmes}>
         {(items) => (
@@ -95,6 +95,7 @@ function Form({
   return (
     <section className="max-w-3xl rounded-panel border border-b2b-border bg-b2b-surface p-5 sm:p-6">
       <form onSubmit={submit} className="flex flex-col gap-5">
+        <h2 className="text-osce-title font-semibold text-b2b-headline">Details</h2>
         {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
 
         <Input

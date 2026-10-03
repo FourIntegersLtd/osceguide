@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { HiInformationCircle, HiOutlineArrowPath, HiOutlineMagnifyingGlass } from "react-icons/hi2";
-import Table, { type Column, type FetchPageResult } from "@/foundation/table/Table";
+import Table, { type Column, type TableMore } from "@/foundation/table/Table";
 import {
-  Alert,
-  Button,
   Panel,
 } from "@/foundation/ui";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
@@ -89,30 +87,13 @@ export default function ReferralHistory() {
           />
         </label>
       </div>
-      <ReferralHistoryTable rows={rows} />
-      {pages.moreError ? (
-        <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
-      ) : null}
-      {pages.hasMore ? (
-        <div className="mb-24 flex justify-center">
-          <Button variant="secondary" size="sm" disabled={pages.loadingMore} onClick={pages.loadMore}>
-            {pages.loadingMore ? "Loading…" : "Load more"}
-          </Button>
-        </div>
-      ) : null}
+      <ReferralHistoryTable rows={rows} more={pages} />
     </>
   );
 }
 
-function ReferralHistoryTable({ rows }: { rows: ReferralHistoryRow[] }) {
+function ReferralHistoryTable({ rows, more }: { rows: ReferralHistoryRow[]; more: TableMore }) {
   const { hrefFor } = useSurface();
-
-  // Every row loaded so far, with the table's own pager off: paging is the
-  // server's cursor (Load more), and filtering already happened in SQL.
-  const fetchPage = useCallback(
-    async (): Promise<FetchPageResult<ReferralHistoryRow>> => ({ items: rows, totalCount: rows.length }),
-    [rows],
-  );
 
   const columns: Column<ReferralHistoryRow>[] = [
     {
@@ -164,16 +145,13 @@ function ReferralHistoryTable({ rows }: { rows: ReferralHistoryRow[] }) {
 
   return (
     <Table<ReferralHistoryRow>
-      className="mb-4"
+      className={more.hasMore ? "mb-24" : "mb-4"}
       title="Referral history"
       description="Track referees, earnings, and payout status."
-      fetchPage={fetchPage}
-      showPagination={false}
+      rows={rows}
+      more={more}
       columns={columns}
       idField="id"
-      nameField="referee_email"
-      deletable={false}
-      showSearch={false}
     />
   );
 }

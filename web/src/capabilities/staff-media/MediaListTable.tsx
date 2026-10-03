@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { HiOutlineChevronRight, HiOutlineTrash } from "react-icons/hi2";
-import Table, { type FetchPageResult } from "@/foundation/table/Table";
+import Table, { type TableMore } from "@/foundation/table/Table";
 import { Badge } from "@/foundation/ui";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
@@ -21,27 +21,20 @@ function mediaDateLabel(iso: string | null | undefined): string {
 
 export function MediaListTable({
   items,
+  more,
   busy,
   onOpen,
   onPublish,
   onDelete,
 }: {
   items: MediaItem[];
+  /** The "Load more" footer: the screen's cursor pages. */
+  more: TableMore;
   busy: string | null;
   onOpen: (item: MediaItem) => void;
   onPublish: (item: MediaItem) => void;
   onDelete: (item: MediaItem) => void;
 }) {
-  // Every row loaded so far, with the table's own pager off: paging is the
-  // server's cursor (Load more), and filtering already happened in SQL.
-  const fetchPage = useCallback(
-    async (): Promise<FetchPageResult<MediaItem>> => ({
-      items: items,
-      totalCount: items.length,
-    }),
-    [items],
-  );
-
   const columns = useMemo(
     () => [
       {
@@ -137,12 +130,10 @@ export function MediaListTable({
 
   return (
     <Table<MediaItem>
-      fetchPage={fetchPage}
-      showPagination={false}
+      rows={items}
+      more={more}
       columns={columns}
       idField="id"
-      nameField="title"
-      showSearch={false}
     />
   );
 }

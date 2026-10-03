@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { HiInformationCircle } from "react-icons/hi";
 import { HiOutlineArrowPath, HiOutlineMagnifyingGlass } from "react-icons/hi2";
-import Table, { type Column, type FetchPageResult } from "@/foundation/table/Table";
+import Table, { type Column } from "@/foundation/table/Table";
 import {
-  Alert,
   B2CPanelCard,
   B2CPanelCardBody,
   B2CPanelCardHeader,
-  Button,
   ButtonLink,
   productTokens,
   iconSearchInputClassName,
@@ -79,13 +77,6 @@ export function FlaggedStations() {
         station_name: flag.station_title ?? "Unknown Station",
       })),
     [flags.data],
-  );
-
-  // Every row loaded so far, with the table's own pager off: paging is the
-  // server's cursor (Load more), and filtering already happened in SQL.
-  const fetchPage = useCallback(
-    async (): Promise<FetchPageResult<FlagRow>> => ({ items: rows, totalCount: rows.length }),
-    [rows],
   );
 
   if (flags.loading) {
@@ -195,25 +186,12 @@ export function FlaggedStations() {
         </label>
       </div>
       <Table<FlagRow>
-        className="mb-4"
-        fetchPage={fetchPage}
-        showPagination={false}
+        className={pages.hasMore ? "mb-24" : "mb-4"}
+        rows={rows}
+        more={pages}
         columns={columns}
         idField="id"
-        nameField="station_name"
-        deletable={false}
-        showSearch={false}
       />
-      {pages.moreError ? (
-        <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
-      ) : null}
-      {pages.hasMore ? (
-        <div className="mb-24 flex justify-center">
-          <Button variant="secondary" size="sm" disabled={pages.loadingMore} onClick={pages.loadMore}>
-            {pages.loadingMore ? "Loading…" : "Load more"}
-          </Button>
-        </div>
-      ) : null}
     </div>
   );
 }

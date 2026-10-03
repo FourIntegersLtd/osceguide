@@ -151,6 +151,7 @@ export function MediaAuthoringHome() {
           <>
             <MediaListTable
               items={list.data ?? []}
+              more={pages}
               busy={action.busy}
               onOpen={(item: MediaItem) =>
                 router.push(staffMediaDetailPath(item.id))
@@ -168,24 +169,6 @@ export function MediaAuthoringHome() {
                 })
               }
             />
-
-            {pages.moreError ? (
-              <Alert tone="danger">
-                Could not load more: {pages.moreError.message}
-              </Alert>
-            ) : null}
-            {pages.hasMore ? (
-              <div className="flex justify-center">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={pages.loadingMore}
-                  onClick={pages.loadMore}
-                >
-                  {pages.loadingMore ? "Loading…" : "Load more"}
-                </Button>
-              </div>
-            ) : null}
           </>
         )}
       </AsyncBoundary>

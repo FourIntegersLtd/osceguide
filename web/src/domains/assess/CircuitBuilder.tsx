@@ -89,6 +89,7 @@ export function CircuitBuilder({
   const [picked, setPicked] = useState<Set<string>>(
     () => new Set(initial?.traineeIds ?? []),
   );
+  const [traineeSearch, setTraineeSearch] = useState("");
   const [supervisor, setSupervisor] = useState(initial?.supervisorUserId ?? "");
   const [reading, setReading] = useState(initial?.timing.readingMinutes ?? 2);
   const [simulation, setSimulation] = useState(initial?.timing.simulationMinutes ?? 10);
@@ -167,7 +168,7 @@ export function CircuitBuilder({
             placeholder="Morning circuit"
           />
           <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium text-ink">Supervisor</span>
+            <span className="text-sm font-medium text-ink">Lead</span>
             <select
               value={supervisor}
               onChange={(event) => setSupervisor(event.target.value)}
@@ -257,17 +258,31 @@ export function CircuitBuilder({
 
       <Panel
         title="Trainees"
-        description={
+        description={`${picked.size} of ${trainees.length} selected. ${
           isExam
             ? "Each candidate goes through every station."
             : "Each trainee is paired with one station, then they rotate."
-        }
+        }`}
       >
         {trainees.length === 0 ? (
           <p className="text-sm text-ink-muted">Add trainees to your organisation first.</p>
         ) : (
+          <>
+          <div className="mb-3 max-w-sm">
+            <Input
+              label="Find a trainee"
+              value={traineeSearch}
+              onChange={(event) => setTraineeSearch(event.target.value)}
+            />
+          </div>
           <ul className="flex flex-wrap gap-2">
-            {trainees.map((trainee) => {
+            {trainees
+              .filter((trainee) =>
+                `${trainee.first_name ?? ""} ${trainee.last_name ?? ""} ${trainee.email}`
+                  .toLowerCase()
+                  .includes(traineeSearch.trim().toLowerCase()),
+              )
+              .map((trainee) => {
               const userId = trainee.user_id;
               const on = userId !== null && picked.has(userId);
               const label =
@@ -312,6 +327,7 @@ export function CircuitBuilder({
               );
             })}
           </ul>
+          </>
         )}
       </Panel>
 

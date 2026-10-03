@@ -17,7 +17,7 @@ import { sectionSubtitle } from "@/domains/assess/roster/support";
 type Section = "trainees" | "add" | "groups" | "access";
 
 const TABS: readonly Tab<Section>[] = [
-  { key: "trainees", label: "Trainees" },
+  { key: "trainees", label: "Everyone" },
   { key: "add", label: "Add people" },
   { key: "groups", label: "Groups" },
   { key: "access", label: "Exam access" },
@@ -56,7 +56,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
         {(data) => (
           <>
             <B2CPageHeader
-              title="Trainees"
+              title="People"
               subtitle={sectionSubtitle(section, {
                 trainees: data.trainees.length,
                 groups: data.groups.length,
@@ -64,7 +64,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
               action={
                 canManage && section === "trainees" ? (
                   <Button themeType="b2b" variant="commit" onClick={() => setSection("add")}>
-                    Add trainees
+                    Add people
                   </Button>
                 ) : null
               }

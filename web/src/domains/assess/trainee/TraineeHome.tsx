@@ -3,9 +3,9 @@
 import Link from "next/link";
 import {
   HiOutlineAcademicCap,
+  HiOutlineBookOpen,
   HiOutlineCalendarDays,
-  HiOutlineClipboardDocumentList,
-  HiOutlineQueueList,
+  HiOutlineChatBubbleLeftRight,
   HiOutlineSparkles,
 } from "react-icons/hi2";
 import {
@@ -13,13 +13,15 @@ import {
   AsyncBoundary,
   B2CGroupedRowLink,
   B2CGroupedSection,
+  B2CHero,
   B2CPageHeader,
   Badge,
+  ButtonLink,
   EmptyState,
-  b2bTokens,
 } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
-import { useSession } from "@/foundation/session";
+import { activeMembership, useSession } from "@/foundation/session";
+import { workspaceBasePath } from "@/foundation/routing";
 import { useSurface } from "@/capabilities";
 import { LiveTurnBanner } from "@/domains/assess/trainee/LiveTurnBanner";
 import {
@@ -38,7 +40,6 @@ import {
   sittingForSlot,
   slotById,
   sortSittings,
-  stationsCompleted,
   summaryLine,
 } from "@/domains/assess/trainee/support";
 
@@ -64,9 +65,8 @@ export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
     <div className="flex w-full min-w-0 flex-col gap-6">
       <B2CPageHeader
         className="!mb-0"
-        eyebrow={greeting(new Date())}
+        eyebrow={activeMembership(session)?.org_name ?? greeting(new Date())}
         title={name ? `Hello, ${name}.` : "Hello."}
-        subtitle="Pick up an examination or practice circuit, or read back a station you have finished."
         action={
           <Badge variant={stream.connected ? "success" : "neutral"} dot>
             {stream.connected ? "Live" : "Updating"}
@@ -117,14 +117,6 @@ function Overview({
       ) : null}
       <LiveTurnBanner sittings={live} />
 
-      {sittings.length > 0 ? (
-        <section aria-label="Your progress" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Stat label="Rostered sittings" value={sittings.length} />
-          <Stat label="Stations completed" value={stationsCompleted(sittings)} />
-          <Stat label="Open now" value={live.length} />
-        </section>
-      ) : null}
-
       <section aria-label="Your sittings">
         {ordered.length === 0 ? (
           <EmptyState
@@ -142,15 +134,6 @@ function Overview({
 
       <Explore />
     </>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className={b2bTokens.b2bStatCard}>
-      <p className={b2bTokens.b2bEyebrow}>{label}</p>
-      <p className={b2bTokens.b2bStatCardValue}>{value}</p>
-    </div>
   );
 }
 
@@ -184,33 +167,46 @@ function SittingRow({ sitting }: { sitting: MySitting }) {
 /**
  * The rest of the arm, named.
  *
- * Self practice is this domain's; the station library and the transcripts are
- * capabilities mounted on this surface, reached through `hrefFor` so the paths
- * stay the surface's rather than being written down here.
+ * Self practice is this domain's; A to Z and the community are capabilities
+ * mounted on this surface, reached through `hrefFor`. Personal practice is the
+ * person's own workspace, a different base path.
  */
 function Explore() {
   const { hrefFor } = useSurface();
 
   return (
-    <B2CGroupedSection eyebrow="Explore">
-      <B2CGroupedRowLink
-        href={hrefFor("/trainee/practice")}
-        icon={HiOutlineSparkles}
-        title="Self practice"
-        meta="Sit a station your organisation has published, on your own."
-      />
-      <B2CGroupedRowLink
-        href={hrefFor("/stations")}
-        icon={HiOutlineQueueList}
-        title="Station library"
-        meta="Browse every scenario published for your exams."
-      />
-      <B2CGroupedRowLink
-        href={hrefFor("/transcripts")}
-        icon={HiOutlineClipboardDocumentList}
-        title="Consultation records"
-        meta="Read back what was said in a station you have finished."
-      />
-    </B2CGroupedSection>
+    <>
+      <B2CHero
+        eyebrow="Your personal practice"
+        title="Practise on your own"
+        action={
+          <ButtonLink
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            href={`${workspaceBasePath("me")}/dashboard`}
+          >
+            Open personal practice
+          </ButtonLink>
+        }
+      >
+        The full station library for your exam, with feedback and debriefs only you see.
+      </B2CHero>
+      <B2CGroupedSection eyebrow="Practise">
+        <B2CGroupedRowLink
+          href={hrefFor("/trainee/practice")}
+          icon={HiOutlineSparkles}
+          title="Self practice"
+          meta="From your organisation"
+        />
+        <B2CGroupedRowLink href={hrefFor("/summary")} icon={HiOutlineBookOpen} title="A to Z" />
+        <B2CGroupedRowLink
+          href={hrefFor("/discussion")}
+          icon={HiOutlineChatBubbleLeftRight}
+          title="Community"
+          meta="Ask your cohort"
+        />
+      </B2CGroupedSection>
+    </>
   );
 }

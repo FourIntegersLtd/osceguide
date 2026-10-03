@@ -28,7 +28,7 @@ export function PlatformAudit() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Audit log"
-        description="Activity in every organisation, plus changes made by OSCE Guide staff."
+        description="Who changed what, across the platform."
       />
       <PlatformFilterBar>
         <PlatformFilterSearch

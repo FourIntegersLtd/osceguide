@@ -37,10 +37,11 @@ export const CAPABILITIES: readonly CapabilityModule[] = [
   transcriptsCapability,
   accountCapability,
   achievementsCapability,
-  authoringCapability,
   staffMediaCapability,
   staffGrowthCapability,
   staffModerationCapability,
+  // Last: the staff catalogue lists Authoring after Study material and Moderation.
+  authoringCapability,
 ];
 
 export interface MountOptions {

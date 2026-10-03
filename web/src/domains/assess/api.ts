@@ -13,8 +13,13 @@ export function readOrganization(slug: string, signal?: AbortSignal): Promise<Or
   return platformRequest<Organization>(org(slug), { signal });
 }
 
-export function listSittings(slug: string, signal?: AbortSignal): Promise<SittingPage> {
-  return platformRequest<SittingPage>(`${org(slug)}/sittings`, { signal });
+export function listSittings(
+  slug: string,
+  signal?: AbortSignal,
+  page?: PageParams,
+): Promise<SittingPage> {
+  const { limit, cursor } = pageQuery(page);
+  return platformRequest<SittingPage>(`${org(slug)}/sittings`, { signal, query: { limit, cursor } });
 }
 
 export function readSitting(slug: string, sittingId: string, signal?: AbortSignal): Promise<Sitting> {

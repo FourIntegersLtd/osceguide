@@ -24,7 +24,7 @@ DIALOGUE_CHUNK_CHARS = 2000
 DIALOGUE_STABILITY = 0.5
 _SUMMARY_SECTIONS = ("red_flags", "examinations", "brief_management", "psychosocial_aspects")
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
-_MAX_ATTEMPTS = 5
+_MAX_ATTEMPTS = 8
 
 
 def _require_av_settings(settings: Settings) -> None:
@@ -64,6 +64,8 @@ def _chunks(turns: list[tuple[str, str]], limit: int = DIALOGUE_CHUNK_CHARS) -> 
             if current and size + len(piece) > limit:
                 chunks.append(current)
                 current, size = [], 0
+            if not re.search(r"\w", re.sub(r"\[[^\]]*\]", "", piece)):
+                continue  # only a tag or punctuation: ElevenLabs refuses a line with no words
             current.append((speaker, piece))
             size += len(piece)
     if current:
@@ -76,7 +78,7 @@ def _voice_ids(settings: Settings) -> dict[str, str]:
     return {"Ben": settings.elevenlabs_voice_ben, "Michelle": settings.elevenlabs_voice_michelle}
 
 
-def _dialogue_mp3(settings: Settings, client: httpx.Client, chunk: list[tuple[str, str]]) -> bytes:
+def dialogue_mp3(settings: Settings, client: httpx.Client, chunk: list[tuple[str, str]]) -> bytes:
     """One chunk of dialogue voiced by both hosts, retrying rate limits and transient errors."""
     voices = _voice_ids(settings)
     body = {
@@ -92,7 +94,7 @@ def _dialogue_mp3(settings: Settings, client: httpx.Client, chunk: list[tuple[st
             json=body,
         )
         if response.status_code in _RETRY_STATUSES and attempt < _MAX_ATTEMPTS:
-            time.sleep(2**attempt)
+            time.sleep(min(2**attempt, 30))
             continue
         if response.status_code >= 400:
             raise AvUnavailable(f"ElevenLabs returned {response.status_code}: {response.text[:300]}")
@@ -109,7 +111,7 @@ def synthesize_podcast_mp3(settings: Settings, script: str, work_dir: Path, base
     combined = AudioSegment.empty()
     with httpx.Client(timeout=httpx.Timeout(180.0)) as client:
         for chunk in _chunks(turns):
-            combined += AudioSegment.from_mp3(io.BytesIO(_dialogue_mp3(settings, client, chunk)))
+            combined += AudioSegment.from_mp3(io.BytesIO(dialogue_mp3(settings, client, chunk)))
     mp3 = work_dir / f"{basename}.mp3"
     combined.set_frame_rate(44100).set_channels(2).export(mp3, format="mp3", bitrate="192k")
     return mp3

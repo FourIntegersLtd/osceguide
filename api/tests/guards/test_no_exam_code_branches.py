@@ -46,8 +46,6 @@ STILL_NAMES_AN_EXAM = {
     "app/features/assistant/content/packs/__init__.py",
     # A deck with no exam is rendered and stored as one particular exam's.
     "app/features/media_production/slide_av.py",
-    # A verbatim port, left as it was written.
-    "app/features/media_production/slide_renderer.py",
 }
 
 

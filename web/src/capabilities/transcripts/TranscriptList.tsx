@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Table from "@/foundation/table/Table";
-import { AsyncBoundary, B2CPageHeader, Button, ButtonLink, SectionSearchField } from "@/foundation/ui";
+import Table, { type TableMore } from "@/foundation/table/Table";
+import { AsyncBoundary, B2CPageHeader, ButtonLink, SectionSearchField } from "@/foundation/ui";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { formatLongDateTime } from "@/foundation/format";
@@ -64,32 +64,14 @@ export function TranscriptList() {
         }}
       >
         {(attempts) => (
-          <TranscriptTable
-            attempts={attempts}
-            hasMore={pages.hasMore}
-            loadingMore={pages.loadingMore}
-            moreError={pages.moreError}
-            onLoadMore={pages.loadMore}
-          />
+          <TranscriptTable attempts={attempts} more={pages} />
         )}
       </AsyncBoundary>
     </div>
   );
 }
 
-function TranscriptTable({
-  attempts,
-  hasMore,
-  loadingMore,
-  moreError,
-  onLoadMore,
-}: {
-  attempts: RecentAttempt[];
-  hasMore: boolean;
-  loadingMore: boolean;
-  moreError: Error | null;
-  onLoadMore: () => void;
-}) {
+function TranscriptTable({ attempts, more }: { attempts: RecentAttempt[]; more: TableMore }) {
   const { hrefFor } = useSurface();
 
 
@@ -126,34 +108,6 @@ function TranscriptTable({
   );
 
   return (
-    <div className="space-y-4">
-      <Table<TranscriptRow>
-        data={attempts}
-        columns={columns}
-        idField="id"
-        nameField="exam_code"
-        showSearch={false}
-        showPagination={false}
-        totalItems={attempts.length}
-        currentPage={1}
-        itemsPerPage={Math.max(attempts.length, 1)}
-        onPageChange={() => {}}
-        onItemsPerPageChange={() => {}}
-        onSearch={() => {}}
-      />
-
-      {moreError ? (
-        <p className="text-osce-body text-osce-danger">
-          Could not load more transcripts: {moreError.message}
-        </p>
-      ) : null}
-      {hasMore ? (
-        <div className="flex justify-center">
-          <Button type="button" variant="secondary" size="sm" disabled={loadingMore} onClick={onLoadMore}>
-            {loadingMore ? "Loading…" : "Load more transcripts"}
-          </Button>
-        </div>
-      ) : null}
-    </div>
+    <Table<TranscriptRow> rows={attempts} more={more} columns={columns} idField="id" />
   );
 }

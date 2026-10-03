@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, B2CPageHeader, Badge, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CHero, B2CPageHeader, Button, ButtonLink } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { acknowledgeResult, downloadMyResult, readMyResult } from "@/domains/assess/trainee/api";
-import { outcomeTone } from "@/domains/assess/results/support";
+import { workspaceBasePath } from "@/foundation/routing";
+import { useSurface } from "@/capabilities";
 
 /**
  * A candidate's own result, once it has been released and not before.
@@ -20,6 +21,7 @@ import { outcomeTone } from "@/domains/assess/results/support";
  * Acknowledging is the candidate's, and it is one-way: there is no unread.
  */
 export function MyResult({ sittingId }: { sittingId: string }) {
+  const { hrefFor } = useSurface();
   const state = useAsync((signal) => readMyResult(sittingId, signal), [sittingId]);
   const [acknowledging, setAcknowledging] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -54,7 +56,27 @@ export function MyResult({ sittingId }: { sittingId: string }) {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
-      <B2CPageHeader className="!mb-0" eyebrow="Your result" title="Assessment outcome" />
+      <B2CPageHeader
+        className="!mb-0"
+        eyebrow={
+          state.data?.released_at
+            ? `Released ${new Date(state.data.released_at).toLocaleDateString()}`
+            : "Your result"
+        }
+        title="Assessment outcome"
+        action={
+          state.data?.released_at ? (
+            <button
+              type="button"
+              onClick={() => void downloadPdf()}
+              disabled={downloading}
+              className="inline-flex items-center justify-center rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-meta font-medium text-b2b-headline hover:bg-canvas focus:outline-none disabled:opacity-60"
+            >
+              {downloading ? "Preparing…" : "Download PDF"}
+            </button>
+          ) : null
+        }
+      />
 
       <AsyncBoundary state={state}>
         {(result) =>
@@ -64,70 +86,63 @@ export function MyResult({ sittingId }: { sittingId: string }) {
               about it is decided here.
             </Alert>
           ) : (
-            <section className="space-y-5 rounded-panel border border-b2b-border bg-b2b-surface p-5 sm:p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className={b2bTokens.b2bEyebrow}>Outcome</p>
-                  <p className="mt-1 text-osce-title font-semibold text-b2b-headline">
-                    {outcomeLabel(result.assessment_outcome)}
-                  </p>
-                </div>
-                <Badge tone={outcomeTone(result.assessment_outcome)} dot>
-                  {outcomeLabel(result.assessment_outcome)}
-                </Badge>
-              </div>
-
-              {result.assessment_score != null ? (
-                <div className="rounded-panel bg-canvas px-4 py-3">
-                  <p className={b2bTokens.b2bEyebrow}>Assessment score</p>
-                  <p className="mt-1 text-osce-title font-semibold text-b2b-headline">
-                    {result.assessment_score.toFixed(1)}
-                    <span className="text-osce-body font-medium text-b2b-mid"> / 100</span>
-                  </p>
-                </div>
-              ) : null}
-
-              {result.rationale ? (
-                <div>
-                  <h2 className={b2bTokens.b2bSectionTitle}>What was said</h2>
-                  <p className="mt-2 whitespace-pre-wrap text-osce-body leading-relaxed text-b2b-graphite">
-                    {result.rationale}
-                  </p>
-                </div>
-              ) : null}
-
-              <p className="text-osce-caption text-b2b-mid">
-                Released {new Date(result.released_at).toLocaleString()}
-              </p>
-
+            <>
               {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
-
-              <div className="flex flex-wrap items-center gap-3 border-t border-b2b-border pt-4">
-                <button
-                  type="button"
-                  onClick={() => void downloadPdf()}
-                  disabled={downloading}
-                  className="inline-flex items-center justify-center rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-meta font-medium text-b2b-headline hover:bg-canvas focus:outline-none disabled:opacity-60"
-                >
-                  {downloading ? "Preparing…" : "Download PDF"}
-                </button>
-                {result.acknowledged_at ? (
-                  <Alert tone="success">
-                    You acknowledged this on{" "}
-                    {new Date(result.acknowledged_at).toLocaleDateString()}.
-                  </Alert>
-                ) : (
-                  <Button
-                    themeType="b2b"
-                    variant="commit"
-                    isLoading={acknowledging}
-                    onClick={() => void acknowledge()}
-                  >
-                    I have read this
-                  </Button>
-                )}
-              </div>
-            </section>
+              <B2CHero
+                eyebrow="Outcome"
+                title={
+                  result.assessment_score != null
+                    ? `${outcomeLabel(result.assessment_outcome)}, ${result.assessment_score.toFixed(1)} / 100`
+                    : outcomeLabel(result.assessment_outcome)
+                }
+                action={
+                  result.acknowledged_at ? (
+                    <p className="text-osce-meta text-b2c-text-muted">
+                      You read this on {new Date(result.acknowledged_at).toLocaleDateString()}.
+                    </p>
+                  ) : (
+                    <Button
+                      themeType="b2b"
+                      variant="commit"
+                      isLoading={acknowledging}
+                      onClick={() => void acknowledge()}
+                    >
+                      I have read this
+                    </Button>
+                  )
+                }
+              >
+                {result.rationale ? (
+                  <span className="whitespace-pre-wrap">{result.rationale}</span>
+                ) : null}
+              </B2CHero>
+              <B2CHero
+                eyebrow="Keep practising"
+                title="Practise on your own"
+                action={
+                  <>
+                    <ButtonLink
+                      themeType="b2b"
+                      variant="secondary"
+                      size="sm"
+                      href={hrefFor("/trainee/practice")}
+                    >
+                      Self practice
+                    </ButtonLink>
+                    <ButtonLink
+                      themeType="b2b"
+                      variant="secondary"
+                      size="sm"
+                      href={`${workspaceBasePath("me")}/dashboard`}
+                    >
+                      Open personal practice
+                    </ButtonLink>
+                  </>
+                }
+              >
+                Nothing you do here is marked for the record.
+              </B2CHero>
+            </>
           )
         }
       </AsyncBoundary>

@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { HiOutlineArchiveBox, HiOutlineChevronRight } from "react-icons/hi2";
-import Table, {
-  type FetchPageResult,
-} from "@/foundation/table/Table";
+import Table, { type TableMore } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import type { Station } from "@/capabilities/authoring/api";
 import {
@@ -42,24 +40,20 @@ function LegacyApprovalPill({ station }: { station: Station }) {
 
 export function StationsTable({
   stations,
+  more,
   search,
   busy,
   onOpen,
   onArchive,
 }: {
   stations: Station[];
+  /** The "Load more" footer: the section's cursor pages. */
+  more: TableMore;
   search: string;
   busy: string | null;
   onOpen: (station: Station) => void;
   onArchive?: (station: Station) => void;
 }) {
-  // Every row loaded so far, with the table's own pager off: paging is the
-  // server's cursor (Load more), and filtering already happened in SQL.
-  const fetchPage = useCallback(
-    async (): Promise<FetchPageResult<Station>> => ({ items: stations, totalCount: stations.length }),
-    [stations],
-  );
-
   const columns = useMemo(
     () => [
       {
@@ -138,13 +132,10 @@ export function StationsTable({
 
   return (
     <Table<Station>
-      fetchPage={fetchPage}
-      showPagination={false}
+      rows={stations}
+      more={more}
       columns={columns}
       idField="id"
-      nameField="title"
-      search={search}
-      showSearch={false}
       empty={
         search
           ? { title: "No matching stations", description: "Try a different name, or clear the exam filter." }

@@ -1,7 +1,6 @@
 "use client";
 
-import { HiOutlineMagnifyingGlass, HiOutlineTrash, HiOutlineXMark } from "react-icons/hi2";
-import React, { Fragment, useState, useEffect, useCallback, type ReactNode } from "react";
+import React, { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Pagination from "@/foundation/ui/Pagination";
 import {
   b2cCard,
@@ -17,7 +16,6 @@ import {
 } from "@/foundation/ui/ModalContent";
 import { Button } from "@/foundation/ui/Button";
 import { cn } from "@/foundation/ui/cn";
-import { getInputClassName } from "@/foundation/ui/inputStyles";
 import { errorMessage as getErrorMessage } from "@/foundation/hooks";
 import { B2CErrorState } from "@/foundation/ui/B2CErrorState";
 import { EmptyState } from "@/foundation/ui/EmptyState";
@@ -26,7 +24,6 @@ export interface FetchPageParams {
   page: number;
   perPage: number;
   cursor?: string | null;
-  search: string;
 }
 
 export interface FetchPageResult<T> {
@@ -42,7 +39,7 @@ export interface Column<T> {
   header: string;
   key: keyof T | ((item: T) => React.ReactNode);
   render?: (item: T) => React.ReactNode;
-  sortable?: boolean;
+  /** On the header and every cell of the column, so `hidden lg:table-cell` hides both. */
   className?: string;
   /**
    * How this column behaves in the stacked card layout used below `md`.
@@ -54,40 +51,35 @@ export interface Column<T> {
   priority?: "primary" | "secondary" | "detail";
 }
 
+/**
+ * The "Load more" footer of a `rows` table. The shape `useCursorPages`
+ * returns, so a screen passes its pages straight through: `more={pages}`.
+ */
+export interface TableMore {
+  hasMore: boolean;
+  loadingMore: boolean;
+  moreError: Error | null;
+  loadMore: () => void;
+}
+
 interface TablePropsBase<T> {
   columns: Column<T>[];
   idField: keyof T;
-  nameField: keyof T;
-  searchPlaceholder?: string;
-  deletable?: boolean;
-  onDelete?: (id: string, name: string) => void;
-  linkBuilder?: (item: T) => string;
-  /** In fetchPage mode, called with current page ids; in controlled mode, called with no args */
-  onSelectAll?: (currentPageIds?: string[]) => void;
-  selectedItems?: Set<string>;
   /** Optional section heading above the table */
   title?: ReactNode;
   /** Optional helper text under the title */
   description?: ReactNode;
   className?: string;
-  /** When false, hides the search field (default true). */
-  showSearch?: boolean;
   /**
-   * Parent-owned search (e.g. `AuthoringCatalogFilterBar`). When `onSearchChange` is set,
-   * the built-in search row is hidden unless `showSearch` is explicitly true.
+   * Drops the table's own border, for a table that is the body of a panel
+   * which already has one.
    */
-  search?: string;
-  onSearchChange?: (value: string) => void;
-  /** When false, hides pagination controls (default true). */
-  showPagination?: boolean;
-  /** Initial page size in fetchPage mode (default 10). */
-  defaultItemsPerPage?: number;
-  /** Optional second row under a data row (e.g. expander content). */
-  renderExpandedRow?: (item: T) => ReactNode;
-  isRowExpanded?: (item: T) => boolean;
-  /** Whole-row click (e.g. toggle expander). Link/button cells should stop propagation. */
-  onRowActivate?: (item: T) => void;
-  /** Shown when a fetch or controlled load returns no rows. */
+  bare?: boolean;
+  /** The narrowest the grid gets before it scrolls sideways (default `min-w-[900px]`). */
+  minWidthClassName?: string;
+  /** The skin of the table's own buttons. */
+  themeType?: React.ComponentProps<typeof Button>["themeType"];
+  /** Shown instead of the grid when there are no rows. */
   empty?: {
     title: ReactNode;
     description?: ReactNode;
@@ -95,43 +87,32 @@ interface TablePropsBase<T> {
   };
 }
 
-/** When fetchPage is provided, Table owns all pagination state and logic. Parent just provides the fetch. */
+/**
+ * The screen read the rows (one server page at a time, through
+ * `useCursorPages`) and the table draws them. It does not re-page, re-sort or
+ * re-filter what it is given; `more` adds the footer that asks for the next
+ * server page.
+ */
+interface TablePropsWithRows<T> extends TablePropsBase<T> {
+  rows: T[];
+  more?: TableMore;
+  fetchPage?: never;
+  defaultItemsPerPage?: never;
+}
+
+/**
+ * The table owns the paging: it calls `fetchPage` as the page or the page size
+ * changes and draws a numbered pager. For a list whose total is known.
+ */
 interface TablePropsWithFetch<T> extends TablePropsBase<T> {
   fetchPage: (params: FetchPageParams) => Promise<FetchPageResult<T>>;
-  data?: never;
-  totalItems?: never;
-  currentPage?: never;
-  itemsPerPage?: never;
-  onPageChange?: never;
-  onItemsPerPageChange?: never;
-  onSearch?: never;
-  loading?: never;
-  cursorMode?: never;
-  hasMore?: never;
+  /** Initial page size (default 10). */
+  defaultItemsPerPage?: number;
+  rows?: never;
+  more?: never;
 }
 
-/** When fetchPage is not provided, parent controls data and pagination (controlled mode). */
-interface TablePropsControlled<T> extends TablePropsBase<T> {
-  fetchPage?: never;
-  data: T[];
-  totalItems: number;
-  currentPage: number;
-  itemsPerPage: number;
-  onPageChange: (page: number) => void;
-  onItemsPerPageChange: (count: number) => void;
-  onSearch: (query: string) => void;
-  loading?: boolean;
-  cursorMode?: boolean;
-  hasMore?: boolean;
-}
-
-type TableProps<T> = TablePropsWithFetch<T> | TablePropsControlled<T>;
-
-function isFetchPageMode<T>(
-  props: TableProps<T>,
-): props is TablePropsWithFetch<T> {
-  return typeof (props as TablePropsWithFetch<T>).fetchPage === "function";
-}
+type TableProps<T> = TablePropsWithRows<T> | TablePropsWithFetch<T>;
 
 function TableShell({
   title,
@@ -163,62 +144,6 @@ function TableShell({
   );
 }
 
-/** Shared search form used by both controlled and fetchPage tables. */
-function TableSearchForm({
-  searchQuery,
-  searchPlaceholder,
-  onSubmit,
-  onClear,
-  onInputChange,
-}: {
-  searchQuery: string;
-  searchPlaceholder: string;
-  onSubmit: (e: React.FormEvent) => void;
-  onClear: () => void;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) {
-  return (
-    <div className="flex w-full justify-end">
-      <form onSubmit={onSubmit} className="relative w-full max-w-md" role="search">
-        <HiOutlineMagnifyingGlass
-          className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-b2c-text-muted"
-          aria-hidden
-        />
-        <input
-          type="search"
-          placeholder={searchPlaceholder}
-          className={cn(
-            getInputClassName(),
-            "appearance-none pl-10 pr-24 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
-          )}
-          value={searchQuery}
-          onChange={onInputChange}
-        />
-        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
-          {searchQuery ? (
-            <>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  onClear();
-                }}
-                className="rounded-md p-1.5 text-b2c-text-muted transition-colors hover:bg-b2c-surface-muted hover:text-b2c-text-secondary"
-                type="button"
-                aria-label="Clear search"
-              >
-                <HiOutlineXMark className="h-3.5 w-3.5" />
-              </button>
-              <Button type="submit" variant="primary" size="sm" themeType="b2c">
-                Search
-              </Button>
-            </>
-          ) : null}
-        </div>
-      </form>
-    </div>
-  );
-}
-
 /** Resolve a column's content for one row — same rules in table and card mode. */
 function renderCell<T extends object>(
   column: Column<T>,
@@ -244,20 +169,12 @@ function TableCards<T extends object>({
   data,
   columns,
   idField,
-  nameField,
-  onDelete,
-  renderExpandedRow,
-  isRowExpanded,
-  onRowActivate,
+  bare,
 }: {
   data: T[];
   columns: Column<T>[];
   idField: keyof T;
-  nameField: keyof T;
-  onDelete?: (id: string, name: string) => void;
-  renderExpandedRow?: (item: T) => ReactNode;
-  isRowExpanded?: (item: T) => boolean;
-  onRowActivate?: (item: T) => void;
+  bare: boolean;
 }) {
   const primary =
     columns.find((column) => column.priority === "primary") ?? columns[0];
@@ -266,29 +183,9 @@ function TableCards<T extends object>({
   );
 
   return (
-    <div className="space-y-3 md:hidden">
+    <div className={cn("space-y-3 md:hidden", bare && "p-4")}>
       {data.map((item, index) => (
-        <div
-          key={rowKey(item, idField, index)}
-          className={cn(
-            b2cCard,
-            "min-w-0 p-4",
-            onRowActivate && "cursor-pointer",
-          )}
-          onClick={onRowActivate ? () => onRowActivate(item) : undefined}
-          onKeyDown={
-            onRowActivate
-              ? (event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onRowActivate(item);
-                  }
-                }
-              : undefined
-          }
-          role={onRowActivate ? "button" : undefined}
-          tabIndex={onRowActivate ? 0 : undefined}
-        >
+        <div key={rowKey(item, idField, index)} className={cn(b2cCard, "min-w-0 p-4")}>
           {primary ? (
             <div className={cn("min-w-0 break-words", b2cFieldValue)}>
               {renderCell(primary, item)}
@@ -317,343 +214,142 @@ function TableCards<T extends object>({
               ))}
             </dl>
           ) : null}
-
-          {onDelete ? (
-            <div className="mt-3 flex justify-end border-t border-b2c-border pt-3">
-              <button
-                type="button"
-                onClick={() =>
-                  onDelete(String(item[idField]), String(item[nameField]))
-                }
-                className="inline-flex h-11 items-center gap-2 px-2 text-osce-body text-b2c-text-muted hover:text-osce-danger"
-              >
-                <HiOutlineTrash className="h-4 w-4" />
-                Delete
-              </button>
-            </div>
-          ) : null}
-
-          {renderExpandedRow && isRowExpanded?.(item) ? (
-            // Keeps a click in the expanded detail from collapsing the row; not an action.
-            // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-            <div
-              className="mt-3 border-t border-b2c-border pt-3"
-              onClick={(event) => event.stopPropagation()}
-            >
-              {renderExpandedRow(item)}
-            </div>
-          ) : null}
         </div>
       ))}
     </div>
   );
 }
 
-/** Shared table grid (thead + tbody) used by both modes. */
+/** The grid (thead + tbody) from `md` up, and the cards below it. */
 function TableGrid<T extends object>({
   data,
   columns,
   idField,
-  nameField,
-  onDelete,
-  onSelectAll,
-  selectedItems,
-  onSelectAllArg,
-  renderExpandedRow,
-  isRowExpanded,
-  onRowActivate,
+  bare,
+  minWidthClassName,
 }: {
   data: T[];
   columns: Column<T>[];
   idField: keyof T;
-  nameField: keyof T;
-  onDelete?: (id: string, name: string) => void;
-  onSelectAll?: (currentPageIds?: string[]) => void;
-  selectedItems?: Set<string>;
-  /** When set, onSelectAll is called with this (e.g. data.map id) for fetchPage mode */
-  onSelectAllArg?: string[];
-  renderExpandedRow?: (item: T) => ReactNode;
-  isRowExpanded?: (item: T) => boolean;
-  onRowActivate?: (item: T) => void;
+  bare: boolean;
+  minWidthClassName: string;
 }) {
-  const colSpan = columns.length + (onDelete ? 1 : 0);
-
   return (
     <>
-      <TableCards
-        data={data}
-        columns={columns}
-        idField={idField}
-        nameField={nameField}
-        onDelete={onDelete}
-        renderExpandedRow={renderExpandedRow}
-        isRowExpanded={isRowExpanded}
-        onRowActivate={onRowActivate}
-      />
+      <TableCards data={data} columns={columns} idField={idField} bare={bare} />
 
       <div
         className={cn(
-          "hidden rounded-md border border-b2c-border md:block",
+          "hidden md:block",
+          !bare && "rounded-md border border-b2c-border",
           b2cTableScroll,
         )}
       >
-      <table
-        data-b2c-table=""
-        className="min-w-[900px] w-full divide-y divide-b2c-border"
-      >
-        <thead className="bg-b2c-surface-muted">
-          <tr>
-            {columns.map((column, index) => (
-              <th
-                key={index}
-                className={`px-4 py-3 text-left ${b2cTableHeader} ${column.className || ""}`}
-              >
-                {index === 0 && onSelectAll ? (
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded-osce-sm border-osce-border text-osce-accent focus:ring-2 focus:ring-osce-accent-subtle"
-                      checked={
-                        !!(
-                          selectedItems &&
-                          selectedItems.size === data.length &&
-                          data.length > 0
-                        )
-                      }
-                      onChange={() =>
-                        onSelectAll?.(onSelectAllArg ?? undefined)
-                      }
-                    />
-                    {column.header}
-                  </div>
-                ) : (
-                  column.header
-                )}
-              </th>
-            ))}
-            {onDelete ? (
-              <th className={`px-4 py-3 text-right ${b2cTableHeader}`}>
-                Actions
-              </th>
-            ) : null}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-b2c-border bg-osce-surface">
-          {data.map((item, index) => {
-            const expanded = Boolean(
-              renderExpandedRow && isRowExpanded?.(item),
-            );
-            return (
-              <Fragment key={rowKey(item, idField, index)}>
-                <tr
-                  className={cn(
-                    "transition-colors hover:bg-b2c-surface-muted",
-                    onRowActivate && "cursor-pointer",
-                  )}
-                  onClick={
-                    onRowActivate ? () => onRowActivate(item) : undefined
-                  }
+        <table
+          data-b2c-table=""
+          className={cn("w-full divide-y divide-b2c-border", minWidthClassName)}
+        >
+          <thead className="bg-b2c-surface-muted">
+            <tr>
+              {columns.map((column, index) => (
+                <th
+                  key={index}
+                  scope="col"
+                  className={cn("px-4 py-3 text-left", b2cTableHeader, column.className)}
                 >
-                  {columns.map((column, colIndex) => (
-                    <td
-                      key={colIndex}
-                      className={cn("whitespace-nowrap px-4 py-3", b2cTableCell)}
-                    >
-                      {renderCell(column, item)}
-                    </td>
-                  ))}
-                  {onDelete ? (
-                    <td className={cn("px-4 py-3 text-right", b2cTableCell)}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onDelete(
-                            String(item[idField]),
-                            String(item[nameField]),
-                          )
-                        }
-                        className="text-b2c-text-muted hover:text-osce-danger"
-                        aria-label="Delete"
-                      >
-                        <HiOutlineTrash className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  ) : null}
-                </tr>
-                {expanded ? (
-                  <tr>
-                    <td
-                      colSpan={colSpan}
-                      className="bg-b2c-surface-muted px-4 py-3"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {renderExpandedRow?.(item)}
-                    </td>
-                  </tr>
-                ) : null}
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+                  {column.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-b2c-border bg-osce-surface">
+            {data.map((item, index) => (
+              <tr
+                key={rowKey(item, idField, index)}
+                className="transition-colors hover:bg-b2c-surface-muted"
+              >
+                {columns.map((column, colIndex) => (
+                  <td
+                    key={colIndex}
+                    className={cn("whitespace-nowrap px-4 py-3", b2cTableCell, column.className)}
+                  >
+                    {renderCell(column, item)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   );
 }
 
-function TableInner<T extends object>(props: TableProps<T>) {
-  const {
-    columns,
-    idField,
-    nameField,
-    searchPlaceholder = "Search...",
-    onDelete,
-    onSelectAll,
-    selectedItems,
-    title,
-    description,
-    className = "",
-    showSearch = true,
-    showPagination = true,
-    renderExpandedRow,
-    isRowExpanded,
-    onRowActivate,
-    empty,
-    search: controlledSearch,
-    onSearchChange,
-  } = props;
-
-  const searchExternallyOwned = controlledSearch !== undefined;
-  const [internalSearchQuery, setInternalSearchQuery] = useState("");
-  const searchQuery = searchExternallyOwned ? controlledSearch : internalSearchQuery;
-  const setSearchQuery = onSearchChange ?? setInternalSearchQuery;
-  const effectiveShowSearch = searchExternallyOwned ? showSearch === true : showSearch;
-
-  if (isFetchPageMode(props)) {
-    return (
-      <TableWithPagination
-        {...props}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        searchPlaceholder={searchPlaceholder}
-        showSearch={effectiveShowSearch}
-        showPagination={showPagination}
-        empty={empty}
-      />
-    );
-  }
-
-  const {
-    data,
-    totalItems,
-    currentPage,
-    itemsPerPage,
-    onPageChange,
-    onItemsPerPageChange,
-    onSearch,
-    loading = false,
-    cursorMode = false,
-    hasMore = false,
-  } = props;
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(searchQuery);
-  };
-
-  const handleClearSearch = () => {
-    setSearchQuery("");
-    onSearch("");
-  };
-
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setSearchQuery(newValue);
-    if (newValue === "") onSearch("");
-  };
-
+/** Rows the screen already holds, with the "Load more" footer when the server has more. */
+function TableWithRows<T extends object>({
+  rows,
+  more,
+  columns,
+  idField,
+  title,
+  description,
+  className,
+  bare = false,
+  minWidthClassName = "min-w-[900px]",
+  themeType,
+  empty,
+}: TablePropsWithRows<T>) {
   return (
     <TableShell title={title} description={description} className={className}>
-      {effectiveShowSearch ? (
-        <TableSearchForm
-          searchQuery={searchQuery}
-          searchPlaceholder={searchPlaceholder}
-          onSubmit={handleSearch}
-          onClear={handleClearSearch}
-          onInputChange={handleSearchInputChange}
-        />
-      ) : null}
-      {loading ? (
-        <div className="py-4 text-center" role="status">
-          <span className="text-osce-body text-b2c-text-secondary">Loading…</span>
-        </div>
-      ) : null}
-      {!loading && data.length === 0 && empty ? (
+      {rows.length === 0 && empty ? (
         <EmptyState title={empty.title} description={empty.description} action={empty.action} />
       ) : (
         <TableGrid<T>
-          data={data}
+          data={rows}
           columns={columns}
           idField={idField}
-          nameField={nameField}
-          onDelete={onDelete}
-          onSelectAll={onSelectAll}
-          selectedItems={selectedItems}
-          onSelectAllArg={data.map((item) => String(item[idField]))}
-          renderExpandedRow={renderExpandedRow}
-          isRowExpanded={isRowExpanded}
-          onRowActivate={onRowActivate}
+          bare={bare}
+          minWidthClassName={minWidthClassName}
         />
       )}
-      {showPagination && data.length > 0 ? (
-        <Pagination
-          currentPage={currentPage}
-          totalItems={totalItems}
-          itemsPerPage={itemsPerPage}
-          onPageChange={onPageChange}
-          onItemsPerPageChange={onItemsPerPageChange}
-          cursorMode={cursorMode}
-          hasMore={hasMore}
-        />
+      {more && (more.hasMore || more.moreError) ? (
+        <div className={cn("flex flex-col items-center gap-2", bare && "px-4 pb-4")}>
+          {more.moreError ? (
+            <p className="text-osce-meta text-osce-danger-text" role="alert">
+              Could not load more: {more.moreError.message}
+            </p>
+          ) : null}
+          {more.hasMore ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              themeType={themeType}
+              disabled={more.loadingMore}
+              onClick={more.loadMore}
+            >
+              {more.loadingMore ? "Loading…" : more.moreError ? "Try again" : "Load more"}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </TableShell>
   );
 }
 
-/** Table with internal pagination: owns state, calls fetchPage when page/search/perPage change. */
-function TableWithPagination<T extends object>(
-  props: TablePropsWithFetch<T> & {
-    searchQuery: string;
-    setSearchQuery: (q: string) => void;
-    searchPlaceholder: string;
-    showSearch: boolean;
-    showPagination: boolean;
-    empty?: TablePropsBase<T>["empty"];
-  },
-) {
-  const {
-    fetchPage,
-    columns,
-    idField,
-    nameField,
-    searchPlaceholder,
-    onDelete,
-    onSelectAll,
-    selectedItems,
-    searchQuery,
-    setSearchQuery,
-    title,
-    description,
-    className = "",
-    showSearch,
-    showPagination,
-    defaultItemsPerPage = 10,
-    renderExpandedRow,
-    isRowExpanded,
-    onRowActivate,
-    empty,
-  } = props;
-
+/** Table with internal pagination: owns state, calls fetchPage when page/perPage change. */
+function TableWithPagination<T extends object>({
+  fetchPage,
+  columns,
+  idField,
+  title,
+  description,
+  className,
+  bare = false,
+  minWidthClassName = "min-w-[900px]",
+  defaultItemsPerPage = 10,
+  empty,
+}: TablePropsWithFetch<T>) {
   const [data, setData] = useState<T[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -665,20 +361,20 @@ function TableWithPagination<T extends object>(
   const [cursorForPage, setCursorForPage] = useState<
     Record<number, string | null>
   >({ 1: null });
-  const [loading, setLoading] = useState(false);
-  const [searchVersion, setSearchVersion] = useState(0);
+  // True from the first render, so an empty state is never drawn before the first answer.
+  const [loading, setLoading] = useState(true);
+  // The newest request. An answer to an older one (a filter changed, a page
+  // was skipped past) is dropped rather than drawn over the newer rows.
+  const latestRequest = useRef(0);
 
   const loadPage = useCallback(
-    async (
-      page: number,
-      perPage: number,
-      search: string,
-      cursor: string | null,
-    ) => {
+    async (page: number, perPage: number, cursor: string | null) => {
+      const request = (latestRequest.current += 1);
       setLoading(true);
       setFetchError(null);
       try {
-        const result = await fetchPage({ page, perPage, cursor, search });
+        const result = await fetchPage({ page, perPage, cursor });
+        if (request !== latestRequest.current) return;
         setData(result.items ?? []);
         if (result.totalCount != null) {
           setTotalItems(result.totalCount);
@@ -701,6 +397,7 @@ function TableWithPagination<T extends object>(
           setIsCursorMode(false);
         }
       } catch (err) {
+        if (request !== latestRequest.current) return;
         console.error("fetchPage failed:", err);
         setData([]);
         setTotalItems(0);
@@ -708,7 +405,7 @@ function TableWithPagination<T extends object>(
         setHasKnownTotalFromApi(false);
         setFetchError(getErrorMessage(err));
       } finally {
-        setLoading(false);
+        if (request === latestRequest.current) setLoading(false);
       }
     },
     [fetchPage],
@@ -717,53 +414,20 @@ function TableWithPagination<T extends object>(
   useEffect(() => {
     setCurrentPage(1);
     setCursorForPage({ 1: null });
-  }, [searchQuery, itemsPerPage, fetchPage]);
+  }, [itemsPerPage, fetchPage]);
 
   useEffect(() => {
     const cursor =
       currentPage === 1 ? null : (cursorForPage[currentPage] ?? null);
-    loadPage(currentPage, itemsPerPage, searchQuery, cursor);
+    void loadPage(currentPage, itemsPerPage, cursor);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- cursorForPage intentionally omitted to avoid refetch loops
-  }, [
-    currentPage,
-    itemsPerPage,
-    searchQuery,
-    fetchPage,
-    searchVersion,
-    loadPage,
-  ]);
-
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
-  }, []);
+  }, [currentPage, itemsPerPage, loadPage]);
 
   const handleItemsPerPageChange = useCallback((perPage: number) => {
     setItemsPerPage(perPage);
     setCurrentPage(1);
     setCursorForPage({ 1: null });
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-    setCursorForPage({ 1: null });
-    setSearchVersion((v) => v + 1);
-  };
-
-  const handleClearSearch = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-    setCursorForPage({ 1: null });
-  };
-
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setSearchQuery(newValue);
-    if (newValue === "") {
-      setCurrentPage(1);
-      setCursorForPage({ 1: null });
-    }
-  };
 
   const displayTotalItems =
     totalItems > 0
@@ -772,15 +436,6 @@ function TableWithPagination<T extends object>(
 
   return (
     <TableShell title={title} description={description} className={className}>
-      {showSearch ? (
-        <TableSearchForm
-          searchQuery={searchQuery}
-          searchPlaceholder={searchPlaceholder}
-          onSubmit={handleSearch}
-          onClear={handleClearSearch}
-          onInputChange={handleSearchInputChange}
-        />
-      ) : null}
       {loading ? (
         <div className="py-4 text-center" role="status">
           <span className="text-osce-body text-b2c-text-secondary">Loading…</span>
@@ -795,7 +450,6 @@ function TableWithPagination<T extends object>(
             void loadPage(
               currentPage,
               itemsPerPage,
-              searchQuery,
               currentPage === 1 ? null : (cursorForPage[currentPage] ?? null),
             )
           }
@@ -808,22 +462,16 @@ function TableWithPagination<T extends object>(
           data={data}
           columns={columns}
           idField={idField}
-          nameField={nameField}
-          onDelete={onDelete}
-          onSelectAll={onSelectAll}
-          selectedItems={selectedItems}
-          onSelectAllArg={data.map((item) => String(item[idField]))}
-          renderExpandedRow={renderExpandedRow}
-          isRowExpanded={isRowExpanded}
-          onRowActivate={onRowActivate}
+          bare={bare}
+          minWidthClassName={minWidthClassName}
         />
       )}
-      {showPagination && data.length > 0 ? (
+      {data.length > 0 ? (
         <Pagination
           currentPage={currentPage}
           totalItems={displayTotalItems}
           itemsPerPage={itemsPerPage}
-          onPageChange={handlePageChange}
+          onPageChange={setCurrentPage}
           onItemsPerPageChange={handleItemsPerPageChange}
           cursorMode={isCursorMode}
           hasMore={hasMore}
@@ -835,7 +483,11 @@ function TableWithPagination<T extends object>(
 }
 
 function Table<T extends object>(props: TableProps<T>) {
-  return <TableInner<T> {...props} />;
+  return typeof props.fetchPage === "function" ? (
+    <TableWithPagination<T> {...props} />
+  ) : (
+    <TableWithRows<T> {...(props as TablePropsWithRows<T>)} />
+  );
 }
 
 export default Table;

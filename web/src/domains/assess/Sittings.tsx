@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { LuCalendarDays } from "react-icons/lu";
+import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   AsyncBoundary,
-  B2CGroupedRowLink,
-  B2CGroupedSection,
   B2CHero,
   B2CPageHeader,
   B2CSegmentedTabs,
@@ -13,7 +11,9 @@ import {
   ButtonLink,
   PlatformFilterSearch,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import Table, { type Column } from "@/foundation/table/Table";
+import { b2cTableCellText } from "@/foundation/ui/productTokens";
+import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listSittings, type Sitting } from "@/domains/assess/api";
 
@@ -35,6 +35,52 @@ export function nextUp(sittings: Sitting[], now: number = Date.now()): Sitting |
   return upcoming[0] ?? null;
 }
 
+const cell = `${b2cTableCellText} text-b2b-graphite`;
+
+const columnsFor = (hrefFor: (path: string) => string): Column<Sitting>[] => [
+  {
+    header: "Sitting",
+    key: "name",
+    priority: "primary",
+    render: (sitting: Sitting) => (
+      <Link
+        href={hrefFor(`/sittings/${sitting.id}`)}
+        className={`${b2cTableCellText} font-medium text-osce-ink-900 hover:underline`}
+      >
+        {sitting.name}
+      </Link>
+    ),
+  },
+  {
+    header: "Mode",
+    key: "mode" as keyof Sitting,
+    render: (sitting: Sitting) => <span className={`${cell} capitalize`}>{sitting.mode}</span>,
+  },
+  {
+    header: "Programme",
+    key: "programme_name" as keyof Sitting,
+    render: (sitting: Sitting) => <span className={cell}>{sitting.programme_name ?? ""}</span>,
+  },
+  {
+    header: "Scheduled for",
+    key: "scheduled_for" as keyof Sitting,
+    render: (sitting: Sitting) => (
+      <span className={cell}>
+        {sitting.scheduled_for ? new Date(sitting.scheduled_for).toLocaleDateString() : "Not scheduled"}
+      </span>
+    ),
+  },
+  {
+    header: "Status",
+    key: "status" as keyof Sitting,
+    render: (sitting: Sitting) => (
+      <Badge variant={RUNNING.has(sitting.status) ? "success" : "neutral"} dot>
+        {sitting.status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}
+      </Badge>
+    ),
+  },
+];
+
 function matches(sitting: Sitting, term: string): boolean {
   if (!term) return true;
   return `${sitting.name} ${sitting.programme_name ?? ""}`.toLowerCase().includes(term);
@@ -43,7 +89,13 @@ function matches(sitting: Sitting, term: string): boolean {
 /** Scheduled examinations and training sessions. */
 export function Sittings({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
-  const state = useAsync((signal) => listSittings(orgSlug, signal), [orgSlug]);
+  // A server page at a time. The endpoint takes no search, so the mode filter
+  // and the search box narrow what has been loaded so far.
+  const pages = useCursorPages<Sitting>(
+    (cursor, signal) => listSittings(orgSlug, signal, { cursor }),
+    [orgSlug],
+  );
+  const columns = useMemo(() => columnsFor(hrefFor), [hrefFor]);
   const [filter, setFilter] = useState<ModeFilter>("all");
   const [search, setSearch] = useState("");
 
@@ -51,7 +103,6 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
     <div className="flex flex-col gap-6">
       <B2CPageHeader
         title="Sittings"
-        subtitle="Examinations and training sessions your organisation runs."
         action={
           <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
             Schedule a sitting
@@ -60,19 +111,19 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
       />
 
       <AsyncBoundary
-        state={state}
-        isEmpty={(page) => page.items.length === 0}
+        state={pages.state}
+        isEmpty={(sittings) => sittings.length === 0}
         empty={{
           title: "No sittings yet",
           description: "Schedule your first one to get started.",
         }}
       >
-        {(page) => {
+        {(sittings) => {
           const term = search.trim().toLowerCase();
-          const rows = page.items.filter(
+          const rows = sittings.filter(
             (sitting) => (filter === "all" || sitting.mode === filter) && matches(sitting, term),
           );
-          const next = nextUp(page.items);
+          const next = nextUp(sittings);
           return (
             <div className="flex flex-col gap-4">
               {next ? (
@@ -119,34 +170,14 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                   aria-label="Search sittings"
                 />
               </div>
-              {rows.length === 0 ? (
-                <p className="text-osce-body text-b2b-mid">No sittings match.</p>
-              ) : null}
-              <B2CGroupedSection eyebrow="Sittings">
-                {rows.map((sitting) => (
-                  <B2CGroupedRowLink
-                    key={sitting.id}
-                    href={hrefFor(`/sittings/${sitting.id}`)}
-                    icon={LuCalendarDays}
-                    title={sitting.name}
-                    meta={[
-                      sitting.mode,
-                      sitting.programme_name,
-                      `${sitting.candidate_count} ${sitting.candidate_count === 1 ? "candidate" : "candidates"}`,
-                      sitting.scheduled_for
-                        ? new Date(sitting.scheduled_for).toLocaleString()
-                        : "Not scheduled",
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                    trailing={
-                      <Badge variant={RUNNING.has(sitting.status) ? "success" : "neutral"} dot>
-                        {sitting.status}
-                      </Badge>
-                    }
-                  />
-                ))}
-              </B2CGroupedSection>
+              <Table<Sitting>
+                rows={rows}
+                more={pages}
+                themeType="b2b"
+                columns={columns}
+                idField="id"
+                empty={{ title: "No sittings match." }}
+              />
             </div>
           );
         }}

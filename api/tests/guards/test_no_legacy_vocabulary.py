@@ -29,7 +29,6 @@ BANNED = (
 
 QUARANTINE = APP_ROOT / "migration"
 PORTED_AV = {
-    APP_ROOT / "features" / "media_production" / "slide_renderer.py",
     APP_ROOT / "features" / "media_production" / "slide_av.py",
 }
 

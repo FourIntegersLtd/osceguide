@@ -58,6 +58,7 @@ dependencies = [
     "cartesia (>=1.4,<2)",
     "moviepy (>=2.2,<3)",
     "pydub (>=0.25,<1)",
+    "pillow (>=11,<12)",
     "cryptography (>=50.0.1,<51.0.0)",
     # TOTP for authenticator-app sign-in. Recovery codes are argon2, not this.
     "pyotp (>=2.9,<3)",
@@ -131,9 +132,6 @@ ignore = ["S101", "N818"]  # assert is fine in tests; error classes are named fo
 # they read at the raise site and in the handler that maps them to a status.
 # An `Error` suffix on each buys nothing there; they all subclass `AppError`.
 "app/core/errors.py" = ["N818"]
-# The slide renderer is a verbatim port (see the mypy override below); its
-# broad catches are kept as they were rather than re-reasoned line by line.
-"app/features/media_production/slide_renderer.py" = ["BLE001"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -141,15 +139,6 @@ strict = true
 plugins = ["pydantic.mypy"]
 exclude = ["supabase/"]
 ignore_missing_imports = true
-
-# The MoviePy slide renderer is a verbatim port of a 2,200-line untyped module.
-# Typing it is a separate piece of work; until then mypy must not block CI.
-[[tool.mypy.overrides]]
-module = [
-    "app.features.media_production.slide_renderer",
-    "app.features.media_production.slide_models",
-]
-ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = ["app.migration.*"]

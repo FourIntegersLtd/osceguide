@@ -6,6 +6,7 @@ import {
   ActionRail,
   Alert,
   AsyncBoundary,
+  B2CHero,
   B2CSegmentedTabs,
   Button,
   DetailLayout,
@@ -78,7 +79,7 @@ export function OrganizationDetail({ slug }: { slug: string }) {
             <>
               <PlatformPageHeader
                 title={current.name}
-                description={`/${current.slug}`}
+                description={`${ORG_TYPES.find((type) => type.value === current.org_type)?.label ?? current.org_type} · /${current.slug}`}
                 back={{
                   href: hrefFor("/organizations"),
                   label: "Organisations",
@@ -94,6 +95,9 @@ export function OrganizationDetail({ slug }: { slug: string }) {
                 className="mb-0 sm:mb-0"
               />
 
+              {tab === "overview" ? (
+                <ContractHero organization={current} />
+              ) : null}
               {tab === "overview" ? (
                 <DetailLayout
                   main={<OrganizationFacts organization={current} />}
@@ -124,6 +128,32 @@ export function OrganizationDetail({ slug }: { slug: string }) {
         }}
       </AsyncBoundary>
     </div>
+  );
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Shown only when the contract ends within thirty days, or already has. */
+function ContractHero({ organization }: { organization: Organization }) {
+  const [now] = useState(() => Date.now());
+  if (!organization.contract_ends_at) return null;
+  const days = Math.ceil(
+    (new Date(organization.contract_ends_at).getTime() - now) / DAY_MS,
+  );
+  if (Number.isNaN(days) || days > 30) return null;
+  return (
+    <B2CHero
+      eyebrow="Contract"
+      title={
+        days < 0
+          ? "Contract has ended"
+          : days === 0
+            ? "Renewal due today"
+            : `Renewal due in ${days} ${days === 1 ? "day" : "days"}`
+      }
+    >
+      {`Contract ends ${formatDay(organization.contract_ends_at)}. Renew from the panel beside the details.`}
+    </B2CHero>
   );
 }
 

@@ -146,34 +146,51 @@ async def _run(args: argparse.Namespace) -> int:
             await engine.dispose()
             return 0
 
-        for row in todo:
-            media_id, label = str(row.id), f"{row.kind:8} {row.slug}"
-            produce = produce_summary_podcast if row.kind == "summary" else produce_podcast_episode_audio
-            try:
-                content = await asyncio.to_thread(
-                    produce,
-                    settings,
-                    title=row.title,
-                    content=row.content,
-                    work_dir=work / media_id,
-                    media_id=media_id,
-                    regenerate_script=regenerate_script,
-                )
-                row.content = content
-                for twin in rows:
-                    if twin.kind == "podcast" and twin.content.get("summary_slug") == row.slug:
-                        twin.content = {
-                            **twin.content,
-                            "audio_url": content["podcast_url"],
-                            "script": content["script"],
-                        }
-                await session.commit()
-                done += 1
-                print(f"done   {label}")  # noqa: T201
-            except Exception as error:  # noqa: BLE001 - report and carry on with the next item
-                await session.rollback()
-                failures += 1
-                print(f"FAILED {label}: {error}")  # noqa: T201
+        # Generation (script, speech, upload) runs in worker threads, several at a
+        # time; the shared session is only touched under `commit_lock`.
+        slots = asyncio.Semaphore(max(1, args.workers))
+        commit_lock = asyncio.Lock()
+
+        async def regenerate(row: MediaItem) -> None:
+            nonlocal done, failures
+            # Plain copies: a rollback expires every loaded row, and a worker
+            # reading `row.slug` after another's failure would hit the database.
+            media_id, kind, slug, title = str(row.id), row.kind, row.slug, row.title
+            source = row.content
+            label = f"{kind:8} {slug}"
+            produce = produce_summary_podcast if kind == "summary" else produce_podcast_episode_audio
+            async with slots:
+                try:
+                    content = await asyncio.to_thread(
+                        produce,
+                        settings,
+                        title=title,
+                        content=source,
+                        work_dir=work / media_id,
+                        media_id=media_id,
+                        regenerate_script=regenerate_script,
+                    )
+                    async with commit_lock:
+                        try:
+                            row.content = content
+                            for twin in rows:
+                                if twin.kind == "podcast" and twin.content.get("summary_slug") == slug:
+                                    twin.content = {
+                                        **twin.content,
+                                        "audio_url": content["podcast_url"],
+                                        "script": content["script"],
+                                    }
+                            await session.commit()
+                        except Exception:
+                            await session.rollback()
+                            raise
+                    done += 1
+                    print(f"done   {label}", flush=True)  # noqa: T201
+                except Exception as error:  # noqa: BLE001 - report and carry on with the next item
+                    failures += 1
+                    print(f"FAILED {label}: {error}", flush=True)  # noqa: T201
+
+        await asyncio.gather(*(regenerate(row) for row in todo))
     await engine.dispose()
     print(f"{done} regenerated, {failures} failed, {skipped} skipped")  # noqa: T201
     return 1 if failures else 0
@@ -197,6 +214,7 @@ def main() -> None:
     parser.add_argument(
         "--keep-scripts", action="store_true", help="reuse stored scripts instead of rewriting"
     )
+    parser.add_argument("--workers", type=int, default=1, help="episodes generated at the same time")
     parser.add_argument("--force", action="store_true", help="redo items already on v4 audio")
     sys.exit(asyncio.run(_run(parser.parse_args())))
 

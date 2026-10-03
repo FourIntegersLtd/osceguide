@@ -24,7 +24,7 @@ export function BillingQueue() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Billing"
-        description="Plans on sale, and every payment update from Stripe. Failed ones come first: they are people who paid but did not get access."
+        description="Plans on sale and payment updates from Stripe. Failed ones come first."
       />
       <PlansPanel />
       <BillingEvents

@@ -80,7 +80,7 @@ export function StationFlags() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Station reports"
-        description="Cases readers said were wrong, and what was done about them."
+        description="Cases readers said were wrong."
       />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
       <Panel

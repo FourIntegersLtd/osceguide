@@ -59,7 +59,6 @@ export function Users() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Users"
-        description="Everyone with an account, grouped by the exam they are here for."
       />
 
       <AsyncBoundary state={summary}>

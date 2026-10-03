@@ -38,13 +38,16 @@ export function AgentTile({
         <p className="text-sm font-semibold text-ink">{name}</p>
         {detail && <p className="mt-0.5 text-sm text-ink-muted">{detail}</p>}
       </div>
-      <BarVisualizer
-        state={state}
-        barCount={7}
-        trackRef={audioTrack}
-        className="h-12 w-40"
-        options={{ minHeight: 8 }}
-      />
+      {/* LiveKit's stylesheet sizes the visualiser to its parent, so the box is the parent's. */}
+      <div className="h-12 w-40">
+        <BarVisualizer
+          state={state}
+          barCount={7}
+          trackRef={audioTrack}
+          className="[--lk-fg:rgb(var(--color-accent))] [--lk-va-bar-bg:rgb(var(--color-ink)/0.2)] [--lk-va-bar-gap:8px] [--lk-va-bar-width:6px]"
+          options={{ minHeight: 16 }}
+        />
+      </div>
       <p aria-live="polite" className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
         {agentStateLabel(state, speaker)}
       </p>

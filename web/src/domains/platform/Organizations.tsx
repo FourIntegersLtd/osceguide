@@ -1,28 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import Table, { type TableMore } from "@/foundation/table/Table";
+import { b2cTableCellText } from "@/foundation/ui/productTokens";
+import { cn } from "@/foundation/ui/cn";
 import {
   AsyncBoundary,
   Button,
-  EmptyPanel,
-  Panel,
   PlatformFilterBar,
   PlatformFilterDivider,
   PlatformFilterSearch,
   PlatformFilterSelect,
   PlatformPageHeader,
-  RowLink,
-  RowList,
 } from "@/foundation/ui";
-import { useAsync, useSearchQuery } from "@/foundation/hooks";
+import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
-  listAllOrganizations,
+  listOrganizations,
   type Organization,
 } from "@/domains/platform/api";
 import { StatusBadge } from "@/domains/platform/chrome";
 import { ProvisionModal } from "@/domains/platform/ProvisionPanel";
-import { ORG_STATUSES, ORG_TYPES } from "@/domains/platform/support";
+import { ORG_STATUSES, ORG_TYPES, formatDay } from "@/domains/platform/support";
 
 type TypeFilter = "all" | string;
 
@@ -30,8 +30,8 @@ type TypeFilter = "all" | string;
  * The tenant directory: partners and institutions, grouped by type.
  *
  * Status, type and search all go to the backend (`GET /platform/organizations`
- * takes `status`, `org_type` and `search`), so the directory is no longer
- * walked whole to be searched in the browser.
+ * takes `status`, `org_type` and `search`), and the directory is read one
+ * server page at a time, so it is never walked whole to draw or search it.
  *
  * There is no delete. The backend will not delete an organisation and that is
  * a decision, not an omission: a tenant's rows include candidate results that
@@ -47,13 +47,14 @@ export function Organizations() {
   const query = useSearchQuery(search);
   const [provisioning, setProvisioning] = useState(false);
 
-  const state = useAsync(
-    (signal) =>
-      listAllOrganizations(
+  const pages = useCursorPages<Organization>(
+    (cursor, signal) =>
+      listOrganizations(
         {
           status: status || null,
           search: query || null,
           orgType: typeFilter === "all" ? null : typeFilter,
+          cursor,
         },
         signal,
       ),
@@ -64,7 +65,7 @@ export function Organizations() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Organisations"
-        description="Institutions and partners. Both run exams; they differ in how their exams are run."
+        description="Institutions and partners."
         actions={
           <Button variant="primary" onClick={() => setProvisioning(true)}>
             Provision
@@ -76,7 +77,7 @@ export function Organizations() {
         open={provisioning}
         onClose={() => setProvisioning(false)}
         onProvisioned={() => {
-          state.reload();
+          pages.state.reload();
         }}
       />
 
@@ -110,13 +111,13 @@ export function Organizations() {
         <PlatformFilterSearch
           value={search}
           onChange={setSearch}
-          placeholder="Search name or slug"
+          placeholder="Search organisations"
           aria-label="Search organisations"
         />
       </PlatformFilterBar>
 
       <AsyncBoundary
-        state={state}
+        state={pages.state}
         isEmpty={(rows) => rows.length === 0}
         /*
          * The empty state has to say which emptiness this is. The status
@@ -154,7 +155,7 @@ export function Organizations() {
         }
       >
         {(rows) => (
-          <Directory rows={rows} typeFilter={typeFilter} hrefFor={hrefFor} />
+          <Directory rows={rows} more={pages} hrefFor={hrefFor} />
         )}
       </AsyncBoundary>
     </div>
@@ -163,71 +164,65 @@ export function Organizations() {
 
 function Directory({
   rows,
-  typeFilter,
+  more,
   hrefFor,
 }: {
   rows: Organization[];
-  typeFilter: TypeFilter;
+  more: TableMore;
   hrefFor: (path: string) => string;
 }) {
-  const groups = useMemo(() => {
-    // Already filtered by the backend; this only groups by type.
-    const visible = rows;
-    return ORG_TYPES.map((type) => ({
-      ...type,
-      rows: visible.filter((row) => row.org_type === type.value),
-      // An org_type the frontend has not heard of still has to appear
-      // somewhere, and the first group is where the odd one out goes.
-      extra:
-        type.value === ORG_TYPES[0].value
-          ? visible.filter(
-              (row) => !ORG_TYPES.some((t) => t.value === row.org_type),
-            )
-          : [],
-    })).filter((group) => typeFilter === "all" || group.value === typeFilter);
-  }, [rows, typeFilter]);
-
-  const total = groups.reduce(
-    (sum, group) => sum + group.rows.length + group.extra.length,
-    0,
-  );
-
-  if (total === 0) {
-    return (
-      <EmptyPanel
-        title="Nothing matches those filters"
-        description="Try a different name, or clear the type filter."
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      {groups.map((group) => {
-        const groupRows = [...group.rows, ...group.extra];
-        if (groupRows.length === 0) return null;
-        return (
-          <Panel
-            key={group.value}
-            title={`${group.label}s · ${groupRows.length}`}
-            padding="none"
+  const columns = useMemo(
+    () => [
+      {
+        header: "Organisation",
+        key: "name" as keyof Organization,
+        priority: "primary" as const,
+        render: (organization: Organization) => (
+          <Link
+            href={hrefFor(
+              `/organizations/${encodeURIComponent(organization.slug)}`,
+            )}
+            className={cn(b2cTableCellText, "font-medium text-ink hover:text-accent")}
           >
-            <RowList flush>
-              {groupRows.map((organization) => (
-                <RowLink
-                  key={organization.id}
-                  href={hrefFor(
-                    `/organizations/${encodeURIComponent(organization.slug)}`,
-                  )}
-                  title={organization.name}
-                  subtitle={`/${organization.slug} · ${organization.org_type}`}
-                  trailing={<StatusBadge status={organization.status} />}
-                />
-              ))}
-            </RowList>
-          </Panel>
-        );
-      })}
-    </div>
+            {organization.name}
+          </Link>
+        ),
+      },
+      {
+        header: "Type",
+        key: "org_type" as keyof Organization,
+        render: (organization: Organization) => (
+          <span className={b2cTableCellText}>
+            {ORG_TYPES.find((type) => type.value === organization.org_type)
+              ?.label ?? organization.org_type}
+          </span>
+        ),
+      },
+      {
+        header: "Status",
+        key: "status" as keyof Organization,
+        render: (organization: Organization) => (
+          <StatusBadge status={organization.status} />
+        ),
+      },
+      {
+        header: "Contract ends",
+        key: "contract_ends_at" as keyof Organization,
+        render: (organization: Organization) => (
+          <span className={b2cTableCellText}>
+            {formatDay(organization.contract_ends_at)}
+          </span>
+        ),
+      },
+    ],
+    [hrefFor],
+  );
+  return (
+    <Table<Organization>
+      columns={columns}
+      idField="id"
+      rows={rows}
+      more={more}
+    />
   );
 }

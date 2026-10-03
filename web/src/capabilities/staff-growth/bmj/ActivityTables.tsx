@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncBoundary, LoadMore, Panel, PlatformFilterSearch } from "@/foundation/ui";
+import { AsyncBoundary, Panel, PlatformFilterSearch } from "@/foundation/ui";
+import Table, { type Column } from "@/foundation/table/Table";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { formatUtcDateTime } from "@/capabilities/attribution-dashboard/presets";
 import { campaignLabel } from "@/capabilities/attribution-dashboard/viewModel";
@@ -13,13 +14,29 @@ import {
   type ArrivalRow,
 } from "@/capabilities/staff-growth/api";
 
-const HEAD = "px-4 py-3 font-medium sm:px-6";
-const CELL = "px-4 py-3 sm:px-6";
-const MONO = "font-mono text-osce-meta";
+const MUTED = "text-ink-muted";
+const MONO = "font-mono text-osce-meta text-ink-muted";
 
 function dash(value: string | null | undefined): string {
   return value ? value : "-";
 }
+
+const ARRIVAL_COLUMNS: Column<ArrivalRow>[] = [
+  { header: "Visited at", key: (row) => formatUtcDateTime(row.landed_at), priority: "primary" },
+  { header: "Exam", key: (row) => <span className={MUTED}>{row.exam_code ? row.exam_code.toUpperCase() : "-"}</span> },
+  { header: "Campaign", key: (row) => <span className={MUTED}>{campaignLabel(row.utm_campaign)}</span> },
+  { header: "Anonymous ID", key: (row) => <span className={MONO}>{dash(row.visitor_key)}</span> },
+  { header: "Page", key: (row) => <span className={MUTED}>{dash(row.landing_path)}</span> },
+  { header: "Visit reference", key: (row) => <span className={MONO}>{row.arrival_id}</span>, priority: "detail" },
+];
+
+const ACQUIRED_COLUMNS: Column<AcquiredUserRow>[] = [
+  { header: "Signed up at", key: (row) => formatUtcDateTime(row.acquired_at), priority: "primary" },
+  { header: "Account reference", key: (row) => <span className={MONO}>{row.user_id}</span> },
+  { header: "Exam", key: (row) => <span className={MUTED}>{row.exam_code ? row.exam_code.toUpperCase() : "-"}</span> },
+  { header: "Campaign", key: (row) => <span className={MUTED}>{campaignLabel(row.utm_campaign)}</span> },
+  { header: "Anonymous ID", key: (row) => <span className={MONO}>{dash(row.visitor_key)}</span> },
+];
 
 /** "Link visits": every landing, newest first. The search is answered by the server. */
 export function ArrivalsTable({
@@ -58,32 +75,9 @@ export function ArrivalsTable({
         empty={{ title: "No link visits", description: "Nothing matches these filters.", bare: true }}
       >
         {(rows) => (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-osce-data">
-              <thead className="border-b border-border text-osce-caption uppercase tracking-wide text-ink-subtle">
-                <tr>
-                  {["Visited at", "Exam", "Campaign", "Anonymous ID", "Page", "Visit reference"].map((title) => (
-                    <th key={title} className={HEAD}>{title}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map((row) => (
-                  <tr key={row.arrival_id}>
-                    <td className={`${CELL} whitespace-nowrap text-ink`}>{formatUtcDateTime(row.landed_at)}</td>
-                    <td className={`${CELL} text-ink-muted`}>{row.exam_code ? row.exam_code.toUpperCase() : "-"}</td>
-                    <td className={`${CELL} text-ink-muted`}>{campaignLabel(row.utm_campaign)}</td>
-                    <td className={`${CELL} ${MONO} text-ink-muted`}>{dash(row.visitor_key)}</td>
-                    <td className={`${CELL} text-ink-muted`}>{dash(row.landing_path)}</td>
-                    <td className={`${CELL} ${MONO} text-ink-muted`}>{row.arrival_id}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table<ArrivalRow> bare rows={rows} more={pages} columns={ARRIVAL_COLUMNS} idField="arrival_id" />
         )}
       </AsyncBoundary>
-      <LoadMore hasMore={pages.hasMore} busy={pages.loadingMore} onLoad={pages.loadMore} error={pages.moreError} />
     </Panel>
   );
 }
@@ -111,31 +105,9 @@ export function AcquiredUsersTable({
         empty={{ title: "No sign-ups", description: "Nothing matches these filters.", bare: true }}
       >
         {(rows) => (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-osce-data">
-              <thead className="border-b border-border text-osce-caption uppercase tracking-wide text-ink-subtle">
-                <tr>
-                  {["Signed up at", "Account reference", "Exam", "Campaign", "Anonymous ID"].map((title) => (
-                    <th key={title} className={HEAD}>{title}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {rows.map((row) => (
-                  <tr key={row.user_id}>
-                    <td className={`${CELL} whitespace-nowrap text-ink`}>{formatUtcDateTime(row.acquired_at)}</td>
-                    <td className={`${CELL} ${MONO} text-ink-muted`}>{row.user_id}</td>
-                    <td className={`${CELL} text-ink-muted`}>{row.exam_code ? row.exam_code.toUpperCase() : "-"}</td>
-                    <td className={`${CELL} text-ink-muted`}>{campaignLabel(row.utm_campaign)}</td>
-                    <td className={`${CELL} ${MONO} text-ink-muted`}>{dash(row.visitor_key)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table<AcquiredUserRow> bare rows={rows} more={pages} columns={ACQUIRED_COLUMNS} idField="user_id" />
         )}
       </AsyncBoundary>
-      <LoadMore hasMore={pages.hasMore} busy={pages.loadingMore} onLoad={pages.loadMore} error={pages.moreError} />
     </Panel>
   );
 }

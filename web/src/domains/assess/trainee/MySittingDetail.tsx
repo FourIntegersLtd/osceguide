@@ -77,18 +77,23 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
 function Circuit({ sitting }: { sitting: MySitting }) {
   const { hrefFor } = useSurface();
   const slots = orderedSlots(sitting);
-  const { completed, total } = progressOf(sitting);
+  const { total } = progressOf(sitting);
   const exam = isExam(sitting);
 
   return (
     <section className="space-y-4">
       <B2CPageHeader
         className="!mb-0"
-        eyebrow={modeLabel(sitting)}
+        eyebrow={
+          sitting.scheduled_for
+            ? new Date(sitting.scheduled_for).toLocaleDateString(undefined, {
+                weekday: "long",
+                day: "numeric",
+                month: "short",
+              })
+            : modeLabel(sitting)
+        }
         title={sitting.name}
-        subtitle={`${sitting.circuit_name}${
-          total > 0 ? ` · ${completed} of ${total} stations completed` : ""
-        }`}
         action={
           <>
             {sitting.live ? (
@@ -108,14 +113,26 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         }
       />
 
+      {sitting.can_join ? null : (
       <Alert tone="info" title={exam ? "Before you start" : "How a practice circuit works"}>
         {exam
           ? "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."
           : "Your supervisor opens the room. Only the person whose turn it is speaks with the patient. Feedback appears here once your supervisor shares it."}
       </Alert>
+      )}
 
       {sitting.can_join ? (
-        <B2CHero eyebrow="Today" title="Your station is open" action={<JoinRoom sitting={sitting} />} />
+        <B2CHero
+          eyebrow={
+            activeSlot(sitting) && total > 0
+              ? `${exam ? "Station" : "Turn"} ${activeSlot(sitting)!.slot_index + 1} of ${total}`
+              : "Today"
+          }
+          title={exam ? "Your station is open" : "Your turn is live"}
+          action={<JoinRoom sitting={sitting} />}
+        >
+          {activeSlot(sitting)?.station_title ?? null}
+        </B2CHero>
       ) : null}
 
       {readingBriefSlot(sitting) ? (
@@ -167,7 +184,7 @@ function Slot({ slot, exam }: { slot: MySlot; exam: boolean }) {
         }
         trailing={
           <Badge variant={status.tone} dot>
-            {status.label}
+            {slot.is_active && !status.done ? "Now" : status.label}
           </Badge>
         }
       />

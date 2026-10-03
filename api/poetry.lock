@@ -2992,7 +2992,7 @@ typing-extensions = ">=4.5.0"
 
 [[package]]
 name = "osce-assessment"
-version = "0.9.0"
+version = "0.10.0"
 description = "Consumer-agnostic OSCE assessment engine: contracts, catalogue, prompts and evaluation"
 optional = false
 python-versions = ">=3.11,<3.14"
@@ -5249,4 +5249,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "1384bff741b0704ee2ce380728797b82eb7217b932c2adb96b2ae62f45b5f299"
+content-hash = "a9901e948124bdc6edeb44a4d344f5319600a1037d5efe76ad29de454dd32d0d"

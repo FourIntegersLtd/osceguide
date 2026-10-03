@@ -3,13 +3,14 @@
 import Link from "next/link";
 import {
   LuBuilding2,
-  LuPencilRuler,
+  LuScrollText,
   LuTriangleAlert,
-  LuUserCog,
   LuUsers,
 } from "react-icons/lu";
 import {
   AsyncBoundary,
+  B2CHero,
+  ButtonLink,
   EmptyPanel,
   Panel,
   PlatformPageHeader,
@@ -21,7 +22,7 @@ import {
 import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { listAllOrganizations, readOverview } from "@/domains/platform/api";
+import { readOverview } from "@/domains/platform/api";
 import type { OrgAtRisk } from "@/domains/platform/support/api";
 import { StatusBadge } from "@/domains/platform/chrome";
 import { atRiskLabel } from "@/domains/platform/support";
@@ -49,7 +50,6 @@ export function PlatformOverview() {
   const state = useAsync(
     async (signal) => ({
       overview: await readOverview(signal),
-      organizations: await listAllOrganizations(null, signal),
     }),
     [],
   );
@@ -60,39 +60,52 @@ export function PlatformOverview() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title={firstName ? `Hello, ${firstName}.` : "Platform"}
-        description="Everything, across every organisation."
+        description="Everything across every organisation, in one place."
       />
 
       <AsyncBoundary state={state}>
-        {({ overview, organizations }) => {
-          const partners = organizations.filter(
-            (o) => o.org_type === "partner",
-          ).length;
-          const institutions = organizations.length - partners;
+        {({ overview }) => {
           const attention = overview.at_risk ?? [];
+          const first = attention[0];
 
           return (
             <>
+              <B2CHero
+                eyebrow="Needs attention"
+                title={
+                  attention.length === 0
+                    ? "Nothing is waiting on the team"
+                    : `${attention.length} ${attention.length === 1 ? "organisation is" : "organisations are"} waiting on the team`
+                }
+                action={
+                  first ? (
+                    <ButtonLink
+                      href={hrefFor(
+                        `/organizations/${encodeURIComponent(first.slug)}`,
+                      )}
+                      variant="secondary"
+                    >
+                      Open the first
+                    </ButtonLink>
+                  ) : null
+                }
+              >
+                {attention.length === 0
+                  ? "Every organisation is active or on trial."
+                  : "Suspended, lapsed, or ending within thirty days."}
+              </B2CHero>
+
               <StatGrid>
                 <StatTile
                   label="Organisations"
                   value={overview.organizations}
                   icon={LuBuilding2}
                 />
-                <StatTile
-                  label="Partners / institutions"
-                  value={`${partners} / ${institutions}`}
-                  icon={LuBuilding2}
-                />
                 <StatTile label="Users" value={overview.users} icon={LuUsers} />
               </StatGrid>
 
               <div className="grid items-start gap-6 lg:grid-cols-2">
-                <Panel
-                  title={`Needs attention (${attention.length})`}
-                  description="Suspended, lapsed, or ending within thirty days."
-                  padding="none"
-                >
+                <Panel title="Needs attention" padding="none">
                   {attention.length === 0 ? (
                     <EmptyPanel
                       bare
@@ -118,27 +131,21 @@ export function PlatformOverview() {
                   <RowList flush>
                     <RowLink
                       href={hrefFor("/organizations")}
-                      title="Organisations"
-                      subtitle="Find an organisation, or set up a new one"
+                      title="Provision an organisation"
+                      subtitle="Opens the organisations list, where Provision is"
                       icon={LuBuilding2}
                     />
                     <RowLink
                       href={hrefFor("/users")}
-                      title="Users"
-                      subtitle="Find an account, and who runs this console"
+                      title="Find a user"
+                      subtitle="Search accounts by name or email"
                       icon={LuUsers}
                     />
                     <RowLink
-                      href={`${hrefFor("/authoring")}/stations`}
-                      title="Authoring"
-                      subtitle="The OSCE Guide catalogue every organisation draws on"
-                      icon={LuPencilRuler}
-                    />
-                    <RowLink
-                      href={hrefFor("/settings")}
-                      title="Your account"
-                      subtitle="Your own profile and password"
-                      icon={LuUserCog}
+                      href={hrefFor("/audit")}
+                      title="Audit log"
+                      subtitle="Who changed what, across the platform"
+                      icon={LuScrollText}
                     />
                   </RowList>
                 </Panel>

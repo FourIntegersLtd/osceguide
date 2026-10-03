@@ -54,7 +54,6 @@ export function PlatformTeam() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Platform team"
-        description="Everyone who may open this staff console."
         actions={
           <Button variant="primary" onClick={() => setInviteOpen(true)}>
             Add team member

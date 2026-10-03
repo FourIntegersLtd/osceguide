@@ -153,6 +153,7 @@ export function StationsSection() {
       ) : (
         <StationsTable
           stations={stations.data ?? []}
+          more={pages}
           search={query}
           busy={action.busy}
           onOpen={setOpen}
@@ -165,24 +166,6 @@ export function StationsSection() {
           }
         />
       )}
-
-      {pages.moreError ? (
-        <Alert tone="danger">
-          Could not load more stations: {pages.moreError.message}
-        </Alert>
-      ) : null}
-      {pages.hasMore ? (
-        <div className="flex justify-center">
-          <AuthoringButton
-            variant="secondary"
-            size="sm"
-            disabled={pages.loadingMore}
-            onClick={pages.loadMore}
-          >
-            {pages.loadingMore ? "Loading…" : "Load more stations"}
-          </AuthoringButton>
-        </div>
-      ) : null}
 
       <ImportStationDialog
         open={importing}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Alert,
   AsyncBoundary,
+  B2CHero,
   B2CSegmentedTabs,
   Badge,
   Button,
@@ -58,13 +59,17 @@ export function Ops() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="System health"
-        description="Background tasks, marking, and how many live voice sessions we can run."
+        description="Pushed live from the platform."
         actions={
           <Badge tone={stream.connected ? "success" : "warning"}>
             {stream.connected ? "Live" : "Reconnecting"}
           </Badge>
         }
       />
+
+      <AsyncBoundary state={machinery}>
+        {(m) => <NowHero machinery={m} />}
+      </AsyncBoundary>
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <Panel title="Platform">
@@ -178,6 +183,32 @@ export function Ops() {
 
       <TutorIndex />
     </div>
+  );
+}
+
+/** One sentence on overall health, from the same page the panels below read. */
+function NowHero({ machinery }: { machinery: Machinery }) {
+  const { health, capacity } = machinery;
+  const title =
+    health.status === "ok"
+      ? "Everything is running."
+      : health.status === "degraded"
+        ? "Something is degraded."
+        : "The platform is down.";
+  const detail = [
+    capacity.active === null
+      ? "Voice usage is unknown."
+      : `${capacity.active} of ${capacity.max_concurrent} voice sessions held.`,
+    capacity.queue_length
+      ? `${capacity.queue_length} waiting in line.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <B2CHero eyebrow="Now" title={title}>
+      {detail}
+    </B2CHero>
   );
 }
 

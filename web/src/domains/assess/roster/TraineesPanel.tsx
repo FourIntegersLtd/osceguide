@@ -4,13 +4,12 @@ import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
-  Button,
   EmptyState,
   PlatformFilterBar,
   PlatformFilterSearch,
   b2bTokens,
 } from "@/foundation/ui";
-import Table, { type FetchPageResult } from "@/foundation/table/Table";
+import Table from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import { hasCode } from "@/foundation/platform-client";
@@ -167,13 +166,6 @@ export function TraineesPanel({
     [orgSlug, onChanged],
   );
 
-  /** Table renders whatever page the server has already handed back — it does
-   * not re-page, re-sort or re-filter what it is given. */
-  const tableFetchPage = useCallback(
-    async (): Promise<FetchPageResult<Trainee>> => ({ items: rows, totalCount: rows.length }),
-    [rows],
-  );
-
   const columns = useMemo(
     () => [
       {
@@ -321,31 +313,13 @@ export function TraineesPanel({
         )
       ) : (
         <Table<Trainee>
-          fetchPage={tableFetchPage}
+          rows={rows}
+          more={pages}
+          themeType="b2b"
           columns={columns}
           idField="id"
-          nameField="email"
-          showSearch={false}
-          showPagination={false}
         />
       )}
-
-      {pages.moreError ? (
-        <Alert tone="danger">Could not load more trainees: {pages.moreError.message}</Alert>
-      ) : null}
-      {pages.hasMore ? (
-        <div className="flex justify-center">
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            size="sm"
-            disabled={pages.loadingMore}
-            onClick={pages.loadMore}
-          >
-            {pages.loadingMore ? "Loading…" : "Load more trainees"}
-          </Button>
-        </div>
-      ) : null}
 
       {!canManage ? (
         <p className="text-osce-caption text-b2b-icon">

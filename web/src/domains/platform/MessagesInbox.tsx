@@ -66,7 +66,7 @@ export function MessagesInbox() {
     <div className="flex flex-col gap-6">
       <PlatformPageHeader
         title="Messages"
-        description="What people have written to the platform, and whether anybody has answered."
+        description="What people have written to the platform."
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">

@@ -28,7 +28,6 @@ import { readOrgDashboard, type OrgDashboard as Data } from "@/domains/assess/da
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
 import {
-  dashboardLead,
   nextStep,
   setupProgress,
   setupSteps,
@@ -71,6 +70,7 @@ function Body({
   runs: boolean;
 }) {
   const { hrefFor } = useSurface();
+  const { session } = useSession();
   const step = nextStep(data.setup);
   const sittings = data.recent_sittings ?? [];
 
@@ -79,8 +79,7 @@ function Body({
       <B2CPageHeader
         className="!mb-0"
         eyebrow={data.name}
-        title={greeting()}
-        subtitle={dashboardLead(data)}
+        title={greeting(firstName(session?.user.name))}
         action={
           data.setup.ready_to_run ? (
             <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
@@ -145,10 +144,14 @@ function Body({
   );
 }
 
-function greeting(): string {
+function greeting(name: string | null): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning.";
-  return hour < 18 ? "Good afternoon." : "Good evening.";
+  const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  return name ? `${hello}, ${name}.` : `${hello}.`;
+}
+
+function firstName(name: string | null | undefined): string | null {
+  return (name ?? "").trim().split(/\s+/)[0] || null;
 }
 
 function sentenceCase(status: string): string {
@@ -184,7 +187,7 @@ function Setup({ data }: { data: Data }) {
             Setup · {progress.done} of {progress.total} done
           </p>
           <h2 className="text-osce-title font-semibold text-b2b-headline">
-            Before your first examination
+            Getting started
           </h2>
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-b2b-border sm:w-[200px]">
@@ -228,11 +231,10 @@ function Counts({ data }: { data: Data }) {
     // platform catalogue it may also run, so it is named that way.
     { label: "Your stations", value: counts.stations, path: "/authoring" },
     { label: "Sittings", value: counts.sittings, path: "/sittings" },
-    { label: "Programmes", value: counts.programmes_with_markable_exam, path: "/authoring/programmes" },
   ];
 
   return (
-    <section aria-label="At a glance" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <section aria-label="At a glance" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {tiles.map((tile) => (
         <Link key={tile.label} href={hrefFor(tile.path)} className={b2bTokens.b2bStatCard}>
           <span className={b2bTokens.b2bEyebrow}>{tile.label}</span>

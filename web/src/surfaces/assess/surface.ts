@@ -66,7 +66,7 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
    */
   items.push({ key: "mocks", label: "Practice sessions", href: href("/mocks"), icon: LuLayers });
   if (can("read_org")) {
-    items.push({ key: "trainees", label: "Trainees", href: href("/trainees"), icon: LuUsers });
+    items.push({ key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers });
   }
   if (can("manage_team")) {
     items.push({ key: "team", label: "Team", href: href("/team"), icon: LuUserCog });

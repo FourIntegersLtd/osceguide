@@ -1,4 +1,4 @@
-import type { LiveCircuit, OrgDashboard, OrgSetup } from "@/domains/assess/dashboard/api";
+import type { LiveCircuit, OrgSetup } from "@/domains/assess/dashboard/api";
 
 /**
  * What the institution's home screen works out from what it is given.
@@ -71,24 +71,6 @@ export function setupProgress(setup: OrgSetup): { done: number; total: number; p
     total: steps.length,
     percent: steps.length === 0 ? 100 : Math.round((done / steps.length) * 100),
   };
-}
-
-/**
- * The line under the organisation's name.
- *
- * One sentence that says what to do, rather than five cards competing to be
- * the next step.
- */
-export function dashboardLead(data: OrgDashboard): string {
-  if (!data.setup.ready_to_run) {
-    const { done, total } = setupProgress(data.setup);
-    const left = total - done;
-    return `${left} step${left === 1 ? "" : "s"} left before you can run your first examination.`;
-  }
-  if (data.counts.sittings === 0) {
-    return "Everything is set up. Schedule a sitting to assess somebody.";
-  }
-  return "Your programmes, people and examinations.";
 }
 
 /* ------------------------------------------------------------------------
