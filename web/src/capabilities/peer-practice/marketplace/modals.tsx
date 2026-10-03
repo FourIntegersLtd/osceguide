@@ -57,7 +57,7 @@ export function ClaimConfirmationModal({
             items={[
               <>You&apos;ll be paired with {slot.owner_username || "this user"} for a practice session</>,
               <>Both of you will receive a confirmation</>,
-              <>The session will appear in your &quot;Upcoming Sessions&quot; tab</>,
+              <>The session will appear in your &quot;Upcoming sessions&quot; tab</>,
               <>You can join the session at the scheduled time</>,
               <>The slot will be reserved for you</>,
             ]}
@@ -115,7 +115,7 @@ export function MarketplaceHowItWorksModal({ onClose }: { onClose: () => void })
               <ModalListRow
                 key={step.title}
                 marker={
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-osce-accent-muted text-osce-caption font-semibold text-osce-accent">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-b2c-surface-muted font-mono text-osce-caption font-semibold text-osce-ink-900">
                     {index + 1}
                   </span>
                 }

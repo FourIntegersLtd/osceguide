@@ -1,25 +1,26 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { HiChevronDown, HiChevronRight } from "react-icons/hi2";
-import { Alert, Badge, b2bTokens } from "@/foundation/ui";
+import { LuClipboardCheck } from "react-icons/lu";
+import { Alert, B2CGroupedRowLink, B2CGroupedSection, Badge, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
+import { reviewPath } from "@/domains/assess/results/candidateSteps";
 import { ratingLabel, type Rating } from "@/capabilities/feedback/rubric";
 import { ratingVariant } from "@/domains/assess/results/reviewForm";
 import { downloadCandidateResult, type CandidateReport, type StationReport } from "@/domains/assess/results/api";
 import { CandidateDecision } from "@/domains/assess/results/CandidateDecision";
 import {
   candidateName,
+  formatScore,
   outcomeTone,
   workflowLabel,
   workflowTone,
 } from "@/domains/assess/results/support";
 
 /**
- * One candidate, with their stations and their decision behind a disclosure.
+ * One candidate as a table row, with their stations and decision in a row beneath it.
  *
  * The retiring client made this a separate page per candidate — a "candidate
  * pack" — and a lead reviewing a cohort of twelve walked twelve routes and
@@ -61,118 +62,146 @@ export function CandidateCard({
     }
   }
 
+  const name = candidateName(candidate);
+
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className="flex items-center gap-2 px-4 py-3 sm:px-5">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left hover:bg-canvas"
-      >
-        {open ? (
-          <HiChevronDown className="h-4 w-4 shrink-0 text-b2b-icon" aria-hidden />
-        ) : (
-          <HiChevronRight className="h-4 w-4 shrink-0 text-b2b-icon" aria-hidden />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className={b2bTokens.b2bGroupedRowTitle}>{candidateName(candidate)}</p>
-          <p className={b2bTokens.b2bGroupedRowSubtitle}>
-            {candidate.stations_marked} of {stations.length} stations marked
-            {candidate.overall_rag !== null ? ` · overall ${ratingLabel(rating, candidate.overall_rag)}` : ""}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+    <>
+      <tr className="border-b border-b2b-border last:border-b-0">
+        <td className="px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span
+              aria-hidden
+              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-canvas text-[11.5px] text-b2b-mid"
+            >
+              {initials(name)}
+            </span>
+            <div className="min-w-0">
+              <p className={b2bTokens.b2bGroupedRowTitle}>{name}</p>
+              <p className={b2bTokens.b2bGroupedRowSubtitle}>
+                {candidate.stations_marked} of {stations.length} stations marked
+                {candidate.overall_rag !== null ? ` · overall ${ratingLabel(rating, candidate.overall_rag)}` : ""}
+              </p>
+            </div>
+          </div>
+        </td>
+        <td className="px-4 py-3 font-mono text-osce-body tabular-nums text-b2b-headline">
+          {formatScore(candidate.score)}
+        </td>
+        <td className="px-4 py-3">
           {decision?.assessment_outcome ? (
-            <Badge variant={outcomeTone(decision.assessment_outcome)}>
+            <Badge variant={outcomeTone(decision.assessment_outcome)} dot>
               {decision.assessment_outcome}
             </Badge>
-          ) : null}
-          <Badge variant={workflowTone(decision?.workflow_state)}>
+          ) : (
+            <span className="text-osce-meta text-b2b-mid">Not decided</span>
+          )}
+        </td>
+        <td className="px-4 py-3">
+          <Badge variant={workflowTone(decision?.workflow_state)} dot>
             {workflowLabel(decision?.workflow_state)}
           </Badge>
-        </div>
-      </button>
-      {resultReleased ? (
-        <button
-          type="button"
-          onClick={() => void downloadPdf()}
-          disabled={downloading}
-          className="shrink-0 text-osce-meta font-semibold text-accent underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-60"
-        >
-          {downloading ? "Preparing…" : "Result PDF"}
-        </button>
-      ) : null}
-      </div>
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex items-center justify-end gap-2">
+            {resultReleased ? (
+              <Button
+                themeType="b2b"
+                variant="ghost"
+                size="sm"
+                isLoading={downloading}
+                disabled={downloading}
+                onClick={() => void downloadPdf()}
+              >
+                Result PDF
+              </Button>
+            ) : null}
+            <Button
+              themeType="b2b"
+              variant="secondary"
+              size="sm"
+              aria-expanded={open}
+              aria-label={`${open ? "Close" : "Open"} ${name}`}
+              onClick={() => setOpen((value) => !value)}
+            >
+              {open ? "Close" : "Open"}
+            </Button>
+          </div>
+        </td>
+      </tr>
       {downloadError ? (
-        <div className="px-4 pb-3 sm:px-5">
-          <Alert tone="danger">{downloadError}</Alert>
-        </div>
+        <tr>
+          <td colSpan={5} className="px-4 pb-3">
+            <Alert tone="danger">{downloadError}</Alert>
+          </td>
+        </tr>
       ) : null}
-
       {open ? (
-        <div className="space-y-5 border-t border-b2b-border p-4 sm:p-5">
-          <section className="space-y-2">
-            <h3 className={b2bTokens.b2bSectionTitle}>Stations</h3>
-            {stations.length === 0 ? (
-              <p className="text-osce-caption text-b2b-mid">They have not sat anything yet.</p>
-            ) : (
-              <ul className="divide-y divide-b2b-border rounded-lg border border-b2b-border">
-                {stations
+        <tr className="border-b border-b2b-border bg-canvas/40 last:border-b-0">
+          <td colSpan={5} className="space-y-5 p-4 sm:p-5">
+            <B2CGroupedSection eyebrow="Stations">
+              {stations.length === 0 ? (
+                <p className="px-4 py-3 text-osce-meta text-b2b-mid">They have not sat anything yet.</p>
+              ) : (
+                stations
                   .slice()
                   .sort((a, b) => a.slot_index - b.slot_index)
                   .map((station) => (
-                    <StationRow key={station.slot_id} station={station} rating={rating} />
-                  ))}
-              </ul>
-            )}
-          </section>
+                    <StationRow key={station.slot_id} station={station} rating={rating} sittingId={sittingId} />
+                  ))
+              )}
+            </B2CGroupedSection>
 
-          <section className="space-y-2">
-            <h3 className={b2bTokens.b2bSectionTitle}>The decision</h3>
-            <CandidateDecision
-              orgSlug={orgSlug}
-              sittingId={sittingId}
-              candidate={candidate}
-              onChanged={onChanged}
-            />
-          </section>
-        </div>
+            <section className="space-y-2">
+              <h3 className={b2bTokens.b2bSectionTitle}>The decision</h3>
+              <CandidateDecision
+                orgSlug={orgSlug}
+                sittingId={sittingId}
+                candidate={candidate}
+                onChanged={onChanged}
+              />
+            </section>
+          </td>
+        </tr>
       ) : null}
-    </div>
+    </>
   );
 }
 
-function StationRow({ station, rating }: { station: StationReport; rating: Rating | null }) {
+/** Up to two capital letters from a name, skipping a leading title. */
+function initials(name: string): string {
+  const words = name.replace(/^(dr|mr|mrs|ms|prof)\.?\s+/i, "").split(/\s+/).filter(Boolean);
+  return ((words[0]?.[0] ?? "?") + (words.length > 1 ? (words.at(-1)?.[0] ?? "") : "")).toUpperCase();
+}
+
+function StationRow({
+  station,
+  rating,
+  sittingId,
+}: {
+  station: StationReport;
+  rating: Rating | null;
+  sittingId: string;
+}) {
   const { hrefFor } = useSurface();
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
-      <div className="min-w-0">
-        <p className="truncate text-osce-caption font-medium text-b2b-headline">
-          {station.station_title ?? "Station"}
-        </p>
-        <p className="truncate text-osce-caption text-b2b-mid">
-          {station.circuit_name} · {station.slot_status.replace(/_/g, " ")}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {station.overall_rag !== null ? (
-          <Badge variant={ratingVariant(rating, station.overall_rag)}>
+    <B2CGroupedRowLink
+      /* The sitting rides along so the review can step to the next candidate. */
+      href={hrefFor(reviewPath(station.slot_id, station.attempt_id, sittingId))}
+      icon={LuClipboardCheck}
+      title={station.station_title ?? "Station"}
+      meta={`${station.circuit_name} · ${station.slot_status.replace(/_/g, " ")}`}
+      trailing={
+        station.overall_rag !== null ? (
+          <Badge variant={ratingVariant(rating, station.overall_rag)} dot>
             {ratingLabel(rating, station.overall_rag)}
           </Badge>
         ) : (
-          <Badge variant="neutral">{station.marked ? "Awaiting review" : "Not marked"}</Badge>
-        )}
-        <Link
-          href={hrefFor(
-            `/slots/${station.slot_id}/review${station.attempt_id ? `?attempt=${station.attempt_id}` : ""}`,
-          )}
-          className={b2bTokens.b2bLink}
-        >
-          Review
-        </Link>
-      </div>
-    </li>
+          <Badge variant="neutral" dot>
+            {station.marked ? "Awaiting review" : "Not marked"}
+          </Badge>
+        )
+      }
+    />
   );
 }

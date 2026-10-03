@@ -39,9 +39,9 @@ export function ListCard({
         )}
       >
         <span
-          className={`text-osce-caption font-medium uppercase tracking-wide ${chrome.captionMuted}`}
+          className={`text-osce-body font-medium text-ink`}
         >
-          {countLabel} ({count})
+          {countLabel} <span className={chrome.captionMuted}>{count}</span>
         </span>
         {meta ? (
           <span className={`text-osce-caption ${chrome.iconMuted}`}>{meta}</span>

@@ -12,13 +12,13 @@ import type { BulkTraineesResult } from "@/domains/assess/roster/api";
 export function ImportInstructions() {
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-b2b-border bg-b2b-cream p-4">
+      <div className="rounded-panel border border-b2b-border bg-b2b-cream p-4">
         <p className="text-osce-body font-semibold text-b2b-headline">Required column</p>
         <p className="mt-1 text-osce-body text-b2b-graphite">
           <span className="font-mono">email</span>. Their email address
         </p>
       </div>
-      <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4">
+      <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4">
         <p className="text-osce-body font-semibold text-b2b-headline">Optional columns</p>
         <ul className="mt-2 space-y-1.5 text-osce-body text-b2b-graphite">
           <li>
@@ -31,9 +31,9 @@ export function ImportInstructions() {
           </li>
         </ul>
       </div>
-      <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4">
+      <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4">
         <p className="text-osce-body font-semibold text-b2b-headline">Example</p>
-        <pre className="mt-2 overflow-auto rounded-md border border-b2b-border bg-b2b-cream p-3 text-osce-caption text-b2b-headline">
+        <pre className="mt-2 overflow-auto rounded-control border border-b2b-border bg-b2b-cream p-3 text-osce-caption text-b2b-headline">
           email,firstName,lastName,cohort{"\n"}
           amina@hospital.nhs.uk,Amina,Khan,June 2026
         </pre>
@@ -58,7 +58,7 @@ export function ImportOutcome({
         {created.length} added, {skipped.length} skipped.
       </Alert>
       {skipped.length > 0 ? (
-        <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4">
+        <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4">
           <p className="text-osce-body font-semibold text-b2b-headline">Not imported</p>
           <ul className="mt-2 space-y-1 text-osce-body text-b2b-graphite">
             {skipped.map((row) => (

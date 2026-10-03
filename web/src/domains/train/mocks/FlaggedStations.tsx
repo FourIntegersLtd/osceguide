@@ -11,6 +11,7 @@ import {
   B2CPanelCardBody,
   B2CPanelCardHeader,
   Button,
+  ButtonLink,
   productTokens,
   iconSearchInputClassName,
 } from "@/foundation/ui";
@@ -18,6 +19,7 @@ import { errorMessage, useCursorPages, useToast, useSearchQuery } from "@/founda
 import { useSurface } from "@/capabilities";
 import { flagSetEntry, listFlaggedStations, type FlaggedEntry } from "@/domains/train/api";
 import { flaggedEntryPath } from "@/domains/train/mocks/model";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 
 const PAGE_LIMIT = 25;
 
@@ -164,8 +166,19 @@ export function FlaggedStations() {
   ];
 
   return (
-    <>
-      <div className="mb-4 flex justify-end">
+    <div className="space-y-6">
+      <B2CHero
+        eyebrow="Flagged stations"
+        title="Stations to come back to"
+        action={
+          <ButtonLink href="?tab=combine" variant="primary" size="md">
+            Combine into a session
+          </ButtonLink>
+        }
+      >
+        Stations you flagged during practice. Open one to review it, or combine them into a new session.
+      </B2CHero>
+      <div>
         <label className="relative block w-full max-w-md">
           <span className="sr-only">Search flagged stations</span>
           <HiOutlineMagnifyingGlass
@@ -176,15 +189,13 @@ export function FlaggedStations() {
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search flagged stations..."
+            placeholder="Search flagged stations"
             className={iconSearchInputClassName}
           />
         </label>
       </div>
       <Table<FlagRow>
         className="mb-4"
-        title="Flagged stations"
-        description="Stations you flagged during practice to come back to."
         fetchPage={fetchPage}
         showPagination={false}
         columns={columns}
@@ -203,6 +214,6 @@ export function FlaggedStations() {
           </Button>
         </div>
       ) : null}
-    </>
+    </div>
   );
 }

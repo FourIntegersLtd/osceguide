@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
+  Badge,
   Button,
   EmptyState,
   PlatformFilterBar,
@@ -180,16 +181,20 @@ export function TraineesPanel({
         key: "first_name" as keyof Trainee,
         priority: "primary" as const,
         render: (trainee: Trainee) => (
-          <span className={cn(b2cTableCellText, "font-medium text-osce-ink-900")}>
-            {trainee.first_name || trainee.last_name ? displayName(trainee) : "None"}
+          <span className="flex items-center gap-3">
+            <span
+              aria-hidden
+              className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-canvas text-osce-meta text-b2b-mid"
+            >
+              {displayName(trainee).trim().charAt(0).toUpperCase()}
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <span className={cn(b2cTableCellText, "font-medium text-b2b-headline")}>
+                {trainee.first_name || trainee.last_name ? displayName(trainee) : "None"}
+              </span>
+              <span className="truncate text-osce-meta text-b2b-mid">{trainee.email}</span>
+            </span>
           </span>
-        ),
-      },
-      {
-        header: "Email",
-        key: "email" as keyof Trainee,
-        render: (trainee: Trainee) => (
-          <span className={cn(b2cTableCellText, "text-b2b-graphite")}>{trainee.email}</span>
         ),
       },
       {
@@ -202,13 +207,29 @@ export function TraineesPanel({
         ),
       },
       {
+        header: "Programme",
+        key: "programme_names" as keyof Trainee,
+        render: (trainee: Trainee) => (
+          <span className={cn(b2cTableCellText, "text-b2b-mid")}>
+            {trainee.programme_names?.length ? trainee.programme_names.join(", ") : "None"}
+          </span>
+        ),
+      },
+      {
+        header: "Stations sat",
+        key: "stations_sat" as keyof Trainee,
+        render: (trainee: Trainee) => (
+          <span className={cn(b2cTableCellText, "tabular-nums text-b2b-mid")}>{trainee.stations_sat}</span>
+        ),
+      },
+      {
         header: "Access",
         key: "id" as keyof Trainee,
         render: (trainee: Trainee) =>
           accessActive(trainee) ? (
-            <span className="text-osce-caption font-medium text-b2b-success-text">Active</span>
+            <Badge variant="success" dot>Active</Badge>
           ) : (
-            <span className="text-osce-caption font-medium text-b2b-warning-text/90">Revoked</span>
+            <Badge variant="warning" dot>Revoked</Badge>
           ),
       },
       {

@@ -270,62 +270,44 @@ export default function Timer({
   const isUrgent = isFinalCountdown || timeRemaining === 0;
   const digitClass = isUrgent ? "text-osce-danger" : "text-osce-ink-900";
 
+  const phase = timerType === "simulation" ? "Consultation" : "Reading time";
+  const label = !running
+    ? "Starts with the patient"
+    : isFinalCountdown
+      ? timerType === "simulation"
+        ? "Ending soon"
+        : "Almost up"
+      : phase;
+
   return (
-    <div className="relative">
-      <div
-        className={`relative w-32 h-20 flex-shrink-0 rounded-lg transition-colors ${
-          isFinalCountdown ? "animate-pulse bg-osce-danger-bg" : ""
-        }`}
-      >
-        {/* Timer display */}
-        <div
-          className={`absolute inset-0 flex flex-col items-center justify-center ${
-            isUrgent ? "text-osce-danger" : ""
+    <div className="relative flex flex-col items-start sm:items-end">
+      <div className="flex items-center gap-1.5">
+        <span
+          className={`font-mono text-osce-micro font-medium uppercase tracking-[0.08em] ${
+            isFinalCountdown ? "text-osce-danger" : "text-b2c-text-muted"
           }`}
         >
-          <div className="mb-0.5 flex items-center gap-1.5">
-            <span
-              className={`text-osce-caption ${
-                isFinalCountdown
-                  ? "font-semibold text-osce-danger"
-                  : "text-b2c-text-muted"
-              }`}
-            >
-              {!running
-                ? "starts with patient"
-                : isFinalCountdown
-                  ? timerType === "simulation"
-                    ? "ending soon"
-                    : "almost up"
-                  : "remaining"}
-            </span>
-            {/* Reset button - resets timer to effective duration */}
-            {running && (
-              <button
-                type="button"
-                onClick={() => setConfirmResetOpen(true)}
-                className="flex cursor-pointer items-center justify-center text-b2c-text-muted transition-all hover:scale-110 hover:text-osce-accent"
-                title="Reset timer"
-                aria-label="Reset timer"
-              >
-                <FiRotateCcw className="h-5 w-5" aria-hidden />
-              </button>
-            )}
-          </div>
-          <div className="flex items-baseline space-x-1">
-            {/* Minutes display */}
-            <span className={`text-osce-title font-bold ${digitClass}`}>
-              {minutes}
-            </span>
-            <span className="text-osce-caption text-b2c-text-muted">min</span>
-            {/* Seconds display (padded with leading zero) */}
-            <span className={`ml-1 text-osce-title font-bold ${digitClass}`}>
-              {seconds.toString().padStart(2, "0")}
-            </span>
-            <span className="text-osce-caption text-b2c-text-muted">sec</span>
-          </div>
-        </div>
+          {label}
+        </span>
+        {running && (
+          <button
+            type="button"
+            onClick={() => setConfirmResetOpen(true)}
+            className="flex items-center justify-center rounded-sm text-b2c-text-muted transition-colors hover:text-osce-accent"
+            title="Reset timer"
+            aria-label="Reset timer"
+          >
+            <FiRotateCcw className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        )}
       </div>
+      <span
+        className={`font-mono text-[28px] font-medium leading-[34px] tabular-nums ${digitClass} ${
+          isFinalCountdown ? "animate-pulse" : ""
+        }`}
+      >
+        {minutes.toString().padStart(2, "0")}:{seconds.toString().padStart(2, "0")}
+      </span>
       {/* Announced once when the final countdown starts, not every second. */}
       <span className="sr-only" role="status" aria-live="assertive">
         {isFinalCountdown && timeRemaining === FINAL_COUNTDOWN_SECONDS

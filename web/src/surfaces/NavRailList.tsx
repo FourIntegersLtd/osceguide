@@ -50,7 +50,8 @@ export function NavRailList({
   basePath: string;
   collapsed: boolean;
   onNavigate: () => void;
-  onSignOut: () => void;
+  /** Omitted when the shell puts sign-out somewhere else (train's user row). */
+  onSignOut?: () => void;
   ariaLabel: string;
   footer: ReactNode;
   className?: string;
@@ -72,13 +73,7 @@ export function NavRailList({
         )}
       >
         {Icon ? (
-          <Icon
-            className={cn(
-              "h-5 w-5 shrink-0",
-              active ? "text-osce-ink-900" : "text-b2c-text-muted",
-            )}
-            aria-hidden
-          />
+          <Icon className="h-4 w-4 shrink-0" aria-hidden />
         ) : null}
         {collapsed ? null : (
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -95,7 +90,7 @@ export function NavRailList({
     );
   };
 
-  const signOutButton = (
+  const signOutButton = onSignOut ? (
     <button
       type="button"
       onClick={onSignOut}
@@ -106,16 +101,17 @@ export function NavRailList({
         collapsed && "h-11 justify-center !px-0 !py-0",
       )}
     >
-      <MdLogout className="h-5 w-5 shrink-0 text-b2c-text-muted" aria-hidden />
+      <MdLogout className="h-4 w-4 shrink-0" aria-hidden />
       {collapsed ? null : <span>Sign out</span>}
     </button>
-  );
+  ) : null;
 
-  const hasGeneral = groups.sections.some((group) => group.section === "general");
+  const hasGeneral =
+    signOutButton !== null && groups.sections.some((group) => group.section === "general");
 
   return (
     <nav className={cn("min-h-0 flex-1 flex-col", className)} aria-label={ariaLabel}>
-      <div className={cn(b2cScrollY, "min-h-0 flex-1", collapsed ? "py-3" : "py-4")}>
+      <div className={cn(b2cScrollY, "min-h-0 flex-1", collapsed ? "py-3" : "pb-4")}>
         {collapsed ? (
           <div className="flex flex-col gap-1.5 px-1.5">
             {groups.ungrouped.map(renderItem)}
@@ -123,14 +119,14 @@ export function NavRailList({
             {hasGeneral ? <NavTooltip label="Sign out">{signOutButton}</NavTooltip> : null}
           </div>
         ) : (
-          <div className="flex flex-col px-2">
+          <div className="flex flex-col px-3">
             {groups.ungrouped.length > 0 ? (
-              <div className="mb-5 flex flex-col gap-0.5">{groups.ungrouped.map(renderItem)}</div>
+              <div className="flex flex-col gap-px">{groups.ungrouped.map(renderItem)}</div>
             ) : null}
             {groups.sections.map((group) => (
-              <div key={group.section} className="mb-5 last:mb-0">
+              <div key={group.section}>
                 <p className={b2cNavSectionLabel}>{group.label}</p>
-                <div className="flex flex-col gap-0.5">
+                <div className="flex flex-col gap-px">
                   {group.items.map(renderItem)}
                   {group.section === "general" ? signOutButton : null}
                 </div>

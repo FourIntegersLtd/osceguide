@@ -131,7 +131,7 @@ export function BulkImportDialog({
 
       <div
         {...getRootProps({
-          className: `flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center transition-colors ${
+          className: `flex cursor-pointer flex-col items-center gap-2 rounded-panel border border-dashed p-6 text-center transition-colors ${
             isDragActive ? "border-b2b-accent bg-b2b-accent-bg" : "border-b2b-border bg-b2b-cream/60"
           }`,
         })}

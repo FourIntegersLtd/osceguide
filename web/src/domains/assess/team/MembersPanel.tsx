@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Alert, Button, EmptyState, PlatformFilterBar, PlatformFilterSearch, b2bTokens } from "@/foundation/ui";
+import { Alert, Badge, Button, EmptyState, PlatformFilterBar, PlatformFilterSearch, b2bTokens } from "@/foundation/ui";
 import Table, { type FetchPageResult } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
@@ -11,6 +11,7 @@ import {
   changeMemberRole,
   listMemberships,
   resendInvitation,
+  resendInvitations,
   restoreMembership,
   revokeMembership,
   type Membership,
@@ -68,6 +69,24 @@ export function MembersPanel({
     [orgSlug, query],
   );
   const rows = pages.state.data ?? [];
+
+  // Everybody on the loaded pages who has not yet chosen a password.
+  const awaiting = rows.filter((member) => member.invited && isActive(member) && !isOwner(member));
+  const [resendingAll, setResendingAll] = useState(false);
+
+  async function resendAll() {
+    setError(null);
+    setResendingAll(true);
+    try {
+      const { results } = await resendInvitations(orgSlug, awaiting.map((member) => member.id));
+      const sent = results.filter((result) => result.outcome === "sent").length;
+      setNotice(`Resent ${sent} of ${results.length} invitations.`);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setResendingAll(false);
+    }
+  }
 
   async function resend(member: Membership) {
     setError(null);
@@ -150,13 +169,22 @@ export function MembersPanel({
         ),
       },
       {
+        header: "Circuits led",
+        key: "circuits_led" as keyof Membership,
+        render: (member: Membership) => (
+          <span className={cn(b2cTableCellText, "tabular-nums text-b2b-graphite")}>
+            {member.circuits_led}
+          </span>
+        ),
+      },
+      {
         header: "Access",
         key: "id" as keyof Membership,
         render: (member: Membership) =>
           isActive(member) ? (
-            <span className="text-osce-caption font-medium text-b2b-success-text">Active</span>
+            <Badge variant="success" dot>Active</Badge>
           ) : (
-            <span className="text-osce-caption font-medium text-b2b-warning-text/90">Revoked</span>
+            <Badge variant="warning" dot>Revoked</Badge>
           ),
       },
       {
@@ -181,6 +209,8 @@ export function MembersPanel({
   return (
     <div className="min-w-0 space-y-4">
       {notice ? <Alert tone="success">{notice}</Alert> : null}
+      {/* A dialog shows its own error; a resend has no dialog to show it in. */}
+      {error && !pending ? <Alert tone="danger">{error}</Alert> : null}
 
       <PlatformFilterBar
         leading={
@@ -198,6 +228,17 @@ export function MembersPanel({
           placeholder="Search staff…"
           aria-label="Search staff"
         />
+        {canManage && awaiting.length > 0 ? (
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            disabled={resendingAll}
+            onClick={() => void resendAll()}
+          >
+            {resendingAll ? "Resending…" : `Resend invitations (${awaiting.length})`}
+          </Button>
+        ) : null}
       </PlatformFilterBar>
 
       {pages.state.error ? (

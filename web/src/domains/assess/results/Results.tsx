@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { HiOutlinePaperAirplane } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Badge, Button, EmptyState, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CHero, B2CPageHeader, Button, EmptyState, b2bTokens } from "@/foundation/ui";
+import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { downloadSittingResults, readSittingReport, releaseDecisions } from "@/domains/assess/results/api";
@@ -52,6 +53,7 @@ function Report({
   sittingId: string;
   onChanged: () => void;
 }) {
+  const { hrefFor } = useSurface();
   const candidates = report.candidates ?? [];
   const waiting = candidates.filter(releasable);
   const [downloading, setDownloading] = useState(false);
@@ -72,35 +74,30 @@ function Report({
 
   return (
     <>
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
-        <div className="min-w-0">
-          <h1 className={b2bTokens.b2bPageTitle}>Results</h1>
-          <p className="mt-1 text-osce-caption text-ink-muted">
-            {report.sitting.name} · {report.totals.stations_marked} of {report.totals.stations}{" "}
-            stations marked
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => void downloadCsv()}
+      <B2CPageHeader
+        back={{ href: hrefFor(`/sittings/${sittingId}`), label: "Sitting" }}
+        eyebrow={report.sitting.name}
+        title="Results"
+        subtitle={`${report.totals.stations_marked} of ${report.totals.stations} stations marked · ${report.totals.decisions_released} of ${report.totals.candidates} released`}
+        action={
+          <Button
+            themeType="b2b"
+            variant="secondary"
+            isLoading={downloading}
             disabled={downloading}
-            className="inline-flex items-center justify-center rounded-osce-md border border-border bg-surface px-3 py-2 text-osce-meta font-medium text-ink hover:bg-canvas focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-60"
+            onClick={() => void downloadCsv()}
           >
-            {downloading ? "Preparing…" : "Download CSV"}
-          </button>
-          <Badge variant={report.totals.decisions_released === report.totals.candidates ? "success" : "neutral"}>
-            {report.totals.decisions_released} of {report.totals.candidates} released
-          </Badge>
-        </div>
-      </header>
+            Download CSV
+          </Button>
+        }
+      />
       {downloadError ? <Alert tone="danger">{downloadError}</Alert> : null}
 
       {candidates.length === 0 ? (
         <EmptyState title="Nobody has sat this yet." />
       ) : (
         <>
-          <CohortRanking orgSlug={orgSlug} sittingId={sittingId} />
+          <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />
 
           {waiting.length > 0 ? (
             <ReleaseAll
@@ -110,28 +107,69 @@ function Report({
               sittingId={sittingId}
               waiting={waiting}
               onChanged={onChanged}
+              released={report.totals.decisions_released}
+              total={report.totals.candidates}
             />
           ) : null}
 
-          <section className="space-y-2">
-            <h2 className={b2bTokens.b2bEyebrow}>Candidates</h2>
-            <ul className="flex flex-col gap-2">
-              {candidates.map((candidate) => (
-                <li key={candidate.user_id}>
+          <CohortRanking orgSlug={orgSlug} sittingId={sittingId} />
+
+          <section aria-label="Candidates" className="overflow-x-auto rounded-panel border border-b2b-border bg-b2b-surface">
+            <table className="w-full min-w-[720px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-b2b-border text-osce-meta font-medium text-b2b-mid">
+                  <th scope="col" className="px-4 py-3 font-medium">Candidate</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Score</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Outcome</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Status</th>
+                  <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {candidates.map((candidate) => (
                   <CandidateCard
+                    key={candidate.user_id}
                     orgSlug={orgSlug}
                     sittingId={sittingId}
                     candidate={candidate}
                     rating={report.rating ?? null}
                     onChanged={onChanged}
                   />
-                </li>
-              ))}
-            </ul>
+                ))}
+              </tbody>
+            </table>
           </section>
         </>
       )}
     </>
+  );
+}
+
+/** Where the cohort stands: the recorded decisions, and who the markers still owe. */
+function OutcomeTiles({
+  candidates,
+  awaitingMarking,
+}: {
+  candidates: CandidateReport[];
+  awaitingMarking: number;
+}) {
+  const count = (outcome: string) =>
+    candidates.filter((candidate) => candidate.decision?.assessment_outcome === outcome).length;
+  const tiles = [
+    { label: "Passed", value: count("pass") },
+    { label: "Failed", value: count("fail") },
+    { label: "Inconclusive", value: count("inconclusive") },
+    { label: "Awaiting marking", value: awaitingMarking },
+  ];
+  return (
+    <section aria-label="Outcomes" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {tiles.map((tile) => (
+        <div key={tile.label} className={b2bTokens.b2bStatCard}>
+          <span className={b2bTokens.b2bEyebrow}>{tile.label}</span>
+          <span className={b2bTokens.b2bStatCardValue}>{tile.value}</span>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -151,11 +189,16 @@ function ReleaseAll({
   sittingId,
   waiting,
   onChanged,
+  released: releasedTotal,
+  total,
 }: {
   orgSlug: string;
   sittingId: string;
   waiting: CandidateReport[];
   onChanged: () => void;
+  /** Decisions already released, and candidates in all, for the tally beside the heading. */
+  released: number;
+  total: number;
 }) {
   const [busy, setBusy] = useState(false);
   const [failures, setFailures] = useState<string[]>([]);
@@ -211,18 +254,39 @@ function ReleaseAll({
   }, [orgSlug, sittingId, chosen, onChanged]);
 
   return (
-    <section className="space-y-3 rounded-lg border border-b2b-border bg-b2b-cream/40 p-4 sm:p-5">
-      <h2 className={b2bTokens.b2bSectionTitle}>
-        {waiting.length} signed off and not yet released
-      </h2>
-      <p className="text-osce-body text-b2b-mid">
+    <div className="space-y-3">
+      <B2CHero
+        eyebrow="Ready to release"
+        title={`${waiting.length} signed off and not yet released`}
+        action={
+          <Button
+            themeType="b2b"
+            variant="commit"
+            isLoading={busy}
+            disabled={busy || chosen.length === 0}
+            onClick={() => void release()}
+          >
+            <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden />
+            {allPicked ? `Release all ${waiting.length}` : `Release ${chosen.length} selected`}
+          </Button>
+        }
+        aside={
+          <div className="text-right">
+            <p className="font-mono text-[36px] leading-10 tabular-nums text-b2b-headline">
+              {releasedTotal}{" "}
+              <span className="text-osce-subheading text-b2b-mid">of {total}</span>
+            </p>
+            <p className="text-osce-meta text-b2b-mid">released</p>
+          </div>
+        }
+      >
         Releasing lets each of them read their outcome. Untick anyone to hold back.
-      </p>
+      </B2CHero>
 
-      <fieldset className="space-y-2">
+      <fieldset className="space-y-2 rounded-panel border border-b2b-border bg-b2b-surface p-4">
         <legend className="sr-only">Candidates to release</legend>
         {waiting.length > 1 ? (
-          <label className="flex items-center gap-2 text-osce-caption font-medium text-b2b-headline">
+          <label className="flex items-center gap-2 text-osce-meta font-medium text-b2b-headline">
             <input
               type="checkbox"
               checked={allPicked}
@@ -267,17 +331,6 @@ function ReleaseAll({
           </ul>
         </Alert>
       ) : null}
-
-      <Button
-        themeType="b2b"
-        variant="commit"
-        isLoading={busy}
-        disabled={busy || chosen.length === 0}
-        onClick={() => void release()}
-      >
-        <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden />
-        {allPicked ? `Release all ${waiting.length}` : `Release ${chosen.length} selected`}
-      </Button>
-    </section>
+    </div>
   );
 }

@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audience import ViewerAudiences
+from app.features.catalog import service as catalog
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
 from app.features.roster import domain, errors, repository, repository_groups
@@ -23,6 +24,7 @@ from app.features.roster.schemas import (
     SkippedTrainee,
     TraineeRead,
 )
+from app.features.sittings import service_reads as sittings
 from app.features.tenancy import service as tenancy
 
 
@@ -86,7 +88,21 @@ async def list_trainees(
     trainees, next_cursor = await repository.list_trainees(
         session, org_id, limit=limit, cursor=cursor, search=search, access_revoked=access_revoked
     )
-    return [_trainee_read(trainee) for trainee in trainees], next_cursor
+    reads = [_trainee_read(trainee) for trainee in trainees]
+    sat, programme_ids = await sittings.trainee_activity(
+        session, org_id, [trainee.user_id for trainee in trainees if trainee.user_id is not None]
+    )
+    names = await catalog.programme_names(
+        session, org_id, sorted({pid for pids in programme_ids.values() for pid in pids}, key=str)
+    )
+    for read in reads:
+        if read.user_id is None:
+            continue
+        read.stations_sat = sat.get(read.user_id, 0)
+        read.programme_names = sorted(
+            {names[pid] for pid in programme_ids.get(read.user_id, set()) if pid in names}
+        )
+    return reads, next_cursor
 
 
 async def set_access(

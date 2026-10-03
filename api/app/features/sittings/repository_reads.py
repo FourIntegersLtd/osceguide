@@ -43,6 +43,66 @@ async def circuits_for_supervisor(
     return [(circuit, sitting) for circuit, sitting in (await session.execute(stmt)).all()]
 
 
+async def candidate_counts_for_sittings(
+    session: AsyncSession, org_id: uuid.UUID, sitting_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Distinct trainees rostered across each sitting's circuits, keyed by sitting id."""
+    if not sitting_ids:
+        return {}
+    stmt = (
+        select(Circuit.sitting_id, func.count(func.distinct(CircuitTrainee.trainee_id)))
+        .join(Circuit, Circuit.id == CircuitTrainee.circuit_id)
+        .where(Circuit.org_id == org_id, Circuit.sitting_id.in_(list(sitting_ids)))
+        .group_by(Circuit.sitting_id)
+    )
+    return {sitting_id: int(count) for sitting_id, count in (await session.execute(stmt)).all()}
+
+
+async def circuits_led_counts(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many circuits each of these people is named supervisor of, keyed by user id."""
+    if not user_ids:
+        return {}
+    stmt = (
+        select(Circuit.supervisor_user_id, func.count())
+        .where(Circuit.org_id == org_id, Circuit.supervisor_user_id.in_(list(user_ids)))
+        .group_by(Circuit.supervisor_user_id)
+    )
+    return {user_id: int(count) for user_id, count in (await session.execute(stmt)).all()}
+
+
+async def trainee_activity(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+) -> tuple[dict[uuid.UUID, int], dict[uuid.UUID, set[uuid.UUID]]]:
+    """Per trainee user: stations sat (completed slots), and the programmes of the
+    sittings they are rostered on. Two grouped queries however many trainees."""
+    if not user_ids:
+        return {}, {}
+    ids = list(user_ids)
+    sat_stmt = (
+        select(Slot.trainee_id, func.count())
+        .where(Slot.org_id == org_id, Slot.trainee_id.in_(ids), Slot.status == "completed")
+        .group_by(Slot.trainee_id)
+    )
+    sat = {user_id: int(count) for user_id, count in (await session.execute(sat_stmt)).all()}
+    prog_stmt = (
+        select(CircuitTrainee.trainee_id, Sitting.programme_id)
+        .join(Circuit, Circuit.id == CircuitTrainee.circuit_id)
+        .join(Sitting, Sitting.id == Circuit.sitting_id)
+        .where(
+            Circuit.org_id == org_id,
+            CircuitTrainee.trainee_id.in_(ids),
+            Sitting.programme_id.is_not(None),
+        )
+        .distinct()
+    )
+    programmes: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for user_id, programme_id in (await session.execute(prog_stmt)).all():
+        programmes.setdefault(user_id, set()).add(programme_id)
+    return sat, programmes
+
+
 async def slot_counts_for_circuits(
     session: AsyncSession, org_id: uuid.UUID, circuit_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, int]:

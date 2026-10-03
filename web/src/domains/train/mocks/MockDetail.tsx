@@ -1,23 +1,33 @@
 "use client";
 
+import { useState } from "react";
 import { HiOutlineLockClosed } from "react-icons/hi2";
-import { RiSpeakLine } from "react-icons/ri";
 import {
   AsyncBoundary,
   B2CEmptyState,
-  Back,
   B2CPageHeader,
-  B2CPanelCard,
-  B2CPanelCardBody,
+  ButtonLink,
+  cn,
   productTokens,
 } from "@/foundation/ui";
+import { useSurface } from "@/capabilities";
 import { useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { listExams } from "@/capabilities/stations";
 import { loadStationCatalogue, readSet } from "@/domains/train/api";
 import { MockRules } from "@/domains/train/mocks/MockRules";
 import { MockStationsTable, type StationRow } from "@/domains/train/mocks/MockStationsTable";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 import { entriesInOrder, sessionMinutes } from "@/domains/train/mocks/model";
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-[104px] rounded-osce-lg border border-osce-border bg-osce-surface px-4 py-3">
+      <p className="text-osce-meta text-b2c-text-muted">{label}</p>
+      <p className="mt-0.5 text-osce-data font-semibold tabular-nums text-osce-ink-900">{value}</p>
+    </div>
+  );
+}
 
 /**
  * One session: its rules before you start, its stations once you have.
@@ -28,6 +38,8 @@ import { entriesInOrder, sessionMinutes } from "@/domains/train/mocks/model";
  * because "attempted" is a fact about the set rather than a second question.
  */
 export function MockDetail({ setId }: { setId: string }) {
+  const { hrefFor } = useSurface();
+  const [micReady, setMicReady] = useState(false);
   const state = useAsync(
     async (signal) => {
       // Someone else's id, or one since deleted, is the old screen's "No mock
@@ -61,13 +73,20 @@ export function MockDetail({ setId }: { setId: string }) {
           if (loaded === null) {
             return (
               <>
-                <Back />
-                <p className="mt-4 text-osce-body text-b2c-text-muted">No mock found</p>
+                <B2CPageHeader
+                  back={{ href: hrefFor("/mocks/list"), label: "Sessions" }}
+                  title="Session not found"
+                />
+                <p className="text-osce-body text-b2c-text-muted">
+                  It may have been deleted, or it belongs to another account.
+                </p>
               </>
             );
           }
           const { set, rows, exam } = loaded;
           const attempted = set.attempted_entries > 0;
+          const readingMinutes = Math.round((exam?.default_reading_seconds ?? 180) / 60);
+          const simulationMinutes = Math.round((exam?.default_simulation_seconds ?? 720) / 60);
           const duration = sessionMinutes(
             set.total_entries,
             exam
@@ -77,49 +96,75 @@ export function MockDetail({ setId }: { setId: string }) {
                 }
               : null,
           );
+          const stationsLabel = `${set.total_entries} ${set.total_entries === 1 ? "station" : "stations"}`;
+          const first = rows[0]?.entry ?? null;
+          const startsHere = !attempted && !set.locked;
+          // A session with no stations has nowhere to start; the button stays inert.
+          const canStart = micReady && first !== null;
 
           return (
             <div className="mx-auto max-w-osce-page space-y-6">
-              <Back />
+              <B2CPageHeader
+                back={{ href: hrefFor("/mocks/list"), label: "Sessions" }}
+                title={set.name}
+                action={
+                  set.locked ? undefined : (
+                    <ButtonLink
+                      href={hrefFor(`/mocks/${set.id}/update`)}
+                      variant="secondary"
+                      size="md"
+                    >
+                      Edit
+                    </ButtonLink>
+                  )
+                }
+              />
 
-              <B2CPageHeader title={set.name} icon={RiSpeakLine} />
+              <B2CHero
+                eyebrow={`${duration} minutes, ${stationsLabel}`}
+                title={`For each station: ${readingMinutes} minutes reading, then ${simulationMinutes} minutes with the patient`}
+                aside={
+                  <>
+                    <Stat label="Duration" value={`${duration} min`} />
+                    <Stat label="Stations" value={String(set.total_entries)} />
+                  </>
+                }
+                action={
+                  startsHere ? (
+                    <ButtonLink
+                      href={
+                        first
+                          ? `${hrefFor(`/mocks/${set.id}/stations/${first.id}`)}?action=attempt`
+                          : hrefFor(`/mocks/${set.id}`)
+                      }
+                      variant="primary"
+                      size="md"
+                      aria-disabled={!canStart}
+                      className={cn(!canStart && "pointer-events-none opacity-60")}
+                    >
+                      {micReady ? "Start session" : "Allow your microphone to start"}
+                    </ButtonLink>
+                  ) : undefined
+                }
+              >
+                Sit them back to back. Feedback for each station arrives while you sit the next.
+              </B2CHero>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:w-2/3">
-                <B2CPanelCard>
-                  <B2CPanelCardBody>
-                    <p className={productTokens.b2cFieldLabel}>Duration</p>
-                    <p className={`${productTokens.b2cFieldValue} mt-1 text-osce-body`}>
-                      {duration} min
-                    </p>
-                  </B2CPanelCardBody>
-                </B2CPanelCard>
-                <B2CPanelCard>
-                  <B2CPanelCardBody>
-                    <p className={productTokens.b2cFieldLabel}>Stations</p>
-                    <p className={`${productTokens.b2cFieldValue} mt-1 text-osce-body`}>
-                      {set.total_entries}
-                    </p>
-                  </B2CPanelCardBody>
-                </B2CPanelCard>
-              </div>
-
-              <div>
-                {attempted ? (
-                  <MockStationsTable
-                    set={set}
-                    rows={rows}
-                    attemptLimit={exam?.station_attempt_limit ?? 3}
-                  />
-                ) : set.locked ? (
-                  <B2CEmptyState
-                    icon={HiOutlineLockClosed}
-                    title="Nothing to review in this session"
-                    description="This session is from a past subscription. It was never attempted, so there is no feedback or transcript to review, and reattempts aren't available."
-                  />
-                ) : (
-                  <MockRules set={set} entry={rows[0]?.entry ?? null} exam={exam} />
-                )}
-              </div>
+              {attempted ? (
+                <MockStationsTable
+                  set={set}
+                  rows={rows}
+                  attemptLimit={exam?.station_attempt_limit ?? 3}
+                />
+              ) : set.locked ? (
+                <B2CEmptyState
+                  icon={HiOutlineLockClosed}
+                  title="Nothing to review in this session"
+                  description="This session is from a past subscription. It was never attempted, so there is no feedback or transcript to review, and reattempts are not available."
+                />
+              ) : (
+                <MockRules exam={exam} onMicReadyChange={setMicReady} />
+              )}
             </div>
           );
         }}

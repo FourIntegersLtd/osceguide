@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { HiOutlineChatBubbleLeftRight, HiOutlineChevronDown, HiOutlineChevronRight } from "react-icons/hi2";
+import { useState, type ReactNode } from "react";
+import { HiOutlineCheck } from "react-icons/hi2";
 import { LuFlag, LuMessageSquareWarning } from "react-icons/lu";
 import { Back, cn, productTokens } from "@/foundation/ui";
 import { useToast } from "@/foundation/hooks";
@@ -51,6 +51,7 @@ export function StationHeader({
   attemptLimit,
   flagStationId,
   comeBack,
+  aside,
 }: {
   index: number;
   total: number;
@@ -63,6 +64,8 @@ export function StationHeader({
    * flag (a practice set's entry); without it only reporting is offered.
    */
   comeBack?: ComeBackFlag | null;
+  /** The clock and the step's one action, at the header's right (canvas `train-reading`). */
+  aside?: ReactNode;
 }) {
   const toast = useToast();
   const [flagged, setFlagged] = useState(false);
@@ -114,22 +117,23 @@ export function StationHeader({
   };
 
   return (
-    <div className="mb-4 flex flex-col gap-4">
+    <div className="mb-5 flex flex-col gap-3">
       <Back />
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <h1 className={productTokens.b2cPageTitle}>
-          {total > 1 ? `Station ${index + 1} of ${total}` : "Station"}
-        </h1>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className={productTokens.b2cPageTitle}>
+            {total > 1 ? `Station ${index + 1} of ${total}` : "Station"}
+          </h1>
           {attemptsUsed !== null && attemptLimit !== null && (
-            <span className="rounded-full bg-b2c-secondary px-3 py-1 text-osce-body text-b2c-text-secondary">
-              {completed ? (
-                <span className="font-medium text-osce-success-text">Completed</span>
-              ) : (
-                <>
-                  Attempts: {attemptsUsed}/{attemptLimit}
-                </>
+            <span
+              className={cn(
+                "inline-flex h-[22px] items-center rounded-[6px] px-2 text-osce-meta font-medium",
+                completed
+                  ? "bg-osce-success-bg text-osce-success-text"
+                  : "bg-b2c-surface-muted text-b2c-text-secondary",
               )}
+            >
+              {completed ? "Completed" : `Attempts: ${attemptsUsed}/${attemptLimit}`}
             </span>
           )}
           {comeBack ? (
@@ -140,13 +144,11 @@ export function StationHeader({
               aria-pressed={marked}
               aria-label="Flag this station to come back to"
               title={marked ? "Flagged to come back to" : "Flag this station to come back to"}
+              className={productTokens.b2cIconButton}
             >
               <LuFlag
                 aria-hidden
-                className={cn(
-                  "h-4 w-4 transition-colors md:h-5 md:w-5",
-                  marked ? "fill-current text-osce-accent" : "text-b2c-text-muted hover:text-osce-accent",
-                )}
+                className={cn("h-4 w-4", marked && "fill-current text-osce-accent")}
               />
             </button>
           ) : null}
@@ -157,23 +159,28 @@ export function StationHeader({
               aria-pressed={flagged}
               aria-label="Report a problem with this station"
               title="Report a problem with this station"
+              className={productTokens.b2cIconButton}
             >
               <LuMessageSquareWarning
                 aria-hidden
-                className={cn(
-                  "h-4 w-4 transition-colors md:h-5 md:w-5",
-                  flagged ? "text-osce-danger" : "text-b2c-text-muted hover:text-osce-danger",
-                )}
+                className={cn("h-4 w-4", flagged && "text-osce-danger")}
               />
             </button>
           ) : null}
         </div>
+        {aside ? (
+          <div className="flex flex-wrap items-end gap-x-5 gap-y-3 sm:justify-end">{aside}</div>
+        ) : null}
       </div>
     </div>
   );
 }
 
-/** Chips on a wide screen, a select on a narrow one. The old behaviour. */
+/**
+ * The steps as one numbered row (canvas `train-reading`, `train-management`).
+ * It scrolls sideways on a phone rather than turning into a select, so the
+ * step you are on is always visible.
+ */
 export function StationTabs({
   steps,
   active,
@@ -185,72 +192,45 @@ export function StationTabs({
   onChange: (step: StationStep) => void;
   feedbackReady?: boolean;
 }) {
+  const activeIndex = steps.indexOf(active);
   return (
-    <>
-      <div className="relative mb-4 w-full lg:hidden">
-        <label className="sr-only" htmlFor="station-step">
-          Step
-        </label>
-        <select
-          id="station-step"
-          value={active}
-          onChange={(event) => onChange(event.target.value as StationStep)}
-          className={cn(
-            "w-full cursor-pointer appearance-none rounded-lg border border-b2c-border bg-osce-surface px-4 py-3 pr-12 text-osce-body font-medium text-osce-ink-900 outline-none",
-            productTokens.b2cInputFocus,
-          )}
-        >
-          {steps.map((step) => (
-            <option key={step} value={step}>
-              {STEP_NUMBER[step]}. {STEP_LABELS[step]}
-            </option>
-          ))}
-        </select>
-        <HiOutlineChevronDown
-          className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-osce-accent"
-          aria-hidden
-        />
-      </div>
-
-      <div className="hidden w-full gap-2 lg:flex">
-        {steps.map((step) => (
-          <button
-            key={step}
-            type="button"
-            onClick={() => onChange(step)}
-            aria-current={active === step ? "step" : undefined}
-            className={cn(
-              "flex items-center gap-2 whitespace-nowrap rounded-md border px-3 py-2 font-medium transition-all md:px-4",
-              active === step
-                ? "border-b2c-border bg-osce-surface text-osce-ink-900 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
-                : "border-transparent text-b2c-text-muted hover:bg-osce-surface/70 hover:text-osce-ink-900",
-            )}
-          >
-            <span className="flex items-center gap-4">
-              <span
+    <nav aria-label="Station steps" className="-mx-1 overflow-x-auto">
+      <ol className="flex min-w-max items-center gap-1 border-b border-osce-border-light px-1">
+        {steps.map((step, position) => {
+          const isActive = step === active;
+          const isDone = position < activeIndex;
+          return (
+            <li key={step}>
+              <button
+                type="button"
+                onClick={() => onChange(step)}
+                aria-current={isActive ? "step" : undefined}
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full font-medium",
-                  active === step
-                    ? "bg-osce-accent text-white"
-                    : "bg-b2c-secondary text-b2c-text-secondary",
+                  "-mb-px flex h-11 items-center gap-2 border-b-2 px-3 text-osce-body font-medium transition-colors",
+                  isActive
+                    ? "border-osce-ink-900 text-osce-ink-900"
+                    : "border-transparent text-b2c-text-muted hover:text-osce-ink-900",
                 )}
               >
-                {STEP_NUMBER[step]}
-              </span>
-              <span className="font-medium text-osce-ink-900">{STEP_LABELS[step]}</span>
-              {step === "feedback" && feedbackReady ? (
-                <HiOutlineChatBubbleLeftRight className="h-4 w-4 text-osce-accent" aria-hidden />
-              ) : null}
-              {step === "feedback" && feedbackReady ? (
-                <span className="h-2 w-2 rounded-full bg-osce-success-icon" aria-hidden />
-              ) : null}
-              {(step === "patient" || step === "management") && (
-                <HiOutlineChevronRight className="h-4 w-4 text-b2c-text-muted" aria-hidden />
-              )}
-            </span>
-          </button>
-        ))}
-      </div>
-    </>
+                <span
+                  className={cn(
+                    "flex h-5 w-5 items-center justify-center rounded-full font-mono text-osce-micro tabular-nums",
+                    isActive
+                      ? "bg-osce-accent text-white"
+                      : "bg-b2c-surface-muted text-b2c-text-secondary",
+                  )}
+                >
+                  {isDone ? <HiOutlineCheck className="h-3 w-3" aria-hidden /> : STEP_NUMBER[step]}
+                </span>
+                {STEP_LABELS[step]}
+                {step === "feedback" && feedbackReady ? (
+                  <span className="h-1.5 w-1.5 rounded-full bg-osce-success-icon" aria-label="Ready" />
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }

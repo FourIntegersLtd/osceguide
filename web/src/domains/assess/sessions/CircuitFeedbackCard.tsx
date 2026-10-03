@@ -88,7 +88,7 @@ function FeedbackForm({
   const publishedAt = current.state === "published" ? current.review.finalized_at : null;
 
   return (
-    <section className="space-y-3 rounded-lg border border-b2b-border bg-white p-4 sm:p-5">
+    <section className="space-y-3 rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
       <h2 className={b2bTokens.b2bSectionTitle}>Share this circuit&apos;s feedback</h2>
       <p className="text-osce-body text-b2b-mid">
         Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one.

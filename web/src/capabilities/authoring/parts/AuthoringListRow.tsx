@@ -12,6 +12,7 @@ export function AuthoringListRow({
   meta,
   metaTitle,
   detail,
+  leading,
   onOpen,
   children,
 }: {
@@ -19,6 +20,7 @@ export function AuthoringListRow({
   meta?: string;
   metaTitle?: string;
   detail?: ReactNode;
+  leading?: ReactNode;
   onOpen?: () => void;
   children: ReactNode;
 }) {
@@ -41,10 +43,11 @@ export function AuthoringListRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5",
+        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5",
         chrome.rowHover,
       )}
     >
+      {leading}
       {onOpen ? (
         <button
           type="button"

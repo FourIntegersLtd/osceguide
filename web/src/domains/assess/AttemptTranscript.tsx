@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineArrowDownTray, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
+import {
+  HiOutlineArrowDownTray,
+  HiOutlineChatBubbleLeftRight,
+} from "react-icons/hi2";
 import { Alert, Button, Card, Spinner } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
@@ -28,7 +31,9 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
   const [wanted, setWanted] = useState(false);
   const state = useAsync(
     (signal) =>
-      wanted && attemptId ? readAttemptTranscript(attemptId, signal) : Promise.resolve(null),
+      wanted && attemptId
+        ? readAttemptTranscript(attemptId, signal)
+        : Promise.resolve(null),
     [wanted, attemptId],
   );
 
@@ -37,11 +42,20 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
   if (!wanted) {
     return (
       <Card
+        themeType="b2b"
         title="What was said"
         description="Everything said in the consultation. The marks are shown separately."
       >
-        <Button variant="secondary" size="sm" onClick={() => setWanted(true)}>
-          <HiOutlineChatBubbleLeftRight className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+        <Button
+          themeType="b2b"
+          variant="secondary"
+          size="sm"
+          onClick={() => setWanted(true)}
+        >
+          <HiOutlineChatBubbleLeftRight
+            className="mr-2 h-4 w-4 shrink-0"
+            aria-hidden
+          />
           Load the transcript
         </Button>
       </Card>
@@ -50,7 +64,7 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
 
   if (state.loading) {
     return (
-      <Card title="What was said">
+      <Card themeType="b2b" title="What was said">
         <Spinner label="Loading the transcript" />
       </Card>
     );
@@ -59,7 +73,11 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
   if (state.error) {
     return (
       <Alert
-        tone={hasCode(state.error, "attempt_not_yours", "forbidden") ? "warning" : "danger"}
+        tone={
+          hasCode(state.error, "attempt_not_yours", "forbidden")
+            ? "warning"
+            : "danger"
+        }
         title="This transcript is not yours to read"
       >
         {hasCode(state.error, "attempt_not_yours", "forbidden")
@@ -74,6 +92,7 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
 
   return (
     <Card
+      themeType="b2b"
       title="What was said"
       description={
         transcript.complete
@@ -90,12 +109,18 @@ export function AttemptTranscript({ attemptId }: { attemptId: string | null }) {
       <div className="mb-3 flex justify-end">
         <Button
           type="button"
-          variant="secondary"
+          themeType="b2b"
+          variant="ghost"
           size="sm"
-          onClick={() => downloadTranscript(transcript, `transcript-${attemptId}.txt`)}
+          onClick={() =>
+            downloadTranscript(transcript, `transcript-${attemptId}.txt`)
+          }
           disabled={transcript.messages.length === 0}
         >
-          <HiOutlineArrowDownTray className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+          <HiOutlineArrowDownTray
+            className="mr-2 h-4 w-4 shrink-0"
+            aria-hidden
+          />
           Download
         </Button>
       </div>

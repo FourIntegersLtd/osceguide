@@ -1,6 +1,7 @@
 "use client";
 
-import { AsyncBoundary, Back, B2CPageHeader } from "@/foundation/ui";
+import { AsyncBoundary, B2CPageHeader, ButtonLink } from "@/foundation/ui";
+import { useSurface } from "@/capabilities";
 import { useAsync } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
 import { listExams } from "@/capabilities/stations";
@@ -13,6 +14,7 @@ import { MockSessions } from "@/domains/train/mocks/MockSessions";
  */
 export function MockList() {
   const { code: examCode } = useCurrentExam();
+  const { hrefFor } = useSurface();
   const state = useAsync(async (signal) => {
     const [sets, exams] = await Promise.all([listSets(signal), listExams(signal)]);
     return { sets: sets.items, exams: exams.items };
@@ -20,11 +22,18 @@ export function MockList() {
 
   return (
     <>
-      <Back />
+      <B2CPageHeader
+        back={{ href: hrefFor("/mocks"), label: "Practice" }}
+        title={`${(examCode ?? "").toUpperCase()} sessions`}
+        action={
+          <ButtonLink href={hrefFor("/mocks")} variant="primary" size="md">
+            New session
+          </ButtonLink>
+        }
+      />
       <AsyncBoundary state={state}>
         {({ sets, exams }) => (
           <>
-            <B2CPageHeader title={`${(examCode ?? "").toUpperCase()} Sessions`} />
             <MockSessions
               sets={sets.filter((set) => set.exam_code === examCode)}
               exams={exams}

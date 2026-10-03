@@ -2,17 +2,12 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HiOutlineArrowPath, HiOutlineCog6Tooth } from "react-icons/hi2";
+import { HiOutlineArrowPath, HiOutlineCheck } from "react-icons/hi2";
 import {
   Alert,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
+  Button,
+  Card,
   Modal,
-  ModalContent,
-  ModalPrimaryButton,
-  ModalSecondaryButton,
   StationCompletionProgressBar,
   cn,
   productTokens,
@@ -131,7 +126,7 @@ export function MockSetup({
   };
 
   return (
-    <div className="w-full max-w-2xl space-y-6 pb-24 lg:w-3/5">
+    <div className="w-full space-y-6 pb-24">
       <StationCompletionProgressBar
         subscriptionExpired={access.subscriptionExpired}
         completedCount={attempted.size}
@@ -140,111 +135,90 @@ export function MockSetup({
         freeLimit={FREE_STATION_LIMIT}
       />
 
-      <ModalContent className="max-w-2xl space-y-3">
-        {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-        {error ? <Alert tone="danger">{error}</Alert> : null}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <Card title="Session setup">
+            <div className="flex flex-col gap-4">
+              {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
+              {error ? <Alert tone="danger">{error}</Alert> : null}
 
-        <B2CPanelCard className="mt-0">
-          <B2CPanelCardHeader className={productTokens.b2cPanelCardTitle}>
-            <HiOutlineCog6Tooth className="h-4 w-4 text-osce-accent" aria-hidden />
-            Session setup
-          </B2CPanelCardHeader>
-          <B2CPanelCardBody className="space-y-5">
-            <div>
-              <label htmlFor="name" className={productTokens.b2cFieldLabel}>
-                Session name
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={name}
-                readOnly
-                disabled
-                className={cn(
-                  productTokens.b2cInputBase,
-                  "mt-1.5",
-                  "cursor-not-allowed bg-b2c-surface-muted text-b2c-text-muted",
-                )}
-                placeholder="Enter a descriptive session name"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="requested_station_count" className={productTokens.b2cFieldLabel}>
-                Number of stations
-              </label>
-              <input
-                type="number"
-                id="requested_station_count"
-                name="requested_station_count"
-                value={stationCount}
-                onChange={(event) => setStationCount(event.target.value)}
-                min={1}
-                max={stations.length}
-                className={cn(productTokens.b2cInputBase, "mt-1.5")}
-                required
-              />
-            </div>
-
-            {hasLockedSets ? (
-              <label
-                htmlFor="include_previously_attempted"
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-3"
-              >
+              <label htmlFor="name" className="flex flex-col gap-1.5">
+                <span className={productTokens.b2cFieldLabel}>Session name</span>
                 <input
-                  type="checkbox"
-                  id="include_previously_attempted"
-                  name="include_previously_attempted"
-                  checked={includePreviouslyAttempted}
-                  onChange={(event) => setIncludePreviouslyAttempted(event.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-b2c-border text-osce-accent focus:ring-osce-accent/20"
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={name}
+                  readOnly
+                  className={cn(productTokens.b2cInputBase, "bg-b2c-surface-muted text-osce-ink-700")}
                 />
-                <span className="min-w-0">
-                  <span className={cn("block", productTokens.b2cGroupedRowTitle)}>
-                    Include previously attempted stations
-                  </span>
-                  <span className={cn("mt-0.5 block", productTokens.b2cBodyTextMuted)}>
-                    Enable this to practice stations from a previous subscription. Leave unchecked
-                    for only new stations.
-                  </span>
-                </span>
+                <span className="text-osce-meta text-b2c-text-muted">Named for you. Rename it later.</span>
               </label>
-            ) : null}
-          </B2CPanelCardBody>
-          <B2CPanelCardFooter>
-            <ModalSecondaryButton
-              type="button"
-              onClick={() => router.push(hrefFor("/mocks/list"))}
-              className="w-full sm:w-auto"
-            >
-              View All Sessions
-            </ModalSecondaryButton>
-            <ModalPrimaryButton
-              type="button"
-              onClick={submit}
-              disabled={isSubmitting}
-              className="w-full gap-2 sm:w-auto"
-            >
-              {isSubmitting ? (
-                <>
-                  <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Create Session"
-              )}
-            </ModalPrimaryButton>
-          </B2CPanelCardFooter>
-        </B2CPanelCard>
 
-        {showUpgradeModal ? (
-          <Modal width="600px" height="fit-content" onClose={() => setShowUpgradeModal(false)}>
-            <UpgradePlans examCode={examCode} />
-          </Modal>
-        ) : null}
-      </ModalContent>
+              <label htmlFor="requested_station_count" className="flex flex-col gap-1.5">
+                <span className={productTokens.b2cFieldLabel}>Number of stations</span>
+                <input
+                  type="number"
+                  id="requested_station_count"
+                  name="requested_station_count"
+                  value={stationCount}
+                  onChange={(event) => setStationCount(event.target.value)}
+                  min={1}
+                  max={stations.length}
+                  className={productTokens.b2cInputBase}
+                  required
+                />
+                {stations.length > 0 ? (
+                  <span className="text-osce-meta text-b2c-text-muted">Up to {stations.length} available.</span>
+                ) : null}
+              </label>
+
+              {hasLockedSets ? (
+                <label
+                  htmlFor="include_previously_attempted"
+                  className="flex cursor-pointer items-start gap-2.5 text-osce-body text-osce-ink-700"
+                >
+                  <input
+                    type="checkbox"
+                    id="include_previously_attempted"
+                    name="include_previously_attempted"
+                    checked={includePreviouslyAttempted}
+                    onChange={(event) => setIncludePreviouslyAttempted(event.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-b2c-border accent-osce-accent"
+                  />
+                  <span>
+                    Include previously attempted stations. Practise stations from a previous
+                    subscription; leave unchecked for only new stations.
+                  </span>
+                </label>
+              ) : null}
+
+              <div>
+                <Button type="button" variant="primary" size="md" onClick={submit} disabled={isSubmitting}>
+                  {isSubmitting ? <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                  {isSubmitting ? "Creating" : "Create session"}
+                </Button>
+              </div>
+            </div>
+        </Card>
+
+        <section className="rounded-osce-lg bg-b2c-surface-muted p-6">
+          <span className={productTokens.b2cMonoEyebrow}>Before you start</span>
+          <ul className="mt-3 flex flex-col gap-2.5">
+            {["A working microphone", "Headphones, to avoid echo", "A quiet room and stable internet"].map((item) => (
+              <li key={item} className="flex items-center gap-2.5 text-osce-ink-700">
+                <HiOutlineCheck className="h-4 w-4 shrink-0 text-osce-success-icon" aria-hidden />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      {showUpgradeModal ? (
+        <Modal width="600px" height="fit-content" onClose={() => setShowUpgradeModal(false)}>
+          <UpgradePlans examCode={examCode} />
+        </Modal>
+      ) : null}
 
       {showExamDateModal ? (
         <Modal

@@ -11,7 +11,7 @@ const {
   b2cGroupedRow,
   b2cGroupedRowSubtitle,
   b2cGroupedRowTitle,
-  b2cInset,
+  b2cCard,
 } = productTokens;
 
 const DEFAULT_FEATURES = [
@@ -130,7 +130,7 @@ export function DebriefTips() {
         </p>
       </div>
 
-      <div className={cn("mb-4 overflow-hidden", b2cInset)}>
+      <div className={cn("mb-4 overflow-hidden", b2cCard)}>
         {features.map((item) => (
           <div key={item.title} className={b2cGroupedRow}>
             <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", item.bg)}>
@@ -191,7 +191,7 @@ export function DebriefSuggestedPrompts() {
             key={prompt}
             className={cn(
               "group flex cursor-default items-center gap-1.5 px-3 py-1.5 text-osce-meta text-b2c-text-secondary transition-colors hover:border-osce-accent hover:text-osce-accent-hover",
-              b2cInset,
+              b2cCard,
             )}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-osce-accent-subtle transition-colors group-hover:bg-osce-accent-hover" />

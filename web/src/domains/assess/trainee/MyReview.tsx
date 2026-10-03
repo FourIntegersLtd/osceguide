@@ -1,6 +1,6 @@
 "use client";
 
-import { AsyncBoundary, Badge, b2bTokens } from "@/foundation/ui";
+import { AsyncBoundary, B2CPageHeader, Badge, b2bTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { passWord, ratingLabel } from "@/capabilities/feedback/rubric";
 import { ratingVariant, summaryDomains } from "@/domains/assess/results/reviewForm";
@@ -20,10 +20,7 @@ export function MyReview({ slotId }: { slotId: string }) {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
-      <header className="border-b border-b2b-border pb-4">
-        <p className={b2bTokens.b2bEyebrow}>Your review</p>
-        <h1 className={`mt-1 ${b2bTokens.b2bPageTitle}`}>Station feedback</h1>
-      </header>
+      <B2CPageHeader className="!mb-0" eyebrow="Your review" title="Station feedback" />
 
       <AsyncBoundary state={state}>
         {(review) => {
@@ -32,7 +29,7 @@ export function MyReview({ slotId }: { slotId: string }) {
           const outcome = passWord(review.summary.passed);
           const domains = summaryDomains(review.summary);
           return (
-          <section className="space-y-5 rounded-lg border border-b2b-border bg-b2b-surface p-4 sm:p-5">
+          <section className="space-y-5 rounded-panel border border-b2b-border bg-b2b-surface p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className={b2bTokens.b2bEyebrow}>Overall</p>
@@ -46,7 +43,7 @@ export function MyReview({ slotId }: { slotId: string }) {
             {domains.length > 0 ? (
               <div>
                 <h2 className={b2bTokens.b2bSectionTitle}>By domain</h2>
-                <ul className="mt-2 divide-y divide-b2b-border rounded-lg border border-b2b-border">
+                <ul className="mt-2 divide-y divide-b2b-border rounded-panel border border-b2b-border">
                   {domains.map((domain) => (
                     <li
                       key={domain.id}

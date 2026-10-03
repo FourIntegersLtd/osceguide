@@ -21,6 +21,10 @@ class TraineeRead(BaseModel):
     user_id: uuid.UUID | None
     access_revoked: bool
     anonymised: bool = False
+    # Filled by the list read: the programmes of the sittings this trainee is
+    # rostered on (exam names, sorted) and how many stations they have sat.
+    programme_names: list[str] = Field(default_factory=list)
+    stations_sat: int = 0
 
 
 class CreateTrainee(BaseModel):

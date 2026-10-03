@@ -31,21 +31,27 @@ export function ModeField({
   return (
     <fieldset className="flex flex-col gap-1.5" disabled={disabled}>
       <legend className="text-sm font-medium text-ink">Mode</legend>
-      <div className="flex gap-2">
-        {(["training", "exam"] as const).map((option) => (
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(
+          [
+            ["exam", "Exam", "Marked, signed off and released"],
+            ["training", "Training", "Feedback straight to the trainee"],
+          ] as const
+        ).map(([option, label, blurb]) => (
           <button
             key={option}
             type="button"
             onClick={() => onChange(option)}
             aria-pressed={value === option}
             className={cn(
-              "rounded-control border px-3 py-1.5 text-sm capitalize transition-colors disabled:opacity-60",
+              "flex flex-col items-start gap-0.5 rounded-control border px-4 py-3 text-left transition-colors disabled:opacity-60",
               value === option
-                ? "border-accent bg-accent text-ink-inverse"
-                : "border-border-strong bg-surface text-ink-muted hover:text-ink",
+                ? "border-b2b-headline bg-canvas"
+                : "border-b2b-border bg-b2b-surface hover:bg-canvas",
             )}
           >
-            {option}
+            <span className="text-osce-body font-medium text-b2b-headline">{label}</span>
+            <span className="text-osce-meta text-b2b-mid">{blurb}</span>
           </button>
         ))}
       </div>

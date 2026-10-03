@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlinePencilSquare, HiOutlineTrash } from "react-icons/hi2";
-import { DeleteConfirmationModal } from "@/foundation/ui";
+import { DeleteConfirmationModal, cn, productTokens } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { deleteSet, type StationSet } from "@/domains/train/api";
@@ -49,15 +49,15 @@ export function SessionCardActions({
   };
 
   return (
-    <div className="absolute top-2 right-2 z-20 flex gap-2">
-      <div>
+    <div className="relative z-10 flex shrink-0">
+      <div className="flex opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
         <button
           type="button"
           aria-label={`Edit ${set.name}`}
           onClick={() => router.push(hrefFor(`/mocks/${set.id}/update`))}
-          className="rounded-md bg-osce-surface/80 p-2 backdrop-blur transition-all duration-300 hover:bg-osce-surface"
+          className={cn(productTokens.b2cIconButton, "sm:h-8 sm:w-8")}
         >
-          <HiOutlinePencilSquare className="text-osce-subheading text-b2c-text-muted transition-all duration-300 hover:scale-110 hover:text-osce-accent" />
+          <HiOutlinePencilSquare className="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -66,9 +66,9 @@ export function SessionCardActions({
             setDeletionStatus(null);
             setShowDeleteConfirmation(true);
           }}
-          className="rounded-md bg-osce-surface/80 p-2 backdrop-blur transition-all duration-300 hover:bg-osce-surface"
+          className={cn(productTokens.b2cIconButton, "hover:text-osce-danger sm:h-8 sm:w-8")}
         >
-          <HiOutlineTrash className="text-osce-subheading text-b2c-text-muted transition-all duration-300 hover:scale-110 hover:text-osce-danger" />
+          <HiOutlineTrash className="h-4 w-4" />
         </button>
       </div>
 

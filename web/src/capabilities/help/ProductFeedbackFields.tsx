@@ -1,6 +1,6 @@
 "use client";
 
-import { HiOutlineStar } from "react-icons/hi2";
+import { HiOutlineStar, HiStar } from "react-icons/hi2";
 import { useState } from "react";
 import { cn } from "@/foundation/ui";
 import type { TestimonialPermission } from "@/capabilities/help/productFeedbackModel";
@@ -47,18 +47,17 @@ export function StarRating({
             aria-label={`${star}. ${STAR_LABELS[star - 1]}`}
             className={cn(
               "rounded-md p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-osce-accent/30",
-              filled
-                ? "text-osce-warning-icon"
-                : "text-osce-ink-400 hover:text-osce-warning-icon",
+              filled ? "text-osce-ink-900" : "text-osce-ink-400 hover:text-osce-ink-900",
             )}
             onMouseEnter={() => setHoverRating(star)}
             onMouseLeave={() => setHoverRating(0)}
             onClick={() => onChange(star)}
           >
-            <HiOutlineStar
-              className={compact ? "h-5 w-5" : "h-7 w-7"}
-              aria-hidden
-            />
+            {filled ? (
+              <HiStar className={compact ? "h-5 w-5" : "h-6 w-6"} aria-hidden />
+            ) : (
+              <HiOutlineStar className={compact ? "h-5 w-5" : "h-6 w-6"} aria-hidden />
+            )}
           </button>
         );
       })}
@@ -78,33 +77,32 @@ export function TestimonialChoice({
   compact: boolean;
 }) {
   return (
-    <fieldset className={compact ? undefined : "space-y-3"}>
-      <legend
-        className={cn(
-          "font-medium text-b2c-text-secondary",
-          compact ? "text-osce-meta" : "text-osce-body leading-snug",
-        )}
-      >
+    <fieldset className={compact ? undefined : "space-y-1.5"}>
+      <legend className="text-osce-meta text-b2c-text-muted">
         {compact ? (
           <>
             Use as testimonial? <span className="text-osce-danger">*</span>
           </>
         ) : (
           <>
-            May we feature your feedback as a testimonial on our website or
-            promotional materials? <span className="text-osce-danger">*</span>
+            May we feature it as a testimonial? <span className="text-osce-danger">*</span>
           </>
         )}
       </legend>
       <div
         className={cn(
-          compact ? "mt-2 flex flex-wrap gap-x-4 gap-y-2" : "space-y-3 pt-1",
+          compact ? "mt-2 flex flex-wrap gap-x-4 gap-y-2" : "grid gap-2 sm:grid-cols-3",
         )}
       >
         {TESTIMONIAL_OPTIONS.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer items-center gap-2.5 text-osce-body text-osce-ink-900"
+            className={cn(
+              "flex cursor-pointer items-center gap-2.5 text-osce-body text-osce-ink-900",
+              !compact &&
+                "rounded-control border px-3 py-2.5 transition-colors has-[:checked]:border-osce-ink-900 has-[:checked]:ring-1 has-[:checked]:ring-osce-ink-900",
+              !compact && (value === option.value ? "border-osce-ink-900" : "border-osce-border hover:border-osce-ink-400"),
+            )}
           >
             <input
               type="radio"

@@ -37,10 +37,10 @@ test("an SCA model answer reads as the legacy screen: explanation, clinical asse
   assert.deepEqual(
     layout.groups.map((group) => [group.title, group.collapsible, group.entries.map((entry) => entry.title)]),
     [
-      ["Clinical Assessment", false, ["Assessment Steps"]],
-      ["Social & Patient Concerns", true, ["social concerns", "ICE Response"]],
-      ["Treatment & Actions", true, ["Medications"]],
-      ["Patient Education & Follow-up", true, ["follow up"]],
+      ["Clinical assessment", false, ["Assessment steps"]],
+      ["Social & patient concerns", true, ["social concerns", "ICE response"]],
+      ["Treatment & actions", true, ["Medications"]],
+      ["Patient education & follow-up", true, ["follow up"]],
     ],
   );
   assert.equal(layout.groups[2]!.entries[0]!.tone, "management");
@@ -55,7 +55,7 @@ test("a block the map does not know is grouped under its own section's title, af
   assert.deepEqual(
     layout.groups.map((group) => [group.title, group.collapsible]),
     [
-      ["Clinical Assessment", false],
+      ["Clinical assessment", false],
       ["Key Concerns", true],
     ],
   );

@@ -34,7 +34,7 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
   const active = finished.find((slot) => slot.id === activeId) ?? first;
 
   return (
-    <section className="space-y-3 rounded-lg border border-b2b-border bg-white p-4 sm:p-5">
+    <section className="space-y-3 rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
       <h2 className="text-osce-body font-semibold text-b2b-headline">Mark a finished station</h2>
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Finished stations">
         {finished.map((slot) => (
@@ -47,7 +47,7 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
             className={`inline-flex items-center gap-1.5 rounded-control border px-3 py-1.5 text-osce-caption font-medium transition-colors ${
               slot.id === active.id
                 ? "border-b2b-accent bg-b2b-accent text-white"
-                : "border-b2b-border bg-white text-b2b-mid hover:text-b2b-headline"
+                : "border-b2b-border bg-b2b-surface text-b2b-mid hover:text-b2b-headline"
             }`}
           >
             {stationLabel(slot)}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { HiOutlineArrowUpTray, HiOutlineUserPlus, HiOutlineUsers } from "react-icons/hi2";
+import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { PanelCard } from "@/domains/assess/team/chrome";
@@ -84,7 +84,6 @@ export function AddTraineePanel({
       <PanelCard
         title="Add one person"
         subtitle="They are invited by email. If they have no account yet, we create one and send them a link to choose a password."
-        icon={<HiOutlineUsers className="h-5 w-5" aria-hidden />}
       >
         <form
           className="space-y-5"
@@ -173,7 +172,6 @@ export function AddTraineePanel({
       <PanelCard
         title="Import a spreadsheet"
         subtitle="Upload a list of trainees saved from Excel or Google Sheets as a .csv file. Anyone already on the list is skipped and shown to you."
-        icon={<HiOutlineArrowUpTray className="h-5 w-5" aria-hidden />}
       >
         <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>
           Import from spreadsheet

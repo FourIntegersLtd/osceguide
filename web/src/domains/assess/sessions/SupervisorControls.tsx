@@ -53,7 +53,7 @@ export function SupervisorControls({
 
   if (ended) {
     return (
-      <div className="rounded-lg border border-b2b-border bg-b2b-cream/40 px-4 py-3">
+      <div className="rounded-panel border border-b2b-border bg-canvas/40 px-4 py-3">
         <p className="text-osce-body text-b2b-mid">
           This circuit has ended. Its stations can still be marked and its record read.
         </p>
@@ -93,7 +93,7 @@ export function SupervisorControls({
           <>
             <Button
               themeType="b2b"
-              variant="primary"
+              variant="commit"
               isLoading={busy === "advance"}
               disabled={working}
               onClick={() => void run("advance", () => runControls.advance(orgSlug, circuitId))}

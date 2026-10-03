@@ -1,20 +1,7 @@
 "use client";
 
-import { HiOutlineArrowPath } from "react-icons/hi2";
 import { useMemo, useState } from "react";
-import {
-  Alert,
-  B2CPageHeader,
-  ModalContent,
-  ModalPrimaryButton,
-  productTokens,
-} from "@/foundation/ui";
-import {
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
-} from "@/foundation/ui/B2CPanelCard";
+import { Alert, B2CPageHeader, Button, Card, productTokens } from "@/foundation/ui";
 import {
   B2CSegmentedTabs,
   type B2CSegmentedTabItem,
@@ -22,8 +9,9 @@ import {
 import { useSession } from "@/foundation/session";
 import { sendSiteMessage } from "@/capabilities/help/api";
 import { ProductFeedbackForm } from "@/capabilities/help/ProductFeedbackForm";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 
-const { b2cFieldLabel, b2cSettingsFieldInput, b2cSettingsIntro } = productTokens;
+const { b2cFieldLabel, b2cSettingsFieldInput } = productTokens;
 
 const fieldClass = b2cSettingsFieldInput;
 
@@ -79,18 +67,14 @@ function ContactForm() {
 
   return (
     <div className="space-y-6">
-      <p className={b2cSettingsIntro}>
-        Send a message to the team. If you are reporting an issue with a
-        station, include the session and station names.
-      </p>
+      <B2CHero eyebrow="Contact" title="Send a message to the team">
+        If you are reporting a problem with a station, flag it in the station and tell us which one. We
+        aim to reply within 12 hours.
+      </B2CHero>
 
-      {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
-      {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
-
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        <B2CPanelCard className="mt-0">
-          <B2CPanelCardHeader>Your message</B2CPanelCardHeader>
-          <B2CPanelCardBody className="space-y-6 p-4 sm:p-6">
+      <form onSubmit={handleSubmit}>
+        <Card title="Your message">
+          <div className="space-y-4">
             <div>
               <label htmlFor="subject" className={b2cFieldLabel}>
                 Subject
@@ -118,20 +102,13 @@ function ContactForm() {
                 required
               />
             </div>
-          </B2CPanelCardBody>
-          <B2CPanelCardFooter className="px-4 pb-4 pt-8 sm:px-6 sm:pb-6">
-            <ModalPrimaryButton type="submit" disabled={loading} className="gap-2">
-              {loading ? (
-                <>
-                  <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                "Send Message"
-              )}
-            </ModalPrimaryButton>
-          </B2CPanelCardFooter>
-        </B2CPanelCard>
+            <Button type="submit" isLoading={loading}>
+              Send message
+            </Button>
+            {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
+            {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
+          </div>
+        </Card>
       </form>
     </div>
   );
@@ -150,8 +127,8 @@ export function Messages() {
 
   return (
     <div className="space-y-6">
-      <B2CPageHeader title="Contact & Feedback" />
-      <ModalContent className="max-w-2xl space-y-6">
+      <B2CPageHeader title="Contact and feedback" />
+      <div className="max-w-3xl space-y-6">
         <B2CSegmentedTabs
           items={tabItems}
           value={tab}
@@ -162,19 +139,13 @@ export function Messages() {
         {tab === "contact" ? (
           <ContactForm />
         ) : (
-          <div className="space-y-6">
-            <p className={b2cSettingsIntro}>
-              Thank you for using OSCE Guide. Your feedback helps us improve,
-              and with your permission we may feature it as a testimonial.
-            </p>
-            <ProductFeedbackForm
-              source="contact"
-              showIntro={false}
-              cardTitle="We'd love your feedback"
-            />
-          </div>
+          <ProductFeedbackForm
+            source="contact"
+            showIntro={false}
+            cardTitle="We'd love your feedback"
+          />
         )}
-      </ModalContent>
+      </div>
     </div>
   );
 }

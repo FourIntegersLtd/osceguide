@@ -108,11 +108,11 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
           orgId,
         });
         setOffering(false);
-        say("success", "Availability posted successfully!");
+        say("success", "Availability posted.");
         setTab("myPosts");
         reloadAll();
       } catch (cause) {
-        say("error", failureText(cause, "Failed to create post. Please try again."));
+        say("error", failureText(cause, "Could not post your availability. Try again."));
       } finally {
         setPosting(false);
       }
@@ -131,7 +131,7 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
       const session = await claimSlot(slot.id);
       say(
         "success",
-        `Session booked! You will practice with ${session.partner_username} on ${longDate(session.starts_at)} at ${meridiemTime(session.starts_at)}.`,
+        `Session booked. You will practise with ${session.partner_username} on ${longDate(session.starts_at)} at ${meridiemTime(session.starts_at)}.`,
       );
       setTab("upcoming");
     } catch (cause) {
@@ -167,38 +167,26 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
 
   return (
     <>
-      <B2CPageHeader title="Marketplace" />
-      <div className="w-full pb-24">
-        {notice && <Alert key={notice.id} message={notice.text} type={notice.type} className="mb-4" />}
+      <B2CPageHeader
+        title="Marketplace"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <LivePracticeButton queue={shared.queue} examCode={activeExam || null} />
+            <Button type="button" onClick={() => setOffering((open) => !open)} className="gap-1.5">
+              <HiOutlinePlus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span>Post availability</span>
+            </Button>
+          </div>
+        }
+      />
+      <div className="w-full space-y-6 pb-24">
+        {notice && <Alert key={notice.id} message={notice.text} type={notice.type} />}
 
-        <div className="mb-4 flex min-w-0 flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between md:mb-6">
-          <B2CSegmentedTabs
-            items={MARKETPLACE_TABS}
-            value={tab}
-            onChange={setTab}
-            aria-label="Marketplace"
-          />
+        <B2CSegmentedTabs items={MARKETPLACE_TABS} value={tab} onChange={setTab} aria-label="Marketplace" />
 
-          {tab === "available" && (
-            <div className="mt-2 flex w-full flex-col gap-2 sm:mt-0 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-              <LivePracticeButton queue={shared.queue} examCode={activeExam || null} />
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                onClick={() => setOffering((open) => !open)}
-                className="w-full gap-1.5 sm:w-auto"
-              >
-                <HiOutlinePlus className="h-3.5 w-3.5 shrink-0" />
-                <span>Post Availability</span>
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <div className="mb-6 sm:mb-8">
-          <MarketplaceIntroCard examName={activeExamName}onLearnMore={() => setExplaining(true)} />
-        </div>
+        {tab === "available" ? (
+          <MarketplaceIntroCard examName={activeExamName} onLearnMore={() => setExplaining(true)} />
+        ) : null}
 
         <div id={`tab-panel-${tab}`} role="tabpanel">
           {tab === "upcoming" ? (

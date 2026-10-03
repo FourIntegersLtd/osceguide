@@ -66,16 +66,16 @@ export function JoinablePeerSessionModal({
                 Joining...
               </>
             ) : isActive ? (
-              "Rejoin Session"
+              "Rejoin session"
             ) : (
-              "Join Session"
+              "Join session"
             )}
           </ModalPrimaryButton>
         </ModalFooterActions>
 
         <p className="mt-3 text-center text-osce-meta text-osce-ink-500">
           To join later, go to{" "}
-          <span className="font-medium text-osce-ink-900">Marketplace → Upcoming Sessions</span>{" "}
+          <span className="font-medium text-osce-ink-900">Marketplace, Upcoming sessions</span>{" "}
           tab
         </p>
       </ModalContent>

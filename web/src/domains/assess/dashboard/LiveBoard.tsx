@@ -1,8 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { HiMiniSignal, HiOutlineExclamationTriangle } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Badge, Button, EmptyState, b2bTokens } from "@/foundation/ui";
+import { HiOutlineExclamationTriangle } from "react-icons/hi2";
+import { LuClipboardCheck } from "react-icons/lu";
+import {
+  Alert,
+  AsyncBoundary,
+  B2CGroupedRow,
+  B2CGroupedRowLink,
+  B2CGroupedSection,
+  B2CPageHeader,
+  Badge,
+  Button,
+  EmptyState,
+} from "@/foundation/ui";
 import { useAsync, useCursorPages, useEventStream } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
@@ -41,17 +51,15 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-5">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-b2b-border pb-4">
-        <div className="min-w-0">
-          <h1 className={b2bTokens.b2bPageTitle}>Now running</h1>
-          <p className="mt-1 text-osce-caption text-b2b-mid">
-            Every examination this organisation has in progress.
-          </p>
-        </div>
-        <Badge variant={stream.connected ? "success" : "warning"} dot>
-          {stream.connected ? "Live" : "Reconnecting"}
-        </Badge>
-      </header>
+      <B2CPageHeader
+        title="Now running"
+        subtitle="Every examination this organisation has in progress."
+        action={
+          <Badge variant={stream.connected ? "success" : "warning"} dot>
+            {stream.connected ? "Live" : "Reconnecting"}
+          </Badge>
+        }
+      />
 
       <AsyncBoundary state={initial}>
         {() => {
@@ -65,13 +73,16 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
             );
           }
           return (
-            <ul className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3">
+              <B2CGroupedSection eyebrow="Running">
+                {circuits.map((circuit) => (
+                  <Row key={circuit.circuit_id} circuit={circuit} />
+                ))}
+              </B2CGroupedSection>
               {circuits.map((circuit) => (
-                <li key={circuit.circuit_id}>
-                  <Row circuit={circuit} />
-                </li>
+                <Notices key={circuit.circuit_id} circuit={circuit} />
               ))}
-            </ul>
+            </div>
           );
         }}
       </AsyncBoundary>
@@ -101,55 +112,44 @@ function Earlier({ orgSlug }: { orgSlug: string }) {
   );
 
   return (
-    <section className="space-y-3 border-t border-b2b-border pt-5" aria-labelledby="live-earlier">
-      <h2 id="live-earlier" className={b2bTokens.b2bSectionTitle}>
-        Earlier
-      </h2>
+    <section className="flex flex-col gap-4" aria-label="Earlier">
       <AsyncBoundary
         state={history.state}
         empty={{ title: "Nothing has finished yet.", description: "Circuits appear here when they end." }}
       >
         {(runs: LiveRun[]) => (
-          <div className="space-y-4">
+          <>
             {runsByDay(runs, new Date()).map((group) => (
-              <div key={group.label} className="space-y-2">
-                <h3 className={b2bTokens.b2bEyebrow}>{group.label}</h3>
-                <ul className="divide-y divide-b2b-border rounded-lg border border-b2b-border bg-white">
-                  {group.runs.map((run) => (
-                    <li
-                      key={run.id}
-                      className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                    >
-                      <div className="min-w-0">
-                        {run.circuit_id ? (
-                          <Link
-                            href={hrefFor(`/circuits/${run.circuit_id}`)}
-                            className="text-osce-body font-semibold text-b2b-headline hover:underline"
-                          >
-                            {run.circuit_name}
-                          </Link>
-                        ) : (
-                          <span className="text-osce-body font-semibold text-b2b-headline">
-                            {run.circuit_name}
-                          </span>
-                        )}
-                        <p className="mt-0.5 text-osce-caption text-b2b-mid">
-                          {run.sitting_name} · {run.mode} · {run.candidate_count}{" "}
-                          {run.candidate_count === 1 ? "candidate" : "candidates"} ·{" "}
-                          {run.stations_completed} of {run.stations_total} stations
-                          {run.status === "ended_early" ? " · ended early" : ""}
-                        </p>
-                      </div>
-                      <span className="shrink-0 font-mono text-osce-caption text-b2b-mid">
+              <B2CGroupedSection key={group.label} eyebrow={`Earlier · ${group.label}`}>
+                {group.runs.map((run) => {
+                  const rowProps = {
+                    title: run.circuit_name,
+                    meta: `${run.sitting_name} · ${run.mode} · ${run.candidate_count} ${
+                      run.candidate_count === 1 ? "candidate" : "candidates"
+                    } · ${run.stations_completed} of ${run.stations_total} stations${
+                      run.status === "ended_early" ? " · ended early" : ""
+                    }`,
+                    trailing: (
+                      <span className="shrink-0 font-mono text-osce-meta text-b2b-mid">
                         {run.started_at ? `${timeOf(run.started_at)}–` : "ended "}
                         {timeOf(run.ended_at)}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                    ),
+                  };
+                  return run.circuit_id ? (
+                    <B2CGroupedRowLink
+                      key={run.id}
+                      href={hrefFor(`/circuits/${run.circuit_id}`)}
+                      icon={LuClipboardCheck}
+                      {...rowProps}
+                    />
+                  ) : (
+                    <B2CGroupedRow key={run.id} icon={LuClipboardCheck} {...rowProps} />
+                  );
+                })}
+              </B2CGroupedSection>
             ))}
-          </div>
+          </>
         )}
       </AsyncBoundary>
       {history.moreError ? (
@@ -158,7 +158,7 @@ function Earlier({ orgSlug }: { orgSlug: string }) {
       {history.hasMore ? (
         <Button
           themeType="b2b"
-          variant="secondary"
+          variant="ghost"
           size="sm"
           disabled={history.loadingMore}
           onClick={history.loadMore}
@@ -170,30 +170,57 @@ function Earlier({ orgSlug }: { orgSlug: string }) {
   );
 }
 
+/** The three stages a station moves through, with the current one filled. */
+const STAGES = [
+  { phase: "reading", label: "Reading" },
+  { phase: "simulation", label: "Consultation" },
+  { phase: "break", label: "Between" },
+] as const;
+
+function StageStrip({ circuit }: { circuit: LiveCircuit }) {
+  const current = STAGES.findIndex((stage) => stage.phase === circuit.phase);
+  return (
+    <ol className="hidden items-center gap-2 md:flex" aria-label="Stage">
+      {STAGES.map((stage, index) => (
+        <li key={stage.phase} className="flex items-center gap-2">
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              index === current ? "bg-b2b-headline" : index < current ? "bg-b2b-mid" : "bg-b2b-border"
+            }`}
+            aria-hidden
+          />
+          <span
+            className={`text-osce-meta ${index === current ? "text-b2b-headline" : "text-b2b-mid"}`}
+          >
+            {stage.label}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function Row({ circuit }: { circuit: LiveCircuit }) {
   const { hrefFor } = useSurface();
-  const missing = recordingMissing(circuit);
-  const alerts = circuit.alerts ?? [];
+  const station = circuit.current_station
+    ? `Station ${circuit.current_station.slot_index + 1} of ${circuit.stations_total}${
+        circuit.current_station.title ? ` · ${circuit.current_station.title}` : ""
+      }`
+    : `Between stations · ${circuit.stations_completed} of ${circuit.stations_total} sat`;
 
   return (
-    <article className="space-y-3 rounded-lg border border-b2b-border bg-white p-4 sm:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link
-            href={hrefFor(`/circuits/${circuit.circuit_id}`)}
-            className="text-osce-body font-semibold text-b2b-headline hover:underline"
-          >
-            {circuit.circuit_name}
-          </Link>
-          <p className="mt-0.5 text-osce-caption text-b2b-mid">
-            {circuit.sitting_name} · {circuit.mode}
-            {circuit.supervisor
-              ? ` · ${circuit.supervisor.name ?? circuit.supervisor.email ?? "Supervisor"}`
-              : " · no supervisor named"}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+    <B2CGroupedRowLink
+      href={hrefFor(`/circuits/${circuit.circuit_id}`)}
+      icon={LuClipboardCheck}
+      title={circuit.circuit_name}
+      meta={`${circuit.sitting_name} · ${circuit.mode} · ${station} · ${candidatesLabel(circuit)}${
+        circuit.supervisor
+          ? ` · ${circuit.supervisor.name ?? circuit.supervisor.email ?? "Supervisor"}`
+          : " · no supervisor named"
+      }${circuit.room_name ? " · room open" : ""}`}
+      trailing={
+        <div className="flex shrink-0 items-center gap-3">
+          <StageStrip circuit={circuit} />
           <Badge variant={circuit.paused ? "warning" : "success"} dot>
             {circuitStatus(circuit)}
           </Badge>
@@ -206,48 +233,30 @@ function Row({ circuit }: { circuit: LiveCircuit }) {
             />
           ) : null}
         </div>
-      </div>
+      }
+    />
+  );
+}
 
-      <dl className="flex flex-wrap gap-x-6 gap-y-1 text-osce-caption text-b2b-mid">
-        <div className="flex gap-1.5">
-          <dt className="font-medium text-b2b-headline">Station</dt>
-          <dd>
-            {circuit.current_station
-              ? `${circuit.current_station.slot_index + 1} of ${circuit.stations_total}${
-                  circuit.current_station.title ? ` · ${circuit.current_station.title}` : ""
-                }`
-              : `between stations · ${circuit.stations_completed} of ${circuit.stations_total} sat`}
-          </dd>
-        </div>
-        <div className="flex gap-1.5">
-          <dt className="font-medium text-b2b-headline">Who</dt>
-          <dd>{candidatesLabel(circuit)}</dd>
-        </div>
-        {circuit.room_name ? (
-          <div className="flex gap-1.5">
-            <dt className="font-medium text-b2b-headline">Room</dt>
-            <dd className="inline-flex items-center gap-1">
-              <HiMiniSignal className="h-3 w-3 shrink-0 text-b2b-success-icon" aria-hidden />
-              open
-            </dd>
-          </div>
-        ) : null}
-      </dl>
-
+function Notices({ circuit }: { circuit: LiveCircuit }) {
+  const missing = recordingMissing(circuit);
+  const alerts = circuit.alerts ?? [];
+  if (!missing && alerts.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
       {missing ? (
         <Alert tone="danger">
           <span className="inline-flex items-center gap-2">
             <HiOutlineExclamationTriangle className="h-4 w-4 shrink-0" aria-hidden />
-            A consultation is running but is not being recorded. Open the circuit and send the patient in again.
+            {circuit.circuit_name}: a consultation is running but is not being recorded. Open the circuit and send the patient in again.
           </span>
         </Alert>
       ) : null}
-
       {alerts.map((code) => (
         <Alert key={code} tone="warning">
-          {alertCopy(code)}
+          {circuit.circuit_name}: {alertCopy(code)}
         </Alert>
       ))}
-    </article>
+    </div>
   );
 }

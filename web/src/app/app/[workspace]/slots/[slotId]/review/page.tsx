@@ -8,11 +8,15 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ workspace: string; slotId: string }>;
-  searchParams: Promise<{ attempt?: string }>;
+  searchParams: Promise<{ attempt?: string; sitting?: string }>;
 }) {
   const { workspace, slotId } = await params;
-  const { attempt } = await searchParams;
+  const { attempt, sitting } = await searchParams;
   return (
-    <Screen name="slotReview" slug={workspace} params={{ slotId, attemptId: attempt ?? "" }} />
+    <Screen
+      name="slotReview"
+      slug={workspace}
+      params={{ slotId, attemptId: attempt ?? "", sittingId: sitting ?? "" }}
+    />
   );
 }

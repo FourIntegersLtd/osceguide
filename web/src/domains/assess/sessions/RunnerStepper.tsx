@@ -36,7 +36,7 @@ export function RunnerStepper({ steps }: { steps: RunnerStep[] }) {
           {index < steps.length - 1 ? (
             <div
               className={`ml-1 h-px w-8 shrink-0 sm:w-14 ${
-                step.state === "done" ? "bg-b2b-success-border" : "bg-b2b-subtle"
+                step.state === "done" ? "bg-b2b-headline" : "bg-b2b-border"
               }`}
               aria-hidden
             />
@@ -50,14 +50,14 @@ export function RunnerStepper({ steps }: { steps: RunnerStep[] }) {
 function Marker({ number, state }: { number: number; state: StepState }) {
   const tone =
     state === "done"
-      ? "border-b2b-success-icon bg-b2b-success-icon text-white"
+      ? "border-b2b-headline bg-b2b-headline text-white"
       : state === "active"
         ? "border-b2b-accent bg-b2b-accent text-white"
-        : "border-b2b-border bg-white text-b2b-icon";
+        : "border-b2b-border bg-b2b-surface text-b2b-icon";
 
   return (
     <div
-      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-osce-caption font-bold transition-colors ${tone}`}
+      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-osce-caption font-bold transition-colors ${tone}`}
     >
       {state === "done" ? <HiCheckCircle className="h-4 w-4" aria-hidden /> : number}
     </div>

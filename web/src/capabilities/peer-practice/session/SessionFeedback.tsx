@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { HiOutlineArrowPath, HiOutlineStar } from "react-icons/hi2";
-import { Button } from "@/foundation/ui";
-import { b2cCard, b2cCardPadding } from "@/foundation/ui/productTokens";
+import { HiOutlineStar } from "react-icons/hi2";
+import { Button, productTokens } from "@/foundation/ui";
 import { submitPracticeFeedback } from "../api";
 import { failureText } from "../support/failure";
+import { b2cCard } from "@/foundation/ui/productTokens";
+import { cn } from "@/foundation/ui/cn";
 
 const RATING_LABELS: Record<number, string> = { 5: "Excellent", 4: "Very Good", 3: "Good", 2: "Fair", 1: "Poor" };
 
@@ -44,24 +45,24 @@ export function SessionFeedback({ sessionId, onDone }: { sessionId: string; onDo
   };
 
   return (
-    <div className={`mx-auto max-w-2xl text-left ${b2cCard} ${b2cCardPadding}`}>
-      <div className="mb-4 sm:mb-6">
-        <h3 className="mb-2 text-osce-body font-bold text-osce-ink-900">Colleague Practice Session Feedback</h3>
-        <p className="text-osce-body text-b2c-text-secondary">
-          Help us improve! Your feedback helps us match you with better practice partners and enhance the experience.
+    <section className={cn(b2cCard, "p-5 text-left")}>
+      <div className="mb-5">
+        <h3 className="text-osce-subheading font-semibold text-osce-ink-900">Colleague practice feedback</h3>
+        <p className="mt-0.5 text-osce-meta text-b2c-text-muted">
+          Your answers help us match you with better practice partners.
         </p>
       </div>
-      <form onSubmit={(event) => void submit(event)} className="space-y-4 sm:space-y-6">
+      <form onSubmit={(event) => void submit(event)} className="space-y-5">
         <div>
-          <p className="mb-2 block text-osce-body font-semibold text-osce-ink-900 sm:mb-3">
-            Would you practice with this user again? <span className="text-osce-danger">*</span>
+          <p className="mb-1.5 text-osce-meta text-b2c-text-muted">
+            Would you practise with this colleague again? <span className="text-osce-danger-text">*</span>
           </p>
-          <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               aria-pressed={wouldPracticeAgain === true}
               onClick={() => setWouldPracticeAgain(true)}
-              className={`flex-1 rounded-lg border-2 px-3 py-2.5 text-osce-body transition-all sm:px-4 sm:py-3 ${wouldPracticeAgain === true ? "border-osce-accent bg-osce-accent-muted font-semibold text-osce-accent-hover" : "border-b2c-border bg-b2c-surface-muted text-b2c-text-secondary hover:border-osce-accent-light"}`}
+              className={`rounded-control border px-3 py-2.5 text-osce-body font-medium transition-colors ${wouldPracticeAgain === true ? "border-osce-ink-900 bg-osce-surface text-osce-ink-900 ring-1 ring-osce-ink-900" : "border-osce-border text-b2c-text-muted hover:border-osce-ink-400"}`}
             >
               Yes
             </button>
@@ -69,7 +70,7 @@ export function SessionFeedback({ sessionId, onDone }: { sessionId: string; onDo
               type="button"
               aria-pressed={wouldPracticeAgain === false}
               onClick={() => setWouldPracticeAgain(false)}
-              className={`flex-1 rounded-lg border-2 px-3 py-2.5 text-osce-body transition-all sm:px-4 sm:py-3 ${wouldPracticeAgain === false ? "border-osce-danger bg-osce-danger-bg font-semibold text-osce-danger-hover" : "border-b2c-border bg-b2c-surface-muted text-b2c-text-secondary hover:border-osce-danger"}`}
+              className={`rounded-control border px-3 py-2.5 text-osce-body font-medium transition-colors ${wouldPracticeAgain === false ? "border-osce-ink-900 bg-osce-surface text-osce-ink-900 ring-1 ring-osce-ink-900" : "border-osce-border text-b2c-text-muted hover:border-osce-ink-400"}`}
             >
               No
             </button>
@@ -77,10 +78,10 @@ export function SessionFeedback({ sessionId, onDone }: { sessionId: string; onDo
         </div>
 
         <div>
-          <p className="mb-2 block text-osce-body font-semibold text-osce-ink-900 sm:mb-3">
-            How would you rate your overall experience? (Optional)
+          <p className="mb-1.5 text-osce-meta text-b2c-text-muted">
+            How would you rate your overall experience? Optional.
           </p>
-          <div className="flex justify-center gap-1 sm:justify-start sm:gap-2">
+          <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map((rating) => (
               <button
                 key={rating}
@@ -95,26 +96,26 @@ export function SessionFeedback({ sessionId, onDone }: { sessionId: string; onDo
             ))}
           </div>
           {experienceRating && (
-            <p className="mt-1 text-center text-osce-body text-b2c-text-muted sm:text-left">
+            <p className="mt-1 text-osce-meta text-b2c-text-muted">
               {RATING_LABELS[experienceRating]}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="feedback-text" className="mb-2 block text-osce-body font-semibold text-osce-ink-900">
-            Additional feedback (Optional)
+          <label htmlFor="feedback-text" className="mb-1.5 block text-osce-meta text-b2c-text-muted">
+            Additional feedback
           </label>
           <textarea
             id="feedback-text"
             value={feedbackText}
             onChange={(event) => setFeedbackText(event.target.value)}
             placeholder="Share any thoughts, suggestions, or feedback about your experience..."
-            className="w-full resize-none rounded-lg border border-b2c-border px-3 py-2.5 text-osce-body sm:px-4 sm:py-3"
+            className={productTokens.b2cSettingsFieldInput}
             rows={3}
             maxLength={500}
           />
-          <p className="mt-1 text-osce-body text-b2c-text-muted">{feedbackText.length}/500 characters</p>
+          <p className="mt-1 text-osce-meta text-b2c-text-muted">Optional. {feedbackText.length}/500 characters</p>
         </div>
 
         {error && (
@@ -126,22 +127,15 @@ export function SessionFeedback({ sessionId, onDone }: { sessionId: string; onDo
           </div>
         )}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-          <Button type="submit" variant="commit" size="md" disabled={isSubmitting} className="flex-1 gap-2">
-            {isSubmitting ? (
-              <>
-                <HiOutlineArrowPath className="h-3 w-3 animate-spin sm:h-4 sm:w-4" />
-                <span>Submitting...</span>
-              </>
-            ) : (
-              <>Submit Feedback</>
-            )}
-          </Button>
-          <Button type="button" variant="secondary" size="md" onClick={onDone} disabled={isSubmitting}>
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onDone} disabled={isSubmitting}>
             Skip
+          </Button>
+          <Button type="submit" isLoading={isSubmitting}>
+            Submit feedback
           </Button>
         </div>
       </form>
-    </div>
+    </section>
   );
 }

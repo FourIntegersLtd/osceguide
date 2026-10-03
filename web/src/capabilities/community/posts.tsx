@@ -64,7 +64,7 @@ export function QuestionTags({ tags }: { tags: readonly string[] | undefined }) 
       {tags.map((tag) => (
         <span
           key={tag}
-          className="rounded-md border border-osce-accent-subtle bg-osce-accent-muted px-2 py-0.5 text-osce-caption font-medium text-osce-accent"
+          className="inline-flex h-[22px] items-center rounded-[6px] bg-b2c-surface-muted px-2 text-osce-micro font-medium text-b2c-text-muted"
         >
           {tagLabel(tag)}
         </span>

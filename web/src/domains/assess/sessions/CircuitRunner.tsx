@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Badge, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, Badge, Button, b2bTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
@@ -82,64 +82,42 @@ function Runner({
 
   return (
     <>
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-b2b-border pb-4">
-        <div className="min-w-0">
-          <Link
-            href={hrefFor(`/sittings/${sittingId ?? data.sitting.id}`)}
-            className={b2bTokens.b2bLinkMuted}
-          >
-            ← {data.sitting.name}
-          </Link>
-          <h1 className={`mt-1 ${b2bTokens.b2bPageTitle}`}>{circuit.name}</h1>
-          <p className="mt-1 text-osce-caption text-b2b-mid">
-            {observerSubtitle(data)}
-            {supervisor
-              ? ` · Supervisor: ${supervisor.name ?? supervisor.email ?? "assigned"}`
-              : ""}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <RunnerHelpPanel kind={isExam ? "exam" : "training"} />
-          {/*
-            Offered only while the circuit's slots can still be rebuilt, which
-            is the backend's rule and not this screen's guess — it sends
-            `editable` with the frame precisely so a supervisor is not invited to
-            delete a consultation in progress. Once anything on the circuit means
-            something the link is gone rather than there and refusing.
-          */}
-          {circuit.editable ? (
-            <Link href={hrefFor(`/circuits/${circuitId}/edit`)} className={b2bTokens.b2bLink}>
-              Edit
-            </Link>
-          ) : null}
-          {/* The stream being up is the difference between a stale screen and
-              a live one, so it is said rather than assumed — until the circuit
-              ends, when the stream closing is the expected thing and a
-              "Reconnecting" badge would be warning about nothing. */}
-          {circuit.ended_at === null ? (
-            <Badge variant={run.connected ? "success" : "warning"} dot>
-              {run.connected ? "Live" : "Reconnecting"}
-            </Badge>
-          ) : (
-            <Badge variant="neutral">Ended</Badge>
-          )}
-          {circuit.paused ? <Badge variant="warning">Paused</Badge> : null}
-          {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
-            <ExamClock
-              secondsLeft={circuit.remaining_seconds}
-              label={phaseLabel(circuit.phase)}
-              tick
-              paused={circuit.paused}
-            />
-          ) : null}
-          {!isExam && live ? (
-            <Button themeType="b2b" variant="secondary" size="sm" onClick={() => setAdding(true)}>
-              <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden /> Add trainee
-            </Button>
-          ) : null}
-        </div>
-      </header>
+      <B2CPageHeader
+        back={{ href: hrefFor(`/sittings/${sittingId ?? data.sitting.id}`), label: data.sitting.name }}
+        title={circuit.name}
+        subtitle={`${observerSubtitle(data)}${
+          supervisor ? ` · Supervisor: ${supervisor.name ?? supervisor.email ?? "assigned"}` : ""
+        }`}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <RunnerHelpPanel kind={isExam ? "exam" : "training"} />
+            {/* Offered only while the circuit's slots can still be rebuilt, which
+                is the backend's rule: it sends `editable` with the frame so a
+                supervisor is not invited to delete a consultation in progress. */}
+            {circuit.editable ? (
+              <Link href={hrefFor(`/circuits/${circuitId}/edit`)} className={b2bTokens.b2bLink}>
+                Edit
+              </Link>
+            ) : null}
+            {/* The stream being up is the difference between a stale screen and
+                a live one, so it is said rather than assumed, until the circuit
+                ends and the stream closing is expected. */}
+            {circuit.ended_at === null ? (
+              <Badge variant={run.connected ? "success" : "warning"} dot>
+                {run.connected ? "Live" : "Reconnecting"}
+              </Badge>
+            ) : (
+              <Badge variant="neutral">Ended</Badge>
+            )}
+            {circuit.paused ? <Badge variant="warning">Paused</Badge> : null}
+            {!isExam && live ? (
+              <Button themeType="b2b" variant="secondary" size="sm" onClick={() => setAdding(true)}>
+                <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden /> Add trainee
+              </Button>
+            ) : null}
+          </div>
+        }
+      />
 
       {/* Alerts arrive as codes on purpose: the board decides how to say it. */}
       {(circuit.alerts ?? []).map((code) => (
@@ -148,19 +126,33 @@ function Runner({
         </Alert>
       ))}
 
-      <section className="rounded-lg border border-b2b-border bg-white p-4 sm:p-5">
-        <RunnerStepper steps={runnerSteps(data)} />
+      <section className="grid gap-6 rounded-panel bg-canvas p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="min-w-0 space-y-5">
+          <RunnerStepper steps={runnerSteps(data)} />
+          <SupervisorControls
+            data={data}
+            orgSlug={orgSlug}
+            circuitId={circuitId}
+            busy={run.busy}
+            failure={run.failure}
+            run={run.run}
+            onDismissFailure={run.dismissFailure}
+          />
+        </div>
+        {/* The clock is the server's: ExamClock only interpolates between pushes. */}
+        {circuit.remaining_seconds !== null && circuit.remaining_seconds !== undefined ? (
+          <div className="lg:text-right">
+            <ExamClock
+              secondsLeft={circuit.remaining_seconds}
+              label={phaseLabel(circuit.phase)}
+              tick
+              paused={circuit.paused}
+              className="flex-col !items-start gap-1 border-0 bg-transparent px-0 py-0 lg:!items-end [&>span:first-child]:text-osce-body [&>span:first-child]:normal-case [&>span:first-child]:tracking-normal [&>span:last-child]:text-[56px] [&>span:last-child]:leading-none"
+            />
+            <p className="mt-1 text-osce-meta text-b2b-mid">Server clock</p>
+          </div>
+        ) : null}
       </section>
-
-      <SupervisorControls
-        data={data}
-        orgSlug={orgSlug}
-        circuitId={circuitId}
-        busy={run.busy}
-        failure={run.failure}
-        run={run.run}
-        onDismissFailure={run.dismissFailure}
-      />
 
       {!isExam ? (
         <TurnStrip
@@ -174,7 +166,7 @@ function Runner({
       ) : null}
 
       <section className="space-y-2">
-        <h2 className={b2bTokens.b2bEyebrow}>Station progress</h2>
+        <h2 className={b2bTokens.b2bSectionTitle}>Station progress</h2>
         <StationProgressList data={data} agentLive={circuit.agent_dispatched} />
       </section>
 

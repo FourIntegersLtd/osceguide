@@ -20,6 +20,7 @@ import {
 import PlanPicker, { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
 import ReceiptList from "@/capabilities/account/settings/ReceiptList";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 
 const { b2cFieldLabel, b2cFieldValue, b2cLink } = productTokens;
 
@@ -60,17 +61,9 @@ export default function PaymentsPanel() {
   return (
     <SettingsTabShell>
       <AsyncBoundary state={state}>
-        {({ live, receipts }) => (
-          <Panel title="Payments" className="overflow-hidden">
-            <div className="space-y-5">
-              {live.length > 0 ? (
-                <ActivePlan live={live} receipts={receipts} />
-              ) : (
-                <Plans />
-              )}
-            </div>
-          </Panel>
-        )}
+        {({ live, receipts }) =>
+          live.length > 0 ? <ActivePlan live={live} receipts={receipts} /> : <Plans />
+        }
       </AsyncBoundary>
     </SettingsTabShell>
   );
@@ -99,32 +92,27 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
 
   return (
     <>
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-osce-body font-semibold text-ink">Premium</p>
-          <span className="inline-flex items-center gap-1.5 text-osce-meta font-medium text-osce-success-text">
-            <span className="h-1.5 w-1.5 rounded-full bg-osce-success-icon" aria-hidden />
-            Active
-          </span>
-        </div>
-        <ModalHelper className="mt-1">
-          {endsAt
-            ? `Full access until ${formatLongDate(endsAt)}.`
-            : "You have full access to all premium features."}
-        </ModalHelper>
-      </div>
+      <B2CHero eyebrow="Your plan" title={plan}>
+        {endsAt
+          ? `Full access until ${formatLongDate(endsAt)}: every station, the study library and debriefs with Athena.`
+          : "You have full access: every station, the study library and debriefs with Athena."}
+      </B2CHero>
 
-      <dl className="divide-y divide-border rounded-xl border border-border">
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center justify-between gap-4 px-4 py-3">
-            <dt className={b2cFieldLabel}>{row.label}</dt>
-            <dd className={`${b2cFieldValue} text-right`}>{row.value}</dd>
-          </div>
-        ))}
-      </dl>
+      <Panel title="Plan details" padding="none">
+        <dl className="divide-y divide-border">
+          {rows.map((row) => (
+            <div key={row.label} className="flex items-center justify-between gap-4 px-5 py-3 sm:px-6">
+              <dt className={b2cFieldLabel}>{row.label}</dt>
+              <dd className={`${b2cFieldValue} text-right`}>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </Panel>
 
       {receipts.length > 0 ? (
-        <ReceiptList receipts={receipts} />
+        <Panel title="Receipts">
+          <ReceiptList receipts={receipts} />
+        </Panel>
       ) : purchased ? (
         <ModalHelper className="mt-0">
           Receipt unavailable.{" "}
@@ -164,7 +152,16 @@ function Plans() {
           );
         }
         // Keyed by exam so switching exams resets the selected plan.
-        return <PlanPicker key={exam.code ?? "any"} plans={onSale} />;
+        return (
+          <>
+            <B2CHero eyebrow="Your plan" title="Choose a plan">
+              Unlock every station, the study library and practice with colleagues.
+            </B2CHero>
+            <Panel title="Choose the option that suits you best">
+              <PlanPicker key={exam.code ?? "any"} plans={onSale} />
+            </Panel>
+          </>
+        );
       }}
     </AsyncBoundary>
   );

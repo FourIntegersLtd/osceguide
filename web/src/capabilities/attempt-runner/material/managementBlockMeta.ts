@@ -13,11 +13,11 @@ type ManagementBlockMeta = {
   group: string | null;
 };
 
-const CLINICAL_ASSESSMENT = "Clinical Assessment";
-const SOCIAL_AND_CONCERNS = "Social & Patient Concerns";
-const TREATMENT_AND_ACTIONS = "Treatment & Actions";
-const EDUCATION_AND_FOLLOW_UP = "Patient Education & Follow-up";
-const ADDITIONAL_NOTES = "Additional Notes";
+const CLINICAL_ASSESSMENT = "Clinical assessment";
+const SOCIAL_AND_CONCERNS = "Social & patient concerns";
+const TREATMENT_AND_ACTIONS = "Treatment & actions";
+const EDUCATION_AND_FOLLOW_UP = "Patient education & follow-up";
+const ADDITIONAL_NOTES = "Additional notes";
 
 /** The legacy groups in their legacy order; a template's own groups follow these. */
 const LEGACY_GROUP_ORDER = [
@@ -33,12 +33,12 @@ const MANAGEMENT_BLOCK_META: Record<string, ManagementBlockMeta> = {
   description: { tone: "education", group: null },
   differential_diagnosis: { tone: "reasoning", group: CLINICAL_ASSESSMENT },
   diagnostic_criteria: { tone: "reasoning", group: CLINICAL_ASSESSMENT },
-  assessment: { title: "Assessment Steps", tone: "reasoning", group: CLINICAL_ASSESSMENT },
-  management_examination_findings: { title: "Examination Findings", tone: "examination", group: CLINICAL_ASSESSMENT },
+  assessment: { title: "Assessment steps", tone: "reasoning", group: CLINICAL_ASSESSMENT },
+  management_examination_findings: { title: "Examination findings", tone: "examination", group: CLINICAL_ASSESSMENT },
   further_investigations: { tone: "examination", group: CLINICAL_ASSESSMENT },
   risk_factors: { tone: "safety", group: CLINICAL_ASSESSMENT },
   social_concerns: { tone: "history", group: SOCIAL_AND_CONCERNS },
-  ice: { title: "ICE Response", tone: "history", group: SOCIAL_AND_CONCERNS },
+  ice: { title: "ICE response", tone: "history", group: SOCIAL_AND_CONCERNS },
   immediate_actions: { tone: "safety", group: TREATMENT_AND_ACTIONS },
   pharmacological_treatment: { title: "Medications", tone: "management", group: TREATMENT_AND_ACTIONS },
   non_pharmacological_treatment: { tone: "management", group: TREATMENT_AND_ACTIONS },
@@ -87,7 +87,7 @@ function hasContent(block: AudienceBlock): boolean {
 
 /**
  * The model answer's blocks, arranged as the legacy management screen had
- * them: the explanation first, "Clinical Assessment" open, then one
+ * them: the explanation first, "Clinical assessment" open, then one
  * collapsible group per stage. A block the map does not know is grouped under
  * its own template section's title, after the legacy groups, so a new exam's
  * template still reads as sections of cards. Empty blocks are left out.

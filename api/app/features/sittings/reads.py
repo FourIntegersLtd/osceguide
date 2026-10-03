@@ -120,6 +120,7 @@ def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
         paused=circuit.paused_at is not None,
         paused_at=circuit.paused_at,
         auto_advance=circuit.auto_advance,
+        trainee_count=len({slot.trainee_id for slot in slots}),
         slots=[slot_read(slot, circuit) for slot in slots],
     )
 

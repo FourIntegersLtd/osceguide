@@ -110,7 +110,7 @@ export function BulkInviteDialog({
 
       <div
         {...getRootProps({
-          className: `flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed p-6 text-center transition-colors ${
+          className: `flex cursor-pointer flex-col items-center gap-2 rounded-panel border border-dashed p-6 text-center transition-colors ${
             isDragActive ? "border-b2b-accent bg-b2b-accent-bg" : "border-b2b-border bg-b2b-cream/60"
           }`,
         })}
@@ -157,7 +157,7 @@ export function BulkInviteDialog({
 function Instructions() {
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-b2b-border bg-b2b-cream p-4">
+      <div className="rounded-panel border border-b2b-border bg-b2b-cream p-4">
         <p className="text-osce-body font-semibold text-b2b-headline">Required columns</p>
         <ul className="mt-2 space-y-1.5 text-osce-body text-b2b-graphite">
           <li>
@@ -170,9 +170,9 @@ function Instructions() {
           </li>
         </ul>
       </div>
-      <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4">
+      <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4">
         <p className="text-osce-body font-semibold text-b2b-headline">Example</p>
-        <pre className="mt-2 overflow-auto rounded-md border border-b2b-border bg-b2b-cream p-3 text-osce-caption text-b2b-headline">
+        <pre className="mt-2 overflow-auto rounded-control border border-b2b-border bg-b2b-cream p-3 text-osce-caption text-b2b-headline">
           email,role{"\n"}
           supervisor@hospital.nhs.uk,supervisor{"\n"}
           admin@hospital.nhs.uk,admin
@@ -199,7 +199,7 @@ function Outcome({ result }: { result: BulkMembershipsResult }) {
         </p>
       ) : null}
       {skipped.length > 0 ? (
-        <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4">
+        <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4">
           <p className="text-osce-body font-semibold text-b2b-headline">Not imported</p>
           <ul className="mt-2 space-y-1 text-osce-body text-b2b-graphite">
             {skipped.map((row) => (

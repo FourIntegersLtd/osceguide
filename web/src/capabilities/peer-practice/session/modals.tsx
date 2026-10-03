@@ -63,7 +63,7 @@ export function PhaseModals({
       <Modal width="500px" height="fit-content" onClose={() => setWarning(false)}>
         <ModalContent>
           <ModalLead
-            title="Time Warning"
+            title="Time warning"
             description="6 minutes remaining! Please prepare to move to management."
             icon={<IoTimeOutline className="h-4 w-4" aria-hidden />}
             iconTone="amber"

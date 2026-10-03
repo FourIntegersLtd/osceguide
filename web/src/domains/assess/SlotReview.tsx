@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, Card, PageHeader, Spinner } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, ButtonLink, Card, B2CPageHeader, Spinner } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { readFeedback, RubricFeedback, type AttemptFeedbackRead } from "@/capabilities/feedback";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
 import { readMySlotReview, saveReview } from "@/domains/assess/api";
-import { GpLeadReview, SlotReviewers, readSlotReviews } from "@/domains/assess/results";
+import { useSurface } from "@/capabilities";
+import { GpLeadReview, SlotReviewers, readSittingReport, readSlotReviews } from "@/domains/assess/results";
+import { candidateSteps, reviewPath } from "@/domains/assess/results/candidateSteps";
 import type { SlotReviews } from "@/domains/assess/results";
 import { ReviewFields } from "@/domains/assess/results/ReviewFields";
 import { fieldValuesFor, initialRatings } from "@/domains/assess/results/reviewForm";
@@ -31,10 +33,13 @@ export function SlotReview({
   orgSlug,
   slotId,
   attemptId,
+  sittingId = null,
 }: {
   orgSlug: string;
   slotId: string;
   attemptId: string | null;
+  /** The sitting this was opened from, when it was opened from its results. */
+  sittingId?: string | null;
 }) {
   /*
    * My review is read directly (`GET .../reviews/mine`). An earlier version
@@ -59,7 +64,11 @@ export function SlotReview({
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Mark this station" description="Your marks, next to the automatic marking." />
+      <B2CPageHeader
+        title="Mark this station"
+        subtitle="Your marks, next to the automatic marking."
+        action={sittingId ? <CandidateStepper orgSlug={orgSlug} sittingId={sittingId} slotId={slotId} /> : undefined}
+      />
       {attemptId ? null : (
         /*
          * Without an attempt there is no engine marking to set the form
@@ -83,6 +92,50 @@ export function SlotReview({
           />
         )}
       </AsyncBoundary>
+    </div>
+  );
+}
+
+/**
+ * Previous and next candidate on the same station.
+ *
+ * Read off the sitting's report rather than asked of a route of its own. It is
+ * a convenience beside the form, so while it loads there is nothing to show,
+ * and a failure says so without taking the form down with it.
+ */
+function CandidateStepper({ orgSlug, sittingId, slotId }: { orgSlug: string; sittingId: string; slotId: string }) {
+  const { hrefFor } = useSurface();
+  const report = useAsync((signal) => readSittingReport(orgSlug, sittingId, signal), [orgSlug, sittingId]);
+
+  if (report.error) return <p className="text-osce-meta text-b2b-mid">Could not load the other candidates.</p>;
+  const steps = report.data ? candidateSteps(report.data.candidates ?? [], slotId) : null;
+  if (!steps || steps.total < 2) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-osce-meta tabular-nums text-b2b-mid">
+        Candidate {steps.position} of {steps.total}
+      </span>
+      {steps.previous ? (
+        <ButtonLink
+          href={hrefFor(reviewPath(steps.previous.slotId, steps.previous.attemptId, sittingId))}
+          themeType="b2b"
+          variant="secondary"
+          size="sm"
+        >
+          Previous
+        </ButtonLink>
+      ) : null}
+      {steps.next ? (
+        <ButtonLink
+          href={hrefFor(reviewPath(steps.next.slotId, steps.next.attemptId, sittingId))}
+          themeType="b2b"
+          variant="secondary"
+          size="sm"
+        >
+          Next candidate
+        </ButtonLink>
+      ) : null}
     </div>
   );
 }
@@ -143,11 +196,16 @@ function Editor({
   );
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <div className="flex flex-col gap-4">
         <Card
+          themeType="b2b"
           title="Your marking"
-          actions={submitted ? <Badge tone="success">Submitted</Badge> : <Badge tone="neutral">Draft</Badge>}
+          actions={
+            <Badge variant={submitted ? "success" : "neutral"} dot>
+              {submitted ? "Submitted" : "Draft"}
+            </Badge>
+          }
         >
           <div className="flex flex-col gap-4">
             {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
@@ -162,23 +220,23 @@ function Editor({
             />
 
             <label className="flex flex-col gap-1.5">
-              <span className="text-osce-caption font-medium text-b2b-headline">Notes</span>
+              <span className="text-osce-meta font-medium text-b2b-headline">Notes</span>
               <textarea
                 rows={5}
                 value={notes}
                 disabled={submitted}
                 onChange={(event) => setNotes(event.target.value)}
-                className="rounded-md border border-b2b-border bg-white px-3 py-2 text-osce-body text-b2b-headline disabled:bg-b2b-cream"
+                className="rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-body text-b2b-headline disabled:bg-canvas"
                 placeholder="What you saw, in the words you would say to them."
               />
             </label>
 
             {!submitted && (
               <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={() => void persist("draft")} disabled={busy !== null}>
+                <Button themeType="b2b" variant="secondary" onClick={() => void persist("draft")} disabled={busy !== null}>
                   {busy === "draft" ? <Spinner /> : "Save draft"}
                 </Button>
-                <Button onClick={() => void persist("completed")} disabled={busy !== null}>
+                <Button themeType="b2b" variant="commit" onClick={() => void persist("completed")} disabled={busy !== null}>
                   {busy === "completed" ? <Spinner /> : "Submit review"}
                 </Button>
               </div>
@@ -189,11 +247,11 @@ function Editor({
         {/* The lead's review is one per station and the observers' are one
             each, so they are separate panels rather than tabs of the same
             thing — a reviewer should be able to see both at once. */}
-        <Card title="The lead's review" description="One overall mark for the station. This is the mark that counts.">
+        <Card themeType="b2b" title="The lead's review" description="One overall mark for the station. This is the mark that counts.">
           <GpLeadReview orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} />
         </Card>
 
-        <Card title="What the reviewers agreed">
+        <Card themeType="b2b" title="What the reviewers agreed">
           <SlotReviewers reviews={reviews} />
         </Card>
       </div>
@@ -203,7 +261,7 @@ function Editor({
         {result && feedback?.rubric ? (
           <RubricFeedback rubric={feedback.rubric} result={result} narrow />
         ) : (
-          <Card>
+          <Card themeType="b2b" padding="md">
             <p className="text-osce-body text-b2b-mid">
               {result
                 ? "This station was taken before the exam had a marking scheme, so there are no automatic marks to show."

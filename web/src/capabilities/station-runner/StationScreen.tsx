@@ -309,8 +309,40 @@ export function StationScreen(props: StationScreenProps) {
   const onReading = activeStep === "patient" && effectiveAction === "attempt";
   const demoteStationNav = onReading || activeStep === "feedback";
 
+  // The live consultation takes the navy room skin (canvas `train-room`);
+  // reading, review and feedback stay on the page's own surface.
+  const inRoom = effectiveAction === "attempt" && activeStep === "simulation";
+  const timer =
+    effectiveAction === "attempt" && attempt.attemptId ? (
+      step === "patient" ? (
+        <Timer
+          duration={effectiveReadingSeconds}
+          stationId={attempt.attemptId}
+          timerType="doctor"
+          onTimeUp={enterConsultation}
+        />
+      ) : activeStep === "simulation" ? (
+        <Timer
+          duration={simulationSeconds}
+          stationId={attempt.attemptId}
+          timerType="simulation"
+          running={session.patientJoined}
+          onTimeUp={() => void handleSimulationTimeUp()}
+          onFinalCountdown={session.warnTimeRemaining}
+        />
+      ) : null
+    ) : null;
+  const hideStationNav =
+    isLast && (effectiveAction === "review" || activeStep === "feedback");
+
   return (
-    <div className="flex flex-col">
+    <div
+      data-skin={inRoom ? "room" : undefined}
+      className={cn(
+        "flex flex-col",
+        inRoom && "rounded-osce-2xl bg-osce-canvas p-4 sm:p-6",
+      )}
+    >
       <StationHeader
         index={index}
         total={total}
@@ -318,90 +350,63 @@ export function StationScreen(props: StationScreenProps) {
         attemptLimit={attemptLimit}
         flagStationId={flagStationId}
         comeBack={comeBack}
+        aside={
+          <>
+            {timer}
+            <div className="flex flex-wrap gap-2">
+              {hideStationNav ? null : (
+                <Button
+                  type="button"
+                  variant={onReading ? "ghost" : demoteStationNav ? "secondary" : "primary"}
+                  onClick={() =>
+                    isLast
+                      ? handleCompleteSessionIntent()
+                      : onReading
+                        ? leaveGuard.leaveTo(nextHref!)
+                        : handleNextStation()
+                  }
+                  disabled={live}
+                  className="gap-2"
+                >
+                  {isLast ? (
+                    <>
+                      <HiOutlineCheckCircle className="h-4 w-4" aria-hidden />
+                      <span>{onReading ? "Skip to complete session" : "Complete session"}</span>
+                    </>
+                  ) : (
+                    <>
+                      <HiOutlineArrowRight className="h-4 w-4" aria-hidden />
+                      <span>{onReading ? "Skip to next station" : "Next station"}</span>
+                    </>
+                  )}
+                </Button>
+              )}
+              {onReading && (
+                <Button type="button" onClick={() => setConfirmingStart(true)} className="gap-2">
+                  <HiOutlineMicrophone className="h-4 w-4" aria-hidden />
+                  <span>Start simulation</span>
+                </Button>
+              )}
+            </div>
+          </>
+        }
       />
 
-      <div className="flex flex-col items-center justify-between lg:flex-row">
-        <StationTabs
-          steps={steps}
-          active={activeStep}
-          onChange={handleTabChange}
-          feedbackReady={hasFeedbackReady}
-        />
-
-        {effectiveAction === "attempt" && attempt.attemptId && (
-          <div className="mt-4 lg:mt-0">
-            {step === "patient" && (
-              <Timer
-                duration={effectiveReadingSeconds}
-                stationId={attempt.attemptId}
-                timerType="doctor"
-                onTimeUp={enterConsultation}
-              />
-            )}
-            {activeStep === "simulation" && (
-              <Timer
-                duration={simulationSeconds}
-                stationId={attempt.attemptId}
-                timerType="simulation"
-                running={session.patientJoined}
-                onTimeUp={() => void handleSimulationTimeUp()}
-                onFinalCountdown={session.warnTimeRemaining}
-              />
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="mb-4 mt-8 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3 lg:mt-6">
-        <Button
-          type="button"
-          variant={demoteStationNav ? "secondary" : "primary"}
-          onClick={() =>
-            isLast
-              ? handleCompleteSessionIntent()
-              : onReading
-                ? leaveGuard.leaveTo(nextHref!)
-                : handleNextStation()
-          }
-          disabled={live}
-          className={cn(
-            "w-full gap-2 sm:w-auto",
-            isLast && (effectiveAction === "review" || activeStep === "feedback") && "hidden",
-          )}
-        >
-          {isLast ? (
-            <>
-              <HiOutlineCheckCircle className="h-4 w-4" aria-hidden />
-              <span>{onReading ? "Skip to complete session" : "Complete session"}</span>
-            </>
-          ) : (
-            <>
-              <HiOutlineArrowRight className="h-4 w-4" aria-hidden />
-              <span>{onReading ? "Skip to next station" : "Next station"}</span>
-            </>
-          )}
-        </Button>
-
-        {onReading && (
-          <Button
-            type="button"
-            onClick={() => setConfirmingStart(true)}
-            className="w-full gap-2 sm:w-auto"
-          >
-            <HiOutlineMicrophone className="h-4 w-4" aria-hidden />
-            <span>Start simulation</span>
-          </Button>
-        )}
-      </div>
+      <StationTabs
+        steps={steps}
+        active={activeStep}
+        onChange={handleTabChange}
+        feedbackReady={hasFeedbackReady}
+      />
 
       {onReading && (
-        <p className="-mt-2 mb-4 text-osce-meta text-b2c-text-muted sm:text-right">
+        <p className="mt-3 text-osce-meta text-b2c-text-muted">
           Read the brief, then start the simulation. If reading time runs out, it starts on its
           own.
         </p>
       )}
 
-      <div className="mt-4">
+      <div className="mt-5">
         {activeStep === "patient" &&
           (attempt.brief ? (
             <StationBrief brief={attempt.brief} />
@@ -417,7 +422,6 @@ export function StationScreen(props: StationScreenProps) {
             showTerms={effectiveAction === "attempt"}
             asideTitle={effectiveAction === "attempt" ? "Doctor information" : "Transcription"}
             asideIcon={effectiveAction === "attempt" ? HiOutlineIdentification : HiOutlineDocumentText}
-            asideTone={effectiveAction === "attempt" ? "primary" : "sky"}
             panel={
               <ConsultationPanel
                 session={session}

@@ -85,7 +85,7 @@ export function ReportAbuseButton({ sessionId, className = "" }: { sessionId: st
               id="report-abuse-note"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Describe what happened..."
+              placeholder="Describe what happened"
               rows={4}
               maxLength={2000}
               className={b2cInputBase}
@@ -96,7 +96,7 @@ export function ReportAbuseButton({ sessionId, className = "" }: { sessionId: st
                 Cancel
               </ModalSecondaryButton>
               <ModalPrimaryButton onClick={() => void submit()} disabled={loading}>
-                {loading ? "Submitting..." : "Submit report"}
+                {loading ? "Submitting…" : "Submit report"}
               </ModalPrimaryButton>
             </ModalFooterActions>
             {success && <Alert message={success} type="success" className="mt-3" />}
@@ -193,7 +193,7 @@ export function NoShowGuidelines({ sessionId, afterReport }: { sessionId: string
             )}
           </>
         }
-        confirmText={loading ? "Submitting..." : "Yes, report no-show"}
+        confirmText={loading ? "Submitting…" : "Yes, report no-show"}
         cancelText="Cancel"
       />
     </>

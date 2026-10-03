@@ -29,7 +29,7 @@ export function FormStep({
       <div className="flex items-center gap-2">
         <span
           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-osce-caption font-semibold transition-colors ${
-            done ? "bg-osce-accent text-white" : "bg-osce-accent-muted text-osce-accent"
+            done ? "bg-osce-ink-900 text-white" : "bg-b2c-surface-muted text-osce-ink-900"
           }`}
           aria-hidden
         >
@@ -97,7 +97,7 @@ export function TimeSlotList({
             onClick={() => onSelect(option.value)}
             className={`w-full px-4 py-2.5 text-left text-osce-body outline-none transition-colors focus:ring-2 focus:ring-inset focus:ring-osce-accent/20 ${
               isSelected
-                ? "bg-osce-accent-subtle font-medium text-osce-accent-hover"
+                ? "bg-osce-ink-900 font-medium text-white"
                 : "text-b2c-text-secondary hover:bg-b2c-surface-muted"
             }`}
           >

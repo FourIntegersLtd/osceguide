@@ -1,7 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { cn } from "@/foundation/ui/cn";
-import { b2cBodyText, b2cSectionTitle } from "@/foundation/ui/productTokens";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 
 interface StationCompletionProgressBarProps {
   completedCount: number;
@@ -56,38 +55,51 @@ function StationCompletionProgressBar({
       return `You have completed ${freeUsedCount} of ${freeLimit} free stations`;
     })();
 
+  const remaining = hasPaid && !isTotalPending ? Math.max(totalCount - completedCount, 0) : null;
+  const shown = hasPaid ? completedCount : freeUsedCount;
+  const outOf = hasPaid ? totalCount : freeLimit;
+
+  // Canvas `train-practice`: a grey panel, the count as its heading, the bar on the right.
   return (
-    <div className="flex flex-col space-y-4">
-      <h3 className={cn(b2cSectionTitle, "text-center")}>Your progress</h3>
-      <div
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(percentage)}
-        aria-label={progressLabel || "Your progress"}
-        className="h-2.5 w-full overflow-hidden rounded-full bg-b2c-secondary"
-      >
-        <div
-          className="h-full rounded-full bg-osce-accent transition-all duration-500"
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      {progressLabel ? (
-        <span className={cn(b2cBodyText, "flex justify-center text-center font-medium")}>
-          {progressLabel}
-        </span>
-      ) : null}
+    <B2CHero
+      eyebrow="Your progress"
+      title={progressLabel || "Your progress"}
+      aside={
+        <div className="w-full shrink-0 sm:w-[220px]">
+          <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(percentage)}
+            aria-label={progressLabel || "Your progress"}
+            className="h-2 w-full overflow-hidden rounded-full bg-osce-navActive"
+          >
+            <div
+              className="h-full rounded-full bg-osce-accent transition-all duration-500"
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+          {!isTotalPending ? (
+            <p className="mt-2 text-right text-osce-meta tabular-nums text-b2c-text-muted">
+              {shown} / {outOf}
+            </p>
+          ) : null}
+        </div>
+      }
+    >
       {isExpiredAndUnpaid || freeUsedUp ? (
-        <p className="text-center text-osce-meta text-b2c-text-muted">
+        <>
           {isExpiredAndUnpaid
             ? "Renew to unlock every station again."
             : "You've used your free stations. Upgrade to keep practising."}{" "}
-          <Link href="/settings?tab=payments" className="font-semibold text-osce-accent hover:underline">
+          <Link href="/settings?tab=payments" className="font-medium text-osce-accent hover:text-osce-accent-hover">
             See plans
           </Link>
-        </p>
+        </>
+      ) : remaining !== null ? (
+        `${remaining} ${remaining === 1 ? "station" : "stations"} left. A session of 3 stations takes about 45 minutes.`
       ) : null}
-    </div>
+    </B2CHero>
   );
 }
 

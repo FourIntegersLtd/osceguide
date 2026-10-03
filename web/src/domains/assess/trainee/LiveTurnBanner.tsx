@@ -1,7 +1,6 @@
 "use client";
 
-import { HiMiniSignal } from "react-icons/hi2";
-import { b2bTokens } from "@/foundation/ui";
+import { B2CHero, Badge } from "@/foundation/ui";
 import { JoinRoom } from "@/domains/assess/trainee/JoinRoom";
 import type { MySitting } from "@/domains/assess/trainee/api";
 import { liveBannerCopy } from "@/domains/assess/trainee/support";
@@ -34,24 +33,17 @@ function LiveCard({ sitting }: { sitting: MySitting }) {
   const copy = liveBannerCopy(sitting);
 
   return (
-    <div
-      className={`rounded-lg border p-5 ${b2bTokens.b2bSemanticSuccess}`}
+    <B2CHero
+      eyebrow="Today"
+      title={copy.title}
+      action={<JoinRoom sitting={sitting} />}
+      aside={
+        <Badge variant="success" dot>
+          Live
+        </Badge>
+      }
     >
-      <div className="flex flex-col gap-4">
-        <div className="flex items-start gap-3">
-          <span className={`${b2bTokens.b2bIconChipBase} ${b2bTokens.b2bChipHueClasses.green}`}>
-            <HiMiniSignal className="h-5 w-5 animate-pulse" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-osce-body font-semibold">{copy.title}</p>
-            <p className="mt-0.5 text-osce-body font-medium opacity-90">
-              {sitting.name} · {sitting.circuit_name}
-            </p>
-            <p className="mt-1 text-osce-body leading-snug text-b2b-mid">{copy.body}</p>
-          </div>
-        </div>
-        <JoinRoom sitting={sitting} />
-      </div>
-    </div>
+      {`${sitting.name} · ${sitting.circuit_name}. ${copy.body}`}
+    </B2CHero>
   );
 }

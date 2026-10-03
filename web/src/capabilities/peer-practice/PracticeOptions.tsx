@@ -19,10 +19,10 @@ export function PracticeOptionCards({
   onSchedulePractice,
   isJoiningQueue = false,
   variant = "inline",
-  livePracticeLabel = "Live Practice",
-  schedulePracticeLabel = "Schedule Practice",
-  livePracticeActionLabel = "Start Now",
-  schedulePracticeActionLabel = "Post Availability",
+  livePracticeLabel = "Live practice",
+  schedulePracticeLabel = "Schedule practice",
+  livePracticeActionLabel = "Start now",
+  schedulePracticeActionLabel = "Post availability",
 }: {
   onLivePractice: () => void;
   onSchedulePractice: () => void;
@@ -54,7 +54,7 @@ export function PracticeOptionCards({
           {isJoiningQueue ? (
             <div className="flex items-center gap-2 text-osce-accent">
               <HiOutlineArrowPath className="h-3.5 w-3.5 animate-spin" />
-              <span className="text-osce-body font-medium">Joining...</span>
+              <span className="text-osce-body font-medium">Joining…</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-osce-accent transition-all duration-200 group-hover:gap-2.5">

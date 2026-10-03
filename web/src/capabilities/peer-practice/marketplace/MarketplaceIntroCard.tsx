@@ -1,6 +1,8 @@
 "use client";
 
-import { b2cCard, b2cCardPadding, b2cGhostButton } from "@/foundation/ui/productTokens";
+import { HiOutlineInformationCircle } from "react-icons/hi2";
+import { Button } from "@/foundation/ui";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 
 /** What the marketplace is, said once at the top; the exam is named by the backend. */
 export function MarketplaceIntroCard({
@@ -12,28 +14,18 @@ export function MarketplaceIntroCard({
 }) {
   const examLabel = examName ?? "same";
   return (
-    <div
-      className={`${b2cCard} ${b2cCardPadding} bg-gradient-to-br from-osce-accent-muted/90 to-b2c-surface`}
-    >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-2">
-          <h2 className="text-osce-body font-semibold text-osce-ink-900">
-            Colleague Video Sessions
-          </h2>
-          <p className="text-osce-body leading-relaxed text-b2c-text-secondary">
-            Through the marketplace, you can practice with colleagues preparing for the{" "}
-            {examLabel} exam via live video calls. Post your availability or claim someone
-            else&apos;s slot and get matched with doctors across the country.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onLearnMore}
-          className={`w-full shrink-0 sm:w-auto ${b2cGhostButton}`}
-        >
+    <B2CHero
+      eyebrow="Colleague video sessions"
+      title={`Practise the ${examLabel} exam with a colleague over video`}
+      action={
+        <Button type="button" variant="secondary" onClick={onLearnMore} className="gap-1.5">
+          <HiOutlineInformationCircle className="h-4 w-4" aria-hidden />
           Learn how it works
-        </button>
-      </div>
-    </div>
+        </Button>
+      }
+    >
+      Post your availability or claim someone&apos;s slot. Roles are assigned automatically, and the
+      timers start when you both join.
+    </B2CHero>
   );
 }

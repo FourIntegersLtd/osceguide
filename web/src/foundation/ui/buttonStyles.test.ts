@@ -5,10 +5,11 @@ import { getButtonClassName } from "./buttonStyles";
 describe("getButtonClassName — the commit tier", () => {
   it("renders black at rest and darkens on hover", () => {
     const cls = getButtonClassName({ themeType: "b2c", variant: "commit" });
-    // Rest sits at ink-800 so the hover has room to move: there is no usable
-    // step below ink-900, so the pair lives one rung up the ramp.
-    assert.match(cls, /\bbg-osce-ink-800\b/);
-    assert.match(cls, /\bhover:bg-osce-ink-900\b/);
+    // The colour pair is a token each arm sets (tokens.css): ink-800 resting
+    // and ink-900 on hover, except train's quiet skin, which points it at the
+    // accent so the two tiers merge.
+    assert.match(cls, /\bbg-osce-commit\b/);
+    assert.match(cls, /\bhover:bg-osce-commit-hover\b/);
     assert.doesNotMatch(cls, /hover:bg-osce-accent\b/);
   });
 
@@ -29,8 +30,8 @@ describe("getButtonClassName — the commit tier", () => {
     // The two arms disagree about how often black appears, not about what it
     // is: b2b makes it the default primary, b2c reserves it. One colour pair.
     const b2b = getButtonClassName({ themeType: "b2b", variant: "commit" });
-    assert.match(b2b, /\bbg-osce-ink-800\b/);
-    assert.match(b2b, /\bhover:bg-osce-ink-900\b/);
+    assert.match(b2b, /\bbg-osce-commit\b/);
+    assert.match(b2b, /\bhover:bg-osce-commit-hover\b/);
     assert.notEqual(b2b, getButtonClassName({ themeType: "b2b", variant: "primary" }));
   });
 

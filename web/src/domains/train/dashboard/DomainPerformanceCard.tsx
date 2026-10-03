@@ -1,7 +1,8 @@
 "use client";
 
 import { HiOutlineInformationCircle } from "react-icons/hi2";
-import { ChartCard, RagCompositionBars, ThresholdBars } from "@/foundation/charts";
+import { ChartCard, ThresholdBars, type RagRow } from "@/foundation/charts";
+import { B2CBandBar, productTokens } from "@/foundation/ui";
 import { NoDataMessage } from "@/domains/train/dashboard/DashboardLayout";
 import type { DomainChart } from "@/domains/train/dashboard/dashboardView";
 
@@ -29,14 +30,11 @@ export function DomainPerformanceCard({
       title="Domain performance"
       subtitle={chart.subtitle}
       loading={loading}
+      inset={chart.kind !== "counts"}
       action={
         onAbout ? (
-          <button
-            type="button"
-            onClick={onAbout}
-            className="text-osce-ink-400 transition-colors hover:text-osce-accent"
-          >
-            <HiOutlineInformationCircle className="h-5 w-5" title="Domain performance" />
+          <button type="button" onClick={onAbout} aria-label="About domain performance" className={productTokens.b2cIconButton}>
+            <HiOutlineInformationCircle className="h-4 w-4" aria-hidden />
           </button>
         ) : undefined
       }
@@ -44,7 +42,7 @@ export function DomainPerformanceCard({
       {empty ? (
         <NoDataMessage />
       ) : chart.kind === "counts" ? (
-        <RagCompositionBars data={chart.rows} emptyHint="Complete a station to see your grades by domain." />
+        <DomainRows rows={chart.rows} />
       ) : (
         <ThresholdBars
           data={chart.bars}
@@ -59,5 +57,29 @@ export function DomainPerformanceCard({
         />
       )}
     </ChartCard>
+  );
+}
+
+/** One row per domain: its name, how much was competent, and the band bar. */
+function DomainRows({ rows }: { rows: RagRow[] }) {
+  return (
+    <div>
+      {rows.map((row) => {
+        const competent = row.Competent;
+        const developing = row["Developing Competency"];
+        const development = row["Requires Development"];
+        const total = competent + developing + development;
+        const pct = (value: number) => (total > 0 ? Math.round((value / total) * 100) : 0);
+        return (
+          <div key={row.name} className="flex flex-col gap-2 border-t border-b2c-border-light py-3.5 first:border-t-0 first:pt-0">
+            <div className="flex justify-between gap-3">
+              <span className="font-medium text-osce-ink-900">{row.name}</span>
+              <span className="shrink-0 text-osce-meta tabular-nums text-b2c-text-muted">{pct(competent)}% competent</span>
+            </div>
+            <B2CBandBar competent={pct(competent)} developing={pct(developing)} development={pct(development)} />
+          </div>
+        );
+      })}
+    </div>
   );
 }

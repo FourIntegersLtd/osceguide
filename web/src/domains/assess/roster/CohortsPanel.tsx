@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { HiOutlineRectangleGroup } from "react-icons/hi2";
 import { Alert, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { PanelCard } from "@/domains/assess/team/chrome";
@@ -73,7 +72,6 @@ export function CohortsPanel({
     <PanelCard
       title="Cohorts"
       subtitle="An intake, such as a start date. Each trainee can be in one cohort, chosen when they are added."
-      icon={<HiOutlineRectangleGroup className="h-5 w-5" aria-hidden />}
     >
       {error ? (
         <Alert tone="danger" className="mb-3">
@@ -90,7 +88,7 @@ export function CohortsPanel({
           {cohorts.map((cohort) => (
             <li
               key={cohort.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-b2b-border px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-panel border border-b2b-border px-3 py-2"
             >
               <span className="min-w-0 truncate text-osce-body font-medium text-b2b-headline">
                 {cohort.name}

@@ -105,7 +105,7 @@ function Form({
         <p className="mt-1 text-osce-body font-medium text-b2b-headline">{trainee.email}</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-lg border border-b2b-border bg-b2b-cream/60 p-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 rounded-panel border border-b2b-border bg-b2b-cream/60 p-4 sm:grid-cols-2">
         <div>
           <label
             htmlFor="assess-trainee-edit-first"

@@ -1,24 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { HiOutlineArrowPath, HiOutlineXCircle } from "react-icons/hi2";
+import { HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
 import Alert from "@/foundation/forms/Alert";
 import {
   AsyncBoundary,
-  Back,
   B2CPageHeader,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
   Button,
+  ButtonLink,
+  Card,
+  cn,
   productTokens,
 } from "@/foundation/ui";
+import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync, useSearchQuery } from "@/foundation/hooks";
 import { browseLibrary } from "@/capabilities/stations";
 import { readSet, updateSet, type StationSet } from "@/domains/train/api";
 import { entriesInOrder } from "@/domains/train/mocks/model";
 
-const { b2cFieldLabel, b2cInputBase } = productTokens;
+const { b2cFieldLabel, b2cIconButton, b2cInputBase } = productTokens;
 
 /** How many stations the search list shows at once. Typing narrows it on the server. */
 const SEARCH_RESULTS_LIMIT = 25;
@@ -32,13 +32,15 @@ interface PickableStation {
 }
 
 /**
- * The pencil's page: the retiring client's `UpdateMock`, control for control.
+ * The pencil's page (canvas `train-session-edit`): the retiring client's
+ * `UpdateMock`, control for control.
  *
  * A name field, a search box that asks the server for stations of the session's
  * exam matching what was typed, and the chosen stations with a remove button
  * each. One PATCH saves the name and the list together.
  */
 export function MockUpdate({ setId }: { setId: string }) {
+  const { hrefFor } = useSurface();
   const state = useAsync(
     async (signal) => {
       const set = await readSet(setId, signal);
@@ -66,21 +68,33 @@ export function MockUpdate({ setId }: { setId: string }) {
   );
 
   return (
-    <>
-      <Back />
+    <div className="mx-auto max-w-osce-page space-y-6">
+      <B2CPageHeader
+        back={{ href: hrefFor(`/mocks/${setId}`), label: "Session" }}
+        title="Update session"
+        subtitle="Change the session name and add or remove stations."
+      />
       <AsyncBoundary state={state}>
-        {({ set, selected }) => <UpdateForm set={set} initialStations={selected} />}
+        {({ set, selected }) => (
+          <UpdateForm
+            set={set}
+            initialStations={selected}
+            cancelHref={hrefFor(`/mocks/${setId}`)}
+          />
+        )}
       </AsyncBoundary>
-    </>
+    </div>
   );
 }
 
 function UpdateForm({
   set,
   initialStations,
+  cancelHref,
 }: {
   set: StationSet;
   initialStations: PickableStation[];
+  cancelHref: string;
 }) {
   const [mockName, setMockName] = useState(set.name);
   const [currentMockStations, setCurrentMockStations] = useState(initialStations);
@@ -136,116 +150,117 @@ function UpdateForm({
         stationVersionIds: currentMockStations.map((station) => station.versionId),
       });
       setUpdatedMock(true);
-      setSuccessMessage("Session has been updated successfully.");
+      setSuccessMessage("Session updated.");
     } catch (cause) {
-      setError(errorMessage(cause) || "Failed to update session. Please try again.");
+      setError(errorMessage(cause) || "Could not update the session. Try again.");
     } finally {
       setIsUpdatingMock(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <B2CPageHeader
-        title="Update Session"
-        subtitle="Change the session name and add or remove stations from this mock"
-      />
+    <form onSubmit={(event) => void handleUpdateMock(event)} className="max-w-[640px]">
+      <Card title="Session">
+        <div className="space-y-5">
+          {successMessage && <Alert message={successMessage} type="success" />}
+          {error && <Alert message={error} type="error" />}
 
-      <form onSubmit={(event) => void handleUpdateMock(event)} className="lg:w-3/5">
-        <B2CPanelCard className="mt-0">
-          <B2CPanelCardBody className="space-y-6">
-            {successMessage && <Alert message={successMessage} type="success" />}
-            {error && <Alert message={error} type="error" />}
+          <div className="space-y-1.5">
+            <label htmlFor="mock_name" className={b2cFieldLabel}>
+              Name
+            </label>
+            <input
+              id="mock_name"
+              required
+              value={mockName}
+              onChange={(event) => setMockName(event.target.value)}
+              className={b2cInputBase}
+              placeholder="Session name"
+            />
+          </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="mock_name" className={b2cFieldLabel}>
-                Give your session a name
-              </label>
-              <input
-                id="mock_name"
-                required
-                value={mockName}
-                onChange={(event) => setMockName(event.target.value)}
-                className={b2cInputBase}
-                placeholder="Enter session name"
+          <div className="space-y-1.5">
+            <label htmlFor="station_search" className={b2cFieldLabel}>
+              Add stations
+            </label>
+            <div className="relative" ref={dropdownRef}>
+              <HiOutlineMagnifyingGlass
+                aria-hidden
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-b2c-text-muted"
               />
+              <input
+                id="station_search"
+                type="text"
+                placeholder="Search stations"
+                value={stationSearch}
+                onChange={(event) => setStationSearch(event.target.value)}
+                onFocus={() => setIsDropdownOpen(true)}
+                className={cn(b2cInputBase, "pl-9")}
+              />
+
+              {isDropdownOpen && (
+                <div className="absolute z-10 mt-1.5 max-h-60 w-full overflow-auto rounded-osce-lg border border-osce-border bg-osce-surface py-1 shadow-lg">
+                  {searchedStations.length > 0 ? (
+                    searchedStations.map((station) => (
+                      <button
+                        key={station.versionId}
+                        type="button"
+                        className="block w-full px-3 py-2 text-left text-osce-body text-osce-ink-900 transition-colors hover:bg-b2c-surface-muted"
+                        onClick={() => handleStationSelect(station)}
+                      >
+                        {station.name}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-osce-body text-b2c-text-muted">No stations found</div>
+                  )}
+                </div>
+              )}
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="station_search" className={b2cFieldLabel}>
-                Select stations
-              </label>
-              <div className="relative" ref={dropdownRef}>
-                <input
-                  id="station_search"
-                  type="text"
-                  placeholder="Search stations..."
-                  value={stationSearch}
-                  onChange={(event) => setStationSearch(event.target.value)}
-                  onFocus={() => setIsDropdownOpen(true)}
-                  className={b2cInputBase}
-                />
-
-                {isDropdownOpen && (
-                  <div className="absolute z-10 mt-1.5 max-h-60 w-full overflow-auto rounded-md border border-b2c-border bg-osce-surface">
-                    {searchedStations.length > 0 ? (
-                      searchedStations.map((station) => (
-                        <button
-                          key={station.versionId}
-                          type="button"
-                          className="block w-full px-3 py-2.5 text-left text-osce-body text-osce-ink-900 transition-colors hover:bg-b2c-surface-muted"
-                          onClick={() => handleStationSelect(station)}
-                        >
-                          {station.name}
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-3 py-2.5 text-osce-body text-b2c-text-muted">No stations found</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <h3 className={b2cFieldLabel}>Selected stations</h3>
-              <div className="space-y-2">
-                {currentMockStations.map((station) => (
-                  <div
-                    key={station.versionId}
-                    className="flex items-center justify-between rounded-md border border-b2c-border bg-b2c-surface-muted px-3 py-2"
-                  >
-                    <span className="text-osce-body text-osce-ink-900">{station.name}</span>
+          <div className="space-y-1.5">
+            <h3 className={b2cFieldLabel}>
+              In this session · {currentMockStations.length}
+            </h3>
+            {currentMockStations.length === 0 ? (
+              <p className="rounded-osce-lg border border-dashed border-osce-border px-4 py-5 text-center text-osce-meta text-b2c-text-muted">
+                No stations yet. Search above to add some.
+              </p>
+            ) : (
+              <ul className="divide-y divide-osce-border-light rounded-osce-lg border border-osce-border">
+                {currentMockStations.map((station, index) => (
+                  <li key={station.versionId} className="flex min-h-[48px] items-center gap-3 pl-3 pr-1">
+                    <span className="w-5 shrink-0 font-mono text-osce-meta tabular-nums text-b2c-text-muted">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-osce-body text-osce-ink-900">
+                      {station.name}
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleRemoveStation(station.versionId)}
-                      className="text-b2c-text-muted transition-colors hover:text-osce-danger"
+                      className={b2cIconButton}
                       aria-label={`Remove ${station.name}`}
                     >
-                      <HiOutlineXCircle className="h-4 w-4" />
+                      <HiOutlineXMark aria-hidden className="h-4 w-4" />
                     </button>
-                  </div>
+                  </li>
                 ))}
-              </div>
-            </div>
-          </B2CPanelCardBody>
+              </ul>
+            )}
+          </div>
 
-          <B2CPanelCardFooter>
-            <Button type="submit" disabled={isUpdatingMock || updatedMock} className="gap-2">
-              {isUpdatingMock ? (
-                <>
-                  <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
-                  <span>Updating...</span>
-                </>
-              ) : updatedMock ? (
-                <span>Updated</span>
-              ) : (
-                <span>Update session</span>
-              )}
+          <div className="flex flex-wrap justify-end gap-2 border-t border-osce-border-light pt-4">
+            <ButtonLink href={cancelHref} variant="secondary" size="md">
+              {updatedMock ? "Back to session" : "Cancel"}
+            </ButtonLink>
+            <Button type="submit" disabled={isUpdatingMock || updatedMock} isLoading={isUpdatingMock}>
+              {updatedMock ? "Updated" : "Update session"}
             </Button>
-          </B2CPanelCardFooter>
-        </B2CPanelCard>
-      </form>
-    </div>
+          </div>
+        </div>
+      </Card>
+    </form>
   );
 }

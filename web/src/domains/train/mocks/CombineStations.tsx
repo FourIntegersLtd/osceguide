@@ -4,8 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineArrowPath,
-  HiOutlineSquare3Stack3D,
-  HiOutlineXCircle,
+  HiOutlineXMark,
 } from "react-icons/hi2";
 import {
   Alert,
@@ -14,11 +13,6 @@ import {
   B2CPanelCardFooter,
   B2CPanelCardHeader,
   Button,
-  ModalCallout,
-  ModalContent,
-  ModalHelper,
-  ModalPrimaryButton,
-  ModalTitle,
   cn,
   productTokens,
 } from "@/foundation/ui";
@@ -28,6 +22,7 @@ import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
 import { createSet } from "@/domains/train/api";
 import { incompleteVersionIds } from "@/domains/train/mocks/model";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 import {
   defaultExamCode,
   examByCode,
@@ -130,27 +125,17 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
   };
 
   return (
-    <ModalContent className="max-w-2xl space-y-3 pb-24">
-      <div>
-        <ModalTitle>Combine Attempted Stations</ModalTitle>
-        <ModalHelper>
-          Create a focused practice session by combining stations you have attempted across several
-          mocks.
-        </ModalHelper>
-      </div>
+    <div className="space-y-6 pb-24">
+      <B2CHero eyebrow="Combine stations" title="Build a focused session from stations you've sat">
+        {incompleteIds.length === 0
+          ? "Available once you have attempted a few stations. You can then run the ones that went worst again together."
+          : "Pick the stations that went worst and run them again together."}
+      </B2CHero>
 
-      {incompleteIds.length === 0 ? (
-        <ModalCallout label="Note" className="mt-0">
-          This feature becomes available after you attempt some mocks. You can then create a custom
-          session from stations you have already tried.
-        </ModalCallout>
-      ) : (
-        <form onSubmit={handleCreate} className="space-y-3">
+      {incompleteIds.length === 0 ? null : (
+        <form onSubmit={handleCreate} className="max-w-3xl">
           <B2CPanelCard className="mt-0">
-            <B2CPanelCardHeader>
-              <HiOutlineSquare3Stack3D className="h-4 w-4 text-osce-accent" aria-hidden />
-              Session details
-            </B2CPanelCardHeader>
+            <B2CPanelCardHeader className={productTokens.b2cSectionTitle}>Session details</B2CPanelCardHeader>
             <B2CPanelCardBody className="space-y-5">
               <div>
                 <label htmlFor="mock_name" className={productTokens.b2cFieldLabel}>
@@ -162,23 +147,23 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
                   value={mockName}
                   onChange={(event) => setMockName(event.target.value)}
                   className={cn(productTokens.b2cInputBase, "mt-1.5")}
-                  placeholder="Enter session name"
+                  placeholder="Name this session"
                 />
               </div>
 
               <div ref={dropdownRef} className="relative">
-                <label htmlFor="combine-stations-select-attempted-stations" className={productTokens.b2cFieldLabel}>Select attempted stations</label>
+                <label htmlFor="combine-stations-select-attempted-stations" className={productTokens.b2cFieldLabel}>Search stations</label>
                 <input
                   id="combine-stations-select-attempted-stations"
                   type="text"
-                  placeholder="Search stations..."
+                  placeholder="Search stations"
                   value={stationSearch}
                   onChange={(event) => setStationSearch(event.target.value)}
                   onFocus={() => setIsDropdownOpen(true)}
                   className={cn(productTokens.b2cInputBase, "mt-1.5")}
                 />
                 {isDropdownOpen && filteredStations.length > 0 ? (
-                  <div className="absolute z-10 mt-1.5 max-h-60 w-full overflow-auto rounded-md border border-b2c-border bg-osce-surface">
+                  <div className="absolute z-10 mt-1.5 max-h-60 w-full overflow-auto rounded-control border border-b2c-border bg-osce-surface p-1 shadow-[0_8px_24px_rgba(16,24,40,0.08)]">
                     {filteredStations.map((station) => (
                       <button
                         key={station.version_id}
@@ -215,19 +200,15 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
             </B2CPanelCardBody>
 
             {selected.length > 0 ? (
-              <div className="border-t border-b2c-border">
-                <div className={productTokens.b2cPanelSubheader}>
-                  Selected stations ({selected.length})
-                </div>
-                <div className="divide-y divide-b2c-border">
+              <div className="px-4 pb-1 sm:px-5">
+                <p className={productTokens.b2cFieldLabel}>Selected stations ({selected.length})</p>
+                <div className="mt-2 flex flex-wrap gap-2">
                   {selected.map((station) => (
-                    <div
+                    <span
                       key={station.version_id}
-                      className="flex items-center justify-between gap-3 px-4 py-3"
+                      className="inline-flex h-7 items-center gap-1 rounded-osce-sm bg-b2c-surface-muted pl-2.5 pr-1 text-osce-meta font-medium text-osce-ink-700"
                     >
-                      <span className="min-w-0 text-osce-body text-osce-ink-900">
-                        {station.title}
-                      </span>
+                      {station.title}
                       <button
                         type="button"
                         onClick={() =>
@@ -235,43 +216,37 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
                             prev.filter((item) => item.version_id !== station.version_id),
                           )
                         }
-                        className="shrink-0 text-b2c-text-muted transition hover:text-osce-danger"
+                        className="inline-flex h-5 w-5 items-center justify-center rounded text-b2c-text-muted hover:bg-osce-navActive hover:text-osce-ink-900"
                         aria-label={`Remove ${station.title}`}
                       >
-                        <HiOutlineXCircle className="h-4 w-4" />
+                        <HiOutlineXMark className="h-3.5 w-3.5" />
                       </button>
-                    </div>
+                    </span>
                   ))}
                 </div>
               </div>
             ) : null}
 
             {errorText ? (
-              <div className="border-t border-b2c-border px-4 pt-3">
+              <div className="px-4 pt-3 sm:px-5">
                 <Alert tone="danger">{errorText}</Alert>
               </div>
             ) : null}
             {successMessage ? (
-              <div className="border-t border-b2c-border px-4 pt-3">
+              <div className="px-4 pt-3 sm:px-5">
                 <Alert tone="success">{successMessage}</Alert>
               </div>
             ) : null}
 
             <B2CPanelCardFooter>
-              <ModalPrimaryButton type="submit" disabled={isCreating} className="gap-2">
-                {isCreating ? (
-                  <>
-                    <HiOutlineArrowPath className="h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  "Create Session"
-                )}
-              </ModalPrimaryButton>
+              <Button type="submit" variant="primary" size="md" disabled={isCreating}>
+                {isCreating ? <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden /> : null}
+                {isCreating ? "Creating" : "Create session"}
+              </Button>
             </B2CPanelCardFooter>
           </B2CPanelCard>
         </form>
       )}
-    </ModalContent>
+    </div>
   );
 }

@@ -15,9 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.catalog import service as catalog
+from app.features.identity import service as identity
 from app.features.roster import service as roster
 from app.features.rubrics import service_marking
-from app.features.sittings import domain, domain_edit, domain_run, errors, repository
+from app.features.sittings import domain, domain_edit, domain_run, errors, repository, repository_reads
 from app.features.sittings.models import Circuit, Sitting, Slot
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
@@ -61,17 +62,23 @@ async def create_sitting(
         scheduled_for=scheduled_for,
         programme_id=programme_id,
     )
-    return sitting_read(sitting, [])
+    return (await _with_totals(session, org_id, [sitting_read(sitting, [])]))[0]
 
 
 async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRead:
     """A sitting with every circuit and slot it has, for a console screen."""
     sitting = await _require_sitting(session, org_id, sitting_id)
-    circuits = []
+    reads: list[CircuitRead] = []
     for circuit in await repository.circuits_for_sitting(session, org_id, sitting_id):
         slots = await repository.slots_for_circuit(session, org_id, circuit.id)
-        circuits.append(circuit_read(circuit, slots))
-    return sitting_read(sitting, circuits)
+        reads.append(circuit_read(circuit, slots))
+    supervisors = await identity.user_refs_by_ids(
+        session, [read.supervisor_user_id for read in reads if read.supervisor_user_id]
+    )
+    for read in reads:
+        person = supervisors.get(read.supervisor_user_id) if read.supervisor_user_id else None
+        read.supervisor_name = person.name if person else None
+    return (await _with_totals(session, org_id, [sitting_read(sitting, reads)]))[0]
 
 
 async def list_sittings(
@@ -79,7 +86,25 @@ async def list_sittings(
 ) -> tuple[list[SittingRead], str | None]:
     """A page of this organisation's sittings, newest first."""
     sittings, next_cursor = await repository.list_sittings(session, org_id, limit=limit, cursor=cursor)
-    return [sitting_read(sitting, []) for sitting in sittings], next_cursor
+    return await _with_totals(
+        session, org_id, [sitting_read(sitting, []) for sitting in sittings]
+    ), next_cursor
+
+
+async def _with_totals(
+    session: AsyncSession, org_id: uuid.UUID, reads: list[SittingRead]
+) -> list[SittingRead]:
+    """Fill each sitting's programme name and candidate count, two queries for the lot."""
+    names = await catalog.programme_names(
+        session, org_id, [read.programme_id for read in reads if read.programme_id]
+    )
+    counts = await repository_reads.candidate_counts_for_sittings(
+        session, org_id, [read.id for read in reads]
+    )
+    for sitting in reads:
+        sitting.programme_name = names.get(sitting.programme_id) if sitting.programme_id else None
+        sitting.candidate_count = counts.get(sitting.id, 0)
+    return reads
 
 
 async def add_circuit(

@@ -1,52 +1,73 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { HiArrowRight } from "react-icons/hi";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import {
+  Badge,
+  B2CGroupedRow,
+  B2CGroupedRowLink,
+  B2CGroupedSection,
+} from "@/foundation/ui";
 import type { StationFeedbackState } from "@/domains/train/mocks/model";
 
-const reviewLinkClass =
-  "inline-flex items-center gap-1 font-semibold text-osce-accent hover:underline";
-
 /**
- * Each station in a finished session with where its feedback is: a link once
- * it is marked, otherwise why there is none yet.
+ * Each station in a finished session with where its feedback is (canvas
+ * `train-complete`): a link once it is marked, otherwise why there is none
+ * yet. A station that finished marking while the page was open says so.
  */
 export function StationOutcomes({
   rows,
+  readyIds,
   feedbackHref,
 }: {
   rows: { entryId: string; label: string; feedback: StationFeedbackState }[];
+  /** Stations seen marking on this visit that have since been marked. */
+  readyIds: ReadonlySet<string>;
   feedbackHref: (entryId: string) => string;
 }) {
-  const router = useRouter();
-  return rows.length > 0 ? (
-    <ul aria-label="Station outcomes" className="space-y-2 border-t border-b2c-border pt-4">
-      {rows.map((row) => (
-        <li
-          key={row.entryId}
-          className="flex flex-wrap items-center justify-between gap-2 text-osce-body text-b2c-text-secondary"
-        >
-          <span className="min-w-0 truncate">{row.label}</span>
-          {row.feedback === "review" ? (
-            <button
-              type="button"
-              onClick={() => router.push(feedbackHref(row.entryId))}
-              className={reviewLinkClass}
-            >
-              View feedback
-              <HiArrowRight className="h-4 w-4" aria-hidden />
-            </button>
-          ) : row.feedback === "marking" ? (
-            <span className="text-osce-meta text-b2c-text-muted">Marking…</span>
-          ) : row.feedback === "failed" ? (
-            // The old client could not tell a failed marking
-            // from none; saying "Not attempted" would be false.
-            <span className="text-osce-meta text-b2c-text-muted">Couldn&apos;t be marked</span>
-          ) : (
-            <span className="text-osce-meta text-b2c-text-muted">Not attempted</span>
-          )}
-        </li>
-      ))}
-    </ul>
-  ) : null;
+  if (rows.length === 0) return null;
+  return (
+    <B2CGroupedSection eyebrow="Station outcomes">
+      {rows.map((row) =>
+        row.feedback === "review" ? (
+          <B2CGroupedRowLink
+            key={row.entryId}
+            href={feedbackHref(row.entryId)}
+            title={row.label}
+            trailing={
+              <span className="flex items-center gap-3">
+                {readyIds.has(row.entryId) ? (
+                  <Badge tone="success" dot>
+                    Feedback ready
+                  </Badge>
+                ) : null}
+                <span className="text-osce-meta font-medium text-osce-accent">View feedback</span>
+              </span>
+            }
+          />
+        ) : (
+          <B2CGroupedRow
+            key={row.entryId}
+            title={row.label}
+            trailing={
+              row.feedback === "marking" ? (
+                <span className="inline-flex items-center gap-2 text-osce-meta text-b2c-text-muted">
+                  <AiOutlineLoading3Quarters
+                    className="h-3.5 w-3.5 animate-spin text-osce-accent"
+                    aria-hidden
+                  />
+                  Marking
+                </span>
+              ) : (
+                <span className="text-osce-meta text-b2c-text-muted">
+                  {/* The old client could not tell a failed marking from none;
+                      saying "Not attempted" would be false. */}
+                  {row.feedback === "failed" ? "Could not be marked" : "Not attempted"}
+                </span>
+              )
+            }
+          />
+        ),
+      )}
+    </B2CGroupedSection>
+  );
 }

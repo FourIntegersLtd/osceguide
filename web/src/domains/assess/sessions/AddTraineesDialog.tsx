@@ -123,10 +123,10 @@ export function AddTraineesDialog({
         </p>
       ) : null}
       {candidates.length > 0 ? (
-        <ul className="max-h-64 divide-y divide-b2b-border overflow-y-auto rounded-lg border border-b2b-border">
+        <ul className="max-h-64 divide-y divide-b2b-border overflow-y-auto rounded-panel border border-b2b-border">
           {candidates.map((trainee) => (
             <li key={trainee.id}>
-              <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-b2b-cream/60">
+              <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 hover:bg-canvas/60">
                 <input
                   type="checkbox"
                   checked={picked.has(trainee.user_id ?? "")}
@@ -165,7 +165,7 @@ export function AddTraineesDialog({
               setStation(event.target.value);
               setRefusal(null);
             }}
-            className="h-10 w-full rounded-lg border border-b2b-border bg-white px-3 text-osce-body text-b2b-headline"
+            className="h-10 w-full rounded-panel border border-b2b-border bg-b2b-surface px-3 text-osce-body text-b2b-headline"
           >
             <option value="">The station this circuit is running</option>
             {stations.map((choice) => (

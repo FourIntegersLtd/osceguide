@@ -10,15 +10,16 @@ import { Button, Spinner } from "@/foundation/ui";
  */
 export function WaitingInLine({ position, onLeave }: { position: number | null; onLeave: () => Promise<void> }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-8 text-center" role="status" aria-live="polite">
-      <Spinner />
-      <p className="text-osce-body font-medium text-b2c-text">All our patients are busy</p>
-      <p className="max-w-xs text-osce-meta text-b2c-text-muted">
+    <div className="flex flex-col items-start gap-3 py-6" role="status" aria-live="polite">
+      <span className="flex h-10 w-10 items-center justify-center rounded-control bg-b2c-surface-muted">
+        <Spinner />
+      </span>
+      <h2 className="text-osce-subheading font-semibold text-osce-ink-900">All our patients are busy</h2>
+      <p className="max-w-sm text-osce-body text-b2c-text-muted">
         {position ? `You are number ${position} in line. ` : ""}
-        We will connect you as soon as a patient is free. Keep this page open to hold your place.
-        Your consultation time starts when the patient joins, not before.
+        Keep this page open to hold your place. Your time starts when the patient joins.
       </p>
-      <Button variant="ghost" size="sm" onClick={() => void onLeave()}>
+      <Button variant="secondary" onClick={() => void onLeave()}>
         Leave the line
       </Button>
     </div>

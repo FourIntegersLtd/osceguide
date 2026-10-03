@@ -48,9 +48,9 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId }: {
     <AsyncBoundary
       state={state}
       empty={{
-        title: "No Debrief History Found",
+        title: "No debriefs yet",
         description:
-          "You haven’t had any debrief sessions yet. Start a debrief from a station you have already sat to talk your consultation through with Athena.",
+          "Start a debrief from a station you have already sat to talk your consultation through with Athena.",
       }}
     >
       {(debriefs) => (
@@ -64,16 +64,16 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId }: {
                   key={debrief.id}
                   className={b2cGroupedRow}
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-osce-accent-subtle">
-                    <HiOutlineChatBubbleLeftRight className="h-5 w-5 text-osce-accent" />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-b2c-surface-muted text-osce-ink-900">
+                    <HiOutlineChatBubbleLeftRight className="h-4 w-4" aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={b2cGroupedRowTitle}>Debrief Session</p>
+                    <p className={b2cGroupedRowTitle}>Debrief session</p>
                     <p className={b2cGroupedRowSubtitle}>
                       {created ? format(created, "PPP p") : ""}
                     </p>
                   </div>
-                  <HiChevronRight className="h-5 w-5 shrink-0 text-b2c-text-muted" />
+                  <HiChevronRight className="h-4 w-4 shrink-0 text-b2c-text-muted" aria-hidden />
                 </Link>
               );
             })}

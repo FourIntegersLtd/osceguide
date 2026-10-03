@@ -3,8 +3,7 @@
 import { useState } from "react";
 import {
   AsyncBoundary,
-  ModalHelper,
-  ModalPrimaryButton,
+  Button,
   Panel,
   productTokens,
 } from "@/foundation/ui";
@@ -61,9 +60,6 @@ function ExamCards({ me }: { me: Me }) {
     <>
       <Panel title="Exam">
         <div className="space-y-4">
-          <ModalHelper className="mt-0">
-            Your exam type and date. These are the same options as on your dashboard.
-          </ModalHelper>
           <div>
             <label htmlFor="settings-exam-type" className={b2cFieldLabel}>
               Exam type
@@ -111,7 +107,7 @@ function ExamDateCard({
     setError("");
     setSuccessMessage("");
     if (!examDate) {
-      setError("Please select an exam date");
+      setError(`Choose your ${dateLabel.toLowerCase()} first.`);
       return;
     }
     setSaving(true);
@@ -131,39 +127,42 @@ function ExamDateCard({
   return (
     <Panel title={dateLabel}>
       <div className="space-y-4">
-        <ModalHelper className="mt-0">
-          Adding your {dateLabel.toLowerCase()} helps us personalize your study plan and track your
-          progress more effectively.
-        </ModalHelper>
         {successMessage ? <Alert message={successMessage} type="success" /> : null}
         {error ? <Alert message={error} type="error" /> : null}
-        <div className="flex flex-col gap-2.5 sm:flex-row">
-          <label htmlFor="settings-exam-date" className="sr-only">
-            {dateLabel}
-          </label>
-          <input
-            id="settings-exam-date"
-            type="date"
-            value={examDate}
-            onChange={(event) => setExamDate(event.target.value)}
-            className={`${b2cSettingsFieldInput} flex-1`}
-          />
-          <label htmlFor="settings-exam-time" className="sr-only">
-            {timeLabel}
-          </label>
-          <input
-            id="settings-exam-time"
-            type="time"
-            value={examTime}
-            onChange={(event) => setExamTime(event.target.value)}
-            className={`${b2cSettingsFieldInput} sm:w-32`}
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="settings-exam-date" className={b2cFieldLabel}>
+              Date
+            </label>
+            <input
+              id="settings-exam-date"
+              type="date"
+              value={examDate}
+              onChange={(event) => setExamDate(event.target.value)}
+              className={`mt-1.5 ${b2cSettingsFieldInput}`}
+            />
+          </div>
+          <div>
+            <label htmlFor="settings-exam-time" className={b2cFieldLabel}>
+              {timeLabel}
+            </label>
+            <input
+              id="settings-exam-time"
+              type="time"
+              value={examTime}
+              onChange={(event) => setExamTime(event.target.value)}
+              className={`mt-1.5 ${b2cSettingsFieldInput}`}
+            />
+          </div>
         </div>
+        <p className="text-osce-meta text-ink-subtle">
+          Adding your {dateLabel.toLowerCase()} helps us pace your practice and track your countdown.
+        </p>
       </div>
       <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-        <ModalPrimaryButton type="button" onClick={() => void save()} disabled={saving}>
-          {saving ? "Saving…" : "Save date"}
-        </ModalPrimaryButton>
+        <Button type="button" onClick={() => void save()} isLoading={saving}>
+          Save date
+        </Button>
       </div>
     </Panel>
   );

@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { HiOutlinePresentationChartBar } from "react-icons/hi2";
 import { cn, productTokens as t } from "@/foundation/ui";
-import { deckSlidesCount, deckVideoUrl, type MediaItem } from "@/capabilities/media/api";
+import { deckSlidesCount, deckVideoUrl, specialtiesOf, type MediaItem } from "@/capabilities/media/api";
+import { B2CGroupedRowLink } from "@/foundation/ui/B2CGroupedList";
+import { b2cGroupedShell } from "@/foundation/ui/productTokens";
 
 /**
  * The specialty picker and its list, both filtered server-side.
@@ -15,7 +17,6 @@ export function DeckList({
   items,
   currentSlug,
   deckHref,
-  onPick,
   specialty,
   onSpecialtyChange,
   specialtyOptions,
@@ -24,62 +25,52 @@ export function DeckList({
   items: MediaItem[];
   currentSlug: string;
   deckHref: (slug: string) => string;
-  onPick: () => void;
   specialty: string;
   onSpecialtyChange: (specialty: string) => void;
   specialtyOptions: string[];
   hasUncategorized: boolean;
 }) {
   return (
-    <>
-      {specialtyOptions.length > 0 || hasUncategorized ? (
-        <div className="shrink-0 border-b border-b2c-border px-4 py-4 sm:px-5">
-          <label htmlFor="deck-specialty-filter" className={t.b2cFieldLabel}>
-            Filter by specialty
-          </label>
-          <select
-            id="deck-specialty-filter"
-            value={specialty}
-            onChange={(event) => onSpecialtyChange(event.target.value)}
-            className={cn(t.b2cInputBase, "mt-1.5")}
-          >
-            <option value="all">All specialties</option>
-            {specialtyOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-            {hasUncategorized ? <option value="other">Other / Uncategorized</option> : null}
-          </select>
-        </div>
-      ) : null}
-
-      <div className={cn("min-h-0 flex-1", t.b2cScrollY)}>
-        {items.map((deck) => {
-          const selected = deck.slug === currentSlug;
-          return (
-            <Link
-              key={deck.id}
-              href={deckHref(deck.slug)}
-              onClick={onPick}
-              scroll={false}
-              aria-current={selected ? "page" : undefined}
-              className={cn(
-                "block w-full border-b border-l-2 border-b2c-border px-4 py-4 text-left transition-colors last:border-b-0 sm:px-5",
-                selected
-                  ? "border-l-b2c-primary bg-b2c-surface-muted"
-                  : "border-l-transparent hover:bg-b2c-surface-muted",
-              )}
+    <section className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <p className={t.b2cMonoEyebrow}>Presentations</p>
+        {specialtyOptions.length > 0 || hasUncategorized ? (
+          <div className="w-full sm:w-64">
+            <label htmlFor="deck-specialty-filter" className={t.b2cFieldLabel}>
+              Filter by specialty
+            </label>
+            <select
+              id="deck-specialty-filter"
+              value={specialty}
+              onChange={(event) => onSpecialtyChange(event.target.value)}
+              className={cn(t.b2cInputBase, "mt-1.5")}
             >
-              <div className={cn(t.b2cPanelListRowTitle, selected && "text-osce-accent")}>
-                {deck.title}
-              </div>
-              <div className={cn(t.b2cPanelCardMeta, "mt-0.5")}>{deckMeta(deck)}</div>
-            </Link>
-          );
-        })}
+              <option value="all">All specialties</option>
+              {specialtyOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+              {hasUncategorized ? <option value="other">Other or uncategorised</option> : null}
+            </select>
+          </div>
+        ) : null}
       </div>
-    </>
+
+      <div className={b2cGroupedShell}>
+        {items.map((deck) => (
+          <B2CGroupedRowLink
+            key={deck.id}
+            href={deckHref(deck.slug)}
+            scroll={false}
+            active={deck.slug === currentSlug}
+            icon={HiOutlinePresentationChartBar}
+            title={deck.title}
+            meta={[specialtiesOf(deck)[0], deckMeta(deck)].filter(Boolean).join(" · ")}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 

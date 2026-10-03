@@ -14,7 +14,6 @@ export {
   screenComponent,
   screensFor,
 } from "@/surfaces/screens";
-export { navFooterFor } from "@/surfaces/navFooters";
 export { resolveWorkspace, workspacesFor } from "@/surfaces/resolveWorkspace";
 export type {
   NavContext,

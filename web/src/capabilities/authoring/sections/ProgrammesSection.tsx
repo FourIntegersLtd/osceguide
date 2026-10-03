@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
+import { HiOutlineAcademicCap, HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
 import { Alert, getInputClassName, Select } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
@@ -43,7 +43,7 @@ export function ProgrammesSection() {
   const items = programmes.data?.items ?? [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <AuthoringSectionLead
         action={
           <AuthoringButton
@@ -53,11 +53,11 @@ export function ProgrammesSection() {
             onClick={() => setAdding(true)}
           >
             <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-            Add programme
+            New programme
           </AuthoringButton>
         }
       >
-        Group this institution&apos;s sittings under one exam.
+        A programme groups this institution&apos;s sittings under one exam.
       </AuthoringSectionLead>
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
@@ -79,6 +79,14 @@ export function ProgrammesSection() {
           return (
             <AuthoringListRow
               key={programme.id}
+              leading={
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-osce-md bg-surface-raised text-ink-muted"
+                  aria-hidden
+                >
+                  <HiOutlineAcademicCap className="h-4 w-4" />
+                </span>
+              }
               title={programme.exam_name}
               meta={`${programme.exam_code} · ${programme.source}${programme.exam_owner_kind === "platform" ? " · OSCE Guide exam" : ""}`}
             >
@@ -111,7 +119,7 @@ export function ProgrammesSection() {
       <AuthoringDialog
         open={adding}
         title="Add programme"
-        lead="Pick the exam this institution's sittings will be grouped under."
+        lead="Choose the exam. Sittings you schedule for it are grouped under this programme."
         error={action.error}
         busy={action.busy === "add"}
         busyLabel="Adding…"

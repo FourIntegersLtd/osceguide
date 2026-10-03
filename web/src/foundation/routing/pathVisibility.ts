@@ -20,6 +20,7 @@ export const PRIVATE_PATH_PREFIXES: readonly string[] = [
   "/register",
   "/forgot-password",
   "/reset-password",
+  "/accept-invitation",
   "/change-password",
 ];
 

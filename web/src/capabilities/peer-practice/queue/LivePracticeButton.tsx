@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { HiOutlineUsers } from "react-icons/hi2";
-import { b2cGhostButton } from "@/foundation/ui/productTokens";
+import { Button } from "@/foundation/ui";
 import { LivePracticeModal } from "@/capabilities/peer-practice/queue/modals";
 import type { Queue } from "@/capabilities/peer-practice/support/useQueue";
 
 /**
- * "Live Practice": a ghost button and the prompt behind it.
+ * "Live practice": a secondary button and the prompt behind it.
  *
  * The queue it drives belongs to `PeerPracticeProvider`, which also raises the
  * searching modal and the toasts, so every screen that mounts this button
@@ -36,14 +36,10 @@ export function LivePracticeButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setShowModal(true)}
-        className={`flex w-full items-center justify-center gap-2 px-4 py-3 text-center text-osce-body sm:w-auto ${b2cGhostButton}`}
-      >
-        <HiOutlineUsers className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
-        <span>Live Practice</span>
-      </button>
+      <Button type="button" variant="secondary" onClick={() => setShowModal(true)} className="gap-1.5">
+        <HiOutlineUsers className="h-4 w-4 shrink-0" aria-hidden />
+        <span>Live practice</span>
+      </Button>
 
       <LivePracticeModal
         isOpen={showModal}

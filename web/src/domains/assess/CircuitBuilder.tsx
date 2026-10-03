@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { Alert, Button, Card, Input, Spinner, cn } from "@/foundation/ui";
+import { useCallback, useState, type ReactNode } from "react";
+import { Alert, Button, Input, Spinner, cn } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { StationLibrary, type LibraryStation } from "@/capabilities/stations";
 import type { CircuitShape } from "@/domains/assess/api";
@@ -158,7 +158,7 @@ export function CircuitBuilder({
         </Alert>
       )}
 
-      <Card title="Details">
+      <Panel title="Details">
         <div className="flex max-w-lg flex-col gap-3">
           <Input
             label="Name"
@@ -198,10 +198,10 @@ export function CircuitBuilder({
             />
           </div>
         </div>
-      </Card>
+      </Panel>
 
       {isExam ? (
-        <Card
+        <Panel
           title="Breaks"
           description="A break goes between two stations, never after the last one. Everyone on the circuit pauses during it."
         >
@@ -240,8 +240,8 @@ export function CircuitBuilder({
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-sm",
                           on
-                            ? "border-accent bg-accent text-ink-inverse"
-                            : "border-border bg-surface text-ink-muted hover:text-ink",
+                            ? "border-b2b-headline bg-b2b-headline text-ink-inverse"
+                            : "border-b2b-border bg-b2b-surface text-b2b-mid hover:text-b2b-headline",
                         )}
                       >
                         After station {position}
@@ -252,10 +252,10 @@ export function CircuitBuilder({
               </ul>
             )}
           </div>
-        </Card>
+        </Panel>
       ) : null}
 
-      <Card
+      <Panel
         title="Trainees"
         description={
           isExam
@@ -302,8 +302,8 @@ export function CircuitBuilder({
                     className={cn(
                       "rounded-full border px-3 py-1.5 text-sm",
                       on
-                        ? "border-accent bg-accent text-ink-inverse"
-                        : "border-border bg-surface text-ink-muted hover:text-ink",
+                        ? "border-b2b-headline bg-b2b-headline text-ink-inverse"
+                        : "border-b2b-border bg-b2b-surface text-b2b-mid hover:text-b2b-headline",
                     )}
                   >
                     {label}
@@ -313,9 +313,9 @@ export function CircuitBuilder({
             })}
           </ul>
         )}
-      </Card>
+      </Panel>
 
-      <Card title={`Stations (${stations.length})`}>
+      <Panel title={`Stations (${stations.length})`}>
         <div className="flex flex-col gap-4">
           {stations.length > 0 && (
             <ul className="flex flex-wrap gap-2">
@@ -348,10 +348,12 @@ export function CircuitBuilder({
             selectedVersionIds={new Set(stations.map((station) => station.version_id))}
           />
         </div>
-      </Card>
+      </Panel>
 
       <div className="flex justify-end">
         <Button
+          themeType="b2b"
+          variant="commit"
           onClick={submit}
           disabled={disabled || busy || stations.length === 0 || picked.size === 0 || tooManyStations}
         >
@@ -359,5 +361,24 @@ export function CircuitBuilder({
         </Button>
       </div>
     </div>
+  );
+}
+
+/** A quiet section: a hairline panel with a title, an optional line under it, and the fields. */
+function Panel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <section className="rounded-panel border border-b2b-border bg-b2b-surface p-5 sm:p-6">
+      <h2 className="text-osce-subheading font-semibold text-b2b-headline">{title}</h2>
+      {description ? <p className="mt-1 text-osce-body text-b2b-mid">{description}</p> : null}
+      {children ? <div className="mt-4">{children}</div> : null}
+    </section>
   );
 }

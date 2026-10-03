@@ -6,14 +6,17 @@
  * assistant's knowledge of the section all follow from that one list.
  * `<Capability>` turns the same registry into the 404 for an arm that does not
  * mount it.
+ *
+ * `WorkspaceSettings` is that same component; in an organisation it also hands
+ * it the organisation's tabs, for the people who run the organisation.
  */
 
 import type { Metadata } from "next";
 import { Capability } from "@/app/app/[workspace]/capability";
-import { Settings } from "@/capabilities/account";
+import { WorkspaceSettings } from "@/domains/assess";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default function Page() {
-  return <Capability id="account"><Settings /></Capability>;
+  return <Capability id="account"><WorkspaceSettings /></Capability>;
 }

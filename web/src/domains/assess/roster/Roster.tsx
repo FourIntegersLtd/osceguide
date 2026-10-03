@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  HiOutlineKey,
-  HiOutlineSquares2X2,
-  HiOutlineUserGroup,
-  HiOutlineUserPlus,
-} from "react-icons/hi2";
-import { AsyncBoundary, Button, PageHeader, TextLink } from "@/foundation/ui";
+import { AsyncBoundary, Button, B2CHero, B2CPageHeader, TextLink } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
@@ -17,15 +11,16 @@ import { TraineesPanel } from "@/domains/assess/roster/TraineesPanel";
 import { AddTraineePanel } from "@/domains/assess/roster/AddTraineePanel";
 import { GroupsPanel } from "@/domains/assess/roster/GroupsPanel";
 import { AccessPanel } from "@/domains/assess/roster/AccessPanel";
+import type { Trainee } from "@/domains/assess/api";
 import { sectionSubtitle } from "@/domains/assess/roster/support";
 
 type Section = "trainees" | "add" | "groups" | "access";
 
 const TABS: readonly Tab<Section>[] = [
-  { key: "trainees", label: "Trainees", icon: (props) => <HiOutlineSquares2X2 {...props} /> },
-  { key: "add", label: "Add people", icon: (props) => <HiOutlineUserPlus {...props} /> },
-  { key: "groups", label: "Groups", icon: (props) => <HiOutlineUserGroup {...props} /> },
-  { key: "access", label: "Exam access", icon: (props) => <HiOutlineKey {...props} /> },
+  { key: "trainees", label: "Trainees" },
+  { key: "add", label: "Add people" },
+  { key: "groups", label: "Groups" },
+  { key: "access", label: "Exam access" },
 ];
 
 /**
@@ -60,13 +55,13 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
       <AsyncBoundary state={state}>
         {(data) => (
           <>
-            <PageHeader
+            <B2CPageHeader
               title="Trainees"
-              description={sectionSubtitle(section, {
+              subtitle={sectionSubtitle(section, {
                 trainees: data.trainees.length,
                 groups: data.groups.length,
               })}
-              actions={
+              action={
                 canManage && section === "trainees" ? (
                   <Button themeType="b2b" variant="commit" onClick={() => setSection("add")}>
                     Add trainees
@@ -75,7 +70,19 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
               }
             />
 
-            <TabStrip tabs={TABS} active={section} onSelect={setSection} label="Roster sections" />
+            {section === "trainees" && data.trainees.length > 0 ? (
+              <B2CHero title={rosterHeadline(data.trainees)}>
+                {rosterDetail(data.trainees)}
+              </B2CHero>
+            ) : null}
+
+            <TabStrip
+              tabs={TABS.map((tab) =>
+                tab.key === "trainees" ? { ...tab, count: data.trainees.length } : tab,
+              )}
+              active={section} onSelect={setSection}
+              label="Roster sections"
+            />
 
             {section === "trainees" ? (
               <TraineesPanel
@@ -122,4 +129,20 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
       </p>
     </div>
   );
+}
+
+function programmeCount(trainees: Trainee[]): number {
+  return new Set(trainees.flatMap((trainee) => trainee.programme_names ?? [])).size;
+}
+
+/** "N trainees across M programmes", counting only programmes someone is rostered on. */
+function rosterHeadline(trainees: Trainee[]): string {
+  const people = `${trainees.length} ${trainees.length === 1 ? "trainee" : "trainees"}`;
+  const count = programmeCount(trainees);
+  return `${people} across ${count} ${count === 1 ? "programme" : "programmes"}`;
+}
+
+function rosterDetail(trainees: Trainee[]): string {
+  const sat = trainees.reduce((total, trainee) => total + trainee.stations_sat, 0);
+  return `${sat} ${sat === 1 ? "station" : "stations"} sat so far.`;
 }

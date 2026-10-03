@@ -29,3 +29,13 @@ def test_a_message_is_abandoned_after_enough_attempts() -> None:
 
 def test_the_next_attempt_is_scheduled_from_now() -> None:
     assert domain.next_available(attempts=1, now=NOW) == NOW + timedelta(seconds=domain.retry_delay(1))
+
+
+def test_the_invitation_email_carries_the_link_and_the_board_wording() -> None:
+    from app.features.notifications import service
+
+    html = service._render("invitation", {"token": "tok123", "invited_to": "Kings <b>"})
+    assert "/accept-invitation?token=tok123" in html
+    assert "Kings &lt;b&gt; has invited you to OSCE Guide. Set a password to get started." in html
+    assert ">Set your password</a>" in html
+    assert "This link expires in 7 days." in html

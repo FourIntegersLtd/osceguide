@@ -106,6 +106,23 @@ export function resendInvitation(
   );
 }
 
+export type BulkInvitationResponse = components["schemas"]["BulkMembershipInvitationResponse"];
+
+/**
+ * The same link again, for several people in one request.
+ *
+ * Each row answers for itself: `sent`, `already_accepted` or `not_found`.
+ */
+export function resendInvitations(
+  slug: string,
+  membershipIds: string[],
+): Promise<BulkInvitationResponse> {
+  return platformRequest<BulkInvitationResponse>(
+    `${orgPath(slug)}/memberships/bulk/resend-invitation`,
+    { method: "POST", body: { membership_ids: membershipIds } },
+  );
+}
+
 export interface AuditFilters {
   /** Exactly this person, any case. */
   actorEmail?: string | null;

@@ -4,11 +4,9 @@ import { useState } from "react";
 import { HiOutlineTrash } from "react-icons/hi2";
 import {
   AsyncBoundary,
-  AthenaIdentity,
+  Button,
   Checkbox,
   ConfirmModal,
-  ModalDangerButton,
-  Panel,
   productTokens,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
@@ -21,8 +19,12 @@ import {
 } from "@/capabilities/account/api";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { noteSentence } from "@/capabilities/account/settings/tutorNotes";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 
-const { b2cFieldLabel } = productTokens;
+const { b2cMonoEyebrow } = productTokens;
+
+const ROW_LIST =
+  "divide-y divide-border overflow-hidden rounded-osce-lg border border-border bg-surface";
 
 /**
  * What the tutor remembers about you, and the way to make it forget.
@@ -54,33 +56,17 @@ export default function TutorMemoryPanel() {
   };
 
   return (
-    <SettingsTabShell fullWidth>
+    <SettingsTabShell>
       <AsyncBoundary state={memory}>
         {(data: TutorMemory) => (
           <>
-            <Panel title="What Athena remembers">
-              <div className="space-y-4">
-                <AthenaIdentity
-                  layout="inline"
-                  description="Athena keeps notes from your consultations and debriefs so she can pick up where you left off. Everything she holds is here, and you can make her forget any of it."
-                />
-
-                {data.notes.length === 0 ? (
-                  <p className="rounded-osce-md bg-canvas p-3 text-osce-body italic text-ink-subtle sm:p-4">
-                    Athena has not made any notes yet. She starts after your first
-                    consultation.
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-border rounded-osce-lg border border-border">
-                    {data.notes.map((note) => (
-                      <NoteRow key={note.id} note={note} onForgotten={memory.reload} />
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-                <ModalDangerButton
+            <B2CHero
+              eyebrow="What Athena remembers"
+              title="Athena keeps notes so she can pick up where you left off"
+              action={
+                <Button
                   type="button"
+                  variant="secondary"
                   onClick={() => setConfirmForget(true)}
                   disabled={
                     data.notes.length === 0 &&
@@ -91,9 +77,26 @@ export default function TutorMemoryPanel() {
                 >
                   <HiOutlineTrash className="h-4 w-4" aria-hidden />
                   Forget everything
-                </ModalDangerButton>
-              </div>
-            </Panel>
+                </Button>
+              }
+            >
+              From your consultations and debriefs. Forget any note, or all of them.
+            </B2CHero>
+
+            <section>
+              <p className={`mb-2 ${b2cMonoEyebrow}`}>Notes</p>
+              {data.notes.length === 0 ? (
+                <p className="rounded-osce-lg border border-dashed border-border p-4 text-osce-body text-ink-subtle">
+                  Athena has not made any notes yet. She starts after your first consultation.
+                </p>
+              ) : (
+                <ul className={ROW_LIST}>
+                  {data.notes.map((note) => (
+                    <NoteRow key={note.id} note={note} onForgotten={memory.reload} />
+                  ))}
+                </ul>
+              )}
+            </section>
 
             <ActivityCard memory={data} />
           </>
@@ -146,24 +149,18 @@ function NoteRow({ note, onForgotten }: { note: TutorNote; onForgotten: () => vo
   };
 
   return (
-    <li className="flex items-start justify-between gap-4 px-4 py-3">
-      <div className="min-w-0">
-        <p className="text-osce-meta capitalize text-ink-subtle">
-          {note.kind.replace(/_/g, " ")}
+    <li className="flex min-h-[54px] items-center gap-3 px-4 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-osce-body font-medium text-ink">{noteSentence(note)}</p>
+        <p className="text-osce-meta text-ink-subtle">
+          <span className="capitalize">{note.kind.replace(/_/g, " ")}</span> ·{" "}
+          {new Date(note.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
         </p>
-        <p className="text-osce-body text-ink">{noteSentence(note)}</p>
-        <p className={b2cFieldLabel}>{new Date(note.created_at).toLocaleDateString()}</p>
         {error ? <p className="mt-1 text-osce-meta text-osce-danger">{error}</p> : null}
       </div>
-      <button
-        type="button"
-        onClick={() => void handleForget()}
-        disabled={busy}
-        aria-label="Forget this note"
-        className="shrink-0 rounded-osce-md p-1.5 text-ink-subtle transition-colors hover:bg-surface-raised hover:text-osce-danger disabled:opacity-50"
-      >
-        <HiOutlineTrash className="h-4 w-4" aria-hidden />
-      </button>
+      <Button type="button" variant="ghost" size="sm" onClick={() => void handleForget()} isLoading={busy} className="shrink-0">
+        Forget this note
+      </Button>
     </li>
   );
 }
@@ -171,22 +168,18 @@ function NoteRow({ note, onForgotten }: { note: TutorNote; onForgotten: () => vo
 function ActivityCard({ memory }: { memory: TutorMemory }) {
   if (memory.events.length === 0) return null;
   return (
-    <Panel title="What she has seen you do">
-        <ul className="divide-y divide-border rounded-osce-lg border border-border">
-          {memory.events.map((event) => (
-            <li
-              key={event.id}
-              className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-            >
-              <span className="min-w-0 truncate text-osce-body text-ink">
-                {event.title}
-              </span>
-              <span className="shrink-0 text-osce-meta text-ink-subtle">
-                {new Date(event.occurred_at).toLocaleDateString()}
-              </span>
-            </li>
-          ))}
-        </ul>
-    </Panel>
+    <section>
+      <p className={`mb-2 ${b2cMonoEyebrow}`}>What she has seen you do</p>
+      <ul className={ROW_LIST}>
+        {memory.events.map((event) => (
+          <li key={event.id} className="flex min-h-[54px] items-center justify-between gap-3 px-4 py-2.5">
+            <span className="min-w-0 truncate text-osce-body text-ink">{event.title}</span>
+            <span className="shrink-0 text-osce-meta text-ink-subtle">
+              {new Date(event.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

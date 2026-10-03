@@ -1,15 +1,10 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import Link from "next/link";
 import { HiArrowRight } from "react-icons/hi";
-import {
-  HiOutlineChatBubbleLeftRight,
-  HiOutlineClock,
-  HiOutlineCreditCard,
-  HiOutlineLockClosed,
-} from "react-icons/hi2";
-import { B2CEmptyState, ButtonLink, ModalHelper, cn, productTokens } from "@/foundation/ui";
+import { HiOutlineClock, HiOutlineLockClosed } from "react-icons/hi2";
+import { B2CEmptyState, ButtonLink, cn, productTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import type { Exam } from "@/capabilities/stations";
 import type { StationSet } from "@/domains/train/api";
@@ -67,32 +62,29 @@ export function MockSessions({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {groups.currentSubscription.length > 0 ? (
-        <SessionGroup
-          title={`Current subscription (${groups.currentSubscription.length})`}
-          icon={<HiOutlineCreditCard className="h-4 w-4 text-osce-accent" />}
-          defaultOpen
-        >
-          <ModalHelper className="mb-3 mt-0">
-            Active sessions from your current subscription period
-          </ModalHelper>
+        <SessionGroup title={`Current subscription · ${groups.currentSubscription.length}`}>
           {grid(groups.currentSubscription)}
         </SessionGroup>
       ) : null}
 
       {groups.inactiveSubscriptions.length > 0 ? (
-        <SessionGroup
-          title={`Past subscription (${groups.inactiveSubscriptions.length})`}
-          icon={<HiOutlineClock className="h-4 w-4 text-osce-accent" />}
-        >
-          <ModalHelper className="mb-3 mt-0">
-            Sessions from previous subscription periods
-          </ModalHelper>
+        <SessionGroup title={`Past subscription · ${groups.inactiveSubscriptions.length}`}>
           {grid(groups.inactiveSubscriptions)}
         </SessionGroup>
       ) : null}
     </div>
+  );
+}
+
+/** A 22px pill with a status dot (canvas `train-sessions`). */
+function StatusPill({ dot, children }: { dot: string; children: ReactNode }) {
+  return (
+    <span className="inline-flex h-[22px] items-center gap-1.5 rounded-osce-sm bg-b2c-surface-muted px-2 text-osce-caption font-medium text-osce-ink-700">
+      <span className={cn("h-1.5 w-1.5 rounded-full", dot)} aria-hidden />
+      {children}
+    </span>
   );
 }
 
@@ -118,87 +110,47 @@ const SessionCard = memo(function SessionCard({
   );
 
   return (
-    <div
-      className={cn(
-        "relative group h-56 p-5 transition-colors duration-300 sm:p-6",
-        productTokens.b2cCard,
-        "mt-0 hover:bg-b2c-secondary/60",
-        set.locked && "border-2",
-      )}
-    >
-      {state === "locked" && (
-        <div className="absolute top-2 left-2">
-          <span
-            className="inline-flex items-center rounded-full border border-b2c-border bg-b2c-secondary px-2.5 py-0.5 text-osce-caption font-medium text-osce-ink-900"
-            title="From a past subscription. You can review it, but not reattempt it."
-          >
-            <HiOutlineLockClosed className="mr-1 h-3 w-3" />
-            Review only
-          </span>
-        </div>
-      )}
-      {state === "completed" && (
-        <div className="absolute top-2 left-2">
-          <span className="inline-flex items-center rounded-full bg-osce-success-bg px-2.5 py-0.5 text-osce-caption font-medium text-osce-success-text">
-            Completed
-          </span>
-        </div>
-      )}
-      {state === "attempted" && (
-        <div className="absolute top-2 left-2">
-          <span className="inline-flex items-center rounded-full bg-osce-accent-muted px-2.5 py-0.5 text-osce-caption font-medium text-osce-accent-hover">
-            Attempted
-          </span>
-        </div>
-      )}
-
-      {set.feedback_ready && (
-        <div className="absolute top-2 left-24">
-          <span className="inline-flex items-center rounded-full bg-osce-accent-subtle px-2.5 py-0.5 text-osce-caption font-medium text-osce-accent-hover">
-            <HiOutlineChatBubbleLeftRight className="mr-1 h-3 w-3" />
-            Feedback
-          </span>
-        </div>
-      )}
-
-      <SessionCardActions set={set} onChanged={onChanged} />
-
-      <Link href={hrefFor(`/mocks/${set.id}`)} className="block h-full">
-        <div className="mt-4 min-w-0">
-          <h2
-            className="truncate text-osce-body font-semibold text-osce-ink-900 transition-colors group-hover:text-osce-accent"
-            title={set.name}
-          >
-            {set.name}
-          </h2>
-          <p
-            className={cn(
-              "mb-2 max-w-[90%] text-osce-body text-b2c-text-secondary",
-              set.locked ? "line-clamp-1" : "line-clamp-3",
-            )}
-          >
-            Practice your consultation skills with these clinical scenarios.
-          </p>
-          {set.locked && (
-            <p className="mb-4 line-clamp-2 text-osce-meta text-b2c-text-muted">
-              From a past subscription. Review your feedback and transcripts any time. Reattempts aren&apos;t available.
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between border-t border-b2c-border-light pt-2 lg:mt-12">
-          <div className="flex items-center gap-1 md:gap-2">
-            <span className="flex items-center whitespace-nowrap text-osce-body text-b2c-text-muted">
-              <HiOutlineClock className="mr-1 h-4 w-4" />
-              {`${minutes} mins`}
+    <div className={cn("group relative flex min-h-[200px] flex-col gap-3 p-5 transition-colors hover:bg-osce-surface-inset", productTokens.b2cCard)}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex flex-wrap gap-1.5">
+          {state === "locked" ? (
+            <span
+              className="inline-flex h-[22px] items-center gap-1.5 rounded-osce-sm bg-b2c-surface-muted px-2 text-osce-caption font-medium text-osce-ink-700"
+              title="From a past subscription. You can review it, but not reattempt it."
+            >
+              <HiOutlineLockClosed className="h-3 w-3" aria-hidden />
+              Review only
             </span>
-            <span className="whitespace-nowrap text-osce-body text-b2c-text-muted">
-              {set.total_entries} stations
-            </span>
-          </div>
-          <span className="flex items-center whitespace-nowrap text-osce-body font-medium text-osce-accent transition-transform group-hover:translate-x-1">
+          ) : state === "completed" ? (
+            <StatusPill dot="bg-osce-success-icon">Completed</StatusPill>
+          ) : state === "attempted" ? (
+            <StatusPill dot="bg-osce-accent">Attempted</StatusPill>
+          ) : null}
+          {set.feedback_ready ? <StatusPill dot="bg-osce-accent">Feedback</StatusPill> : null}
+        </span>
+        <SessionCardActions set={set} onChanged={onChanged} />
+      </div>
+
+      <Link href={hrefFor(`/mocks/${set.id}`)} className="flex flex-1 flex-col gap-3 after:absolute after:inset-0 after:content-['']">
+        <h3 className={cn("truncate", productTokens.b2cSectionTitle)} title={set.name}>
+          {set.name}
+        </h3>
+        <p className="line-clamp-3 flex-1 text-b2c-text-muted">
+          {set.locked
+            ? "From a past subscription. Review your feedback and transcripts any time."
+            : "Practise your consultation skills with these clinical scenarios."}
+        </p>
+        <div className="flex items-center gap-3.5 border-t border-b2c-border-light pt-3 text-osce-meta text-b2c-text-muted">
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <HiOutlineClock className="h-3.5 w-3.5" aria-hidden />
+            {minutes} mins
+          </span>
+          <span className="whitespace-nowrap">
+            {set.total_entries} {set.total_entries === 1 ? "station" : "stations"}
+          </span>
+          <span className="ml-auto flex items-center gap-1 whitespace-nowrap font-medium text-osce-accent">
             {sessionAction(set)}
-            <HiArrowRight className="ml-1 h-4 w-4" />
+            <HiArrowRight className="h-3.5 w-3.5" aria-hidden />
           </span>
         </div>
       </Link>

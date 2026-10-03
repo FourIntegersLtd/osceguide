@@ -107,9 +107,21 @@ def _render(template_key: str, payload: dict[str, Any] | None) -> str:
 
 _LAYOUT_OPEN = (
     '<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;'
-    'max-width:34rem;margin:0 auto;padding:1.5rem;color:#111">'
+    'max-width:34rem;margin:0 auto;padding:2rem 1.5rem;color:#1D1D1F;font-size:15px;line-height:1.55">'
 )
-_LAYOUT_CLOSE = '<p style="margin-top:2rem;color:#666;font-size:.875rem">OSCE Guide</p></div>'
+_LAYOUT_CLOSE = '<p style="margin-top:2rem;color:#6E6E73;font-size:13px">OSCE Guide</p></div>'
+
+_BODY = "margin:0 0 16px;color:#1D1D1F"
+_META = "margin:16px 0 0;color:#6E6E73;font-size:13px"
+
+
+def _button(link: str, label: str) -> str:
+    """The email's one primary action, the only place the institution colour appears."""
+    return (
+        f'<p style="margin:24px 0 0"><a href="{link}" style="display:inline-block;background:#090C85;'
+        'color:#fff;text-decoration:none;padding:10px 20px;border-radius:10px;font-weight:500"'
+        f">{label}</a></p>"
+    )
 
 
 def _password_reset(escaped_fields: dict[str, str]) -> str:
@@ -140,12 +152,13 @@ def _invitation(escaped_fields: dict[str, str]) -> str:
         f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
     )
     return (
-        f"<h1>You have been invited to {escaped_fields.get('invited_to', '')}</h1>"
-        "<p>An account has been created for this address. Choose a password to "
-        "start using it. The link expires in seven days.</p>"
-        f'<p><a href="{link}">Choose a password</a></p>'
-        "<p>If you were not expecting this, you can ignore it and the account "
-        "stays locked.</p>"
+        f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
+        f"You are invited to {escaped_fields.get('invited_to', '')}</h1>"
+        f'<p style="{_BODY}">{escaped_fields.get("invited_to", "")} has invited you to OSCE Guide. '
+        "Set a password to get started.</p>"
+        f"{_button(link, 'Set your password')}"
+        f'<p style="{_META}">This link expires in 7 days. Not expecting this? You can ignore this '
+        "email and the account stays locked.</p>"
     )
 
 
@@ -159,12 +172,13 @@ def _practice_access_invitation(escaped_fields: dict[str, str]) -> str:
         f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
     )
     return (
-        f"<h1>{escaped_fields.get('invited_to', '')} has given you practice access</h1>"
-        f"<p>You can now practise <strong>{escaped_fields.get('exam_title', '')}</strong> on OSCE Guide. "
-        "An account has been created for this address. Choose a password to start; "
-        "the link expires in seven days.</p>"
-        f'<p><a href="{link}">Choose a password</a></p>'
-        "<p>If you were not expecting this, you can ignore it and the account stays locked.</p>"
+        f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
+        f"{escaped_fields.get('invited_to', '')} has given you practice access</h1>"
+        f'<p style="{_BODY}">You can now practise <strong>{escaped_fields.get("exam_title", "")}</strong> '
+        "on OSCE Guide. Set a password to get started.</p>"
+        f"{_button(link, 'Set your password')}"
+        f'<p style="{_META}">This link expires in 7 days. Not expecting this? You can ignore this '
+        "email and the account stays locked.</p>"
     )
 
 
@@ -172,10 +186,11 @@ def _practice_access_granted(escaped_fields: dict[str, str]) -> str:
     """The body telling an existing account holder an organisation gave them an exam to practise."""
     link = f"{get_settings().frontend_url.rstrip('/')}/login"
     return (
-        f"<h1>{escaped_fields.get('granted_by', '')} has given you practice access</h1>"
-        f"<p>You can now practise <strong>{escaped_fields.get('exam_title', '')}</strong> "
-        "with your existing OSCE Guide account.</p>"
-        f'<p><a href="{link}">Sign in to start</a></p>'
+        f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
+        f"{escaped_fields.get('granted_by', '')} has given you practice access</h1>"
+        f'<p style="{_BODY}">You can now practise <strong>{escaped_fields.get("exam_title", "")}</strong> '
+        "with your existing OSCE Guide account. There is nothing new to set up.</p>"
+        f"{_button(link, 'Sign in to OSCE Guide')}"
     )
 
 

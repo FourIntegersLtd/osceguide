@@ -10,7 +10,6 @@ import {
   HiOutlineLightBulb,
   HiOutlineListBullet,
   HiOutlineSparkles,
-  HiOutlineSquare3Stack3D,
   HiOutlineXCircle,
 } from "react-icons/hi2";
 import { Dropdown } from "@/foundation/table";
@@ -26,9 +25,9 @@ import {
   type RatingView,
   type SectionView,
 } from "@/capabilities/feedback/rubricView";
-import { HiOutlineFaceFrown } from "react-icons/hi2";
+import { HiOutlineFaceFrown, HiOutlineInformationCircle } from "react-icons/hi2";
 
-const { b2cCard, b2cMonoEyebrow } = productTokens;
+const { b2cMonoEyebrow } = productTokens;
 
 /**
  * One marked result, rendered from its rubric.
@@ -81,17 +80,20 @@ export function RubricFeedback({
 
   return (
     <section className="space-y-6">
-      <div className={cn(b2cCard, "flex flex-wrap items-center gap-x-6 gap-y-3 p-5 sm:p-6")}>
-        {model.header.total ? (
-          <div>
-            <p className={b2cMonoEyebrow}>Your mark</p>
-            <p className="mt-1 text-osce-ink-900">
-              <span className="text-3xl font-semibold tracking-tight">{model.header.total}</span>{" "}
-              <span className="text-osce-body text-b2c-text-secondary">{model.header.caption}</span>
+      <div className="flex flex-col gap-4 rounded-osce-2xl bg-b2c-surface-muted p-6 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <p className={b2cMonoEyebrow}>Your mark</p>
+          {model.header.total ? (
+            <p className="mt-1.5 text-osce-title font-semibold text-osce-ink-900">
+              <span className="font-mono tabular-nums">{model.header.total}</span>{" "}
+              <span className="font-normal text-b2c-text-muted">{model.header.caption}</span>
             </p>
-          </div>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-2">
+          ) : null}
+          {model.header.passLine ? (
+            <p className="mt-1 text-osce-meta text-b2c-text-muted">{model.header.passLine}</p>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 md:justify-end">
           {model.header.outcome ? (
             <Badge variant={model.header.passed ? "success" : "danger"}>{model.header.outcome}</Badge>
           ) : null}
@@ -108,19 +110,17 @@ export function RubricFeedback({
             ),
           )}
         </div>
-        {model.header.passLine ? (
-          <p className="text-osce-meta text-b2c-text-muted sm:ml-auto">{model.header.passLine}</p>
-        ) : null}
       </div>
 
       {domains.length > 0 ? (
-        <Dropdown defaultOpen title="Domains Feedback" icon={<HiOutlineSquare3Stack3D aria-hidden />}>
+        <section className="space-y-3">
+          <h2 className={b2cMonoEyebrow}>By domain</h2>
           <div className={cn("grid grid-cols-1 gap-4", !narrow && domains.length > 1 && "md:grid-cols-2 xl:grid-cols-3")}>
             {domains.map((domain) => (
               <DomainCard key={domain.id} domain={domain} />
             ))}
           </div>
-        </Dropdown>
+        </section>
       ) : null}
 
       {loneLists.length > 0 ? (
@@ -139,8 +139,9 @@ export function RubricFeedback({
         </Dropdown>
       ))}
 
-      <p className="rounded-lg bg-osce-accent-muted px-4 py-3 text-center text-osce-body font-medium text-osce-accent-hover">
-        This consultation analysis is for formative training purposes only and cannot be used as an
+      <p className="flex items-start gap-2 text-osce-meta text-b2c-text-muted">
+        <HiOutlineInformationCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        This consultation analysis is for formative training only and cannot be used as an
         indication of performance in the exam.
       </p>
     </section>
@@ -149,14 +150,16 @@ export function RubricFeedback({
 
 function DomainCard({ domain }: { domain: DomainView }) {
   return (
-    <B2CPanelCard className="mt-0 flex flex-col">
-      <B2CPanelCardHeader>
-        <span className="min-w-0 flex-1">{domain.title}</span>
+    <section className="flex flex-col rounded-osce-lg border border-osce-border bg-osce-surface">
+      <header className="flex items-start gap-3 px-5 pb-1 pt-[18px]">
+        <h3 className="min-w-0 flex-1 text-osce-subheading font-semibold text-osce-ink-900">{domain.title}</h3>
         {domain.aggregate ? (
-          <span className="shrink-0 text-osce-body font-semibold text-osce-ink-900">{domain.aggregate}</span>
+          <span className="shrink-0 font-mono text-osce-body font-medium tabular-nums text-osce-ink-900">
+            {domain.aggregate}
+          </span>
         ) : null}
-      </B2CPanelCardHeader>
-      <B2CPanelCardBody className="flex flex-1 flex-col">
+      </header>
+      <div className="flex flex-1 flex-col px-5 pb-5 pt-3">
         {domain.passLine || domain.passed !== null ? (
           <div className="mb-2 flex items-center gap-2">
             {domain.passed !== null ? (
@@ -167,7 +170,7 @@ function DomainCard({ domain }: { domain: DomainView }) {
             {domain.passLine ? <span className="text-osce-meta text-b2c-text-muted">{domain.passLine}</span> : null}
           </div>
         ) : null}
-        <div className="divide-y divide-b2c-border-light">
+        <div className="divide-y divide-osce-border-light">
           {domain.competencies.map((competency) => (
             <CompetencyRow key={competency.id} competency={competency} />
           ))}
@@ -178,8 +181,8 @@ function DomainCard({ domain }: { domain: DomainView }) {
           </div>
         ) : null}
         <GradeCounts competencies={domain.competencies} />
-      </B2CPanelCardBody>
-    </B2CPanelCard>
+      </div>
+    </section>
   );
 }
 

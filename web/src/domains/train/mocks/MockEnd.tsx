@@ -2,19 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AiOutlineLoading3Quarters } from "react-icons/ai";
-import { HiArrowRight } from "react-icons/hi";
-import { HiOutlineCheckCircle, HiOutlinePlus, HiOutlineUsers } from "react-icons/hi2";
 import { LuTrophy } from "react-icons/lu";
-import {
-  AsyncBoundary,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
-  cn,
-  productTokens,
-} from "@/foundation/ui";
+import { AsyncBoundary, ButtonLink, Card, productTokens } from "@/foundation/ui";
 import { useAsync, useMeEvents } from "@/foundation/hooks";
 import { MilestoneCelebration } from "@/domains/train/mocks/MilestoneCelebration";
 import { StationOutcomes } from "@/domains/train/mocks/StationOutcomes";
@@ -31,13 +20,15 @@ import {
   stationFeedbackState,
   type StationFeedbackState,
 } from "@/domains/train/mocks/model";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 
 /**
- * The end of a session: the retiring client's `/mocks/[mockId]/complete`.
+ * The end of a session (canvas `train-complete`): the retiring client's
+ * `/mocks/[mockId]/complete`.
  *
- * One card says well done, which stations are still being marked, which have
- * feedback, and how far this person has come; an SCA candidate gets a second
- * card offering a colleague to practise with.
+ * A hero says well done, the outcomes list says which stations are still
+ * being marked and which have feedback, two stats say how far this person has
+ * come, and an SCA candidate gets a card offering a colleague to practise with.
  *
  * The old client knew what was being marked because this browser had started
  * the job. Marking is the server's here, so a station is "marking" when its
@@ -126,147 +117,89 @@ export function MockEnd({ setId }: { setId: string }) {
     `${hrefFor(`/mocks/${setId}/stations/${entryId}`)}?action=review&tab=feedback`;
 
   return (
-    <div className="w-full py-6 sm:py-8">
+    <div className={productTokens.b2cPageColumn}>
       <AsyncBoundary state={state}>
         {({ rows, stationsCompleted }) => {
-          const markingRows = rows.filter((row) => row.feedback === "marking");
-          const readyRows = rows.filter(
-            (row) => row.feedback === "review" && seenMarking.has(row.entryId),
+          const readyIds = new Set(
+            rows
+              .filter((row) => row.feedback === "review" && seenMarking.has(row.entryId))
+              .map((row) => row.entryId),
           );
           const badgeCount = checkMilestone(stationsCompleted, 0).stationBadges;
           return (
-            <div className="mx-auto w-4/5 space-y-4">
+            <div className="mx-auto max-w-osce-page space-y-6">
               <MilestoneCelebration stationsCompleted={stationsCompleted} />
-              <div className="space-y-4">
-                <B2CPanelCard className="mt-0">
-                  <B2CPanelCardBody className="space-y-5 p-5 sm:p-6">
-                    <div className="space-y-2">
-                      <p className={productTokens.b2cEyebrow}>Session completed</p>
-                      <h1
-                        className={cn(
-                          productTokens.b2cPageTitle,
-                          "inline-flex items-center gap-2.5 text-osce-heading",
-                        )}
-                      >
-                        <LuTrophy
-                          className="h-7 w-7 shrink-0 text-osce-accent sm:h-8 sm:w-8"
-                          aria-hidden
-                        />
-                        Well done
-                      </h1>
-                      <p className="max-w-md text-osce-body text-b2c-text-muted">
-                        Review this session while it&apos;s fresh, then keep the momentum going.
-                      </p>
-                    </div>
 
-                    {(markingRows.length > 0 || readyRows.length > 0) && (
-                      <ul
-                        aria-label="Feedback status"
-                        className="space-y-2 border-t border-b2c-border pt-4"
-                      >
-                        {markingRows.map((row) => (
-                          <li
-                            key={row.entryId}
-                            className="flex items-center gap-2.5 text-osce-body text-b2c-text-secondary"
-                          >
-                            <AiOutlineLoading3Quarters
-                              className="h-4 w-4 shrink-0 animate-spin text-osce-accent"
-                              aria-hidden
-                            />
-                            <span>
-                              Marking {row.label}… we&apos;ll let you know when it&apos;s ready.
-                            </span>
-                          </li>
-                        ))}
-                        {readyRows.map((row) => (
-                          <li
-                            key={row.entryId}
-                            className="flex flex-wrap items-center justify-between gap-2 text-osce-body text-b2c-text-secondary"
-                          >
-                            <span className="inline-flex items-center gap-2.5">
-                              <HiOutlineCheckCircle
-                                className="h-4 w-4 shrink-0 text-osce-success-text"
-                                aria-hidden
-                              />
-                              {row.label} feedback is ready
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => router.push(feedbackHref(row.entryId))}
-                              className="inline-flex items-center gap-1 font-semibold text-osce-accent hover:underline"
-                            >
-                              Review feedback
-                              <HiArrowRight className="h-4 w-4" aria-hidden />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    {/* A station already listed above (marking, or just marked) is not listed twice. */}
-                    <StationOutcomes
-                      rows={rows.filter((row) => !markingRows.includes(row) && !readyRows.includes(row))}
-                      feedbackHref={feedbackHref}
-                    />
-
-                    {(stationsCompleted > 0 || badgeCount > 0) && (
-                      <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-b2c-border pt-4 text-osce-body">
-                        <p className="text-b2c-text-secondary">
-                          <span className="font-semibold tabular-nums text-osce-ink-900">
-                            {stationsCompleted}
-                          </span>{" "}
-                          stations completed
+              <B2CHero
+                as="h1"
+                lead
+                eyebrow="Session completed"
+                title="Well done"
+                action={
+                  <>
+                    <ButtonLink href={hrefFor(`/mocks/${setId}`)} variant="primary" size="md">
+                      Review session
+                    </ButtonLink>
+                    <ButtonLink href={hrefFor("/mocks")} variant="secondary" size="md">
+                      New session
+                    </ButtonLink>
+                  </>
+                }
+                aside={
+                  badgeCount > 0 ? (
+                    <div className="flex shrink-0 items-center gap-3 rounded-osce-lg border border-osce-border bg-osce-surface px-4 py-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-control bg-b2c-surface-muted text-osce-ink-900">
+                        <LuTrophy className="h-5 w-5" aria-hidden />
+                      </span>
+                      <div>
+                        <p className="text-osce-body font-semibold text-osce-ink-900">
+                          {badgeCount} {badgeCount === 1 ? "milestone" : "milestones"}
                         </p>
-                        <p className="text-b2c-text-secondary">
-                          <span className="font-semibold tabular-nums text-osce-ink-900">
-                            {badgeCount}
-                          </span>{" "}
-                          milestone badges
+                        <p className="text-osce-meta text-b2c-text-muted">
+                          {stationsCompleted} stations so far
                         </p>
                       </div>
-                    )}
-                  </B2CPanelCardBody>
-                  <B2CPanelCardFooter>
-                    <button
-                      type="button"
-                      onClick={() => router.push(hrefFor("/mocks"))}
-                      className={cn(productTokens.b2cGhostButton, "justify-center gap-2")}
-                    >
-                      <HiOutlinePlus className="h-4 w-4" aria-hidden />
-                      New session
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => router.push(hrefFor(`/mocks/${setId}`))}
-                      className={cn(productTokens.b2cButtonPrimary, "justify-center gap-2")}
-                    >
-                      Review session
-                      <HiArrowRight className="h-4 w-4" aria-hidden />
-                    </button>
-                  </B2CPanelCardFooter>
-                </B2CPanelCard>
+                    </div>
+                  ) : null
+                }
+              >
+                Review this session while it is fresh, then keep the momentum going.
+              </B2CHero>
 
-                {offersPeerPractice && peers ? (
-                  <B2CPanelCard className="mt-0">
-                    <B2CPanelCardHeader>
-                      <HiOutlineUsers className="h-4 w-4 text-osce-accent" aria-hidden />
-                      Keep practising
-                    </B2CPanelCardHeader>
-                    <B2CPanelCardBody>
-                      <PracticeOptionCards
-                        variant="inline"
-                        onLivePractice={() => void handleJoinQueue()}
-                        onSchedulePractice={() => router.push(hrefFor("/marketplace"))}
-                        isJoiningQueue={isJoiningQueue || peers.queue.phase === "joining"}
-                        livePracticeLabel="Live Practice"
-                        schedulePracticeLabel="Schedule Practice"
-                        livePracticeActionLabel="Start Now"
-                        schedulePracticeActionLabel="Browse Marketplace"
-                      />
-                    </B2CPanelCardBody>
-                  </B2CPanelCard>
-                ) : null}
+              <StationOutcomes rows={rows} readyIds={readyIds} feedbackHref={feedbackHref} />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="rounded-osce-lg border border-osce-border bg-osce-surface px-5 py-4">
+                  <p className="text-osce-meta text-b2c-text-muted">Stations completed</p>
+                  <p className="mt-1 text-osce-title font-semibold tabular-nums text-osce-ink-900">
+                    {stationsCompleted}
+                  </p>
+                </div>
+                <div className="rounded-osce-lg border border-osce-border bg-osce-surface px-5 py-4">
+                  <p className="text-osce-meta text-b2c-text-muted">Milestone badges</p>
+                  <p className="mt-1 text-osce-title font-semibold tabular-nums text-osce-ink-900">
+                    {badgeCount}
+                  </p>
+                </div>
               </div>
+
+              {offersPeerPractice && peers ? (
+                <Card
+                  title="Keep practising"
+                  description="Sit a station with a colleague playing the patient."
+                >
+                  <PracticeOptionCards
+                    variant="inline"
+                    onLivePractice={() => void handleJoinQueue()}
+                    onSchedulePractice={() => router.push(hrefFor("/marketplace"))}
+                    isJoiningQueue={isJoiningQueue || peers.queue.phase === "joining"}
+                    livePracticeLabel="Live practice"
+                    schedulePracticeLabel="Schedule practice"
+                    livePracticeActionLabel="Start now"
+                    schedulePracticeActionLabel="Browse marketplace"
+                  />
+                </Card>
+              ) : null}
             </div>
           );
         }}

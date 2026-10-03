@@ -2,7 +2,11 @@ import type { ReactNode } from "react";
 import { cn } from "@/foundation/ui/cn";
 import { b2cSectionIconChipBase } from "@/foundation/ui/productTokens";
 
-/** Pastel chip hues — aligned with B2B {@link B2BIconChip} / doctor prep brief. */
+/**
+ * Icon tile (canvas `.tile`). Quiet by default: a grey tile with body ink.
+ * Only the status tones (emerald, amber, rose) keep colour, because there
+ * the colour is the message. The decorative hues all render neutral.
+ */
 export type B2CSectionIconTone =
   | "primary"
   | "emerald"
@@ -13,13 +17,13 @@ export type B2CSectionIconTone =
   | "orange";
 
 const toneClass: Record<B2CSectionIconTone, string> = {
-  primary: "bg-osce-accent-muted text-osce-accent",
+  primary: "bg-osce-accent-muted text-osce-ink-700",
   emerald: "bg-osce-success-bg text-osce-success-text",
   amber: "bg-osce-warning-bg text-osce-warning-text",
   rose: "bg-osce-danger-bg text-osce-danger-text",
-  violet: "bg-osce-tone-reasoning-bg text-osce-tone-reasoning-text",
-  sky: "bg-osce-accent-muted text-osce-accent-hover",
-  orange: "bg-osce-warning-bg text-osce-warning-text",
+  violet: "bg-osce-accent-muted text-osce-ink-700",
+  sky: "bg-osce-accent-muted text-osce-ink-700",
+  orange: "bg-osce-accent-muted text-osce-ink-700",
 };
 
 const sizeClass = {

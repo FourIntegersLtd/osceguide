@@ -38,15 +38,13 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
  * no theme switch here.
  */
 const variantClasses: Record<BadgeVariant, string> = {
-  neutral: "bg-osce-canvas text-osce-ink-700 border-osce-border",
-  default: "bg-osce-canvas text-osce-ink-700 border-osce-border",
-  success:
-    "bg-osce-success-bg text-osce-success-text border-osce-success-border",
-  warning:
-    "bg-osce-warning-bg text-osce-warning-text border-osce-warning-border",
-  danger: "bg-osce-danger-bg text-osce-danger-text border-osce-danger-border",
-  info: "bg-osce-info-bg text-osce-info-text border-osce-info-border",
-  accent: "bg-osce-accent-subtle text-osce-accent border-osce-accent-muted",
+  neutral: "bg-osce-canvas text-osce-ink-700 border-transparent",
+  default: "bg-osce-canvas text-osce-ink-700 border-transparent",
+  success: "bg-osce-success-bg text-osce-success-text border-transparent",
+  warning: "bg-osce-warning-bg text-osce-warning-text border-transparent",
+  danger: "bg-osce-danger-bg text-osce-danger-text border-transparent",
+  info: "bg-osce-info-bg text-osce-info-text border-transparent",
+  accent: "bg-osce-accent-subtle text-osce-accent border-transparent",
   /** Reuses the reasoning reading tone, so the palette stays closed. */
   purple:
     "bg-osce-tone-reasoning-header text-osce-tone-reasoning-text border-osce-tone-reasoning-border",
@@ -64,8 +62,8 @@ const dotClasses: Record<BadgeVariant, string> = {
 };
 
 const sizeClasses: Record<BadgeSize, string> = {
-  xs: "px-1.5 py-0.5 text-osce-caption",
-  sm: "px-2.5 py-0.5 text-osce-caption",
+  xs: "h-5 px-1.5 text-osce-caption",
+  sm: "h-[22px] px-2 text-osce-caption",
 };
 
 export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
@@ -78,7 +76,7 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
       <span
         ref={ref}
         className={cn(
-          "inline-flex items-center gap-1 rounded-full border font-semibold",
+          "inline-flex w-fit items-center gap-1.5 whitespace-nowrap rounded-osce-sm border font-medium",
           variantClasses[resolved],
           sizeClasses[size],
           className,

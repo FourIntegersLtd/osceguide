@@ -14,7 +14,7 @@ import { useOptionalSurface } from "@/capabilities";
 import { listEntitlements } from "@/capabilities/account/api";
 import { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
 
-const { b2cButtonPrimary, b2cButtonSecondary, b2cCardPlain } = productTokens;
+const { b2cButtonPrimary, b2cButtonSecondary, b2cCardPlain, b2cGhostButton } = productTokens;
 
 /** Stripe's webhook can land a beat after the redirect; poll briefly. */
 const CONFIRM_ATTEMPTS = 6;
@@ -89,10 +89,9 @@ export default function PaymentReturn() {
       >
         {state === "confirming" ? (
           <>
-            <HiOutlineArrowPath
-              className="mx-auto mb-4 h-12 w-12 animate-spin text-osce-accent"
-              aria-hidden
-            />
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
+              <HiOutlineArrowPath className="h-6 w-6 animate-spin text-osce-accent" aria-hidden />
+            </span>
             <h1 className="mb-2 text-osce-title font-semibold text-ink">
               Confirming your payment
             </h1>
@@ -102,10 +101,9 @@ export default function PaymentReturn() {
           </>
         ) : state === "active" ? (
           <>
-            <HiOutlineCheckCircle
-              className="mx-auto mb-4 h-12 w-12 text-osce-success-text"
-              aria-hidden
-            />
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
+              <HiOutlineCheckCircle className="h-6 w-6 text-osce-success-text" aria-hidden />
+            </span>
             <h1 className="mb-2 text-osce-title font-semibold text-ink">
               You&apos;re all set
             </h1>
@@ -120,10 +118,9 @@ export default function PaymentReturn() {
           </>
         ) : (
           <>
-            <HiOutlineClock
-              className="mx-auto mb-4 h-12 w-12 text-osce-warning-icon"
-              aria-hidden
-            />
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
+              <HiOutlineClock className="h-6 w-6 text-osce-warning-icon" aria-hidden />
+            </span>
             <h1 className="mb-2 text-osce-title font-semibold text-ink">
               Payment received
             </h1>
@@ -139,11 +136,11 @@ export default function PaymentReturn() {
               <button
                 type="button"
                 onClick={() => window.location.reload()}
-                className={b2cButtonPrimary}
+                className={b2cButtonSecondary}
               >
                 Check again
               </button>
-              <Link href={`${home}/dashboard`} className={b2cButtonSecondary}>
+              <Link href={`${home}/dashboard`} className={b2cGhostButton}>
                 Go to dashboard
               </Link>
             </div>
@@ -160,7 +157,9 @@ export function CheckoutCancelled() {
   return (
     <div className="flex min-h-[70dvh] items-center justify-center px-4">
       <div className={`${b2cCardPlain} w-full max-w-md p-8 text-center`}>
-        <HiOutlineXCircle className="mx-auto mb-4 h-12 w-12 text-ink-subtle" aria-hidden />
+        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
+              <HiOutlineXCircle className="h-6 w-6 text-ink-subtle" aria-hidden />
+            </span>
         <h1 className="mb-2 text-osce-title font-semibold text-ink">
           Checkout cancelled
         </h1>

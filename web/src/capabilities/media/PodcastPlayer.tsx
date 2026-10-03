@@ -52,7 +52,7 @@ export function PodcastPlayer({
   episodes: Episode[];
   index: number;
   onIndexChange: (next: number) => void;
-  /** `meta` when the page already carries the episode's title above it. */
+  /** `meta` when the page already carries the episode's title above it and lists the episodes itself. */
   heading?: "lead" | "meta";
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -68,7 +68,7 @@ export function PodcastPlayer({
   const canGoPrevious = index > 0;
   const byline = `with Ben & Michelle${
     hasPlaylist ? ` · Episode ${index + 1} of ${episodes.length}` : ""
-  } · 7–10 min`;
+  } · 7 to 10 min`;
 
   /**
    * The old player reloaded the element behind a 100ms `setTimeout`, which is
@@ -171,6 +171,7 @@ export function PodcastPlayer({
             </ModalPrimaryButton>
           </ModalFooterActions>
 
+          {heading === "lead" ? (
           <ModalSection bodyClassName="overflow-hidden px-0 py-0 sm:px-0 sm:py-0">
             <button
               type="button"
@@ -219,7 +220,7 @@ export function PodcastPlayer({
                           {episode.title}
                         </span>
                         <span className="mt-0.5 block text-osce-meta text-b2c-text-muted">
-                          7–10 min · with Ben &amp; Michelle
+                          7 to 10 min · with Ben &amp; Michelle
                         </span>
                       </span>
                       {position === index ? (
@@ -238,6 +239,7 @@ export function PodcastPlayer({
               </ul>
             ) : null}
           </ModalSection>
+          ) : null}
         </>
       ) : null}
     </ModalContent>

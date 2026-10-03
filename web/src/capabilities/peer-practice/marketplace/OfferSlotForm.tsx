@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { HiOutlineCalendarDays, HiOutlineCheckCircle, HiOutlineClock } from "react-icons/hi2";
+import { HiOutlineClock } from "react-icons/hi2";
 import { addDays, format, isSameDay, startOfDay } from "date-fns";
-import { Button, B2CInlineError, ModalLead } from "@/foundation/ui";
+import { Button, B2CInlineError, productTokens } from "@/foundation/ui";
 import {
   FormStep,
   TIME_OPTIONS,
   TimeSlotList,
 } from "@/capabilities/peer-practice/marketplace/formParts";
-import { b2cInputBase, b2cInset } from "@/foundation/ui/productTokens";
+import { b2cInputBase, b2cCard } from "@/foundation/ui/productTokens";
 import { MonthCalendar } from "@/capabilities/peer-practice/marketplace/MonthCalendar";
 import { isScheduleInPast, toInstant } from "@/capabilities/peer-practice/support/time";
 
@@ -33,7 +33,7 @@ export function OfferSlotForm({
   onSubmit,
   onCancel,
   isLoading = false,
-  availabilityLabel = "I am available to practice on",
+  availabilityLabel = "I am available to practise on",
 }: {
   onSubmit: (input: OfferSlotInput) => Promise<void>;
   onCancel: () => void;
@@ -96,11 +96,12 @@ export function OfferSlotForm({
 
   return (
     <form onSubmit={submit} className="availability-form space-y-6 text-osce-body">
-      <ModalLead
-        title={availabilityLabel}
-        description="Choose when you are free. Someone can claim the slot, and you will both get a video practice session."
-        icon={<HiOutlineCalendarDays className="h-5 w-5" />}
-      />
+      <div>
+        <h2 className="text-osce-title font-semibold text-osce-ink-900">{availabilityLabel}</h2>
+        <p className="mt-1.5 text-osce-body text-b2c-text-muted">
+          Choose when you are free. Someone can claim the slot and you will both get a video practice session.
+        </p>
+      </div>
 
       <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(16rem,18.5rem)]">
         <FormStep step={1} label="Choose a date" done={hasDate}>
@@ -149,7 +150,7 @@ export function OfferSlotForm({
               </button>
 
               {timeOpen && hasDate ? (
-                <div className={`absolute z-10 mt-2 max-h-56 w-full overflow-auto ${b2cInset}`} role="listbox" aria-label="Choose a time">
+                <div className={`absolute z-10 mt-2 max-h-56 w-full overflow-auto ${b2cCard}`} role="listbox" aria-label="Choose a time">
                   <TimeSlotList
                     options={visibleTimeOptions}
                     selected={time}
@@ -164,7 +165,7 @@ export function OfferSlotForm({
 
             <div
               className={`hidden min-h-64 max-h-80 overflow-auto md:block ${
-                hasDate ? b2cInset : "rounded-osce-lg border border-b2c-border bg-b2c-surface-muted"
+                hasDate ? b2cCard : "rounded-osce-lg border border-b2c-border bg-b2c-surface-muted"
               }`}
               role="listbox"
               aria-label="Choose a time"
@@ -198,12 +199,7 @@ export function OfferSlotForm({
 
       <div className="space-y-3 border-t border-b2c-border pt-5">
         {requestSummary ? (
-          <div className="flex items-start gap-2.5 rounded-xl bg-osce-accent-muted/40 px-4 py-3">
-            <HiOutlineCheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-osce-accent" aria-hidden />
-            <p className="min-w-0 text-osce-meta leading-relaxed text-b2c-text-secondary">
-              {requestSummary}
-            </p>
-          </div>
+          <p className={productTokens.b2cMonoEyebrow}>{requestSummary}</p>
         ) : (
           <p className="text-osce-meta leading-relaxed text-b2c-text-muted">
             Pick a date and a time to continue.
@@ -214,8 +210,8 @@ export function OfferSlotForm({
           <Button type="button" variant="secondary" size="md" onClick={onCancel} disabled={isLoading} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" variant="commit" size="md" disabled={isLoading || !hasDate || !hasTime} className="w-full sm:w-auto">
-            {isLoading ? "Posting..." : "Select & continue"}
+          <Button type="submit" isLoading={isLoading} disabled={!hasDate || !hasTime} className="w-full sm:w-auto">
+            Select & continue
           </Button>
         </div>
       </div>

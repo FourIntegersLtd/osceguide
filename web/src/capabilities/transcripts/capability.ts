@@ -10,7 +10,7 @@ import type { CapabilityModule } from "@/capabilities/contract";
  *
  * Not in the navigation, because in the product it is not a destination: the
  * transcript is the consultation screen's right-hand panel once the
- * consultation is over, and "Load Previous" there is what reaches this list.
+ * consultation is over, and "Load previous" there is what reaches this list.
  * A sidebar entry made it look like a section of its own.
  */
 export const transcriptsCapability: CapabilityModule = {

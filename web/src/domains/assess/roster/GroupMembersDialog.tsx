@@ -129,10 +129,10 @@ function Picker({
       <p className="text-osce-caption text-b2b-mid">
         {picked.size} of {trainees.length} selected.
       </p>
-      <ul className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-b2b-border p-2">
+      <ul className="max-h-64 space-y-1 overflow-y-auto rounded-panel border border-b2b-border p-2">
         {sortTrainees(trainees).map((trainee) => (
           <li key={trainee.id}>
-            <label className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-osce-body hover:bg-b2b-cream">
+            <label className="flex cursor-pointer items-center gap-2 rounded-control px-2 py-1.5 text-osce-body hover:bg-b2b-cream">
               <input
                 type="checkbox"
                 checked={picked.has(trainee.id)}

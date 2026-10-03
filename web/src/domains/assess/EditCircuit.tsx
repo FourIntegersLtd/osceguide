@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, Card, PageHeader } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
@@ -69,9 +69,10 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
           const blocked = editLockNotice(data.circuit);
           return (
             <>
-              <PageHeader
+              <B2CPageHeader
+                back={{ href: hrefFor(`/circuits/${circuitId}`), label: "Circuit" }}
                 title="Edit circuit"
-                description={`${data.sitting.name} · ${data.sitting.mode}`}
+                subtitle={`${data.sitting.name} · ${data.sitting.mode}`}
               />
               <CircuitBuilder
                 mode={data.sitting.mode}
@@ -84,10 +85,14 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                   blocked ? (
                     <>
                       <Alert tone="warning">{blocked}</Alert>
-                      <Card
-                        title="What you can still change"
-                        description="You can still change the name, supervisor and timings. Only the stations and who takes them are fixed. While the circuit is running, change its timings from the live circuit screen."
-                      />
+                      <section className="rounded-panel bg-canvas p-5">
+                        <h2 className="text-osce-subheading font-semibold text-b2b-headline">
+                          What you can still change
+                        </h2>
+                        <p className="mt-1 text-osce-body text-b2b-mid">
+                          You can still change the name, supervisor and timings. Only the stations and who takes them are fixed. While the circuit is running, change its timings from the live circuit screen.
+                        </p>
+                      </section>
                     </>
                   ) : null
                 }

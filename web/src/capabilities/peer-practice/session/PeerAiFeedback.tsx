@@ -88,18 +88,18 @@ export function PeerAiFeedback({ session }: { session: PracticeSession }) {
   }
 
   return (
-    <div className="mx-auto mb-4 max-w-2xl rounded-lg border border-osce-accent-subtle bg-osce-accent-muted p-3 text-left sm:p-4">
+    <div className="mx-auto mb-4 max-w-2xl rounded-osce-lg border border-osce-border bg-osce-surface p-4 text-left">
       <div className="flex items-start gap-2 sm:gap-3">
         <div className="mt-0.5 flex-shrink-0">
           <LuBot className="h-4 w-4 text-osce-accent sm:h-5 sm:w-5" />
         </div>
         <div className="flex-1">
-          <h4 className="mb-1 text-osce-body font-semibold text-osce-ink-900">AI Transcript &amp; Feedback Processing</h4>
-          <p className="mb-2 text-osce-body text-osce-accent-hover">
+          <h4 className="mb-1 text-osce-body font-semibold text-osce-ink-900">Your transcript and feedback are being prepared</h4>
+          <p className="mb-2 text-osce-body text-b2c-text-muted">
             Your session transcript and AI-generated feedback are being processed and will be ready in approximately 2
             minutes.
           </p>
-          <div className="flex items-center gap-1.5 text-osce-body text-osce-accent-hover">
+          <div className="flex items-center gap-1.5 text-osce-body text-b2c-text-muted">
             <HiOutlineClock className="h-3 w-3 sm:h-4 sm:w-4" />
             <span>
               We&apos;ll notify you once they&apos;re ready - feel free to continue using the app in the meantime

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { LuChevronRight, LuStethoscope } from "react-icons/lu";
-import { AsyncBoundary, Badge, Button, PageHeader, Spinner } from "@/foundation/ui";
+import { AsyncBoundary, Badge, Button, B2CPageHeader, Spinner } from "@/foundation/ui";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { StationFilters } from "@/capabilities/stations/StationFilters";
 import { stationHref } from "@/capabilities/stations/routes";
@@ -30,9 +30,9 @@ export function LibraryBrowse() {
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader
+      <B2CPageHeader
         title="Station library"
-        description="Every scenario published for the exams you have access to."
+        subtitle="Every scenario published for the exams you have access to."
       />
 
       <StationFilters library={library} />

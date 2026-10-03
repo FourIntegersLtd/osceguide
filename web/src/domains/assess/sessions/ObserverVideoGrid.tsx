@@ -51,7 +51,7 @@ export function ObserverVideoGrid() {
           onClick={() => void toggle("microphone")}
           className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-b2b-border transition-colors ${
             isMicrophoneEnabled
-              ? "bg-white text-b2b-icon hover:bg-b2b-subtle"
+              ? "bg-b2b-surface text-b2b-icon hover:bg-b2b-subtle"
               : "border-transparent bg-osce-danger text-white hover:bg-osce-danger/90"
           }`}
         >
@@ -70,7 +70,7 @@ export function ObserverVideoGrid() {
           onClick={() => void toggle("camera")}
           className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-b2b-border transition-colors ${
             isCameraEnabled
-              ? "bg-white text-b2b-icon hover:bg-b2b-subtle"
+              ? "bg-b2b-surface text-b2b-icon hover:bg-b2b-subtle"
               : "border-transparent bg-osce-danger text-white hover:bg-osce-danger/90"
           }`}
         >
@@ -97,7 +97,7 @@ export function ObserverVideoGrid() {
           return (
             <div
               key={participant.identity}
-              className="relative flex min-h-[160px] items-center justify-center overflow-hidden rounded-lg bg-osce-ink-900"
+              className="relative flex min-h-[160px] items-center justify-center overflow-hidden rounded-panel bg-osce-ink-900"
             >
               {cameraTrack && !cameraTrack.publication.isMuted ? (
                 <VideoTrack trackRef={cameraTrack} style={{ width: "100%", height: "100%", objectFit: "cover" }} />

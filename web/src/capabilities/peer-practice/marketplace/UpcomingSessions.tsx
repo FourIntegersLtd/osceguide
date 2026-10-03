@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Alert from "@/foundation/forms/Alert";
-import { AsyncBoundary, Button, ConfirmModal } from "@/foundation/ui";
-import { b2cCard, b2cMutedBand } from "@/foundation/ui/productTokens";
+import { HiOutlineVideoCamera } from "react-icons/hi2";
+import { AsyncBoundary, Badge, Button, ConfirmModal, productTokens } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import {
   cancelPeerSession,
@@ -22,6 +22,7 @@ import {
   meridiemTime,
   timeUntilJoin,
 } from "@/capabilities/peer-practice/support/time";
+import { b2cPanelDivided } from "@/foundation/ui/productTokens";
 
 type Notice = { id: number; type: "success" | "error"; text: string };
 
@@ -97,7 +98,7 @@ export function UpcomingSessions({
         say("success", "Session cancelled. Your partner has been notified.");
         reload();
       } catch (cause) {
-        say("error", failureText(cause, "Failed to cancel session. Please try again."));
+        say("error", failureText(cause, "Could not cancel the session. Try again."));
       } finally {
         setCancellingId(null);
       }
@@ -119,10 +120,10 @@ export function UpcomingSessions({
           return (
             <>
               {notice && <Alert key={notice.id} message={notice.text} type={notice.type} className="mb-4" />}
-              <div className="py-12 text-center">
-                <p className="mb-2 text-osce-body text-b2c-text-muted">No upcoming sessions</p>
-                <p className="text-osce-body text-b2c-text-muted">
-                  Claim a slot from the Available sessions to schedule a session!
+              <div className="rounded-osce-lg border border-dashed border-osce-border px-5 py-10 text-center">
+                <p className="text-osce-body font-medium text-osce-ink-900">No upcoming sessions</p>
+                <p className="mt-1 text-osce-meta text-b2c-text-muted">
+                  Claim a slot from the available sessions to schedule one.
                 </p>
               </div>
             </>
@@ -131,7 +132,8 @@ export function UpcomingSessions({
         return (
           <div className="space-y-4">
             {notice && <Alert key={notice.id} message={notice.text} type={notice.type} className="mb-4" />}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+            <p className={productTokens.b2cMonoEyebrow}>Upcoming</p>
+            <ul className={b2cPanelDivided}>
               {sessions.map((session) => (
                 <UpcomingSessionCard
                   key={session.id}
@@ -143,7 +145,7 @@ export function UpcomingSessions({
                   isCancelLoading={cancellingId === session.id}
                 />
               ))}
-            </div>
+            </ul>
             {pages.moreError ? (
               <p className="text-osce-body text-osce-danger">
                 Could not load more sessions: {pages.moreError.message}
@@ -189,65 +191,37 @@ function UpcomingSessionCard({
   const until = now === null ? null : timeUntilJoin(session.starts_at, now);
 
   return (
-    <div className={`group flex w-full min-w-0 flex-col p-3 text-osce-body sm:p-5 ${b2cCard}`}>
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-osce-body text-b2c-text-muted">Practice session with</span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-osce-caption font-medium ${
-            isActive
-              ? "bg-osce-success-bg text-osce-success-text"
-              : joinable
-                ? "bg-osce-accent-subtle text-osce-accent-hover"
-                : "bg-b2c-secondary text-b2c-text-secondary"
-          }`}
+    <li className="flex flex-wrap items-center gap-3 px-4 py-3">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-b2c-surface-muted text-b2c-text-muted">
+        <HiOutlineVideoCamera className="h-4 w-4" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-osce-body font-medium text-osce-ink-900">
+          Practice session with @{session.partner_username}
+        </p>
+        <p className="text-osce-meta text-b2c-text-muted">
+          {longDate(session.starts_at)} at {meridiemTime(session.starts_at)} · You are the {session.user_role}
+          {!joinable && !isActive && until ? ` · Opens ${JOIN_OPENS_MINUTES} min before, starts in ${until}` : ""}
+        </p>
+      </div>
+      <Badge tone={isActive ? "success" : joinable ? "accent" : "neutral"} dot={isActive || joinable}>
+        {isActive ? "In progress" : joinable ? "Ready to join" : "Upcoming"}
+      </Badge>
+      <div className="flex items-center gap-2">
+        {isActive || joinable ? (
+          <Button type="button" size="sm" onClick={() => onJoin(session)} isLoading={isJoinLoading}>
+            {isActive ? "Rejoin session" : "Join session"}
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowCancelConfirm(true)}
+          isLoading={isCancelLoading}
         >
-          {isActive ? "In Progress" : joinable ? "Ready to Join" : "Upcoming"}
-        </span>
-      </div>
-
-      <div className="mb-3">
-        <p className="leading-relaxed text-osce-ink-900">
-          <span className="font-semibold">@{session.partner_username}</span>
-        </p>
-        <p className="mt-1 text-b2c-text-secondary">
-          {longDate(session.starts_at)} at {meridiemTime(session.starts_at)}
-        </p>
-      </div>
-
-      {!joinable && !isActive && until && (
-        <div className={`mb-3 rounded-lg px-3 py-2 ${b2cMutedBand}`}>
-          <p className="text-osce-body text-b2c-text-secondary">
-            Session starts in <span className="font-medium text-osce-ink-900">{until}</span>
-          </p>
-          <p className="mt-0.5 text-osce-caption text-b2c-text-muted">
-            You can join {JOIN_OPENS_MINUTES} minutes before the scheduled time
-          </p>
-        </div>
-      )}
-
-      <div className="mt-auto flex flex-col items-stretch justify-between gap-3 border-t border-b2c-border pt-3 sm:flex-row sm:items-center sm:gap-2">
-        <div className="flex items-center gap-2 text-osce-caption text-b2c-text-muted">
-          <span>You are the {session.user_role}</span>
-        </div>
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setShowCancelConfirm(true)}
-            disabled={isCancelLoading}
-            className="flex-1 sm:flex-none"
-          >
-            {isCancelLoading ? "Cancelling..." : "Cancel"}
-          </Button>
-          <Button
-            type="button"
-            onClick={() => onJoin(session)}
-            disabled={(!joinable && !isActive) || isJoinLoading}
-            className="flex-1 sm:flex-none"
-          >
-            {isJoinLoading ? "Joining..." : isActive ? "Rejoin Session" : joinable ? "Join Session" : "Not Yet"}
-          </Button>
-        </div>
+          Cancel
+        </Button>
       </div>
 
       <ConfirmModal
@@ -268,6 +242,6 @@ function UpcomingSessionCard({
         confirmText="Yes, cancel session"
         cancelText="Keep session"
       />
-    </div>
+    </li>
   );
 }

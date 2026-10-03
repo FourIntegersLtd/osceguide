@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, Button, Card, Input, PageHeader, Spinner } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, Button, ButtonLink, Input, Spinner } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createSitting, listProgrammes, type Programme, type SittingMode } from "@/domains/assess/api";
@@ -20,12 +20,17 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Schedule a sitting" description="An examination or a training session." />
+      <B2CPageHeader
+        back={{ href: hrefFor("/sittings"), label: "Sittings" }}
+        title="Schedule a sitting"
+        subtitle="An examination or a training session."
+      />
       <AsyncBoundary state={programmes}>
         {(items) => (
           <Form
             orgSlug={orgSlug}
             programmes={items}
+            cancelHref={hrefFor("/sittings")}
             onCreated={(id) => router.push(hrefFor(`/sittings/${id}`))}
           />
         )}
@@ -37,10 +42,12 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
 function Form({
   orgSlug,
   programmes,
+  cancelHref,
   onCreated,
 }: {
   orgSlug: string;
   programmes: Programme[];
+  cancelHref: string;
   onCreated: (sittingId: string) => void;
 }) {
   const activeProgrammes = useMemo(
@@ -86,8 +93,8 @@ function Form({
   }
 
   return (
-    <Card>
-      <form onSubmit={submit} className="flex max-w-xl flex-col gap-4">
+    <section className="max-w-3xl rounded-panel border border-b2b-border bg-b2b-surface p-5 sm:p-6">
+      <form onSubmit={submit} className="flex flex-col gap-5">
         {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
 
         <Input
@@ -108,12 +115,15 @@ function Form({
 
         <ScheduledForField value={scheduledFor} onChange={setScheduledFor} />
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={busy || name.trim().length === 0 || !programmeId}>
+        <div className="flex justify-end gap-2">
+          <ButtonLink href={cancelHref} themeType="b2b" variant="secondary">
+            Cancel
+          </ButtonLink>
+          <Button themeType="b2b" variant="commit" type="submit" disabled={busy || name.trim().length === 0 || !programmeId}>
             {busy ? <Spinner label="Creating" /> : "Create sitting"}
           </Button>
         </div>
       </form>
-    </Card>
+    </section>
   );
 }

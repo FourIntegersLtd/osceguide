@@ -1,6 +1,6 @@
 "use client";
 
-import { AsyncBoundary, Back } from "@/foundation/ui";
+import { AsyncBoundary, Back, productTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { TranscriptView } from "@/capabilities/feedback";
 import { readTranscript } from "@/capabilities/transcripts/api";
@@ -20,16 +20,14 @@ export function TranscriptDetail({ id }: { id: string }) {
   const state = useAsync((signal) => readTranscript(id, signal), [id]);
 
   return (
-    <div className="min-h-screen py-6 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl space-y-6">
+      <div className="space-y-3">
         <Back />
-        <h1 className="text-osce-title font-bold text-osce-ink-800 mb-8 mt-4">
-          Transcript Details
-        </h1>
-        <AsyncBoundary state={state}>
-          {(transcript) => <TranscriptView transcript={transcript} />}
-        </AsyncBoundary>
+        <h1 className={productTokens.b2cPageTitle}>Transcript details</h1>
       </div>
+      <AsyncBoundary state={state}>
+        {(transcript) => <TranscriptView transcript={transcript} />}
+      </AsyncBoundary>
     </div>
   );
 }

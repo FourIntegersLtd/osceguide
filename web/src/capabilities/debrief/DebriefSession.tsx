@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { HiMicrophone } from "react-icons/hi";
-import { Alert, ATHENA_IMAGE_SRC, Button, Modal, ModalContent, ModalHelper, ModalTitle } from "@/foundation/ui";
+import { Alert, ATHENA_IMAGE_SRC, Button, Modal, ModalContent, ModalHelper, ModalTitle, productTokens } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { VoiceRoom, useMicPreflight } from "@/foundation/livekit";
 import { hasCode } from "@/foundation/platform-client";
@@ -64,8 +64,9 @@ export function DebriefSession({
 
   const busy = session.phase === "connecting" || session.phase === "queued" || session.phase === "ending";
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-osce-lg border border-b2c-border bg-osce-surface text-osce-body">
-      <div className="flex min-h-[min(360px,42dvh)] flex-1 flex-col items-center justify-center bg-b2c-surface-muted px-5 py-6 lg:min-h-0">
+    <div data-skin={session.phase === "live" ? "room" : undefined}
+      className="grid h-full min-h-0 grid-cols-1 gap-3 overflow-y-auto rounded-osce-2xl bg-osce-canvas p-3 text-osce-body lg:grid-cols-[1.4fr_1fr]">
+      <section className="flex min-h-[min(360px,42dvh)] flex-col items-center justify-center rounded-osce-lg border border-osce-border bg-osce-surface px-5 py-6">
         <div className="mx-auto flex w-full max-w-sm flex-col items-center">
           {session.error && <Alert tone="danger" className="mb-4">{errorMessage(session.error)}</Alert>}
           {mic.message && <Alert tone="warning" className="mb-4">{mic.message}</Alert>}
@@ -78,7 +79,7 @@ export function DebriefSession({
             <>
               <div className="mb-6 w-full">
                 <LivekitIdleState avatar={{ kind: "image", src: ATHENA_IMAGE_SRC, alt: "Athena" }}
-                  title="Athena Moderator" subtitle="Speak naturally to discuss your performance" />
+                  title="Athena" subtitle="Speak naturally to discuss your performance" />
               </div>
               <Button fullWidth disabled={busy || session.phase === "ended"} isLoading={busy}
                 onClick={async () => {
@@ -95,8 +96,31 @@ export function DebriefSession({
             <span className="text-osce-meta font-medium">Debrief ended. Your summary is being prepared.</span>
           </div>}
         </div>
-      </div>
+      </section>
+      <TalkingPoints />
     </div>
+  );
+}
+
+const TALKING_POINTS = [
+  { eyebrow: "Live analysis", text: "Athena has your transcript and marks open." },
+  { eyebrow: "Targeted tips", text: "Ask why a point lost the mark, and what would have earned it." },
+  { eyebrow: "Active practice", text: "Rehearse your plan out loud and Athena will respond." },
+];
+
+function TalkingPoints() {
+  return (
+    <section className="rounded-osce-lg border border-osce-border bg-osce-surface">
+      <h2 className="px-5 pb-1 pt-[18px] text-osce-subheading font-semibold text-osce-ink-900">Talking points</h2>
+      <ul className="divide-y divide-osce-border-light px-5 pb-3">
+        {TALKING_POINTS.map((point) => (
+          <li key={point.eyebrow} className="py-3">
+            <p className={productTokens.b2cMonoEyebrow}>{point.eyebrow}</p>
+            <p className="mt-1 text-osce-meta leading-relaxed text-b2c-text-muted">{point.text}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -116,14 +140,14 @@ export function DebriefLauncher({ setId, entryId }: { setId: string; entryId: st
         className="w-full gap-2 sm:w-auto sm:min-w-[11rem]"
       >
         <HiMicrophone className="h-4 w-4" aria-hidden />
-        <span>Start Debrief</span>
+        <span>Start debrief</span>
       </Button>
 
       {open && (
         <Modal width="min(1100px, 95vw)" height="fit-content" onClose={() => setOpen(false)}>
           <ModalContent className="flex flex-col space-y-3">
             <div className="text-center">
-              <ModalTitle>Debrief Session</ModalTitle>
+              <ModalTitle>Debrief session</ModalTitle>
               <ModalHelper className="mx-auto max-w-md">
                 Review your consultation with Athena and get detailed feedback on your performance.
               </ModalHelper>

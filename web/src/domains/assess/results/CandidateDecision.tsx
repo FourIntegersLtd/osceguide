@@ -146,7 +146,7 @@ function Form({
   if (released) {
     return (
       <div className="space-y-2">
-        <Badge variant="success">Released</Badge>
+        <Badge variant="success" dot>Released</Badge>
         <p className="text-osce-caption text-b2b-mid">
           {decision?.released_at ? `Released ${new Date(decision.released_at).toLocaleString()}.` : "Released."}{" "}
           Once released, a decision cannot be edited. Any correction is saved as a new version.
@@ -161,7 +161,7 @@ function Form({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={workflowTone(state)}>{workflowLabel(state)}</Badge>
+        <Badge variant={workflowTone(state)} dot>{workflowLabel(state)}</Badge>
         {decision ? (
           <span className="text-osce-caption text-b2b-mid">Revision {decision.revision}</span>
         ) : null}
@@ -189,32 +189,29 @@ function Form({
       ) : null}
 
       <fieldset className="space-y-2" disabled={signedOff}>
-        <legend className="text-osce-caption font-medium text-b2b-headline">Outcome</legend>
-        <div className="flex flex-wrap gap-2">
+        <legend className="mb-2 text-osce-meta font-medium text-b2b-headline">Outcome</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
           {ASSESSMENT_OUTCOMES.map((value: AssessmentOutcome) => (
             <button
               key={value}
               type="button"
               aria-pressed={outcome === value}
-              title={OUTCOME_HINT[value]}
               onClick={() => setOutcome(value)}
               className={
                 outcome === value
-                  ? "rounded-md border border-b2b-accent bg-b2b-accent px-3 py-1.5 text-osce-caption font-medium text-white"
-                  : "rounded-md border border-b2b-border bg-white px-3 py-1.5 text-osce-caption font-medium text-b2b-mid hover:bg-b2b-cream"
+                  ? "flex flex-col gap-0.5 rounded-control border border-b2b-headline bg-canvas px-4 py-3 text-left"
+                  : "flex flex-col gap-0.5 rounded-control border border-b2b-border bg-b2b-surface px-4 py-3 text-left hover:bg-canvas disabled:opacity-60"
               }
             >
-              {OUTCOME_LABEL[value]}
+              <span className="text-osce-body font-medium text-b2b-headline">{OUTCOME_LABEL[value]}</span>
+              <span className="text-osce-meta text-b2b-mid">{OUTCOME_HINT[value]}</span>
             </button>
           ))}
         </div>
-        {outcome ? (
-          <p className="text-osce-caption text-b2b-mid">{OUTCOME_HINT[outcome as AssessmentOutcome]}</p>
-        ) : null}
       </fieldset>
 
       <label className="block">
-        <span className="text-osce-caption font-medium text-b2b-headline">Rationale</span>
+        <span className="text-osce-meta font-medium text-b2b-headline">Rationale</span>
         <textarea
           rows={4}
           value={rationale}

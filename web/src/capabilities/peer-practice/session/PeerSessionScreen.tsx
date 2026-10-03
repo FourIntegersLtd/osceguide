@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineUsers } from "react-icons/hi2";
-import { Button, ConfirmModal } from "@/foundation/ui";
+import { Button, ConfirmModal, Spinner } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { VoiceRoom } from "@/foundation/livekit";
 import { PeerVideoPanel } from "@/foundation/livekit/PeerVideoPanel";
@@ -83,7 +83,7 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
   };
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-b2c-surface-muted">
+    <div data-skin="room" className="flex h-dvh flex-col overflow-hidden bg-osce-canvas">
       <SessionHeader
         sessionId={sessionId}
         role={role}
@@ -97,9 +97,9 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
         isOpen={confirmingEnd}
         onCancel={() => setConfirmingEnd(false)}
         onConfirm={() => void confirmEnd()}
-        title="End Practice Session"
+        title="End practice session?"
         message={<EndSessionMessage role={role} phase={phase} remaining={state.remaining ?? 0} />}
-        confirmText="Yes, End Session"
+        confirmText="End session"
         cancelText="Cancel"
         isLoading={state.busy}
       />
@@ -128,11 +128,11 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
         )}
         {phase === "preparation" && <PreparationPanel session={session} />}
         {(phase === "consultation" || phase === "debrief") && (
-          <div className="flex h-full min-h-0 flex-col bg-b2c-secondary lg:flex-row lg:overflow-hidden">
-            <div className="h-[38vh] min-h-[280px] w-full flex-shrink-0 bg-b2c-secondary sm:h-[42vh] sm:min-h-[320px] lg:h-full lg:min-h-0 lg:w-3/5 lg:overflow-hidden">
+          <div className="flex h-full min-h-0 flex-col gap-3 p-3 lg:flex-row lg:overflow-hidden">
+            <div className="h-[38vh] min-h-[280px] w-full flex-shrink-0 overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface sm:h-[42vh] sm:min-h-[320px] lg:h-full lg:min-h-0 lg:w-3/5">
               <VideoArea state={state} role={role} />
             </div>
-            <div className="flex min-h-[55vh] w-full flex-1 flex-col overflow-hidden border-t border-b2c-border bg-osce-surface sm:min-h-[58vh] lg:h-full lg:min-h-0 lg:w-2/5 lg:border-l lg:border-t-0">
+            <div className="flex min-h-[55vh] w-full flex-1 flex-col overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface sm:min-h-[58vh] lg:h-full lg:min-h-0 lg:w-2/5">
               <div className="flex h-full min-h-0 flex-1 flex-col">
                 <ConsultationPanel session={session} debrief={phase === "debrief"} />
               </div>
@@ -172,12 +172,12 @@ function VideoArea({ state, role }: { state: PeerSessionState; role: "doctor" | 
     return (
       <div className="flex h-full items-center justify-center bg-osce-canvas">
         <div className="text-center">
-          <div className="mb-2 text-osce-body font-semibold text-osce-danger">Video Session Error</div>
-          <p className="mb-4 text-osce-ink-600">
+          <div className="mb-2 text-osce-body font-semibold text-osce-ink-900">Video session could not start</div>
+          <p className="mb-4 text-osce-meta text-b2c-text-muted">
             {failure ? failureText(failure, "Failed to start video session") : mic.message ?? "Failed to start video session"}
           </p>
-          <Button type="button" variant="primary" size="md" onClick={() => void connect()}>
-            Try Again
+          <Button type="button" variant="secondary" onClick={() => void connect()}>
+            Try again
           </Button>
         </div>
       </div>
@@ -187,8 +187,8 @@ function VideoArea({ state, role }: { state: PeerSessionState; role: "doctor" | 
     return (
       <div className="flex h-full items-center justify-center bg-osce-canvas">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-osce-accent-hover" />
-          <p className="text-osce-ink-600">Connecting to video session...</p>
+          <div className="mb-3"><Spinner /></div>
+          <p className="text-osce-meta text-b2c-text-muted">Connecting to the video session…</p>
         </div>
       </div>
     );
@@ -208,12 +208,12 @@ function WaitingForPartner({ sessionId, afterReport }: { sessionId: string; afte
       <div className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6">
         <div className="flex min-h-[400px] flex-col items-center justify-center text-center">
           <div className="mb-4">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-osce-accent-subtle ring-2 ring-osce-accent/20">
-              <HiOutlineUsers className="h-8 w-8 text-osce-accent" />
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-control bg-b2c-surface-muted">
+              <HiOutlineUsers className="h-6 w-6 text-osce-ink-900" aria-hidden />
             </div>
           </div>
-          <h2 className="mb-2 text-osce-subheading font-semibold text-osce-ink-900">Waiting for your partner to join...</h2>
-          <p className="mb-6 text-b2c-text-secondary">The timer will start once both users have joined the session.</p>
+          <h2 className="mb-2 text-osce-subheading font-semibold text-osce-ink-900">Waiting for your partner to join</h2>
+          <p className="mb-6 text-osce-body text-b2c-text-muted">The timer starts once you have both joined.</p>
           <NoShowGuidelines sessionId={sessionId} afterReport={afterReport} />
         </div>
       </div>
@@ -276,7 +276,7 @@ function EndSessionMessage({ role, phase, remaining }: { role: "doctor" | "patie
         </p>
         <p>
           <span className="font-semibold">Feedback will be generated</span> and should be available within{" "}
-          <span className="font-semibold">View All Sessions</span> under the <span className="font-semibold">Practice</span>{" "}
+          <span className="font-semibold">View all sessions</span> under the <span className="font-semibold">Practice</span>{" "}
           tab in about <span className="font-semibold">60-90 seconds</span>.
         </p>
         <p>Are you sure you want to end the session?</p>
@@ -290,8 +290,8 @@ function SessionLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-b2c-surface-muted px-4">
       <div className="text-center">
-        <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-b-2 border-osce-accent sm:h-12 sm:w-12" />
-        <p className="text-osce-body text-b2c-text-secondary">Loading practice session...</p>
+        <div className="mb-3"><Spinner /></div>
+        <p className="text-osce-meta text-b2c-text-muted">Loading practice session…</p>
       </div>
     </div>
   );
@@ -301,9 +301,9 @@ function SessionError({ message, onReturn }: { message: string | null; onReturn:
   return (
     <div className="flex min-h-screen items-center justify-center bg-b2c-surface-muted px-4">
       <div className="mx-auto max-w-md text-center">
-        <div className="mb-4 px-2 text-osce-body font-semibold text-osce-danger">{message || "Session not found"}</div>
-        <Button type="button" variant="primary" size="md" onClick={onReturn}>
-          Return to Dashboard
+        <div className="mb-4 px-2 text-osce-body font-semibold text-osce-ink-900">{message || "Session not found"}</div>
+        <Button type="button" onClick={onReturn}>
+          Back to dashboard
         </Button>
       </div>
     </div>

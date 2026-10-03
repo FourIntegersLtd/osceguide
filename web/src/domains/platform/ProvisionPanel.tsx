@@ -57,11 +57,11 @@ export function ProvisionForm({
   );
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3">
+    <form onSubmit={submit} className="flex flex-col gap-5">
       {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
       <Input
-        label="Name"
+        label="Organisation name"
         required
         value={name}
         onChange={(event) => {
@@ -79,7 +79,7 @@ export function ProvisionForm({
           setSlugEdited(true);
           setSlug(event.target.value);
         }}
-        hint="Appears in every web address for this organisation. It cannot be changed afterwards."
+        hint="Used in every web address for this organisation. It cannot be changed afterwards."
       />
 
       <Select
@@ -101,7 +101,7 @@ export function ProvisionForm({
             Cancel
           </Button>
         ) : null}
-        <Button type="submit" disabled={busy || !name.trim() || !slug.trim()}>
+        <Button type="submit" variant="commit" disabled={busy || !name.trim() || !slug.trim()}>
           {busy ? "Creating…" : "Create organisation"}
         </Button>
       </div>
@@ -129,7 +129,7 @@ export function ProvisionModal({
   return (
     <Modal
       onClose={onClose}
-      title="Create an organisation"
+      title="Set up an organisation"
       width="min(32rem, 96vw)"
     >
       <div className="p-4 lg:p-6">

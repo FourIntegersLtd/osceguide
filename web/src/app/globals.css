@@ -151,6 +151,51 @@ body:has([data-b2c-shell]) {
 }
 
 /*
+ * The workspace arms, in the canvas's quiet skin (tokens are in tokens.css). Open Sauce
+ * Sans at 14/21 with a hair of negative tracking; Fraunces for the page
+ * title (h1) and nothing else. Phones keep form fields at 16px, because iOS
+ * Safari zooms into any focused field under that.
+ */
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"])[data-b2c-shell],
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) [data-b2c-shell] {
+  font-family: var(--font-open-sauce), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 21px;
+  letter-spacing: -0.003em;
+}
+
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) h2,
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) h3,
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) h4,
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) h5,
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) h6,
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) .font-heading,
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) #logo span {
+  font-family: var(--font-open-sauce), ui-sans-serif, system-ui, sans-serif;
+}
+
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) h1,
+:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) .font-title {
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+@media (max-width: 639px) {
+  :is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) input:not([type="checkbox"]):not([type="radio"]),
+  :is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) select,
+  :is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) textarea {
+    font-size: 16px;
+  }
+}
+
+/* The room's accent is pale, so its primary button takes dark ink. */
+[data-skin="room"] .bg-osce-accent,
+[data-skin="room"] .bg-accent {
+  color: #04073f !important;
+}
+
+/*
  * The raw `text-sm` / `text-lg` / `text-2xl` coercion that used to live here
  * is gone. It only applied inside `[data-b2c-shell]`, so the same class was
  * one size in the app and another in B2B and marketing, and it made class

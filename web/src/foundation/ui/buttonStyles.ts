@@ -25,7 +25,7 @@ export interface ButtonStyleProps {
 }
 
 const baseButtonStyles =
-  "inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-60 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-60 disabled:pointer-events-none";
 
 /**
  * The black CTA, shared by both arms — though they read it differently.
@@ -43,12 +43,15 @@ const baseButtonStyles =
  * see the note on `danger` below. Dark text on a black button is a total
  * failure mode, so the `!` stays even though it is rarely needed.
  *
+ * Train's quiet skin has one primary colour, so there `--osce-commit` points
+ * at the accent and the two tiers merge (tokens.css).
+ *
  * The focus ring stays blue: ring colour is a system-wide affordance, and a
  * black ring on a black button with `ring-offset-1` reads as a thicker border,
  * not a focus state.
  */
 const commitStyles =
-  "bg-osce-ink-800 !text-white hover:bg-osce-ink-900 focus:ring-osce-accent/40 border border-transparent";
+  "bg-osce-commit !text-white hover:bg-osce-commit-hover focus:ring-osce-accent/40 border border-transparent";
 
 const b2cVariants: Record<ButtonVariant, string> = {
   primary:
@@ -92,12 +95,16 @@ const b2bVariants: Record<ButtonVariant, string> = {
  * hiding an invisible ::after hit area, because a hit area nothing renders
  * is one nobody notices breaking.
  */
+/*
+ * The canvas button is 36px, 14px type, radius 9 (`rounded-control`, which
+ * each arm sets). `sm` is the 30px toolbar size.
+ */
 const b2cSizes: Record<ButtonSize, string> = {
-  xs: "h-9 sm:h-7 px-2.5 text-osce-caption rounded-md",
-  sm: "h-10 sm:h-8 px-3 text-osce-body rounded-md",
-  md: "h-11 sm:h-9 px-4 text-osce-body rounded-md",
-  lg: "h-11 sm:h-10 px-5 text-osce-body rounded-md",
-  hero: "h-12 sm:h-11 px-6 text-osce-body font-medium rounded-md w-full gap-2",
+  xs: "h-9 sm:h-7 px-2.5 text-osce-meta rounded-control",
+  sm: "h-10 sm:h-[30px] px-2.5 text-[13px] rounded-control",
+  md: "h-11 sm:h-9 px-3.5 text-osce-body rounded-control",
+  lg: "h-11 sm:h-10 px-4 text-osce-body rounded-control",
+  hero: "h-12 sm:h-10 px-5 text-osce-body font-medium rounded-control w-full",
 };
 
 const b2bSizes: Record<ButtonSize, string> = {

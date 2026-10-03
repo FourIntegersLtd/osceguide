@@ -109,7 +109,7 @@ export function QueueExpiredModal({ onClose }: { onClose: () => void }) {
     <Modal width="500px" height="fit-content" onClose={onClose}>
       <ModalContent>
         <ModalLead
-          title="No Match Found"
+          title="No match found"
           description="No practice partner found within 10 minutes. Try again or use AI practice."
           icon={<HiOutlineClock className="h-4 w-4" />}
           iconTone="orange"
@@ -184,7 +184,7 @@ export function PartnerLeftModal({
     <Modal width="500px" height="fit-content" hideCloseButton closeOnBackdrop={false} closeOnEscape={false} closeOnBack={false}>
       <ModalContent>
         <ModalLead
-          title={noResponse ? "Partner Didn't Respond" : "Partner Left"}
+          title={noResponse ? "Your partner did not respond" : "Your partner left"}
           description={
             noResponse
               ? "Your practice partner didn't respond to the match in time."
@@ -234,20 +234,20 @@ export function QueueIndicator({
   onDismiss: () => void;
 }) {
   return (
-    <div className="fixed bottom-3 left-3 right-3 z-[9999] rounded-xl border border-osce-accent-subtle bg-osce-accent-muted p-3 text-osce-ink-900 sm:bottom-4 sm:left-auto sm:right-4 sm:max-w-sm sm:p-4">
+    <div className="fixed bottom-3 left-3 right-3 z-[9999] rounded-osce-lg border border-osce-border bg-osce-surface p-3 text-osce-ink-900 shadow-lg sm:bottom-4 sm:left-auto sm:right-4 sm:max-w-sm sm:p-4">
       <button
         onClick={onDismiss}
-        className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-osce-accent-subtle bg-white text-osce-accent transition-colors hover:bg-osce-accent-muted hover:text-osce-accent-hover"
+        className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-osce-border bg-osce-surface text-b2c-text-muted transition-colors hover:text-osce-ink-900"
         aria-label="Dismiss"
       >
         <HiOutlineXMark className="h-3.5 w-3.5" />
       </button>
       <div className="flex items-center gap-3 sm:gap-4">
         <div className="relative flex-shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-osce-accent-subtle sm:h-12 sm:w-12">
+          <div className="flex h-10 w-10 items-center justify-center rounded-control bg-b2c-surface-muted sm:h-12 sm:w-12">
             <HiOutlineUsers className="h-4 w-4 text-osce-accent sm:h-5 sm:w-5" />
           </div>
-          <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-osce-accent sm:h-5 sm:w-5">
+          <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-osce-ink-900 sm:h-5 sm:w-5">
             <HiOutlineArrowPath className="h-2.5 w-2.5 animate-spin text-white sm:h-3 sm:w-3" />
           </div>
         </div>

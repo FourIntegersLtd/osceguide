@@ -6,6 +6,13 @@ export type Trainee = components["schemas"]["TraineeRead"];
 
 const org = (slug: string) => `/api/v1/orgs/${encodeURIComponent(slug)}`;
 
+export type Organization = components["schemas"]["OrganizationRead"];
+
+/** The organisation itself: its name, type and sign-in rules. */
+export function readOrganization(slug: string, signal?: AbortSignal): Promise<Organization> {
+  return platformRequest<Organization>(org(slug), { signal });
+}
+
 export function listSittings(slug: string, signal?: AbortSignal): Promise<SittingPage> {
   return platformRequest<SittingPage>(`${org(slug)}/sittings`, { signal });
 }

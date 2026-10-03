@@ -4,7 +4,6 @@ import { PatientRoleplayScript } from "@/capabilities/debrief/PatientRoleplayScr
 import { StationBrief } from "@/capabilities/attempt-runner/material/StationBrief";
 import { ManagementPlan } from "@/capabilities/attempt-runner/material/ManagementPlan";
 import { sectionsFor } from "@/capabilities/attempt-runner/material/AudienceSections";
-import { b2cCard } from "@/foundation/ui/productTokens";
 import type { PracticeSession } from "../api";
 
 type Station = NonNullable<PracticeSession["station"]>;
@@ -21,13 +20,13 @@ function PatientScript({ station }: { station: Station }) {
 export function PreparationPanel({ session }: { session: PracticeSession }) {
   const station = session.station;
   return (
-    <div className="h-full overflow-hidden bg-b2c-surface-muted/50">
-      <div className="h-full w-full md:mx-auto md:max-w-6xl md:p-6">
+    <div className="h-full overflow-hidden">
+      <div className="h-full w-full p-3 md:mx-auto md:max-w-6xl md:p-6">
         {!station ? missing : session.my_role === "patient" ? (
           <PatientScript station={station} />
         ) : (
           <div
-            className={`h-full w-full overflow-y-auto rounded-none border-x-0 px-0 py-4 md:rounded-2xl md:border-x md:p-6 ${b2cCard}`}
+            className="h-full w-full overflow-y-auto rounded-osce-lg border border-osce-border bg-osce-surface p-4 md:p-6"
           >
             <StationBrief embedded brief={{ sections: station.sections ?? [] }} />
           </div>
@@ -47,10 +46,10 @@ export function ConsultationPanel({ session, debrief }: { session: PracticeSessi
     const sections = station?.sections ?? [];
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-        <div className="flex-shrink-0 rounded-lg border border-osce-accent-subtle bg-osce-accent-muted px-4 py-3 text-osce-body text-osce-ink-900">
-          <p className="font-medium">Discuss the case and share insights</p>
-          <p className="mt-1 text-osce-accent-hover/90">
-            Use the management plan below. Talk through what went well, what you’d do differently, and any questions.
+        <div className="flex-shrink-0 rounded-osce-lg bg-b2c-surface-muted px-4 py-3">
+          <p className="text-osce-body font-semibold text-osce-ink-900">Discuss the case together</p>
+          <p className="mt-0.5 text-osce-meta text-b2c-text-muted">
+            Use the model answer below. Talk through what went well, what you would do differently, and any questions.
           </p>
         </div>
         {station && sectionsFor(sections, "examiner").length > 0 ? (

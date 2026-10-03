@@ -4,11 +4,14 @@ import { HiOutlinePresentationChartLine } from "react-icons/hi2";
 import {
   Alert,
   AsyncBoundary,
+  B2CGroupedRow,
+  B2CGroupedSection,
+  B2CHero,
+  B2CPageHeader,
   Badge,
   ButtonLink,
   EmptyState,
   TextLink,
-  b2bTokens,
 } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
@@ -79,23 +82,31 @@ function Circuit({ sitting }: { sitting: MySitting }) {
 
   return (
     <section className="space-y-4">
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-b2b-border pb-4">
-        <div className="min-w-0">
-          <p className={b2bTokens.b2bEyebrow}>{modeLabel(sitting)}</p>
-          <h1 className={`mt-1 ${b2bTokens.b2bPageTitle}`}>{sitting.name}</h1>
-          <p className="mt-1 text-osce-caption text-b2b-mid">
-            {sitting.circuit_name}
-            {total > 0 ? ` · ${completed} of ${total} stations completed` : ""}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {sitting.live ? <Badge tone="success">Live</Badge> : null}
-          {sitting.paused ? <Badge tone="warning">Paused</Badge> : null}
-          <ButtonLink themeType="b2b" variant="secondary" size="sm" href={hrefFor("/trainee")}>
-            All sittings
-          </ButtonLink>
-        </div>
-      </header>
+      <B2CPageHeader
+        className="!mb-0"
+        eyebrow={modeLabel(sitting)}
+        title={sitting.name}
+        subtitle={`${sitting.circuit_name}${
+          total > 0 ? ` · ${completed} of ${total} stations completed` : ""
+        }`}
+        action={
+          <>
+            {sitting.live ? (
+              <Badge variant="success" dot>
+                Live
+              </Badge>
+            ) : null}
+            {sitting.paused ? (
+              <Badge variant="warning" dot>
+                Paused
+              </Badge>
+            ) : null}
+            <ButtonLink themeType="b2b" variant="secondary" size="sm" href={hrefFor("/trainee")}>
+              All sittings
+            </ButtonLink>
+          </>
+        }
+      />
 
       <Alert tone="info" title={exam ? "Before you start" : "How a practice circuit works"}>
         {exam
@@ -104,35 +115,25 @@ function Circuit({ sitting }: { sitting: MySitting }) {
       </Alert>
 
       {sitting.can_join ? (
-        <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4 sm:p-5">
-          <h2 className={b2bTokens.b2bSectionTitle}>Your station is open</h2>
-          <div className="mt-3">
-            <JoinRoom sitting={sitting} />
-          </div>
-        </div>
+        <B2CHero eyebrow="Today" title="Your station is open" action={<JoinRoom sitting={sitting} />} />
       ) : null}
 
       {readingBriefSlot(sitting) ? (
         <SlotReadingBrief slot={readingBriefSlot(sitting)!} orgSlug={sitting.org_slug} />
       ) : null}
 
-      <div className="space-y-2">
-        <h2 className={b2bTokens.b2bEyebrow}>{exam ? "Your stations" : "Your turns"}</h2>
-        {slots.length === 0 ? (
-          <EmptyState
-            title="Nothing assigned yet"
-            description="When your organisation adds stations for you on this circuit, they appear here."
-          />
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {slots.map((slot) => (
-              <li key={slot.id}>
-                <Slot slot={slot} exam={exam} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {slots.length === 0 ? (
+        <EmptyState
+          title="Nothing assigned yet"
+          description="When your organisation adds stations for you on this circuit, they appear here."
+        />
+      ) : (
+        <B2CGroupedSection eyebrow={exam ? "Your stations" : "Your turns"}>
+          {slots.map((slot) => (
+            <Slot key={slot.id} slot={slot} exam={exam} />
+          ))}
+        </B2CGroupedSection>
+      )}
 
       <MyResultLink sittingId={sitting.id} />
     </section>
@@ -152,49 +153,37 @@ function Slot({ slot, exam }: { slot: MySlot; exam: boolean }) {
   const status = slotStatus(slot);
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-b2b-border bg-b2b-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-      <div className="flex min-w-0 flex-1 items-start gap-3">
-        <span
-          className={`${b2bTokens.b2bIconChipBase} ${b2bTokens.b2bChipHueClasses.violet} ${
-            status.done ? "opacity-45" : ""
-          }`}
-        >
-          <HiOutlinePresentationChartLine className="h-5 w-5" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p
-              className={`text-osce-body font-semibold ${
-                status.done ? "text-b2b-mid" : "text-b2b-headline"
-              }`}
-            >
-              {exam ? "Station" : "Turn"} {slot.slot_index + 1}
-            </p>
-            <Badge tone={status.tone}>{status.label}</Badge>
-          </div>
-          {slot.station_title ? (
-            <p className="mt-0.5 text-osce-meta text-b2b-mid">{slot.station_title}</p>
-          ) : null}
-          {status.done ? (
-            <p className="mt-2 text-osce-meta text-b2b-mid">
-              Read this one back below. A finished station cannot be re-entered.
-            </p>
-          ) : null}
-        </div>
+    <div className="flex flex-col gap-3 border-b border-b2b-border px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
+      <B2CGroupedRow
+        className="min-h-0 flex-1 border-b-0 p-0"
+        icon={HiOutlinePresentationChartLine}
+        title={`${exam ? "Station" : "Turn"} ${slot.slot_index + 1}${
+          slot.station_title ? ` · ${slot.station_title}` : ""
+        }`}
+        meta={
+          status.done
+            ? "Read this one back below. A finished station cannot be re-entered."
+            : undefined
+        }
+        trailing={
+          <Badge variant={status.tone} dot>
+            {status.label}
+          </Badge>
+        }
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        {slot.attempt_id ? (
+          <ButtonLink
+            themeType="b2b"
+            variant="secondary"
+            size="sm"
+            href={hrefFor(`/attempts/${slot.attempt_id}`)}
+          >
+            {status.done ? "Review station" : "Station record"}
+          </ButtonLink>
+        ) : null}
+        {status.done ? <MyReviewLink slotId={slot.id} /> : null}
       </div>
-
-      {slot.attempt_id ? (
-        <ButtonLink
-          themeType="b2b"
-          variant={status.done ? "commit" : "secondary"}
-          size="sm"
-          href={hrefFor(`/attempts/${slot.attempt_id}`)}
-          className="w-full sm:w-auto"
-        >
-          {status.done ? "Review station" : "Station record"}
-        </ButtonLink>
-      ) : null}
-      {status.done ? <MyReviewLink slotId={slot.id} /> : null}
     </div>
   );
 }
@@ -219,7 +208,6 @@ function MyReviewLink({ slotId }: { slotId: string }) {
       variant="secondary"
       size="sm"
       href={hrefFor(`/trainee/reviews/${slotId}`)}
-      className="w-full sm:w-auto"
     >
       Station feedback
     </ButtonLink>

@@ -146,6 +146,8 @@ class MembershipRead(BaseModel):
     # True when adding this membership created the account and queued an
     # invitation: the person cannot sign in until they choose a password.
     invited: bool = False
+    # Circuits this person is named supervisor of; filled by the list read.
+    circuits_led: int = 0
 
 
 class CreateMembership(BaseModel):

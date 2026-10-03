@@ -25,8 +25,11 @@ type ResetField = "password" | "confirmPassword";
  * used, or never valid are indistinguishable to the person holding it, and
  * distinguishing them out loud would tell somebody testing tokens which of
  * their guesses were real.
+ *
+ * `invitation` is the same act for somebody new: an invitation's token is a
+ * reset token, so `/accept-invitation` is this screen with its own wording.
  */
-export default function ResetPassword() {
+export default function ResetPassword({ invitation = false }: { invitation?: boolean }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -59,7 +62,9 @@ export default function ResetPassword() {
       setDone(true);
     } catch {
       setFormError(
-        "That link is no longer valid. Ask for a new one and use the most recent email.",
+        invitation
+          ? "That invitation is no longer valid. Ask the person who invited you to send it again."
+          : "That link is no longer valid. Ask for a new one and use the most recent email.",
       );
       setIsSubmitting(false);
     }
@@ -89,7 +94,11 @@ export default function ResetPassword() {
 
   if (done) {
     return (
-      <AuthShell variant="card" title="Password changed" subtitle="You can sign in with it now.">
+      <AuthShell
+        variant="card"
+        title={invitation ? "Your account is ready" : "Password changed"}
+        subtitle={invitation ? "Sign in with the password you just chose." : "You can sign in with it now."}
+      >
         <Button
           type="button"
           variant="commit"
@@ -117,10 +126,17 @@ export default function ResetPassword() {
   );
 
   return (
-    <AuthShell variant="card" title="Set a new password" subtitle="Choose something you'll remember">
+    <AuthShell
+      variant="card"
+      eyebrow={invitation ? "Invitation" : undefined}
+      title={invitation ? "Accept your invitation" : "Set a new password"}
+      subtitle={
+        invitation ? "Choose a password to finish setting up your account." : "Choose something you'll remember"
+      }
+    >
       <form className="space-y-5" onSubmit={handleFormSubmission} noValidate>
         <AuthFormField
-          label="New password"
+          label={invitation ? "Password" : "New password"}
           name="password"
           type={formData.showPassword ? "text" : "password"}
           autoComplete="new-password"
@@ -155,7 +171,7 @@ export default function ResetPassword() {
           isLoading={isSubmitting}
           className={authButtonPrimary}
         >
-          {isSubmitting ? "Saving…" : "Save new password"}
+          {isSubmitting ? "Saving…" : invitation ? "Accept invitation" : "Save new password"}
         </Button>
       </form>
     </AuthShell>

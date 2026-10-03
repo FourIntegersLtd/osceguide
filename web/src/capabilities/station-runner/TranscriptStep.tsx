@@ -15,7 +15,7 @@ import { downloadTranscript } from "@/capabilities/attempt-runner/transcriptDocu
  * the consultation screen once it is over — rather than being a section of its
  * own in the navigation, which is what it had become.
  *
- * "Load Previous" opens the other times this station has been sat. The old
+ * "Load previous" opens the other times this station has been sat. The old
  * screen sent people to a `/transcripts` page with a query string; the list is
  * short and belongs here.
  */
@@ -60,7 +60,7 @@ export function TranscriptStep({
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-b2c-border p-3">
         {stationVersionId && (
           <Button type="button" variant="ghost" size="sm" onClick={() => setPicking(true)}>
-            <HiOutlineClock className="h-4 w-4" aria-hidden /> Load Previous
+            <HiOutlineClock className="h-4 w-4" aria-hidden /> Load previous
           </Button>
         )}
         <Button

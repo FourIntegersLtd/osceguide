@@ -45,59 +45,69 @@ export function ReviewFields({
 
   return (
     <div className="space-y-4">
-      <ul className="space-y-5">
-        {domains.map((domain) => (
-          <li key={domain.id} className="space-y-2.5">
-            <div className="flex items-center gap-2">
-              <span className={b2bTokens.b2bSectionTitle}>{domain.label}</span>
-              {domain.required ? <Badge variant="neutral" size="xs">Required</Badge> : null}
-            </div>
-            {domain.fields.map((field) => {
-              const machine = machineRating(form.rating, payload, field.path);
-              // A domain-level field repeats the domain's name; say nothing twice.
-              const showLabel = field.competency_id !== null && field.competency_id !== undefined;
-              return (
-                <div key={field.path} className="space-y-1.5">
-                  <div className="flex items-center justify-between gap-3">
-                    {showLabel ? (
-                      <span className="text-osce-caption font-medium text-b2b-headline">{field.label}</span>
-                    ) : (
-                      <span />
-                    )}
-                    {machine !== null ? (
-                      <span className="shrink-0 text-osce-caption text-b2b-mid">
-                        machine: {ratingLabel(form.rating, machine)}
-                      </span>
-                    ) : null}
-                  </div>
-                  <RatingInput
-                    rating={form.rating}
-                    label={field.label}
-                    value={ratings[field.path] ?? null}
-                    disabled={disabled}
-                    onChange={(value) => onRate(field.path, value)}
-                  />
+      <ul className="divide-y divide-b2b-border">
+        {domains.map((domain) => {
+          // A domain-level field repeats the domain's name, so its rating sits
+          // in the domain's own heading row; competency fields get a row each.
+          const own = domain.fields.filter((field) => field.competency_id === null || field.competency_id === undefined);
+          const parts = domain.fields.filter((field) => field.competency_id !== null && field.competency_id !== undefined);
+          const input = (field: (typeof domain.fields)[number]) => (
+            <RatingInput
+              rating={form.rating}
+              label={field.label}
+              value={ratings[field.path] ?? null}
+              disabled={disabled}
+              onChange={(value) => onRate(field.path, value)}
+            />
+          );
+          const machineNote = (path: string) => {
+            const machine = machineRating(form.rating, payload, path);
+            return machine !== null ? (
+              <span className="text-osce-meta text-b2b-mid">Machine: {ratingLabel(form.rating, machine)}</span>
+            ) : null;
+          };
+          return (
+            <li key={domain.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className={b2bTokens.b2bSectionTitle}>{domain.label}</span>
+                  {domain.required ? <Badge variant="neutral" size="xs">Required</Badge> : null}
                 </div>
-              );
-            })}
-            {comments && onComment ? (
-              <label className="block">
-                <span className="sr-only">Note on {domain.label}</span>
-                <textarea
-                  rows={2}
-                  value={comments[domain.id] ?? ""}
-                  disabled={disabled}
-                  onChange={(event) => onComment(domain.id, event.target.value)}
-                  placeholder={`Why this rating for ${domain.label}`}
-                  className={`${b2bTokens.b2bInputBase} w-full`}
-                />
-              </label>
-            ) : null}
-          </li>
-        ))}
+                {own.map((field) => (
+                  <div key={field.path} className="flex flex-wrap items-center gap-3">
+                    {machineNote(field.path)}
+                    {input(field)}
+                  </div>
+                ))}
+              </div>
+              {parts.map((field) => (
+                <div key={field.path} className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-osce-body text-b2b-headline">{field.label}</span>
+                    {machineNote(field.path)}
+                  </div>
+                  {input(field)}
+                </div>
+              ))}
+              {comments && onComment ? (
+                <label className="block">
+                  <span className="sr-only">Note on {domain.label}</span>
+                  <textarea
+                    rows={2}
+                    value={comments[domain.id] ?? ""}
+                    disabled={disabled}
+                    onChange={(event) => onComment(domain.id, event.target.value)}
+                    placeholder={`Why this rating for ${domain.label}`}
+                    className={`${b2bTokens.b2bInputBase} w-full`}
+                  />
+                </label>
+              ) : null}
+            </li>
+          );
+        })}
       </ul>
       {missing.length > 0 ? (
-        <p className="text-osce-caption text-b2b-mid">
+        <p className="text-osce-meta text-b2b-mid">
           Still to rate before completing: {missing.join(", ")}.
         </p>
       ) : null}

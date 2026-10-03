@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineHeart, HiOutlineMicrophone } from "react-icons/hi2";
-import { LuPodcast, LuStethoscope } from "react-icons/lu";
+import { LuPodcast } from "react-icons/lu";
 import {
   B2CPageHeader,
   B2CSegmentedTabs,
@@ -60,44 +59,31 @@ export function SummaryView({
       <B2CPageHeader
         title={item.title}
         back={{ href: hrefFor(studyListPath("summary")), label: STUDY_KIND_LABEL.summary }}
-        action={<DiscussWithAthena topic={{ title: item.title, kind: "summary", slug: item.slug }} />}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {audio ? (
+              <Button type="button" variant="secondary" onClick={() => setPlaying(true)} className="gap-2">
+                <LuPodcast className="h-4 w-4" aria-hidden />
+                <span>Listen</span>
+              </Button>
+            ) : null}
+            <DiscussWithAthena topic={{ title: item.title, kind: "summary", slug: item.slug }} />
+          </div>
+        }
         className="mb-6 border-b-0 pb-0 sm:pb-0"
       />
 
-      {showTabs || audio ? (
-        <div className="mb-8 flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
-          {showTabs ? (
-            <B2CSegmentedTabs
-              items={[
-                {
-                  id: "clinical",
-                  label: (
-                    <span className="inline-flex items-center gap-2">
-                      <LuStethoscope className="h-4 w-4" aria-hidden />
-                      Clinical Management
-                    </span>
-                  ),
-                },
-                {
-                  id: "psychosocial",
-                  label: (
-                    <span className="inline-flex items-center gap-2">
-                      <HiOutlineHeart className="h-4 w-4" aria-hidden />
-                      Psychosocial
-                    </span>
-                  ),
-                },
-              ]}
-              value={tab}
-              onChange={setTab}
-              aria-label="Summary sections"
-            />
-          ) : (
-            <span />
-          )}
-
-          {audio ? <ListenCard onListen={() => setPlaying(true)} /> : null}
-        </div>
+      {showTabs ? (
+        <B2CSegmentedTabs
+          items={[
+            { id: "clinical", label: "Clinical management" },
+            { id: "psychosocial", label: "Psychosocial" },
+          ]}
+          value={tab}
+          onChange={setTab}
+          aria-label="Summary sections"
+          className="mb-6"
+        />
       ) : null}
 
       {/*
@@ -129,30 +115,6 @@ export function SummaryView({
           <SummaryPodcast item={item} />
         </Modal>
       ) : null}
-    </div>
-  );
-}
-
-function ListenCard({ onListen }: { onListen: () => void }) {
-  return (
-    <div className="w-full md:ml-4 md:w-auto">
-      <div className="rounded-xl border border-osce-accent-muted bg-gradient-to-r from-osce-accent-muted to-osce-accent-subtle p-3 transition-all duration-300">
-        <div className="flex items-center justify-between gap-3 md:justify-start">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-osce-accent to-osce-accent-hover">
-              <LuPodcast className="h-4 w-4 text-white" aria-hidden />
-            </div>
-            <div className="flex flex-col text-left">
-              <span className="text-osce-body text-b2c-text-secondary">7-10 min audio</span>
-              <span className="text-osce-caption text-b2c-text-muted">with Ben &amp; Michelle</span>
-            </div>
-          </div>
-          <Button type="button" onClick={onListen} className="gap-2">
-            <HiOutlineMicrophone className="h-3 w-3" aria-hidden />
-            <span>Listen</span>
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -63,7 +63,7 @@ export function RunnerHelpPanel({ kind }: { kind: "training" | "exam" }) {
             id="runner-help"
             role="dialog"
             aria-label={copy.title}
-            className="absolute right-0 top-full z-20 mt-2 w-[min(calc(100vw-2rem),24rem)] rounded-lg border border-b2b-border bg-white p-4 text-osce-body leading-relaxed text-b2b-graphite"
+            className="absolute right-0 top-full z-20 mt-2 w-[min(calc(100vw-2rem),24rem)] rounded-panel border border-b2b-border bg-b2b-surface p-4 text-osce-body leading-relaxed text-b2b-graphite"
           >
             <p className="font-semibold text-b2b-headline">{copy.title}</p>
             <p className="mt-2 text-osce-meta text-b2b-mid">{copy.intro}</p>

@@ -120,6 +120,14 @@ async def build_sitting_report(
             candidates=len(candidates),
             stations=len(slots),
             stations_marked=sum(candidate.stations_marked for candidate in candidates),
+            awaiting_marking=sum(
+                1
+                for candidate in candidates
+                if any(
+                    station.slot_status == "completed" and not station.marked
+                    for station in candidate.stations
+                )
+            ),
             decisions_released=sum(
                 1 for candidate in candidates if candidate.decision and candidate.decision.released_at
             ),

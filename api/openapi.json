@@ -2218,6 +2218,17 @@
             ],
             "title": "Started At"
           },
+          "supervisor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supervisor Name"
+          },
           "supervisor_user_id": {
             "anyOf": [
               {
@@ -2232,6 +2243,11 @@
           },
           "timing": {
             "$ref": "#/components/schemas/TimingRead"
+          },
+          "trainee_count": {
+            "default": 0,
+            "title": "Trainee Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -13860,6 +13876,11 @@
       },
       "ReportTotals": {
         "properties": {
+          "awaiting_marking": {
+            "default": 0,
+            "title": "Awaiting Marking",
+            "type": "integer"
+          },
           "candidates": {
             "title": "Candidates",
             "type": "integer"
@@ -16191,6 +16212,11 @@
       },
       "SittingRead": {
         "properties": {
+          "candidate_count": {
+            "default": 0,
+            "title": "Candidate Count",
+            "type": "integer"
+          },
           "circuits": {
             "items": {
               "$ref": "#/components/schemas/CircuitRead"
@@ -16222,6 +16248,17 @@
               }
             ],
             "title": "Programme Id"
+          },
+          "programme_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programme Name"
           },
           "rubric_version_id": {
             "format": "uuid",
@@ -18525,6 +18562,18 @@
             ],
             "title": "Last Name"
           },
+          "programme_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Programme Names",
+            "type": "array"
+          },
+          "stations_sat": {
+            "default": 0,
+            "title": "Stations Sat",
+            "type": "integer"
+          },
           "user_id": {
             "anyOf": [
               {
@@ -20819,6 +20868,11 @@
       },
       "app__features__tenancy__schemas__MembershipRead": {
         "properties": {
+          "circuits_led": {
+            "default": 0,
+            "title": "Circuits Led",
+            "type": "integer"
+          },
           "email": {
             "anyOf": [
               {

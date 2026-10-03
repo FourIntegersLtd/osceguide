@@ -45,9 +45,9 @@ export function TurnStrip({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-b2b-border bg-white">
+    <div className="overflow-hidden rounded-panel border border-b2b-border bg-b2b-surface">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-b2b-border px-3 py-2.5 sm:px-4">
-        <span className="text-osce-caption font-semibold uppercase tracking-wide text-b2b-mid">
+        <span className="text-osce-caption font-semibold text-b2b-mid">
           Stations on this circuit
         </span>
         {canJump ? (
@@ -110,19 +110,19 @@ function Chip({
   const frame = agentLive
     ? "border-b2b-success-border bg-b2b-success-bg ring-2 ring-b2b-success-icon/40"
     : isActive
-      ? "border-b2b-accent/50 bg-b2b-cream"
+      ? "border-b2b-accent/50 bg-canvas"
       : canJump
-        ? "border-b2b-border bg-white hover:border-b2b-accent-border hover:bg-b2b-cream"
-        : "border-b2b-border bg-b2b-cream/50 opacity-70";
+        ? "border-b2b-border bg-b2b-surface hover:border-b2b-accent-border hover:bg-canvas"
+        : "border-b2b-border bg-canvas/50 opacity-70";
 
   const marker = agentLive
     ? "bg-b2b-success-icon text-white"
     : isActive
       ? "bg-b2b-accent text-white"
-      : "bg-b2b-cream text-b2b-mid";
+      : "bg-canvas text-b2b-mid";
 
   return (
-    <div className={`min-w-[170px] max-w-[220px] shrink-0 rounded-lg border px-3 py-2 ${frame}`}>
+    <div className={`min-w-[170px] max-w-[220px] shrink-0 rounded-panel border px-3 py-2 ${frame}`}>
       <button
         type="button"
         disabled={!canJump}

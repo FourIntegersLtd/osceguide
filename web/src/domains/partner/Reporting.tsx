@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { LuMail, LuPlus } from "react-icons/lu";
-import { Alert, AsyncBoundary, Button, Card, EmptyState, Input, PageHeader } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, Card, EmptyState, Input, B2CPageHeader } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import {
@@ -33,9 +33,9 @@ export function PartnerReporting({ partner }: { partner: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
+      <B2CPageHeader
         title="Reporting"
-        description="Your tracking references, and who can see the numbers."
+        subtitle="Your tracking references, and who can see the numbers."
       />
       <AsyncBoundary state={refIds}>{(data) => <RefIds data={data} />}</AsyncBoundary>
       {canAddReporter ? (

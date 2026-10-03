@@ -3,11 +3,22 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AsyncBoundary, ButtonLink, Modal } from "@/foundation/ui";
+import { HiOutlineChartBar, HiOutlineMicrophone } from "react-icons/hi2";
+import {
+  AsyncBoundary,
+  B2CGroupedRowLink,
+  B2CGroupedSection,
+  B2CPageHeader,
+  ButtonLink,
+  Modal,
+  TextLink,
+  productTokens,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { ExamWishes } from "@/capabilities/account";
+import { kindLabel } from "@/capabilities/transcripts/api";
 import {
   OnboardingFlow,
   needsDashboardOnboarding,
@@ -19,12 +30,7 @@ import {
   type Dashboard as DashboardData,
   type Performance,
 } from "@/domains/train/api";
-import {
-  DashboardChartGrid,
-  DashboardChartSide,
-  DashboardChartWide,
-  DashboardHeader,
-} from "@/domains/train/dashboard/DashboardLayout";
+import type { components } from "@/foundation/platform-client/schema";
 import { AboutModal } from "@/domains/train/dashboard/AboutModals";
 import { CompetencyHero } from "@/domains/train/dashboard/CompetencyHero";
 import { DomainPerformanceCard } from "@/domains/train/dashboard/DomainPerformanceCard";
@@ -39,6 +45,7 @@ import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
 import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
 import { examCountdownSubtitle, examMoment, isExamWeek } from "@/domains/train/dashboard/examDate";
 import type { AboutKey } from "@/domains/train/dashboard/aboutTypes";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 
 /**
  * Home for someone practising on their own — one screen for every exam.
@@ -129,27 +136,39 @@ function DashboardBody({ data }: { data: DashboardData }) {
   const firstName = session?.user.name?.split(" ")[0] ?? "there";
   // The countdown leads when there is one to show; otherwise the exam's own
   // welcome line (SCA has none, matching the old screen).
-  const subtitle = examCountdownSubtitle(examDate) ?? `Welcome back, ${firstName}.`;
+  const greeting = attempts === 0 ? `Welcome, ${firstName}.` : `Welcome back, ${firstName}.`;
+  const countdown = examCountdownSubtitle(examDate);
+  const subtitle = countdown ? `${countdown} ${greeting}` : greeting;
   const eyebrow = `${attempts} station${attempts === 1 ? "" : "s"} attempted`;
   const performance = performanceState.data?.performance ?? null;
   const view = dashboardView(performance);
 
   return (
     <>
-      <DashboardHeader
-        title={view.title}
+      <B2CPageHeader
         eyebrow={eyebrow}
+        title={view.title}
         subtitle={subtitle}
-        actions={
-          <>
-            <ExamDateControl />
-            <ButtonLink href={hrefFor("/mocks")} variant="primary" size="md">
-              {attempts === 0 ? "Start your first station" : "Practise a station"}
-            </ButtonLink>
-          </>
-        }
+        action={<ExamDateControl />}
       />
 
+      <NextStation
+        practiseHref={hrefFor("/mocks")}
+        firstStation={attempts === 0}
+        weakest={view.counted ? (view.insights[0]?.text ?? null) : null}
+      />
+
+      {attempts === 0 ? (
+        <div className="flex flex-col items-center gap-2.5 rounded-osce-lg border border-dashed border-b2c-border bg-osce-surface px-6 py-10 text-center">
+          <span className="flex h-10 w-10 items-center justify-center rounded-osce-md bg-b2c-surface-muted text-osce-ink-700">
+            <HiOutlineChartBar className="h-5 w-5" aria-hidden />
+          </span>
+          <h2 className={productTokens.b2cSectionTitle}>No assessments yet</h2>
+          <p className="max-w-[360px] text-b2c-text-muted">
+            Complete stations and your competency mix will appear here.
+          </p>
+        </div>
+      ) : (
       <AsyncBoundary state={performanceState}>
         {() => (
           <ExamSections
@@ -157,9 +176,13 @@ function DashboardBody({ data }: { data: DashboardData }) {
             performance={performance}
             loading={performanceState.loading}
             onAbout={setAbout}
+            recent={data.recent_attempts ?? []}
+            attemptHref={(id) => hrefFor(`/attempts/${id}`)}
+            sessionsHref={hrefFor("/transcripts")}
           />
         )}
       </AsyncBoundary>
+      )}
 
       <AboutModal view={view} active={about} onClose={() => setAbout(null)} />
 
@@ -178,67 +201,164 @@ function DashboardBody({ data }: { data: DashboardData }) {
   );
 }
 
+type RecentAttempt = components["schemas"]["RecentAttempt"];
+
+/**
+ * The one hero (canvas `train-dashboard`): what to do next and why. Where the
+ * rubric counts grades it names the weakest domain; otherwise it just says
+ * "practise".
+ */
+function NextStation({
+  practiseHref,
+  firstStation,
+  weakest,
+}: {
+  practiseHref: string;
+  firstStation: boolean;
+  weakest: string | null;
+}) {
+  const title = firstStation
+    ? "Sit your first station"
+    : weakest
+      ? `${weakest} is where marks are waiting`
+      : "Keep the streak going";
+  const sub = firstStation
+    ? "Twelve minutes with an AI patient, then feedback by domain. It takes about 15 minutes in total."
+    : weakest
+      ? `Your marked stations dropped the most marks in ${weakest.toLowerCase()}. Practise a station to work on it.`
+      : "Practise a station and your feedback lands here.";
+  return (
+    <B2CHero
+      lead
+      eyebrow={firstStation ? "Start here" : "Your next station"}
+      title={title}
+      action={
+        <>
+          <ButtonLink href={practiseHref} variant="primary" size="md">
+            {firstStation ? "Start your first station" : "Practise a station"}
+          </ButtonLink>
+          {weakest ? (
+            <ButtonLink href="#work" variant="secondary" size="md">
+              See what to work on
+            </ButtonLink>
+          ) : null}
+        </>
+      }
+    >
+      {sub}
+    </B2CHero>
+  );
+}
+
+function RecentStations({
+  recent,
+  attemptHref,
+  sessionsHref,
+}: {
+  recent: RecentAttempt[];
+  attemptHref: (id: string) => string;
+  sessionsHref: string;
+}) {
+  if (recent.length === 0) return null;
+  return (
+    <B2CGroupedSection eyebrow="Recent stations" action={<TextLink href={sessionsHref}>All sessions</TextLink>}>
+      {recent.slice(0, 5).map((attempt) => (
+        <B2CGroupedRowLink
+          key={attempt.id}
+          href={attemptHref(attempt.id)}
+          icon={HiOutlineMicrophone}
+          title={kindLabel(attempt.kind)}
+          meta={`${relativeDay(attempt.created_at)} · ${attempt.exam_code.toUpperCase()}`}
+          trailing={
+            <span className="hidden h-[22px] shrink-0 items-center rounded-osce-sm bg-b2c-surface-muted px-2 text-osce-caption font-medium text-osce-ink-700 sm:inline-flex">
+              {attempt.has_result ? "Marked" : attempt.status === "created" ? "Not started" : "In progress"}
+            </span>
+          }
+        />
+      ))}
+    </B2CGroupedSection>
+  );
+}
+
+function relativeDay(value: string): string {
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return value;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = new Date(at);
+  day.setHours(0, 0, 0, 0);
+  const days = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return at.toLocaleDateString("en-GB", { weekday: "long" });
+  return at.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 function ExamSections({
   view,
   performance,
   loading,
   onAbout,
+  recent,
+  attemptHref,
+  sessionsHref,
 }: {
   view: DashboardView;
   performance: Performance | null;
   loading: boolean;
   onAbout: (key: AboutKey) => void;
+  recent: RecentAttempt[];
+  attemptHref: (id: string) => string;
+  sessionsHref: string;
 }) {
+  const grid = "grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]";
   return (
-    <div className="mb-6 space-y-5 sm:mb-8">
+    <div className="space-y-6">
       {view.versionNotice ? (
-        <p className="rounded-lg border border-b2c-border-light bg-b2c-surface-muted px-4 py-2 text-osce-meta text-b2c-text-secondary">
+        <p className="rounded-control bg-b2c-surface-muted px-4 py-2.5 text-osce-meta text-b2c-text-muted">
           {view.versionNotice}. Totals are compared as each version defines them.
         </p>
       ) : null}
 
       {view.counted ? (
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-stretch">
-          <div className="min-w-0 flex-1">
-            <CompetencyHero className="h-full" mix={performance ? view.hero : null} loading={loading} />
-          </div>
-          <WeeklyTrendCard className="h-full" trend={performance?.trend ?? null} loading={loading} />
+        <div className={grid}>
+          <CompetencyHero mix={performance ? view.hero : null} loading={loading} onAbout={() => onAbout("summary")} />
+          <WeeklyTrendCard trend={performance?.trend ?? null} loading={loading} />
         </div>
       ) : view.summaryCards.length > 0 ? (
         <PerformanceSummary cards={view.summaryCards} loading={loading} onAbout={() => onAbout("summary")} />
       ) : null}
 
-      <DashboardChartGrid>
-        <DashboardChartWide>
-          <DomainPerformanceCard chart={view.domainChart} loading={loading} onAbout={() => onAbout("domain")} />
-        </DashboardChartWide>
-        <DashboardChartSide>
+      <div className={grid}>
+        <DomainPerformanceCard chart={view.domainChart} loading={loading} onAbout={() => onAbout("domain")} />
+        {view.counted ? (
+          <div id="work" className="scroll-mt-24">
+            <InsightsList items={view.insights} loading={loading} />
+          </div>
+        ) : (
           <TrendCard scale={view.trend} loading={loading} onAbout={() => onAbout("trend")} />
-        </DashboardChartSide>
-      </DashboardChartGrid>
+        )}
+      </div>
 
       {view.bands.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 text-osce-meta text-b2c-text-secondary">
+        <div className="flex flex-wrap items-center gap-2 text-osce-meta text-b2c-text-muted">
           <span className="font-medium text-osce-ink-700">Station bands</span>
           {view.bands.map((band) => (
-            <span key={band} className="rounded-full border border-b2c-border-light bg-b2c-surface-muted px-2.5 py-0.5">
+            <span key={band} className="inline-flex h-[22px] items-center rounded-osce-sm bg-b2c-surface-muted px-2 text-osce-caption font-medium text-osce-ink-700">
               {band}
             </span>
           ))}
         </div>
       ) : null}
 
-      {view.composition.length > 0 ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+      {view.composition.length > 0 && !view.counted ? (
+        <div className="grid gap-6 lg:grid-cols-2">
           <RagCompositionBars data={view.composition} emptyHint="Complete a station to see how each domain went." />
           <CategoryVolumeList data={view.composition} />
         </div>
       ) : null}
 
-      {view.counted ? (
-        <InsightsList items={view.insights} loading={loading} onAbout={() => onAbout("summary")} />
-      ) : null}
+      <RecentStations recent={recent} attemptHref={attemptHref} sessionsHref={sessionsHref} />
     </div>
   );
 }
-

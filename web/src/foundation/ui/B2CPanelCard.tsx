@@ -55,7 +55,7 @@ export function B2CPanelCardHeader({
   return (
     <div
       className={cn(
-        "flex items-center gap-2.5 border-b border-b2c-border bg-b2c-surface-muted px-4 py-3",
+        "flex items-center gap-2.5 px-4 pb-1 pt-[18px] sm:px-5",
         b2cPanelCardHeader,
         className,
       )}
@@ -74,7 +74,7 @@ export function B2CPanelCardBody({
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-4 p-3 sm:p-4", className)}>{children}</div>
+    <div className={cn("space-y-4 px-4 pb-5 pt-3 sm:px-5", className)}>{children}</div>
   );
 }
 
@@ -89,7 +89,7 @@ export function B2CPanelCardFooter({
   return (
     <div
       className={cn(
-        "flex flex-row flex-wrap items-center justify-end gap-x-2 gap-y-3 bg-osce-surface px-4 pb-3 pt-6 sm:gap-y-2",
+        "flex flex-row flex-wrap items-center justify-end gap-2 bg-osce-surface px-4 pb-5 pt-2 sm:px-5",
         className,
       )}
     >

@@ -116,6 +116,10 @@ const config: Config = {
             500: "var(--osce-ink-500)",
             400: "var(--osce-ink-400)",
           },
+          commit: {
+            DEFAULT: "var(--osce-commit)",
+            hover: "var(--osce-commit-hover)",
+          },
           accent: {
             DEFAULT: "var(--osce-accent)",
             hover: "var(--osce-accent-hover)",
@@ -209,12 +213,15 @@ const config: Config = {
             competent: "var(--osce-band-competent)",
             competentBg: "var(--osce-band-competent-bg)",
             competentBorder: "var(--osce-band-competent-border)",
+            competentBar: "var(--osce-band-competent-bar)",
             developing: "var(--osce-band-developing)",
             developingBg: "var(--osce-band-developing-bg)",
             developingBorder: "var(--osce-band-developing-border)",
+            developingBar: "var(--osce-band-developing-bar)",
             development: "var(--osce-band-development)",
             developmentBg: "var(--osce-band-development-bg)",
             developmentBorder: "var(--osce-band-development-border)",
+            developmentBar: "var(--osce-band-development-bar)",
           },
         },
         brand: {
@@ -400,40 +407,40 @@ const config: Config = {
          * are already at the legibility floor and must not shrink further.
          */
         /** Dense overlay chrome only — video tile pills, tight status labels. */
-        "osce-micro": ["10px", { lineHeight: "1.3" }],
-        "osce-caption": ["11px", { lineHeight: "1.4" }],
-        "osce-meta": ["13px", { lineHeight: "1.5" }],
-        "osce-data": ["14px", { lineHeight: "1.5" }],
+        "osce-micro": ["var(--osce-fs-micro, 10px)", { lineHeight: "var(--osce-lh-micro, 1.3)" }],
+        "osce-caption": ["var(--osce-fs-caption, 11px)", { lineHeight: "var(--osce-lh-caption, 1.4)" }],
+        "osce-meta": ["var(--osce-fs-meta, 13px)", { lineHeight: "var(--osce-lh-meta, 1.5)" }],
+        "osce-data": ["var(--osce-fs-data, 14px)", { lineHeight: "var(--osce-lh-data, 1.5)" }],
         /**
          * 16px, not 15px. Inputs render at this size, and iOS Safari zooms
          * the viewport whenever a focused field is under 16px. The zoom is
          * not reversible by the user and leaves the layout offset, so the
          * floor is a functional requirement rather than a taste call.
          */
-        "osce-body": ["16px", { lineHeight: "1.5" }],
+        "osce-body": ["var(--osce-fs-body, 16px)", { lineHeight: "var(--osce-lh-body, 1.5)" }],
         "osce-subheading": [
-          "clamp(1.0625rem, 0.99rem + 0.308vw, 1.1875rem)",
-          { lineHeight: "1.4", letterSpacing: "-0.02em" },
+          "var(--osce-fs-subheading, clamp(1.0625rem, 0.99rem + 0.308vw, 1.1875rem))",
+          { lineHeight: "var(--osce-lh-subheading, 1.4)", letterSpacing: "-0.02em" },
         ],
         "osce-title": [
-          "clamp(1.1875rem, 1.043rem + 0.616vw, 1.4375rem)",
-          { lineHeight: "1.25", letterSpacing: "-0.02em" },
+          "var(--osce-fs-title, clamp(1.1875rem, 1.043rem + 0.616vw, 1.4375rem))",
+          { lineHeight: "var(--osce-lh-title, 1.25)", letterSpacing: "-0.02em" },
         ],
         "osce-heading": [
-          "clamp(1.3125rem, 1.096rem + 0.925vw, 1.6875rem)",
-          { lineHeight: "1.25", letterSpacing: "-0.02em" },
+          "var(--osce-fs-heading, clamp(1.3125rem, 1.096rem + 0.925vw, 1.6875rem))",
+          { lineHeight: "var(--osce-lh-heading, 1.25)", letterSpacing: "-0.02em" },
         ],
         "osce-display-sm": [
-          "clamp(1.625rem, 1.3rem + 1.387vw, 2.1875rem)",
-          { lineHeight: "1.15", letterSpacing: "-0.02em" },
+          "var(--osce-fs-display-sm, clamp(1.625rem, 1.3rem + 1.387vw, 2.1875rem))",
+          { lineHeight: "var(--osce-lh-display-sm, 1.15)", letterSpacing: "-0.02em" },
         ],
         "osce-display": [
-          "clamp(2rem, 1.458rem + 2.311vw, 2.9375rem)",
-          { lineHeight: "1.1", letterSpacing: "-0.02em" },
+          "var(--osce-fs-display, clamp(2rem, 1.458rem + 2.311vw, 2.9375rem))",
+          { lineHeight: "var(--osce-lh-display, 1.1)", letterSpacing: "-0.02em" },
         ],
         "osce-display-lg": [
-          "clamp(2.25rem, 1.419rem + 3.544vw, 3.6875rem)",
-          { lineHeight: "1.05", letterSpacing: "-0.02em" },
+          "var(--osce-fs-display-lg, clamp(2.25rem, 1.419rem + 3.544vw, 3.6875rem))",
+          { lineHeight: "var(--osce-lh-display-lg, 1.05)", letterSpacing: "-0.02em" },
         ],
       },
       maxWidth: {
@@ -452,6 +459,7 @@ const config: Config = {
         "osce-md": "var(--osce-radius-md)",
         "osce-lg": "var(--osce-radius-lg)",
         "osce-xl": "var(--osce-radius-xl)",
+        "osce-2xl": "var(--osce-radius-2xl)",
         b2b: "8px",
         "b2b-sm": "6px",
         "landing-card": "var(--landing-radius-card, 0.75rem)",
@@ -491,18 +499,24 @@ const config: Config = {
           "ui-monospace",
           "monospace",
         ],
+        /*
+         * `--font-ui` / `--font-heading-face` are set by train's skin
+         * (tokens.css); unset, the other arms keep Inter and Archivo.
+         */
         sans: [
-          "var(--font-inter)",
+          "var(--font-ui, var(--font-inter))",
           "ui-sans-serif",
           "system-ui",
           "sans-serif",
         ],
         heading: [
-          "var(--font-archivo)",
+          "var(--font-heading-face, var(--font-archivo))",
           "ui-sans-serif",
           "system-ui",
           "sans-serif",
         ],
+        /** Page titles only (train): Fraunces, per the canvas. */
+        title: ["var(--font-fraunces)", "Georgia", "serif"],
         archivo: [
           "var(--font-archivo)",
           "ui-sans-serif",

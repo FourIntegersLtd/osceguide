@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { HiOutlineArrowPath } from "react-icons/hi2";
+import type { ReactNode } from "react";
+import type { IconType } from "react-icons";
+import { HiOutlineArrowPath, HiOutlineExclamationTriangle } from "react-icons/hi2";
 import { useAsync, useMeEvents } from "@/foundation/hooks";
 import { readAttempt } from "@/capabilities/attempt-runner/api";
 import { HiOutlineFaceFrown } from "react-icons/hi2";
@@ -11,7 +13,7 @@ import { SavedLiveCoverage } from "./SavedLiveCoverage";
 import { isTerminal, readFeedback, scoredAtLabel } from "@/capabilities/feedback/api";
 import type { MarkedResult, MarkingRubric } from "@/capabilities/feedback/rubric";
 
-const { b2cCard, b2cIconEmptyMd, b2cPickerChipBase } = productTokens;
+const { b2cPickerChipBase } = productTokens;
 
 /**
  * One attempt's feedback, including the wait for it.
@@ -67,25 +69,21 @@ export function AttemptFeedback({ attemptId, showLiveCoverage = false }: { attem
     // the whole point: the retiring client showed this as a spinner that never
     // stopped, and people sat in front of it.
     return (
-      <div className={`${b2cCard} flex flex-col items-center justify-center gap-3 p-10 text-center`}>
-        <p className="font-semibold text-b2c-text-secondary">This attempt could not be marked</p>
-        <p className="text-osce-body text-b2c-text-muted">
-          Something went wrong while scoring this consultation. The transcript is still available,
-          and sitting the station again will produce a fresh mark.
-        </p>
-      </div>
+      <FeedbackState
+        icon={HiOutlineExclamationTriangle}
+        title="This attempt could not be marked"
+      >
+        Something went wrong while scoring this consultation. The transcript is still available,
+        and sitting the station again will produce a fresh mark.
+      </FeedbackState>
     );
   }
 
   if (pending) {
     return (
-      <div className={`${b2cCard} flex flex-col items-center justify-center gap-3 p-10 text-center`}>
-        <HiOutlineArrowPath className={`animate-spin text-osce-accent ${b2cIconEmptyMd}`} />
-        <p className="font-semibold text-b2c-text-secondary">Your feedback is being prepared</p>
-        <p className="text-osce-body text-b2c-text-muted">
-          Marking a consultation takes a minute or two. This page updates itself when it is ready.
-        </p>
-      </div>
+      <FeedbackState icon={HiOutlineArrowPath} spinning title="Your feedback is being prepared">
+        Marking a consultation takes a minute or two. This page updates itself when it is ready.
+      </FeedbackState>
     );
   }
 
@@ -147,5 +145,30 @@ function Markings({ rubric, results }: { rubric: MarkingRubric | null; results: 
         />
       )}
     </div>
+  );
+}
+
+/** A feedback tab with no marks to show yet, and why (canvas `train-feedback-states`). */
+function FeedbackState({
+  icon: Icon,
+  title,
+  spinning = false,
+  children,
+}: {
+  icon: IconType;
+  title: string;
+  spinning?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex items-start gap-4 rounded-osce-2xl bg-b2c-surface-muted p-6">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-control bg-osce-surface text-osce-ink-900">
+        <Icon className={spinning ? "h-4 w-4 animate-spin" : "h-4 w-4"} aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-osce-subheading font-semibold text-osce-ink-900">{title}</h2>
+        <p className="mt-1 max-w-[560px] text-osce-body text-b2c-text-muted">{children}</p>
+      </div>
+    </section>
   );
 }

@@ -22,7 +22,6 @@ export { AnchoredTooltip } from "@/foundation/ui/AnchoredTooltip";
 export type { AnchoredTooltipPlacement } from "@/foundation/ui/AnchoredTooltip";
 export { Alert } from "@/foundation/ui/Alert";
 export type { AlertTone } from "@/foundation/ui/Alert";
-export { PageHeader } from "@/foundation/ui/PageHeader";
 export { EmptyState } from "@/foundation/ui/EmptyState";
 export { Spinner } from "@/foundation/ui/Spinner";
 export { AsyncBoundary } from "@/foundation/ui/AsyncBoundary";
@@ -56,7 +55,9 @@ export type {
 export { B2CEmptyState } from "@/foundation/ui/B2CEmptyState";
 export { B2CErrorState, B2CInlineError } from "@/foundation/ui/B2CErrorState";
 export { B2CFormField } from "@/foundation/ui/B2CFormField";
-export { B2CGroupedSection, B2CGroupedRowLink } from "@/foundation/ui/B2CGroupedList";
+export { B2CGroupedSection, B2CGroupedRow, B2CGroupedRowLink } from "@/foundation/ui/B2CGroupedList";
+export { B2CBandBar } from "@/foundation/ui/B2CBandBar";
+export { B2CHero } from "@/foundation/ui/B2CHero";
 export { B2CMonoEyebrow } from "@/foundation/ui/B2CMonoEyebrow";
 export { B2CPageHeader, type B2CPageHeaderProps } from "@/foundation/ui/B2CPageHeader";
 export {

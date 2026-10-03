@@ -3,6 +3,7 @@ import {
   LuGauge,
   LuGraduationCap,
   LuLayers,
+  LuLayoutList,
   LuRadio,
   LuSparkles,
   LuUserCog,
@@ -19,50 +20,65 @@ import type { NavContext, NavItem, ScreenName, SurfaceManifest } from "@/surface
  * policy and could offer an action the API then refused.
  */
 export function assessNav({ can, href }: NavContext): NavItem[] {
-  const items: NavItem[] = [
-    { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
-    { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
-    /*
-     * Everybody in the organisation, and deliberately ungated.
-     *
-     * There is no "is a trainee" permission and there should not be one: an
-     * examiner is often rostered onto something themselves, and the backend
-     * answers `/me/sittings` for whoever asks. Somebody on nothing sees an
-     * empty state, which is honest; hiding the item from them would hide it
-     * from the supervisor who is also a candidate.
-     */
-    { key: "myTraining", label: "My training", href: href("/trainee"), icon: LuGraduationCap },
-    {
-      key: "myPractice",
-      label: "Self practice",
-      href: href("/trainee/practice"),
-      icon: LuSparkles,
-    },
-    /*
-     * Several stations on one clock.
-     *
-     * `Self practice` above is one station at a time; the retiring client also
-     * let somebody string a handful together and sit them back to back, which is
-     * the rehearsal that actually resembles an exam day. The screens are
-     * Train's — a practice set belongs to the person sitting it, not to the
-     * organisation that happens to also examine them — and `/me/station-sets`
-     * is unscoped, so an institution workspace asks the same question the
-     * personal one does and gets the same answer.
-     */
-    { key: "mocks", label: "Practice sessions", href: href("/mocks"), icon: LuLayers },
-  ];
+  /* The canvas draws two lists: the people who run the organisation and the
+   * people who sit its sittings. `read_org` is the line between them. */
+  const staff = can("read_org");
+  const items: NavItem[] = [];
+  if (staff) {
+    items.push(
+      { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
+      { key: "programmes", label: "Programmes", href: href("/programmes"), icon: LuLayoutList },
+      { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
+    );
+  }
   /* The exam-day board is for the people who run circuits, and it names every
    * candidate on them — which is why the backend gates it on staff rather than
    * on being able to read the organisation. */
   if (can("run_circuits")) {
     items.push({ key: "live", label: "Now running", href: href("/live"), icon: LuRadio });
   }
+  /*
+   * Everybody in the organisation, and deliberately ungated.
+   *
+   * There is no "is a trainee" permission and there should not be one: an
+   * examiner is often rostered onto something themselves, and the backend
+   * answers `/me/sittings` for whoever asks. Somebody on nothing sees an
+   * empty state, which is honest; hiding the item from them would hide it
+   * from the supervisor who is also a candidate.
+   */
+  items.push({ key: "myTraining", label: "My training", href: href("/trainee"), icon: LuGraduationCap });
+  if (!staff) {
+    items.push(
+      { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
+      { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
+    );
+  }
+  /*
+   * Several stations on one clock.
+   *
+   * Self practice is one station at a time; the retiring client also let
+   * somebody string a handful together and sit them back to back, which is
+   * the rehearsal that actually resembles an exam day. The screens are
+   * Train's — a practice set belongs to the person sitting it, not to the
+   * organisation that happens to also examine them — and `/me/station-sets`
+   * is unscoped, so an institution workspace asks the same question the
+   * personal one does and gets the same answer.
+   */
+  items.push({ key: "mocks", label: "Practice sessions", href: href("/mocks"), icon: LuLayers });
   if (can("read_org")) {
     items.push({ key: "trainees", label: "Trainees", href: href("/trainees"), icon: LuUsers });
   }
   if (can("manage_team")) {
     items.push({ key: "team", label: "Team", href: href("/team"), icon: LuUserCog });
   }
+  /* One library station, alone. It sits with the other things to practise with. */
+  items.push({
+    key: "myPractice",
+    label: "Self practice",
+    href: href("/trainee/practice"),
+    icon: LuSparkles,
+    section: "practice",
+  });
   return items;
 }
 
@@ -80,6 +96,11 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "slotReview",
   "trainees",
   "team",
+  "programmes",
+  "newProgramme",
+  "programmeDetail",
+  "myProgramme",
+  "sharedReview",
   "myTraining",
   "mySitting",
   "myResult",

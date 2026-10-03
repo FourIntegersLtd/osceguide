@@ -38,6 +38,13 @@ export type ScreenName =
   | "slotReview"
   | "trainees"
   | "team"
+  // A programme has a purpose; these have no API yet and show sample data.
+  | "programmes"
+  | "newProgramme"
+  | "programmeDetail"
+  | "myProgramme"
+  // A trainee's own practice, sent to a supervisor for a second opinion.
+  | "sharedReview"
   | "billing"
   | "audit"
   | "ops"

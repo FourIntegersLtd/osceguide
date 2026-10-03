@@ -57,6 +57,10 @@ class CircuitRead(BaseModel):
     paused: bool = False
     paused_at: datetime | None = None
     auto_advance: bool = True
+    # Distinct trainees on this circuit (derived from its slots).
+    trainee_count: int = 0
+    # The supervisor's display name; filled where a screen lists circuits.
+    supervisor_name: str | None = None
     slots: list[SlotRead] = Field(default_factory=list)
 
 
@@ -69,6 +73,10 @@ class SittingRead(BaseModel):
     scheduled_for: datetime | None
     rubric_version_id: uuid.UUID
     programme_id: uuid.UUID | None = None
+    # The exam name the programme offers, and distinct candidates across the
+    # sitting's circuits. Filled by the list and detail reads.
+    programme_name: str | None = None
+    candidate_count: int = 0
     circuits: list[CircuitRead] = Field(default_factory=list)
 
 

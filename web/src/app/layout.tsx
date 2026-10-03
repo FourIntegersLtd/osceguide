@@ -1,6 +1,7 @@
 import type { Viewport } from "next";
 import type { ReactNode } from "react";
 import { Archivo, IBM_Plex_Mono, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { SessionProvider } from "@/foundation/session";
 import { ToastHost } from "@/foundation/ui";
 import { AnalyticsConsentGate } from "@/foundation/analytics/AnalyticsConsentGate";
@@ -44,13 +45,46 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const bodyClassName = [
+/*
+ * The train arm's faces, from the "OSCE Guide Screens v2" canvas: Open Sauce
+ * Sans for everything, Fraunces for page titles only. Both OFL; the licences
+ * sit beside the files. Train switches to them through `--font-ui` and
+ * `--font-display` in tokens.css, so the other arms keep Inter and Archivo.
+ */
+const openSauceSans = localFont({
+  src: [
+    { path: "./fonts/OpenSauceSans-400.ttf", weight: "400", style: "normal" },
+    { path: "./fonts/OpenSauceSans-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/OpenSauceSans-600.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/OpenSauceSans-700.woff2", weight: "700", style: "normal" },
+  ],
+  variable: "--font-open-sauce",
+  display: "swap",
+});
+
+const fraunces = localFont({
+  src: [
+    { path: "./fonts/Fraunces-500.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/Fraunces-600.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-fraunces",
+  display: "swap",
+});
+
+/*
+ * The variables go on <html>, not <body>: train's `:root:has(...)` block
+ * points `--font-ui` at `--font-open-sauce`, and a custom property resolves
+ * its `var()` on the element that declares it.
+ */
+const fontVariables = [
   inter.variable,
   archivo.variable,
   ibmPlexMono.variable,
-  "font-sans",
-  "antialiased",
+  openSauceSans.variable,
+  fraunces.variable,
 ].join(" ");
+
+const bodyClassName = "font-sans antialiased";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -68,7 +102,7 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en-GB">
+    <html lang="en-GB" className={fontVariables}>
       <body className={bodyClassName}>
         <SessionProvider>
           {/*

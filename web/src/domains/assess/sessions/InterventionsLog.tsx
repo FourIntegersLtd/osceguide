@@ -34,12 +34,12 @@ export function InterventionsLog({ orgSlug, circuitId }: { orgSlug: string; circ
   const [open, setOpen] = useState(false);
 
   return (
-    <section className="overflow-hidden rounded-lg border border-b2b-border bg-white">
+    <section className="overflow-hidden rounded-panel border border-b2b-border bg-b2b-surface">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-b2b-cream/60 sm:px-5"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-canvas/60 sm:px-5"
       >
         <span className={b2bTokens.b2bSectionTitle}>What was changed by hand</span>
         <span className="text-osce-caption text-b2b-mid">{open ? "Hide" : "Show"}</span>

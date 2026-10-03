@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HiOutlineArrowLeft, HiOutlineArrowRight } from "react-icons/hi2";
-import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalSection, productTokens } from "@/foundation/ui";
+import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalSection, cn, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { AgentTile, MicrophoneCheck, VoiceRoom } from "@/foundation/livekit";
@@ -12,6 +12,12 @@ import { useOnboardingVoice } from "@/capabilities/onboarding/useOnboardingVoice
 const { b2cCard, b2cCardPadding } = productTokens;
 
 type Step = "meet" | "demo" | "invitation";
+
+const STEPS: { id: Step; label: string }[] = [
+  { id: "meet", label: "Meet Athena" },
+  { id: "demo", label: "Watch a demo consultation" },
+  { id: "invitation", label: "Your first station" },
+];
 
 /**
  * Athena's introduction, and one consultation shown rather than described.
@@ -55,6 +61,23 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-5">
+      <ol className="grid grid-cols-3 gap-2" aria-label="Onboarding steps">
+        {STEPS.map((entry, index) => (
+          <li
+            key={entry.id}
+            aria-current={entry.id === step ? "step" : undefined}
+            className={cn(
+              "rounded-osce-lg border px-3 py-2.5",
+              entry.id === step ? "border-osce-ink-900 bg-osce-surface" : "border-osce-border bg-b2c-surface-muted",
+            )}
+          >
+            <span className="font-mono text-osce-meta tabular-nums text-b2c-text-muted">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <p className="text-osce-meta font-medium text-osce-ink-900">{entry.label}</p>
+          </li>
+        ))}
+      </ol>
       {step === "meet" && (
         <MeetAthena
           assistantName={voice.assistantName}

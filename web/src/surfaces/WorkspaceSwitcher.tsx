@@ -21,7 +21,14 @@ import { workspacesFor } from "@/surfaces/resolveWorkspace";
  * than by a value in the URL. A stale tab cannot then act in a workspace the
  * person has left.
  */
-export function WorkspaceSwitcher({ current }: { current: Workspace }) {
+export function WorkspaceSwitcher({
+  current,
+  detail,
+}: {
+  current: Workspace;
+  /** A second line under the name, e.g. the exam being practised for. */
+  detail?: string | null;
+}) {
   const { session, selectWorkspace } = useSession();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -46,12 +53,19 @@ export function WorkspaceSwitcher({ current }: { current: Workspace }) {
 
   // One workspace is not a choice. Showing a menu with a single item in it
   // invites people to look for something that is not there.
-  if (workspaces.length < 2) {
-    return (
-      <span className="truncate font-sans text-osce-meta font-semibold text-osce-ink-900">
+  const label = (
+    <span className="min-w-0 flex-1 text-left">
+      <span className="block truncate text-[13.5px] font-semibold leading-[18px] text-osce-ink-900">
         {current.name}
       </span>
-    );
+      {detail ? (
+        <span className="block truncate text-osce-caption font-normal text-b2c-text-muted">{detail}</span>
+      ) : null}
+    </span>
+  );
+
+  if (workspaces.length < 2) {
+    return <div className="flex min-h-11 items-center px-2.5">{label}</div>;
   }
 
   return (
@@ -61,12 +75,9 @@ export function WorkspaceSwitcher({ current }: { current: Workspace }) {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-osce-navActive"
+        className="flex min-h-11 w-full items-center gap-2 rounded-osce-md px-2.5 text-left hover:bg-osce-navActive"
       >
-        <WorkspaceIcon workspace={current} />
-        <span className="min-w-0 flex-1 truncate font-sans text-osce-meta font-semibold text-osce-ink-900">
-          {current.name}
-        </span>
+        {label}
         {busy ? (
           <Spinner />
         ) : (

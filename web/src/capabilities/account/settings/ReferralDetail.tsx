@@ -16,7 +16,6 @@ import {
   Back,
   LoadingSpinner,
   ModalHelper,
-  ModalTitle,
   Panel,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
@@ -112,13 +111,10 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
   return (
     <div className="space-y-4">
       <Back />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <h1 className="font-title text-osce-heading font-semibold text-ink">Referral</h1>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Panel title="Core information">
           <div className="space-y-4">
-            <div>
-              <ModalTitle className="text-osce-body">Referral details</ModalTitle>
-              <ModalHelper>When this referral was created and how.</ModalHelper>
-            </div>
             <DetailRow
               icon={<HiOutlineCalendarDays className="h-4 w-4" />}
               label="Date created"
@@ -151,13 +147,13 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
             />
             <DetailRow
               icon={<HiOutlineGift className="h-4 w-4" />}
-              label="Subscription type (referee)"
+              label="Subscription"
               value={(referral.plan_code ?? "").replace("_", " ")}
             />
           </div>
         </Panel>
 
-        <Panel title="Referee details" className="md:col-span-2">
+        <Panel title="Referee details">
           <DetailRow
             icon={<HiOutlineEnvelope className="h-4 w-4" />}
             label="Referee email"

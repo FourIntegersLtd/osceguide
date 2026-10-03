@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  HiOutlineArrowPath,
   HiOutlineClock,
   HiOutlineInformationCircle,
   HiOutlinePresentationChartLine,
@@ -11,6 +10,7 @@ import { HiMicrophone } from "react-icons/hi";
 import {
   Alert,
   B2CSegmentedTabs,
+  Button,
   Modal,
   ModalContent,
   type B2CSegmentedTabItem,
@@ -21,7 +21,6 @@ import { DebriefHistory, DebriefChooseModal } from "@/capabilities/debrief";
 import { DebriefTips } from "@/capabilities/debrief/DebriefInformation";
 import { type AttemptBrief, type AttemptReview } from "@/capabilities/attempt-runner";
 import { FeedbackHistory } from "./FeedbackHistory";
-import { b2cIconButton } from "@/foundation/ui/productTokens";
 
 type FeedbackTab = "latest" | "history" | "debriefs";
 
@@ -118,35 +117,28 @@ export function FeedbackStep({
 
   return (
     <div className="space-y-4">
-      <div className="mb-3 flex w-full flex-wrap items-center gap-2 sm:mb-4 sm:justify-end">
-        {marked && (
-          <>
-            <button
-              type="button"
-              onClick={openDebrief}
-              disabled={loadingDebrief}
-              className="inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-lg bg-osce-accent px-4 py-2.5 text-osce-body font-medium text-white hover:bg-osce-accent-hover disabled:opacity-60 sm:w-auto sm:min-w-[11rem]"
-            >
-              {loadingDebrief ? (
-                <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <>
-                  <HiMicrophone className="h-4 w-4" aria-hidden />
-                  <span>Start Debrief</span>
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setExplaining(true)}
-              className={b2cIconButton}
-              aria-label="How debrief works"
-            >
-              <HiOutlineInformationCircle className="h-5 w-5" />
-            </button>
-          </>
-        )}
-      </div>
+      {marked && (
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setExplaining(true)}
+            className="gap-2"
+          >
+            <HiOutlineInformationCircle className="h-4 w-4" aria-hidden />
+            How debrief works
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void openDebrief()}
+            isLoading={loadingDebrief}
+            className="gap-2"
+          >
+            <HiMicrophone className="h-4 w-4" aria-hidden />
+            Start debrief
+          </Button>
+        </div>
+      )}
 
       <B2CSegmentedTabs
         className="mb-4"

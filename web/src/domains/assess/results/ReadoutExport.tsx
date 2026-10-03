@@ -52,7 +52,7 @@ export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sitting
     <div className="flex flex-col items-end gap-2">
       <Button
         themeType="b2b"
-        variant="secondary"
+        variant="ghost"
         size="sm"
         isLoading={busy}
         disabled={busy}

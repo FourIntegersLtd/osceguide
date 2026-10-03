@@ -18,4 +18,8 @@ export { EditCircuit } from "@/domains/assess/EditCircuit";
 export { Results } from "@/domains/assess/results";
 export { MyResult, MyReview } from "@/domains/assess/trainee";
 export { OrgDiscussion } from "@/domains/assess/OrgDiscussion";
+export { Programmes, NewProgramme, ProgrammeDetail, MyProgramme } from "@/domains/assess/programmes";
+export { SharedReview } from "@/domains/assess/SharedReview";
+export { WorkspaceSettings } from "@/domains/assess/settings/OrgSettings";
+export { NewOrganisation } from "@/domains/assess/NewOrganisation";
 export * from "@/domains/assess/api";

@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import {
-  HiOutlineArrowUpTray,
-  HiOutlineBriefcase,
-  HiOutlineUserPlus,
-} from "react-icons/hi2";
+import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { PanelCard } from "@/domains/assess/team/chrome";
@@ -81,7 +77,6 @@ export function InvitePanel({
       <PanelCard
         title="Invite someone to the team"
         subtitle="Supervisors run circuits and mark them. Admins also manage the team and sign off results."
-        icon={<HiOutlineBriefcase className="h-5 w-5" aria-hidden />}
       >
         <form
           className="space-y-5"
@@ -159,7 +154,6 @@ export function InvitePanel({
       <PanelCard
         title="Import a spreadsheet"
         subtitle="Upload a list of staff saved from Excel or Google Sheets as a .csv file. Anyone already on the team is skipped and shown to you."
-        icon={<HiOutlineArrowUpTray className="h-5 w-5" aria-hidden />}
       >
         <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>
           Import from spreadsheet

@@ -16,7 +16,7 @@ export function DebriefVoiceStage({ onEnd }: { onEnd: () => void }) {
   return (
     <>
       <AssistantCardSlot linkFor={(ref) => cardLinkFor(ref, { hrefFor })} />
-      <AthenaIdentity title="Athena Moderator" description="Speak naturally to discuss your performance" className="mb-5" />
+      <AthenaIdentity title="Athena" description="Speak naturally to discuss your performance" className="mb-5" />
       <div className="mb-6 w-full overflow-hidden rounded-osce-lg border border-osce-accent-subtle bg-osce-accent-muted px-4 py-4">
         <BarVisualizer state={state} barCount={5} trackRef={audioTrack}
           style={{ height: "64px", opacity: state === "disconnected" ? 0.5 : 1 }} />
@@ -24,7 +24,7 @@ export function DebriefVoiceStage({ onEnd }: { onEnd: () => void }) {
       </div>
       {connecting ? <Button fullWidth disabled isLoading>Connecting...</Button> : (
         <button type="button" className={cn(productTokens.b2cLivekitEndButton, "w-full gap-2")} onClick={onEnd}>
-          <HiOutlinePhoneXMark className="h-4 w-4" aria-hidden /><span>End debrief session</span>
+          <HiOutlinePhoneXMark className="h-4 w-4" aria-hidden /><span>End debrief</span>
         </button>
       )}
     </>

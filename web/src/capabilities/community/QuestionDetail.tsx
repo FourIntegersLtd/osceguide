@@ -2,18 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Back,
-  B2CErrorState,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardHeader,
-  ConfirmModal,
-  ModalContent,
-  ModalHelper,
-  ModalTitle,
-  Spinner,
-} from "@/foundation/ui";
+import { Back, B2CErrorState, ConfirmModal, Spinner, cn, productTokens } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { listReplies, readQuestion, removePost, type Post } from "@/capabilities/community/api";
@@ -25,8 +14,10 @@ import {
   QuestionTags,
   authorLabel,
   formatPostedAt,
+  titleFromBody,
   useViewer,
 } from "@/capabilities/community/posts";
+import { b2cCard, b2cPanelDivided } from "@/foundation/ui/productTokens";
 
 /**
  * One question and its answers.
@@ -82,45 +73,44 @@ export function QuestionDetail({ questionId }: { questionId: string }) {
   }
 
   return (
-    <ModalContent className="mb-24 max-w-4xl space-y-3">
-      <Back />
-
-      <B2CPanelCard className="mt-0">
-        <B2CPanelCardHeader>
+    <div className="mx-auto max-w-3xl space-y-6">
+      <header>
+        <Back />
+        <p className={cn(productTokens.b2cMonoEyebrow, "mt-4")}>
           <QuestionByline question={shown} />
-        </B2CPanelCardHeader>
-        <B2CPanelCardBody className="space-y-3">
-          <p className="break-words text-osce-body leading-relaxed text-osce-ink-800">
-            <LinkedText>{shown.body}</LinkedText>
-          </p>
-          <QuestionTags tags={shown.tags} />
-          <div className="flex items-center justify-end gap-2 border-t border-osce-border-light pt-3">
+        </p>
+        <div className="mt-1.5 flex flex-wrap items-start justify-between gap-3">
+          <h1 className="min-w-0 flex-1 font-title text-osce-heading font-semibold text-osce-ink-900">
+            {shown.title || titleFromBody(shown.body)}
+          </h1>
+          <div className="flex items-center gap-2">
             <OwnerActions post={shown} label="Delete question" onDelete={() => setConfirmingQuestion(true)} />
             <LikeButton
               post={shown}
               onChanged={setLikedQuestion}
-              onFailed={(cause) =>
-                toast.error("We couldn't save your like", errorMessage(cause))
-              }
+              onFailed={(cause) => toast.error("We couldn't save your like", errorMessage(cause))}
             />
           </div>
-        </B2CPanelCardBody>
-      </B2CPanelCard>
-
-      <div className="md:grid md:grid-cols-2 md:gap-x-6 lg:gap-x-8">
-        <Answers replies={thread.data?.replies ?? []} onChanged={thread.reload} />
-
-        <div className="mt-6 md:sticky md:top-6 md:mt-0 md:self-start">
-          <AnswerQuestion questionId={questionId} onAnswerSubmitted={thread.reload} />
         </div>
-      </div>
+      </header>
+
+      <section className={cn(b2cCard, "space-y-3 p-5")}>
+        <p className="whitespace-pre-wrap break-words text-osce-body leading-relaxed text-osce-ink-800">
+          <LinkedText>{shown.body}</LinkedText>
+        </p>
+        <QuestionTags tags={shown.tags} />
+      </section>
+
+      <Answers replies={thread.data?.replies ?? []} onChanged={thread.reload} />
+
+      <AnswerQuestion questionId={questionId} onAnswerSubmitted={thread.reload} />
 
       <DeleteQuestionModal
         isOpen={confirmingQuestion}
         questionId={questionId}
         onCancel={() => setConfirmingQuestion(false)}
       />
-    </ModalContent>
+    </div>
   );
 }
 
@@ -205,56 +195,43 @@ function Answers({ replies, onChanged }: { replies: Post[]; onChanged: () => voi
   }, [pendingDelete, toast, onChanged]);
 
   return (
-    <div className="space-y-3">
-      <div>
-        <ModalTitle>Answers ({replies.length})</ModalTitle>
-        <ModalHelper>Replies from the community.</ModalHelper>
-      </div>
+    <section className="space-y-2">
+      <p className={productTokens.b2cMonoEyebrow}>Replies from the community · {replies.length}</p>
 
       {replies.length === 0 ? (
-        <B2CPanelCard className="mt-0">
-          <B2CPanelCardBody>
-            <p className="text-osce-body text-osce-ink-500">
-              No answers yet. Be the first to share your thoughts!
-            </p>
-          </B2CPanelCardBody>
-        </B2CPanelCard>
+        <p className="rounded-osce-lg border border-dashed border-osce-border px-5 py-6 text-center text-osce-body text-b2c-text-muted">
+          No replies yet. Be the first to share your thoughts.
+        </p>
       ) : (
-        <div className="max-h-[600px] space-y-3 overflow-y-auto pr-1">
+        <ul className={b2cPanelDivided}>
           {replies.map((original) => {
             const replyPost = liked[original.id] ?? original;
             return (
-              <div key={replyPost.id} id={`reply-${replyPost.id}`}>
-                <B2CPanelCard className="mt-0">
-                  <B2CPanelCardHeader>
+              <li key={replyPost.id} id={`reply-${replyPost.id}`} className="px-5 py-4">
+                <p className="whitespace-pre-wrap break-words text-osce-body leading-relaxed text-osce-ink-800">
+                  <LinkedText>{replyPost.body}</LinkedText>
+                </p>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-osce-meta text-b2c-text-muted">
                     <QuestionByline question={replyPost} />
-                  </B2CPanelCardHeader>
-                  <B2CPanelCardBody className="space-y-3">
-                    <p className="whitespace-pre-wrap break-words text-osce-body leading-relaxed text-osce-ink-800">
-                      <LinkedText>{replyPost.body}</LinkedText>
-                    </p>
-                    <div className="flex items-center justify-end gap-2 border-t border-osce-border-light pt-3">
-                      <OwnerActions
-                        post={replyPost}
-                        label="Delete reply"
-                        onDelete={() => setPendingDelete(replyPost.id)}
-                      />
-                      <LikeButton
-                        post={replyPost}
-                        onChanged={(updated) =>
-                          setLiked((current) => ({ ...current, [updated.id]: updated }))
-                        }
-                        onFailed={(cause) =>
-                          toast.error("We couldn't save your like", errorMessage(cause))
-                        }
-                      />
-                    </div>
-                  </B2CPanelCardBody>
-                </B2CPanelCard>
-              </div>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <OwnerActions
+                      post={replyPost}
+                      label="Delete reply"
+                      onDelete={() => setPendingDelete(replyPost.id)}
+                    />
+                    <LikeButton
+                      post={replyPost}
+                      onChanged={(updated) => setLiked((current) => ({ ...current, [updated.id]: updated }))}
+                      onFailed={(cause) => toast.error("We couldn't save your like", errorMessage(cause))}
+                    />
+                  </span>
+                </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       <ConfirmModal
@@ -267,6 +244,6 @@ function Answers({ replies, onChanged }: { replies: Post[]; onChanged: () => voi
         cancelText="Cancel"
         tone="danger"
       />
-    </div>
+    </section>
   );
 }

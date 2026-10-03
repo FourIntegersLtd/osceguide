@@ -1,11 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { B2CMonoEyebrow } from "@/foundation/ui/B2CMonoEyebrow";
 import {
-  b2cCardPadding,
-  b2cDashboardCard,
+  b2cCard,
   b2cDashboardChartWell,
+  b2cSectionTitle,
 } from "@/foundation/ui/productTokens";
 
 interface ChartCardProps {
@@ -31,23 +30,20 @@ export default function ChartCard({
   children,
   className = "",
 }: ChartCardProps) {
-  const shellClass = flat
-    ? "min-w-0"
-    : `${b2cDashboardCard} ${b2cCardPadding} min-h-[320px]`;
+  // Canvas card: header 18px 20px 4px with a t3 title, body 12px 20px 20px.
+  const shellClass = flat ? "min-w-0" : `${b2cCard} overflow-hidden`;
+  const pad = flat ? "" : "px-5";
 
   return (
     <div className={`${shellClass} min-w-0 ${className}`}>
-      <div className="mb-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 overflow-visible">
-          <B2CMonoEyebrow className="leading-normal">{title}</B2CMonoEyebrow>
-          {subtitle ? (
-            <p className="mt-2 text-osce-meta text-b2c-text-secondary">
-              {subtitle}
-            </p>
-          ) : null}
+      <div className={`flex min-w-0 items-start justify-between gap-4 ${flat ? "pb-3" : "pb-1 pt-[18px]"} ${pad}`}>
+        <div className="min-w-0 flex-1">
+          <h2 className={b2cSectionTitle}>{title}</h2>
+          {subtitle ? <p className="mt-0.5 text-osce-meta text-b2c-text-muted">{subtitle}</p> : null}
         </div>
-        {action ? <div className="min-w-0 w-full sm:w-auto sm:shrink-0">{action}</div> : null}
+        {action ? <div className="flex shrink-0 gap-2">{action}</div> : null}
       </div>
+      <div className={flat ? "" : "px-5 pb-5 pt-3"}>
       {loading ? (
         <div
           className="h-[220px] animate-pulse rounded-lg border border-b2c-border bg-b2c-surface-muted"
@@ -59,6 +55,7 @@ export default function ChartCard({
       ) : (
         children
       )}
+      </div>
     </div>
   );
 }

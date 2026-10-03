@@ -53,7 +53,7 @@ function SupervisorBrief({
       {(sections: StaffSection[]) =>
         sections.length > 0 ? (
           <section className="space-y-2">
-            <h2 className="text-osce-eyebrow font-semibold text-b2b-mid uppercase tracking-wide">
+            <h2 className="text-osce-eyebrow font-semibold text-b2b-mid">
               Station content{title ? `: ${title}` : ""}
             </h2>
             <AudienceSections sections={sections} variant="collapsible" />
@@ -93,10 +93,10 @@ function UntemplatedBrief({
 
         return (
           <section className="space-y-2">
-            <h2 className="text-osce-eyebrow font-semibold text-b2b-mid uppercase tracking-wide">
+            <h2 className="text-osce-eyebrow font-semibold text-b2b-mid">
               Station content{title ? `: ${title}` : ""}
             </h2>
-            <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4 sm:p-5">
+            <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
               {readingBrief ? (
                 <div className="mb-4">
                   <h3 className="text-osce-body font-semibold text-b2b-headline mb-2">

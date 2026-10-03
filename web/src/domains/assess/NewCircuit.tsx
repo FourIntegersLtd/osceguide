@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { AsyncBoundary, PageHeader } from "@/foundation/ui";
+import { AsyncBoundary, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createCircuit, listMemberships, listTrainees, readSitting } from "@/domains/assess/api";
@@ -54,9 +54,10 @@ export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId:
       <AsyncBoundary state={context}>
         {(data) => (
           <>
-            <PageHeader
+            <B2CPageHeader
+              back={{ href: hrefFor(`/sittings/${sittingId}`), label: data.sitting.name }}
               title="Add a circuit"
-              description={`${data.sitting.name} · ${data.sitting.mode}`}
+              subtitle={`${data.sitting.name} · ${data.sitting.mode}`}
             />
             <Builder
               orgSlug={orgSlug}

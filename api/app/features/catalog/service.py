@@ -231,6 +231,13 @@ async def programme_exam_id(session: AsyncSession, org_id: uuid.UUID, programme_
     return programme.exam_id
 
 
+async def programme_names(
+    session: AsyncSession, org_id: uuid.UUID, programme_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """A programme is shown by the name of the exam it offers."""
+    return await repository.programme_names(session, org_id, programme_ids)
+
+
 async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uuid.UUID) -> int:
     """Programmes whose exam is published and names a rubric version."""
     return await repository.count_programmes_with_markable_exam(session, org_id)

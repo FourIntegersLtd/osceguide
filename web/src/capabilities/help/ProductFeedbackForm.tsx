@@ -1,22 +1,8 @@
 "use client";
 
-import { HiOutlineArrowPath } from "react-icons/hi2";
 import { useState, type ReactNode } from "react";
 import { LuMessageSquare } from "react-icons/lu";
-import {
-  Alert,
-  ModalHelper,
-  ModalPrimaryButton,
-  ModalTitle,
-  cn,
-  productTokens,
-} from "@/foundation/ui";
-import {
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
-} from "@/foundation/ui/B2CPanelCard";
+import { Alert, Button, Card, ModalHelper, ModalTitle, cn, productTokens } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
 import { sendSiteMessage } from "@/capabilities/help/api";
 import { StarRating, TestimonialChoice } from "@/capabilities/help/ProductFeedbackFields";
@@ -124,16 +110,9 @@ export function ProductFeedbackForm({
   };
 
   const submitButton = (
-    <ModalPrimaryButton type="submit" disabled={loading} className="gap-2">
-      {loading ? (
-        <>
-          <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
-          Sending…
-        </>
-      ) : (
-        "Send"
-      )}
-    </ModalPrimaryButton>
+    <Button type="submit" isLoading={loading}>
+      Send
+    </Button>
   );
 
   const fields: ReactNode = (
@@ -209,12 +188,9 @@ export function ProductFeedbackForm({
     if (cardTitle) {
       return (
         <div className={className}>
-          <B2CPanelCard className="mt-0">
-            <B2CPanelCardHeader>{cardTitle}</B2CPanelCardHeader>
-            <B2CPanelCardBody>
-              <Alert tone="success">Thanks. Your feedback was sent.</Alert>
-            </B2CPanelCardBody>
-          </B2CPanelCard>
+          <Card title={cardTitle}>
+            <Alert tone="success">Thanks. Your feedback was sent.</Alert>
+          </Card>
         </div>
       );
     }
@@ -253,19 +229,12 @@ export function ProductFeedbackForm({
         onSubmit={handleSubmit}
       >
         {cardTitle ? (
-          <B2CPanelCard className="mt-0">
-            <B2CPanelCardHeader>{cardTitle}</B2CPanelCardHeader>
-            <B2CPanelCardBody
-              className={cn(compact ? "space-y-4" : "space-y-6 p-4 sm:p-6")}
-            >
+          <Card title={cardTitle} description="Your feedback helps us improve.">
+            <div className={compact ? "space-y-4" : "space-y-5"}>
               {fields}
-            </B2CPanelCardBody>
-            <B2CPanelCardFooter
-              className={compact ? undefined : "px-4 pb-4 pt-8 sm:px-6 sm:pb-6"}
-            >
-              {submitButton}
-            </B2CPanelCardFooter>
-          </B2CPanelCard>
+              <div>{submitButton}</div>
+            </div>
+          </Card>
         ) : (
           <>
             {fields}

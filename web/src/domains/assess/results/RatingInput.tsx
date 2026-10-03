@@ -50,7 +50,7 @@ export function RatingInput({
   }
 
   return (
-    <div className="flex flex-wrap gap-1.5" role="group" aria-label={label}>
+    <div className={b2bTokens.b2bSegmentedControl} role="group" aria-label={label}>
       {choices.map((choice) => {
         const selected = value === choice;
         return (
@@ -61,10 +61,8 @@ export function RatingInput({
             aria-pressed={selected}
             onClick={() => onChange(choice)}
             className={cn(
-              "min-w-10 flex-1 rounded-md border px-3 py-1.5 text-osce-caption font-medium transition-colors disabled:opacity-60",
-              selected
-                ? "border-b2b-accent bg-b2b-accent text-white"
-                : "border-b2b-border bg-white text-b2b-mid hover:bg-b2b-cream",
+              selected ? b2bTokens.b2bSegmentedTabActive : b2bTokens.b2bSegmentedTabInactive,
+              "disabled:opacity-60",
             )}
           >
             {/* A range value reads as the bare number on a button; "3/4" is for summaries. */}

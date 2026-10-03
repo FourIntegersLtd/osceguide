@@ -1,16 +1,7 @@
 "use client";
 
 import { useCallback, useState, type FormEvent } from "react";
-import {
-  Alert,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
-  ModalHelper,
-  ModalPrimaryButton,
-  ModalTitle,
-} from "@/foundation/ui";
+import { Alert, Button, Card, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { reply as postReply } from "@/capabilities/community/api";
 import { fieldClass, useViewer } from "@/capabilities/community/posts";
@@ -62,38 +53,34 @@ export function AnswerQuestion({
   );
 
   return (
-    <form onSubmit={submit}>
-      <B2CPanelCard className="mb-24 mt-0">
-        <B2CPanelCardHeader>Post your answer</B2CPanelCardHeader>
-        <B2CPanelCardBody className="space-y-4">
+    <form onSubmit={submit} className="mb-24">
+      <Card title="Post your answer" description="Help a colleague by answering this question.">
+        <div className="space-y-4">
           <div>
-            <ModalTitle>Share your thoughts</ModalTitle>
-            <ModalHelper>Help a colleague by answering this question.</ModalHelper>
+            <label htmlFor="community-answer" className={productTokens.b2cFieldLabel}>Your answer</label>
+            <textarea
+              id="community-answer"
+              className={`${fieldClass} mt-1.5 min-h-[9rem] resize-y`}
+              placeholder="Share your knowledge or thoughts..."
+              value={answerContent}
+              onChange={(event) => setAnswerContent(event.target.value)}
+              required
+              disabled={!viewer.id || isSubmitting}
+            />
           </div>
 
-          <textarea
-            className={`${fieldClass} min-h-[9rem] resize-y`}
-            placeholder="Share your knowledge or thoughts..."
-            value={answerContent}
-            onChange={(event) => setAnswerContent(event.target.value)}
-            required
-            disabled={!viewer.id || isSubmitting}
-            aria-label="Your answer"
-          />
-
           {!viewer.id ? (
-            <p className="text-osce-body text-osce-danger">Please log in to post an answer.</p>
+            <p className="text-osce-meta text-osce-danger-text">Sign in to post an answer.</p>
           ) : null}
 
           {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
           {errorText ? <Alert tone="danger">{errorText}</Alert> : null}
-        </B2CPanelCardBody>
-        <B2CPanelCardFooter>
-          <ModalPrimaryButton type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Submit Answer"}
-          </ModalPrimaryButton>
-        </B2CPanelCardFooter>
-      </B2CPanelCard>
+
+          <Button type="submit" isLoading={isSubmitting}>
+            Submit answer
+          </Button>
+        </div>
+      </Card>
     </form>
   );
 }

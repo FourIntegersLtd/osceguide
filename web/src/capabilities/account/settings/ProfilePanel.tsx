@@ -1,18 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import {
-  HiOutlineArrowPath,
-  HiOutlineCheckCircle,
-  HiOutlineIdentification,
-  HiOutlineKey,
-} from "react-icons/hi2";
+import { HiOutlineIdentification, HiOutlineKey } from "react-icons/hi2";
 import {
   AsyncBoundary,
+  Button,
   Modal,
-  ModalHelper,
-  ModalPrimaryButton,
-  ModalSecondaryButton,
   Panel,
   productTokens,
 } from "@/foundation/ui";
@@ -168,9 +161,8 @@ function AccountForm({
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <Panel title="Account">
+      <Panel title="Account" description="Your sign-in details and account actions.">
         <div className="space-y-4">
-          <ModalHelper className="mt-0">Your sign-in details and account actions.</ModalHelper>
 
           {successMessage ? <Alert message={successMessage} type="success" /> : null}
           {error ? <Alert message={error} type="error" /> : null}
@@ -196,7 +188,7 @@ function AccountForm({
             <div>
               <label
                 htmlFor="avatar-upload"
-                className="inline-block cursor-pointer text-osce-meta font-medium text-accent"
+                className="inline-flex h-9 cursor-pointer items-center rounded-osce-md border border-border bg-surface px-3 text-osce-meta font-medium text-ink transition-colors hover:bg-canvas"
               >
                 {avatarBusy ? "Uploading…" : "Change photo"}
               </label>
@@ -211,6 +203,7 @@ function AccountForm({
             </div>
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="username" className={b2cFieldLabel}>
               Username
@@ -253,31 +246,23 @@ function AccountForm({
               className={b2cSettingsFieldInputDisabled}
             />
           </div>
+          </div>
 
           <WorkspaceList user={user} />
         </div>
         <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-          <ModalSecondaryButton
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => setIsPasswordModalOpen(true)}
             className="gap-2"
           >
             <HiOutlineKey className="h-4 w-4" aria-hidden />
-            Change Password
-          </ModalSecondaryButton>
-          <ModalPrimaryButton type="submit" disabled={saving} className="gap-2">
-            {saving ? (
-              <>
-                <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
-                Updating...
-              </>
-            ) : (
-              <>
-                <HiOutlineCheckCircle className="h-4 w-4" aria-hidden />
-                Update Profile
-              </>
-            )}
-          </ModalPrimaryButton>
+            Change password
+          </Button>
+          <Button type="submit" isLoading={saving}>
+            Update profile
+          </Button>
         </div>
       </Panel>
 

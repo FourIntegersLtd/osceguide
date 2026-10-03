@@ -70,6 +70,8 @@ class ReportTotals(BaseModel):
     stations: int
     stations_marked: int
     decisions_released: int
+    # Candidates who sat at least one station that the engine has not marked yet.
+    awaiting_marking: int = 0
 
 
 class SittingReport(BaseModel):

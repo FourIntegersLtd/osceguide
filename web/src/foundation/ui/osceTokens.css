@@ -18,6 +18,10 @@
   --osce-ink-500: #667085;
   --osce-ink-400: #98a2b3;
 
+  /* The committing button: ink by default, the accent in train. */
+  --osce-commit: var(--osce-ink-800);
+  --osce-commit-hover: var(--osce-ink-900);
+
   /* Surfaces */
   --osce-canvas: #f7f8fa;
   --osce-surface: #ffffff;
@@ -143,6 +147,7 @@
   --osce-radius-md: 8px;
   --osce-radius-lg: 10px;
   --osce-radius-xl: 16px;
+  --osce-radius-2xl: 20px;
 
   /*
    * No card elevation token: cards are flat, and depth is a 1px border.

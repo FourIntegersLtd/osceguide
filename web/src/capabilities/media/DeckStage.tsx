@@ -79,7 +79,7 @@ export function DeckStage({ item }: { item: MediaItem }) {
 
   return (
     <div className="flex w-full flex-col gap-4">
-      <div className={cn(t.b2cInset, "min-h-[220px] px-5 py-5")}>
+      <div className={cn(t.b2cCard, "min-h-[220px] px-5 py-5")}>
         {slide?.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={slide.image_url} alt="" className="mb-4 w-full rounded-osce-md" />

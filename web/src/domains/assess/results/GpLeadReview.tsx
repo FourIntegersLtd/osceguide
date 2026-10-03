@@ -142,7 +142,7 @@ function Editor({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={completed ? "success" : "neutral"}>
+        <Badge variant={completed ? "success" : "neutral"} dot>
           {completed ? "Completed" : "Draft"}
         </Badge>
         {review ? (
@@ -170,12 +170,12 @@ function Editor({
       />
 
       <div className="space-y-1.5">
-        <span className="text-osce-caption font-medium text-b2b-headline">Overall</span>
+        <span className="text-osce-meta font-medium text-b2b-headline">Overall</span>
         <VerdictRow value={overall || null} onPick={setOverall} />
       </div>
 
       <label className="block">
-        <span className="text-osce-caption font-medium text-b2b-headline">Notes</span>
+        <span className="text-osce-meta font-medium text-b2b-headline">Notes</span>
         <textarea
           rows={4}
           value={notes}
@@ -215,7 +215,7 @@ function Editor({
 
 function VerdictRow({ value, onPick }: { value: Verdict | null; onPick: (verdict: Verdict) => void }) {
   return (
-    <div className="flex gap-1.5" role="group" aria-label="Overall">
+    <div className={b2bTokens.b2bSegmentedControl} role="group" aria-label="Overall">
       {VERDICTS.map((verdict) => (
         <button
           key={verdict.value}
@@ -223,9 +223,7 @@ function VerdictRow({ value, onPick }: { value: Verdict | null; onPick: (verdict
           aria-pressed={value === verdict.value}
           onClick={() => onPick(verdict.value)}
           className={
-            value === verdict.value
-              ? "flex-1 rounded-md border border-b2b-accent bg-b2b-accent px-3 py-1.5 text-osce-caption font-medium text-white"
-              : "flex-1 rounded-md border border-b2b-border bg-white px-3 py-1.5 text-osce-caption font-medium text-b2b-mid hover:bg-b2b-cream"
+            value === verdict.value ? b2bTokens.b2bSegmentedTabActive : b2bTokens.b2bSegmentedTabInactive
           }
         >
           {verdict.label}

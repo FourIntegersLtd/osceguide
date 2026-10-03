@@ -47,13 +47,13 @@ export const b2cModalOverlayBackdrop = "osce-modal-scrim absolute inset-0";
 
 /** Bottom sheet on mobile; centered card on md+. */
 export const b2cModalPanel =
-  "osce-modal-panel-enter relative z-[100] mx-2 flex w-full max-h-[90dvh] flex-col overflow-hidden rounded-t-osce-lg border border-b2c-border bg-osce-surface shadow-[0_24px_60px_-12px_rgba(16,24,40,0.35)] md:mx-auto md:max-h-[min(90dvh,calc(100dvh-2rem))] md:rounded-osce-lg focus:outline-none";
+  "osce-modal-panel-enter relative z-[100] mx-2 flex w-full max-h-[90dvh] flex-col overflow-hidden rounded-t-osce-2xl border border-b2c-border bg-osce-surface shadow-[0_24px_64px_rgba(16,24,40,0.18)] md:mx-auto md:max-h-[min(90dvh,calc(100dvh-2rem))] md:rounded-osce-2xl focus:outline-none";
 
 export const b2cModalPanelBody =
-  "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] [-webkit-overflow-scrolling:touch] lg:p-6";
+  "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] [-webkit-overflow-scrolling:touch] sm:p-6";
 
 export const b2cModalCloseBar =
-  "flex shrink-0 justify-end border-b border-b2c-border px-3 py-2 md:px-4";
+  "flex shrink-0 justify-end px-3 pt-3 md:px-4";
 
 const Modal = ({
   onClose,

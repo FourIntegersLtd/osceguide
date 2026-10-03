@@ -17,15 +17,20 @@ import {
   CircuitRunner,
   EditCircuit,
   LiveBoard,
+  MyProgramme,
   MySittingDetail,
   MyResult,
   MyReview,
   NewCircuit,
+  NewProgramme,
   NewSitting,
   OrgDashboard,
+  ProgrammeDetail,
+  Programmes,
   Results,
   SelfPractice,
   SelfPracticeStation,
+  SharedReview,
   SittingDetail,
   Sittings,
   SlotReview,
@@ -87,8 +92,27 @@ function AssessSlotReview(props: ScreenProps) {
       orgSlug={slugOf(props)}
       slotId={props.params?.slotId ?? ""}
       attemptId={props.params?.attemptId || null}
+      sittingId={props.params?.sittingId || null}
     />
   );
+}
+
+const AssessProgrammes = () => <Programmes />;
+
+function AssessNewProgramme(props: ScreenProps) {
+  return <NewProgramme orgSlug={slugOf(props)} />;
+}
+
+function AssessProgrammeDetail({ params }: ScreenProps) {
+  return <ProgrammeDetail programmeId={params?.programmeId ?? ""} />;
+}
+
+function AssessMyProgramme({ params }: ScreenProps) {
+  return <MyProgramme programmeId={params?.programmeId ?? ""} />;
+}
+
+function AssessSharedReview({ params }: ScreenProps) {
+  return <SharedReview reviewId={params?.reviewId ?? ""} />;
 }
 
 function AssessTrainees(props: ScreenProps) {
@@ -193,6 +217,11 @@ export const assessScreens: ScreenMap = {
   slotReview: AssessSlotReview,
   trainees: AssessTrainees,
   team: AssessTeam,
+  programmes: AssessProgrammes,
+  newProgramme: AssessNewProgramme,
+  programmeDetail: AssessProgrammeDetail,
+  myProgramme: AssessMyProgramme,
+  sharedReview: AssessSharedReview,
   myTraining: AssessMyTraining,
   mySitting: AssessMySitting,
   myResult: AssessMyResult,

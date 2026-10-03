@@ -1,7 +1,6 @@
 "use client";
 
-import { B2CMonoEyebrow, cn, productTokens } from "@/foundation/ui";
-import { b2cDesignTokens } from "@/foundation/ui/designTokens";
+import { cn, productTokens } from "@/foundation/ui";
 import type { PerformanceTrendPoint } from "@/domains/train/api";
 
 export interface WeeklyTrendPoint {
@@ -15,6 +14,8 @@ export const EMPTY_WEEKLY_TREND: WeeklyTrendPoint[] = Array.from({ length: 8 }, 
 }));
 
 const WEEKS = 8;
+/** A week is green when most of its marks met the competent standard. */
+const COMPETENT_LINE = 50;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
@@ -35,81 +36,45 @@ export function WeeklyTrendCard({
   className?: string;
 }) {
   const series = toWeeks(trend);
-
-  if (loading) {
-    return (
-      <div
-        className={cn(
-          productTokens.b2cDashboardCard,
-          "flex h-full w-full flex-col p-5 sm:p-6 xl:w-[290px]",
-          className,
-        )}
-      >
-        <div className="min-h-[200px] flex-1 animate-pulse rounded-lg border border-b2c-border bg-b2c-surface-muted" />
-      </div>
-    );
-  }
-
   const hasAnyData = series.some((week) => week.total_marks > 0);
-  const maxPct = Math.max(...series.map((week) => week.competent_pct), 1);
 
   return (
-    <div
-      className={cn(
-        productTokens.b2cDashboardCard,
-        "flex h-full w-full shrink-0 flex-col p-5 sm:p-6 xl:w-[290px]",
-        className,
-      )}
-    >
-      <B2CMonoEyebrow>Trend · last 8 weeks</B2CMonoEyebrow>
-
-      <div className="mt-5 flex min-h-[120px] flex-1 flex-col justify-end">
-        {!hasAnyData ? (
-          <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-osce-accent-subtle bg-osce-accent-muted/20 text-center">
-            <p className="text-osce-meta text-b2c-text-muted">
-              Complete more stations to see your rolling average.
-            </p>
-          </div>
+    <section className={cn(productTokens.b2cCard, "overflow-hidden", className)}>
+      <div className="px-5 pb-1 pt-[18px]">
+        <h2 className={productTokens.b2cSectionTitle}>Trend · last 8 weeks</h2>
+      </div>
+      <div className="px-5 pb-5 pt-3">
+        {loading ? (
+          <div className="h-[120px] animate-pulse rounded-control bg-b2c-surface-muted" role="status" aria-label="Loading" />
         ) : (
-          <div className="flex h-24 items-end gap-[7px]">
+          <div className="flex h-[120px] items-end gap-1.5 sm:gap-2.5">
             {series.map((week, index) => {
               const hasWeekData = week.total_marks > 0;
-              const heightPct = hasWeekData
-                ? Math.max(12, (week.competent_pct / maxPct) * 100)
-                : 10;
+              const met = week.competent_pct >= COMPETENT_LINE;
               return (
-                <div
-                  key={index}
-                  className="flex-1 rounded-[2px] transition-all duration-[400ms] ease-out"
-                  style={{
-                    height: `${heightPct}%`,
-                    backgroundColor: barFillColor(index, series.length, hasWeekData),
-                    opacity: hasWeekData ? 1 : 0.4,
-                  }}
-                  title={hasWeekData ? `${week.competent_pct}% competent` : "No data"}
-                />
+                <div key={index} className="flex h-full flex-1 flex-col items-center justify-end gap-1.5">
+                  <span
+                    className={cn(
+                      "w-full rounded-osce-sm",
+                      !hasWeekData ? "bg-b2c-surface-muted" : met ? "bg-osce-band-competentBar" : "bg-osce-navActive",
+                    )}
+                    style={{ height: hasWeekData ? `${Math.max(8, week.competent_pct * 0.94)}px` : "0px" }}
+                    title={hasWeekData ? `${week.competent_pct}% competent` : "Nothing marked"}
+                  />
+                  <span className="text-[11px] tabular-nums text-b2c-text-muted">W{index + 1}</span>
+                </div>
               );
             })}
           </div>
         )}
+        <p className="mt-2.5 text-osce-meta text-b2c-text-muted">
+          {hasAnyData || loading
+            ? "Green weeks are where most of your marks met the competent standard."
+            : "Complete more stations to see your weekly trend."}
+        </p>
       </div>
-
-      <p className="mt-2.5 text-osce-meta leading-relaxed text-b2c-text-secondary">
-        How much of your work met the competent standard each week. Left is eight weeks ago, right
-        is this week.
-      </p>
-    </div>
+    </section>
   );
-}
-
-function barFillColor(index: number, total: number, hasData: boolean): string {
-  const { empty, mid, active } = b2cDesignTokens.trendBar;
-  if (!hasData) return empty;
-  if (total <= 1) return active;
-  const position = index / (total - 1);
-  if (position < 0.5) return empty;
-  if (position < 0.75) return mid;
-  return active;
 }
 
 /** Latest eight weeks, oldest first, averaging the points that fall in each. */

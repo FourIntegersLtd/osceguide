@@ -26,15 +26,16 @@ import {
 export interface Tab<T extends string> {
   key: T;
   label: string;
-  icon: (props: { className?: string; "aria-hidden"?: boolean }) => ReactNode;
+  /** A count shown beside the label, in grey. */
+  count?: number;
 }
 
 /**
- * The tab strip that used to be three routes.
+ * The segmented control under the page title.
  *
  * `/team`, `/team/activity` and `/team/onboard` were separate pages whose
  * every visit refetched the same two lists. There is one route per screen in
- * this client, so the sections are state — which also means switching tabs no
+ * this client, so the sections are state, which also means switching tabs no
  * longer loses a half-typed invitation.
  */
 export function TabStrip<T extends string>({
@@ -49,69 +50,54 @@ export function TabStrip<T extends string>({
   label: string;
 }) {
   return (
-    <nav className={b2bTokens.b2bTabStrip} aria-label={label}>
+    <div className={b2bTokens.b2bSegmentedControl} role="tablist" aria-label={label}>
       {tabs.map((tab) => (
         <button
           key={tab.key}
           type="button"
+          role="tab"
+          aria-selected={active === tab.key}
           onClick={() => onSelect(tab.key)}
           className={
-            active === tab.key
-              ? b2bTokens.b2bWorkspaceTabActive
-              : b2bTokens.b2bWorkspaceTabInactive
+            active === tab.key ? b2bTokens.b2bSegmentedTabActive : b2bTokens.b2bSegmentedTabInactive
           }
-          aria-current={active === tab.key ? "page" : undefined}
         >
-          {tab.icon({ className: "h-4 w-4 shrink-0 opacity-90", "aria-hidden": true })}
           {tab.label}
+          {tab.count !== undefined ? (
+            <span className="text-osce-meta text-b2b-mid">{tab.count}</span>
+          ) : null}
         </button>
       ))}
-    </nav>
+    </div>
   );
 }
 
-/** `TeamPageCard` from the old roster folder, unchanged in appearance. */
+/** A quiet white panel with a title, an optional line under it and a body. */
 export function PanelCard({
   title,
   subtitle,
   children,
-  variant = "default",
   headerRight,
-  icon,
   bodyClassName,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
-  variant?: "default" | "emphasis" | "muted";
   headerRight?: ReactNode;
-  icon?: ReactNode;
   bodyClassName?: string;
 }) {
-  const shellClass =
-    variant === "muted"
-      ? "border-b2b-border bg-b2b-cream/40"
-      : variant === "emphasis"
-        ? "border-b2b-accent/30"
-        : "border-b2b-border bg-b2b-surface";
-
   return (
-    <div className={`overflow-hidden rounded-lg border ${shellClass}`}>
-      <div className="flex items-start gap-3 px-4 py-3 sm:px-5">
-        {icon ? (
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-b2b-cream text-b2b-accent">
-            {icon}
-          </span>
-        ) : null}
+    <div className="overflow-hidden rounded-panel border border-b2b-border bg-b2b-surface">
+      <div className="flex items-start gap-3 px-5 pb-1 pt-4">
         <div className="min-w-0 flex-1">
-          <h3 className="text-osce-body font-semibold tracking-tight text-b2b-headline">{title}</h3>
+          <h3 className="text-osce-body font-semibold text-b2b-headline">{title}</h3>
           {subtitle ? (
-            <p className="mt-1 text-osce-caption leading-relaxed text-b2b-mid">{subtitle}</p>
+            <p className="mt-1 text-osce-meta leading-relaxed text-b2b-mid">{subtitle}</p>
           ) : null}
         </div>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
       </div>
-      <div className={bodyClassName ?? "border-t border-b2b-border p-4 sm:p-5"}>{children}</div>
+      <div className={bodyClassName ?? "p-5 pt-3"}>{children}</div>
     </div>
   );
 }

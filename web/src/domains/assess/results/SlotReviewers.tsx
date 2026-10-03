@@ -45,7 +45,7 @@ export function SlotReviewers({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-osce-caption text-b2b-mid">
+        <span className="text-osce-meta text-b2b-mid">
           {completed} completed review{completed === 1 ? "" : "s"}
           {drafts > 0 ? ` · ${drafts} still in progress` : ""}
         </span>
@@ -58,13 +58,13 @@ export function SlotReviewers({
       </div>
 
       {byDomain.length > 0 ? (
-        <ul className="divide-y divide-b2b-border rounded-lg border border-b2b-border">
+        <ul className="divide-y divide-b2b-border">
           {byDomain.map((domain) => (
-            <li key={domain.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
-              <span className="min-w-0 truncate text-osce-caption font-medium text-b2b-headline">
+            <li key={domain.id} className="flex items-center justify-between gap-3 py-2.5">
+              <span className="min-w-0 truncate text-osce-meta font-medium text-b2b-headline">
                 {domain.label}
               </span>
-              <Badge variant={ratingVariant(rating, domain.value)}>{ratingLabel(rating, domain.value)}</Badge>
+              <Badge variant={ratingVariant(rating, domain.value)} dot>{ratingLabel(rating, domain.value)}</Badge>
             </li>
           ))}
         </ul>

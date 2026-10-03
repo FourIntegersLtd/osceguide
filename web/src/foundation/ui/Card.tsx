@@ -30,7 +30,7 @@ export function getCardSurfaceClasses({
   themeType?: "b2c" | "b2b";
 } = {}) {
   return themeType === "b2b"
-    ? "rounded-lg border border-b2b-border bg-b2b-surface"
+    ? "rounded-panel border border-b2b-border bg-b2b-surface"
     : "rounded-osce-lg border border-b2c-border bg-osce-surface";
 }
 
@@ -59,7 +59,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         {...props}
       >
         {hasHeader && (
-          <header className="flex items-start justify-between gap-4 border-b border-b2c-border px-5 py-4">
+          <header className="flex items-start justify-between gap-4 px-5 pb-1 pt-[18px]">
             <div className="min-w-0">
               {title && (
                 <h2 className="truncate text-osce-subheading font-semibold text-osce-ink-900">
@@ -67,13 +67,13 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
                 </h2>
               )}
               {description && (
-                <p className="mt-1 text-osce-body text-b2c-text-muted">{description}</p>
+                <p className="mt-0.5 text-osce-meta text-b2c-text-muted">{description}</p>
               )}
             </div>
             {actions && <div className="shrink-0">{actions}</div>}
           </header>
         )}
-        {children != null && (hasHeader ? <div className="px-5 py-4">{children}</div> : children)}
+        {children != null && (hasHeader ? <div className="px-5 pb-5 pt-3">{children}</div> : children)}
       </div>
     );
   },

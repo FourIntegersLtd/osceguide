@@ -1,38 +1,11 @@
 "use client";
 
 import { HiOutlineFaceFrown } from "react-icons/hi2";
-import {
-  HiOutlineClipboardList,
-  HiOutlineDocumentText,
-  HiOutlineLightBulb,
-} from "react-icons/hi";
-import { AsyncBoundary, B2CEmptyState, Back, productTokens } from "@/foundation/ui";
+import { AsyncBoundary, B2CEmptyState, Back, Card, productTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { asLines, readDebrief } from "@/capabilities/debrief/api";
 
-const { b2cPageTitle, b2cPanelDivided, b2cPanelSection } = productTokens;
-
-function Section({
-  icon,
-  iconWellClassName,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  iconWellClassName: string;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={b2cPanelSection}>
-      <div className="mb-3 flex items-center gap-3">
-        <div className={`rounded-full p-2 ${iconWellClassName}`}>{icon}</div>
-        <h2 className="text-osce-body font-semibold text-osce-ink-900">{title}</h2>
-      </div>
-      {children}
-    </div>
-  );
-}
+const { b2cHeroCtaSurface, b2cMonoEyebrow, b2cPageTitle } = productTokens;
 
 /**
  * What one debrief concluded.
@@ -46,51 +19,57 @@ export function DebriefDetail({ id }: { id: string }) {
   const state = useAsync((signal) => readDebrief(id, signal), [id]);
 
   return (
-    <div className="space-y-6">
-      <Back />
-      <h1 className={b2cPageTitle}>Debrief Details</h1>
+    <div className="mx-auto max-w-osce-page space-y-6">
+      <div className="space-y-3">
+        <Back />
+        <h1 className={b2cPageTitle}>Debrief details</h1>
+      </div>
       <AsyncBoundary state={state}>
         {(debrief) =>
           debrief === null ? (
             <B2CEmptyState
               icon={HiOutlineFaceFrown}
-              title="Debrief Not Found"
-              description="The requested debrief could not be found."
+              title="Debrief not found"
+              description="It may have been deleted, or it belongs to another account."
             />
           ) : (
-            <div className={b2cPanelDivided}>
-              <Section
-                icon={<HiOutlineDocumentText className="h-5 w-5 text-osce-accent" />}
-                iconWellClassName="bg-osce-accent-subtle"
-                title="Narrative Summary"
-              >
-                <p className="leading-relaxed text-b2c-text-secondary">
+            <>
+              <section className={`${b2cHeroCtaSurface} flex flex-col gap-1.5`}>
+                <span className={b2cMonoEyebrow}>Narrative summary</span>
+                <p className="max-w-[640px] text-[15px] leading-[24px] text-osce-ink-900">
                   {debrief.narrative ?? "No narrative was recorded for this debrief."}
                 </p>
-              </Section>
-              <Section
-                icon={<HiOutlineLightBulb className="h-5 w-5 text-osce-warning-icon" />}
-                iconWellClassName="bg-osce-warning-bg"
-                title="Key Insights"
-              >
-                <ul className="list-inside list-disc space-y-2 text-b2c-text-secondary">
-                  {asLines(debrief.key_insights).map((insight, index) => (
-                    <li key={index}>{insight}</li>
-                  ))}
-                </ul>
-              </Section>
-              <Section
-                icon={<HiOutlineClipboardList className="h-5 w-5 text-osce-success-icon" />}
-                iconWellClassName="bg-osce-success-bg"
-                title="Action Plan"
-              >
-                <ul className="list-inside list-disc space-y-2 text-b2c-text-secondary">
-                  {asLines(debrief.action_plan).map((action, index) => (
-                    <li key={index}>{action}</li>
-                  ))}
-                </ul>
-              </Section>
-            </div>
+              </section>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <Card title="Key insights">
+                  <ul className="divide-y divide-osce-border-light">
+                    {asLines(debrief.key_insights).map((insight, index) => (
+                      <li
+                        key={index}
+                        className="py-2.5 text-osce-body text-osce-ink-900 first:pt-0 last:pb-0"
+                      >
+                        {insight}
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+                <Card title="Action plan">
+                  <ol className="divide-y divide-osce-border-light">
+                    {asLines(debrief.action_plan).map((action, index) => (
+                      <li
+                        key={index}
+                        className="flex gap-4 py-2.5 text-osce-body text-osce-ink-900 first:pt-0 last:pb-0"
+                      >
+                        <span className="w-6 shrink-0 font-mono text-osce-meta tabular-nums text-b2c-text-muted">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        {action}
+                      </li>
+                    ))}
+                  </ol>
+                </Card>
+              </div>
+            </>
           )
         }
       </AsyncBoundary>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, Badge, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { acknowledgeResult, downloadMyResult, readMyResult } from "@/domains/assess/trainee/api";
@@ -54,10 +54,7 @@ export function MyResult({ sittingId }: { sittingId: string }) {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">
-      <header className="border-b border-b2b-border pb-4">
-        <p className={b2bTokens.b2bEyebrow}>Your result</p>
-        <h1 className={`mt-1 ${b2bTokens.b2bPageTitle}`}>Assessment outcome</h1>
-      </header>
+      <B2CPageHeader className="!mb-0" eyebrow="Your result" title="Assessment outcome" />
 
       <AsyncBoundary state={state}>
         {(result) =>
@@ -67,7 +64,7 @@ export function MyResult({ sittingId }: { sittingId: string }) {
               about it is decided here.
             </Alert>
           ) : (
-            <section className="space-y-5 rounded-lg border border-b2b-border bg-b2b-surface p-4 sm:p-5">
+            <section className="space-y-5 rounded-panel border border-b2b-border bg-b2b-surface p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className={b2bTokens.b2bEyebrow}>Outcome</p>
@@ -75,13 +72,13 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                     {outcomeLabel(result.assessment_outcome)}
                   </p>
                 </div>
-                <Badge tone={outcomeTone(result.assessment_outcome)}>
+                <Badge tone={outcomeTone(result.assessment_outcome)} dot>
                   {outcomeLabel(result.assessment_outcome)}
                 </Badge>
               </div>
 
               {result.assessment_score != null ? (
-                <div className="rounded-lg border border-b2b-border bg-b2b-subtle px-4 py-3">
+                <div className="rounded-panel bg-canvas px-4 py-3">
                   <p className={b2bTokens.b2bEyebrow}>Assessment score</p>
                   <p className="mt-1 text-osce-title font-semibold text-b2b-headline">
                     {result.assessment_score.toFixed(1)}
@@ -105,12 +102,12 @@ export function MyResult({ sittingId }: { sittingId: string }) {
 
               {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
-              <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+              <div className="flex flex-wrap items-center gap-3 border-t border-b2b-border pt-4">
                 <button
                   type="button"
                   onClick={() => void downloadPdf()}
                   disabled={downloading}
-                  className="inline-flex items-center justify-center rounded-osce-md border border-border bg-surface px-3 py-2 text-osce-meta font-medium text-ink hover:bg-canvas focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-meta font-medium text-b2b-headline hover:bg-canvas focus:outline-none disabled:opacity-60"
                 >
                   {downloading ? "Preparing…" : "Download PDF"}
                 </button>

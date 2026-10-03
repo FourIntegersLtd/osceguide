@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { HiOutlineArrowRight } from "react-icons/hi2";
 import Table from "@/foundation/table/Table";
-import { AsyncBoundary, Button, SectionSearchField, cn } from "@/foundation/ui";
+import { AsyncBoundary, B2CPageHeader, Button, ButtonLink, SectionSearchField } from "@/foundation/ui";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { formatLongDateTime } from "@/foundation/format";
@@ -16,7 +14,7 @@ import {
   type RecentAttempt,
 } from "@/capabilities/transcripts/api";
 
-type TranscriptRow = RecentAttempt & { rowNumber: number };
+type TranscriptRow = RecentAttempt;
 
 /**
  * Every consultation this person can read back.
@@ -44,13 +42,16 @@ export function TranscriptList() {
   );
 
   return (
-    <div className="space-y-6 py-8 lg:px-4">
-      <h1 className="text-left text-osce-title font-bold text-osce-ink-900">Transcripts</h1>
+    <div className="mx-auto max-w-osce-page space-y-6">
+      <B2CPageHeader
+        title="Transcripts"
+        subtitle="A transcript is saved each time you complete a consultation."
+      />
 
       <SectionSearchField
         value={search}
         onChange={setSearch}
-        placeholder="Search by exam or session type…"
+        placeholder="Search by exam or session type"
         ariaLabel="Search transcripts"
       />
 
@@ -91,23 +92,9 @@ function TranscriptTable({
 }) {
   const { hrefFor } = useSurface();
 
-  const numbered = useMemo(
-    () => attempts.map((attempt, index) => ({ ...attempt, rowNumber: index + 1 })),
-    [attempts],
-  );
 
   const columns = useMemo(
     () => [
-      {
-        header: "#",
-        key: "rowNumber" as keyof TranscriptRow,
-        priority: "detail" as const,
-        render: (attempt: TranscriptRow) => (
-          <span className="rounded-full bg-b2c-secondary px-3 py-1 text-osce-data text-osce-ink-900">
-            {attempt.rowNumber}
-          </span>
-        ),
-      },
       {
         header: "Date",
         key: "created_at" as keyof TranscriptRow,
@@ -126,19 +113,12 @@ function TranscriptTable({
         ),
       },
       {
-        header: "Action",
+        header: "",
         key: "id" as keyof TranscriptRow,
         render: (attempt: TranscriptRow) => (
-          <Link
-            href={hrefFor(`/transcripts/${attempt.id}`)}
-            className={cn("group flex cursor-pointer items-center space-x-2", b2cTableCellText)}
-          >
-            <span className="font-medium text-osce-accent">View details</span>
-            <HiOutlineArrowRight
-              className="h-4 w-4 text-osce-accent transition-transform group-hover:translate-x-1"
-              aria-hidden
-            />
-          </Link>
+          <ButtonLink href={hrefFor(`/transcripts/${attempt.id}`)} variant="secondary" size="sm">
+            View details
+          </ButtonLink>
         ),
       },
     ],
@@ -148,15 +128,15 @@ function TranscriptTable({
   return (
     <div className="space-y-4">
       <Table<TranscriptRow>
-        data={numbered}
+        data={attempts}
         columns={columns}
         idField="id"
         nameField="exam_code"
         showSearch={false}
         showPagination={false}
-        totalItems={numbered.length}
+        totalItems={attempts.length}
         currentPage={1}
-        itemsPerPage={Math.max(numbered.length, 1)}
+        itemsPerPage={Math.max(attempts.length, 1)}
         onPageChange={() => {}}
         onItemsPerPageChange={() => {}}
         onSearch={() => {}}

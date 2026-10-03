@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import {
-  HiOutlineArrowPath,
-  HiOutlineCheckCircle,
-  HiOutlineMicrophone,
-} from "react-icons/hi2";
+import { HiOutlineMicrophone } from "react-icons/hi2";
 import {
   AsyncBoundary,
+  Button,
   Checkbox,
   Modal,
-  ModalPrimaryButton,
   Panel,
   cn,
   productTokens,
@@ -28,7 +24,6 @@ const {
   b2cLink,
   b2cSettingsCheckboxHelper,
   b2cSettingsCheckboxTitle,
-  b2cSettingsIntro,
   b2cSettingsOptionRow,
 } = productTokens;
 
@@ -91,7 +86,7 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
         colleague_waiting_email: waitingEmail,
         needs_extra_time: extraTime,
       });
-      setSuccessMessage("Preferences saved successfully");
+      setSuccessMessage("Preferences saved");
     } catch {
       setError("Failed to save preferences");
     } finally {
@@ -107,11 +102,8 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
   return (
     <>
       <form onSubmit={(event) => void save(event)}>
-        <Panel title="Preferences">
+        <Panel title="Preferences" description="Accessibility, AI consent and notifications.">
           <div className="space-y-6">
-            <p className={b2cSettingsIntro}>
-              Accessibility, AI consent, and notification settings for your account.
-            </p>
 
             {successMessage ? <Alert message={successMessage} type="success" /> : null}
             {error ? <Alert message={error} type="error" /> : null}
@@ -158,7 +150,7 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
               ) : null}
 
               {practising ? (
-                <div className={b2cSettingsOptionRow}>
+                <div className={cn(b2cSettingsOptionRow, "items-center")}>
                   <div className="min-w-0 flex-1">
                     <p className={b2cSettingsCheckboxTitle}>
                       <HiOutlineMicrophone
@@ -168,34 +160,20 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
                       Athena onboarding
                     </p>
                     <p className={b2cSettingsCheckboxHelper}>
-                      Hear Athena introduce the app and try the voice demo again.
+                      Walk through onboarding again: Athena introduces the app and the voice demo.
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => setShowOnboarding(true)}
-                      className={cn("mt-3 text-osce-body", b2cLink, "underline")}
-                    >
-                      Walk through onboarding again
-                    </button>
                   </div>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setShowOnboarding(true)}>
+                    Start
+                  </Button>
                 </div>
               ) : null}
             </div>
           </div>
           <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-            <ModalPrimaryButton type="submit" disabled={saving} className="gap-2">
-              {saving ? (
-                <>
-                  <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
-                  Saving…
-                </>
-              ) : (
-                <>
-                  <HiOutlineCheckCircle className="h-4 w-4" aria-hidden />
-                  Save preferences
-                </>
-              )}
-            </ModalPrimaryButton>
+            <Button type="submit" isLoading={saving}>
+              Save preferences
+            </Button>
           </div>
         </Panel>
       </form>

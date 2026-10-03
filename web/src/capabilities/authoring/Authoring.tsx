@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { LuPencilRuler } from "react-icons/lu";
-import { B2CSegmentedTabs, PageHeader, PlatformTabbedScreen } from "@/foundation/ui";
+import { B2CSegmentedTabs, B2CPageHeader, PlatformTabbedScreen } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { supportsProgrammes } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
@@ -76,7 +76,7 @@ export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Authoring" description="Stations, templates, rubrics, exams and programmes." />
+      <B2CPageHeader title="Authoring" subtitle="Stations, templates, rubrics, exams and programmes." />
       <B2CSegmentedTabs
         items={items}
         value={active}

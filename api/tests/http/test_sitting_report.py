@@ -67,7 +67,13 @@ async def test_the_report_lists_every_candidate_with_marking_ratings_and_decisio
     body = report.json()
 
     assert body["sitting"]["name"] == "Finals"
-    assert body["totals"] == {"candidates": 1, "stations": 2, "stations_marked": 0, "decisions_released": 0}
+    assert body["totals"] == {
+        "candidates": 1,
+        "stations": 2,
+        "stations_marked": 0,
+        "decisions_released": 0,
+        "awaiting_marking": 0,
+    }
     [row] = body["candidates"]
     assert row["email"] == "cand@example.com"
     assert row["trainee_id"] == trainee_id

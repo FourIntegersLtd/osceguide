@@ -247,6 +247,20 @@ async def set_programme_status(
     )
 
 
+async def programme_names(
+    session: AsyncSession, org_id: uuid.UUID, programme_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, str]:
+    """The exam name each of this organisation's programmes offers, in one query."""
+    if not programme_ids:
+        return {}
+    stmt = (
+        select(Programme.id, Exam.name)
+        .join(Exam, Exam.id == Programme.exam_id)
+        .where(Programme.org_id == org_id, Programme.id.in_(list(programme_ids)))
+    )
+    return {programme_id: name for programme_id, name in (await session.execute(stmt)).all()}
+
+
 async def exams_by_ids(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> list[Exam]:
     """Every exam row named by these ids, in one query."""
     if not exam_ids:

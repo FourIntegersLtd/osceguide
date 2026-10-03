@@ -34,7 +34,7 @@ export function ObserverPanel({
   const live = circuit.started_at !== null && circuit.ended_at === null;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-b2b-border bg-white">
+    <div className="overflow-hidden rounded-panel border border-b2b-border bg-b2b-surface">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-b2b-border px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           <HiMiniSignal
@@ -113,7 +113,7 @@ function Occupants() {
   );
 
   return (
-    <ul className="divide-y divide-b2b-border rounded-lg border border-b2b-border">
+    <ul className="divide-y divide-b2b-border rounded-panel border border-b2b-border">
       <Occupant
         label="The patient"
         detail={agents.length > 0 ? "In the room" : "Not in the room yet"}

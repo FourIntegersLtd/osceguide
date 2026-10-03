@@ -7,6 +7,7 @@ queries that fill them.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,6 +87,20 @@ def _slot_ref(slot: Slot) -> SlotRef:
         ended_at=slot.ended_at,
         exam_completed_at=slot.exam_completed_at,
     )
+
+
+async def circuits_led_counts(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Circuits each of these people supervises, for the team screen."""
+    return await repository_reads.circuits_led_counts(session, org_id, user_ids)
+
+
+async def trainee_activity(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+) -> tuple[dict[uuid.UUID, int], dict[uuid.UUID, set[uuid.UUID]]]:
+    """Per trainee user: stations sat, and programme ids of their sittings, for the roster."""
+    return await repository_reads.trainee_activity(session, org_id, user_ids)
 
 
 async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:

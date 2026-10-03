@@ -1,8 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { Alert, Badge, ButtonLink, EmptyState, Spinner, b2bTokens } from "@/foundation/ui";
+import { LuClipboardCheck } from "react-icons/lu";
+import {
+  Alert,
+  B2CGroupedRow,
+  B2CGroupedRowLink,
+  B2CGroupedSection,
+  Badge,
+  Spinner,
+} from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { readSupervisorCircuits } from "@/domains/assess/dashboard/api";
@@ -35,9 +42,9 @@ export function SupervisorCircuits({
     if (!sayWhenEmpty) return null;
     return (
       <Section>
-        <EmptyState
+        <B2CGroupedRow
           title="Nothing is assigned to you."
-          description="A circuit appears here when an administrator names you its supervisor."
+          meta="A circuit appears here when an administrator names you its supervisor."
         />
       </Section>
     );
@@ -48,46 +55,27 @@ export function SupervisorCircuits({
 
   return (
     <Section>
-      <div className={b2bTokens.b2bGroupedShell}>
-        {ordered.map((row) => (
-          <div key={row.circuit_id} className={b2bTokens.b2bGroupedRow}>
-            <div className="min-w-0 flex-1">
-              <p className={b2bTokens.b2bGroupedRowTitle}>{row.sitting_name}</p>
-              <p className={b2bTokens.b2bGroupedRowSubtitle}>
-                {row.circuit_name} · {row.mode} · {row.slot_count} station
-                {row.slot_count === 1 ? "" : "s"}
-                {row.scheduled_for ? ` · ${new Date(row.scheduled_for).toLocaleString()}` : ""}
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <Badge variant={row.in_progress ? "success" : "info"} dot>
-                {row.in_progress ? "In progress" : "Ready to run"}
-              </Badge>
-              <Link href={hrefFor(`/sittings/${row.sitting_id}`)} className={b2bTokens.b2bLinkMuted}>
-                Sitting
-              </Link>
-              <ButtonLink
-                href={hrefFor(`/circuits/${row.circuit_id}`)}
-                themeType="b2b"
-                variant={row.in_progress ? "commit" : "secondary"}
-                size="sm"
-              >
-                {row.in_progress ? "Monitor" : "Open"}
-              </ButtonLink>
-            </div>
-          </div>
-        ))}
-      </div>
+      {ordered.map((row) => (
+        <B2CGroupedRowLink
+          key={row.circuit_id}
+          href={hrefFor(`/circuits/${row.circuit_id}`)}
+          icon={LuClipboardCheck}
+          title={`${row.sitting_name} · ${row.circuit_name}`}
+          meta={`${row.mode} · ${row.slot_count} station${row.slot_count === 1 ? "" : "s"}${
+            row.scheduled_for ? ` · ${new Date(row.scheduled_for).toLocaleString()}` : ""
+          }`}
+          trailing={
+            <Badge variant={row.in_progress ? "success" : "info"} dot>
+              {row.in_progress ? "In progress" : "Ready to run"}
+            </Badge>
+          }
+        />
+      ))}
     </Section>
   );
 }
 
 /** The heading this list lives under, wherever it is mounted. */
 function Section({ children }: { children: ReactNode }) {
-  return (
-    <section className="space-y-2">
-      <h2 className={b2bTokens.b2bEyebrow}>Assigned to you</h2>
-      {children}
-    </section>
-  );
+  return <B2CGroupedSection eyebrow="Assigned to you">{children}</B2CGroupedSection>;
 }

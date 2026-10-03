@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { HiOutlineKey } from "react-icons/hi2";
 import { Alert, AsyncBoundary, Button, b2bTokens } from "@/foundation/ui";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
@@ -102,7 +101,6 @@ export function AccessPanel({
         <PanelCard
           title="Grant exam access"
           subtitle="Lets trainees practise between sittings. They do not need it to take an exam they are booked on."
-          icon={<HiOutlineKey className="h-5 w-5" aria-hidden />}
         >
           <form
             className="grid gap-4 sm:grid-cols-3"

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { HiOutlineUserGroup } from "react-icons/hi2";
 import { Alert, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { PanelCard } from "@/domains/assess/team/chrome";
@@ -88,7 +87,6 @@ export function GroupsPanel({
       <PanelCard
         title="Groups"
         subtitle="A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one."
-        icon={<HiOutlineUserGroup className="h-5 w-5" aria-hidden />}
       >
         {groups.length === 0 ? (
           <p className="text-osce-body text-b2b-mid">
@@ -99,7 +97,7 @@ export function GroupsPanel({
             {groups.map((group) => (
               <li
                 key={group.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-b2b-border px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-panel border border-b2b-border px-3 py-2"
               >
                 <span className="min-w-0 truncate text-osce-body font-medium text-b2b-headline">
                   {group.label}

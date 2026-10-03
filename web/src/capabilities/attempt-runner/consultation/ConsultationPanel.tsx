@@ -36,7 +36,7 @@ export function ConsultationPanel({
   session,
   patient,
   durationSeconds,
-  startLabel = "Start Consultation",
+  startLabel = "Start consultation",
   disabledReason,
 }: ConsultationPanelProps) {
   const mic = useMicPreflight(session.phase === "idle" || session.phase === "reading");
@@ -89,7 +89,7 @@ export function ConsultationPanel({
           <div className="space-y-2">
             {disabledReason || session.phase === "ended" ? (
               <>
-                <Button fullWidth disabled className="gap-2"><HiOutlineMicrophone className="h-4 w-4" aria-hidden />Start Consultation</Button>
+                <Button fullWidth disabled className="gap-2"><HiOutlineMicrophone className="h-4 w-4" aria-hidden />Start consultation</Button>
                 <p className="text-center text-osce-caption text-b2c-text-muted sm:text-osce-meta">{disabledReason ?? "Consultation completed"}</p>
               </>
             ) : (

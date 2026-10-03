@@ -8437,9 +8437,16 @@ export interface components {
             slots?: components["schemas"]["SlotRead"][];
             /** Started At */
             started_at: string | null;
+            /** Supervisor Name */
+            supervisor_name?: string | null;
             /** Supervisor User Id */
             supervisor_user_id: string | null;
             timing: components["schemas"]["TimingRead"];
+            /**
+             * Trainee Count
+             * @default 0
+             */
+            trainee_count: number;
         };
         /** CircuitReviewRead */
         CircuitReviewRead: {
@@ -12877,6 +12884,11 @@ export interface components {
         };
         /** ReportTotals */
         ReportTotals: {
+            /**
+             * Awaiting Marking
+             * @default 0
+             */
+            awaiting_marking: number;
             /** Candidates */
             candidates: number;
             /** Decisions Released */
@@ -13810,6 +13822,11 @@ export interface components {
         };
         /** SittingRead */
         SittingRead: {
+            /**
+             * Candidate Count
+             * @default 0
+             */
+            candidate_count: number;
             /** Circuits */
             circuits?: components["schemas"]["CircuitRead"][];
             /**
@@ -13823,6 +13840,8 @@ export interface components {
             name: string;
             /** Programme Id */
             programme_id?: string | null;
+            /** Programme Name */
+            programme_name?: string | null;
             /**
              * Rubric Version Id
              * Format: uuid
@@ -14764,6 +14783,13 @@ export interface components {
             id: string;
             /** Last Name */
             last_name: string | null;
+            /** Programme Names */
+            programme_names?: string[];
+            /**
+             * Stations Sat
+             * @default 0
+             */
+            stations_sat: number;
             /** User Id */
             user_id: string | null;
         };
@@ -15661,6 +15687,11 @@ export interface components {
         };
         /** MembershipRead */
         app__features__tenancy__schemas__MembershipRead: {
+            /**
+             * Circuits Led
+             * @default 0
+             */
+            circuits_led: number;
             /** Email */
             email?: string | null;
             /**

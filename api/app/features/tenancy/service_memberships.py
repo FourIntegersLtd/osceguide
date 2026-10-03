@@ -13,6 +13,7 @@ from app.core.errors import Forbidden, InvalidInput
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
 from app.features.roster.schemas import InvitationRead
+from app.features.sittings import service_reads as sittings
 from app.features.tenancy import domain, repository
 from app.features.tenancy.errors import (
     InvitationNotPending,
@@ -80,13 +81,18 @@ async def list_memberships(
     # The addresses are read for the page instead of being left null. A team
     # list without an email can only show the front of a user id, which is a
     # uuid printed as if it were a name; the one join is the whole of the fix.
-    people = await identity.user_refs_by_ids(session, [membership.user_id for membership in memberships])
-    return [
+    user_ids = [membership.user_id for membership in memberships]
+    people = await identity.user_refs_by_ids(session, user_ids)
+    led = await sittings.circuits_led_counts(session, org_id, user_ids)
+    reads = [
         _membership_read(
             membership, email=people[membership.user_id].email if membership.user_id in people else None
         )
         for membership in memberships
-    ], next_cursor
+    ]
+    for read in reads:
+        read.circuits_led = led.get(read.user_id, 0)
+    return reads, next_cursor
 
 
 async def add_membership(

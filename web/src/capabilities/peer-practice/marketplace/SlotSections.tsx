@@ -1,7 +1,7 @@
 "use client";
 
 import { HiOutlineCalendarDays } from "react-icons/hi2";
-import { Alert, B2CEmptyState, Button } from "@/foundation/ui";
+import { Alert, B2CEmptyState, Button, cn, productTokens } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import { listSlots, MARKETPLACE_PAGE_SIZE, type Slot } from "@/capabilities/peer-practice/api";
 import { SlotCard } from "@/capabilities/peer-practice/marketplace/SlotCard";
@@ -19,7 +19,7 @@ function byMostRecent(a: Slot, b: Slot): number {
 
 function SlotGrid({ slots, actions }: { slots: Slot[]; actions: SlotActions }) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
       {slots.map((slot) => (
         <SlotCard
           key={slot.id}
@@ -35,7 +35,7 @@ function SlotGrid({ slots, actions }: { slots: Slot[]; actions: SlotActions }) {
 
 function SectionHeading({ children }: { children: string }) {
   return (
-    <h3 className="mb-3 text-osce-body font-semibold text-osce-ink-900">{children}</h3>
+    <h3 className={cn(productTokens.b2cMonoEyebrow, "mb-3")}>{children}</h3>
   );
 }
 
@@ -133,7 +133,7 @@ export function MySlots({ slots, actions }: { slots: Slot[]; actions: SlotAction
       <B2CEmptyState
         icon={HiOutlineCalendarDays}
         title="You haven't posted any availability yet"
-        description="Post your availability to find a practice partner!"
+        description="Post your availability to find a practice partner."
       />
     );
   }

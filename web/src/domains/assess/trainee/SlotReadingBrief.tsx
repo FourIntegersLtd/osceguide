@@ -51,7 +51,7 @@ function AttemptBriefView({ attemptId }: { attemptId: string }) {
   return (
     <AsyncBoundary state={state}>
       {(brief: AttemptBrief) => (
-        <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4 sm:p-5">
+        <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
           <h3 className="text-osce-body font-semibold text-b2b-headline mb-3">
             Reading brief
           </h3>
@@ -91,7 +91,7 @@ function OrgStationBriefView({
         if (!brief) return null;
 
         return (
-          <div className="rounded-lg border border-b2b-border bg-b2b-surface p-4 sm:p-5">
+          <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
             <h3 className="text-osce-body font-semibold text-b2b-headline mb-3">
               Reading brief
             </h3>

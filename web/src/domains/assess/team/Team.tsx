@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineClock, HiOutlineSquares2X2, HiOutlineUserPlus } from "react-icons/hi2";
-import { Button, PageHeader, TextLink } from "@/foundation/ui";
+import { Button, B2CPageHeader, TextLink } from "@/foundation/ui";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { TabStrip, type Tab } from "@/domains/assess/team/chrome";
@@ -14,9 +13,9 @@ import { sectionSubtitle } from "@/domains/assess/team/support";
 type Section = "members" | "invite" | "activity";
 
 const TABS: readonly Tab<Section>[] = [
-  { key: "members", label: "Members", icon: (props) => <HiOutlineSquares2X2 {...props} /> },
-  { key: "invite", label: "Add people", icon: (props) => <HiOutlineUserPlus {...props} /> },
-  { key: "activity", label: "History", icon: (props) => <HiOutlineClock {...props} /> },
+  { key: "members", label: "Members" },
+  { key: "invite", label: "Add people" },
+  { key: "activity", label: "History" },
 ];
 
 /**
@@ -38,10 +37,10 @@ export function Team({ orgSlug }: { orgSlug: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
+      <B2CPageHeader
         title="Team"
-        description={sectionSubtitle(section)}
-        actions={
+        subtitle={sectionSubtitle(section)}
+        action={
           canManage && section === "members" ? (
             <Button themeType="b2b" variant="commit" onClick={() => setSection("invite")}>
               Add people

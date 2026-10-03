@@ -1,17 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { IconType } from "react-icons";
-import {
-  HiOutlineAcademicCap,
-  HiOutlineAdjustmentsHorizontal,
-  HiOutlineCog6Tooth,
-  HiOutlineCreditCard,
-  HiOutlineGift,
-  HiOutlineSparkles,
-  HiOutlineUser,
-} from "react-icons/hi2";
+import { HiOutlineCog6Tooth } from "react-icons/hi2";
 import {
   B2CPageHeader,
   B2CSegmentedTabs,
@@ -30,6 +21,15 @@ import TutorMemoryPanel from "@/capabilities/account/settings/TutorMemoryPanel";
 
 export type SettingsTab = "profile" | "preferences" | "exam" | "payments" | "referrals" | "memory";
 
+/** A tab an arm adds beside the account's own. */
+export interface ExtraSettingsTab {
+  id: string;
+  label: string;
+  panel: ReactNode;
+}
+
+const NO_EXTRA_TABS: ExtraSettingsTab[] = [];
+
 const VALID_TABS: SettingsTab[] = [
   "profile",
   "preferences",
@@ -46,13 +46,13 @@ const VALID_TABS: SettingsTab[] = [
  * tab for `role === "admin"` and bounced `?tab=referrals` to Profile for
  * everybody else.
  */
-const TABS: { id: SettingsTab; label: string; icon: IconType; adminOnly?: boolean }[] = [
-  { id: "profile", label: "Profile", icon: HiOutlineUser },
-  { id: "preferences", label: "Preferences", icon: HiOutlineAdjustmentsHorizontal },
-  { id: "exam", label: "Exam", icon: HiOutlineAcademicCap },
-  { id: "payments", label: "Payments", icon: HiOutlineCreditCard },
-  { id: "referrals", label: "Referrals", icon: HiOutlineGift, adminOnly: true },
-  { id: "memory", label: "Memory", icon: HiOutlineSparkles },
+const TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
+  { id: "profile", label: "Profile" },
+  { id: "preferences", label: "Preferences" },
+  { id: "exam", label: "Exam" },
+  { id: "payments", label: "Payments" },
+  { id: "referrals", label: "Referrals", adminOnly: true },
+  { id: "memory", label: "Memory" },
 ];
 
 /**
@@ -63,23 +63,29 @@ const TABS: { id: SettingsTab; label: string; icon: IconType; adminOnly?: boolea
  * person who signs off results — could not change their own password. Nothing
  * on this screen is consumer-specific: everybody has a name, a password, the
  * access they were granted or bought, and a tutor keeping notes on them.
+ *
+ * `extraTabs` is how an arm adds tabs of its own (an institution's
+ * organisation and sign-in panels) without this capability knowing the arm.
  */
-export function Settings() {
+export function Settings({ extraTabs = NO_EXTRA_TABS }: { extraTabs?: ExtraSettingsTab[] }) {
   return (
-    <Suspense fallback={<SettingsFrame tab="profile" onChange={() => {}} />}>
-      <SettingsTabs />
+    <Suspense fallback={<SettingsFrame tab="profile" onChange={() => {}} extraTabs={extraTabs} />}>
+      <SettingsTabs extraTabs={extraTabs} />
     </Suspense>
   );
 }
 
-function SettingsTabs() {
+function SettingsTabs({ extraTabs }: { extraTabs: ExtraSettingsTab[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session } = useSession();
   const isAdmin = isPlatformAdmin(session);
   const requested = searchParams.get("tab");
-  const [fallback, setFallback] = useState<SettingsTab>("profile");
-  const tab = isSettingsTab(requested) && (requested !== "referrals" || isAdmin) ? requested : fallback;
+  const [fallback, setFallback] = useState<string>("profile");
+  const known = isSettingsTab(requested)
+    ? requested !== "referrals" || isAdmin
+    : extraTabs.some((entry) => entry.id === requested);
+  const tab = requested !== null && known ? requested : fallback;
 
   /*
    * The query string is the source of truth when it names a tab, so a link to
@@ -87,20 +93,22 @@ function SettingsTabs() {
    * to — opens on the right panel. State only fills in before anybody has
    * chosen, which keeps the two from disagreeing on a back navigation.
    */
-  const handleChange = (next: SettingsTab) => {
+  const handleChange = (next: string) => {
     setFallback(next);
     router.push(`?tab=${next}`, { scroll: false });
   };
 
-  return <SettingsFrame tab={tab} onChange={handleChange} />;
+  return <SettingsFrame tab={tab} onChange={handleChange} extraTabs={extraTabs} />;
 }
 
 function SettingsFrame({
   tab,
   onChange,
+  extraTabs,
 }: {
-  tab: SettingsTab;
-  onChange: (tab: SettingsTab) => void;
+  tab: string;
+  onChange: (tab: string) => void;
+  extraTabs: ExtraSettingsTab[];
 }) {
   const { surface } = useSurface();
   const { session } = useSession();
@@ -108,7 +116,7 @@ function SettingsFrame({
   // The old screen's unsaved-changes guard: an edited, unsaved username stops
   // a tab switch (and a page unload) until the person says so.
   const [isDirty, setDirty] = useState(false);
-  const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -119,7 +127,7 @@ function SettingsFrame({
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
 
-  const handleTabChange = (next: SettingsTab) => {
+  const handleTabChange = (next: string) => {
     if (next === tab) return;
     if (isDirty) {
       setPendingTab(next);
@@ -135,17 +143,10 @@ function SettingsFrame({
     if (next) onChange(next);
   };
 
-  const items: B2CSegmentedTabItem<SettingsTab>[] = TABS.filter(
-    (entry) => !entry.adminOnly || isAdmin,
-  ).map(({ id, label, icon: Icon }) => ({
-    id,
-    label: (
-      <span className="inline-flex items-center gap-1.5">
-        <Icon className="h-4 w-4" aria-hidden />
-        {label}
-      </span>
-    ),
-  }));
+  const items: B2CSegmentedTabItem<string>[] = [
+    ...TABS.filter((entry) => !entry.adminOnly || isAdmin),
+    ...extraTabs,
+  ].map(({ id, label }) => ({ id, label }));
 
   const panels = (
     <>
@@ -155,6 +156,7 @@ function SettingsFrame({
       {tab === "payments" ? <PaymentsPanel /> : null}
       {isAdmin && tab === "referrals" ? <ReferralsPanel /> : null}
       {tab === "memory" ? <TutorMemoryPanel /> : null}
+      {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id}>{entry.panel}</div> : null))}
     </>
   );
 
@@ -185,9 +187,9 @@ function SettingsFrame({
 
   return (
     <div>
-      <B2CPageHeader title="Settings" icon={HiOutlineCog6Tooth} />
+      <B2CPageHeader title="Settings" />
       <B2CSegmentedTabs
-        className="mb-8"
+        className="mb-6"
         items={items}
         value={tab}
         onChange={handleTabChange}

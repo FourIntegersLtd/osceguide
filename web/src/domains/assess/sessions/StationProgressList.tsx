@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { HiMiniSignal } from "react-icons/hi2";
-import { Badge, EmptyState, b2bTokens } from "@/foundation/ui";
+import { Badge, ButtonLink, EmptyState, b2bTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import {
@@ -36,18 +35,36 @@ export function StationProgressList({
   }
 
   return (
-    <div className={b2bTokens.b2bGroupedShell}>
-      {slots.map((slot, index) => (
-        <Row
-          key={slot.id}
-          slot={slot}
-          position={index + 1}
-          isActive={slot.id === data.circuit.active_slot_id}
-          agentLive={agentLive && slot.id === data.circuit.active_slot_id}
-        />
-      ))}
+    <div className="overflow-x-auto rounded-panel border border-b2b-border bg-b2b-surface">
+      <table className="w-full min-w-[640px] border-collapse text-left">
+        <thead>
+          <tr className="border-b border-b2b-border text-osce-meta text-b2b-mid">
+            <th scope="col" className="px-4 py-3 font-medium">Candidate</th>
+            <th scope="col" className="px-4 py-3 font-medium">Station</th>
+            <th scope="col" className="px-4 py-3 font-medium">Phase</th>
+            <th scope="col" className="px-4 py-3"><span className="sr-only">Marking</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {slots.map((slot, index) => (
+            <Row
+              key={slot.id}
+              slot={slot}
+              position={index + 1}
+              isActive={slot.id === data.circuit.active_slot_id}
+              agentLive={agentLive && slot.id === data.circuit.active_slot_id}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
+}
+
+/** Up to two capital letters from a name, skipping a leading title. */
+function initials(name: string): string {
+  const words = name.replace(/^(dr|mr|mrs|ms|prof)\.?\s+/i, "").split(/\s+/).filter(Boolean);
+  return ((words[0]?.[0] ?? "?") + (words.length > 1 ? (words.at(-1)?.[0] ?? "") : "")).toUpperCase();
 }
 
 function Row({
@@ -68,37 +85,45 @@ function Row({
   );
 
   return (
-    <div className={`${b2bTokens.b2bGroupedRow} ${isActive ? "bg-b2b-cream/60" : ""}`}>
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-b2b-cream text-osce-caption font-bold text-b2b-mid">
-        {position}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className={b2bTokens.b2bGroupedRowTitle}>{stationLabel(slot)}</p>
-        <p className={b2bTokens.b2bGroupedRowSubtitle}>
-          {agentLive ? (
-            <span className="inline-flex items-center gap-1 text-b2b-success-text">
-              <HiMiniSignal className="h-3 w-3 shrink-0 animate-pulse" aria-hidden />
-              {personLabel(slot)} is with the patient
-            </span>
-          ) : (
-            personLabel(slot)
-          )}
-        </p>
-      </div>
-
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-        {slot.has_review ? <Badge variant="accent">Marked</Badge> : null}
-        <Badge variant={progressTone(progress)}>{PROGRESS_LABEL[progress]}</Badge>
+    <tr className={`border-b border-b2b-border last:border-b-0 ${isActive ? "bg-canvas/60" : ""}`}>
+      <td className="px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            aria-hidden
+            className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-canvas text-[11.5px] text-b2b-mid"
+          >
+            {initials(personLabel(slot))}
+          </span>
+          <div className="min-w-0">
+            <p className={b2bTokens.b2bGroupedRowTitle}>{personLabel(slot)}</p>
+            {agentLive ? (
+              <p className="mt-0.5 inline-flex items-center gap-1 text-osce-meta text-b2b-mid">
+                <HiMiniSignal className="h-3 w-3 shrink-0 animate-pulse" aria-hidden />
+                With the patient
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-osce-body text-b2b-headline">
+        {position} · {stationLabel(slot)}
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={progressTone(progress)} dot>{PROGRESS_LABEL[progress]}</Badge>
+          {slot.has_review ? <Badge variant="accent">Marked</Badge> : null}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-right">
         {/* Marking opens once the station has actually been sat. Offering it
             before is how a reviewer fills in a rubric for a consultation
             nobody had. */}
         {markable(slot) ? (
-          <Link href={reviewHref} className={b2bTokens.b2bLink}>
+          <ButtonLink href={reviewHref} themeType="b2b" variant="secondary" size="sm">
             {slot.has_review ? "Review" : "Mark"}
-          </Link>
+          </ButtonLink>
         ) : null}
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 }

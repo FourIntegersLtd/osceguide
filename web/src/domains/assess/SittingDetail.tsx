@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncBoundary, Badge, Button, ButtonLink, Card, PageHeader, cn } from "@/foundation/ui";
+import { LuClipboardCheck } from "react-icons/lu";
+import {
+  AsyncBoundary,
+  B2CGroupedRowLink,
+  B2CGroupedSection,
+  B2CHero,
+  B2CPageHeader,
+  Badge,
+  Button,
+  ButtonLink,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { useSession } from "@/foundation/session";
-import { readSitting, type Sitting } from "@/domains/assess/api";
+import { readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
 import { SittingEditForm } from "@/domains/assess/SittingEditForm";
 
 /** One sitting and its circuits, with the way into each console. */
@@ -21,30 +31,37 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
       <AsyncBoundary state={state}>
         {(sitting) => (
           <>
-            <PageHeader
+            <B2CPageHeader
+              back={{ href: hrefFor("/sittings"), label: "Sittings" }}
+              eyebrow={sitting.mode}
               title={sitting.name}
-              description={
+              subtitle={
                 sitting.scheduled_for
                   ? new Date(sitting.scheduled_for).toLocaleString()
                   : "Not scheduled"
               }
-              actions={
-                <div className="flex items-center gap-2">
-                  <Badge tone="neutral">{sitting.mode}</Badge>
-                  <Badge tone={sitting.status === "live" ? "success" : "neutral"}>
+              action={
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={sitting.status === "live" ? "success" : "neutral"} dot>
                     {sitting.status}
                   </Badge>
-                  <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                  <Button themeType="b2b" size="sm" variant="secondary" onClick={() => setEditing(true)}>
                     Edit
                   </Button>
                   <ButtonLink
+                    themeType="b2b"
                     size="sm"
                     variant="secondary"
                     href={hrefFor(`/sittings/${sitting.id}/results`)}
                   >
                     Results
                   </ButtonLink>
-                  <ButtonLink size="sm" href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}>
+                  <ButtonLink
+                    themeType="b2b"
+                    size="sm"
+                    variant="commit"
+                    href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
+                  >
                     Add a circuit
                   </ButtonLink>
                 </div>
@@ -60,52 +77,39 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               />
             ) : null}
 
-            <Card title="Circuits">
-              {(sitting.circuits ?? []).length === 0 ? (
-                <div className="flex flex-col items-start gap-3">
-                  <p className="text-sm text-ink-muted">
-                    No circuits yet. Add at least one circuit so candidates can take this sitting.
-                  </p>
-                  <ButtonLink size="sm" href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}>
-                    Add a circuit
-                  </ButtonLink>
-                </div>
-              ) : (
-                <ul className="divide-y divide-border">
-                  {orderedCircuits(sitting, userId).map((circuit) => {
-                    const mine = userId !== null && circuit.supervisor_user_id === userId;
-                    return (
-                      <li
-                        key={circuit.id}
-                        className={cn(
-                          "flex flex-wrap items-center justify-between gap-3 py-3",
-                          mine && "-mx-2 rounded-md bg-accent-subtle px-2",
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="truncate text-sm font-medium text-ink">{circuit.name}</p>
-                            {mine ? <Badge tone="success">Your circuit</Badge> : null}
-                          </div>
-                          <p className="text-xs text-ink-subtle">
-                            {(circuit.slots ?? []).length} slots
-                            {circuit.supervisor_user_id && !mine ? " · Assigned to another supervisor" : ""}
-                            {!circuit.supervisor_user_id ? " · No supervisor assigned" : ""}
-                          </p>
-                        </div>
-                        <ButtonLink
-                          size="sm"
-                          variant={mine ? "primary" : "secondary"}
-                          href={hrefFor(`/circuits/${circuit.id}`)}
-                        >
-                          Open console
-                        </ButtonLink>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </Card>
+            {(sitting.circuits ?? []).length === 0 ? (
+              <B2CHero eyebrow="Circuits" title="No circuits yet">
+                Add at least one circuit so candidates can take this sitting.
+              </B2CHero>
+            ) : (
+              <B2CGroupedSection eyebrow="Circuits">
+                {orderedCircuits(sitting, userId).map((circuit) => {
+                  const mine = userId !== null && circuit.supervisor_user_id === userId;
+                  return (
+                    <B2CGroupedRowLink
+                      key={circuit.id}
+                      href={hrefFor(`/circuits/${circuit.id}`)}
+                      icon={LuClipboardCheck}
+                      title={circuit.name}
+                      meta={[
+                        circuitState(circuit),
+                        `${circuit.trainee_count} ${circuit.trainee_count === 1 ? "trainee" : "trainees"}`,
+                        circuit.supervisor_user_id
+                          ? `Led by ${circuit.supervisor_name ?? "another supervisor"}`
+                          : "No supervisor assigned",
+                      ].join(" · ")}
+                      trailing={
+                        mine ? (
+                          <Badge variant="success" dot>Your circuit</Badge>
+                        ) : circuit.started_at && !circuit.ended_at ? (
+                          <Badge variant="success" dot>Running</Badge>
+                        ) : undefined
+                      }
+                    />
+                  );
+                })}
+              </B2CGroupedSection>
+            )}
           </>
         )}
       </AsyncBoundary>
@@ -122,4 +126,11 @@ function orderedCircuits(sitting: Sitting, userId: string | null) {
     const bMine = b.supervisor_user_id === userId ? 0 : 1;
     return aMine - bMine;
   });
+}
+
+/** Where a circuit is: waiting, running since a time, or finished. */
+function circuitState(circuit: Circuit): string {
+  if (circuit.ended_at) return "Finished";
+  if (circuit.started_at) return `Running since ${new Date(circuit.started_at).toLocaleTimeString()}`;
+  return "Not started";
 }

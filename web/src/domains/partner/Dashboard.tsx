@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { AsyncBoundary, B2CSegmentedTabs, PageHeader } from "@/foundation/ui";
+import { AsyncBoundary, B2CSegmentedTabs, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useAttributionState } from "@/capabilities/attribution-dashboard/useAttributionFilters";
 import { getDashboardCopy } from "@/capabilities/attribution-dashboard/copy";
@@ -79,9 +79,9 @@ export function PartnerDashboard({ partner }: { partner: string }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
-      <PageHeader
+      <B2CPageHeader
         title={`${partnerDisplayName(partner)} dashboard`}
-        description="See how people from your links are using OSCE Guide. All dates are UK calendar days."
+        subtitle="See how people from your links are using OSCE Guide. All dates are UK calendar days."
       />
       <B2CSegmentedTabs
         items={tabsForMode("partner").map((item) => ({ id: item.id, label: item.label }))}
