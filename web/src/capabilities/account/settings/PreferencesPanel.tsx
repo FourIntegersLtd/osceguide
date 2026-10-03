@@ -195,7 +195,7 @@ function PreferencesForm({ me }: { me: Me }) {
       {timersOpen ? (
         <Modal width="min(95vw, 480px)" height="fit-content" title="Extra reading time" onClose={() => setTimersOpen(false)}>
           <div className="space-y-4 p-1">
-            <p className="text-osce-body text-b2c-text-muted">
+            <p className="text-osce-body text-ink-muted">
               Set your own timers for practice stations. They replace the exam&apos;s default times while this is on.
             </p>
             <Input
