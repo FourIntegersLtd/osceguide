@@ -32,6 +32,8 @@ export function EpisodePanel({
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  // True from asking for audio until the element reports it is playing.
+  const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ url: "", position: 0, duration: 0 });
   // Episodes already told to the tutor while this page is open; pausing and
   // playing again is one listen, not two.
@@ -51,6 +53,18 @@ export function EpisodePanel({
     if (autoplay) setIsPlaying(true);
   };
 
+  // Choosing another episode (its row in the list, Previous, Next) starts it:
+  // the page's first episode stays silent until Play, but a later change of
+  // source is always the listener asking to hear it.
+  const [lastUrl, setLastUrl] = useState(url);
+  if (url !== lastUrl) {
+    setLastUrl(url);
+    if (url) {
+      setIsPlaying(true);
+      setLoading(true);
+    }
+  }
+
   // Changing episode swaps the element (it is keyed by its source), so a
   // player that was playing starts the new one.
   useEffect(() => {
@@ -61,8 +75,13 @@ export function EpisodePanel({
   const toggle = () => {
     const element = audioRef.current;
     if (!element) return;
-    if (element.paused) void element.play().catch(() => setIsPlaying(false));
-    else element.pause();
+    if (element.paused) {
+      setLoading(true);
+      void element.play().catch(() => {
+        setIsPlaying(false);
+        setLoading(false);
+      });
+    } else element.pause();
   };
 
   const read = (element: HTMLAudioElement) => {
@@ -80,13 +99,18 @@ export function EpisodePanel({
         title={current.title}
         action={
           <>
-            <Button onClick={toggle} disabled={!url} className="gap-2">
-              {isPlaying ? (
+            <Button onClick={toggle} disabled={!url} aria-busy={loading} className="gap-2">
+              {loading ? (
+                <span
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                  aria-hidden
+                />
+              ) : isPlaying ? (
                 <HiOutlinePause className="h-4 w-4" aria-hidden />
               ) : (
                 <HiOutlinePlay className="h-4 w-4" aria-hidden />
               )}
-              {isPlaying ? "Pause" : "Play"}
+              {loading ? "Loading…" : isPlaying ? "Pause" : "Play"}
             </Button>
             <Button variant="secondary" onClick={() => go(index - 1)} disabled={!canGoPrevious} className="gap-1.5">
               <HiOutlineChevronLeft className="h-4 w-4" aria-hidden />
@@ -158,7 +182,16 @@ export function EpisodePanel({
               void recordActivity({ kind: "listened", ref_kind: "podcast", ref_id: slug, title: episode.title });
             }
           }}
-          onPause={() => setIsPlaying(false)}
+          onPlaying={() => setLoading(false)}
+          onWaiting={() => setLoading(true)}
+          onPause={() => {
+            setIsPlaying(false);
+            setLoading(false);
+          }}
+          onError={() => {
+            setIsPlaying(false);
+            setLoading(false);
+          }}
           className="hidden"
         />
       ) : null}

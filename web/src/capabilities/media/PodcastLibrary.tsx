@@ -9,11 +9,13 @@ import { useSurface } from "@/capabilities/SurfaceContext";
 import {
   audioUrl,
   bodyMarkdown,
+  readMedia,
   podcastGroupLabel,
   podcastSeries,
   type MediaItem,
 } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
+import { useAsync } from "@/foundation/hooks";
 import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 import { EpisodePanel } from "@/capabilities/media/EpisodePanel";
 import { Prose } from "@/capabilities/media/Prose";
@@ -21,11 +23,16 @@ import { podcastEpisodePath } from "@/capabilities/media/studyPaths";
 import type { Episode } from "@/capabilities/media/PodcastPlayer";
 import { B2CGroupedRowLink, B2CGroupedSection } from "@/foundation/ui/B2CGroupedList";
 
-function resolveSelected(episodes: MediaItem[], episodeParam: string | null): MediaItem | null {
+function resolveSelected(
+  episodes: MediaItem[],
+  episodeParam: string | null,
+  fetched: MediaItem | null,
+): MediaItem | null {
   if (episodes.length === 0) return null;
   if (episodeParam) {
     const match = episodes.find((entry) => entry.slug === episodeParam);
     if (match) return match;
+    if (fetched?.slug === episodeParam) return fetched;
   }
   return episodes[0] ?? null;
 }
@@ -66,7 +73,14 @@ function PodcastLibraryBody({
   const episodeParam = searchParams.get("episode");
   const [indexOverride, setIndexOverride] = useState<number | null>(null);
 
-  const selected = resolveSelected(items, episodeParam);
+  // The list is one page of the catalogue, so an episode found by search can
+  // be beyond it; it is read by slug rather than silently swapped for the first.
+  const listed = episodeParam !== null && items.some((entry) => entry.slug === episodeParam);
+  const fetchedState = useAsync(
+    (signal) => (episodeParam && !listed ? readMedia(episodeParam, signal) : Promise.resolve(null)),
+    [episodeParam, listed],
+  );
+  const selected = resolveSelected(items, episodeParam, fetchedState.data ?? null);
   const episodeHref = (slug: string) => hrefFor(podcastEpisodePath(slug));
 
   useEffect(() => {
