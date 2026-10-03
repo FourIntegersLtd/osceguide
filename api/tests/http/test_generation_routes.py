@@ -47,7 +47,7 @@ async def test_generate_podcast_route(client: AsyncClient, make_actor) -> None: 
 
     with patch(
         "app.features.generation.service._json_completion",
-        new=AsyncMock(return_value={"script": 'Ben: "hello"\nMichelle: "hi"'}),
+        new=AsyncMock(return_value={"script": 'Ben: "hello"\nTom: "hi"'}),
     ):
         res = await client.post(
             "/api/v1/platform/generate/podcast",

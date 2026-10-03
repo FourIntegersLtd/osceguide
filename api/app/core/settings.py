@@ -217,6 +217,12 @@ class Settings(BaseSettings):
     # Slide/podcast audio-video production. Optional: missing values refuse the
     # AV jobs rather than the process. Not in REQUIRED_WHEN_DEPLOYED.
     cartesia_api_key: str = ""
+    # Podcast voices. Defaults are ElevenLabs premade British voices (George, Alice);
+    # override with voices from your own library.
+    elevenlabs_api_key: str = ""
+    elevenlabs_model_id: str = "eleven_v4"
+    elevenlabs_voice_ben: str = "L0Dsvb3SLTyegXwtm47J"
+    elevenlabs_voice_michelle: str = "KLON7Nwan8mJxpF2R8Yw"
     aws_region: str = ""
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""

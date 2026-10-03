@@ -29,11 +29,14 @@ No tables of its own. Work is keyed by a `media` aggregate id.
 | `regenerate_slide_av` | `media` | Slide video export (MoviePy + Cartesia) |
 | `produce_podcast_audio` | `media` | Audio-only podcast |
 
+Podcasts are voiced by ElevenLabs Eleven v4 (text-to-dialogue). Regenerate them all with
+`poetry run python scripts/regenerate_podcasts.py --help`.
+
 Run `make worker` beside `make start`. **ffmpeg** must be on `PATH` for slide video.
 
 ## Cross-slice dependencies
 - **`media`**: reads and updates the media row and `content` payload.
-- **`core.settings`**: model and AV keys (`OPENAI_API_KEY`, `CARTESIA_API_KEY`, AWS S3).
+- **`core.settings`**: model and AV keys (`OPENAI_API_KEY`, `ELEVENLABS_API_KEY` and voice ids, `CARTESIA_API_KEY` for slides, AWS S3).
 
 ## Local setup
 

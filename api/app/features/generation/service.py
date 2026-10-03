@@ -200,6 +200,3 @@ def station_prompt_for_key(prompt_key: str | None) -> str:
 def unknown_prompt_keys(exam_settings: ExamSettings) -> list[str]:
     """The prompt and profile keys in these settings that no prompt registry holds."""
     return exam_prompts.unknown_prompt_keys(exam_settings)
-
-
-PODCAST_PROMPT = exam_prompts.PODCAST_PROMPT
