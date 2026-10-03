@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { AthenaFab } from "@/capabilities/help/AthenaFab";
 import type { B2CHelpDockProps } from "@/capabilities/help/B2CHelpDock";
+import { readAthenaLaunch, type AthenaLaunch } from "@/capabilities/help/api";
 
 const B2CHelpDock = dynamic(
   () => import("@/capabilities/help/B2CHelpDock").then((mod) => ({ default: mod.B2CHelpDock })),
@@ -22,6 +23,21 @@ export function LazyB2CHelpDock(props: B2CHelpDockProps) {
     if (isExpanded) setLoadDock(true);
   }, [isExpanded]);
 
+  // "Discuss with Athena" can fire before the dock has ever loaded, when nothing
+  // else is listening. Catch it here, load the dock, and hand it the topic.
+  const [pendingLaunch, setPendingLaunch] = useState<AthenaLaunch | null>(null);
+
+  useEffect(() => {
+    if (loadDock) return;
+    const open = (event: Event) => {
+      setPendingLaunch(readAthenaLaunch((event as CustomEvent<unknown>).detail));
+      setLoadDock(true);
+      setIsExpanded(true);
+    };
+    window.addEventListener("osce:open-athena", open);
+    return () => window.removeEventListener("osce:open-athena", open);
+  }, [loadDock, setIsExpanded]);
+
   const openHelp = useCallback(() => {
     setLoadDock(true);
     setIsExpanded(true);
@@ -29,5 +45,5 @@ export function LazyB2CHelpDock(props: B2CHelpDockProps) {
 
   if (!loadDock) return <AthenaFab onClick={openHelp} />;
 
-  return <B2CHelpDock {...props} />;
+  return <B2CHelpDock {...props} initialLaunch={pendingLaunch} />;
 }

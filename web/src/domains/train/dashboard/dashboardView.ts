@@ -253,3 +253,15 @@ export function dashboardView(performance: Performance | null): DashboardView {
     display,
   };
 }
+
+/**
+ * The status chip on a recent attempt. A debrief is never marked, so "has a result" cannot say it
+ * is over: once its transcript is in it is finished, not "In progress" for ever (staging, 2026-10-03).
+ */
+export function recentAttemptStatus(attempt: { kind: string; status: string; has_result: boolean }): string {
+  if (attempt.has_result) return "Marked";
+  if (attempt.status === "created") return "Not started";
+  if (attempt.status === "running") return "In progress";
+  if (attempt.status === "failed") return "Not completed";
+  return attempt.kind === "debrief" ? "Finished" : "Marking";
+}

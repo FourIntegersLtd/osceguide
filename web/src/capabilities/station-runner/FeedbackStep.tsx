@@ -78,6 +78,7 @@ export function FeedbackStep({
   const [explaining, setExplaining] = useState(false);
   const [debriefOpen, setDebriefOpen] = useState(false);
   const [loadingDebrief, setLoadingDebrief] = useState(false);
+  const [endedDebrief, setEndedDebrief] = useState<string | null>(null);
   const toast = useToast();
 
   const hasFeedback = useAsync(
@@ -152,7 +153,10 @@ export function FeedbackStep({
       {tab === "history" && (
         <FeedbackHistory stationVersionId={stationVersionId} entryId={entryId} stationName={brief?.station_title ?? review?.station_title ?? "this station"} />
       )}
-      {tab === "debriefs" && <DebriefHistory attemptId={attemptId} stationVersionId={stationVersionId} entryId={entryId} />}
+      {tab === "debriefs" && (
+        <DebriefHistory attemptId={attemptId} stationVersionId={stationVersionId} entryId={entryId}
+          awaitingAttemptId={endedDebrief} />
+      )}
 
       {debriefOpen && (
         <DebriefChooseModal
@@ -162,7 +166,12 @@ export function FeedbackStep({
           attemptId={attemptId}
           brief={brief}
           review={review}
-          onClose={() => setDebriefOpen(false)}
+          onClose={() => {
+            setDebriefOpen(false);
+            // A debrief that has just ended is what the learner wants to see next.
+            if (endedDebrief) setTab("debriefs");
+          }}
+          onDebriefEnded={setEndedDebrief}
         />
       )}
 

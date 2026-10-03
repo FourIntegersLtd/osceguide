@@ -30,6 +30,11 @@ export const AGENT_STATE_LABEL: Record<string, string> = {
   failed: "The patient couldn't join",
 };
 
-export function agentStateLabel(state: string | undefined): string {
-  return AGENT_STATE_LABEL[state ?? "disconnected"] ?? "Connected";
+/**
+ * The label for a state. `speaker` names who is on the line when it is not the
+ * patient (Athena on the tour); the default keeps the consultation's wording.
+ */
+export function agentStateLabel(state: string | undefined, speaker?: string): string {
+  const label = AGENT_STATE_LABEL[state ?? "disconnected"] ?? "Connected";
+  return speaker ? label.replace("The patient", speaker).replace("the patient", speaker) : label;
 }

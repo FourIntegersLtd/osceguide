@@ -15,6 +15,8 @@ after all.
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,6 +63,15 @@ async def test_an_org_trainee_practises_alone_with_no_routes_of_their_own(
     )
     assert started.status_code == 201, started.text
     assert started.json()["kind"] == "self_practice"
+    # Progress counts consultations that began, not stations merely opened (2026-10-03).
+    from datetime import UTC, datetime
+
+    from app.features.attempts import repository as attempts_repo
+
+    await attempts_repo.set_status(
+        db_session, uuid.UUID(started.json()["id"]), status="running", at=datetime.now(UTC)
+    )
+    await db_session.flush()
 
     # And their history is the ordinary one. b2b had `/practice/{org}/history`.
     dashboard = await client.get("/api/v1/me/dashboard", headers=bearer(trainee))

@@ -15,6 +15,8 @@ interface TimerProps {
   onFinalCountdown?: (secondsLeft: number) => void;
   /** False holds the clock where it is, e.g. until the patient joins. Defaults to true. */
   running?: boolean;
+  /** What a held clock says; defaults to waiting for the patient. */
+  stoppedLabel?: string;
 }
 
 /** Last stretch of the countdown, shown in red so the user isn't cut off unawares. */
@@ -32,6 +34,7 @@ export default function Timer({
   onTimeUp,
   onFinalCountdown,
   running = true,
+  stoppedLabel = "Starts with the patient",
 }: TimerProps) {
   // Parents pass inline callbacks; reading them through refs keeps the countdown
   // effect from re-registering (and restarting its interval) on every render.
@@ -272,7 +275,7 @@ export default function Timer({
 
   const phase = timerType === "simulation" ? "Consultation" : "Reading time";
   const label = !running
-    ? "Starts with the patient"
+    ? stoppedLabel
     : isFinalCountdown
       ? timerType === "simulation"
         ? "Ending soon"

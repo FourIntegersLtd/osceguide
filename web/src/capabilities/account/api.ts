@@ -285,9 +285,8 @@ export type SsoSession = components["schemas"]["SsoSession"];
  * it is what a sign-in page asks before anybody has signed in. It replaced the
  * retiring client's hostname allow-list compiled into the bundle.
  *
- * A `404` (`sso_not_configured`) is the ordinary answer — "sign in here, with
- * a password" — so it resolves to `null` rather than raising, and any other
- * failure does the same: this is a *display* rule for whether to draw the
+ * `null` is the ordinary answer — "sign in here, with a password" — and any
+ * failure resolves to `null` too: this is a *display* rule for whether to draw the
  * password form, and a discovery failure must never lock somebody out of the
  * password sign-in that is the default. Callers branch on `null`, not on a
  * message.
@@ -297,7 +296,7 @@ export async function readSsoSignIn(
   signal?: AbortSignal,
 ): Promise<SsoSignIn | null> {
   try {
-    return await platformRequest<SsoSignIn>("/api/v1/auth/sso/sign-in", {
+    return await platformRequest<SsoSignIn | null>("/api/v1/auth/sso/sign-in", {
       query: { host: query.host, email: query.email },
       signal,
     });

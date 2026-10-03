@@ -7,6 +7,7 @@ import {
   HiOutlineEllipsisHorizontalCircle,
 } from "react-icons/hi2";
 import type { CoverageItem, CoverageUpdate } from "./api";
+import { coverageEmptyMessage } from "./emptyMessage";
 
 interface LiveCoverageFeedProps {
   coverage: CoverageUpdate | null;
@@ -14,6 +15,8 @@ interface LiveCoverageFeedProps {
   isLive?: boolean;
   /** Fewer rows where vertical space is scarce. */
   maxVisible?: number;
+  /** False until the patient has joined: before that `supported=false` may only mean "not frozen yet". */
+  supportKnown?: boolean;
 }
 
 /**
@@ -46,6 +49,7 @@ const LiveCoverageFeed: React.FC<LiveCoverageFeedProps> = ({
   coverage,
   isLive = false,
   maxVisible = 4,
+  supportKnown = true,
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -79,12 +83,7 @@ const LiveCoverageFeed: React.FC<LiveCoverageFeedProps> = ({
       >
         {items.length === 0 ? (
           <p className="text-osce-meta leading-relaxed text-b2c-text-muted">
-            {/* A rubric with no live domains answers supported=false; "Listening" then hid that nothing would ever arrive. */}
-            {coverage?.supported === false
-              ? "Live marking isn't available for this station. Your feedback comes at the end."
-              : isLive
-              ? "Listening. Things you cover will appear here as you go."
-              : "Your consultation will be marked here as it happens."}
+            {coverageEmptyMessage({ supported: coverage?.supported ?? null, isLive, supportKnown })}
           </p>
         ) : (
           <ul className="flex flex-col gap-2">

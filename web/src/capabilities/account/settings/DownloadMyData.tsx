@@ -2,14 +2,11 @@
 
 import { useState } from "react";
 import { HiOutlineArrowDownTray } from "react-icons/hi2";
-import {
-  ModalHelper,
-  ModalSecondaryButton,
-  Panel,
-} from "@/foundation/ui";
+import { Button } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { exportMyData } from "@/capabilities/account/api";
+import { SettingsCard, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 /**
  * The self-serve subject access request (E-5): everything this account owns,
@@ -41,21 +38,17 @@ export function DownloadMyData() {
   };
 
   return (
-    <Panel title="Your data">
-      <div className="space-y-3">
-        <ModalHelper className="mt-0">
-          Download everything this account owns: your profile, your attempts with their
-          transcripts and marks, and your payments, all in one file, ready to keep or hand to
-          anyone who asks what we hold about you.
-        </ModalHelper>
-        {error ? <p className="text-osce-meta text-osce-danger">{error}</p> : null}
-      </div>
-      <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-        <ModalSecondaryButton type="button" onClick={() => void download()} disabled={busy} className="gap-2">
+    <SettingsCard title="Your data">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className={settingsSub}>A copy of everything we hold about you.</p>
+          {error ? <p className="mt-1 text-osce-meta text-danger">{error}</p> : null}
+        </div>
+        <Button variant="secondary" onClick={() => void download()} disabled={busy} className="shrink-0 gap-2">
           <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
           {busy ? "Preparing…" : "Download my data"}
-        </ModalSecondaryButton>
+        </Button>
       </div>
-    </Panel>
+    </SettingsCard>
   );
 }

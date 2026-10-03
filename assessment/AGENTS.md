@@ -244,3 +244,19 @@ manual smoke of the affected session type belong before the merge, not before a
 rollout.
 
 Legacy workers in `livekit/` are never modified to accommodate the new ones.
+
+## Athena traps (found in the 2026-10-03 train walk)
+
+- "Returning" is decided by a `session_summary` tutor note, nothing else
+  (`tutor_memory/service_session.py` `greeting_for`). A dashboard session where
+  the learner never spoke writes no note, or a new account's second Athena call
+  would greet them as returning. Onboarding and consulting-doctor are discarded
+  unread, so they never count.
+- `osce:open-athena` is heard by `LazyB2CHelpDock` until the dock has loaded and
+  by `B2CHelpDock` afterwards; the lazy wrapper hands its pending launch over as
+  `initialLaunch`. Keep both when touching either.
+- The Athena doctor persona is reached from the debrief chooser ("Practice as
+  the patient"), gated by the exam's `session_modes`; it needs a finished attempt.
+- Help questions: `search_material` has no score threshold, so "I could not find
+  that" means no rows survived the filter. First suspect an un-reindexed help
+  corpus (`POST /api/v1/admin/tutor-memory/reindex` as a platform admin).

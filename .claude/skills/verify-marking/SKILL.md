@@ -114,5 +114,13 @@ mark on an already-marked attempt.
 - A rubric structure may be version 1 or 2 in the DB. Read it through
   `parse_structure`/`rubrics.service.domain_titles`, never `structure["domains"]`.
 - `trainee_id` means two things: circuit slots use `users.id`, result decisions use `trainees.id`.
+- Strict structured output fixes shape, not content: a model has written a
+  sibling field's name as a list item and repeated a priority. The engine's
+  `schemas/tidy.py` drops both before validation (never below `minItems`);
+  a stray snake_case line in feedback is model noise, not the renderer.
+- The station's "Marking your consultation" modal waits on `/me/events`
+  (`attempt`, and `resync` on reconnect) plus a poll that never gives up
+  (`web/src/capabilities/station-runner/markingWait.ts`). It used to stop
+  after ten polls (~165 s), so a slower marking never showed.
 - `test_the_engine_only_needs_pydantic` can fail when its file runs whole
   (import order) and pass when selected by id. It passed in the run above.

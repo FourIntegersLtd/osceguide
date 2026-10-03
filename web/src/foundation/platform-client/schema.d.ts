@@ -635,9 +635,9 @@ export interface paths {
          * @description Whether this visitor's organisation signs in somewhere else.
          *
          *     Unauthenticated, and it has to be: this is what a sign-in page asks
-         *     before anybody has signed in. A 404 means "sign in here, with a
+         *     before anybody has signed in. `null` means "sign in here, with a
          *     password", which is the ordinary case and what every host that is not a
-         *     partner's gets.
+         *     partner's gets: a 200, not a 404, because it is not an error.
          */
         get: operations["sso_read_sign_in"];
         put?: never;
@@ -17646,16 +17646,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SsoSignIn"];
-                };
-            };
-            /** @description sso_not_configured */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["SsoSignIn"] | null;
                 };
             };
             /** @description invalid_sso_binding */

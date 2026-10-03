@@ -514,3 +514,13 @@ def test_a_path_selection_reads_the_same_as_a_domain_selection() -> None:
     by_domain = domain.narrow_structure(structure, {"domains": ["tasks"]})
 
     assert by_path == by_domain
+
+
+def test_a_generated_label_keeps_clinical_acronyms_in_capitals() -> None:
+    """`discovers_ice` read "Discovers ice" on the live-marking cards (staging, 2026-10-03)."""
+    from app.features.rubrics.legacy_model import humanise
+
+    assert humanise("discovers_ice") == "Discovers ICE"
+    assert humanise("person_specifications_cv_articulation") == "Person specifications CV articulation"
+    assert humanise("ice_explored") == "ICE explored"
+    assert humanise("explores_symptoms") == "Explores symptoms"

@@ -127,9 +127,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [load],
   );
 
+  // Only while nothing is known: a signed-in person whose re-check fails keeps
+  // what was known, as above.
+  const unavailable = status === "loading" && failedAttempts > 0;
+
   const value = useMemo<SessionState>(
-    () => ({ status, session, ready, sessionExpired, refresh, signOut, selectWorkspace }),
-    [status, session, ready, sessionExpired, refresh, signOut, selectWorkspace],
+    () => ({ status, session, ready, sessionExpired, unavailable, refresh, signOut, selectWorkspace }),
+    [status, session, ready, sessionExpired, unavailable, refresh, signOut, selectWorkspace],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -141,6 +141,8 @@ branch differs.
 | Deploy → Custom start command | empty (the Dockerfile's `uvicorn`) | `python -m app.worker.main` |
 | Deploy → Pre-deploy command | `alembic upgrade head` | empty, so two migrators never race |
 | Deploy → Healthcheck path | `/health` | empty (the worker serves no HTTP) |
+| Deploy → Teardown → Overlap seconds | `20`, so the old copy answers until the new one is serving | default |
+| Deploy → Teardown → Draining seconds | `30`, so requests in flight finish before the old copy is killed | default |
 
 Railway runs the pre-deploy command in its own step, and its output is not in the
 deploy log. After a deploy with a migration, check that the worker's jobs succeed

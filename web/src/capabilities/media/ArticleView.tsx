@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { HiOutlineArrowLeft } from "react-icons/hi2";
-import { cn, productTokens as t } from "@/foundation/ui";
+import { HiOutlineChevronLeft } from "react-icons/hi2";
+import { productTokens as t } from "@/foundation/ui";
 import { bodyMarkdown, contentUpdatedAt, type MediaItem } from "@/capabilities/media/api";
 import { Prose } from "@/capabilities/media/Prose";
 import { formatPublished, leadsWithHeading, readMinutes } from "@/capabilities/media/support/text";
@@ -30,14 +30,14 @@ export function ArticleView({
   const updated = updatedRaw ? formatPublished(updatedRaw) : null;
 
   return (
-    <div className={cn("w-full text-left", t.b2cProseMeasureWide)}>
-      <Link href={hrefFor(studyListPath("blog"))} className="inline-flex items-center gap-1.5 text-osce-meta text-b2c-text-muted hover:text-osce-ink-900">
-        <HiOutlineArrowLeft className="h-3.5 w-3.5" aria-hidden />
+    <div className="mx-auto w-full max-w-[1000px] text-left">
+      <Link href={hrefFor(studyListPath("blog"))} className="inline-flex items-center gap-1 text-osce-body font-medium text-b2c-text-muted hover:text-osce-ink-900">
+        <HiOutlineChevronLeft className="h-3.5 w-3.5" aria-hidden />
         {STUDY_KIND_LABEL.blog}
       </Link>
 
-      <article className="mt-5">
-        <header className="border-b border-osce-border-light pb-6">
+      <article className="mt-4">
+        <header>
           <p className={t.b2cMonoEyebrow}>
             Article
             {item.published_at ? (
@@ -57,10 +57,10 @@ export function ArticleView({
             <p className="mt-2 text-osce-meta text-b2c-text-muted">Updated {updated}</p>
           ) : null}
 
-          <DiscussWithAthena className="mt-5" topic={{ title: item.title, kind: "blog", slug: item.slug }} />
+          <DiscussWithAthena className="mt-4" topic={{ title: item.title, kind: "blog", slug: item.slug }} />
         </header>
 
-        <div className="mt-8">
+        <div className="mt-6 max-w-[720px] text-[17px] leading-7 [&_p]:text-[17px] [&_p]:leading-7">
           {body ? (
             <Prose content={body} />
           ) : (

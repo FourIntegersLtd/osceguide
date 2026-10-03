@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal, ModalCallout } from "@/foundation/ui";
+import { useMeEvents } from "@/foundation/hooks";
 import { readResults } from "@/capabilities/attempt-runner";
 import { GeneratingFeedback } from "@/capabilities/station-runner/GeneratingFeedback";
+import { watchMarking, type MarkingWait } from "@/capabilities/station-runner/markingWait";
 import { useCurrentExam } from "@/foundation/session";
 import Tips from "./tips/Tips";
-
-const MAX_TRIES = 10;
 
 /**
  * "Marking your consultation" — the wait between hanging up and the feedback.
@@ -22,59 +22,61 @@ const MAX_TRIES = 10;
  * transcript lands — so leaving costs nothing but the automatic jump to the
  * feedback tab.
  */
-export function MarkingModal({
-  isOpen,
-  attemptId,
-  onReady,
-  onSkip,
-}: {
+export function MarkingModal(props: {
   isOpen: boolean;
   attemptId: string | null;
   onReady: () => void;
   onSkip: () => void;
 }) {
+  // The wait (and its `/me/events` connection) exists only while the modal is open.
+  if (!props.isOpen) return null;
+  return <OpenMarkingModal {...props} />;
+}
+
+function OpenMarkingModal({
+  attemptId,
+  onReady,
+  onSkip,
+}: {
+  attemptId: string | null;
+  onReady: () => void;
+  onSkip: () => void;
+}) {
   const { settings } = useCurrentExam();
-  const [tries, setTries] = useState(0);
+  const [slow, setSlow] = useState(false);
+  const waitRef = useRef<MarkingWait | null>(null);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   useEffect(() => {
-    if (!isOpen || !attemptId || tries >= MAX_TRIES) return;
-    let live = true;
-
-    // Backs off: a long consultation takes longer to mark than a short one,
-    // and asking every second buys nothing.
-    const delay = Math.min(30_000, 3_000 * (tries + 1));
-    const timer = window.setTimeout(() => {
-      void readResults(attemptId)
-        .then((results) => {
-          if (!live) return;
-          if (results.length > 0) onReady();
-          else setTries((n) => n + 1);
-        })
-        .catch(() => {
-          if (live) setTries((n) => n + 1);
-        });
-    }, delay);
-
+    if (!attemptId) return;
+    const wait = watchMarking({
+      isMarked: async () => (await readResults(attemptId)).length > 0,
+      onReady: () => onReadyRef.current(),
+      onSlow: () => setSlow(true),
+    });
+    waitRef.current = wait;
     return () => {
-      live = false;
-      window.clearTimeout(timer);
+      wait.stop();
+      waitRef.current = null;
     };
-  }, [isOpen, attemptId, tries, onReady]);
+  }, [attemptId]);
 
-  useEffect(() => {
-    if (isOpen) setTries(0);
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  const givenUp = tries >= MAX_TRIES;
+  // The scoring job announces `attempt` when it stores a result; `resync` comes when the
+  // stream (re)connects or the tab is shown again, which covers an event sent while no
+  // stream was open — before this modal mounted, or while an API restart had dropped it.
+  useMeEvents(["attempt"], (event) => {
+    if (event.name === "resync" || event.data.attempt_id === attemptId) waitRef.current?.wake();
+  });
 
   return (
     <Modal
       onClose={onSkip}
       width="600px"
       height="fit-content"
-      title={givenUp ? undefined : "Marking your consultation"}
+      title={slow ? undefined : "Marking your consultation"}
     >
       <ModalCallout className="mb-4 mt-0">
         Marking usually takes one to three minutes. You don&apos;t have to wait here:{" "}
@@ -88,13 +90,13 @@ export function MarkingModal({
         and we&apos;ll let you know the moment your feedback is ready.
       </ModalCallout>
 
-      {givenUp ? (
+      {slow ? (
         <div className="space-y-3 p-6 text-center">
           <h2 className="text-osce-h3 font-semibold text-osce-ink-900">
             Marking is taking longer than usual
           </h2>
           <p className="text-osce-body text-b2c-text-muted">
-            Your attempt is safe. Your feedback will be on this station when it is ready.
+            Your attempt is safe. This page will show your feedback as soon as it is ready.
           </p>
         </div>
       ) : settings.show_tips_while_marking ? (

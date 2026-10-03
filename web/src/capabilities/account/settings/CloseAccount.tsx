@@ -3,21 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineArrowPath, HiOutlineTrash } from "react-icons/hi2";
-import {
-  ConfirmModal,
-  ModalDangerButton,
-  ModalHelper,
-  Panel,
-  productTokens,
-} from "@/foundation/ui";
+import { Button, ConfirmModal, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { closeAccount } from "@/capabilities/account/api";
+import { settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 const { b2cInputBase } = productTokens;
 
 /**
- * The retiring screen's "Danger zone": close the signed-in account.
+ * The grey block that ends the Profile tab: close the signed-in account.
  *
  * The row stays, so consultations and payments still have someone they
  * belonged to. Sign-in stops, and the password is cleared. The backend asks
@@ -57,35 +52,35 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <>
-      <Panel title="Danger zone">
-        <div className="space-y-3">
-          <p className="text-osce-body font-semibold text-osce-danger">Delete your account</p>
-          <ModalHelper className="mt-0">
-            This action cannot be undone and you will not be able to restore your account.
-          </ModalHelper>
-          {isAdmin ? <ModalHelper>Admin accounts cannot be deleted from Settings.</ModalHelper> : null}
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-osce-lg bg-canvas p-6">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-osce-subheading font-semibold text-danger">Delete your account</h2>
+          <p className={settingsSub}>
+            This cannot be undone and you will not be able to restore your account.
+          </p>
+          {isAdmin ? (
+            <p className={`mt-1 ${settingsMeta}`}>Admin accounts cannot be deleted from Settings.</p>
+          ) : null}
         </div>
-        <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-          <ModalDangerButton
-            type="button"
-            onClick={() => setOpen(true)}
-            disabled={isAdmin || busy}
-            className="gap-2"
-          >
-            {busy ? (
-              <>
-                <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <HiOutlineTrash className="h-4 w-4" aria-hidden />
-                Delete Account
-              </>
-            )}
-          </ModalDangerButton>
-        </div>
-      </Panel>
+        <Button
+          variant="danger"
+          onClick={() => setOpen(true)}
+          disabled={isAdmin || busy}
+          className="shrink-0 gap-2"
+        >
+          {busy ? (
+            <>
+              <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden />
+              Deleting...
+            </>
+          ) : (
+            <>
+              <HiOutlineTrash className="h-4 w-4" aria-hidden />
+              Delete account
+            </>
+          )}
+        </Button>
+      </section>
 
       <ConfirmModal
         isOpen={open}

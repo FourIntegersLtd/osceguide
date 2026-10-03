@@ -210,3 +210,34 @@ async def test_a_new_account_has_no_current_exam(client: AsyncClient, make_actor
     token = await make_actor("d-no-exam@example.com")
     body = (await client.get("/api/v1/me/dashboard", headers=bearer(token))).json()
     assert body["current_exam"] is None
+
+
+async def test_stations_attempted_counts_only_started_consultations(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """An opened-but-unstarted attempt and a debrief are not stations attempted, and the count is
+    not capped at the recent-attempts page (staging, 2026-10-03)."""
+    from app.features.attempts import repository as attempts_repo
+
+    token = await a_learner(db_session, make_actor, "d-count@example.com")
+    user = await identity_repo.user_by_email(db_session, "d-count@example.com")
+    exam = await ensure_exam(db_session, "sca")
+    assert user is not None and exam is not None
+    at = datetime(2026, 10, 3, 12, 0, tzinfo=UTC)
+    started_ids = []
+    for _ in range(12):
+        attempt = await attempts_repo.create_attempt(
+            db_session, kind="practice", user_id=user.id, exam_id=exam.id
+        )
+        await attempts_repo.set_status(db_session, attempt.id, status="running", at=at)
+        started_ids.append(attempt.id)
+    await attempts_repo.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
+    debrief = await attempts_repo.create_attempt(
+        db_session, kind="debrief", user_id=user.id, exam_id=exam.id, source_attempt_id=started_ids[0]
+    )
+    await attempts_repo.set_status(db_session, debrief.id, status="running", at=at)
+    await db_session.flush()
+
+    body = (await client.get("/api/v1/me/dashboard", headers=bearer(token))).json()
+
+    assert [(p["exam_code"], p["attempts"]) for p in body["progress"]] == [("sca", 12)]

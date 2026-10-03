@@ -70,6 +70,45 @@ async def create_attempt(
     return attempt
 
 
+async def unstarted_attempt(
+    session: AsyncSession,
+    *,
+    kind: str,
+    user_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    station_version_id: uuid.UUID | None,
+    set_entry_id: uuid.UUID | None,
+) -> Attempt | None:
+    """The newest attempt this person opened on the same station and never started, if any.
+
+    Unstarted means still `created`, with no room and no frozen definition: nothing the worker
+    or the candidate has done yet is tied to it, so opening the station again can hand it back.
+    """
+
+    def same(column: Any, value: uuid.UUID | None) -> Any:
+        return column.is_(None) if value is None else column == value
+
+    stmt = (
+        select(Attempt)
+        .where(
+            Attempt.kind == kind,
+            Attempt.user_id == user_id,
+            Attempt.exam_id == exam_id,
+            same(Attempt.org_id, org_id),
+            same(Attempt.station_version_id, station_version_id),
+            same(Attempt.set_entry_id, set_entry_id),
+            Attempt.status == str(Status.CREATED),
+            Attempt.started_at.is_(None),
+            Attempt.definition_frozen_at.is_(None),
+            Attempt.room_name.is_(None),
+        )
+        .order_by(Attempt.created_at.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def attempt_by_id(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt | None:
     return (await session.execute(select(Attempt).where(Attempt.id == attempt_id))).scalar_one_or_none()
 
@@ -215,6 +254,34 @@ async def attempt_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
     """The ids of every attempt this person has run, for the erasure job to scrub."""
     stmt = select(Attempt.id).where(Attempt.user_id == user_id)
     return list((await session.execute(stmt)).scalars())
+
+
+async def progress_by_exam(
+    session: AsyncSession, user_id: uuid.UUID
+) -> list[tuple[uuid.UUID, int, int, datetime | None]]:
+    """Per exam: consultations this person started, how many were marked, and when the last began.
+
+    A debrief is a conversation about a consultation, not another one, and an attempt still
+    `created` was only opened, so neither is counted.
+    """
+    stmt = (
+        select(
+            Attempt.exam_id,
+            func.count(),
+            func.count().filter(Attempt.status == str(Status.EVALUATED)),
+            func.max(Attempt.created_at),
+        )
+        .where(
+            Attempt.user_id == user_id,
+            Attempt.kind != str(Kind.DEBRIEF),
+            Attempt.status != str(Status.CREATED),
+        )
+        .group_by(Attempt.exam_id)
+    )
+    return [
+        (exam_id, int(started), int(evaluated), last)
+        for exam_id, started, evaluated, last in (await session.execute(stmt)).all()
+    ]
 
 
 async def attempts_counted_by_trial(

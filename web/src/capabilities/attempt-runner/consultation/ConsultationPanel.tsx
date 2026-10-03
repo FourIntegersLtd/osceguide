@@ -1,13 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarVisualizer,
   useConnectionState,
+  useLocalParticipant,
+  useRoomContext,
   useVoiceAssistant,
 } from "@livekit/components-react";
-import { ConnectionState } from "livekit-client";
-import { HiOutlineMicrophone, HiOutlinePhoneXMark } from "react-icons/hi2";
+import { ConnectionState, RoomEvent, type Participant, type TranscriptionSegment } from "livekit-client";
+import {
+  HiOutlineChatBubbleBottomCenterText,
+  HiOutlineMicrophone,
+  HiOutlinePhoneXMark,
+  HiOutlineSpeakerXMark,
+} from "react-icons/hi2";
 import { Alert, Button, ConfirmModal, Spinner, cn, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { VoiceRoom, useMicPreflight } from "@/foundation/livekit";
@@ -17,6 +24,7 @@ import { AGENT_STATE_LABEL } from "@/foundation/livekit/types";
 import type { AttemptSession } from "@/capabilities/attempt-runner/useAttemptSession";
 import type { ConsultationPatient } from "@/capabilities/attempt-runner/consultation/patientIdentity";
 import { WaitingInLine } from "@/capabilities/attempt-runner/WaitingInLine";
+import { addCaptions, micToggle, type CaptionLine } from "@/capabilities/attempt-runner/consultation/liveControls";
 
 const { b2cLivekitEndButton } = productTokens;
 
@@ -129,6 +137,9 @@ function ConsultationLiveStage({
 }) {
   const { state, audioTrack } = useVoiceAssistant();
   const connectionState = useConnectionState();
+  const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+  const [captionsOn, setCaptionsOn] = useState(false);
+  const mic = micToggle(isMicrophoneEnabled);
 
   const isRoomReconnecting =
     connectionState === ConnectionState.Reconnecting ||
@@ -171,8 +182,40 @@ function ConsultationLiveStage({
         </div>
       </div>
 
+      {captionsOn ? <LiveCaptions /> : null}
+
       <div className="w-full px-2">
         <ConsultationConnectionStatus />
+        {isStarting ? null : (
+          <div className="mb-2 grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              aria-pressed={!isMicrophoneEnabled}
+              onClick={() => void localParticipant.setMicrophoneEnabled(mic.next)}
+              className="gap-2"
+            >
+              {isMicrophoneEnabled ? (
+                <HiOutlineMicrophone className="h-4 w-4" aria-hidden />
+              ) : (
+                <HiOutlineSpeakerXMark className="h-4 w-4" aria-hidden />
+              )}
+              <span>{mic.label}</span>
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              aria-pressed={captionsOn}
+              onClick={() => setCaptionsOn((on) => !on)}
+              className="gap-2"
+            >
+              <HiOutlineChatBubbleBottomCenterText className="h-4 w-4" aria-hidden />
+              <span>{captionsOn ? "Hide captions" : "Captions"}</span>
+            </Button>
+          </div>
+        )}
         {isStarting ? (
           <Button
             type="button"
@@ -197,6 +240,50 @@ function ConsultationLiveStage({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Live captions from the room's transcription stream, off unless asked for.
+ * Only the last few lines: the full transcript is on the transcript step.
+ */
+function LiveCaptions() {
+  const room = useRoomContext();
+  const [lines, setLines] = useState<CaptionLine[]>([]);
+
+  useEffect(() => {
+    const onTranscription = (segments: TranscriptionSegment[], participant?: Participant) => {
+      const speaker = participant?.identity === room.localParticipant.identity ? "you" : "patient";
+      setLines((previous) =>
+        addCaptions(
+          previous,
+          segments.map((segment) => ({ id: segment.id, speaker, text: segment.text, at: segment.firstReceivedTime })),
+        ),
+      );
+    };
+    room.on(RoomEvent.TranscriptionReceived, onTranscription);
+    return () => {
+      room.off(RoomEvent.TranscriptionReceived, onTranscription);
+    };
+  }, [room]);
+
+  return (
+    <div
+      aria-live="polite"
+      aria-label="Live captions"
+      className="mx-2 min-h-16 space-y-1 rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-body"
+    >
+      {lines.length === 0 ? (
+        <p className="text-b2c-text-muted">Captions appear here as you speak.</p>
+      ) : (
+        lines.map((line) => (
+          <p key={line.id} className="text-osce-ink-900">
+            <span className="mr-2 font-medium text-b2c-text-secondary">{line.speaker === "you" ? "You" : "Patient"}</span>
+            {line.text}
+          </p>
+        ))
+      )}
     </div>
   );
 }

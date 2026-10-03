@@ -98,6 +98,12 @@ It streams for ever — run it in the background and stop it after ~40s.
 ## Traps that look like bugs
 
 - `unknown_exam` → the database is not seeded or the exam is not published.
+- `attempt_not_ready` "The osce_assessment engine is not installed" in api tests,
+  though `import osce_assessment` works → the api venv holds a stale copy of the
+  engine (`develop = false` in `api/pyproject.toml`). After any engine change,
+  run `poetry install` in `api` before its tests can see it (2026-10-03).
+- Dashboard `progress` counts only started, non-debrief attempts. A test that
+  opens an attempt and expects it counted must set it `running` first.
 - "no turns" in the e2e test → the worker ran on the wrong interpreter.
 - Patient never arrives on exam day → nobody joined during reading.
 - `make typecheck` breaks after an e2e run → uninstall the e2e packages.

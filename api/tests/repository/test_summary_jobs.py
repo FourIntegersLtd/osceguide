@@ -67,6 +67,21 @@ async def test_the_note_is_written_and_the_turns_are_then_deleted(db_session: As
     assert await assistant_repo.messages_for(db_session, session_id) == []
 
 
+async def test_a_conversation_the_learner_never_spoke_in_leaves_no_note(db_session: AsyncSession) -> None:
+    session_id, user_id = await a_session_with_turns(db_session, "sum-silent@example.com")
+    for message in await assistant_repo.messages_for(db_session, session_id):
+        if message.role == "user":
+            await db_session.delete(message)
+    await db_session.flush()
+
+    assert not await service_summaries.summarise_assistant_session(
+        db_session, session_id, summariser=FakeTranscriptSummariser()
+    )
+
+    assert await repository.notes_of_kind(db_session, user_id, kind="session_summary", limit=5) == []
+    assert await assistant_repo.messages_for(db_session, session_id) == []
+
+
 async def test_the_summariser_is_given_the_turns_in_order(db_session: AsyncSession) -> None:
     session_id, _ = await a_session_with_turns(db_session, "sum-turns@example.com")
     summariser = FakeTranscriptSummariser()

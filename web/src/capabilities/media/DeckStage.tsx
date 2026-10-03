@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlinePhoto, HiOutlinePlay } from "react-icons/hi2";
-import { B2CEmptyState, Button, cn, productTokens as t } from "@/foundation/ui";
+import { Button, cn, productTokens as t } from "@/foundation/ui";
 import { deckSlides, deckVideoUrl, type MediaItem } from "@/capabilities/media/api";
 import { Prose } from "@/capabilities/media/Prose";
 
@@ -17,7 +17,7 @@ function SlideVideoPlayer({ src }: { src: string }) {
   const [hasStarted, setHasStarted] = useState(false);
 
   return (
-    <div className="relative w-full">
+    <div className="relative h-full w-full">
       {/* Slide videos have no caption track yet; the accessibility statement
           lists this as a known gap. */}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
@@ -28,7 +28,7 @@ function SlideVideoPlayer({ src }: { src: string }) {
         controlsList="nodownload noplaybackrate"
         onContextMenu={(event) => event.preventDefault()}
         onPlay={() => setHasStarted(true)}
-        className="max-h-[min(70vh,720px)] w-full object-contain"
+        className="h-full w-full object-contain"
         playsInline
       />
       {!hasStarted && (
@@ -63,12 +63,12 @@ export function DeckStage({ item }: { item: MediaItem }) {
 
   if (slides.length === 0) {
     return (
-      <B2CEmptyState
-        icon={HiOutlinePhoto}
-        title="No video available"
-        description="This presentation does not have a video yet."
-        className="border-0 bg-transparent shadow-none"
-      />
+      <div className="flex flex-col items-center gap-2">
+        <span className="flex h-10 w-10 items-center justify-center rounded-osce-md bg-osce-surface text-osce-tone-history-text">
+          <HiOutlinePhoto className="h-5 w-5" aria-hidden />
+        </span>
+        <p className="text-osce-meta text-osce-tone-history-text">This presentation does not have a video yet.</p>
+      </div>
     );
   }
 

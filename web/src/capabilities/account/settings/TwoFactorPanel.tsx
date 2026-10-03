@@ -1,15 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { HiOutlineShieldCheck } from "react-icons/hi2";
 import { hasCode } from "@/foundation/platform-client";
 import {
   AsyncBoundary,
   Button,
   Input,
   Modal,
-  ModalHelper,
-  ModalSecondaryButton,
-  Panel,
 } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import {
@@ -24,6 +22,7 @@ import {
 import { AuthenticatorSetup } from "@/capabilities/account/mfa/AuthenticatorSetup";
 import { RecoveryCodes } from "@/capabilities/account/mfa/RecoveryCodes";
 import { isCompleteTotp, normaliseTotp } from "@/capabilities/account/mfa/codes";
+import { SettingsCard, settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 /** Which dialog is open. Each one needs a current code, so each is its own step. */
 type Dialog =
@@ -78,46 +77,49 @@ export function TwoFactorPanel() {
   };
 
   return (
-    <Panel title="Two-factor sign-in">
-      <AsyncBoundary state={status}>
-        {(mfa: MfaStatus) => (
-          <>
-            <div className="space-y-3">
-              <ModalHelper className="mt-0">
-                {mfa.enabled
-                  ? `On. You sign in with your password and a code from your authenticator app. ${mfa.recovery_codes_remaining} recovery ${mfa.recovery_codes_remaining === 1 ? "code" : "codes"} left.`
-                  : "Off. Add a code from an authenticator app to your password, so a stolen password alone cannot sign in as you."}
-              </ModalHelper>
-              {mfa.required && mfa.required_reason ? (
-                <p className="text-osce-meta text-ink-muted">{REQUIRED_BECAUSE[mfa.required_reason]}</p>
-              ) : null}
-              {startError ? (
-                <p role="alert" className="text-osce-meta text-danger">
-                  {startError}
+    <>
+      <SettingsCard title="Two-factor sign-in">
+        <AsyncBoundary state={status}>
+          {(mfa: MfaStatus) => (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className={settingsSub}>
+                  {mfa.enabled
+                    ? `On. You sign in with your password and a code from your authenticator app. ${mfa.recovery_codes_remaining} recovery ${mfa.recovery_codes_remaining === 1 ? "code" : "codes"} left.`
+                    : "Add a code from an authenticator app when you sign in."}
                 </p>
-              ) : null}
+                {mfa.required && mfa.required_reason ? (
+                  <p className={settingsMeta}>{REQUIRED_BECAUSE[mfa.required_reason]}</p>
+                ) : null}
+                {startError ? (
+                  <p role="alert" className="text-osce-meta text-danger">
+                    {startError}
+                  </p>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {mfa.enabled ? (
+                  <>
+                    <Button variant="secondary" onClick={() => setDialog({ kind: "regenerate" })}>
+                      New recovery codes
+                    </Button>
+                    {!mfa.required ? (
+                      <Button variant="secondary" onClick={() => setDialog({ kind: "disable" })}>
+                        Turn off
+                      </Button>
+                    ) : null}
+                  </>
+                ) : (
+                  <Button variant="secondary" disabled={starting} onClick={() => void start()} className="gap-2">
+                    <HiOutlineShieldCheck className="h-4 w-4" aria-hidden />
+                    {starting ? "Starting…" : "Set up"}
+                  </Button>
+                )}
+              </div>
             </div>
-            <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-              {mfa.enabled ? (
-                <>
-                  <ModalSecondaryButton type="button" onClick={() => setDialog({ kind: "regenerate" })}>
-                    New recovery codes
-                  </ModalSecondaryButton>
-                  {!mfa.required ? (
-                    <ModalSecondaryButton type="button" onClick={() => setDialog({ kind: "disable" })}>
-                      Turn off
-                    </ModalSecondaryButton>
-                  ) : null}
-                </>
-              ) : (
-                <ModalSecondaryButton type="button" disabled={starting} onClick={() => void start()}>
-                  {starting ? "Starting…" : "Set up"}
-                </ModalSecondaryButton>
-              )}
-            </div>
-          </>
-        )}
-      </AsyncBoundary>
+          )}
+        </AsyncBoundary>
+      </SettingsCard>
 
       {dialog ? (
         <Modal width="440px" title={DIALOG_TITLES[dialog.kind]} onClose={close}>
@@ -154,7 +156,7 @@ export function TwoFactorPanel() {
           </div>
         </Modal>
       ) : null}
-    </Panel>
+    </>
   );
 }
 

@@ -246,11 +246,13 @@ async function main() {
     },
   });
   await step("sso discovery", "/api/v1/auth/sso/sign-in?host=localhost", {
-    // A 404 (`sso_not_configured`) is the ordinary answer for a host nobody
-    // has claimed: "sign in here, with a password".
-    allow: [404],
+    // `null` is the ordinary answer for a host nobody has claimed: "sign in
+    // here, with a password". A 404 means the api predates 2026-10-03.
     expect: (p) =>
-      must(typeof p.sign_in_label === "string" && typeof p.sso_only === "boolean", "unexpected shape"),
+      must(
+        p === null || (typeof p.sign_in_label === "string" && typeof p.sso_only === "boolean"),
+        "unexpected shape",
+      ),
   });
   await step("send a site message", "/api/v1/site/messages", {
     method: "POST",

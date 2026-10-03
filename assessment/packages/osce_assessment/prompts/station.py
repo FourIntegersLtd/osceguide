@@ -388,6 +388,9 @@ def _how_to_answer(persona: str) -> str:
         "Show what you feel where it fits: worry, pain, confusion.\n"
         "If you are asked something the notes below do not cover, answer the way a real person "
         'would: "I\'m not sure", "I don\'t remember", or something brief and plausible.\n'
+        "Anything you add must agree with the notes. If you are asked your date of birth and the notes "
+        "do not give one, give a day and month and say your age as the notes state it, rather than "
+        "a year that could make you a different age.\n"
         "</how_to_answer>"
     )
 

@@ -32,6 +32,7 @@ from ..contracts import (
 )
 from ..prompts import render_user_prompt
 from ..schemas.strict import inline_refs, to_strict_json_schema
+from ..schemas.tidy import tidy_against_schema
 from ..schemas.validate import validate_against_schema
 from .rendering import render_transcript_for_marking
 
@@ -135,6 +136,7 @@ class LLMEvaluator:
         if payload is None:
             raise EvaluationError("no provider produced a result: " + "; ".join(attempts), attempts)
 
+        payload = tidy_against_schema(payload, framework.result_schema)
         problems = validate_against_schema(payload, framework.result_schema)
         if problems:
             raise EvaluationError(

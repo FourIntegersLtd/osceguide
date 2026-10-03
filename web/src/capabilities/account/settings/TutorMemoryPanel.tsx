@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineTrash } from "react-icons/hi2";
-import {
-  AsyncBoundary,
-  Button,
-  Checkbox,
-  ConfirmModal,
-  productTokens,
-} from "@/foundation/ui";
+import { HiOutlineClock, HiOutlinePencilSquare, HiOutlineTrash } from "react-icons/hi2";
+import { AsyncBoundary, Button, Checkbox, ConfirmModal } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import {
   forgetTutorMemory,
@@ -17,14 +11,12 @@ import {
   type TutorMemory,
   type TutorNote,
 } from "@/capabilities/account/api";
+import { SettingsRow, SettingsRows, SettingsSection } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { noteSentence } from "@/capabilities/account/settings/tutorNotes";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 
-const { b2cMonoEyebrow } = productTokens;
-
-const ROW_LIST =
-  "divide-y divide-border overflow-hidden rounded-osce-lg border border-border bg-surface";
+const SHORT_DATE: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
 
 /**
  * What the tutor remembers about you, and the way to make it forget.
@@ -83,20 +75,19 @@ export default function TutorMemoryPanel() {
               From your consultations and debriefs. Forget any note, or all of them.
             </B2CHero>
 
-            <section>
-              <p className={`mb-2 ${b2cMonoEyebrow}`}>Notes</p>
+            <SettingsSection eyebrow="Notes">
               {data.notes.length === 0 ? (
-                <p className="rounded-osce-lg border border-dashed border-border p-4 text-osce-body text-ink-subtle">
+                <p className="rounded-osce-lg border border-dashed border-border p-4 text-osce-body text-ink-muted">
                   Athena has not made any notes yet. She starts after your first consultation.
                 </p>
               ) : (
-                <ul className={ROW_LIST}>
+                <SettingsRows>
                   {data.notes.map((note) => (
                     <NoteRow key={note.id} note={note} onForgotten={memory.reload} />
                   ))}
-                </ul>
+                </SettingsRows>
               )}
-            </section>
+            </SettingsSection>
 
             <ActivityCard memory={data} />
           </>
@@ -149,37 +140,40 @@ function NoteRow({ note, onForgotten }: { note: TutorNote; onForgotten: () => vo
   };
 
   return (
-    <li className="flex min-h-[54px] items-center gap-3 px-4 py-2.5">
-      <div className="min-w-0 flex-1">
-        <p className="text-osce-body font-medium text-ink">{noteSentence(note)}</p>
-        <p className="text-osce-meta text-ink-subtle">
+    <SettingsRow
+      icon={HiOutlinePencilSquare}
+      title={noteSentence(note)}
+      meta={
+        <>
           <span className="capitalize">{note.kind.replace(/_/g, " ")}</span> ·{" "}
-          {new Date(note.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-        </p>
-        {error ? <p className="mt-1 text-osce-meta text-osce-danger">{error}</p> : null}
-      </div>
-      <Button type="button" variant="ghost" size="sm" onClick={() => void handleForget()} isLoading={busy} className="shrink-0">
-        Forget this note
-      </Button>
-    </li>
+          {new Date(note.created_at).toLocaleDateString("en-GB", SHORT_DATE)}
+        </>
+      }
+      trailing={
+        <Button variant="ghost" size="sm" onClick={() => void handleForget()} isLoading={busy}>
+          Forget this note
+        </Button>
+      }
+    >
+      {error ? <p className="mt-1 text-osce-meta text-danger">{error}</p> : null}
+    </SettingsRow>
   );
 }
 
 function ActivityCard({ memory }: { memory: TutorMemory }) {
   if (memory.events.length === 0) return null;
   return (
-    <section>
-      <p className={`mb-2 ${b2cMonoEyebrow}`}>What she has seen you do</p>
-      <ul className={ROW_LIST}>
+    <SettingsSection eyebrow="What she has seen you do">
+      <SettingsRows>
         {memory.events.map((event) => (
-          <li key={event.id} className="flex min-h-[54px] items-center justify-between gap-3 px-4 py-2.5">
-            <span className="min-w-0 truncate text-osce-body text-ink">{event.title}</span>
-            <span className="shrink-0 text-osce-meta text-ink-subtle">
-              {new Date(event.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-            </span>
-          </li>
+          <SettingsRow
+            key={event.id}
+            icon={HiOutlineClock}
+            title={event.title}
+            meta={new Date(event.occurred_at).toLocaleDateString("en-GB", SHORT_DATE)}
+          />
         ))}
-      </ul>
-    </section>
+      </SettingsRows>
+    </SettingsSection>
   );
 }

@@ -48,7 +48,7 @@ test("an error keeps the code, the status and the request id", async () => {
   assert.ok(!hasCode(err, "forbidden"));
 });
 
-test("a gateway error that is not an ErrorResponse still has a code to switch on", async () => {
+test("a gateway error that outlasts the retries still has a code to switch on", async () => {
   respondWith(502, "<html>Bad Gateway</html>", "text/html");
 
   const err = await platformRequest("/api/v1/me").then(
@@ -75,6 +75,47 @@ test("an unreachable server is a transport error, not an API error", async () =>
   // caller must be able to tell them apart.
   assert.ok(err instanceof PlatformTransportError);
   assert.ok(!(err instanceof PlatformError));
+});
+
+test("a read that meets a gateway error mid-deploy is asked again and succeeds", async () => {
+  const answers = [
+    new Response("<html>Bad Gateway</html>", { status: 502 }),
+    new Response("<html>Bad Gateway</html>", { status: 502 }),
+    new Response(JSON.stringify({ id: "u1" }), { status: 200 }),
+  ];
+  let calls = 0;
+  globalThis.fetch = (async () => answers[calls++]) as typeof fetch;
+
+  assert.deepEqual(await platformRequest("/api/v1/me"), { id: "u1" });
+  assert.equal(calls, 3);
+});
+
+test("a write is never repeated on a gateway error", async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response("<html>Bad Gateway</html>", { status: 502 });
+  }) as typeof fetch;
+
+  const err = await platformRequest("/api/v1/attempts", { method: "POST", body: {} }).then(
+    () => null,
+    (e: unknown) => e,
+  );
+
+  assert.ok(err instanceof PlatformError);
+  assert.equal(err.status, 502);
+  assert.equal(calls, 1);
+});
+
+test("an API refusal on a read is not retried", async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ code: "unauthenticated", message: "no" }), { status: 401 });
+  }) as typeof fetch;
+
+  await platformRequest("/api/v1/me").catch(() => null);
+  assert.equal(calls, 1);
 });
 
 test("204 resolves rather than failing to parse an empty body", async () => {

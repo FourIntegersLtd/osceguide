@@ -34,6 +34,12 @@ export interface SessionState {
    * The login page uses it to explain the redirect; a signed-out click does not.
    */
   sessionExpired: boolean;
+  /**
+   * Who this is could not be asked: `/me` failed with something other than a
+   * 401 and nothing is known yet. Asked again in the background regardless;
+   * a gate shows an error with a retry rather than a spinner that never ends.
+   */
+  unavailable: boolean;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
   /** `null` is the person's own practice. */

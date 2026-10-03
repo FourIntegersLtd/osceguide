@@ -33,7 +33,10 @@ Handles: `getByLabel("Email")`, `getByLabel("Password", { exact: true })`,
 - A fresh browser gets the cookie dialog; its scrim swallows the Sign in click.
 - The reload check is the one that matters: CI was green while the app signed
   everyone out on reload.
-- `/login` asks `GET /api/v1/auth/sso/sign-in?host=localhost` and gets a 404
-  (the SSO broker is not built). Known; it shows in `problems` on every run
-  that visits `/login`.
+- `/login` asks `GET /api/v1/auth/sso/sign-in?host=localhost` and gets 200
+  `null` (no SSO for this host). A 404 there means the api is older than
+  2026-10-03, when it stopped answering 404 for "no SSO".
+- A session check that fails with a gateway error (not a 401) is retried by
+  the client, then shows "We could not check your session" with "Try again"
+  rather than the "Checking your session" spinner.
 - Signing in as a real imported user is never acceptable, even read-only.

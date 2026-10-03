@@ -1,43 +1,33 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { HiOutlineMicrophone } from "react-icons/hi2";
 import {
-  AsyncBoundary,
-  Button,
-  Checkbox,
-  Modal,
-  Panel,
-  cn,
-  productTokens,
-} from "@/foundation/ui";
+  HiOutlineClock,
+  HiOutlineEnvelope,
+  HiOutlineMicrophone,
+  HiOutlineSparkles,
+} from "react-icons/hi2";
+import { AsyncBoundary, Button, Input, Modal } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
 import { useAsync } from "@/foundation/hooks";
 import { useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { OnboardingFlow, rememberOnboardingSeen } from "@/capabilities/onboarding";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
+import { SettingsCard, SettingsRow, SettingsRows, Switch } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
-import TimerSettingsModal from "@/capabilities/account/settings/TimerSettingsModal";
+import { describeTimer, formatTimer, parseTimer } from "@/capabilities/account/settings/timerFields";
 
-const {
-  b2cLink,
-  b2cSettingsCheckboxHelper,
-  b2cSettingsCheckboxTitle,
-  b2cSettingsOptionRow,
-} = productTokens;
-
-/** What the old modal opened on for somebody with no custom timer: the SCA's own 3 and 12 minutes. */
+/** What the timers open on for somebody with no custom timer: the SCA's own 3 and 12 minutes. */
 const DEFAULT_READING_SECONDS = 3 * 60;
 const DEFAULT_SIMULATION_SECONDS = 12 * 60;
 
 /**
  * Access arrangements, AI consent and the waiting-colleague email.
  *
- * The retiring client's Preferences card, row for row and string for string,
- * saved with one button. "Configure your reading and simulation timers" opens
- * the old minutes-and-seconds modal, which saves on its own; the timers only
- * apply while "Extra reading time" is ticked (`users.needs_extra_time`).
+ * A card of switches and a card of the two custom timers, saved together with
+ * one button (canvas `train-settings-prefs`). The timers only apply while
+ * "Extra reading time" is on (`users.needs_extra_time`).
  *
  * It applies to a person's own practice only. An institution's circuit runs on
  * one clock for everybody on it, and stretching it for one candidate would
@@ -49,14 +39,12 @@ export default function PreferencesPanel() {
 
   return (
     <SettingsTabShell>
-      <AsyncBoundary state={state}>
-        {(me) => <PreferencesForm key={me.id} me={me} onTimersSaved={state.reload} />}
-      </AsyncBoundary>
+      <AsyncBoundary state={state}>{(me) => <PreferencesForm key={me.id} me={me} />}</AsyncBoundary>
     </SettingsTabShell>
   );
 }
 
-function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => void }) {
+function PreferencesForm({ me }: { me: Me }) {
   const { surface } = useSurface();
   const { settings, code: examCode } = useCurrentExam();
   const { session } = useSession();
@@ -69,22 +57,34 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
   const [consent, setConsent] = useState(me.ai_training_consent ?? false);
   const [waitingEmail, setWaitingEmail] = useState(me.colleague_waiting_email ?? false);
   const [extraTime, setExtraTime] = useState(me.needs_extra_time ?? false);
+  const [reading, setReading] = useState(formatTimer(me.custom_reading_seconds ?? DEFAULT_READING_SECONDS));
+  const [simulation, setSimulation] = useState(
+    formatTimer(me.custom_simulation_seconds ?? DEFAULT_SIMULATION_SECONDS),
+  );
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
-  const [showTimerSettings, setShowTimerSettings] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const readingSeconds = parseTimer(reading);
+  const simulationSeconds = parseTimer(simulation);
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    setSaving(true);
     setError("");
     setSuccessMessage("");
+    if (readingSeconds === null || simulationSeconds === null) {
+      setError("Enter each timer as minutes and seconds, such as 04:00, up to an hour.");
+      return;
+    }
+    setSaving(true);
     try {
       await updateMe({
         ai_training_consent: consent,
         colleague_waiting_email: waitingEmail,
         needs_extra_time: extraTime,
+        custom_reading_seconds: readingSeconds,
+        custom_simulation_seconds: simulationSeconds,
       });
       setSuccessMessage("Preferences saved");
     } catch {
@@ -101,96 +101,85 @@ function PreferencesForm({ me, onTimersSaved }: { me: Me; onTimersSaved: () => v
 
   return (
     <>
-      <form onSubmit={(event) => void save(event)}>
-        <Panel title="Preferences" description="Accessibility, AI consent and notifications.">
-          <div className="space-y-6">
+      <form onSubmit={(event) => void save(event)} className="space-y-6" noValidate>
+        {successMessage ? <Alert message={successMessage} type="success" /> : null}
+        {error ? <Alert message={error} type="error" /> : null}
 
-            {successMessage ? <Alert message={successMessage} type="success" /> : null}
-            {error ? <Alert message={error} type="error" /> : null}
-
-            <div className="space-y-4">
-              <Checkbox
-                id="pref-dataConsentAI"
-                name="dataConsentAI"
-                checked={consent}
-                onChange={(event) => setConsent(event.target.checked)}
-                label="AI training consent"
-                description="Allow your data to be used for AI training to provide better personalized recommendations and feedback."
-              />
-
-              <Checkbox
-                id="pref-needsExtraReadingTime"
-                name="needsExtraReadingTime"
-                checked={extraTime}
-                onChange={(event) => setExtraTime(event.target.checked)}
-                label="Extra reading time"
-                description={
-                  <>
-                    I need extra time to support my neurodiverse learning needs.
-                    <button
-                      type="button"
-                      onClick={() => setShowTimerSettings(true)}
-                      className={cn("mt-3 block text-osce-body", b2cLink, "underline")}
-                    >
-                      Configure your reading and simulation timers
-                    </button>
-                  </>
+        <SettingsCard title="Preferences" description="Accessibility, AI consent and notifications.">
+          <SettingsRows>
+            <SettingsRow
+              icon={HiOutlineSparkles}
+              title="AI training consent"
+              meta="Let us use your consultations to improve our models"
+              trailing={<Switch checked={consent} onChange={setConsent} label="AI training consent" />}
+            />
+            <SettingsRow
+              icon={HiOutlineClock}
+              title="Extra reading time"
+              meta={
+                readingSeconds !== null && simulationSeconds !== null
+                  ? `Uses your own timers: ${describeTimer(readingSeconds)} reading, ${describeTimer(simulationSeconds)} consultation`
+                  : "Uses your own timers"
+              }
+              trailing={<Switch checked={extraTime} onChange={setExtraTime} label="Extra reading time" />}
+            />
+            {offersWaitingEmail ? (
+              <SettingsRow
+                icon={HiOutlineEnvelope}
+                title="Email me when a colleague is waiting"
+                trailing={
+                  <Switch
+                    checked={waitingEmail}
+                    onChange={setWaitingEmail}
+                    label="Email me when a colleague is waiting"
+                  />
                 }
               />
-
-              {offersWaitingEmail ? (
-                <Checkbox
-                  id="pref-notifyWhenPartnerWaiting"
-                  name="notifyWhenPartnerWaiting"
-                  checked={waitingEmail}
-                  onChange={(event) => setWaitingEmail(event.target.checked)}
-                  label="Email me when a colleague is waiting"
-                  description="When a colleague's partner doesn't show for a marketplace session, we'll email you so you can log in and join Live practice within 10 minutes."
-                />
-              ) : null}
-
-              {practising ? (
-                <div className={cn(b2cSettingsOptionRow, "items-center")}>
-                  <div className="min-w-0 flex-1">
-                    <p className={b2cSettingsCheckboxTitle}>
-                      <HiOutlineMicrophone
-                        className="h-[18px] w-[18px] shrink-0 text-ink-subtle"
-                        aria-hidden
-                      />
-                      Athena onboarding
-                    </p>
-                    <p className={b2cSettingsCheckboxHelper}>
-                      Walk through onboarding again: Athena introduces the app and the voice demo.
-                    </p>
-                  </div>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setShowOnboarding(true)}>
+            ) : null}
+            {practising ? (
+              <SettingsRow
+                icon={HiOutlineMicrophone}
+                title="Athena onboarding"
+                meta="Walk through onboarding again"
+                trailing={
+                  <Button variant="secondary" size="sm" onClick={() => setShowOnboarding(true)}>
                     Start
                   </Button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-            <Button type="submit" isLoading={saving}>
-              Save preferences
-            </Button>
-          </div>
-        </Panel>
-      </form>
+                }
+              />
+            ) : null}
+          </SettingsRows>
+        </SettingsCard>
 
-      {showTimerSettings ? (
-        <TimerSettingsModal
-          readingSeconds={me.custom_reading_seconds ?? DEFAULT_READING_SECONDS}
-          simulationSeconds={me.custom_simulation_seconds ?? DEFAULT_SIMULATION_SECONDS}
-          needsExtraTime={extraTime}
-          onError={setError}
-          onSuccess={(message) => {
-            setSuccessMessage(message);
-            onTimersSaved();
-          }}
-          onClose={() => setShowTimerSettings(false)}
-        />
-      ) : null}
+        <SettingsCard title="Custom timer durations">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Reading timer (doctor information)"
+              name="readingTimer"
+              inputMode="numeric"
+              placeholder="04:00"
+              value={reading}
+              onChange={(event) => setReading(event.target.value)}
+              error={readingSeconds === null ? "Minutes and seconds, such as 04:00" : null}
+            />
+            <Input
+              label="Simulation timer (consultation)"
+              name="simulationTimer"
+              inputMode="numeric"
+              placeholder="14:00"
+              value={simulation}
+              onChange={(event) => setSimulation(event.target.value)}
+              error={simulationSeconds === null ? "Minutes and seconds, such as 14:00" : null}
+            />
+          </div>
+        </SettingsCard>
+
+        <div className="flex justify-end">
+          <Button type="submit" isLoading={saving}>
+            Save preferences
+          </Button>
+        </div>
+      </form>
 
       {showOnboarding ? (
         <Modal width="min(95vw, 560px)" height="fit-content" title="Athena onboarding" onClose={closeOnboarding}>

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Spinner } from "@/foundation/ui";
+import { Alert, Button, Spinner } from "@/foundation/ui";
 import { loginHref } from "@/foundation/session/loginHref";
 import { useSession } from "@/foundation/session/SessionProvider";
 import { can } from "@/foundation/session/types";
@@ -13,6 +13,24 @@ function Resolving() {
   return (
     <div className="flex min-h-[40vh] items-center justify-center">
       <Spinner label="Checking your session" />
+    </div>
+  );
+}
+
+/**
+ * The session could not be checked (a gateway error, the network), so neither
+ * the page nor a sign-in redirect is the honest answer. The provider keeps
+ * asking in the background; the button asks now.
+ */
+function Unavailable({ retry }: { retry: () => Promise<void> }) {
+  return (
+    <div className="mx-auto max-w-md px-4 py-16">
+      <Alert tone="danger" title="We could not check your session">
+        <p>The server did not answer. It is asked again on its own, or you can try now.</p>
+        <Button variant="secondary" size="sm" className="mt-3" onClick={() => void retry()}>
+          Try again
+        </Button>
+      </Alert>
     </div>
   );
 }
@@ -33,7 +51,7 @@ function Resolving() {
  * from looping: it is the one place a flagged account is allowed to be.
  */
 export function RequireSession({ children }: { children: ReactNode }) {
-  const { status, ready, session, sessionExpired } = useSession();
+  const { status, ready, session, sessionExpired, unavailable, refresh } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const mustChange = session?.user.must_change_password === true;
@@ -50,6 +68,7 @@ export function RequireSession({ children }: { children: ReactNode }) {
     }
   }, [ready, status, sessionExpired, mustChange, pathname, router]);
 
+  if (unavailable) return <Unavailable retry={refresh} />;
   if (!ready || status === "loading") return <Resolving />;
   if (status === "anonymous") return <Resolving />;
   // Render nothing while the redirect above is in flight. A page that paints
@@ -95,7 +114,8 @@ export function RequireCapability({
   children: ReactNode;
   fallback?: ReactNode;
 }) {
-  const { session, ready, status } = useSession();
+  const { session, ready, status, unavailable, refresh } = useSession();
+  if (unavailable) return <Unavailable retry={refresh} />;
   if (!ready || status === "loading") return <Resolving />;
   if (!can(session, permission)) {
     return (

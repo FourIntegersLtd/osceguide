@@ -440,3 +440,37 @@ async def test_a_station_from_another_organisation_is_not_runnable(
     )
     assert response.status_code == 404
     assert response.json()["code"] == "station_not_found"
+
+
+async def test_reopening_a_station_resumes_the_attempt_it_never_started(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """A reload of the station screen used to open a fresh attempt each time, orphaning the last one
+    and restarting the reading clock (staging, 2026-10-03). Until the consultation starts, opening
+    the same station again hands back the same attempt; once it has started, a new one is opened."""
+    from app.features.attempts import repository as attempts_repo
+    from app.features.identity import repository as identity_repo
+    from app.features.stations import repository as stations_repo
+
+    token = await make_actor("reloader@example.com")
+    user = await identity_repo.user_by_email(db_session, "reloader@example.com")
+    exam = await ensure_exam(db_session, "sca")
+    assert user is not None and exam is not None
+    await entitle(db_session, user.id)
+    station = await stations_repo.create_station(db_session, None, exam_id=exam.id, title="Elevated PSA")
+    version = await stations_repo.add_version(
+        db_session, None, station_id=station.id, version=1, content={"station_name": "Elevated PSA"}
+    )
+    await stations_repo.set_version_status(db_session, None, version.id, status="published", at=NOW, by=None)
+    await db_session.flush()
+    body = {"kind": "practice", "exam_code": "sca", "station_version_id": str(version.id)}
+
+    first = await client.post("/api/v1/attempts", json=body, headers=bearer(token))
+    again = await client.post("/api/v1/attempts", json=body, headers=bearer(token))
+    assert first.status_code == 201, first.text
+    assert again.json()["id"] == first.json()["id"]
+
+    await attempts_repo.set_status(db_session, uuid.UUID(first.json()["id"]), status="running", at=NOW)
+    await db_session.flush()
+    after_start = await client.post("/api/v1/attempts", json=body, headers=bearer(token))
+    assert after_start.json()["id"] != first.json()["id"]

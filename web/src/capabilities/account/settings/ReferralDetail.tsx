@@ -1,27 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { LuHourglass } from "react-icons/lu";
-import {
-  HiOutlineBanknotes,
-  HiOutlineCalendarDays,
-  HiOutlineCheckCircle,
-  HiOutlineCodeBracket,
-  HiOutlineEnvelope,
-  HiOutlineGift,
-  HiOutlineTag,
-} from "react-icons/hi2";
-import {
-  AsyncBoundary,
-  Back,
-  LoadingSpinner,
-  ModalHelper,
-  Panel,
-} from "@/foundation/ui";
+import { AsyncBoundary, Back, LoadingSpinner } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatLongDateTime } from "@/foundation/format";
 import { useCurrentExam } from "@/foundation/session";
 import { readReferralHistory, type ReferralHistoryRow } from "@/capabilities/account/api";
+import { SettingsCard, StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 /** The page cap `/me/referrals/history` uses per request. */
 const HISTORY_PAGE_LIMIT = 100;
@@ -51,23 +36,17 @@ async function findReferral(
   return null;
 }
 
-function DetailRow({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
+/** One fact in a card's definition list: the term muted, the value in ink. */
+function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="mt-0.5 shrink-0 text-ink-subtle">{icon}</span>
-      <div className="min-w-0">
-        <p className="text-osce-caption font-medium text-ink-subtle">{label}</p>
-        <p className="text-osce-body font-medium text-ink">{value}</p>
-      </div>
-    </div>
+    <>
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="min-w-0 break-words text-ink">{children}</dd>
+    </>
   );
 }
 
-function payoutStatusIcon(status: string): ReactNode {
-  if (status === "paid") return <HiOutlineCheckCircle className="h-4 w-4 text-osce-success-icon" />;
-  if (status === "unpaid") return <LuHourglass className="h-4 w-4 text-osce-warning-icon" />;
-  return null;
-}
+const FACTS = "grid grid-cols-[max-content_1fr] gap-x-7 gap-y-2.5 text-osce-body";
 
 /**
  * One referral: the retiring client's `ReferralDetail`, card for card.
@@ -96,11 +75,11 @@ export default function ReferralDetail({ referralId }: { referralId: string }) {
 
 function ReferralMissing() {
   return (
-    <div className="mx-auto max-w-4xl space-y-4 p-4">
+    <div className="mx-auto w-full max-w-[1100px] space-y-4">
       <Back />
-      <Panel title="Referral details">
-        <ModalHelper className="mt-0">Referral not found.</ModalHelper>
-      </Panel>
+      <SettingsCard title="Referral">
+        <p className={settingsSub}>Referral not found.</p>
+      </SettingsCard>
     </div>
   );
 }
@@ -109,57 +88,37 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
   // The old page printed the viewer's own app type here, not the referee's.
   const { code: examCode } = useCurrentExam();
   return (
-    <div className="space-y-4">
-      <Back />
-      <h1 className="font-title text-osce-heading font-semibold text-ink">Referral</h1>
+    <div className="mx-auto w-full max-w-[1100px] space-y-6">
+      <div className="space-y-2">
+        <Back />
+        <h1 className="font-title text-osce-heading font-semibold text-ink">Referral</h1>
+      </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Panel title="Core information">
-          <div className="space-y-4">
-            <DetailRow
-              icon={<HiOutlineCalendarDays className="h-4 w-4" />}
-              label="Date created"
-              value={formatLongDateTime(referral.redeemed_at)}
-            />
-            <DetailRow
-              icon={<HiOutlineCodeBracket className="h-4 w-4" />}
-              label="Referral code used"
-              value={referral.code}
-            />
-            <DetailRow
-              icon={<HiOutlineTag className="h-4 w-4" />}
-              label="App type"
-              value={examCode}
-            />
-          </div>
-        </Panel>
+        <SettingsCard title="Core information">
+          <dl className={FACTS}>
+            <Fact label="Date created">{formatLongDateTime(referral.redeemed_at)}</Fact>
+            <Fact label="Code used">{referral.code}</Fact>
+            <Fact label="App type">{examCode}</Fact>
+          </dl>
+        </SettingsCard>
 
-        <Panel title="Financials &amp; payout">
-          <div className="space-y-4">
-            <DetailRow
-              icon={<HiOutlineBanknotes className="h-4 w-4" />}
-              label="Amount earned"
-              value={`£${(referral.earned_pence / 100).toFixed(2)}`}
-            />
-            <DetailRow
-              icon={payoutStatusIcon(referral.payout_status)}
-              label="Payout status"
-              value={<span className="capitalize">{referral.payout_status}</span>}
-            />
-            <DetailRow
-              icon={<HiOutlineGift className="h-4 w-4" />}
-              label="Subscription"
-              value={(referral.plan_code ?? "").replace("_", " ")}
-            />
-          </div>
-        </Panel>
+        <SettingsCard title="Financials &amp; payout">
+          <dl className={FACTS}>
+            <Fact label="Amount earned">{`£${(referral.earned_pence / 100).toFixed(2)}`}</Fact>
+            <Fact label="Payout status">
+              <StatusPill tone={referral.payout_status === "paid" ? "ok" : "warning"}>
+                <span className="capitalize">{referral.payout_status}</span>
+              </StatusPill>
+            </Fact>
+            <Fact label="Subscription">{(referral.plan_code ?? "").replace("_", " ")}</Fact>
+          </dl>
+        </SettingsCard>
 
-        <Panel title="Referee details">
-          <DetailRow
-            icon={<HiOutlineEnvelope className="h-4 w-4" />}
-            label="Referee email"
-            value={referral.referee_email}
-          />
-        </Panel>
+        <SettingsCard title="Referee details">
+          <dl className={FACTS}>
+            <Fact label="Email">{referral.referee_email}</Fact>
+          </dl>
+        </SettingsCard>
       </div>
     </div>
   );

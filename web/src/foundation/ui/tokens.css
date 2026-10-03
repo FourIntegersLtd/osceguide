@@ -260,5 +260,15 @@
   --b2c-text-secondary: #a3afd9;
   --b2c-text-muted: #7884b8;
   --b2c-nav-active: #1b2b6b;
+  /* Tints for the live-marking cards and alerts: the light-skin pale fills under
+     white room ink were unreadable (staging, 2026-10-03). */
+  --osce-success-bg: #0b3a3c;
+  --osce-success-border: #17655a;
+  --osce-success-text: #6ee7b7;
+  --osce-success-icon: #34d399;
+  --osce-warning-bg: #3b2f12;
+  --osce-warning-border: #6b5418;
+  --osce-warning-text: #fcd34d;
+  --osce-warning-icon: #fbbf24;
   color: #ffffff;
 }

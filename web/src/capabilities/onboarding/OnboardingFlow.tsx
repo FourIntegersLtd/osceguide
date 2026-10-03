@@ -142,7 +142,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
 
       {step !== "invitation" && (
         <VoiceRoom grant={voice.grant} onConnected={voice.onConnected}>
-          <AgentTile name={voice.assistantName} detail="Your AI examiner" />
+          <AgentTile name={voice.assistantName} detail="Your AI examiner" speaker={voice.assistantName} />
         </VoiceRoom>
       )}
 

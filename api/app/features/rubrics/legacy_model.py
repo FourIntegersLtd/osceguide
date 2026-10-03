@@ -32,9 +32,15 @@ ROLE_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 
+# Words a clinician reads as initials. `capitalize()` alone turned `discovers_ice`
+# into "Discovers ice" on the live-marking cards (staging, 2026-10-03).
+ACRONYMS = frozenset({"ice", "cv", "sbar", "ecg", "gp", "nhs", "bp", "osce"})
+
+
 def humanise(key: str) -> str:
-    """A snake_case id as a reader's label."""
-    return key.replace("_", " ").capitalize()
+    """A snake_case id as a reader's label, keeping known acronyms in capitals."""
+    words = key.replace("_", " ").capitalize().split(" ")
+    return " ".join(word.upper() if word.lower() in ACRONYMS else word for word in words)
 
 
 def inline(node: Any, definitions: Mapping[str, Any]) -> Any:

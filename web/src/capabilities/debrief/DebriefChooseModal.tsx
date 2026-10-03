@@ -32,6 +32,7 @@ export function DebriefChooseModal({
   brief,
   review,
   onClose,
+  onDebriefEnded,
 }: {
   examCode: string;
   setId: string | null;
@@ -40,6 +41,8 @@ export function DebriefChooseModal({
   brief: AttemptBrief | null;
   review: AttemptReview | null;
   onClose: () => void;
+  /** The debrief attempt that has just ended, so the screen behind can wait for its summary. */
+  onDebriefEnded?: (debriefAttemptId: string) => void;
 }) {
   const { settings } = useCurrentExam();
   const sessionModes = settings.session_modes ?? ["debrief", "practice_as_patient"];
@@ -130,7 +133,8 @@ export function DebriefChooseModal({
           </div>
         ) : active === "debrief" ? (
           <div className="h-[min(620px,calc(90dvh-11rem))] min-h-0 overflow-hidden">
-            <DebriefSession setId={setId} entryId={entryId} sourceAttemptId={attemptId} />
+            <DebriefSession setId={setId} entryId={entryId} sourceAttemptId={attemptId}
+              onEnded={onDebriefEnded} onDone={handleClose} />
           </div>
         ) : (
           <PatientPracticePanel attemptId={attemptId} examCode={examCode} brief={brief} review={review} />

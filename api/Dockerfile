@@ -74,4 +74,12 @@ USER appuser
 
 EXPOSE 8000
 # Schema is migrated before deploy with `alembic upgrade head`.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+#
+# `--timeout-keep-alive 75`: uvicorn's default closes an idle connection after
+# 5s, sooner than the proxies in front (Railway's edge, Vercel's rewrite) stop
+# reusing it, so a request sent down a connection uvicorn is closing comes back
+# a 502. The backend's idle timeout must outlast the proxy's.
+#
+# `exec`: uvicorn replaces the shell, so Railway's SIGTERM reaches it and it
+# finishes the requests in flight during the draining window.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --timeout-keep-alive 75"]

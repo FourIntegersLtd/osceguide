@@ -330,6 +330,8 @@ export interface B2CHelpDockProps {
   setIsWide: (value: boolean) => void;
   /** Whose help to show. Defaults to the signed-in person's exam; with none, the general guides. */
   examCode?: string;
+  /** A launch that arrived before this component loaded (see `LazyB2CHelpDock`); opens on it at mount. */
+  initialLaunch?: AthenaLaunch | null;
 }
 
 /**
@@ -343,6 +345,7 @@ export function B2CHelpDock({
   isWide,
   setIsWide,
   examCode: examCodeOverride,
+  initialLaunch = null,
 }: B2CHelpDockProps) {
   const { session } = useSession();
   const { code, settings } = useCurrentExam();
@@ -351,8 +354,8 @@ export function B2CHelpDock({
   // `app/core/exam_settings.py`). An exam that only lists one mode skips the
   // choice screen and opens straight into it.
   const { offersChoice: offersHelpChoice, opensDirectlyOnKnowledge } = helpModeChoice(settings);
-  const [helpMode, setHelpMode] = useState<HelpMode>(null);
-  const [athenaLaunch, setAthenaLaunch] = useState<AthenaLaunch | null>(null);
+  const [helpMode, setHelpMode] = useState<HelpMode>(initialLaunch ? "navigate" : null);
+  const [athenaLaunch, setAthenaLaunch] = useState<AthenaLaunch | null>(initialLaunch);
 
   useEffect(() => {
     const open = (event: Event) => {

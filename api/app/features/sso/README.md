@@ -41,7 +41,7 @@ organisation.
 
 | Route | Who |
 |---|---|
-| `GET /auth/sso/sign-in?host=…` or `?email=…` | **Anyone, unauthenticated** — it is what a sign-in page asks before anybody has signed in. A 404 means "sign in here, with a password", which is the ordinary case. |
+| `GET /auth/sso/sign-in?host=…` or `?email=…` | **Anyone, unauthenticated** — it is what a sign-in page asks before anybody has signed in. A 200 answering `null` means "sign in here, with a password", which is the ordinary case (it was a 404 until 2026-10-03, and logged a console error on every `/login`). |
 | `POST /auth/sso/login` | **Anyone, unauthenticated** — where to send the browser to sign in. Returns the broker's sign-in URL rather than redirecting: the frontend owns navigation and the platform sets no cookies (ADR 0004). |
 | `POST /auth/sso/callback` | **Anyone, unauthenticated** — trades the broker's token for a platform session, provisioning the person on first sign-in. Rate limited. |
 | `GET /platform/orgs/{slug}/sso` | Platform admin |

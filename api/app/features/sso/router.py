@@ -27,8 +27,8 @@ Brokers = Annotated[service_login.SsoBrokers, Depends(service_login.get_sso_brok
 
 @router.get(
     "/auth/sso/sign-in",
-    response_model=schemas.SsoSignIn,
-    responses=error_responses(errors.SsoNotConfigured, errors.InvalidSsoBinding),
+    response_model=schemas.SsoSignIn | None,
+    responses=error_responses(errors.InvalidSsoBinding),
 )
 async def read_sign_in(
     session: Session,
@@ -40,13 +40,13 @@ async def read_sign_in(
         str | None,
         Query(description="An address typed into the ordinary sign-in form."),
     ] = None,
-) -> schemas.SsoSignIn:
+) -> schemas.SsoSignIn | None:
     """Whether this visitor's organisation signs in somewhere else.
 
     Unauthenticated, and it has to be: this is what a sign-in page asks
-    before anybody has signed in. A 404 means "sign in here, with a
+    before anybody has signed in. `null` means "sign in here, with a
     password", which is the ordinary case and what every host that is not a
-    partner's gets.
+    partner's gets: a 200, not a 404, because it is not an error.
     """
     if host:
         return await service.sign_in_for_host(session, host)

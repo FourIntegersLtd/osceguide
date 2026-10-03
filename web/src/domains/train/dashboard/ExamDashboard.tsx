@@ -40,7 +40,7 @@ import CategoryVolumeList from "@/foundation/charts/CategoryVolumeList";
 import { PerformanceSummary } from "@/domains/train/dashboard/PerformanceSummary";
 import { TrendCard } from "@/domains/train/dashboard/TrendCard";
 import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
-import { dashboardView, type DashboardView } from "@/domains/train/dashboard/dashboardView";
+import { dashboardView, recentAttemptStatus, type DashboardView } from "@/domains/train/dashboard/dashboardView";
 import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
 import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
 import { examCountdownSubtitle, examMoment, isExamWeek } from "@/domains/train/dashboard/examDate";
@@ -271,7 +271,7 @@ function RecentStations({
           meta={`${relativeDay(attempt.created_at)} · ${attempt.exam_code.toUpperCase()}`}
           trailing={
             <span className="hidden h-[22px] shrink-0 items-center rounded-osce-sm bg-b2c-surface-muted px-2 text-osce-caption font-medium text-osce-ink-700 sm:inline-flex">
-              {attempt.has_result ? "Marked" : attempt.status === "created" ? "Not started" : "In progress"}
+              {recentAttemptStatus(attempt)}
             </span>
           }
         />

@@ -84,10 +84,17 @@ async def test_an_address_finds_its_own_institution(client: AsyncClient, make_ac
 
 
 async def test_an_ordinary_host_is_told_to_sign_in_here(client: AsyncClient) -> None:
-    """A 404 is the common case, not an error: everybody else uses a password."""
-    missing = await client.get(SIGN_IN, params={"host": "osceguide.com"})
-    assert missing.status_code == 404
-    assert missing.json()["code"] == "sso_not_configured"
+    """No SSO is the common case, not an error: a 200 answering `null`, so
+    every visit to `/login` does not log a 404. Everybody else uses a password."""
+    missing = await client.get(SIGN_IN, params={"host": "staging.osceguide.com"})
+    assert missing.status_code == 200, missing.text
+    assert missing.json() is None
+
+
+async def test_an_address_nobody_claims_is_told_to_sign_in_here(client: AsyncClient) -> None:
+    missing = await client.get(SIGN_IN, params={"email": "someone@example.com"})
+    assert missing.status_code == 200, missing.text
+    assert missing.json() is None
 
 
 async def test_a_configuration_that_is_switched_off_is_not_advertised(
@@ -103,7 +110,9 @@ async def test_a_configuration_that_is_switched_off_is_not_advertised(
     )
 
     found = await client.get(SIGN_IN, params={"host": "bmj.osceguide.com"})
-    assert found.status_code == 404, found.text
+    assert found.status_code == 200, found.text
+    # The same answer as a host nobody ever claimed.
+    assert found.json() is None
 
 
 async def test_restricting_sign_in_to_sso_while_sso_is_off_is_refused(
@@ -155,8 +164,8 @@ async def test_saving_again_replaces_the_list_rather_than_adding_to_it(
         json=a_config(hosts=["sso.bmj.com"], email_domains=[]),
         headers=bearer(root),
     )
-    assert (await client.get(SIGN_IN, params={"host": "bmj.osceguide.com"})).status_code == 404
-    assert (await client.get(SIGN_IN, params={"host": "sso.bmj.com"})).status_code == 200
+    assert (await client.get(SIGN_IN, params={"host": "bmj.osceguide.com"})).json() is None
+    assert (await client.get(SIGN_IN, params={"host": "sso.bmj.com"})).json()["org_slug"] == "bmj"
 
 
 async def test_only_a_platform_admin_may_read_or_write_it(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

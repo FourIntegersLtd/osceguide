@@ -20,8 +20,8 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
 }
 
 
-async def sign_in_for_host(session: AsyncSession, host: str) -> schemas.SsoSignIn:
-    """What the sign-in page on a white-label host should show."""
+async def sign_in_for_host(session: AsyncSession, host: str) -> schemas.SsoSignIn | None:
+    """What the sign-in page on a white-label host should show; `None` for a host with no SSO."""
     try:
         binding_value = domain.normalise_host(host)
     except domain.InvalidBinding as exc:
@@ -29,12 +29,12 @@ async def sign_in_for_host(session: AsyncSession, host: str) -> schemas.SsoSignI
     return await _sign_in(session, kind=domain.BindingKind.HOST, binding_value=binding_value)
 
 
-async def sign_in_for_email(session: AsyncSession, email: str) -> schemas.SsoSignIn:
+async def sign_in_for_email(session: AsyncSession, email: str) -> schemas.SsoSignIn | None:
     """Home-realm discovery: where this address signs in, if not here.
 
-    A refusal rather than an empty answer for an address nobody claims, because
-    "no SSO here" and "that is not an address" are different things and the page
-    behaves differently for each.
+    `None` for an address nobody claims, and a refusal for something that is not
+    an address, because "no SSO here" and "that is not an address" are
+    different things and the page behaves differently for each.
     """
     binding_value = domain.domain_of(email)
     if not binding_value:
@@ -44,23 +44,26 @@ async def sign_in_for_email(session: AsyncSession, email: str) -> schemas.SsoSig
 
 async def _sign_in(
     session: AsyncSession, *, kind: domain.BindingKind, binding_value: str
-) -> schemas.SsoSignIn:
+) -> schemas.SsoSignIn | None:
     """Look a binding up and answer what its sign-in page should show, or
-    refuse `sso_not_configured` — for no such binding, a disabled
+    `None` ("sign in here, with a password") — for no such binding, a disabled
     configuration, and an organisation that no longer exists alike, since
-    none of those is something to explain to an anonymous caller."""
+    none of those is something to explain to an anonymous caller.
+
+    `None` rather than a 404: no SSO is what nearly every host answers, and a
+    404 on every visit to `/login` read as a fault in every browser console."""
     config = await repository.find_by_binding(session, kind=kind.value, binding_value=binding_value)
     if config is None:
-        raise errors.SsoNotConfigured()
+        return None
     # A configuration that exists but is switched off is not something to tell
     # an anonymous caller about: the answer is the same as never having had one.
     if not config.enabled:
-        raise errors.SsoNotConfigured()
+        return None
     # The organisation's name belongs to `tenancy`; this slice asks for it
     # rather than reading its table.
     org = await tenancy.org_ref_by_id(session, config.org_id)
     if org is None:
-        raise errors.SsoNotConfigured()
+        return None
     provider = domain.normalise_provider(config.provider)
     return schemas.SsoSignIn(
         org_slug=org.slug,

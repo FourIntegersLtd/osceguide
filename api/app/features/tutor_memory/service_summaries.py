@@ -88,6 +88,12 @@ async def summarise_assistant_session(
     turns = await assistant.transcript_messages(session, session_id)
     if not turns:
         return False
+    if not any(turn["role"] == "user" and str(turn["message"]).strip() for turn in turns):
+        # Athena spoke and the learner never did (they opened her and closed
+        # her). There is nothing to remember, and a note from it would make a
+        # brand-new account's next greeting "good to see you again".
+        await assistant.discard_transcript(session, session_id)
+        return False
     try:
         summary = await summariser.summarise(
             kind="session_summary",

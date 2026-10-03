@@ -145,18 +145,57 @@ async function platformFetch(
   // FormData sets its own multipart boundary; setting Content-Type breaks it.
   if (body !== undefined && !formData) headers["Content-Type"] = "application/json";
 
-  try {
-    return await fetch(`${platformApiUrl()}${withQuery(path, query)}`, {
-      method,
-      headers,
-      signal,
-      credentials: "omit",
-      body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
-    });
-  } catch (cause) {
-    if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
-    throw new PlatformTransportError("Could not reach the server", cause);
+  const url = `${platformApiUrl()}${withQuery(path, query)}`;
+  const init: RequestInit = {
+    method,
+    headers,
+    signal,
+    credentials: "omit",
+    body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
+  };
+  // Only a read is asked twice: repeating a write the server may already have
+  // done is not this layer's call.
+  const retries = method === "GET" ? GATEWAY_RETRY_DELAYS_MS : [];
+
+  for (let attempt = 0; ; attempt += 1) {
+    const last = attempt >= retries.length;
+    try {
+      const response = await fetch(url, init);
+      if (last || !GATEWAY_STATUSES.has(response.status)) return response;
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
+      if (last) throw new PlatformTransportError("Could not reach the server", cause);
+    }
+    await pause(retries[attempt] ?? 0, signal);
   }
+}
+
+/**
+ * A gateway in front of platform-api answering for it: Railway while a deploy
+ * swaps containers, Vercel's rewrite when the upstream connection drops. They
+ * say nothing about the request, so a read is asked again, twice, before the
+ * caller sees the failure (staging, 2026-10-03: a dozen 502s on `/me` during a
+ * deploy left a screen on its spinner).
+ */
+const GATEWAY_STATUSES = new Set([502, 503, 504]);
+const GATEWAY_RETRY_DELAYS_MS = [400, 1_200];
+
+function pause(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(new DOMException("Aborted", "AbortError"));
+      },
+      { once: true },
+    );
+  });
 }
 
 async function readPayload(response: Response): Promise<unknown> {

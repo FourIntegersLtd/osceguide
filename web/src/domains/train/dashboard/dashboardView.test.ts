@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { dashboardView, ticksFor, weakestDomains } from "@/domains/train/dashboard/dashboardView";
+import { dashboardView, recentAttemptStatus, ticksFor, weakestDomains } from "@/domains/train/dashboard/dashboardView";
 import type { Performance } from "@/domains/train/api";
 import {
   CASC,
@@ -210,5 +210,17 @@ describe("chart helpers", () => {
       ]).map((item) => item.text),
       ["Examination", "Data gathering", "Interpersonal"],
     );
+  });
+});
+
+describe("recentAttemptStatus", () => {
+  it("calls an ended debrief finished, not in progress", () => {
+    assert.equal(recentAttemptStatus({ kind: "debrief", status: "interaction_complete", has_result: false }), "Finished");
+    assert.equal(recentAttemptStatus({ kind: "debrief", status: "running", has_result: false }), "In progress");
+  });
+  it("tells an ended consultation awaiting its mark from a marked one", () => {
+    assert.equal(recentAttemptStatus({ kind: "practice", status: "interaction_complete", has_result: false }), "Marking");
+    assert.equal(recentAttemptStatus({ kind: "practice", status: "evaluated", has_result: true }), "Marked");
+    assert.equal(recentAttemptStatus({ kind: "practice", status: "created", has_result: false }), "Not started");
   });
 });

@@ -15,10 +15,15 @@ const EMPTY: CoverageUpdate = { supported: false, items: [], last_seq: -1 };
  * with a close button in its header; closed, the column keeps only the line
  * that reopens it, because nobody discovers a panel that starts switched off.
  */
-export function LiveCoveragePanel({ attemptId, isLive }: { attemptId: string | null; isLive: boolean }) {
+export function LiveCoveragePanel({ attemptId, isLive, patientJoined = true }: {
+  attemptId: string | null;
+  isLive: boolean;
+  /** The rubric is frozen when the patient's worker starts, so coverage is read again when it joins. */
+  patientJoined?: boolean;
+}) {
   const hidden = useSyncExternalStore(subscribeLiveCoverageHidden, getLiveCoverageHidden, getLiveCoverageHiddenOnServer);
   const state = useAsync((signal) => attemptId && !hidden
-    ? readCoverage(attemptId, signal) : Promise.resolve(EMPTY), [attemptId, hidden]);
+    ? readCoverage(attemptId, signal) : Promise.resolve(EMPTY), [attemptId, hidden, patientJoined]);
   const reload = state.reload;
   // `update_coverage` publishes `coverage` to the attempt's owner as each item is
   // marked live, so this re-reads on that event rather than on a fixed interval.
@@ -55,7 +60,7 @@ export function LiveCoveragePanel({ attemptId, isLive }: { attemptId: string | n
       </button>
     </B2CPanelCardHeader>
     <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
-      <LiveCoverageFeed coverage={state.data ?? null} isLive={isLive} maxVisible={12} />
+      <LiveCoverageFeed coverage={state.data ?? null} isLive={isLive} maxVisible={12} supportKnown={patientJoined} />
       {state.error && <p role="status" className="mt-1 text-osce-meta text-b2c-text-muted">Live marking is reconnecting. Your consultation can continue.</p>}
     </div>
   </div>;

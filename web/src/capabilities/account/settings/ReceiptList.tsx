@@ -1,31 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineArrowDownTray } from "react-icons/hi2";
-import { productTokens } from "@/foundation/ui";
+import { HiOutlineArrowDownTray, HiOutlineDocumentText } from "react-icons/hi2";
+import { Button } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { readReceiptDocument, type Receipt } from "@/capabilities/account/api";
-
-const { b2cFieldLabel, b2cFieldValue } = productTokens;
+import { SettingsRow, SettingsRows } from "@/capabilities/account/settings/SettingsKit";
 
 /**
  * Every payment, and the document for it.
  *
- * The old screen offered one "Download receipt" link, and with one payment
- * that is exactly what this renders. A person with several payments gets a
- * row per payment, because the backend has always kept one per payment and
- * the old single link could reach only one of them.
+ * A row per payment, because the backend has always kept one per payment and
+ * the old screen's single "Download receipt" link could reach only one.
  */
 export default function ReceiptList({ receipts }: { receipts: Receipt[] }) {
-  const [single] = receipts;
-  if (receipts.length === 1 && single) return <ReceiptLink receipt={single} />;
-
   return (
-    <ul className="divide-y divide-border rounded-xl border border-border">
+    <SettingsRows>
       {receipts.map((receipt) => (
         <ReceiptRow key={receipt.receipt_id} receipt={receipt} />
       ))}
-    </ul>
+    </SettingsRows>
   );
 }
 
@@ -61,47 +55,30 @@ function useReceiptDocument(receipt: Receipt) {
   return { isOpening, error, openDocument };
 }
 
-const LINK_CLASS =
-  "inline-flex shrink-0 items-center gap-2 text-osce-body font-medium text-osce-accent transition hover:text-osce-accent-hover disabled:cursor-not-allowed disabled:opacity-60";
-
-/** The old screen's single link, word for word. */
-function ReceiptLink({ receipt }: { receipt: Receipt }) {
-  const { isOpening, error, openDocument } = useReceiptDocument(receipt);
-  return (
-    <div>
-      <button type="button" onClick={() => void openDocument()} disabled={isOpening} className={LINK_CLASS}>
-        <HiOutlineArrowDownTray className="h-4 w-4 shrink-0" aria-hidden />
-        {isOpening ? "Downloading…" : "Download receipt"}
-      </button>
-      {error ? <p className="mt-1 text-osce-meta text-osce-danger">{error}</p> : null}
-    </div>
-  );
-}
-
 function ReceiptRow({ receipt }: { receipt: Receipt }) {
   const { isOpening, error, openDocument } = useReceiptDocument(receipt);
 
+  /*
+    Printed exactly as the backend wrote them. `paid_at` and `amount_total`
+    are already display strings — "16 September 2026", "£99.00" — pinned by a
+    receipt oracle against the legacy formatter, not ISO timestamps and pence.
+    Re-formatting them here would make the screen and the printed document
+    disagree about a financial figure, and `new Date("16 September 2026")`
+    renders a dash on most browsers.
+  */
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
-        <p className={b2cFieldValue}>{receipt.plan_label}</p>
-        {/*
-          Printed exactly as the backend wrote them. `paid_at` and
-          `amount_total` are already display strings — "16 September 2026",
-          "£99.00" — pinned by a receipt oracle against the legacy formatter,
-          not ISO timestamps and pence. Re-formatting them here would make the
-          screen and the printed document disagree about a financial figure,
-          and `new Date("16 September 2026")` renders a dash on most browsers.
-        */}
-        <p className={b2cFieldLabel}>
-          {receipt.paid_at} · {receipt.amount_total}
-        </p>
-        {error ? <p className="mt-1 text-osce-meta text-osce-danger">{error}</p> : null}
-      </div>
-      <button type="button" onClick={() => void openDocument()} disabled={isOpening} className={LINK_CLASS}>
-        <HiOutlineArrowDownTray className="h-4 w-4 shrink-0" aria-hidden />
-        {isOpening ? "Downloading…" : "Download receipt"}
-      </button>
-    </li>
+    <SettingsRow
+      icon={HiOutlineDocumentText}
+      title={`${receipt.plan_label} · ${receipt.amount_total}`}
+      meta={`Paid ${receipt.paid_at}`}
+      trailing={
+        <Button variant="ghost" size="sm" onClick={() => void openDocument()} disabled={isOpening} className="gap-2">
+          <HiOutlineArrowDownTray className="h-4 w-4 shrink-0" aria-hidden />
+          {isOpening ? "Downloading…" : "Download receipt"}
+        </Button>
+      }
+    >
+      {error ? <p className="mt-1 text-osce-meta text-danger">{error}</p> : null}
+    </SettingsRow>
   );
 }

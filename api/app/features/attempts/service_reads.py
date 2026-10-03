@@ -154,6 +154,13 @@ async def recent_for_user(session: AsyncSession, user_id: uuid.UUID, *, limit: i
     return [_ref(attempt, has_result=attempt.id in marked) for attempt in attempts]
 
 
+async def progress_by_exam(
+    session: AsyncSession, user_id: uuid.UUID
+) -> list[tuple[uuid.UUID, int, int, datetime | None]]:
+    """Per exam: (exam id, consultations started, marked, last started), never debriefs or unopened ones."""
+    return await repository.progress_by_exam(session, user_id)
+
+
 async def evaluated_for_user(
     session: AsyncSession, user_id: uuid.UUID, *, exam_id: uuid.UUID | None = None, limit: int
 ) -> list[AttemptRef]:

@@ -21,6 +21,9 @@ from app.features.identity import service as identity
 from app.features.stations import service as stations
 from app.features.stations import service_reads as stations_reads
 
+# The consumer kinds a reload reopens: one person, one station, nothing scheduled around them.
+_RESUMABLE_KINDS = frozenset({"practice", "set_station", "self_practice"})
+
 
 async def start_attempt(
     session: AsyncSession,
@@ -50,6 +53,22 @@ async def start_attempt(
         exam = await resolve_exam(session, exam_code, org_id=org_id)
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
+
+    # Reopening a station (a reload, a second tab) resumes the attempt it already opened rather
+    # than leaving that one orphaned and restarting the reading clock. Checked before the
+    # entitlement gate: that attempt was already granted, and the trial counts it.
+    if kind in _RESUMABLE_KINDS and station_version_id is not None and room_name is None:
+        unstarted = await repository.unstarted_attempt(
+            session,
+            kind=kind,
+            user_id=user_id,
+            exam_id=exam.id,
+            org_id=org_id,
+            station_version_id=station_version_id,
+            set_entry_id=set_entry_id,
+        )
+        if unstarted is not None:
+            return _attempt_read(unstarted)
 
     await entitlements.require(
         session,

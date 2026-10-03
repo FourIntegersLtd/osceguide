@@ -23821,7 +23821,7 @@
     },
     "/api/v1/auth/sso/sign-in": {
       "get": {
-        "description": "Whether this visitor's organisation signs in somewhere else.\n\nUnauthenticated, and it has to be: this is what a sign-in page asks\nbefore anybody has signed in. A 404 means \"sign in here, with a\npassword\", which is the ordinary case and what every host that is not a\npartner's gets.",
+        "description": "Whether this visitor's organisation signs in somewhere else.\n\nUnauthenticated, and it has to be: this is what a sign-in page asks\nbefore anybody has signed in. `null` means \"sign in here, with a\npassword\", which is the ordinary case and what every host that is not a\npartner's gets: a 200, not a 404, because it is not an error.",
         "operationId": "sso_read_sign_in",
         "parameters": [
           {
@@ -23866,24 +23866,19 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SsoSignIn"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SsoSignIn"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Sso Read Sign In"
                 }
               }
             },
             "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "sso_not_configured",
-            "x-codes": [
-              "sso_not_configured"
-            ]
           },
           "422": {
             "content": {

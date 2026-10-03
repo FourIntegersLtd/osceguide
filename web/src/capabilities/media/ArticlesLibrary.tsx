@@ -8,6 +8,9 @@ import { excerpt, formatPublished, readMinutes } from "@/capabilities/media/supp
 import { B2CHero } from "@/foundation/ui/B2CHero";
 import { b2cCard } from "@/foundation/ui/productTokens";
 
+/** An article has no picture, so its card leads with a block in one of the reading tones, in turn. */
+const CARD_TONES = ["bg-osce-tone-history-bg", "bg-osce-tone-education-bg", "bg-osce-tone-reasoning-bg"];
+
 export function ArticlesLibrary({
   items,
   hrefFor,
@@ -39,7 +42,7 @@ export function ArticlesLibrary({
     (featuredBody ? excerpt(featuredBody, 200) : "Read the latest from the study team.");
 
   return (
-    <div className="space-y-8 pb-4">
+    <div className="space-y-6 pb-4">
       <B2CHero
         eyebrow="Latest"
         title={featured.title}
@@ -54,16 +57,20 @@ export function ArticlesLibrary({
 
       {rest.length > 0 ? (
         <section>
-          <p className={cn(t.b2cMonoEyebrow, "mb-3")}>More to read</p>
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {rest.map((article) => (
+          <h2 className={cn(t.b2cMonoEyebrow, "px-1 pb-2")}>More to read</h2>
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {rest.map((article, position) => (
               <li key={article.id}>
                 <Link
                   href={hrefFor(`/library/${article.slug}`)}
-                  className={cn(b2cCard, "flex h-full flex-col p-5 transition-colors hover:border-osce-ink-400")}
+                  className={cn(b2cCard, "flex h-full flex-col p-3.5 transition-colors hover:border-osce-ink-400")}
                 >
+                  <span
+                    className={cn("mb-3 block h-[140px] rounded-[10px]", CARD_TONES[position % CARD_TONES.length])}
+                    aria-hidden
+                  />
                   <h3 className="line-clamp-2 text-osce-subheading font-semibold text-osce-ink-900">{article.title}</h3>
-                  <p className="mt-1.5 text-osce-meta text-b2c-text-muted">{articleMeta(article)}</p>
+                  <p className="mt-1 text-osce-meta text-b2c-text-muted">{articleMeta(article)}</p>
                 </Link>
               </li>
             ))}

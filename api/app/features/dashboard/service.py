@@ -36,7 +36,6 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
 
     exam_codes: dict[uuid.UUID, str] = {}
     recent: list[RecentAttempt] = []
-    progress: dict[str, ExamProgress] = {}
 
     for attempt in attempts:
         if attempt.exam_id not in exam_codes:
@@ -54,14 +53,16 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
             )
         )
 
-        current = progress.get(
-            code, ExamProgress(exam_code=code, attempts=0, evaluated=0, last_attempt_at=None)
-        )
-        progress[code] = ExamProgress(
-            exam_code=code,
-            attempts=current.attempts + 1,
-            evaluated=current.evaluated + (1 if attempt.status == "evaluated" else 0),
-            last_attempt_at=max(filter(None, [current.last_attempt_at, attempt.created_at]), default=None),
+    # Counted over every attempt, not the recent page: the eyebrow said "10 stations attempted"
+    # for ever once a learner passed ten, and counted opened-but-unstarted attempts and debriefs.
+    progress: list[ExamProgress] = []
+    for exam_id, started, evaluated, last_at in await attempts_reads.progress_by_exam(session, user_id):
+        if exam_id not in exam_codes:
+            exam_codes[exam_id] = await catalog.exam_code_by_id(session, exam_id) or ""
+        progress.append(
+            ExamProgress(
+                exam_code=exam_codes[exam_id], attempts=started, evaluated=evaluated, last_attempt_at=last_at
+            )
         )
 
     # Which exams this person may open. The rule is `entitlements`' own, and
@@ -84,7 +85,7 @@ async def build(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> 
             )
             for grant in grants
         ],
-        progress=sorted(progress.values(), key=lambda exam_progress: exam_progress.exam_code),
+        progress=sorted(progress, key=lambda exam_progress: exam_progress.exam_code),
         recent_attempts=recent,
         sets=[
             SetSummary(

@@ -1,11 +1,7 @@
 "use client";
 
-import {
-  AsyncBoundary,
-  ModalHelper,
-  Panel,
-  productTokens,
-} from "@/foundation/ui";
+import { HiOutlineBuildingOffice2, HiOutlineClock, HiOutlineCreditCard } from "react-icons/hi2";
+import { AsyncBoundary, productTokens } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatLongDate } from "@/foundation/format";
 import { useCurrentExam } from "@/foundation/session";
@@ -17,12 +13,29 @@ import {
   type Plan,
   type Receipt,
 } from "@/capabilities/account/api";
+import { paidAccess } from "@/capabilities/account/access";
 import PlanPicker, { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
 import ReceiptList from "@/capabilities/account/settings/ReceiptList";
+import {
+  DotEyebrow,
+  SettingsCard,
+  SettingsRow,
+  SettingsRows,
+  StatusPill,
+  settingsSub,
+} from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 
-const { b2cFieldLabel, b2cFieldValue, b2cLink } = productTokens;
+const { b2cLink } = productTokens;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** A free trial still running: when it ends, and the whole days left as the page loaded. */
+interface Trial {
+  endsAt: string;
+  daysLeft: number;
+}
 
 /**
  * The retiring client's Payments tab: one "Payments" card.
@@ -50,10 +63,11 @@ export default function PaymentsPanel() {
       ]);
       // A trial is live too, but it is what the plans are for: somebody still
       // inside it is offered them, as the old screen's `has_paid` flag did.
-      const live = entitlements.items.filter(
-        (entitlement) => entitlement.live && entitlement.source !== "trial",
-      );
-      return { live, receipts };
+      return {
+        live: paidAccess(entitlements.items),
+        trial: runningTrial(entitlements.items),
+        receipts,
+      };
     },
     [],
   );
@@ -61,8 +75,8 @@ export default function PaymentsPanel() {
   return (
     <SettingsTabShell>
       <AsyncBoundary state={state}>
-        {({ live, receipts }) =>
-          live.length > 0 ? <ActivePlan live={live} receipts={receipts} /> : <Plans />
+        {({ live, trial, receipts }) =>
+          live.length > 0 ? <ActivePlan live={live} receipts={receipts} /> : <Plans trial={trial} />
         }
       </AsyncBoundary>
     </SettingsTabShell>
@@ -83,44 +97,43 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
   const endsAt = openEnded ? null : latestEnd(live);
   const plan = latest?.plan_label ?? grantLabel(live);
 
-  const rows: { label: string; value: string }[] = [
-    { label: "Plan", value: plan },
-    ...(latest?.plan_start_date ? [{ label: "Started", value: latest.plan_start_date }] : []),
-    ...(endsAt ? [{ label: "Valid until", value: formatLongDate(endsAt) }] : []),
-  ];
   const purchased = live.some((entitlement) => entitlement.source === "purchase");
+  const facts = [
+    latest?.plan_start_date ? `Started ${latest.plan_start_date}` : null,
+    endsAt ? `Valid until ${formatLongDate(endsAt)}` : "No end date",
+  ].filter((fact): fact is string => fact !== null);
 
   return (
     <>
-      <B2CHero eyebrow="Your plan" title={plan}>
+      <B2CHero eyebrow={<DotEyebrow tone="ok">Your plan</DotEyebrow>} title={plan}>
         {endsAt
           ? `Full access until ${formatLongDate(endsAt)}: every station, the study library and debriefs with Athena.`
           : "You have full access: every station, the study library and debriefs with Athena."}
       </B2CHero>
 
-      <Panel title="Plan details" padding="none">
-        <dl className="divide-y divide-border">
-          {rows.map((row) => (
-            <div key={row.label} className="flex items-center justify-between gap-4 px-5 py-3 sm:px-6">
-              <dt className={b2cFieldLabel}>{row.label}</dt>
-              <dd className={`${b2cFieldValue} text-right`}>{row.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </Panel>
+      <SettingsCard title={purchased ? "Your own plan" : "Organisation access"}>
+        <SettingsRows>
+          <SettingsRow
+            icon={purchased ? HiOutlineCreditCard : HiOutlineBuildingOffice2}
+            title={plan}
+            meta={facts.join(" · ")}
+            trailing={<StatusPill tone="ok">Active</StatusPill>}
+          />
+        </SettingsRows>
+      </SettingsCard>
 
       {receipts.length > 0 ? (
-        <Panel title="Receipts">
+        <SettingsCard title="Receipts">
           <ReceiptList receipts={receipts} />
-        </Panel>
+        </SettingsCard>
       ) : purchased ? (
-        <ModalHelper className="mt-0">
+        <p className={settingsSub}>
           Receipt unavailable.{" "}
           <a href={`mailto:${SUPPORT_EMAIL}`} className={b2cLink}>
             Contact support
           </a>{" "}
           if you need confirmation.
-        </ModalHelper>
+        </p>
       ) : null}
     </>
   );
@@ -134,7 +147,7 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
  * screen hides; checkout refuses those plans too (`billing/service_checkout.py`).
  * With no exam yet, every plan is on offer, because what they buy becomes it.
  */
-function Plans() {
+function Plans({ trial }: { trial: Trial | null }) {
   const plans = useAsync((signal) => listPlans(signal), []);
   const exam = useCurrentExam();
 
@@ -144,27 +157,67 @@ function Plans() {
         // Wait for the exam rather than flash every exam's plans first.
         if (exam.loading) return null;
         const onSale = plansForExam(page.items, exam.code);
+        const hero = (
+          <B2CHero
+            eyebrow={<DotEyebrow tone="warning">Your plan</DotEyebrow>}
+            title={trial ? `Free trial, ${daysLeftLabel(trial.daysLeft)}` : "Choose a plan"}
+          >
+            Choose a plan to unlock every station, study material and practice with colleagues.
+          </B2CHero>
+        );
         if (onSale.length === 0) {
           return (
-            <ModalHelper className="mt-0">
-              There are no plans on sale at the moment. Get in touch and we will set your access up.
-            </ModalHelper>
+            <>
+              {hero}
+              <p className={settingsSub}>
+                There are no plans on sale at the moment. Get in touch and we will set your access up.
+              </p>
+            </>
           );
         }
         // Keyed by exam so switching exams resets the selected plan.
         return (
           <>
-            <B2CHero eyebrow="Your plan" title="Choose a plan">
-              Unlock every station, the study library and practice with colleagues.
-            </B2CHero>
-            <Panel title="Choose the option that suits you best">
+            {hero}
+            <SettingsCard title="Choose the option that suits you best">
               <PlanPicker key={exam.code ?? "any"} plans={onSale} />
-            </Panel>
+            </SettingsCard>
+            {trial ? (
+              <SettingsCard title="Receipts">
+                <SettingsRows>
+                  <SettingsRow
+                    icon={HiOutlineClock}
+                    title="Free trial"
+                    meta={`Ends ${formatLongDate(trial.endsAt)}`}
+                    trailing={<StatusPill tone="ok">Active</StatusPill>}
+                  />
+                </SettingsRows>
+              </SettingsCard>
+            ) : null}
           </>
         );
       }}
     </AsyncBoundary>
   );
+}
+
+/**
+ * The trial somebody is still inside, if any.
+ *
+ * Days are counted here, in the loader, so rendering stays pure; a trial that
+ * ends later today still reads "1 day left".
+ */
+function runningTrial(entitlements: Entitlement[]): Trial | null {
+  const trial = entitlements.find(
+    (entitlement) => entitlement.live && entitlement.source === "trial" && entitlement.ends_at !== null,
+  );
+  if (!trial?.ends_at) return null;
+  const daysLeft = Math.max(1, Math.ceil((new Date(trial.ends_at).getTime() - Date.now()) / DAY_MS));
+  return { endsAt: trial.ends_at, daysLeft };
+}
+
+function daysLeftLabel(days: number): string {
+  return days === 1 ? "1 day left" : `${days} days left`;
 }
 
 function plansForExam(plans: Plan[], examCode: string | null): Plan[] {

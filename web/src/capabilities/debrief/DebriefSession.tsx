@@ -25,14 +25,16 @@ export function DebriefSession({
   entryId,
   sourceAttemptId,
   onEnded,
+  onDone,
 }: {
   setId: string | null;
   entryId: string | null;
   sourceAttemptId?: string;
   onEnded?: (attemptId: string) => void;
+  /** Where "Done" goes once the debrief has ended; without it the ended state has no button. */
+  onDone?: () => void;
 }) {
   const toast = useToast();
-  const [showSaved, setShowSaved] = useState(false);
   const session = useAttemptSession({
     start: () => setId && entryId
       ? startDebrief(setId, entryId)
@@ -43,11 +45,7 @@ export function DebriefSession({
   });
   const mic = useMicPreflight(session.phase === "idle");
 
-  const endDebrief = async () => {
-    setShowSaved(true);
-    await session.end();
-    window.setTimeout(() => setShowSaved(false), 5000);
-  };
+  const endDebrief = () => session.end();
 
   useEffect(() => {
     if (!session.error) return;
@@ -81,20 +79,28 @@ export function DebriefSession({
                 <LivekitIdleState avatar={{ kind: "image", src: ATHENA_IMAGE_SRC, alt: "Athena" }}
                   title="Athena" subtitle="Speak naturally to discuss your performance" />
               </div>
-              <Button fullWidth disabled={busy || session.phase === "ended"} isLoading={busy}
-                onClick={async () => {
-                  if (mic.status !== "ready" && !await mic.request()) return;
-                  await session.startConsultation();
-                }}>
-                {session.phase === "queued"
-                  ? `Athena is busy. You are number ${session.queuePosition ?? 1} in line...`
-                  : busy ? session.phase === "ending" ? "Wrapping up..." : "Connecting..." : "Start voice debrief"}
-              </Button>
+              {session.phase === "ended" ? (
+                // Ended is final: offering "Start voice debrief" again (disabled) read as if nothing
+                // had happened (staging, 2026-10-03).
+                <div className="flex w-full flex-col items-center gap-3">
+                  <Alert tone="success" className="w-full">
+                    Debrief ended. Athena is writing your summary; it will appear in Debrief History.
+                  </Alert>
+                  {onDone ? <Button fullWidth onClick={onDone}>Done</Button> : null}
+                </div>
+              ) : (
+                <Button fullWidth disabled={busy} isLoading={busy}
+                  onClick={async () => {
+                    if (mic.status !== "ready" && !await mic.request()) return;
+                    await session.startConsultation();
+                  }}>
+                  {session.phase === "queued"
+                    ? `Athena is busy. You are number ${session.queuePosition ?? 1} in line...`
+                    : busy ? session.phase === "ending" ? "Wrapping up..." : "Connecting..." : "Start voice debrief"}
+                </Button>
+              )}
             </>
           )}
-          {showSaved && session.phase === "ended" && <div className="mt-4 flex w-full items-center justify-center gap-2 rounded-osce-md border border-osce-success-border bg-osce-success-bg px-3 py-2 text-osce-success-text">
-            <span className="text-osce-meta font-medium">Debrief ended. Your summary is being prepared.</span>
-          </div>}
         </div>
       </section>
       <TalkingPoints />
@@ -152,7 +158,7 @@ export function DebriefLauncher({ setId, entryId }: { setId: string; entryId: st
                 Review your consultation with Athena and get detailed feedback on your performance.
               </ModalHelper>
             </div>
-            <DebriefSession setId={setId} entryId={entryId} />
+            <DebriefSession setId={setId} entryId={entryId} onDone={() => setOpen(false)} />
           </ModalContent>
         </Modal>
       )}

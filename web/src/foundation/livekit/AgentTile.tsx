@@ -13,10 +13,13 @@ import { cn } from "@/foundation/ui/cn";
 export function AgentTile({
   name,
   detail,
+  speaker,
   className,
 }: {
   name: string;
   detail?: string | null;
+  /** Who the status line names instead of "the patient", when the agent is not one. */
+  speaker?: string;
   className?: string;
 }) {
   const { state, audioTrack } = useVoiceAssistant();
@@ -43,7 +46,7 @@ export function AgentTile({
         options={{ minHeight: 8 }}
       />
       <p aria-live="polite" className="text-xs font-medium uppercase tracking-wide text-ink-subtle">
-        {agentStateLabel(state)}
+        {agentStateLabel(state, speaker)}
       </p>
     </div>
   );

@@ -140,17 +140,17 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
             if (next === "") return;
             router.replace(hrefFor(studySearchPath(kind, next)), { scroll: false });
           }}
-          className="mb-8 mt-6 flex justify-end"
+          className="mb-6"
           role="search"
         >
-          <div className="relative w-full max-w-md">
+          <div className="relative w-full">
             <HiOutlineMagnifyingGlass
               className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-osce-ink-400"
               aria-hidden
             />
             <input
               type="search"
-              placeholder="Search for a topic or condition..."
+              placeholder="Search for a topic or condition"
               value={term}
               onChange={(event) => setTerm(event.target.value)}
               aria-label="Search study material"

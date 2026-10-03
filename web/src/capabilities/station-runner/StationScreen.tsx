@@ -1,5 +1,6 @@
 "use client";
 import { LiveCoveragePanel } from "@/capabilities/attempt-runner/coverage/LiveCoveragePanel";
+import { consultationClock } from "@/capabilities/attempt-runner/consultation/consultationClock";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -326,7 +327,7 @@ export function StationScreen(props: StationScreenProps) {
           duration={simulationSeconds}
           stationId={attempt.attemptId}
           timerType="simulation"
-          running={session.patientJoined}
+          {...consultationClock(session.phase, session.patientJoined)}
           onTimeUp={() => void handleSimulationTimeUp()}
           onFinalCountdown={session.warnTimeRemaining}
         />
@@ -417,7 +418,7 @@ export function StationScreen(props: StationScreenProps) {
         {(activeStep === "simulation" || live) && (
           <div hidden={activeStep !== "simulation"}>
           <ConsultationScreen
-            coverage={effectiveAction === "attempt" ? <LiveCoveragePanel attemptId={attempt.attemptId} isLive={session.phase === "live"} /> : undefined}
+            coverage={effectiveAction === "attempt" ? <LiveCoveragePanel attemptId={attempt.attemptId} isLive={session.phase === "live"} patientJoined={session.patientJoined} /> : undefined}
             sticky={effectiveAction === "attempt"}
             showTerms={effectiveAction === "attempt"}
             asideTitle={effectiveAction === "attempt" ? "Doctor information" : "Transcription"}

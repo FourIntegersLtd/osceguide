@@ -19,6 +19,6 @@ export function SettingsTabShell({
   fullWidth?: boolean;
 }) {
   return (
-    <div className={cn("w-full space-y-4", fullWidth ? "" : "max-w-3xl", className)}>{children}</div>
+    <div className={cn("w-full space-y-6", fullWidth ? "" : "max-w-[960px]", className)}>{children}</div>
   );
 }

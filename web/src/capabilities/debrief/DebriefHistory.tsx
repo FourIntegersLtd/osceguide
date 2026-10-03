@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { HiChevronRight, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
@@ -7,6 +8,7 @@ import { AsyncBoundary, Alert, Button, productTokens } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { debriefDate, listDebriefs } from "@/capabilities/debrief/api";
+import { waitForDebrief } from "@/capabilities/debrief/waitForDebrief";
 
 const { b2cCard, b2cGroupedRow, b2cGroupedRowSubtitle, b2cGroupedRowTitle } = productTokens;
 
@@ -21,13 +23,38 @@ const DEBRIEF_HISTORY_PAGE_LIMIT = 25;
  * the learner's complete history — all three filters run in SQL on
  * `GET /me/debriefs` rather than being reconstructed here from a walk of
  * `listMyAttempts`.
+ *
+ * `awaitingAttemptId` is a debrief that has just ended: its summary is still
+ * being written, so the list says so and reloads once it is there.
  */
-export function DebriefHistory({ attemptId, stationVersionId, entryId }: {
+export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingAttemptId }: {
   attemptId?: string;
   stationVersionId?: string | null;
   entryId?: string | null;
+  awaitingAttemptId?: string | null;
 } = {}) {
   const { hrefFor } = useSurface();
+  const [arrived, setArrived] = useState<string | null>(null);
+  const waiting = Boolean(awaitingAttemptId) && arrived !== awaitingAttemptId;
+  useEffect(() => {
+    if (!awaitingAttemptId) return;
+    const controller = new AbortController();
+    void waitForDebrief(
+      async (signal) =>
+        (
+          await listDebriefs(
+            { attemptId: attemptId ?? null, stationVersionId: stationVersionId ?? null, setEntryId: entryId ?? null, limit: 5 },
+            signal,
+          )
+        ).items.map((item) => item.attempt_id),
+      awaitingAttemptId,
+      { signal: controller.signal },
+    ).then(() => {
+      // Found or timed out, the list is read again and the notice goes.
+      if (!controller.signal.aborted) setArrived(awaitingAttemptId);
+    });
+    return () => controller.abort();
+  }, [awaitingAttemptId, attemptId, stationVersionId, entryId]);
   const pages = useCursorPages(
     (cursor, signal) =>
       listDebriefs(
@@ -40,61 +67,68 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId }: {
         },
         signal,
       ),
-    [attemptId, stationVersionId, entryId],
+    [attemptId, stationVersionId, entryId, arrived],
   );
   const state = pages.state;
 
   return (
-    <AsyncBoundary
-      state={state}
-      empty={{
-        title: "No debriefs yet",
-        description:
-          "Start a debrief from a station you have already sat to talk your consultation through with Athena.",
-      }}
-    >
-      {(debriefs) => (
-        <>
-          <div className={`${b2cCard} overflow-hidden`}>
-            {debriefs.map((debrief) => {
-              const created = debriefDate(debrief.created_at);
-              return (
-                <Link
-                  href={hrefFor(`/debriefs/${debrief.id}`)}
-                  key={debrief.id}
-                  className={b2cGroupedRow}
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-b2c-surface-muted text-osce-ink-900">
-                    <HiOutlineChatBubbleLeftRight className="h-4 w-4" aria-hidden />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={b2cGroupedRowTitle}>Debrief session</p>
-                    <p className={b2cGroupedRowSubtitle}>
-                      {created ? format(created, "PPP p") : ""}
-                    </p>
-                  </div>
-                  <HiChevronRight className="h-4 w-4 shrink-0 text-b2c-text-muted" aria-hidden />
-                </Link>
-              );
-            })}
-          </div>
-          {pages.moreError ? (
-            <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
-          ) : null}
-          {pages.hasMore ? (
-            <div className="mt-4 flex justify-center">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={pages.loadingMore}
-                onClick={pages.loadMore}
-              >
-                {pages.loadingMore ? "Loading…" : "Load more"}
-              </Button>
+    <>
+      {waiting ? (
+        <Alert tone="info" className="mb-4">
+          Your debrief has ended. Athena is writing its summary, and it will appear here in a minute.
+        </Alert>
+      ) : null}
+      <AsyncBoundary
+        state={state}
+        empty={{
+          title: "No debriefs yet",
+          description:
+            "Start a debrief from a station you have already sat to talk your consultation through with Athena.",
+        }}
+      >
+        {(debriefs) => (
+          <>
+            <div className={`${b2cCard} overflow-hidden`}>
+              {debriefs.map((debrief) => {
+                const created = debriefDate(debrief.created_at);
+                return (
+                  <Link
+                    href={hrefFor(`/debriefs/${debrief.id}`)}
+                    key={debrief.id}
+                    className={b2cGroupedRow}
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control bg-b2c-surface-muted text-osce-ink-900">
+                      <HiOutlineChatBubbleLeftRight className="h-4 w-4" aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={b2cGroupedRowTitle}>Debrief session</p>
+                      <p className={b2cGroupedRowSubtitle}>
+                        {created ? format(created, "PPP p") : ""}
+                      </p>
+                    </div>
+                    <HiChevronRight className="h-4 w-4 shrink-0 text-b2c-text-muted" aria-hidden />
+                  </Link>
+                );
+              })}
             </div>
-          ) : null}
-        </>
-      )}
-    </AsyncBoundary>
+            {pages.moreError ? (
+              <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+            ) : null}
+            {pages.hasMore ? (
+              <div className="mt-4 flex justify-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pages.loadingMore}
+                  onClick={pages.loadMore}
+                >
+                  {pages.loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            ) : null}
+          </>
+        )}
+      </AsyncBoundary>
+    </>
   );
 }

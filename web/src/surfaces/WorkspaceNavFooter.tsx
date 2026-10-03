@@ -7,11 +7,15 @@ import { cn } from "@/foundation/ui";
 import { b2cIconButton, b2cNavUpgradeButton } from "@/foundation/ui/productTokens";
 import { isPlatformAdmin, useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
+import { holdsPaidAccess } from "@/capabilities/account/access";
+import { listEntitlements } from "@/capabilities/account/api";
+import { useAsync } from "@/foundation/hooks";
 
 /**
  * The foot of the workspace sidebar (canvas `train-dashboard`): who you are
  * with sign-out beside your name. A consumer also gets the upgrade button
- * while there is no plan, and the exam countdown.
+ * until they hold paid access to their current exam (the rule the payments
+ * tab uses), and the exam countdown.
  */
 export function WorkspaceNavFooter({
   consumer,
@@ -23,11 +27,20 @@ export function WorkspaceNavFooter({
   const { session, signOut } = useSession();
   const { hrefFor } = useSurface();
   const { codes, code, setCode } = useCurrentExam();
+  const userId = session?.user.id ?? null;
+  // Not a gate, so a failed read hides the button rather than an error.
+  const entitlements = useAsync(
+    async (signal) => (consumer && userId ? (await listEntitlements(signal)).items : null),
+    [consumer, userId],
+  );
 
   const name = session?.user.name || session?.user.email || "Account";
   const email = session?.user.name ? session.user.email : null;
   const meta = consumer ? examMeta(code, session?.user.exam_date ?? null) : null;
-  const showUpgrade = consumer && codes.length === 0;
+  // `codes` is the exam the account was opened for plus any grants, so it is
+  // not evidence of payment; only a paid entitlement is.
+  const showUpgrade =
+    consumer && entitlements.data !== null && !holdsPaidAccess(entitlements.data, code);
 
   const upgrade = showUpgrade ? (
     <Link

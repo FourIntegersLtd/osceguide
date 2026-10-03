@@ -1,32 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import {
-  AsyncBoundary,
-  Button,
-  Panel,
-  productTokens,
-} from "@/foundation/ui";
+import { AsyncBoundary, Button, Input } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
 import { useAsync } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
+import { examLabel } from "@/capabilities/account/settings/examLabel";
+import { SettingsCard, settingsMeta } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
-
-const { b2cFieldLabel, b2cSettingsFieldInput, b2cSettingsFieldInputDisabled } = productTokens;
-
-/**
- * How an exam reads on the settings screen.
- *
- * The backend names every exam (`DashboardExam.name` / `ExamRead.name`), an
- * institution's own included, so this is a fallback for the moment before
- * that name has loaded rather than a second source of exam names.
- */
-export function examLabel(name: string | null | undefined, code: string | null | undefined): string {
-  if (name) return name;
-  if (!code) return "";
-  return code.toUpperCase();
-}
 
 /**
  * Which exam this account is for, and when they sit it.
@@ -58,25 +40,16 @@ function ExamCards({ me }: { me: Me }) {
 
   return (
     <>
-      <Panel title="Exam">
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="settings-exam-type" className={b2cFieldLabel}>
-              Exam type
-            </label>
-            <input
-              id="settings-exam-type"
-              type="text"
-              value={examLabel(name, code)}
-              disabled
-              className={b2cSettingsFieldInputDisabled}
-            />
-            <p className="mt-1.5 text-osce-meta text-ink-subtle">
-              Exam type is set when you signed up. Contact support if you need to switch exams.
-            </p>
-          </div>
-        </div>
-      </Panel>
+      <SettingsCard title="Exam">
+        <Input
+          label="Exam type"
+          name="examType"
+          value={examLabel(name, code)}
+          disabled
+          readOnly
+          hint="Change your exam from the account menu."
+        />
+      </SettingsCard>
 
       <ExamDateCard
         initialDate={me.exam_date ?? ""}
@@ -87,7 +60,7 @@ function ExamCards({ me }: { me: Me }) {
   );
 }
 
-/** The old `AddExamDate` card: date required, time optional, toasts on save. */
+/** The date card: date required to save, time optional, or no date at all. */
 function ExamDateCard({
   initialDate,
   initialTime,
@@ -100,6 +73,7 @@ function ExamDateCard({
   const [examDate, setExamDate] = useState(initialDate);
   const [examTime, setExamTime] = useState(initialTime);
   const [saving, setSaving] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -113,11 +87,28 @@ function ExamDateCard({
     setSaving(true);
     try {
       await updateMe({ exam_date: examDate, exam_time: examTime ? `${examTime}:00` : null });
-      setSuccessMessage("Exam date updated");
+      setSuccessMessage(`${dateLabel} updated`);
     } catch {
-      setError("Failed to update exam date");
+      setError(`Failed to update ${dateLabel.toLowerCase()}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** No date yet: the countdown and the pacing stop until one is set. */
+  const clear = async () => {
+    setError("");
+    setSuccessMessage("");
+    setClearing(true);
+    try {
+      await updateMe({ exam_date: null, exam_time: null });
+      setExamDate("");
+      setExamTime("");
+      setSuccessMessage(`${dateLabel} cleared`);
+    } catch {
+      setError(`Failed to clear ${dateLabel.toLowerCase()}`);
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -125,45 +116,38 @@ function ExamDateCard({
   const timeLabel = dateLabel.replace(/date$/i, "time");
 
   return (
-    <Panel title={dateLabel}>
+    <SettingsCard title={dateLabel}>
       <div className="space-y-4">
         {successMessage ? <Alert message={successMessage} type="success" /> : null}
         {error ? <Alert message={error} type="error" /> : null}
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="settings-exam-date" className={b2cFieldLabel}>
-              Date
-            </label>
-            <input
-              id="settings-exam-date"
-              type="date"
-              value={examDate}
-              onChange={(event) => setExamDate(event.target.value)}
-              className={`mt-1.5 ${b2cSettingsFieldInput}`}
-            />
-          </div>
-          <div>
-            <label htmlFor="settings-exam-time" className={b2cFieldLabel}>
-              {timeLabel}
-            </label>
-            <input
-              id="settings-exam-time"
-              type="time"
-              value={examTime}
-              onChange={(event) => setExamTime(event.target.value)}
-              className={`mt-1.5 ${b2cSettingsFieldInput}`}
-            />
-          </div>
+          <Input
+            label="Date"
+            name="examDate"
+            type="date"
+            value={examDate}
+            onChange={(event) => setExamDate(event.target.value)}
+          />
+          <Input
+            label={timeLabel}
+            name="examTime"
+            type="time"
+            value={examTime}
+            onChange={(event) => setExamTime(event.target.value)}
+          />
         </div>
-        <p className="text-osce-meta text-ink-subtle">
+        <p className={settingsMeta}>
           Adding your {dateLabel.toLowerCase()} helps us pace your practice and track your countdown.
         </p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" onClick={() => void clear()} isLoading={clearing} disabled={saving}>
+            I don&apos;t have a date yet
+          </Button>
+          <Button onClick={() => void save()} isLoading={saving} disabled={clearing}>
+            Save date
+          </Button>
+        </div>
       </div>
-      <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-        <Button type="button" onClick={() => void save()} isLoading={saving}>
-          Save date
-        </Button>
-      </div>
-    </Panel>
+    </SettingsCard>
   );
 }

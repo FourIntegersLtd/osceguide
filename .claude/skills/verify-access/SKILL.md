@@ -87,8 +87,9 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   product decision. Do not "fix" it by loosening the cookie.
 - A platform admin reads any organisation for support but holds none of its
   powers (`OrgAdmin` is `allow_platform_admin=False`). A 403 there is correct.
-- `/login` asks `GET /api/v1/auth/sso/sign-in?host=localhost` and gets a 404
-  locally; it shows in `problems` on every run and is known.
+- `/login` asks `GET /api/v1/auth/sso/sign-in?host=<host>`; a host with no SSO
+  answers 200 `null` (since 2026-10-03; before that a 404 showed in `problems`
+  on every run). A 404 there now is a stale api.
 - Hydrate `/login` before submitting (the harness's `signIn` does). Submitting
   the server HTML posts as a GET and looks exactly like a session bug.
 - Checkout grants nothing; only the webhook does. A paid user with no access

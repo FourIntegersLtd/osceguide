@@ -3,20 +3,14 @@
 import { useState } from "react";
 import { HiOutlineArrowPath } from "react-icons/hi2";
 import { PiSparkle } from "react-icons/pi";
-import {
-  Checkbox,
-  ModalContent,
-  ModalHelper,
-  ModalPrimaryButton,
-  cn,
-  productTokens,
-} from "@/foundation/ui";
+import { Button, Checkbox, Input, ModalContent, ModalHelper, cn, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { formatMoney } from "@/foundation/format";
 import { hasCode } from "@/foundation/platform-client";
 import { startCheckout, type Plan } from "@/capabilities/account/api";
+import { CONSENT_DOCUMENT, CONSENT_REQUIRED } from "@/capabilities/account/settings/checkoutConsent";
 
-const { b2cFieldLabel, b2cLink, b2cSettingsFieldInput } = productTokens;
+const { b2cLink } = productTokens;
 
 /**
  * The retiring client's `PLAN_TYPE_LABELS` and its blurb per plan, keyed by
@@ -26,15 +20,15 @@ const { b2cFieldLabel, b2cLink, b2cSettingsFieldInput } = productTokens;
 const PLAN_COPY: Record<number, { title: string; description: string }> = {
   1: {
     title: "1-Month Access",
-    description: "50 Stations • Great for last minute preparation and intense practice",
+    description: "50 stations · last-minute preparation",
   },
   3: {
     title: "3-Month Access",
-    description: "100 Stations • Perfect for long-term exam preparation",
+    description: "100 stations · long-term preparation",
   },
   6: {
     title: "6-Month Access",
-    description: "150 Stations • Best value for comprehensive preparation",
+    description: "150 stations · best value",
   },
 };
 
@@ -80,9 +74,7 @@ export default function PlanPicker({
   const handleCheckout = async () => {
     setError(null);
     if (!agreedToPolicies) {
-      setError(
-        "You must agree to the Privacy Policy including our No Refund Policy before proceeding.",
-      );
+      setError(CONSENT_REQUIRED);
       return;
     }
     if (!chosen) return;
@@ -112,50 +104,47 @@ export default function PlanPicker({
     }
   };
 
-  const planListBleed = variant === "page" ? "-mx-3 sm:-mx-4" : "-mx-4 lg:-mx-6";
-  const planRowPadding = variant === "page" ? "px-3 sm:px-4" : "px-4 lg:px-6";
-
   return (
     <ModalContent className="w-full">
-      <ModalHelper className="mb-5 mt-0">Choose the option that suits you best</ModalHelper>
+      {/* On the settings page the card's own title says this. */}
+      {variant === "modal" ? (
+        <ModalHelper className="mb-5 mt-0">Choose the option that suits you best</ModalHelper>
+      ) : null}
 
-      <div className={cn("divide-y divide-border", planListBleed)}>
+      <div role="radiogroup" aria-label="Plan" className="grid gap-3 sm:grid-cols-3">
         {plans.map((plan) => {
           const isSelected = selected === plan.code;
           return (
             <button
               key={plan.code}
               type="button"
+              role="radio"
+              aria-checked={isSelected}
               onClick={() => setSelected(plan.code)}
-              aria-pressed={isSelected}
               className={cn(
-                "flex w-full flex-col items-start gap-1 py-4 text-left transition sm:flex-row sm:items-center sm:justify-between sm:gap-4",
-                planRowPadding,
+                "flex items-start gap-3 rounded-osce-lg border px-4 py-3.5 text-left transition",
+                // The selected tile's border is 2px; a ring of the same colour
+                // adds the second pixel without moving the text.
                 isSelected
-                  ? "bg-osce-accent-muted hover:bg-osce-accent-subtle"
-                  : "hover:bg-canvas",
+                  ? "border-accent bg-osce-accent-subtle ring-1 ring-accent"
+                  : "border-border bg-surface hover:bg-canvas",
               )}
             >
-              <span className="min-w-0">
-                <span
-                  className={cn(
-                    "block text-osce-body font-medium",
-                    isSelected ? "text-osce-accent-hover" : "text-ink",
-                  )}
-                >
-                  {planTitle(plan)}
-                </span>
-                <span className="mt-0.5 block text-osce-meta leading-relaxed text-ink-subtle">
-                  {planDescription(plan)}
+              <span className="min-w-0 flex-1">
+                <span className="block text-osce-body font-medium text-ink">{planTitle(plan)}</span>
+                <span className="mt-0.5 block text-osce-meta text-ink-muted">{planDescription(plan)}</span>
+                <span className="mt-2 flex items-baseline gap-2 text-osce-body font-semibold text-ink">
+                  <PlanPrice plan={plan} hasReferralCode={hasReferralCode} />
                 </span>
               </span>
               <span
                 className={cn(
-                  "flex shrink-0 items-center gap-2 text-osce-body font-semibold sm:whitespace-nowrap",
-                  isSelected ? "text-osce-accent-hover" : "text-osce-accent",
+                  "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                  isSelected ? "border-accent" : "border-border",
                 )}
+                aria-hidden
               >
-                <PlanPrice plan={plan} hasReferralCode={hasReferralCode} />
+                {isSelected ? <span className="h-2.5 w-2.5 rounded-full bg-accent" /> : null}
               </span>
             </button>
           );
@@ -163,12 +152,10 @@ export default function PlanPicker({
       </div>
 
       <div className="mt-6">
-        <label htmlFor="checkout-referral-code" className={b2cFieldLabel}>
-          Friend&apos;s referral code (optional)
-        </label>
-        <input
+        <Input
           id="checkout-referral-code"
-          className={`mt-1.5 ${b2cSettingsFieldInput}`}
+          label="Friend's referral code"
+          hint="Optional."
           value={referralCode}
           onChange={(event) => setReferralCode(event.target.value)}
           placeholder="Enter a code for 10% off"
@@ -191,7 +178,7 @@ export default function PlanPicker({
               rel="noreferrer"
               className={b2cLink}
             >
-              Terms of Service
+              {CONSENT_DOCUMENT}
             </a>{" "}
             (including our No Refund Policy)
           </>
@@ -200,10 +187,10 @@ export default function PlanPicker({
 
       <div className="mt-6 space-y-3">
         <div className="flex sm:justify-end">
-          <ModalPrimaryButton
-            onClick={handleCheckout}
+          <Button
+            onClick={() => void handleCheckout()}
             disabled={isLoading || !chosen}
-            className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap sm:w-auto"
+            className="w-full gap-2 whitespace-nowrap sm:w-auto"
           >
             {isLoading ? (
               <>
@@ -214,17 +201,17 @@ export default function PlanPicker({
               <>
                 <PiSparkle className="h-4 w-4 shrink-0" aria-hidden />
                 <span>
-                  Upgrade Now
+                  Upgrade now
                   {chosen
                     ? ` · ${formatMoney(chargedPence(chosen, hasReferralCode), chosen.currency)}`
                     : ""}
                 </span>
               </>
             )}
-          </ModalPrimaryButton>
+          </Button>
         </div>
-        {error ? <p className="text-osce-meta text-osce-danger sm:text-right">{error}</p> : null}
-        <ModalHelper className="mt-0 sm:text-right">Secure payment powered by Stripe</ModalHelper>
+        {error ? <p className="text-osce-meta text-danger sm:text-right">{error}</p> : null}
+        <p className="text-osce-meta text-ink-muted sm:text-right">Secure payment powered by Stripe</p>
       </div>
     </ModalContent>
   );
@@ -239,7 +226,7 @@ function PlanPrice({ plan, hasReferralCode }: { plan: Plan; hasReferralCode: boo
   if (discountedPence == null) return <>{formatMoney(plan.amount_pence, plan.currency)}</>;
   return (
     <>
-      <s className="font-normal text-ink-subtle">{formatMoney(plan.amount_pence, plan.currency)}</s>
+      <s className="font-normal text-ink-muted">{formatMoney(plan.amount_pence, plan.currency)}</s>
       {formatMoney(discountedPence, plan.currency)}
     </>
   );
