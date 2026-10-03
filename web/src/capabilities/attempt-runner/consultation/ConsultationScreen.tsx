@@ -1,9 +1,14 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import type { IconType } from "react-icons";
 import { HiOutlineInformationCircle } from "react-icons/hi2";
 import { cn } from "@/foundation/ui";
+import {
+  getLiveCoverageHidden,
+  getLiveCoverageHiddenOnServer,
+  subscribeLiveCoverageHidden,
+} from "@/capabilities/attempt-runner/coverage/preference";
 
 const sectionCard =
   "flex min-w-0 flex-col overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface";
@@ -43,6 +48,7 @@ export function ConsultationScreen({
   sticky = true,
   showTerms = true,
   coverage,
+  fill = false,
 }: {
   panel: ReactNode;
   aside: ReactNode;
@@ -52,14 +58,25 @@ export function ConsultationScreen({
   sticky?: boolean;
   showTerms?: boolean;
   coverage?: ReactNode;
+  /** Take all the height the page gives it (the full-screen room) instead of 60vh. */
+  fill?: boolean;
 }) {
+  const coverageHidden = useSyncExternalStore(
+    subscribeLiveCoverageHidden,
+    getLiveCoverageHidden,
+    getLiveCoverageHiddenOnServer,
+  );
+  const collapsed = Boolean(coverage) && coverageHidden;
   return (
-    <div className="mb-8">
+    <div className={cn(fill ? "flex min-h-0 flex-1 flex-col" : "mb-8")}>
       <div
         className={cn(
-          "grid grid-cols-1 gap-4 lg:h-[60vh] lg:min-h-[420px]",
+          "grid grid-cols-1 gap-4 lg:min-h-[420px]",
+          fill ? "min-h-0 flex-1" : "lg:h-[60vh]",
           coverage
-            ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.9fr)]"
+            ? collapsed
+              ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_auto]"
+              : "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.9fr)]"
             : "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
         )}
       >
@@ -83,7 +100,17 @@ export function ConsultationScreen({
           <div className="min-h-0 flex-1 overflow-y-auto">{aside}</div>
         </section>
 
-        {coverage && <section className={cn(sectionCard, "lg:min-h-0")}>{coverage}</section>}
+        {coverage && (
+          <section
+            className={cn(
+              sectionCard,
+              "lg:min-h-0",
+              collapsed && "h-fit self-start whitespace-nowrap lg:w-auto",
+            )}
+          >
+            {coverage}
+          </section>
+        )}
       </div>
 
       {showTerms && (

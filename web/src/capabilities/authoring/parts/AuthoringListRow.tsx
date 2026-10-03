@@ -27,7 +27,7 @@ export function AuthoringListRow({
   const chrome = useAuthoringChrome();
   const identity = (
     <>
-      <p className={cn("truncate text-osce-body font-medium", chrome.headline)}>{title}</p>
+      <p className={cn("truncate text-osce-meta font-medium", chrome.headline)}>{title}</p>
       {meta ? (
         <p
           className={cn("mt-0.5 truncate text-osce-caption", chrome.bodyMuted)}
@@ -43,7 +43,7 @@ export function AuthoringListRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5",
+        "flex flex-col gap-3 px-4 py-2.5 sm:flex-row sm:items-center sm:px-5",
         chrome.rowHover,
       )}
     >

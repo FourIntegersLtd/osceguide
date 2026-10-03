@@ -38,9 +38,7 @@ export function ListCard({
           `border-b ${chrome.listBorder}`,
         )}
       >
-        <span
-          className={`text-osce-body font-medium text-ink`}
-        >
+        <span className="text-osce-meta font-medium text-ink">
           {countLabel} <span className={chrome.captionMuted}>{count}</span>
         </span>
         {meta ? (

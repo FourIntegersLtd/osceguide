@@ -251,7 +251,8 @@ export const b2cNavSectionLabel =
 /** Nav item (canvas `.nav`): 32px, 13.5px, radius 8, 16px muted icon. */
 export const b2cNavLink =
   "relative flex min-h-11 items-center gap-2.5 rounded-osce-md px-2.5 text-osce-data font-medium transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-osce-accent/30 md:min-h-8 [&_svg]:h-4 [&_svg]:w-4";
-export const b2cNavLinkActive = `${b2cNavLink} bg-osce-navActive text-osce-ink-900 [&_svg]:text-osce-ink-900`;
+/** The current page is a raised white pill; hover stays the flat grey, so the two never read alike. */
+export const b2cNavLinkActive = `${b2cNavLink} border border-osce-border bg-osce-surface font-semibold text-osce-ink-900 shadow-sm [&_svg]:text-osce-accent`;
 export const b2cNavLinkInactive = `${b2cNavLink} text-osce-ink-700 hover:bg-osce-navActive hover:text-osce-ink-900 [&_svg]:text-osce-ink-500`;
 /** Sidebar upgrade — solid primary; blue reserved for intentional CTAs only. */
 export const b2cNavUpgradeButton =

@@ -123,9 +123,9 @@ const TipContent = () => {
     <motion.div
       animate={{ opacity: isChanging ? 0 : 1 }}
       transition={{ duration: 0.3 }}
-      className="grid grid-cols-1 gap-3 md:grid-cols-2"
+      className="grid grid-cols-1 gap-3"
     >
-      <section className={cn("flex flex-col rounded-osce-lg border p-5", tipTone.card)}>
+      <section className={cn("flex flex-col rounded-osce-lg border p-4 sm:p-5", tipTone.card)}>
         <p className={cn("text-osce-meta font-medium", tipTone.title)}>Consultation tip</p>
         <div className="mt-3">
           <AthenaIdentity
@@ -138,7 +138,7 @@ const TipContent = () => {
         <p className="mt-4 text-osce-meta text-b2c-text-muted">Adapted from the RCGP SCA Consultation Toolkit</p>
       </section>
 
-      <section className={cn("flex flex-col rounded-osce-lg border p-5", practiceTone.card)}>
+      <section className={cn("flex flex-col rounded-osce-lg border p-4 sm:p-5", practiceTone.card)}>
         <div className="flex items-center justify-between gap-2">
           <p className={cn("text-osce-meta font-medium", practiceTone.title)}>Try this</p>
           <span className="font-mono text-osce-meta tabular-nums text-b2c-text-muted">

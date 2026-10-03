@@ -1,6 +1,6 @@
 "use client";
 
-import { BsLightningChargeFill, BsStarFill } from "react-icons/bs";
+import { BsLightningChargeFill, BsStarFill, BsTrophyFill } from "react-icons/bs";
 import { HiOutlineInformationCircle, HiOutlinePlay } from "react-icons/hi2";
 import { B2CPageHeader, ButtonLink, cn, productTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
@@ -34,11 +34,13 @@ export default function Achievements({
 } = {}) {
   const { hrefFor } = useSurface();
   const { earned: stationBadges, toNext: toNextBadge, milestones } = badgeProgress(stationCount);
+  const toNextShare = Math.min(100, Math.max(0, ((STATIONS_PER_BADGE - toNextBadge) / STATIONS_PER_BADGE) * 100));
 
   return (
     <div className="w-full space-y-6">
       <B2CPageHeader title="Achievements" />
       <B2CHero
+        className="border border-amber-200 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50"
         eyebrow="Your learning journey"
         title={
           stationCount === 0
@@ -71,9 +73,19 @@ export default function Achievements({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-4">
-          <section className={CARD}>
-            <h2 className="text-osce-subheading font-semibold text-osce-ink-900">Station badges</h2>
-            <p className="mt-0.5 text-osce-meta text-b2c-text-muted">One badge every {STATIONS_PER_BADGE} stations</p>
+          <section className={cn(CARD, "border-amber-200 bg-gradient-to-br from-amber-50/70 to-white")}>
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-osce-md bg-amber-100 text-amber-600">
+                <BsStarFill className="h-4 w-4" aria-hidden />
+              </span>
+              <div>
+                <h2 className="text-osce-subheading font-semibold text-osce-ink-900">Station badges</h2>
+                <p className="text-osce-meta text-b2c-text-muted">One badge every {STATIONS_PER_BADGE} stations</p>
+              </div>
+            </div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-amber-100" role="presentation">
+              <div className="h-full rounded-full bg-gradient-to-r from-amber-300 to-amber-500" style={{ width: `${toNextShare}%` }} />
+            </div>
             <ul className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-8">
               {milestones.map((milestone, index) => (
                 <BadgeTile
@@ -86,9 +98,16 @@ export default function Achievements({
             </ul>
           </section>
 
-          <section className={CARD}>
-            <h2 className="text-osce-subheading font-semibold text-osce-ink-900">Streak badges</h2>
-            <p className="mt-0.5 text-osce-meta text-b2c-text-muted">Practise on 3 days in a row to earn one</p>
+          <section className={cn(CARD, "border-orange-200 bg-gradient-to-br from-orange-50/70 to-white")}>
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-osce-md bg-orange-100 text-orange-600">
+                <BsLightningChargeFill className="h-4 w-4" aria-hidden />
+              </span>
+              <div>
+                <h2 className="text-osce-subheading font-semibold text-osce-ink-900">Streak badges</h2>
+                <p className="text-osce-meta text-b2c-text-muted">Practise on 3 days in a row to earn one</p>
+              </div>
+            </div>
             {streakBadgeCount > 0 ? (
               <ul className="mt-4 flex flex-wrap gap-3">
                 {Array.from({ length: streakBadgeCount }, (_, index) => (
@@ -104,9 +123,12 @@ export default function Achievements({
 
         </div>
         <div className="min-w-0 space-y-4">
-          <div className={CARD}>
-            <p className={b2cMonoEyebrow}>Longest streak</p>
-            <p className={METRIC}>{longestStreak && longestStreak.length > 0 ? plural(longestStreak.length, "day") : "None yet"}</p>
+          <div className={cn(CARD, "border-rose-200 bg-gradient-to-br from-rose-50 to-orange-50")}>
+            <span className="flex h-9 w-9 items-center justify-center rounded-osce-md bg-rose-100 text-rose-500">
+              <BsTrophyFill className="h-4 w-4" aria-hidden />
+            </span>
+            <p className={cn(b2cMonoEyebrow, "mt-3")}>Longest streak</p>
+            <p className={cn(METRIC, "text-rose-600")}>{longestStreak && longestStreak.length > 0 ? plural(longestStreak.length, "day") : "None yet"}</p>
             <p className="mt-1 text-osce-meta text-b2c-text-muted">
               {longestStreak && longestStreak.length > 0
                 ? `${shortDate(longestStreak.startDate)} to ${shortDate(longestStreak.endDate)}`
@@ -144,7 +166,7 @@ function BadgeTile({
             ? tone === "amber"
               ? "bg-gradient-to-br from-amber-300 to-amber-500 text-white shadow-sm ring-1 ring-amber-400/60"
               : "bg-gradient-to-br from-orange-400 to-rose-500 text-white shadow-sm ring-1 ring-orange-400/60"
-            : "bg-b2c-surface-muted text-b2c-text-muted",
+            : "border border-dashed border-osce-border bg-white/60 text-b2c-text-muted opacity-70",
         )}
         aria-label={earned ? "Earned" : "Not earned yet"}
       >

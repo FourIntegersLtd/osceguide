@@ -127,7 +127,7 @@ function PreferencesForm({ me }: { me: Me }) {
         {error ? <Alert message={error} type="error" /> : null}
 
         <SettingsCard title="Preferences" description="Accessibility, AI consent and notifications.">
-          <SettingsRows>
+          <SettingsRows className="rounded-none border-0">
             <SettingsRow
               icon={HiOutlineSparkles}
               title="AI training consent"

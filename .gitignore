@@ -1,5 +1,6 @@
 *.pem
 serviceAccountKey.json
+service-key
 .env
 .env.*
 .DS_Store

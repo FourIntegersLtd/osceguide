@@ -47,7 +47,6 @@ function ExamCards({ me }: { me: Me }) {
           value={examLabel(name, code)}
           disabled
           readOnly
-          hint="Change your exam from the account menu."
         />
       </SettingsCard>
 

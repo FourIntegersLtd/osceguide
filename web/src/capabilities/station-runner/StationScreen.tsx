@@ -341,7 +341,8 @@ export function StationScreen(props: StationScreenProps) {
       data-skin={inRoom ? "room" : undefined}
       className={cn(
         "flex flex-col",
-        inRoom && "rounded-osce-2xl bg-osce-canvas p-4 sm:p-6",
+        // The live room covers the whole viewport, sidebar and toolbar included.
+        inRoom && "fixed inset-0 z-40 h-dvh overflow-y-auto bg-osce-canvas p-4",
       )}
     >
       <StationHeader
@@ -407,7 +408,7 @@ export function StationScreen(props: StationScreenProps) {
         </p>
       )}
 
-      <div className="mt-5">
+      <div className={cn("mt-5", inRoom && "flex min-h-0 flex-1 flex-col")}>
         {activeStep === "patient" &&
           (attempt.brief ? (
             <StationBrief brief={attempt.brief} />
@@ -416,8 +417,9 @@ export function StationScreen(props: StationScreenProps) {
           ))}
 
         {(activeStep === "simulation" || live) && (
-          <div hidden={activeStep !== "simulation"}>
+          <div hidden={activeStep !== "simulation"} className={cn(inRoom && "flex min-h-0 flex-1 flex-col")}>
           <ConsultationScreen
+            fill={inRoom}
             coverage={effectiveAction === "attempt" ? <LiveCoveragePanel attemptId={attempt.attemptId} isLive={session.phase === "live"} patientJoined={session.patientJoined} /> : undefined}
             sticky={effectiveAction === "attempt"}
             showTerms={effectiveAction === "attempt"}

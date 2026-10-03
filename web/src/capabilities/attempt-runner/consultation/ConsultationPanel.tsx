@@ -259,6 +259,7 @@ function LiveCaptions() {
         addCaptions(
           previous,
           segments.map((segment) => ({ id: segment.id, speaker, text: segment.text, at: segment.firstReceivedTime })),
+          8,
         ),
       );
     };
@@ -272,17 +273,19 @@ function LiveCaptions() {
     <div
       aria-live="polite"
       aria-label="Live captions"
-      className="mx-2 min-h-16 space-y-1 rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-body"
+      className="mx-2 flex h-36 shrink-0 flex-col justify-end overflow-hidden rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-body [mask-image:linear-gradient(to_bottom,transparent,black_1.5rem)]"
     >
       {lines.length === 0 ? (
         <p className="text-b2c-text-muted">Captions appear here as you speak.</p>
       ) : (
-        lines.map((line) => (
-          <p key={line.id} className="text-osce-ink-900">
-            <span className="mr-2 font-medium text-b2c-text-secondary">{line.speaker === "you" ? "You" : "Patient"}</span>
-            {line.text}
-          </p>
-        ))
+        <div className="space-y-1">
+          {lines.map((line) => (
+            <p key={line.id} className="text-osce-ink-900">
+              <span className="mr-2 font-medium text-b2c-text-secondary">{line.speaker === "you" ? "You" : "Patient"}</span>
+              {line.text}
+            </p>
+          ))}
+        </div>
       )}
     </div>
   );
