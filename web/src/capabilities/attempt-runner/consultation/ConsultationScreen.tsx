@@ -58,7 +58,7 @@ export function ConsultationScreen({
   sticky?: boolean;
   showTerms?: boolean;
   coverage?: ReactNode;
-  /** Take all the height the page gives it (the full-screen room) instead of 60vh. */
+  /** The live room: take all the height the page gives it instead of 60vh, and put the consultation card on the dark stage skin. */
   fill?: boolean;
 }) {
   const coverageHidden = useSyncExternalStore(
@@ -82,6 +82,7 @@ export function ConsultationScreen({
         )}
       >
         <section
+          data-skin={fill ? "room" : undefined}
           className={cn(
             sectionCard,
             "min-h-[min(420px,58vh)] lg:min-h-0",

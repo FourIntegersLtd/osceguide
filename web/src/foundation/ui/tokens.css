@@ -221,59 +221,58 @@
   --osce-commit-hover: #32005a;
 }
 
-/* The room: the navy skin of a live station (`train-room`). The frame around it
-   (sidebar, Athena's button and panel: `data-room-frame`) takes it too while a
-   room is open, so the screen reads as one dark frame. */
+/* The room: the graphite stage of a live station (the call, the voice orb). Only the
+   stage card carries it; the page, the reading and the shell around it stay on the
+   quiet light skin, so the one dark card is where the consultation happens. */
 :is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) [data-skin="room"],
-:root:has(:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"])) [data-skin="room"],
-[data-b2c-shell]:has([data-skin="room"]) [data-room-frame] {
-  --color-canvas: 0 11 61;
-  --color-surface: 10 24 82;
-  --color-surface-raised: 18 33 93;
-  --color-border: 30 45 110;
-  --color-border-strong: 30 45 110;
-  --color-ink: 255 255 255;
-  --color-ink-muted: 163 175 217;
-  --color-ink-subtle: 120 132 184;
-  --color-accent: 162 210 250;
-  --color-accent-hover: 196 227 252;
-  --color-accent-subtle: 16 38 95;
+:root:has(:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"])) [data-skin="room"] {
+  --color-canvas: 29 29 31;
+  --color-surface: 29 29 31;
+  --color-surface-raised: 44 44 46;
+  --color-border: 58 58 61;
+  --color-border-strong: 72 72 74;
+  --color-ink: 245 245 247;
+  --color-ink-muted: 174 174 178;
+  --color-ink-subtle: 142 142 147;
+  --color-accent: 245 245 247;
+  --color-accent-hover: 255 255 255;
+  --color-accent-subtle: 44 44 46;
 
-  --osce-ink-900: #ffffff;
-  --osce-ink-800: #ffffff;
-  --osce-ink-700: #dce3fa;
-  --osce-ink-600: #c0cbef;
-  --osce-ink-500: #a3afd9;
-  --osce-ink-400: #7884b8;
-  --osce-canvas: #000b3d;
-  --osce-surface: #0a1852;
-  --osce-surface-inset: #030f45;
-  --osce-nav-active: #1b2b6b;
-  --osce-border: #1e2d6e;
-  --osce-border-light: #172665;
-  --osce-accent: #a2d2fa;
-  --osce-accent-hover: #c4e3fc;
-  --osce-accent-muted: #12215d;
-  --osce-accent-subtle: #1b2b6b;
-  --b2c-secondary: #12215d;
-  --b2c-secondary-hover: #1b2b6b;
-  --b2c-surface: #0a1852;
-  --b2c-surface-muted: #000b3d;
-  --b2c-border: #1e2d6e;
-  --b2c-border-light: #172665;
-  --b2c-text-primary: #ffffff;
-  --b2c-text-secondary: #a3afd9;
-  --b2c-text-muted: #7884b8;
-  --b2c-nav-active: #1b2b6b;
-  /* Tints for the live-marking cards and alerts: the light-skin pale fills under
-     white room ink were unreadable (staging, 2026-10-03). */
-  --osce-success-bg: #0b3a3c;
-  --osce-success-border: #17655a;
+  --osce-ink-900: #f5f5f7;
+  --osce-ink-800: #f5f5f7;
+  --osce-ink-700: #e3e3e8;
+  --osce-ink-600: #c7c7cc;
+  --osce-ink-500: #aeaeb2;
+  --osce-ink-400: #8e8e93;
+  --osce-canvas: #1d1d1f;
+  --osce-surface: #1d1d1f;
+  --osce-surface-inset: #161618;
+  --osce-nav-active: #2c2c2e;
+  --osce-border: #3a3a3d;
+  --osce-border-light: #2c2c2e;
+  --osce-accent: #f5f5f7;
+  --osce-accent-hover: #ffffff;
+  --osce-accent-muted: #2c2c2e;
+  --osce-accent-subtle: #3a3a3d;
+  --b2c-secondary: #2c2c2e;
+  --b2c-secondary-hover: #3a3a3d;
+  --b2c-surface: #1d1d1f;
+  --b2c-surface-muted: #161618;
+  --b2c-border: #3a3a3d;
+  --b2c-border-light: #2c2c2e;
+  --b2c-text-primary: #f5f5f7;
+  --b2c-text-secondary: #aeaeb2;
+  --b2c-text-muted: #8e8e93;
+  --b2c-nav-active: #2c2c2e;
+  /* Tints for alerts on the stage: the light-skin pale fills under pale room ink
+     were unreadable (staging, 2026-10-03). */
+  --osce-success-bg: #1a2e25;
+  --osce-success-border: #2b5a45;
   --osce-success-text: #6ee7b7;
   --osce-success-icon: #34d399;
-  --osce-warning-bg: #3b2f12;
-  --osce-warning-border: #6b5418;
+  --osce-warning-bg: #33290f;
+  --osce-warning-border: #5f4a14;
   --osce-warning-text: #fcd34d;
   --osce-warning-icon: #fbbf24;
-  color: #ffffff;
+  color: #f5f5f7;
 }

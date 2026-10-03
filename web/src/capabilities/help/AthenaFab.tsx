@@ -13,7 +13,7 @@ import { ATHENA_IMAGE_SRC, Button } from "@/foundation/ui";
 export function AthenaFab({ onClick }: { onClick: () => void }) {
   return (
     <div className="lg:h-full">
-      <div data-room-frame="" className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] right-4 z-50">
+      <div className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] right-4 z-50">
         <Button
           type="button"
           variant="primary"

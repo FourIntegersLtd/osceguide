@@ -310,8 +310,8 @@ export function StationScreen(props: StationScreenProps) {
   const onReading = activeStep === "patient" && effectiveAction === "attempt";
   const demoteStationNav = onReading || activeStep === "feedback";
 
-  // The live consultation takes the navy room skin (canvas `train-room`);
-  // reading, review and feedback stay on the page's own surface.
+  // The live consultation fills the content column; only its stage card takes
+  // the room skin (ConsultationScreen), the rest stays on the page's surface.
   const inRoom = effectiveAction === "attempt" && activeStep === "simulation";
   const timer =
     effectiveAction === "attempt" && attempt.attemptId ? (
@@ -338,11 +338,9 @@ export function StationScreen(props: StationScreenProps) {
 
   return (
     <div
-      data-skin={inRoom ? "room" : undefined}
       className={cn(
         "flex flex-col",
-        // The live room fills the content column, toolbar included; the
-        // sidebar stays beside it and takes the room skin (tokens.css).
+        // The live room fills the content column, toolbar included.
         inRoom && "absolute inset-0 z-30 overflow-y-auto bg-osce-canvas p-4",
       )}
     >

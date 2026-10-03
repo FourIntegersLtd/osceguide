@@ -73,7 +73,7 @@ export function PeerVideoPanel({ role }: { role: "doctor" | "patient" }) {
         </button>
       </div>
       {failure && <div className="absolute bottom-2 left-2 right-2 z-20"><Alert tone="warning">{failure}</Alert></div>}
-      <div className="min-h-0 flex-1 p-2 bg-osce-ink-900 overflow-y-auto">
+      <div className="min-h-0 flex-1 p-2 bg-osce-canvas overflow-y-auto">
         <div className="flex flex-col gap-2 min-h-full">
           {participants.map((participant) => {
             const cameraTrack = tracks.find(
@@ -85,7 +85,7 @@ export function PeerVideoPanel({ role }: { role: "doctor" | "patient" }) {
             return (
               <div
                 key={participant.identity}
-                className="relative bg-osce-ink-800 rounded-lg overflow-hidden flex-1 min-h-[250px] flex items-center justify-center"
+                className="relative bg-osce-surface-inset rounded-lg overflow-hidden flex-1 min-h-[250px] flex items-center justify-center"
               >
                 {cameraTrack && !cameraTrack.publication.isMuted ? (
                   <VideoTrack
@@ -109,7 +109,7 @@ export function PeerVideoPanel({ role }: { role: "doctor" | "patient" }) {
             );
           })}
           {participants.length < 2 && (
-            <div className="bg-osce-ink-800 rounded-lg flex items-center justify-center flex-1 min-h-[250px]">
+            <div className="bg-osce-surface-inset rounded-lg flex items-center justify-center flex-1 min-h-[250px]">
               <div className="text-center text-osce-ink-400" role="status">
                 <div className="animate-pulse">
                   <div className="w-12 h-12 bg-osce-ink-600 rounded-full mx-auto mb-3"></div>

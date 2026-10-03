@@ -63,9 +63,9 @@ export function DebriefSession({
 
   const busy = session.phase === "connecting" || session.phase === "queued" || session.phase === "ending";
   return (
-    <div data-skin={session.phase === "live" ? "room" : undefined}
+    <div
       className="grid h-full min-h-0 grid-cols-1 gap-3 overflow-y-auto rounded-osce-2xl bg-osce-canvas p-3 text-osce-body lg:grid-cols-[1.4fr_1fr]">
-      <section className="flex min-h-[min(360px,42dvh)] flex-col items-center justify-center rounded-osce-lg border border-osce-border bg-osce-surface px-5 py-6">
+      <section data-skin={session.phase === "live" ? "room" : undefined} className="flex min-h-[min(360px,42dvh)] flex-col items-center justify-center rounded-osce-lg border border-osce-border bg-osce-surface px-5 py-6">
         <div className="mx-auto flex w-full max-w-sm flex-col items-center">
           {session.error && <Alert tone="danger" className="mb-4">{errorMessage(session.error)}</Alert>}
           {mic.message && <Alert tone="warning" className="mb-4">{mic.message}</Alert>}

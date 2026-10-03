@@ -207,14 +207,8 @@ body:has([data-b2c-shell]) {
 
 /* The room's accent is pale, so its primary button takes dark ink. */
 [data-skin="room"] .bg-osce-accent,
-[data-skin="room"] .bg-accent,
-[data-b2c-shell]:has([data-skin="room"]) [data-room-frame] .bg-osce-accent {
-  color: #04073f !important;
-}
-
-/* Athena's bar keeps white ink, so in the room it sits on navy, not the pale accent. */
-[data-b2c-shell]:has([data-skin="room"]) [data-athena-bar] {
-  background: var(--osce-nav-active);
+[data-skin="room"] .bg-accent {
+  color: #1d1d1f !important;
 }
 
 /*

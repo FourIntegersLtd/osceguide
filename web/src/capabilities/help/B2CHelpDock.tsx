@@ -89,7 +89,7 @@ function HelpChoiceScreen({
 }) {
   return (
     <div className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-osce-surface text-osce-body lg:max-h-none">
-      <div data-athena-bar="" className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
@@ -231,7 +231,7 @@ function NavigateHelpPanel({
 
   return (
     <div {...uiGuidanceIgnoreProps} className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-osce-surface text-osce-body shadow-lg lg:max-h-none">
-      <div data-athena-bar="" className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
         <div className="flex items-center gap-2">
           <button type="button" onClick={onBack} className={helpHeaderIconBtn} aria-label="Back">
             <IoArrowBack className="h-5 w-5" />
@@ -401,7 +401,7 @@ export function B2CHelpDock({
   } else if (helpMode === "knowledge" || (helpMode === null && opensDirectlyOnKnowledge)) {
     panel = (
       <div {...uiGuidanceIgnoreProps} className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-osce-surface text-osce-body shadow-lg lg:max-h-none">
-        <div data-athena-bar="" className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -441,7 +441,7 @@ export function B2CHelpDock({
     );
   }
 
-  return <div data-room-frame="" className={`min-h-0 ${panelShell}`}>{panel}</div>;
+  return <div className={`min-h-0 ${panelShell}`}>{panel}</div>;
 }
 
 export type { HelpNavItem };

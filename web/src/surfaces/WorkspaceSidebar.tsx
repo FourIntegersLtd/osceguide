@@ -52,7 +52,6 @@ export function WorkspaceSidebar({
   return (
     <>
       <header
-        data-room-frame=""
         className={`fixed top-0 left-0 z-20 flex h-14 w-full items-center justify-between px-4 md:hidden ${b2cNavMobileBar}`}
       >
         <button
@@ -69,7 +68,6 @@ export function WorkspaceSidebar({
       </header>
 
       <div
-        data-room-frame=""
         className={cn(
           "fixed top-0 left-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r md:border-r-0",
           b2cNavShell,

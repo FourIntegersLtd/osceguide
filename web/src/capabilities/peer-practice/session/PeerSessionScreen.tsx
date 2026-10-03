@@ -83,7 +83,9 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
   };
 
   return (
-    <div data-skin="room" className="flex h-dvh flex-col overflow-hidden bg-osce-canvas">
+    // Fills the content column, toolbar included, as the station room does. Only
+    // the call takes the room skin; the script beside it stays light to read.
+    <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-osce-canvas">
       <SessionHeader
         sessionId={sessionId}
         role={role}
@@ -129,7 +131,7 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
         {phase === "preparation" && <PreparationPanel session={session} />}
         {(phase === "consultation" || phase === "debrief") && (
           <div className="flex h-full min-h-0 flex-col gap-3 p-3 lg:flex-row lg:overflow-hidden">
-            <div className="h-[38vh] min-h-[280px] w-full flex-shrink-0 overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface sm:h-[42vh] sm:min-h-[320px] lg:h-full lg:min-h-0 lg:w-3/5">
+            <div data-skin="room" className="h-[38vh] min-h-[280px] w-full flex-shrink-0 overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface sm:h-[42vh] sm:min-h-[320px] lg:h-full lg:min-h-0 lg:w-3/5">
               <VideoArea state={state} role={role} />
             </div>
             <div className="flex min-h-[55vh] w-full flex-1 flex-col overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface sm:min-h-[58vh] lg:h-full lg:min-h-0 lg:w-2/5">
