@@ -49,7 +49,7 @@ export function HelpVoiceContent({
 
           {state !== "disconnected" && screenUiGuidanceSession && (
             <div
-              className={`mb-3 shrink-0 rounded-xl border bg-white p-3.5 transition-shadow ${
+              className={`mb-3 shrink-0 rounded-xl border bg-osce-surface p-3.5 transition-shadow ${
                 navPromptHighlight
                   ? "border-osce-accent-light shadow-md ring-2 ring-osce-accent-subtle/70"
                   : "border-osce-border"
@@ -75,7 +75,7 @@ export function HelpVoiceContent({
                   className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-osce-accent focus-visible:ring-offset-2 ${
                     navigationMode === "guide"
                       ? "border-osce-accent bg-osce-accent-muted"
-                      : "border-osce-border bg-white hover:border-osce-border hover:bg-osce-canvas"
+                      : "border-osce-border bg-osce-surface hover:border-osce-border hover:bg-osce-canvas"
                   }`}
                 >
                   <span
@@ -96,7 +96,7 @@ export function HelpVoiceContent({
                         className={`h-4 w-4 shrink-0 rounded-full border-2 ${
                           navigationMode === "guide"
                             ? "border-osce-accent-hover bg-osce-accent-hover shadow-[inset_0_0_0_2px_white]"
-                            : "border-osce-border bg-white"
+                            : "border-osce-border bg-osce-surface"
                         }`}
                         aria-hidden
                       />
@@ -115,7 +115,7 @@ export function HelpVoiceContent({
                   className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left outline-none transition-all focus-visible:ring-2 focus-visible:ring-osce-accent focus-visible:ring-offset-2 ${
                     navigationMode === "automate"
                       ? "border-osce-accent bg-osce-accent-muted"
-                      : "border-osce-border bg-white hover:border-osce-border hover:bg-osce-canvas"
+                      : "border-osce-border bg-osce-surface hover:border-osce-border hover:bg-osce-canvas"
                   }`}
                 >
                   <span
@@ -136,7 +136,7 @@ export function HelpVoiceContent({
                         className={`h-4 w-4 shrink-0 rounded-full border-2 ${
                           navigationMode === "automate"
                             ? "border-osce-accent-hover bg-osce-accent-hover shadow-[inset_0_0_0_2px_white]"
-                            : "border-osce-border bg-white"
+                            : "border-osce-border bg-osce-surface"
                         }`}
                         aria-hidden
                       />

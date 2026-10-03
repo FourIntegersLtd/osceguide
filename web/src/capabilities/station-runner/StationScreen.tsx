@@ -341,8 +341,9 @@ export function StationScreen(props: StationScreenProps) {
       data-skin={inRoom ? "room" : undefined}
       className={cn(
         "flex flex-col",
-        // The live room covers the whole viewport, sidebar and toolbar included.
-        inRoom && "fixed inset-0 z-40 h-dvh overflow-y-auto bg-osce-canvas p-4",
+        // The live room fills the content column, toolbar included; the
+        // sidebar stays beside it and takes the room skin (tokens.css).
+        inRoom && "absolute inset-0 z-30 overflow-y-auto bg-osce-canvas p-4",
       )}
     >
       <StationHeader

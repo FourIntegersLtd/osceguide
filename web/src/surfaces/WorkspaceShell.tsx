@@ -129,7 +129,7 @@ export function WorkspaceShell({
           />
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-osce-surface md:border-l md:border-osce-border">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-osce-surface md:border-l md:border-osce-border">
           <WorkspaceToolbar
             items={items}
             rootLabel={isTrain ? "Practice" : staff ? "Platform console" : workspace.name}

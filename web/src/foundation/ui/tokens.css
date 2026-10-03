@@ -221,9 +221,12 @@
   --osce-commit-hover: #32005a;
 }
 
-/* The room: the navy skin of a live station (`train-room`). */
+/* The room: the navy skin of a live station (`train-room`). The frame around it
+   (sidebar, Athena's button and panel: `data-room-frame`) takes it too while a
+   room is open, so the screen reads as one dark frame. */
 :is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"]) [data-skin="room"],
-:root:has(:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"])) [data-skin="room"] {
+:root:has(:is([data-surface="train"], [data-surface="assess"], [data-surface="hire"], [data-surface="partner"])) [data-skin="room"],
+[data-b2c-shell]:has([data-skin="room"]) [data-room-frame] {
   --color-canvas: 0 11 61;
   --color-surface: 10 24 82;
   --color-surface-raised: 18 33 93;

@@ -69,14 +69,15 @@ export function ConsultationScreen({
   const collapsed = Boolean(coverage) && coverageHidden;
   return (
     <div className={cn(fill ? "flex min-h-0 flex-1 flex-col" : "mb-8")}>
+      {/* Hidden, live marking shrinks to a button above the cards, so the two
+          cards take the full width; reopened, it takes its column back. */}
+      {collapsed && <div className="mb-3 flex justify-end">{coverage}</div>}
       <div
         className={cn(
           "grid grid-cols-1 gap-4 lg:min-h-[420px]",
           fill ? "min-h-0 flex-1" : "lg:h-[60vh]",
-          coverage
-            ? collapsed
-              ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_auto]"
-              : "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.9fr)]"
+          coverage && !collapsed
+            ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.9fr)]"
             : "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
         )}
       >
@@ -100,17 +101,7 @@ export function ConsultationScreen({
           <div className="min-h-0 flex-1 overflow-y-auto">{aside}</div>
         </section>
 
-        {coverage && (
-          <section
-            className={cn(
-              sectionCard,
-              "lg:min-h-0",
-              collapsed && "h-fit self-start whitespace-nowrap lg:w-auto",
-            )}
-          >
-            {coverage}
-          </section>
-        )}
+        {coverage && !collapsed && <section className={cn(sectionCard, "lg:min-h-0")}>{coverage}</section>}
       </div>
 
       {showTerms && (

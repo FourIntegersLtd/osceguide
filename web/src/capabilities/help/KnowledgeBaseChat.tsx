@@ -9,7 +9,7 @@ import mdStyles from "@/foundation/ui/markdown.module.css";
 import { helpType } from "@/foundation/ui/helpType";
 import { errorMessage } from "@/foundation/hooks";
 import { askKnowledge } from "./api";
-const helpPanelFooter = "shrink-0 border-t border-osce-border-light bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4";
+const helpPanelFooter = "shrink-0 border-t border-osce-border-light bg-osce-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4";
 
 export function KnowledgeBaseChat({
   examCode,
@@ -126,7 +126,7 @@ export function KnowledgeBaseChat({
                   className={`max-w-[90%] rounded-xl px-3.5 py-2.5 ${
                     m.role === "user"
                       ? `bg-osce-accent-muted ${helpType.prose} text-osce-accent-hover`
-                      : "border border-osce-border-light bg-white text-osce-ink-800 shadow-sm"
+                      : "border border-osce-border-light bg-osce-surface text-osce-ink-800 shadow-sm"
                   }`}
                 >
                   {m.role === "assistant" ? (
@@ -142,7 +142,7 @@ export function KnowledgeBaseChat({
             ))}
             {loading ? (
               <div className="flex justify-start shrink-0">
-                <div className="rounded-xl border border-osce-border-light bg-white px-3.5 py-2.5 text-osce-meta leading-relaxed text-osce-ink-500 shadow-sm">
+                <div className="rounded-xl border border-osce-border-light bg-osce-surface px-3.5 py-2.5 text-osce-meta leading-relaxed text-osce-ink-500 shadow-sm">
                   Searching knowledge base…
                 </div>
               </div>

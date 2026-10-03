@@ -44,7 +44,7 @@ const helpHeaderIconBtn =
   "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-9 sm:w-9";
 
 const helpPanelFooter =
-  "shrink-0 border-t border-osce-border-light bg-white p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4";
+  "shrink-0 border-t border-osce-border-light bg-osce-surface p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 lg:pb-4";
 
 /** Study material and the review of a marked attempt: the screens where "discuss this with Athena" makes sense. */
 const CLINICAL_ROUTE = /\/(library|summary|slides|podcast|articles|debriefs|attempts|transcripts)(\/|$)/;
@@ -88,8 +88,8 @@ function HelpChoiceScreen({
   onToggleWide: () => void;
 }) {
   return (
-    <div className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-white text-osce-body lg:max-h-none">
-      <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
+    <div className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-osce-surface text-osce-body lg:max-h-none">
+      <div data-athena-bar="" className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
         <div className="flex items-center gap-2">
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
@@ -230,8 +230,8 @@ function NavigateHelpPanel({
   const inCall = Boolean(grant);
 
   return (
-    <div {...uiGuidanceIgnoreProps} className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-white text-osce-body shadow-lg lg:max-h-none">
-      <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
+    <div {...uiGuidanceIgnoreProps} className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-osce-surface text-osce-body shadow-lg lg:max-h-none">
+      <div data-athena-bar="" className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
         <div className="flex items-center gap-2">
           <button type="button" onClick={onBack} className={helpHeaderIconBtn} aria-label="Back">
             <IoArrowBack className="h-5 w-5" />
@@ -400,8 +400,8 @@ export function B2CHelpDock({
     );
   } else if (helpMode === "knowledge" || (helpMode === null && opensDirectlyOnKnowledge)) {
     panel = (
-      <div {...uiGuidanceIgnoreProps} className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-white text-osce-body shadow-lg lg:max-h-none">
-        <div className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
+      <div {...uiGuidanceIgnoreProps} className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-osce-surface text-osce-body shadow-lg lg:max-h-none">
+        <div data-athena-bar="" className="flex shrink-0 items-center justify-between bg-gradient-to-r from-osce-accent to-osce-accent-hover px-4 py-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -441,7 +441,7 @@ export function B2CHelpDock({
     );
   }
 
-  return <div className={`min-h-0 ${panelShell}`}>{panel}</div>;
+  return <div data-room-frame="" className={`min-h-0 ${panelShell}`}>{panel}</div>;
 }
 
 export type { HelpNavItem };

@@ -12,8 +12,8 @@ const EMPTY: CoverageUpdate = { supported: false, items: [], last_seq: -1 };
 
 /**
  * The "What you've covered" column of the consultation card. Open by default,
- * with a close button in its header; closed, the column keeps only the line
- * that reopens it, because nobody discovers a panel that starts switched off.
+ * with a close button in its header; closed, it is only the button that
+ * reopens it (ConsultationScreen sets it above the cards), because nobody discovers a panel that starts switched off.
  */
 export function LiveCoveragePanel({ attemptId, isLive, patientJoined = true }: {
   attemptId: string | null;
@@ -37,12 +37,10 @@ export function LiveCoveragePanel({ attemptId, isLive, patientJoined = true }: {
     ),
   );
 
-  if (hidden) return <div className="px-4 py-3">
-    <button type="button" onClick={() => setLiveCoverageHidden(false)}
-      className="flex items-center gap-1.5 rounded-osce-sm text-osce-meta text-b2c-text-muted hover:text-osce-ink-900 focus:ring-2 focus:ring-osce-accent">
-      <HiOutlineEye className="h-4 w-4" aria-hidden />Show live marking
-    </button>
-  </div>;
+  if (hidden) return <button type="button" onClick={() => setLiveCoverageHidden(false)}
+    className="flex items-center gap-1.5 whitespace-nowrap rounded-osce-md border border-osce-border bg-osce-surface px-3 py-1.5 text-osce-meta text-b2c-text-muted transition-colors hover:text-osce-ink-900 focus:outline-none focus:ring-2 focus:ring-osce-accent">
+    <HiOutlineEye className="h-4 w-4" aria-hidden />Show live marking
+  </button>;
 
   return <div className="flex min-h-[240px] flex-1 flex-col overflow-hidden lg:min-h-0">
     <B2CPanelCardHeader className="justify-between">
