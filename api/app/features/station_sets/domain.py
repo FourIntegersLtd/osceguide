@@ -45,9 +45,13 @@ def ensure_attemptable(entry: EntryState, *, limit: int, locked: bool) -> None:
 
 
 def ensure_debriefable(entry: EntryState, *, limit: int) -> None:
-    """Refuse a debrief if the station has never been attempted or its debrief limit is used up."""
-    if entry.attempts < 1:
-        raise NothingToDebrief("Run the station before asking for a debrief about it.")
+    """Refuse a debrief if its limit is used up.
+
+    Whether there is a finished consultation to discuss is not read from `entry.attempts`: that
+    counter only moves when a worker bootstraps, so a consultation that was sat and marked but never
+    counted (older attempts, a missed bootstrap) wrongly read as "never run". The service looks up
+    the real attempt instead.
+    """
     if limit and entry.debrief_attempts >= limit:
         raise AttemptLimitReached(f"This station has been debriefed {limit} times.")
 

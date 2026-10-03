@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { HiChatAlt2, HiInformationCircle, HiMicrophone, HiUser } from "react-icons/hi";
+import { HiChatAlt2, HiMicrophone, HiUser } from "react-icons/hi";
 import { HiOutlineArrowLeft, HiOutlinePlay } from "react-icons/hi2";
 import {
   Button,
@@ -13,7 +13,6 @@ import {
   ModalTitle,
 } from "@/foundation/ui";
 import { DebriefSession } from "@/capabilities/debrief/DebriefSession";
-import { DebriefSuggestedPrompts } from "@/capabilities/debrief/DebriefInformation";
 import { PatientPracticePanel } from "@/capabilities/debrief/PatientPracticePanel";
 import type { AttemptBrief, AttemptReview } from "@/capabilities/attempt-runner";
 import { useCurrentExam, offersPatientPractice } from "@/foundation/session";
@@ -47,12 +46,10 @@ export function DebriefChooseModal({
   const { settings } = useCurrentExam();
   const sessionModes = settings.session_modes ?? ["debrief", "practice_as_patient"];
   const [active, setActive] = useState<Service>(null);
-  const [showTips, setShowTips] = useState(false);
   const showPatientPractice = offersPatientPractice(settings);
 
   const handleClose = () => {
     setActive(null);
-    setShowTips(false);
     onClose();
   };
 
@@ -68,31 +65,12 @@ export function DebriefChooseModal({
               size="sm"
               onClick={() => {
                 setActive(null);
-                setShowTips(false);
               }}
               className="gap-1.5"
             >
               <HiOutlineArrowLeft className="h-3 w-3" aria-hidden />
               <span>Back</span>
             </Button>
-            {active === "debrief" ? (
-              <Button
-                type="button"
-                variant={showTips ? "primary" : "secondary"}
-                size="sm"
-                onClick={() => setShowTips((value) => !value)}
-                className="gap-1.5"
-              >
-                <HiInformationCircle className="h-4 w-4" aria-hidden />
-                <span>Tips</span>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-
-        {showTips && active === "debrief" ? (
-          <div className="overflow-hidden rounded-lg border border-b2c-border bg-b2c-surface-muted/50 p-3">
-            <DebriefSuggestedPrompts />
           </div>
         ) : null}
 

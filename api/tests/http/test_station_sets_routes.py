@@ -309,6 +309,33 @@ async def test_a_debrief_can_be_started_from_an_entry(
     assert debrief.json()["kind"] == "debrief"
 
 
+async def test_a_finished_consultation_the_counter_missed_can_still_be_debriefed(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Sat and finished, but `entry.attempts` is still 0: the debrief must not say "run the station"."""
+    token = await a_learner(client, db_session, make_actor, "uncounted@example.com")
+    version = await a_station_version(db_session)
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={"name": "W", "exam_code": "sca", "station_version_ids": [str(version)]},
+            headers=bearer(token),
+        )
+    ).json()
+    set_id, entry_id = created["id"], created["entries"][0]["id"]
+    attempt = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/attempts", headers=bearer(token)
+    )
+    # No `start`: the worker never bootstrapped, so the counter never moved.
+    await finish_consultation(db_session, uuid.UUID(attempt.json()["attempt_id"]))
+
+    debrief = await client.post(
+        f"/api/v1/me/station-sets/{set_id}/entries/{entry_id}/debriefs", headers=bearer(token)
+    )
+    assert debrief.status_code == 201, debrief.text
+    assert debrief.json()["kind"] == "debrief"
+
+
 async def test_feedback_is_not_ready_until_the_newest_attempt_is_marked(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]

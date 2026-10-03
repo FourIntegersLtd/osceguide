@@ -130,6 +130,7 @@ function AthenaDoctorVoicePanel({
         examCode,
         stationId,
         stationTitle,
+        stationVersionId: brief?.station_version_id ?? null,
         patientName: patient.name,
         patientGender,
         patientBiodata,

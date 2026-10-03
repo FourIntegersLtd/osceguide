@@ -38,14 +38,9 @@ def test_a_limit_of_zero_means_unlimited() -> None:
     domain.ensure_attemptable(entry(attempts=99), limit=0, locked=False)
 
 
-def test_a_debrief_needs_a_completed_attempt() -> None:
-    """There is nothing to debrief about otherwise."""
-    with pytest.raises(domain.NothingToDebrief):
-        domain.ensure_debriefable(entry(attempts=0), limit=3)
-
-
-def test_a_debrief_is_allowed_after_an_attempt() -> None:
-    domain.ensure_debriefable(entry(attempts=1), limit=3)
+def test_a_debrief_does_not_depend_on_the_attempt_counter() -> None:
+    """The service finds the real finished attempt; an uncounted one must not read as never run."""
+    domain.ensure_debriefable(entry(attempts=0), limit=3)
 
 
 def test_debriefs_have_their_own_limit() -> None:

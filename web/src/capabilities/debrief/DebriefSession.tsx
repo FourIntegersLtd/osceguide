@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { HiMicrophone } from "react-icons/hi";
-import { Alert, ATHENA_IMAGE_SRC, Button, Modal, ModalContent, ModalHelper, ModalTitle, productTokens } from "@/foundation/ui";
+import { Alert, ATHENA_IMAGE_SRC, Button, Modal, ModalContent, ModalHelper, ModalTitle } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { VoiceRoom, useMicPreflight } from "@/foundation/livekit";
 import { hasCode } from "@/foundation/platform-client";
@@ -11,6 +11,7 @@ import { startDebrief, startAttemptDebrief } from "@/capabilities/debrief/api";
 
 import LivekitIdleState from "@/foundation/livekit/LivekitIdleState";
 import { DebriefVoiceStage } from "./DebriefVoiceStage";
+import { DebriefSuggestedPrompts } from "./DebriefInformation";
 
 /**
  * Talking a station through with the tutor, afterwards.
@@ -103,30 +104,10 @@ export function DebriefSession({
           )}
         </div>
       </section>
-      <TalkingPoints />
+      <section className="min-h-0 overflow-y-auto rounded-osce-lg border border-osce-border bg-osce-surface p-3">
+        <DebriefSuggestedPrompts />
+      </section>
     </div>
-  );
-}
-
-const TALKING_POINTS = [
-  { eyebrow: "Live analysis", text: "Athena has your transcript and marks open." },
-  { eyebrow: "Targeted tips", text: "Ask why a point lost the mark, and what would have earned it." },
-  { eyebrow: "Active practice", text: "Rehearse your plan out loud and Athena will respond." },
-];
-
-function TalkingPoints() {
-  return (
-    <section className="rounded-osce-lg border border-osce-border bg-osce-surface">
-      <h2 className="px-5 pb-1 pt-[18px] text-osce-subheading font-semibold text-osce-ink-900">Talking points</h2>
-      <ul className="divide-y divide-osce-border-light px-5 pb-3">
-        {TALKING_POINTS.map((point) => (
-          <li key={point.eyebrow} className="py-3">
-            <p className={productTokens.b2cMonoEyebrow}>{point.eyebrow}</p>
-            <p className="mt-1 text-osce-meta leading-relaxed text-b2c-text-muted">{point.text}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 

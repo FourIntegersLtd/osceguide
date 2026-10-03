@@ -36,6 +36,7 @@ export interface AthenaDoctorStationContext {
   patientInformation?: string[];
   ice?: string[];
   managementPoints?: string[];
+  stationVersionId?: string | null;
 }
 
 /**
@@ -73,6 +74,9 @@ export function startAthenaDoctorSession(
     method: "POST",
     body: {
       session_type: "athena-doctor",
+      // The backend rebuilds the doctor's prompt from this station version; without it the doctor
+      // runs on a one-line generic prompt and answers like a help assistant.
+      station_version_id: station.stationVersionId ?? null,
       extras: {
         client,
         station: {
