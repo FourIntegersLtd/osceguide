@@ -120,7 +120,7 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
       <PhaseModals phase={phase} remaining={state.remaining} preparationStarted={session.preparation_started_at} />
 
       <div
-        className={`min-h-0 flex-1 ${phase === "consultation" || phase === "debrief" ? "overflow-y-auto" : "overflow-hidden"} lg:overflow-hidden`}
+        className="min-h-0 flex-1 overflow-hidden"
       >
         {phase === "waiting_partner" && (
           <WaitingForPartner
@@ -130,11 +130,11 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
         )}
         {phase === "preparation" && <PreparationPanel session={session} />}
         {(phase === "consultation" || phase === "debrief") && (
-          <div className="flex h-full min-h-0 flex-col gap-3 p-3 lg:flex-row lg:overflow-hidden">
-            <div data-skin="room" className="h-[38vh] min-h-[280px] w-full flex-shrink-0 overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface sm:h-[42vh] sm:min-h-[320px] lg:h-full lg:min-h-0 lg:w-3/5">
-              <VideoArea state={state} role={role} />
+          <div className="flex h-full min-h-0 flex-col gap-2 p-2 sm:gap-3 sm:p-3 lg:flex-row">
+            <div data-skin="room" className="h-1/2 min-h-0 w-full flex-shrink-0 overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface lg:h-full lg:w-2/3">
+              <VideoArea state={state} role={role} onEnd={() => setConfirmingEnd(true)} />
             </div>
-            <div className="flex min-h-[55vh] w-full flex-1 flex-col overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface sm:min-h-[58vh] lg:h-full lg:min-h-0 lg:w-2/5">
+            <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface lg:h-full lg:w-1/3">
               <div className="flex h-full min-h-0 flex-1 flex-col">
                 <ConsultationPanel session={session} debrief={phase === "debrief"} />
               </div>
@@ -163,7 +163,7 @@ function headerSeconds(session: PracticeSession, phase: RunnerPhase, remaining: 
  * The call. It connects on its own when the consultation starts and again if
  * the connection drops, as the retiring room did.
  */
-function VideoArea({ state, role }: { state: PeerSessionState; role: "doctor" | "patient" }) {
+function VideoArea({ state, role, onEnd }: { state: PeerSessionState; role: "doctor" | "patient"; onEnd: () => void }) {
   const { grant, busy, dropped, connect, mic } = state;
   useEffect(() => {
     if (dropped && !busy && !grant) void connect();
@@ -198,7 +198,7 @@ function VideoArea({ state, role }: { state: PeerSessionState; role: "doctor" | 
   return (
     <div className="h-full">
       <VoiceRoom className="h-full" grant={grant} video onDisconnected={state.noteDisconnected}>
-        <PeerVideoPanel role={role} />
+        <PeerVideoPanel role={role} onEnd={onEnd} />
       </VoiceRoom>
     </div>
   );
