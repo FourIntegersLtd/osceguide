@@ -6,7 +6,7 @@ import logging
 import re
 
 from app.core.settings import Settings
-from app.features.generation.exam_prompts import PODCAST_PROMPT
+from app.features.generation import service as generation
 
 PODCAST_SCRIPT_MODEL = "o3"
 PODCAST_SCRIPT_FALLBACK_MODEL = "claude-sonnet-4-5"
@@ -27,7 +27,7 @@ def generate_script(settings: Settings, source_text: str) -> str:
 
     Tries `o3` first, falling back to `claude-sonnet-4-5` when the primary fails.
     """
-    prompt = PODCAST_PROMPT.format(text=source_text)
+    prompt = generation.podcast_script_prompt(source_text)
     if settings.openai_api_key.strip():
         from openai import OpenAI  # optional dependency
 
@@ -63,7 +63,9 @@ def generate_script(settings: Settings, source_text: str) -> str:
 
 def split_script(script: str) -> list[tuple[str, str]]:
     """Breaks a `Ben: ...` / `Michelle: ...` script into (speaker, line) pairs, one per turn."""
-    text = re.sub(r"(?im)^\s*\**(ben|michelle)\**\s*:\**", lambda m: f"\n{m.group(1).capitalize()}:", script)
+    text = re.sub(
+        r"(?im)^\s*\**(ben|michelle)\**\s*:\**", lambda match: f"\n{match.group(1).capitalize()}:", script
+    )
     parts = re.split(r"\n+(Ben|Michelle):[ \t]*", "\n" + text)
     turns: list[tuple[str, str]] = []
     for index in range(1, len(parts) - 1, 2):

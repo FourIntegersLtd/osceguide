@@ -187,6 +187,11 @@ async def _json_completion(*, settings: Settings, system: str, user: str) -> dic
     return parsed
 
 
+def podcast_script_prompt(source_text: str) -> str:
+    """The Ben and Michelle dialogue prompt, for producing a podcast's audio from a summary."""
+    return exam_prompts.podcast_system_prompt(source_text)
+
+
 def station_system_prompt(exam_settings: ExamSettings, station_subtype: str | None = None) -> str:
     """Exam-level station generation prompt, for other slices to compose with."""
     return exam_prompts.station_system_prompt(exam_settings, station_subtype)
