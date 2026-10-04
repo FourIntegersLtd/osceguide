@@ -226,7 +226,7 @@ async def test_a_fact_check_stores_its_verdicts_and_puts_the_status_back(
 
     from app.core.ports import GuidelinePassage
     from app.features.identity import repository as identity_repository
-    from app.features.media_production.service import run_fact_check_job
+    from app.features.media_production.service import run_fact_check_job, save_fact_progress
     from tests.support.fakes import FakeGuidelineIndex, FakeGuidelineWeb
 
     email = "av-facts@osceguide.com"
@@ -246,11 +246,22 @@ async def test_a_fact_check_stores_its_verdicts_and_puts_the_status_back(
         return json.dumps({"verdict": "supported", "evidence": 1, "quote": "12-lead ECG", "why": "Same."})
 
     web = FakeGuidelineWeb(None)
+    seen_while_running: list[tuple[str, dict[str, int], int]] = []
+
+    async def progress(facts: dict[str, object]) -> None:
+        await save_fact_progress(db_session, uuid.UUID(item["id"]), requested_by=user_id, facts=facts)
+        read = (await client.get(f"/api/v1/media/by-id/{item['id']}", headers=bearer(admin))).json()[
+            "content"
+        ]
+        running = read["review"]["facts"]
+        seen_while_running.append((read["status"], running["progress"], len(running["claims"])))
+
     await run_fact_check_job(
         db_session,
         uuid.UUID(item["id"]),
         requested_by=user_id,
         previous_status=None,
+        progress=progress,
         guidelines=FakeGuidelineIndex(
             [GuidelinePassage(source="NICE CG95", text="Take a 12-lead ECG.", score=0.9)]
         ),
@@ -266,3 +277,7 @@ async def test_a_fact_check_stores_its_verdicts_and_puts_the_status_back(
     assert checked["review"]["script"] == {"lines": LINES}
     assert checked["script"] == SCRIPT
     assert web.questions == ["q"]
+    assert seen_while_running == [
+        ("checking_facts", {"done": 0, "total": 1}, 0),
+        ("checking_facts", {"done": 1, "total": 1}, 1),
+    ]

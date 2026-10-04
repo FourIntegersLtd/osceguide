@@ -9,6 +9,7 @@ rather than in the request, so a slow model is a slow job and not a slow upload.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -87,8 +88,17 @@ def register() -> None:
     async def check_station_facts(version_id: str, requested_by: str) -> None:
         """Check one platform station version's clinical claims and keep the result on it."""
         from app.core.db import job_session
-        from app.features.stations.service_facts import run_check
+        from app.features.stations.service_facts import run_check, save_progress
+
+        async def progress(facts: dict[str, Any]) -> None:
+            """Saves the claims so far in a transaction of their own, so the screen sees them now."""
+            async with job_session() as saving:
+                await save_progress(
+                    saving, uuid.UUID(version_id), requested_by=uuid.UUID(requested_by), facts=facts
+                )
 
         async with job_session() as session:
-            await run_check(session, uuid.UUID(version_id), requested_by=uuid.UUID(requested_by))
+            await run_check(
+                session, uuid.UUID(version_id), requested_by=uuid.UUID(requested_by), progress=progress
+            )
             log.info("station facts checked", version_id=version_id)

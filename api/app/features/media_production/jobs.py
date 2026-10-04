@@ -6,6 +6,7 @@ slide deck's narration, or voicing a podcast script.
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 from app.core.jobs import get_jobs_app
 from app.core.logging import get_logger
@@ -55,7 +56,14 @@ def register() -> None:
     async def check_media_facts(media_id: str, requested_by: str, previous_status: str | None = None) -> None:
         """Checks an item's clinical claims against the guidelines, and the web where they are silent."""
         from app.core.db import job_session
-        from app.features.media_production.service import run_fact_check_job
+        from app.features.media_production.service import run_fact_check_job, save_fact_progress
+
+        async def progress(facts: dict[str, Any]) -> None:
+            """Saves the claims so far in a transaction of their own, so the screen sees them now."""
+            async with job_session() as saving:
+                await save_fact_progress(
+                    saving, uuid.UUID(media_id), requested_by=uuid.UUID(requested_by), facts=facts
+                )
 
         async with job_session() as session:
             await run_fact_check_job(
@@ -63,6 +71,7 @@ def register() -> None:
                 uuid.UUID(media_id),
                 requested_by=uuid.UUID(requested_by),
                 previous_status=previous_status,
+                progress=progress,
             )
             log.info("media facts checked", media_id=media_id)
 

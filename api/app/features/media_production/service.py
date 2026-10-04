@@ -217,6 +217,7 @@ async def run_fact_check_job(
     guidelines: GuidelineIndex | None = None,
     web: GuidelineWeb | None = None,
     complete: script_check.Complete | None = None,
+    progress: service_facts.Progress | None = None,
 ) -> None:
     """Checks an item's clinical claims and stores the result in its review, changing nothing else.
 
@@ -231,6 +232,7 @@ async def run_fact_check_job(
             guidelines=guidelines,
             web=web,
             complete=complete,
+            on_progress=progress,
         )
         review = dict(content.get("review") or {})
         review.pop("error", None)
@@ -242,6 +244,18 @@ async def run_fact_check_job(
         content.pop("status", None)
     else:
         content["status"] = previous_status
+    await replace_content(session, media_id, content)
+    publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})
+
+
+async def save_fact_progress(
+    session: AsyncSession, media_id: uuid.UUID, *, requested_by: uuid.UUID, facts: dict[str, Any]
+) -> None:
+    """Keeps a running check's claims so far on the item and tells whoever asked, so their screen
+    fills in as each claim is judged rather than all at once at the end."""
+    item = await production_item(session, media_id)
+    content = dict(item.content)
+    content["review"] = {**(content.get("review") or {}), "facts": facts}
     await replace_content(session, media_id, content)
     publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})
 

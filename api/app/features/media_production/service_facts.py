@@ -18,9 +18,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import re
+import time
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
+from app.core.logging import get_logger
 from app.core.ports import GuidelineIndex, GuidelinePassage, GuidelineWeb, WebAnswer
 from app.core.settings import get_settings
 
@@ -32,8 +35,12 @@ from app.features.media_production.slide_narration import json_object
 from app.features.media_production.summary_text import format_summary_for_podcast
 from app.features.tutor_memory import service_search as tutor_search
 
+log = get_logger(__name__)
+
 # Where a stretch of material sits (merged into each claim found in it), and its text.
 Section = tuple[dict[str, Any], str]
+# Handed the claims judged so far, each time one more settles, so a screen can fill in as it runs.
+Progress = Callable[[dict[str, Any]], Awaitable[None]]
 
 FACT_SYSTEM = (
     "You are a careful UK clinical editor checking teaching material against guidelines. "
@@ -42,7 +49,9 @@ FACT_SYSTEM = (
 )
 MAX_CLAIMS = 60
 PASSAGES_PER_CLAIM = 5
-CLAIMS_AT_ONCE = 4
+# Each claim waits about 30 s on the clinical web, so this is what bounds a check's length. Clinical
+# Buddy's web search answered 24 at once with none refused (measured 2026-10-04).
+CLAIMS_AT_ONCE = 24
 VERDICTS = ("supported", "contradicted", "not_found")
 _QUOTE_CHARACTERS = 400
 _SECTION_CHARACTERS = 6000
@@ -195,12 +204,26 @@ def _finding(kind: str, judged: dict[str, Any] | None, **source: Any) -> dict[st
     }
 
 
+def _timed(kind: str, started: float, searched: float, *, found: bool) -> None:
+    """Logs how long one source took to search and then to be judged, so the slow step is visible."""
+    log.info(
+        "fact check source timed",
+        kind=kind,
+        found=found,
+        search_seconds=round(searched - started, 1),
+        judge_seconds=round(time.monotonic() - searched, 1),
+    )
+
+
 async def _ask_library(
     claim: dict[str, Any], text: str, guidelines: GuidelineIndex, complete: Complete
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """The guideline library's verdict on a claim, and the passage it rests on."""
+    started = time.monotonic()
     passages = await guidelines.search(query=claim["question"], limit=PASSAGES_PER_CLAIM, rerank=True)
+    searched = time.monotonic()
     if not passages:
+        _timed("guideline", started, searched, found=False)
         return None, _finding("guideline", None)
     judged = await _judge(
         complete,
@@ -210,6 +233,7 @@ async def _ask_library(
         _passage_lines(passages),
         len(passages),
     )
+    _timed("guideline", started, searched, found=True)
     if judged["evidence"] is None or judged["verdict"] == "not_found":
         return judged, _finding("guideline", judged)
     passage = passages[judged["evidence"] - 1]
@@ -229,8 +253,11 @@ async def _ask_web(
     claim: dict[str, Any], text: str, web: GuidelineWeb, complete: Complete
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """The clinical web's verdict on a claim, and the page it rests on."""
+    started = time.monotonic()
     found = await web.answer(question=claim["question"])
+    searched = time.monotonic()
     if found is None:
+        _timed("web", started, searched, found=False)
         return None, _finding("web", None)
     judged = await _judge(
         complete,
@@ -240,6 +267,7 @@ async def _ask_web(
         _reference_lines(found),
         len(found.references),
     )
+    _timed("web", started, searched, found=True)
     if judged["verdict"] == "not_found":
         return judged, _finding("web", judged)
     cited = found.references[judged["evidence"] - 1] if judged["evidence"] is not None else {}
@@ -319,30 +347,63 @@ async def check_facts(
     guidelines: GuidelineIndex | None,
     web: GuidelineWeb | None,
     complete: Complete,
+    on_progress: Progress | None = None,
 ) -> dict[str, Any]:
     """The `facts` review of some material: each clinical claim, its verdict, evidence and suggestion,
     with where its section sits.
 
-    With neither the library nor the web to ask, every claim comes back "not_checked".
+    With neither the library nor the web to ask, every claim comes back "not_checked". While it runs,
+    `on_progress` is handed the same review so far, with a `progress` count, once the claims are found
+    and again as each one settles.
     """
+    started = time.monotonic()
     texts = [text for _, text in sections]
     numbered = "\n\n".join(f"Section {number}:\n{text}" for number, text in enumerate(texts, 1))
     prompt = _CLAIMS_PROMPT.format(title=title, sections=numbered, limit=MAX_CLAIMS)
     claims = _claims(await asyncio.to_thread(complete, prompt), texts) if numbered.strip() else []
+    extracted = time.monotonic()
     gate = asyncio.Semaphore(CLAIMS_AT_ONCE)
+    settled: dict[int, dict[str, Any]] = {}
+    reporting = asyncio.Lock()
+
+    async def report() -> None:
+        """Hands on the claims settled so far, one report at a time; a failed report never stops the check."""
+        if on_progress is None:
+            return
+        async with reporting:
+            so_far = _review(numbered, [settled[number] for number in sorted(settled)])
+            try:
+                await on_progress({**so_far, "progress": {"done": len(settled), "total": len(claims)}})
+            except Exception as error:  # noqa: BLE001 - the final review is still stored at the end
+                log.warning("fact check progress not saved", error=str(error) or type(error).__name__)
 
     async def one(number: int, claim: dict[str, Any]) -> dict[str, Any]:
         """Checks one claim, a few at a time across the whole item."""
         async with gate:
             where, text = sections[claim["section"] - 1]
             result = await _check_claim(claim, text, guidelines=guidelines, web=web, complete=complete)
-        return {"id": f"claim-{number}", **where, **result}
+        settled[number] = {"id": f"claim-{number}", **where, **result}
+        await report()
+        return settled[number]
 
+    await report()
     results = await asyncio.gather(*(one(number, claim) for number, claim in enumerate(claims, 1)))
+    log.info(
+        "fact check timed",
+        claims=len(claims),
+        at_once=CLAIMS_AT_ONCE,
+        extract_seconds=round(extracted - started, 1),
+        check_seconds=round(time.monotonic() - extracted, 1),
+    )
+    return _review(numbered, list(results))
+
+
+def _review(numbered: str, claims: list[dict[str, Any]]) -> dict[str, Any]:
+    """The stored shape of a check: when, of what text, and its claims."""
     return {
         "checked_at": datetime.now(UTC).isoformat(),
         "source_hash": hashlib.sha256(numbered.encode()).hexdigest()[:16],
-        "claims": list(results),
+        "claims": claims,
     }
 
 
@@ -353,6 +414,7 @@ async def check_as_deployed(
     guidelines: GuidelineIndex | None = None,
     web: GuidelineWeb | None = None,
     complete: Complete | None = None,
+    on_progress: Progress | None = None,
 ) -> dict[str, Any]:
     """`check_facts` against this deployment's guideline library, web search and checking model,
     for whichever of them a test has not handed in. Claude checks before o3, the reverse of the
@@ -365,4 +427,5 @@ async def check_as_deployed(
         web=web or tutor_search.guideline_web(),
         complete=complete
         or (lambda prompt: model_reply(settings, prompt, system=FACT_SYSTEM, claude_first=True)),
+        on_progress=on_progress,
     )

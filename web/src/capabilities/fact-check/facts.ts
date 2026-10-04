@@ -22,11 +22,7 @@ export type Evidence = {
 };
 
 export type FactVerdict =
-  | "supported"
-  | "contradicted"
-  | "not_found"
-  | "conflict"
-  | "not_checked";
+  "supported" | "contradicted" | "not_found" | "conflict" | "not_checked";
 
 export type FactClaim = {
   id: string;
@@ -51,7 +47,14 @@ export type FactClaim = {
 /** Words in the material (`from`) and what replaced them (`to`). */
 export type Swap = { from: string; to: string };
 
-export type Facts = { checked_at: string; claims: FactClaim[] };
+/** How far a check that is still running has got; absent once it has finished. */
+export type FactProgress = { done: number; total: number };
+
+export type Facts = {
+  checked_at: string;
+  claims: FactClaim[];
+  progress?: FactProgress;
+};
 
 export function record(value: unknown): Content | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -75,7 +78,17 @@ export function factsOf(value: unknown): Facts | null {
     ...facts,
     checked_at: typeof facts.checked_at === "string" ? facts.checked_at : "",
     claims: records(facts.claims) as unknown as FactClaim[],
+    progress: progressOf(facts.progress),
   };
+}
+
+function progressOf(value: unknown): FactProgress | undefined {
+  const fields = record(value);
+  return fields &&
+    typeof fields.done === "number" &&
+    typeof fields.total === "number"
+    ? { done: fields.done, total: fields.total }
+    : undefined;
 }
 
 /** Where a claim sits, for the reader: "Slide 3", "Examiner notes", or nothing. */
@@ -93,30 +106,49 @@ export function needsRuling(claim: FactClaim): boolean {
 }
 
 /** Every string under `value` with `old` swapped for `next`; what is spoken, and the review itself, are left alone. */
-function replaced(value: unknown, old: string, next: string, key = ""): unknown {
-  if (key === "review" || key === "narration" || key === "presentation") return value;
+function replaced(
+  value: unknown,
+  old: string,
+  next: string,
+  key = "",
+): unknown {
+  if (key === "review" || key === "narration" || key === "presentation")
+    return value;
   if (typeof value === "string") return value.split(old).join(next);
-  if (Array.isArray(value)) return value.map((entry) => replaced(entry, old, next));
+  if (Array.isArray(value))
+    return value.map((entry) => replaced(entry, old, next));
   const fields = record(value);
   if (!fields) return value;
   return Object.fromEntries(
-    Object.entries(fields).map(([name, entry]) => [name, replaced(entry, old, next, name)]),
+    Object.entries(fields).map(([name, entry]) => [
+      name,
+      replaced(entry, old, next, name),
+    ]),
   );
 }
 
 /** `content` with `swap.from` replaced by `swap.to` where the claim sits. */
-export function corrected(content: Content, claim: FactClaim, swap: Swap): Content {
+export function corrected(
+  content: Content,
+  claim: FactClaim,
+  swap: Swap,
+): Content {
   const slides = Array.isArray(content.slides) ? content.slides : null;
   if (claim.slide !== null && slides) {
     return {
       ...content,
       slides: slides.map((slide, index) =>
-        index === (claim.slide ?? 0) - 1 ? replaced(slide, swap.from, swap.to) : slide,
+        index === (claim.slide ?? 0) - 1
+          ? replaced(slide, swap.from, swap.to)
+          : slide,
       ),
     };
   }
   if (claim.field && claim.field in content) {
-    return { ...content, [claim.field]: replaced(content[claim.field], swap.from, swap.to) };
+    return {
+      ...content,
+      [claim.field]: replaced(content[claim.field], swap.from, swap.to),
+    };
   }
   return replaced(content, swap.from, swap.to) as Content;
 }
@@ -138,7 +170,9 @@ export function ruled(
   return {
     ...facts,
     claims: facts.claims.map((claim) =>
-      claim.id === claimId ? { ...claim, decision, ...(swap ? { swap } : {}) } : claim,
+      claim.id === claimId
+        ? { ...claim, decision, ...(swap ? { swap } : {}) }
+        : claim,
     ),
   };
 }

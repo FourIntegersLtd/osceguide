@@ -102,6 +102,7 @@ async def run_check(
     guidelines: GuidelineIndex | None = None,
     web: GuidelineWeb | None = None,
     complete: facts_service.Complete | None = None,
+    progress: facts_service.Progress | None = None,
 ) -> None:
     """Checks a version's claims and keeps the result on it. A failure is kept there too, beside the
     last check that worked. The library, web search and model are the deployment's unless a test
@@ -115,12 +116,27 @@ async def run_check(
             guidelines=guidelines,
             web=web,
             complete=complete,
+            on_progress=progress,
         )
         review.pop("error", None)
     except Exception as error:  # noqa: BLE001 - any failure is kept on the version for the staff screen
         log.warning("station fact check failed", version_id=str(version_id), error=str(error))
         review["error"] = {"step": "facts", "message": str(error)[:_ERROR_CHARACTERS] or type(error).__name__}
     await repository.set_version_review(session, version_id, review)
+    publish_after_commit(
+        session, user_topic(requested_by), STATION_UPDATED, {"station_id": str(station_version.station_id)}
+    )
+
+
+async def save_progress(
+    session: AsyncSession, version_id: uuid.UUID, *, requested_by: uuid.UUID, facts: dict[str, Any]
+) -> None:
+    """Keeps a running check's claims so far on the version, still marked as checking, and tells
+    whoever asked, so their screen fills in as each claim is judged."""
+    [(station_version, _)] = await repository.versions_with_stations_any_owner(session, [version_id])
+    await repository.set_version_review(
+        session, version_id, {**(station_version.review or {}), "facts": facts}
+    )
     publish_after_commit(
         session, user_topic(requested_by), STATION_UPDATED, {"station_id": str(station_version.station_id)}
     )

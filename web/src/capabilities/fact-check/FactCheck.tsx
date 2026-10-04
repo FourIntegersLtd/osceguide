@@ -8,7 +8,13 @@ import {
   HiOutlineGlobeAlt,
   HiOutlineShieldCheck,
 } from "react-icons/hi";
-import { Alert, B2CSegmentedTabs, Badge, Button, Textarea } from "@/foundation/ui";
+import {
+  Alert,
+  B2CSegmentedTabs,
+  Badge,
+  Button,
+  Textarea,
+} from "@/foundation/ui";
 import { cn } from "@/foundation/ui/cn";
 import {
   needsRuling,
@@ -202,13 +208,16 @@ function Correction({
       <p className="text-osce-meta font-medium text-ink">Your decision</p>
       {!claim.suggestion ? (
         <p className="text-osce-meta text-ink-subtle">
-          The sources disagree with each other. Read both, then change {where} yourself and mark it
-          fixed, or keep it.
+          The sources disagree with each other. Read both, then change {where}{" "}
+          yourself and mark it fixed, or keep it.
         </p>
       ) : from ? (
         <>
           <p className="text-osce-meta text-ink">
-            <span className="block text-osce-caption text-ink-subtle">On {where} now</span>“{from}”
+            <span className="block text-osce-caption text-ink-subtle">
+              On {where} now
+            </span>
+            “{from}”
           </p>
           <Textarea
             label="Change it to"
@@ -219,8 +228,9 @@ function Correction({
         </>
       ) : (
         <p className="text-osce-meta text-ink-subtle">
-          Suggested: {claim.suggestion.new}. This check is older than the one-click fix: check again
-          to have it point at the line, or change {where} yourself and mark it fixed.
+          Suggested: {claim.suggestion.new}. This check is older than the
+          one-click fix: check again to have it point at the line, or change{" "}
+          {where} yourself and mark it fixed.
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -253,7 +263,10 @@ function Reopen({
   onReopen: Rulings["onReopen"];
 }) {
   // Corrections swapped in before the swap was recorded cannot be swapped back.
-  const stuck = claim.decision === "accepted" && Boolean(claim.suggestion?.old) && !claim.swap;
+  const stuck =
+    claim.decision === "accepted" &&
+    Boolean(claim.suggestion?.old) &&
+    !claim.swap;
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button size="sm" variant="outline" onClick={() => onReopen(claim)}>
@@ -336,8 +349,12 @@ function ClaimRow({
               <SourceCell key={source.kind} claim={claim} {...source} />
             ))}
           </div>
-          {rulings && needsRuling(claim) ? <Correction claim={claim} {...rulings} /> : null}
-          {rulings && claim.decision ? <Reopen claim={claim} onReopen={rulings.onReopen} /> : null}
+          {rulings && needsRuling(claim) ? (
+            <Correction claim={claim} {...rulings} />
+          ) : null}
+          {rulings && claim.decision ? (
+            <Reopen claim={claim} onReopen={rulings.onReopen} />
+          ) : null}
         </div>
       ) : null}
     </li>
@@ -365,6 +382,9 @@ export function FactCheck({
   rulings?: Rulings;
 }) {
   const claims = facts?.claims ?? [];
+  const progress = working ? facts?.progress : undefined;
+  // A ruling made while the check runs would be overwritten when it finishes.
+  const ruling = working ? undefined : rulings;
   const counts = Object.fromEntries(
     TABS.map((tab) => [
       tab.id,
@@ -385,9 +405,11 @@ export function FactCheck({
             web at the same time, and you see what each one says.
           </p>
           <p className="text-osce-meta text-ink-subtle">
-            {facts
-              ? `${claims.length} claims, checked ${when(facts.checked_at)}. Nothing changes unless you accept a correction.`
-              : "Nothing changes unless you accept a correction."}
+            {progress
+              ? `${progress.done} of ${progress.total} claims checked so far. The rest appear as each one is judged; you can act on them once all are in.`
+              : facts
+                ? `${claims.length} claims, checked ${when(facts.checked_at)}. Nothing changes unless you accept a correction.`
+                : "Nothing changes unless you accept a correction."}
           </p>
         </div>
         <Button
@@ -420,12 +442,11 @@ export function FactCheck({
               ),
             }))}
           />
-          {tab === "resolve" &&
+          {!progress &&
+          tab === "resolve" &&
           counts.resolve === 0 &&
           counts.unconfirmed === 0 ? (
-            <Alert tone="success">
-              Every claim is supported by a source.
-            </Alert>
+            <Alert tone="success">Every claim is supported by a source.</Alert>
           ) : null}
           {shown.length > 0 ? (
             <div className="overflow-hidden rounded-osce-lg border border-border">
@@ -435,7 +456,7 @@ export function FactCheck({
                     key={`${tab}-${claim.id}`}
                     claim={claim}
                     defaultOpen={tab === "resolve"}
-                    rulings={rulings}
+                    rulings={ruling}
                   />
                 ))}
               </ul>
@@ -448,7 +469,9 @@ export function FactCheck({
         </>
       ) : facts ? (
         <p className="py-8 text-center text-osce-meta text-ink-subtle">
-          No claim here could be checked against a guideline.
+          {progress
+            ? "Claims found. The first verdicts arrive in about half a minute."
+            : "No claim here could be checked against a guideline."}
         </p>
       ) : null}
     </div>

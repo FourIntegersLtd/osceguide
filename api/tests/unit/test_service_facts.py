@@ -200,3 +200,27 @@ def test_a_summary_offers_its_own_entries_as_written() -> None:
     [(_, text)] = sections_of("summary", "PMB", summary)
 
     assert "Bleeding after 55 needs a 2WW referral" in lines_of(text)
+
+
+async def test_a_running_check_reports_its_claims_as_each_one_settles() -> None:
+    reports: list[dict[str, Any]] = []
+
+    async def keep(facts: dict[str, Any]) -> None:
+        reports.append(facts)
+
+    verdict = {"verdict": "supported", "evidence": 1, "quote": "160/100", "why": "Same."}
+    facts = await check_facts(
+        title="New hypertension",
+        sections=sections_of("slide_deck", "New hypertension", DECK),
+        guidelines=FakeGuidelineIndex([NG136]),
+        web=None,
+        complete=model(library=verdict),
+        on_progress=keep,
+    )
+
+    assert [(report["progress"], len(report["claims"])) for report in reports] == [
+        ({"done": 0, "total": 1}, 0),
+        ({"done": 1, "total": 1}, 1),
+    ]
+    assert reports[-1]["claims"][0]["verdict"] == "supported"
+    assert "progress" not in facts
