@@ -16,7 +16,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.core.ports import Embedder, MaterialIndex, Passage
+from app.core.ports import Embedder, MaterialIndex, Passage, SourcePassages
 from app.core.settings import get_settings
 from app.features.tutor_memory import repository_index
 
@@ -43,27 +43,77 @@ class PgVectorMaterialIndex:
         title: str,
         chunks: Sequence[Mapping[str, Any]],
     ) -> int:
-        """Embed one document's chunks and replace whatever it previously indexed.
+        """Replace whatever one document previously indexed. See `upsert_many`."""
+        return await self.upsert_many(
+            [SourcePassages(corpus=corpus, source_id=source_id, exam_id=exam_id, title=title, chunks=chunks)]
+        )
+
+    async def upsert_many(self, sources: Sequence[SourcePassages]) -> int:
+        """Make the index hold exactly these sources' passages, embedding only what changed.
+
+        A passage already stored with the same text under the same section keeps its
+        vector: the nightly re-index walks the whole library and almost none of it has
+        moved, so embedding it all again bought the same rows for minutes of requests.
+        The passages that did change are embedded together, across sources, rather than
+        in a request per source.
 
         No chunks means the source has gone or come back empty, so its old passages
         are forgotten instead.
         """
-        if not chunks:
-            return await repository_index.forget_source(self._session, corpus=corpus, source_id=source_id)
+        written = 0
+        stale: list[tuple[SourcePassages, list[Mapping[str, Any]]]] = []
+        for source in sources:
+            if not source.chunks:
+                written += await repository_index.forget_source(
+                    self._session, corpus=source.corpus, source_id=source.source_id
+                )
+                continue
+            stored = await repository_index.stored_passages(
+                self._session, corpus=source.corpus, source_id=source.source_id
+            )
+            changed = [
+                chunk
+                for chunk in source.chunks
+                if stored.get(int(chunk["index"])) != (str(chunk["section"]), str(chunk["text"]))
+            ]
+            stale.append((source, changed))
 
-        vectors = await self._embedder.embed([str(chunk["text"]) for chunk in chunks])
-        embedded = [
-            {"index": chunk["index"], "section": chunk["section"], "text": chunk["text"], "embedding": vector}
-            for chunk, vector in zip(chunks, vectors, strict=True)
-        ]
-        return await repository_index.replace_source(
-            self._session,
-            corpus=corpus,
-            source_id=source_id,
-            exam_id=uuid.UUID(exam_id) if exam_id else None,
-            title=title,
-            chunks=embedded,
-        )
+        texts = [str(chunk["text"]) for _, changed in stale for chunk in changed]
+        vectors = await self._embedder.embed(texts) if texts else []
+        if len(vectors) != len(texts):
+            from app.features.tutor_memory.embedder import EmbeddingFailed
+
+            raise EmbeddingFailed("the embedder returned a different number of vectors")
+
+        embedded = iter(vectors)
+        for source, changed in stale:
+            if changed:
+                # Names what was embedded, so a run that stops is traceable to its source.
+                log.info(
+                    "material source embedded",
+                    corpus=source.corpus,
+                    source_id=source.source_id,
+                    title=source.title,
+                    passages=len(changed),
+                )
+            written += await repository_index.replace_source(
+                self._session,
+                corpus=source.corpus,
+                source_id=source.source_id,
+                exam_id=uuid.UUID(source.exam_id) if source.exam_id else None,
+                title=source.title,
+                chunks=[
+                    {
+                        "index": chunk["index"],
+                        "section": chunk["section"],
+                        "text": chunk["text"],
+                        "embedding": next(embedded),
+                    }
+                    for chunk in changed
+                ],
+                passages=len(source.chunks),
+            )
+        return written
 
     async def indexed_sources(self, *, corpus: str) -> set[str]:
         return await repository_index.indexed_source_ids(self._session, corpus=corpus)
@@ -72,7 +122,7 @@ class PgVectorMaterialIndex:
         return await repository_index.forget_source(self._session, corpus=corpus, source_id=source_id)
 
     async def search(
-        self, *, query: str, exam_ids: Sequence[str], corpus: str | None, limit: int
+        self, *, query: str, exam_ids: Sequence[str], corpus: str | Sequence[str] | None, limit: int
     ) -> list[Passage]:
         """The nearest passages to `query`, restricted to exams the caller is entitled to.
 
@@ -89,7 +139,7 @@ class PgVectorMaterialIndex:
             self._session,
             embedding=vectors[0],
             exam_ids=[uuid.UUID(exam_id) for exam_id in exam_ids],
-            corpus=corpus,
+            corpus=corpus if corpus is None or isinstance(corpus, str) else tuple(corpus),
             limit=limit,
         )
         return [
@@ -121,6 +171,11 @@ class NoMaterialIndex:
         log.info("material index not configured", corpus=corpus, source_id=source_id)
         return 0
 
+    async def upsert_many(self, sources: Sequence[SourcePassages]) -> int:
+        """Log once for the lot and do nothing, as `upsert` does for one."""
+        log.info("material index not configured", sources=len(sources))
+        return 0
+
     async def indexed_sources(self, *, corpus: str) -> set[str]:
         # Never "everything in the table": an unconfigured deployment must not
         # retire passages a configured one wrote. Doing nothing is the only
@@ -131,7 +186,7 @@ class NoMaterialIndex:
         return 0
 
     async def search(
-        self, *, query: str, exam_ids: Sequence[str], corpus: str | None, limit: int
+        self, *, query: str, exam_ids: Sequence[str], corpus: str | Sequence[str] | None, limit: int
     ) -> list[Passage]:
         return []
 

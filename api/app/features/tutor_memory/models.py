@@ -151,9 +151,9 @@ class MaterialChunk(Base, UUIDPrimaryKey):
         Index(
             "ix_material_chunks_embedding",
             "embedding",
-            postgresql_using="ivfflat",
+            postgresql_using="hnsw",
             postgresql_ops={"embedding": "vector_cosine_ops"},
-            postgresql_with={"lists": "100"},
+            postgresql_with={"m": "24", "ef_construction": "200"},
         ),
     )
 

@@ -18,8 +18,10 @@ import uuid
 from collections.abc import Sequence
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ports import SourcePassages
 from app.features.tutor_memory import repository_index
 from app.features.tutor_memory.index import PgVectorMaterialIndex
 from app.features.tutor_memory.vector_column import EMBEDDING_DIMENSIONS
@@ -222,3 +224,121 @@ async def test_an_empty_chunk_list_removes_the_source_rather_than_embedding_noth
     assert removed == 1
     assert len(embedder.calls) == 1
     assert await repository_index.indexed_source_ids(db_session, corpus="summary") == set()
+
+
+def passage(index: int, text_: str, section: str = "management") -> dict[str, object]:
+    return {"index": index, "section": section, "text": text_}
+
+
+async def test_a_source_that_has_not_changed_is_not_embedded_again(db_session: AsyncSession) -> None:
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    embedder = ScriptedEmbedder({"a": CHEST_PAIN, "b": BREATHLESS})
+    index = PgVectorMaterialIndex(db_session, embedder)
+    source = {"corpus": "summary", "source_id": "s1", "exam_id": str(exam.id), "title": "T"}
+    await index.upsert(**source, chunks=[passage(0, "a"), passage(1, "b")])
+
+    held = await index.upsert(**source, chunks=[passage(0, "a"), passage(1, "b")])
+
+    assert held == 2
+    assert embedder.calls == [["a", "b"]]
+
+
+async def test_only_the_passage_that_was_edited_is_embedded(db_session: AsyncSession) -> None:
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    embedder = ScriptedEmbedder({"a": CHEST_PAIN, "b": BREATHLESS, "c": ANXIETY})
+    index = PgVectorMaterialIndex(db_session, embedder)
+    source = {"corpus": "summary", "source_id": "s1", "exam_id": str(exam.id), "title": "T"}
+    await index.upsert(**source, chunks=[passage(0, "a"), passage(1, "b")])
+
+    await index.upsert(**source, chunks=[passage(0, "a"), passage(1, "c")])
+
+    assert embedder.calls == [["a", "b"], ["c"]]
+    stored = await repository_index.stored_passages(db_session, corpus="summary", source_id="s1")
+    assert stored == {0: ("management", "a"), 1: ("management", "c")}
+    found = await index.search(query="c", exam_ids=[str(exam.id)], corpus=None, limit=1)
+    assert [p.text for p in found] == ["c"]
+
+
+async def test_a_renamed_or_moved_source_keeps_its_vectors(db_session: AsyncSession) -> None:
+    sca = await ensure_exam(db_session, "sca")
+    plab = await ensure_exam(db_session, "plab")
+    assert sca is not None and plab is not None
+    embedder = ScriptedEmbedder({"a": CHEST_PAIN})
+    index = PgVectorMaterialIndex(db_session, embedder)
+    await index.upsert(
+        corpus="summary", source_id="s1", exam_id=str(sca.id), title="Old", chunks=[passage(0, "a")]
+    )
+
+    await index.upsert(
+        corpus="summary", source_id="s1", exam_id=str(plab.id), title="New", chunks=[passage(0, "a")]
+    )
+
+    assert embedder.calls == [["a"]]
+    rows = (
+        await db_session.execute(
+            text("SELECT title, exam_id FROM material_chunks WHERE corpus = 'summary' AND source_id = 's1'")
+        )
+    ).all()
+    assert rows == [("New", plab.id)]
+    assert await index.search(query="a", exam_ids=[str(sca.id)], corpus="summary", limit=3) == []
+
+
+async def test_several_sources_share_one_embedding_request(db_session: AsyncSession) -> None:
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    embedder = ScriptedEmbedder({"a": CHEST_PAIN, "b": BREATHLESS, "c": ANXIETY})
+    index = PgVectorMaterialIndex(db_session, embedder)
+
+    written = await index.upsert_many(
+        [
+            SourcePassages("summary", "s1", str(exam.id), "One", [passage(0, "a"), passage(1, "b")]),
+            SourcePassages("blog", "b1", str(exam.id), "Two", [passage(0, "c")]),
+            SourcePassages("blog", "b2", str(exam.id), "Gone", []),
+        ]
+    )
+
+    assert written == 3
+    assert embedder.calls == [["a", "b", "c"]]
+    found = await index.search(query="c", exam_ids=[str(exam.id)], corpus=None, limit=1)
+    assert [(p.title, p.text) for p in found] == [("Two", "c")]
+
+
+async def test_the_exam_filter_does_not_starve_a_search_of_its_nearest_passages(
+    db_session: AsyncSession,
+) -> None:
+    """The index walks nearest-first across every exam; the learner's own must still fill the answer."""
+    mine = await ensure_exam(db_session, "sca")
+    other = await ensure_exam(db_session, "plab")
+    assert mine is not None and other is not None
+    # Each a little different: identical vectors share one node of the graph, and it
+    # takes more nodes than the walk keeps to leave the learner's own exam out of reach.
+    for n in range(300):
+        await chunk_in(
+            db_session,
+            exam_id=other.id,
+            source_id=f"other-{n}",
+            texts=[(f"other {n}", vector(1.0, 0.001 * n, 0.0))],
+        )
+    await chunk_in(
+        db_session,
+        exam_id=mine.id,
+        source_id="mine",
+        texts=[
+            ("far one", ANXIETY),
+            ("far two", vector(0.1, 1.0, 0.0)),
+            ("far three", vector(0.2, 1.0, 0.0)),
+        ],
+    )
+
+    # So few rows would be read straight through; make the planner take the index the
+    # way it does on the real library, which is where the filter could starve it.
+    for setting in ("enable_seqscan", "enable_bitmapscan", "enable_sort"):
+        await db_session.execute(text(f"SET LOCAL {setting} = off"))
+
+    rows = await repository_index.nearest(
+        db_session, embedding=CHEST_PAIN, exam_ids=[mine.id], corpus=None, limit=3
+    )
+
+    assert [chunk.text for chunk, _distance in rows] == ["far three", "far two", "far one"]

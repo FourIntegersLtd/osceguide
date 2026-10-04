@@ -124,8 +124,14 @@ versioned copy of the legacy seed, with the platform's 10-minute booking join
 window. Published Firestore edits must be reconciled into this bundle.
 
 `POST /api/v1/help/knowledge-chat` accepts user/assistant message history and
-returns a Markdown reply grounded in published summary material. Retrieval is
-limited to the requested exam and the caller's server-side study entitlements,
-including the 14-day trial. It needs the existing vector index, indexed summaries,
-and OpenAI configuration. Missing references yield an explicit no-results answer;
-model failures return `knowledge_unavailable`. No legacy Flask request is made.
+returns a Markdown reply grounded in two sources, searched side by side. First
+line: the twelve nearest passages of the requested exam's published **stations and
+summaries**, from tutor_memory's material index. The exam filter is part of the
+query, so the twelve are the best of that exam, not what is left of a wider read.
+Second line: twelve reranked passages from the Clinical Buddy guideline library
+(`tutor_memory/guidelines.py`), used when our material does not cover the
+question. A follow-up is searched together with the question before it. The
+caller must hold the exam (server-side entitlements, including the 14-day
+trial). Without `CLINICAL_BUDDY_SERVICE_KEY` the chat answers
+from our material alone. Nothing found in either yields an explicit no-results
+answer; model failures return `knowledge_unavailable`.

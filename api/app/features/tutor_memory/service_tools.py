@@ -15,7 +15,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ports import MaterialIndex
+from app.core.ports import GuidelineIndex, MaterialIndex
 from app.features.catalog import service as catalog
 from app.features.entitlements import service as entitlements
 from app.features.identity import service_platform as identity
@@ -31,6 +31,7 @@ from app.features.tutor_memory import (
     tools_catalog,
 )
 from app.features.tutor_memory.domain import HELP_CORPUS
+from app.features.tutor_memory.guidelines import build_guideline_index
 from app.features.tutor_memory.index import build_material_index
 from app.features.tutor_memory.schemas import ToolResult
 
@@ -70,6 +71,7 @@ async def run(
     session_id: uuid.UUID,
     now: datetime,
     index: MaterialIndex | None = None,
+    guidelines: GuidelineIndex | None = None,
 ) -> ToolResult:
     """Dispatch one call, having first checked it against its own schema."""
     schema = tools_catalog.schema_for(tool)
@@ -90,6 +92,7 @@ async def run(
             # `None` when nothing is configured, which the search reports as
             # "cannot look that up" rather than as "nothing found".
             index=index if index is not None else build_material_index(session),
+            guidelines=guidelines if guidelines is not None else build_guideline_index(),
             **_search_args(cleaned),
         )
     if tool == tools_catalog.SUGGEST_MATERIAL:

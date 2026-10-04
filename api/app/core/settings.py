@@ -210,6 +210,10 @@ class Settings(BaseSettings):
     # cost decision nobody made.
     openai_api_key: str = ""
     anthropic_api_key: str = ""
+    # The clinical guideline library (`tutor_memory/guidelines.py`). Both unset means the
+    # tutor and the help chat answer from our own material alone.
+    clinical_buddy_url: str = "https://api.clinicalbuddy.co.uk"
+    clinical_buddy_service_key: str = ""
     marking_primary_model: str = "gpt-5-mini"
     marking_primary_effort: str = "low"
     marking_fallback_model: str = "claude-sonnet-4-5"

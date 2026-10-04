@@ -104,7 +104,7 @@ mounted at exactly this spelling.
 |---|---|---|
 | `summarise_assistant_session` | `summaries` | a dashboard transcript arrives |
 | `summarise_debrief` | `summaries` | a debrief's interaction completes |
-| `reindex_material` | `material` | nightly at 03:17, and on the admin route |
+| `reindex_material` | `material` | a library station is published or archived, nightly at 03:17, and on the admin route |
 
 The two summary jobs are deferred inside the transaction that recorded the
 thing they are about, so the work and the record of it being owed commit
@@ -112,10 +112,11 @@ together.
 
 `reindex_material` is idempotent by construction: every source is upserted by
 `(corpus, source_id, chunk_index)` and anything indexed that is no longer
-published is dropped. Running it twice costs the embeddings and changes
-nothing, and a run that failed half way is repaired by the next one rather
-than needing to be unwound. It is nightly rather than on publish because
-embedding the whole library costs minutes and money — see `web/docs/BACKLOG.md` T-3.
+published is dropped. A passage whose text and section are unchanged keeps its
+vector, so a run embeds only what was edited — the changed passages of about 96
+at a time share one embedding request — and a run that failed half way is
+repaired by the next one rather than needing to be unwound. It is abandoned
+after 15 minutes, because the same worker runs live examinations' transitions.
 
 ## Cross-slice dependencies
 - `attempts.service_reads` — recent attempts, their results and a debrief's
@@ -163,3 +164,21 @@ behind `core.ports.MaterialIndex` with a fake for every test above it.
 
 The local compose file and the test container are pinned to
 `pgvector/pgvector:pg16`. A stock Postgres fails at `alembic upgrade head`.
+
+## Clinical guidelines, the second line
+
+The guideline library is Clinical Buddy's, and so is its search. `guidelines.py`
+asks Clinical Buddy's API for passages (`POST /api/retrieve`, with the shared
+key in `X-Service-Key`) and knows nothing of the index, the embedding model,
+the fusion or the reranker behind it: one source of truth, changed in one
+place. The library is asked at the same moment as our own material, and its
+passages are always labelled as the second line.
+
+| Caller | Passages | Limit on the wait |
+|---|---|---|
+| Voice tutor (`service_search.answer_question`) | 3, reranked | 1.5 s, then left out |
+| Help chat (`assistant/service_knowledge`) | 12, reranked | 10 s |
+
+A question about how the app works (the `help` corpus) never asks it. Any
+failure, or `CLINICAL_BUDDY_SERVICE_KEY` being unset (the address defaults to
+Clinical Buddy's production API; `CLINICAL_BUDDY_URL` overrides it), means no guideline passages and never an error.

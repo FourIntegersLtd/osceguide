@@ -1451,7 +1451,7 @@ slice that owns the source of truth. See ADR 0019.
 | `section` | `varchar(40) not null` | the heading the passage was found under, or `management` for the tail |
 | `chunk_index` | `integer not null` | UNIQUE with `corpus` + `source_id`, which is what `upsert` writes against so a re-index replaces rather than duplicates |
 | `text` | `text not null` | the passage the tutor quotes |
-| `embedding` | `vector(1536) not null` | `text-embedding-3-small`. IVFFlat index with `vector_cosine_ops`, `lists = 100` — the operator class must match the `<=>` the query uses or the index is not consulted. The width is DDL, so changing the model means re-embedding everything |
+| `embedding` | `vector(1536) not null` | `text-embedding-3-small`. HNSW index with `vector_cosine_ops`, `m = 24`, `ef_construction = 200` — the operator class must match the `<=>` the query uses or the index is not consulted. The width is DDL, so changing the model means re-embedding everything |
 | `indexed_at` | `timestamptz not null default now()` | |
 
 ## notifications — 1 table

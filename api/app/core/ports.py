@@ -335,6 +335,43 @@ class Passage:
     score: float
 
 
+@dataclass(frozen=True)
+class SourcePassages:
+    """One source cut into passages, as `MaterialIndex.upsert_many` takes it.
+
+    The same five things `upsert` takes by keyword, held together so a re-index can hand
+    over several sources in one call.
+    """
+
+    corpus: str
+    source_id: str
+    exam_id: str | None
+    title: str
+    chunks: Sequence[Mapping[str, Any]]
+
+
+@dataclass(frozen=True)
+class GuidelinePassage:
+    """One piece of a clinical guideline, with the document it came from."""
+
+    source: str
+    text: str
+    score: float
+
+
+@runtime_checkable
+class GuidelineIndex(Protocol):
+    """Search over clinical guidelines: the second line behind our own material.
+
+    Not filtered by exam, since a guideline belongs to nobody's purchase. Returns nothing,
+    rather than raising, when the library cannot be reached: our own material still answers.
+    """
+
+    async def search(self, *, query: str, limit: int, rerank: bool) -> list[GuidelinePassage]:
+        """The passages nearest `query`, best first. `rerank` trades about a second for precision."""
+        ...
+
+
 @runtime_checkable
 class MaterialIndex(Protocol):
     """Semantic search over the study material, filtered by what a learner holds.
@@ -363,12 +400,19 @@ class MaterialIndex(Protocol):
         """
         ...
 
+    async def upsert_many(self, sources: Sequence[SourcePassages]) -> int:
+        """`upsert` for several sources at once, so their passages share embedding requests.
+
+        Returns what `upsert` would have returned for each, added up.
+        """
+        ...
+
     async def search(
         self,
         *,
         query: str,
         exam_ids: Sequence[str],
-        corpus: str | None,
+        corpus: str | Sequence[str] | None,
         limit: int,
     ) -> list[Passage]:
         """Best passages first. An empty `exam_ids` returns nothing.

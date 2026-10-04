@@ -20,6 +20,7 @@ from app.features.stations.models import StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
 from app.features.stations.service import read_station
+from app.features.tutor_memory import jobs as tutor_jobs
 
 # What a candidate is shown before the station starts. Presentation rather than
 # assessed content, which is why T5 lets it be corrected on a published
@@ -97,6 +98,7 @@ async def publish_version(
     # The station points at its newest published version, so a circuit can
     # reference the station and still get a frozen revision.
     await repository.set_current_version(session, org_id, station_id, version_id=station_version.id)
+    await _refresh_tutor_material(session, org_id)
     return _version_read(await _version(session, org_id, station_id, version))
 
 
@@ -121,7 +123,18 @@ async def archive_version(
         session, org_id, station_version.id, status=str(new_status), at=now, by=actor_id
     )
     await _repoint_after_archiving(session, org_id, station_id, archived_version_id=station_version.id)
+    await _refresh_tutor_material(session, org_id)
     return _version_read(await _version(session, org_id, station_id, version))
+
+
+async def _refresh_tutor_material(session: AsyncSession, org_id: uuid.UUID | None) -> None:
+    """Have the tutor's index catch up with a library station that was published or archived.
+
+    Only the library is indexed, so an organisation's own station queues nothing. Without
+    this the tutor quoted the old management plan, or an archived one, until the night.
+    """
+    if org_id is None:
+        await tutor_jobs.queue_reindex(session)
 
 
 async def _repoint_after_archiving(

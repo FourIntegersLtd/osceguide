@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import NotFound, Unauthenticated, error_responses
-from app.core.ports import ClockDep, VectorIndex
+from app.core.ports import ClockDep, GuidelineIndex, MaterialIndex
 from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
 from app.core.settings import SettingsDep
 from app.features.assistant import schemas as schemas
@@ -58,7 +58,7 @@ async def article(
     return schemas.HelpArticleDetail(article=service_help.read_article(slug, exam_code))
 
 
-# Answer a study question grounded in the summaries this learner can access.
+# Answer a study question from the learner's stations and summaries, then clinical guidelines.
 @router.post(
     "/help/knowledge-chat",
     response_model=schemas.KnowledgeReply,
@@ -71,8 +71,15 @@ async def knowledge_chat(
     session: Annotated[AsyncSession, Depends(get_session)],
     clock: ClockDep,
     settings: SettingsDep,
-    index: Annotated[VectorIndex, Depends(service_knowledge.get_vector_index)],
+    index: Annotated[MaterialIndex | None, Depends(service_knowledge.get_material_index)],
+    guidelines: Annotated[GuidelineIndex | None, Depends(service_knowledge.get_guideline_index)],
 ) -> schemas.KnowledgeReply:
     return await service_knowledge.answer(
-        session, body, user_id=principal.user_id, now=clock.now(), index=index, settings=settings
+        session,
+        body,
+        user_id=principal.user_id,
+        now=clock.now(),
+        index=index,
+        guidelines=guidelines,
+        settings=settings,
     )

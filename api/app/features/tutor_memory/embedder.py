@@ -14,6 +14,7 @@ with, and `docs/adr/0019-pgvector-for-tutor-material.md` says so.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from functools import lru_cache
 from typing import Any
 
 from app.core.logging import get_logger
@@ -87,7 +88,14 @@ def build_embedder() -> Embedder:
     if not settings.openai_api_key:
         raise EmbeddingFailed("No OPENAI_API_KEY, so nothing can be embedded.")
     try:
-        from openai import OpenAI  # optional dependency
+        return OpenAIEmbedder(_client(settings.openai_api_key))
     except ImportError as exc:
         raise EmbeddingFailed("The openai package is not installed.") from exc
-    return OpenAIEmbedder(OpenAI(api_key=settings.openai_api_key))
+
+
+@lru_cache(maxsize=1)
+def _client(api_key: str) -> Any:
+    """One client for the process: a new one per question is a TLS handshake in the voice loop."""
+    from openai import OpenAI  # optional dependency
+
+    return OpenAI(api_key=api_key)

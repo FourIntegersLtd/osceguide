@@ -111,8 +111,13 @@ def _break_before(text: str, start: int, end: int) -> int:
     A space is looked for only when the window holds no full stop at all, not when it holds
     one in an unusable place — otherwise a window opening on a full stop would be cut short
     instead of left at full width, moving every boundary after it.
+
+    A break inside the overlap is unusable too: the next window starts `OVERLAP_CHARS`
+    before it, which is at or before this one's start, so the cut never advances. Every
+    window after the first opens with the full stop the last one ended on, so prose with
+    no full stop for a window's width (a long bulleted list) looped here for ever.
     """
     found = text.rfind(".", start, end + 1)
     if found == -1:
         found = text.rfind(" ", start, end + 1)
-    return found + 1 if found > start else end
+    return found + 1 if found >= start + OVERLAP_CHARS else end

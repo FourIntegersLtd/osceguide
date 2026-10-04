@@ -70,6 +70,22 @@ def test_a_short_section_is_one_passage_as_before() -> None:
     assert [c.section for c in chunks] == [chunking.OVERVIEW, "red_flags", chunking.REMAINDER]
 
 
+def test_a_long_run_with_no_full_stop_still_ends() -> None:
+    """A sentence followed by a window's width of unpunctuated list is cut, not looped on.
+
+    Each window after the first opens on the full stop the last one ended at. With no later
+    full stop that was taken as the break again, the window never advanced, and the nightly
+    re-index held the worker until it was killed for memory.
+    """
+    text = "Intro sentence ends here. " + "bullet point without any full stop " * 200
+
+    chunks = chunking.chunk(text)
+
+    assert len(chunks) == 5
+    assert all(len(c.text) <= chunking.MAX_CHUNK_CHARS for c in chunks)
+    assert chunks[-1].text.endswith("without any full stop")
+
+
 def test_nothing_in_gives_nothing_out() -> None:
     assert chunking.chunk("") == []
     assert chunking.chunk("   ") == []

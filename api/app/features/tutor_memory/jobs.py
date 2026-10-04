@@ -11,6 +11,7 @@ somebody's screen and becomes a line the tutor can read next time.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from typing import Any
 
@@ -30,13 +31,35 @@ INDEX_QUEUE = "material"
 REINDEX_TASK = "reindex_material"
 REINDEX_ITEM_TASK = "reindex_media_item"
 
-# Nightly full rebuild: the only pass that retires withdrawn or replaced
-# material. Embedding the whole library takes minutes and costs money, so it
-# runs on a schedule rather than on every edit. Publishing one media item
-# queues `reindex_media_item` for that item alone so the tutor can cite it
-# the same day; the admin re-index route remains for when somebody cannot
-# wait for either.
+# The full walk: the only pass that retires withdrawn or replaced material. It
+# embeds only the passages whose text changed, so it is cheap enough to run
+# whenever a library station is published or archived (`queue_reindex`) as well
+# as nightly, which is the net under anything that changed some other way.
+# Publishing one media item queues `reindex_media_item` for that item alone; the
+# admin re-index route remains for when somebody cannot wait.
 REINDEX_CRON = "17 3 * * *"
+
+# This worker also runs the transitions of live examinations. A walk that hangs
+# on a request or a lock is abandoned here rather than left holding a slot and a
+# transaction; the next run repairs whatever it had not reached. It cannot stop
+# code that never awaits, which is why the chunker's own loop is pinned by a test.
+REINDEX_TIMEOUT_SECONDS = 15 * 60
+
+
+async def queue_reindex(session: AsyncSession) -> None:
+    """What `stations` calls when a library station is published or archived.
+
+    Queued in the caller's transaction, so the walk never runs before the change it is
+    for has committed. Several changes while one is still waiting share that one walk.
+    """
+    await defer_in_transaction(
+        session,
+        queue=INDEX_QUEUE,
+        task=REINDEX_TASK,
+        queueing_lock="reindex-material",
+        args={},
+        ignore_lock_conflict=True,
+    )
 
 
 async def on_transcript(session: AsyncSession, session_id: uuid.UUID, session_type: str) -> bool:
@@ -108,12 +131,12 @@ def register() -> None:
     @app.periodic(cron=REINDEX_CRON)
     @app.task(name=REINDEX_TASK, queue=INDEX_QUEUE)
     async def reindex_material(timestamp: int = 0) -> None:
-        """Nightly: re-embed every source the library holds, wiring a fresh index."""
+        """Bring the index in line with what is published, embedding only what changed."""
         from app.core.db import job_session
         from app.features.tutor_memory import service_material
         from app.features.tutor_memory.index import build_material_index
 
-        async with job_session() as session:
+        async with asyncio.timeout(REINDEX_TIMEOUT_SECONDS), job_session() as session:
             await service_material.reindex(session, index=build_material_index(session))
 
     @app.task(name=DEBRIEF_SUMMARY_TASK, queue=SUMMARIES_QUEUE)

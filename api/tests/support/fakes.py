@@ -12,7 +12,14 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from app.core.ports import EmailDeliveryFailed, Passage, SsoBrokerUnavailable, SsoIdentity
+from app.core.ports import (
+    EmailDeliveryFailed,
+    GuidelinePassage,
+    Passage,
+    SourcePassages,
+    SsoBrokerUnavailable,
+    SsoIdentity,
+)
 
 FIXED_NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
 
@@ -348,6 +355,18 @@ class FakeMaterialIndex:
             )
         return len(chunks)
 
+    async def upsert_many(self, sources: Sequence[SourcePassages]) -> int:
+        written = 0
+        for source in sources:
+            written += await self.upsert(
+                corpus=source.corpus,
+                source_id=source.source_id,
+                exam_id=source.exam_id,
+                title=source.title,
+                chunks=source.chunks,
+            )
+        return written
+
     async def indexed_sources(self, *, corpus: str) -> set[str]:
         return {p.source_id for p in self.passages if p.corpus == corpus}
 
@@ -358,15 +377,16 @@ class FakeMaterialIndex:
         return before - len(self.passages)
 
     async def search(
-        self, *, query: str, exam_ids: Sequence[str], corpus: str | None, limit: int
+        self, *, query: str, exam_ids: Sequence[str], corpus: str | Sequence[str] | None, limit: int
     ) -> list[Passage]:
         self.searches.append((query, tuple(exam_ids), corpus))
         wanted = set(exam_ids)
+        corpora = None if corpus is None else {corpus} if isinstance(corpus, str) else set(corpus)
         hits = [
             p
             for p in self.passages
             if query.lower() in p.text.lower()
-            and (corpus is None or p.corpus == corpus)
+            and (corpora is None or p.corpus in corpora)
             # The filter the real adapter applies in SQL. Modelled here too,
             # because a fake that returned material the learner does not hold
             # would let an entitlement bug through every test that uses it.
@@ -377,6 +397,22 @@ class FakeMaterialIndex:
             )
         ]
         return hits[:limit]
+
+
+class FakeGuidelineIndex:
+    """Hands back what it was given, and remembers what it was asked."""
+
+    def __init__(self, passages: Sequence[GuidelinePassage] = (), *, delay: float = 0.0) -> None:
+        self.passages = list(passages)
+        self.delay = delay
+        self.searches: list[tuple[str, int, bool]] = []
+
+    async def search(self, *, query: str, limit: int, rerank: bool) -> list[GuidelinePassage]:
+        import asyncio
+
+        self.searches.append((query, limit, rerank))
+        await asyncio.sleep(self.delay)
+        return self.passages[:limit]
 
 
 class FakeCheckoutSessions:
