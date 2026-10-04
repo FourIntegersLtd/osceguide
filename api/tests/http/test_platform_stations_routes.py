@@ -357,7 +357,7 @@ async def test_a_platform_station_is_fact_checked_beside_its_content_and_ruled_o
 
     from app.core.ports import GuidelinePassage
     from app.features.identity import repository as identity_repository
-    from app.features.stations.service_facts import run_check
+    from app.features.stations.service_facts import run_check, save_progress
     from tests.support.fakes import FakeGuidelineIndex, FakeGuidelineWeb
 
     admin = await admin_token(make_actor)
@@ -395,17 +395,30 @@ async def test_a_platform_station_is_fact_checked_beside_its_content_and_ruled_o
         )
 
     passage = GuidelinePassage(source="NICE NG209", text="Refer to a stop smoking service.", score=0.9)
+    version_id = uuid.UUID(await _version_id(client, admin, created.json()["id"]))
+    seen_while_running: list[tuple[bool, dict[str, int], int]] = []
+
+    async def progress(facts: dict[str, object]) -> None:
+        await save_progress(db_session, version_id, requested_by=user_id, facts=facts)
+        running = (await client.get(f"{version_path}/review", headers=bearer(admin))).json()
+        seen_while_running.append(
+            (running["checking"], running["facts"]["progress"], len(running["facts"]["claims"]))
+        )
+
     await run_check(
         db_session,
-        uuid.UUID(await _version_id(client, admin, created.json()["id"])),
+        version_id,
         requested_by=user_id,
         guidelines=FakeGuidelineIndex([passage]),
         web=FakeGuidelineWeb(None),
         complete=model,
+        progress=progress,
     )
+    assert seen_while_running == [(True, {"done": 0, "total": 1}, 0), (True, {"done": 1, "total": 1}, 1)]
 
     review = (await client.get(f"{version_path}/review", headers=bearer(admin))).json()
     assert review["checking"] is False
+    assert "progress" not in review["facts"]
     [claim] = review["facts"]["claims"]
     assert (claim["field"], claim["place"], claim["verdict"]) == (
         "expected_answers",
