@@ -51,6 +51,8 @@ and redeploys the api's staging.
 | `.claude/skills/verify-voice-station/` | How to prove a voice change works (unit → e2e → deployed) |
 | `.claude/agents/*-owner.md` | The other owners (see Owners) |
 | `.claude/skills/verify-{marking,institution,access,content}/` | Their proof recipes; web/'s is its own `verify` skill |
+| `.claude/agents/quality-reviewer.md` | Second check on every code change: repetition, reuse, structure, tiers, dead code. Not correctness (`reviewer`) |
+| `.claude/hooks/quality-gate.sh` | Stop hook: once per changed code diff, asks the main agent to run `quality-reviewer` and act on it |
 | `.cursor/rules/critical-thinking-partner.mdc` | Always on: push back on risk, plan first for large work |
 | `api/AGENTS.md` | Backend rules, commands, traps, ownership |
 | `web/AGENTS.md` (+ `docs/DESIGN.md`) | Frontend tiers, non-negotiables, design language |

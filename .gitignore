@@ -4,3 +4,6 @@ service-key
 .env
 .env.*
 .DS_Store
+
+# Local design mock, not part of the repository
+native mock.pdf

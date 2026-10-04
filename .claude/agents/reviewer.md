@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Read-only review of a finished change before it is committed or reported done. Give it the commit range or files and the reference behaviour (e.g. the baseline file it ports). Returns ranked findings, never edits. Use when the task asks for review or the change moves money or touches auth.
+description: Read-only review of a finished change before it is committed or reported done. Give it the commit range or files and the reference behaviour (e.g. the baseline file it ports). Returns ranked findings, never edits. Use when the task asks for review or the change moves money or touches auth. Maintainability, not correctness, is `quality-reviewer`.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
