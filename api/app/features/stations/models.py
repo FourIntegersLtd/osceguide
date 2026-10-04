@@ -136,6 +136,9 @@ class StationVersion(Base, UUIDPrimaryKey, Timestamps):
     # plan, PLAB's examination findings, ortho's four station subtypes. This is
     # the justified JSON: schema-validated at the boundary by the engine.
     content: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    # A platform admin's fact check of the content, kept apart from it so nothing a trainee or the
+    # simulated patient is served carries it. See `service_facts`.
+    review: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     template_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("station_template_versions.id", ondelete="SET NULL")
     )

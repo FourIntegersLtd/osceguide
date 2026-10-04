@@ -348,3 +348,90 @@ async def test_a_platform_admin_is_not_thereby_an_org_admin(client: AsyncClient,
     )
 
     assert response.status_code == 403
+
+
+async def test_a_platform_station_is_fact_checked_beside_its_content_and_ruled_on(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    import json
+
+    from app.core.ports import GuidelinePassage
+    from app.features.identity import repository as identity_repository
+    from app.features.stations.service_facts import run_check
+    from tests.support.fakes import FakeGuidelineIndex, FakeGuidelineWeb
+
+    admin = await admin_token(make_actor)
+    user = await identity_repository.user_by_email(db_session, "admin@osceguide.com")
+    assert user is not None
+    user_id = user.id
+    await create_exam(client, admin, code="sca")
+    created = await client.post(
+        "/api/v1/platform/stations",
+        json={"title": "COPD", "exam_code": "sca", "content": CONTENT, "template_version_id": None},
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+    version_path = f"/api/v1/platform/stations/{created.json()['id']}/versions/1"
+
+    queued = await client.post(f"{version_path}/check-facts", headers=bearer(admin))
+    assert queued.status_code == 202, queued.text
+    assert queued.json() == {"checking": True, "facts": None, "error": None}
+    again = await client.post(f"{version_path}/check-facts", headers=bearer(admin))
+    assert again.json()["code"] == "fact_check_running"
+
+    def model(prompt: str) -> str:
+        if "List the clinical claims" in prompt:
+            claim = {"section": 1, "claim": "Smokers are offered cessation support", "question": "q"}
+            return json.dumps({"claims": [claim]})
+        return json.dumps(
+            {
+                "verdict": "contradicted",
+                "evidence": 1,
+                "quote": "refer to a stop smoking service",
+                "why": "NICE says refer.",
+                "line": 1,
+                "new": "Elicits the smoking history and refers to a stop smoking service.",
+            }
+        )
+
+    passage = GuidelinePassage(source="NICE NG209", text="Refer to a stop smoking service.", score=0.9)
+    await run_check(
+        db_session,
+        uuid.UUID(await _version_id(client, admin, created.json()["id"])),
+        requested_by=user_id,
+        guidelines=FakeGuidelineIndex([passage]),
+        web=FakeGuidelineWeb(None),
+        complete=model,
+    )
+
+    review = (await client.get(f"{version_path}/review", headers=bearer(admin))).json()
+    assert review["checking"] is False
+    [claim] = review["facts"]["claims"]
+    assert (claim["field"], claim["place"], claim["verdict"]) == (
+        "expected_answers",
+        "Expected answers",
+        "contradicted",
+    )
+    assert claim["suggestion"] == {
+        "old": "Elicits the smoking history and offers cessation support.",
+        "new": "Elicits the smoking history and refers to a stop smoking service.",
+    }
+
+    corrected = {
+        **CONTENT,
+        "expected_answers": "Elicits the smoking history and refers to a stop smoking service.",
+    }
+    ruled = {**review["facts"], "claims": [{**claim, "decision": "accepted"}]}
+    saved = await client.patch(
+        version_path, json={"content": corrected, "facts": ruled}, headers=bearer(admin)
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["content"] == corrected
+    assert "review" not in saved.json()
+    reread = (await client.get(f"{version_path}/review", headers=bearer(admin))).json()
+    assert reread["facts"]["claims"][0]["decision"] == "accepted"
+
+
+async def _version_id(client: AsyncClient, admin: str, station_id: str) -> str:
+    versions = await client.get(f"/api/v1/stations/{station_id}/versions", headers=bearer(admin))
+    return str(versions.json()[0]["id"])

@@ -26,6 +26,7 @@ import {
   publishStationVersion,
   removeStationPhoto,
   supportsBrief,
+  supportsFactCheck,
   supportsVersionDelete,
   uploadStationPhotos,
   type Station,
@@ -35,6 +36,8 @@ import {
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
+import { StationFactCheck } from "@/capabilities/authoring/sections/StationFactCheck";
+import type { Facts } from "@/capabilities/fact-check";
 import { BriefEditor } from "@/capabilities/authoring/sections/BriefEditor";
 import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
 
@@ -67,6 +70,8 @@ export function StationDetail({
   const scope = useAuthoringScope();
   const [working, setWorking] = useState<StationVersion | null>(null);
   const [editContent, setEditContent] = useState<Record<string, unknown>>({});
+  /** Fact-check rulings made since the last save; they are saved with the content. */
+  const [ruledFacts, setRuledFacts] = useState<Facts | null>(null);
   const action = useAction();
   const [confirming, setConfirming] = useState<"archive" | "delete" | null>(null);
 
@@ -85,6 +90,7 @@ export function StationDetail({
   useEffect(() => {
     const src = (working?.content ?? station.content ?? {}) as Record<string, unknown>;
     setEditContent({ ...src });
+    setRuledFacts(null);
   }, [station.id, version]);
 
   /*
@@ -300,7 +306,16 @@ export function StationDetail({
                         throw new Error(v.errors[0] ?? "Please fill all required fields.");
                       }
                     }
-                    setWorking(await editStationVersion(scope, station.id, version, editContent));
+                    setWorking(
+                      await editStationVersion(
+                        scope,
+                        station.id,
+                        version,
+                        editContent,
+                        ruledFacts ?? undefined,
+                      ),
+                    );
+                    setRuledFacts(null);
                   })
                 }
               >
@@ -309,6 +324,23 @@ export function StationDetail({
             </div>
           ) : null}
         </Panel>
+      ) : null}
+
+      {supportsFactCheck(scope) && status !== "archived" ? (
+        <StationFactCheck
+          scope={scope}
+          stationId={station.id}
+          version={version}
+          content={editContent}
+          onContentChange={setEditContent}
+          onRuled={setRuledFacts}
+          editable={isDraft}
+          unsaved={
+            ruledFacts !== null ||
+            JSON.stringify(editContent) !==
+              JSON.stringify(working?.content ?? station.content ?? {})
+          }
+        />
       ) : null}
 
       <StationVersionHistory stationId={station.id} />

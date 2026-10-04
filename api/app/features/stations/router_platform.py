@@ -29,6 +29,7 @@ from app.features.stations import (
     errors,
     schemas,
     service,
+    service_facts,
     service_library_reads,
     service_versions,
     station_autogenerate,
@@ -161,7 +162,34 @@ async def edit_platform_station_version(
     admin: PlatformAdmin,
     session: Session,
 ) -> schemas.StationVersionRead:
-    return await service_versions.edit_version(session, None, station_id, version, content=body.content)
+    return await service_versions.edit_version(
+        session, None, station_id, version, content=body.content, facts=body.facts
+    )
+
+
+@router.get(
+    "/platform/stations/{station_id}/versions/{version}/review",
+    response_model=schemas.StationReview,
+    responses=error_responses(*_AUTH, *_STATION),
+)
+async def read_platform_station_review(
+    station_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session
+) -> schemas.StationReview:
+    """The version's fact check, if one has been run."""
+    return await service_facts.read_review(session, station_id, version)
+
+
+@router.post(
+    "/platform/stations/{station_id}/versions/{version}/check-facts",
+    response_model=schemas.StationReview,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(*_AUTH, *_STATION, errors.FactCheckRunning),
+)
+async def check_platform_station_facts(
+    station_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session
+) -> schemas.StationReview:
+    """Starts checking the version's clinical claims; `station.updated` says when it settles."""
+    return await service_facts.enqueue_check(session, station_id, version, requested_by=admin.user_id)
 
 
 @router.post(

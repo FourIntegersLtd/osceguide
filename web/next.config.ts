@@ -41,6 +41,9 @@ const nextConfig: NextConfig = {
   trailingSlash: false,
   experimental: {
     externalDir: true,
+    // The /api/v1 rewrite gives up after 30 s by default, and drafting a slide deck takes longer:
+    // the API finished, but the browser got a 500 and nothing was saved.
+    proxyTimeout: 300_000,
   },
   async rewrites() {
     return {

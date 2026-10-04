@@ -35,6 +35,13 @@ class NotEditableError(Conflict):
     default_message = "Published content cannot be edited; create a new version"
 
 
+class FactCheckRunning(Conflict):
+    """A fact check of this version is already running; its result is on its way."""
+
+    code = "fact_check_running"
+    default_message = "This version's facts are already being checked"
+
+
 class NotDeletableError(Conflict):
     """Only a draft can be deleted; a published or archived version is a record of what ran."""
 

@@ -60,8 +60,9 @@ async def edit_version(
     version: int,
     *,
     content: dict[str, Any],
+    facts: dict[str, Any] | None = None,
 ) -> StationVersionRead:
-    """Overwrite a draft version's content."""
+    """Overwrite a draft version's content, and with it the rulings on its fact check if given."""
     station_version = await _version(session, org_id, station_id, version)
     try:
         domain.ensure_editable(
@@ -70,6 +71,10 @@ async def edit_version(
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     await repository.set_version_content(session, org_id, station_version.id, content=content)
+    if facts is not None:
+        await repository.set_version_review(
+            session, station_version.id, {**(station_version.review or {}), "facts": facts}
+        )
     return _version_read(await _version(session, org_id, station_id, version))
 
 

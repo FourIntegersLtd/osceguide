@@ -59,6 +59,8 @@ export function examListPath(scope: AuthoringScope): string {
 export const supportsProgrammes = (s: AuthoringScope) => s.kind === "org";
 /** `…/versions/{v}/brief` is org-only. */
 export const supportsBrief = (s: AuthoringScope) => s.kind === "org";
+/** Fact checking a station against the guidelines is the catalogue's alone. */
+export const supportsFactCheck = (s: AuthoringScope) => s.kind === "platform";
 /** Throwing a draft away is org-only; the catalogue archives instead. */
 export const supportsVersionDelete = (s: AuthoringScope) => s.kind === "org";
 /**

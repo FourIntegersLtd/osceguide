@@ -22,6 +22,9 @@ import { B2cSlideDeckForm } from "@/capabilities/staff-media/forms/B2cSlideDeckF
 import { PodcastContentForm } from "@/capabilities/staff-media/forms/PodcastContentForm";
 import { SummaryContentForm } from "@/capabilities/staff-media/forms/SummaryContentForm";
 import {
+  acceptSuggestion,
+  dismissSuggestion,
+  reopenSuggestion,
   firstOpenStep,
   isSpokenKind,
   reviewOf,
@@ -29,8 +32,8 @@ import {
   type StepId,
 } from "@/capabilities/staff-media/content/review";
 import { ContentJsonEditor } from "@/capabilities/staff-media/parts/ContentJsonEditor";
+import { FactCheck } from "@/capabilities/fact-check";
 import {
-  FactsStep,
   ScriptStep,
   StepNav,
   VoiceStep,
@@ -485,10 +488,14 @@ export function MediaDetailScreen({
           ) : null}
           {current === "facts" ? (
             <Panel title="Step 2: Check the facts">
-              <FactsStep
-                kind={kind}
-                content={content}
-                onChange={setContent}
+              <FactCheck
+                facts={review.facts}
+                rulings={{
+                  onAccept: (claim, swap) =>
+                    setContent(acceptSuggestion(content, claim, swap)),
+                  onDismiss: (claim) => setContent(dismissSuggestion(content, claim)),
+                  onReopen: (claim) => setContent(reopenSuggestion(content, claim)),
+                }}
                 locked={locked}
                 working={working.facts}
                 onCheck={() =>

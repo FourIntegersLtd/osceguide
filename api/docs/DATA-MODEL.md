@@ -508,6 +508,7 @@ yesterday.
 | `org_id` | `uuid null` → `organizations.id` CASCADE | |
 | `version` | `int not null` | |
 | `content` | `jsonb not null` | the justified JSON: the four exams have genuinely different document shapes — SCA's management plan, PLAB's examination findings, ortho's four station subtypes. Schema-validated at the boundary by the engine |
+| `review` | `jsonb null` | a platform admin's fact check of `content`: `{facts, error, status}`, the same `facts` shape a media item's review holds. Kept off `content` so no trainee, room or worker is served it; read and written only by `/platform/stations/{id}/versions/{v}/review` and `/check-facts` |
 | `template_version_id` | `uuid null` → `station_template_versions.id` SET NULL | |
 | `status`, `published_at/by`, `archived_at/by` | as for template versions | |
 

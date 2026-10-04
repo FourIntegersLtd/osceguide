@@ -14,7 +14,7 @@ from app.core.errors import Forbidden, error_responses
 from app.core.settings import SettingsDep
 from app.core.tenancy import PlatformAdmin
 from app.features.generation import schemas, service
-from app.features.generation.errors import GenerationUnavailable
+from app.features.generation.errors import GenerationEmpty, GenerationUnavailable
 
 router = APIRouter(tags=["generation"])
 
@@ -92,7 +92,7 @@ async def generate_blog(
 @router.post(
     "/platform/generate/slide-deck",
     response_model=schemas.GenerateResult,
-    responses=error_responses(Forbidden, GenerationUnavailable),
+    responses=error_responses(Forbidden, GenerationUnavailable, GenerationEmpty),
 )
 async def generate_slide_deck(
     body: schemas.GenerateTextRequest,

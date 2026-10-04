@@ -359,13 +359,17 @@ class GuidelinePassage:
     score: float
     section: str = ""
     page: int | None = None
+    # Clinical Buddy's labels for the document: "Reliable", "Standard" or "Low", and its kind.
+    reliability: str = ""
+    source_type: str = ""
 
 
 @dataclass(frozen=True)
 class WebAnswer:
     """What a search of the clinical web says about a question, and what that rests on.
 
-    `references` are the pages the answer cites (`n`, `title`, `url`, `website_name`, `quotes`),
+    `references` are the pages the answer cites (`n`, `title`, `url`, `website_name`, `quotes`, and
+    Clinical Buddy's `reliability` and `source_type` labels where it gives them),
     `gaps` what the search could not establish, and `flagged` the sentences of the answer that
     could not be tied to a source.
     """
@@ -378,7 +382,7 @@ class WebAnswer:
 
 @runtime_checkable
 class GuidelineWeb(Protocol):
-    """A sourced answer from the clinical web, for what the guideline library does not hold.
+    """A sourced answer from the clinical web, beside or beyond what the guideline library holds.
 
     Slow (many seconds) and never in a voice loop. Returns `None`, rather than raising, when
     the search cannot be reached or found nothing to stand on.

@@ -122,7 +122,15 @@ a branch on the exam's code and on who owned the station.
 A station version may only be built on a **published** template version (T3).
 
 ## Jobs
-None. Prompt rendering happens when an attempt is created, in `attempts`.
+
+- `check_station_facts`: a catalogue (platform) station version's clinical claims, put to the
+  guideline library and Clinical Buddy's web search by `media_production.service_facts`. The
+  result lives in `station_versions.review`, never in `content`, so no trainee or room sees it.
+  `GET .../versions/{v}/review` reads it, `POST .../check-facts` queues it (409 while one runs),
+  and `station.updated` fires on `/me/events` when it settles. Rulings are saved with the
+  content through the version PATCH's `facts`.
+
+Prompt rendering happens when an attempt is created, in `attempts`.
 
 ## Cross-slice dependencies
 Calls `catalog` to resolve an exam, `tenancy` for org access, and

@@ -44,6 +44,8 @@ os.environ["OPENAI_API_KEY"] = ""
 # people can share one LiveKit project, and that prefix must not change what
 # the dispatch tests assert the worker is called.
 os.environ["LIVEKIT_AGENT_NAMESPACE"] = ""
+# A local .env key would send tutor tools to the real guideline library.
+os.environ["CLINICAL_BUDDY_SERVICE_KEY"] = ""
 # The legacy login bridge. Set here so the exchange route is exercised in
 # its configured state; `test_legacy_exchange_routes` covers the unset one
 # by overriding the setting, because an unset secret must fail closed.

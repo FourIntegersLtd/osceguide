@@ -5351,7 +5351,9 @@
               "exam_not_in_pilot",
               "exam_not_publishable",
               "exam_rubric_not_ready",
+              "fact_check_running",
               "forbidden",
+              "generation_empty",
               "generation_profile_not_found",
               "generation_unavailable",
               "gone",
@@ -17684,6 +17686,42 @@
         "title": "StationReport",
         "type": "object"
       },
+      "StationReview": {
+        "description": "A platform station version's fact check. Never part of what a trainee is served.",
+        "properties": {
+          "checking": {
+            "default": false,
+            "title": "Checking",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "facts": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facts"
+          }
+        },
+        "title": "StationReview",
+        "type": "object"
+      },
       "StationSubtype": {
         "description": "One kind of station an exam is written in, when an exam has more than one.\n\nAn author picks one before generating a station, and the generation\nprofile it names steers the prompt.",
         "properties": {
@@ -19865,6 +19903,18 @@
             "additionalProperties": true,
             "title": "Content",
             "type": "object"
+          },
+          "facts": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facts"
           }
         },
         "required": [
@@ -53014,11 +53064,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "generation_empty",
+            "x-codes": [
+              "generation_empty"
+            ]
           },
           "500": {
             "content": {
@@ -59065,6 +59118,118 @@
         ]
       }
     },
+    "/api/v1/platform/stations/{station_id}/versions/{version}/check-facts": {
+      "post": {
+        "description": "Starts checking the version's clinical claims; `station.updated` says when it settles.",
+        "operationId": "stations_check_platform_station_facts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationReview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found, version_not_found",
+            "x-codes": [
+              "station_not_found",
+              "version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "fact_check_running",
+            "x-codes": [
+              "fact_check_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Check Platform Station Facts",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
     "/api/v1/platform/stations/{station_id}/versions/{version}/photos": {
       "post": {
         "description": "The library's own images, on one of the station's media blocks.",
@@ -59467,6 +59632,105 @@
           }
         ],
         "summary": "Publish Platform Station Version",
+        "tags": [
+          "stations"
+        ]
+      }
+    },
+    "/api/v1/platform/stations/{station_id}/versions/{version}/review": {
+      "get": {
+        "description": "The version's fact check, if one has been run.",
+        "operationId": "stations_read_platform_station_review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationReview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found, version_not_found",
+            "x-codes": [
+              "station_not_found",
+              "version_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Platform Station Review",
         "tags": [
           "stations"
         ]

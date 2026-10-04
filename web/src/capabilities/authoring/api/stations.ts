@@ -63,16 +63,45 @@ export function addStationVersion(scope: AuthoringScope, station: string): Promi
   return platformRequest(`${scope.base}/stations/${pathId(station)}/versions`, { method: "POST" });
 }
 
+/** `facts` is the fact check with the reader's rulings on it, saved with the corrections they made. */
 export function editStationVersion(
   scope: AuthoringScope,
   station: string,
   version: number,
   content: Json,
+  facts?: Record<string, unknown>,
 ): Promise<StationVersion> {
   return platformRequest(`${scope.base}/stations/${pathId(station)}/versions/${version}`, {
     method: "PATCH",
-    body: { content },
+    body: facts ? { content, facts } : { content },
   });
+}
+
+export type StationReview = S["StationReview"];
+
+/** A catalogue station version's fact check. See `supportsFactCheck`. */
+export function readStationReview(
+  scope: AuthoringScope,
+  station: string,
+  version: number,
+  signal?: AbortSignal,
+): Promise<StationReview> {
+  return platformRequest(
+    `${scope.base}/stations/${pathId(station)}/versions/${version}/review`,
+    { signal },
+  );
+}
+
+/** Starts a fact check; `station.updated` arrives on `/me/events` when it settles. */
+export function checkStationFacts(
+  scope: AuthoringScope,
+  station: string,
+  version: number,
+): Promise<StationReview> {
+  return platformRequest(
+    `${scope.base}/stations/${pathId(station)}/versions/${version}/check-facts`,
+    { method: "POST" },
+  );
 }
 
 export function deleteStationVersion(

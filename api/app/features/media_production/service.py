@@ -23,13 +23,12 @@ from app.core.settings import Settings, get_settings
 from app.features.catalog import service as catalog
 from app.features.media import service as media_service
 from app.features.media.service import production_item, replace_content
-from app.features.media_production import domain, fact_check, script_check
+from app.features.media_production import domain, script_check, service_facts
 from app.features.media_production.errors import AvAlreadyRunning, ScriptNotChecked, WrongMediaKind
 from app.features.media_production.repository import defer_job, lock_for_media
 from app.features.media_production.s3 import delete_object, upload_fileobj
 from app.features.media_production.schemas import MediaRead
 from app.features.media_production.slide_narration import complete as model_reply
-from app.features.tutor_memory import service_search as tutor_search
 
 log = get_logger(__name__)
 
@@ -224,16 +223,14 @@ async def run_fact_check_job(
     The library, the web search and the model are this deployment's unless a test hands in its own.
     """
     item = await production_item(session, media_id)
-    settings = get_settings()
     content = dict(item.content)
     try:
-        facts = await fact_check.check_facts(
-            kind=item.kind,
+        facts = await service_facts.check_as_deployed(
             title=item.title,
-            content=content,
-            guidelines=guidelines or tutor_search.guideline_index(),
-            web=web or tutor_search.guideline_web(),
-            complete=complete or _second_reader(settings, fact_check.FACT_SYSTEM),
+            sections=service_facts.sections_of(item.kind, item.title, content),
+            guidelines=guidelines,
+            web=web,
+            complete=complete,
         )
         review = dict(content.get("review") or {})
         review.pop("error", None)

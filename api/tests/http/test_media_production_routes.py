@@ -265,4 +265,4 @@ async def test_a_fact_check_stores_its_verdicts_and_puts_the_status_back(
     ]
     assert checked["review"]["script"] == {"lines": LINES}
     assert checked["script"] == SCRIPT
-    assert web.questions == []
+    assert web.questions == ["q"]

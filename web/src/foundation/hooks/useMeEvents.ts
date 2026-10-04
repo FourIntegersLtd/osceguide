@@ -13,6 +13,7 @@ export type MeEventName =
   | "cv.read"
   | "media.updated"
   | "station_import.updated"
+  | "station.updated"
   | "coverage";
 
 /** A synthetic event this hook invents, never sent by the server: "go re-read your own state". */
@@ -108,6 +109,7 @@ class MeEventHub {
         "cv.read",
         "media.updated",
         "station_import.updated",
+        "station.updated",
         "coverage",
         "connected",
         "ping",

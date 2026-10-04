@@ -90,6 +90,8 @@ def _passage(item: dict[str, Any]) -> GuidelinePassage:
         score=float(item.get("score") or 0.0),
         section=str(item.get("section") or "")[:200],
         page=item["page"] if isinstance(item.get("page"), int) else None,
+        reliability=str(item.get("reliability") or "")[:40],
+        source_type=str(item.get("source_type") or "")[:80],
     )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +12,7 @@ from app.core.exam_settings import ExamSettings
 from app.core.settings import Settings
 from app.features.catalog import service as catalog
 from app.features.generation import exam_prompts
-from app.features.generation.errors import GenerationUnavailable
+from app.features.generation.errors import GenerationEmpty, GenerationUnavailable
 from app.features.generation.normalizers import (
     normalize_blog_response,
     normalize_podcast_response,
@@ -88,6 +89,34 @@ def _exam_line(exam_code: str | None) -> str:
     return f"Exam: {exam_code}\n\n" if exam_code else ""
 
 
+_TITLE_SYSTEM = (
+    "You name teaching material for UK doctors. Give it a title of 4 to 12 words naming the "
+    'condition and the clinical problem, in title case, such as "HRT Bleeding: Spotting on '
+    'Sequential Evorel". Never copy the opening words of the material, and never describe the '
+    'patient by age. Reply as JSON: {"title": "..."}'
+)
+_WORDS = re.compile(r"[a-z0-9]+")
+
+
+def _echoes(title: str, prompt: str) -> bool:
+    """True when a title is only the opening words of the request, the way a model that did not
+    name the material falls back to it."""
+    words = _WORDS.findall(title.lower())
+    # Prefix of the text, not of its words: the cut usually falls mid-word ("since then spo").
+    return len(words) >= 3 and " ".join(_WORDS.findall(prompt.lower())).startswith(" ".join(words))
+
+
+async def _titled(draft: dict[str, Any], key: str, prompt: str, settings: Settings) -> dict[str, Any]:
+    """The draft with a real title under `key`: the model's own, or one asked for when it gave none,
+    "Untitled", or the opening words of the request."""
+    current = str(draft.get(key) or "").strip()
+    if current and current != "Untitled" and not _echoes(current, prompt):
+        return draft
+    reply = await _json_completion(settings=settings, system=_TITLE_SYSTEM, user=prompt[:6000])
+    title = str(reply.get("title") or "").strip()
+    return {**draft, key: title} if title and not _echoes(title, prompt) else draft
+
+
 async def generate_summary(
     *, prompt: str, exam_code: str | None, session: AsyncSession, settings: Settings
 ) -> dict[str, Any]:
@@ -99,7 +128,7 @@ async def generate_summary(
         system=system,
         user=f"{_exam_line(exam_code)}{prompt}",
     )
-    return normalize_summary_response(raw)
+    return await _titled(normalize_summary_response(raw), "title", prompt, settings)
 
 
 async def generate_blog(
@@ -113,7 +142,7 @@ async def generate_blog(
         system=system,
         user=f"{_exam_line(exam_code)}{prompt}",
     )
-    return normalize_blog_response(raw)
+    return await _titled(normalize_blog_response(raw), "title", prompt, settings)
 
 
 async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
@@ -124,7 +153,10 @@ async def generate_slide_deck(*, prompt: str, exam_code: str | None, settings: S
         system=system,
         user=f"{_exam_line(exam_code)}{prompt}",
     )
-    return normalize_slide_deck_response(raw)
+    deck = normalize_slide_deck_response(raw)
+    if not isinstance(deck.get("slides"), list) or not deck["slides"]:
+        raise GenerationEmpty()
+    return await _titled(deck, "topic", prompt, settings)
 
 
 async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Settings) -> dict[str, Any]:
@@ -135,7 +167,7 @@ async def generate_podcast(*, prompt: str, exam_code: str | None, settings: Sett
         system=system,
         user=f"{_exam_line(exam_code)}Source material:\n{prompt}",
     )
-    return normalize_podcast_response(raw)
+    return await _titled(normalize_podcast_response(raw), "title", prompt, settings)
 
 
 GENERATION_MODEL = "o3"

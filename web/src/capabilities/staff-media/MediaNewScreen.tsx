@@ -58,7 +58,7 @@ export function MediaNewForm({
       const named =
         title.trim() ||
         generatedTitle(written) ||
-        brief.trim().slice(0, 80);
+        `Untitled ${kindLabel.toLowerCase()}`;
       const content = mergeContent(emptyContentForKind(kind), rest);
       if (kind === "slide_deck" && !content.topic) content.topic = named;
       const item = await createMedia({

@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { HiOutlineChevronRight, HiOutlineTrash } from "react-icons/hi2";
+import {
+  HiOutlineArrowUpTray,
+  HiOutlineChevronRight,
+  HiOutlineTrash,
+} from "react-icons/hi2";
 import Table, { type TableMore } from "@/foundation/table/Table";
 import { Badge } from "@/foundation/ui";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
@@ -110,7 +114,7 @@ export function MediaListTable({
                   disabled={busy !== null}
                   onClick={() => onPublish(item)}
                 >
-                  Publish
+                  <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
                 </AuthoringIconAction>
               ) : null}
               <AuthoringIconAction

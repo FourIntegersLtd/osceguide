@@ -1,0 +1,156 @@
+/**
+ * A fact check of clinical teaching material as the server stores it
+ * (`media_production/service_facts.py`), and the edits a reader makes in answer
+ * to it. The media review and platform stations both use it.
+ */
+
+type Content = Record<string, unknown>;
+
+/** What one source said about a claim. Checks stored before both sources were always asked lack `verdict`. */
+export type Evidence = {
+  kind: "guideline" | "web";
+  verdict?: "supported" | "contradicted" | "not_found";
+  why?: string;
+  /** Clinical Buddy's labels: "Reliable", "Standard" or "Low", and the kind of source. */
+  reliability?: string;
+  source_type?: string;
+  source: string;
+  section: string;
+  page: number | null;
+  url: string | null;
+  quote: string;
+};
+
+export type FactVerdict =
+  | "supported"
+  | "contradicted"
+  | "not_found"
+  | "conflict"
+  | "not_checked";
+
+export type FactClaim = {
+  id: string;
+  /** The slide of a deck the claim sits on; null anywhere else. */
+  slide: number | null;
+  /** A station's field the claim sits in, and its name for the reader. */
+  field?: string;
+  place?: string;
+  claim: string;
+  verdict: FactVerdict;
+  why: string;
+  checked: string[];
+  evidence: Evidence[];
+  /** `old` is null when the words to replace could not be pinned down. */
+  suggestion: { old: string | null; new: string } | null;
+  /** Set here, by the reader: what they did with the suggestion. */
+  decision?: "accepted" | "dismissed";
+  /** What an accepted correction swapped, so reopening it can swap it back. */
+  swap?: Swap;
+};
+
+/** Words in the material (`from`) and what replaced them (`to`). */
+export type Swap = { from: string; to: string };
+
+export type Facts = { checked_at: string; claims: FactClaim[] };
+
+export function record(value: unknown): Content | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Content)
+    : null;
+}
+
+export function records(value: unknown): Content[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry: unknown): Content[] => {
+    const fields = record(entry);
+    return fields ? [fields] : [];
+  });
+}
+
+/** A stored check, keeping whatever else the server put beside its claims. */
+export function factsOf(value: unknown): Facts | null {
+  const facts = record(value);
+  if (!facts) return null;
+  return {
+    ...facts,
+    checked_at: typeof facts.checked_at === "string" ? facts.checked_at : "",
+    claims: records(facts.claims) as unknown as FactClaim[],
+  };
+}
+
+/** Where a claim sits, for the reader: "Slide 3", "Examiner notes", or nothing. */
+export function placeOf(claim: FactClaim): string | null {
+  if (claim.place) return claim.place;
+  return claim.slide !== null ? `Slide ${claim.slide}` : null;
+}
+
+/** A claim the reader still has to rule on: the sources say it is wrong, or disagree. */
+export function needsRuling(claim: FactClaim): boolean {
+  return (
+    (claim.verdict === "contradicted" || claim.verdict === "conflict") &&
+    !claim.decision
+  );
+}
+
+/** Every string under `value` with `old` swapped for `next`; what is spoken, and the review itself, are left alone. */
+function replaced(value: unknown, old: string, next: string, key = ""): unknown {
+  if (key === "review" || key === "narration" || key === "presentation") return value;
+  if (typeof value === "string") return value.split(old).join(next);
+  if (Array.isArray(value)) return value.map((entry) => replaced(entry, old, next));
+  const fields = record(value);
+  if (!fields) return value;
+  return Object.fromEntries(
+    Object.entries(fields).map(([name, entry]) => [name, replaced(entry, old, next, name)]),
+  );
+}
+
+/** `content` with `swap.from` replaced by `swap.to` where the claim sits. */
+export function corrected(content: Content, claim: FactClaim, swap: Swap): Content {
+  const slides = Array.isArray(content.slides) ? content.slides : null;
+  if (claim.slide !== null && slides) {
+    return {
+      ...content,
+      slides: slides.map((slide, index) =>
+        index === (claim.slide ?? 0) - 1 ? replaced(slide, swap.from, swap.to) : slide,
+      ),
+    };
+  }
+  if (claim.field && claim.field in content) {
+    return { ...content, [claim.field]: replaced(content[claim.field], swap.from, swap.to) };
+  }
+  return replaced(content, swap.from, swap.to) as Content;
+}
+
+/** `content` with an accepted correction taken out again: the original words put back. */
+export function uncorrected(content: Content, claim: FactClaim): Content {
+  return claim.decision === "accepted" && claim.swap
+    ? corrected(content, claim, { from: claim.swap.to, to: claim.swap.from })
+    : content;
+}
+
+/** `facts` with the reader's ruling on one claim recorded. */
+export function ruled(
+  facts: Facts,
+  claimId: string,
+  decision: "accepted" | "dismissed",
+  swap?: Swap,
+): Facts {
+  return {
+    ...facts,
+    claims: facts.claims.map((claim) =>
+      claim.id === claimId ? { ...claim, decision, ...(swap ? { swap } : {}) } : claim,
+    ),
+  };
+}
+
+/** `facts` with the reader's ruling on one claim taken back, so it needs a ruling again. */
+export function reopened(facts: Facts, claimId: string): Facts {
+  return {
+    ...facts,
+    claims: facts.claims.map((claim) => {
+      if (claim.id !== claimId) return claim;
+      const { decision: _decision, swap: _swap, ...open } = claim;
+      return open;
+    }),
+  };
+}

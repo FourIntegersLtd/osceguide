@@ -1,17 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Alert, Badge, Button, FoldSection, Input, Textarea } from "@/foundation/ui";
+import { Alert, Badge, Button, FoldSection, Textarea } from "@/foundation/ui";
 import {
-  acceptSuggestion,
-  dismissSuggestion,
   isChecked,
-  needsRuling,
   reviewOf,
   scriptGroups,
   setScriptLine,
-  type FactClaim,
-  type FactVerdict,
   type ReviewStep,
   type ScriptChange,
   type ScriptGroup,
@@ -29,17 +23,6 @@ type StepProps = {
   locked: boolean;
   /** True while this step's own job runs, so its button says so. */
   working?: boolean;
-};
-
-const VERDICTS: Record<
-  FactVerdict,
-  { label: string; tone: "success" | "danger" | "warning" | "neutral" }
-> = {
-  supported: { label: "Supported", tone: "success" },
-  contradicted: { label: "Contradicted", tone: "danger" },
-  conflict: { label: "Sources disagree", tone: "warning" },
-  not_found: { label: "No source found", tone: "warning" },
-  not_checked: { label: "Not checked", tone: "neutral" },
 };
 
 const STATE_TONES = { todo: "neutral", attention: "warning", done: "success" } as const;
@@ -82,151 +65,6 @@ export function StepNav({
         </li>
       ))}
     </ol>
-  );
-}
-
-function Claim({
-  claim,
-  onAccept,
-  onDismiss,
-}: {
-  claim: FactClaim;
-  onAccept: (wording: string) => void;
-  onDismiss: () => void;
-}) {
-  const [wording, setWording] = useState(claim.suggestion?.new ?? "");
-  const verdict = VERDICTS[claim.verdict] ?? VERDICTS.not_checked;
-  const open = claim.suggestion && !claim.decision;
-
-  return (
-    <li className="flex flex-col gap-2 rounded-panel border border-border border-l-4 border-l-accent bg-surface p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={verdict.tone}>{verdict.label}</Badge>
-        {claim.slide !== null ? (
-          <span className="text-osce-meta text-ink-subtle">Slide {claim.slide}</span>
-        ) : null}
-        {claim.decision ? (
-          <Badge tone="neutral">
-            {claim.decision === "accepted" ? "Correction made" : "Dismissed"}
-          </Badge>
-        ) : null}
-      </div>
-      <p className="text-osce-body text-ink">{claim.claim}</p>
-      {claim.why ? <p className="text-osce-meta text-ink-subtle">{claim.why}</p> : null}
-      {claim.evidence.map((evidence, index) => (
-        <blockquote
-          key={index}
-          className="border-l-2 border-border pl-3 text-osce-meta text-ink-subtle"
-        >
-          “{evidence.quote}”
-          <span className="mt-1 block text-ink">
-            {evidence.url ? (
-              <a href={evidence.url} target="_blank" rel="noreferrer" className="underline">
-                {evidence.source}
-              </a>
-            ) : (
-              evidence.source
-            )}
-            {evidence.section ? `, ${evidence.section}` : ""}
-            {evidence.page !== null ? `, page ${evidence.page}` : ""}
-          </span>
-        </blockquote>
-      ))}
-      {open && claim.suggestion?.old ? (
-        <div className="flex flex-col gap-2">
-          <Input
-            label={`Replace “${claim.suggestion.old}” with`}
-            value={wording}
-            onChange={(event) => setWording(event.target.value)}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" disabled={!wording.trim()} onClick={() => onAccept(wording.trim())}>
-              Accept correction
-            </Button>
-            <Button size="sm" variant="ghost" onClick={onDismiss}>
-              Keep as written
-            </Button>
-          </div>
-        </div>
-      ) : null}
-      {open && !claim.suggestion?.old ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-osce-body text-ink">
-            Suggested: {claim.suggestion?.new} (edit it in the draft)
-          </p>
-          <Button size="sm" variant="ghost" onClick={onDismiss}>
-            Keep as written
-          </Button>
-        </div>
-      ) : null}
-      {!claim.suggestion && needsRuling(claim) ? (
-        <div>
-          <Button size="sm" variant="ghost" onClick={onDismiss}>
-            Keep as written
-          </Button>
-        </div>
-      ) : null}
-    </li>
-  );
-}
-
-/** Step 2: each clinical claim against the guidelines. Only what needs a decision is shown first. */
-export function FactsStep({
-  content,
-  onChange,
-  locked,
-  working = false,
-  onCheck,
-}: StepProps & { onCheck: () => void }) {
-  const [showAll, setShowAll] = useState(false);
-  const facts = reviewOf(content).facts;
-  const claims = facts?.claims ?? [];
-  const unsettled = claims.filter((claim) => claim.verdict !== "supported");
-  const settled = claims.length - unsettled.length;
-  const shown = showAll ? claims : unsettled;
-  const toRule = claims.filter(needsRuling).length;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <p className="text-osce-body text-ink">
-        Every clinical claim in the draft is looked up in the guideline library, and on the clinical
-        web where the library is silent. Nothing in your draft is changed unless you accept a
-        correction.
-      </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button size="sm" variant={facts ? "secondary" : "primary"} disabled={locked} isLoading={working} onClick={onCheck}>
-          {working ? "Checking facts…" : facts ? "Check facts again" : "Check facts"}
-        </Button>
-        {facts ? (
-          <span className="text-osce-meta text-ink-subtle">
-            {claims.length} claims checked {when(facts.checked_at)}: {settled} supported,{" "}
-            {unsettled.length} to read, {toRule} to resolve
-          </span>
-        ) : null}
-      </div>
-      {facts && unsettled.length === 0 ? (
-        <Alert tone="success">Every claim is supported by a source. Go on to the script.</Alert>
-      ) : null}
-      {shown.length > 0 ? (
-        <ul className="flex flex-col gap-3">
-          {shown.map((claim) => (
-            <Claim
-              key={claim.id}
-              claim={claim}
-              onAccept={(wording) => onChange(acceptSuggestion(content, claim, wording))}
-              onDismiss={() => onChange(dismissSuggestion(content, claim))}
-            />
-          ))}
-        </ul>
-      ) : null}
-      {settled > 0 ? (
-        <div>
-          <Button size="sm" variant="ghost" onClick={() => setShowAll(!showAll)}>
-            {showAll ? "Hide supported claims" : `Show the ${settled} supported claims`}
-          </Button>
-        </div>
-      ) : null}
-    </div>
   );
 }
 

@@ -1,4 +1,5 @@
-"""The background jobs that draft a template and a station from an uploaded document.
+"""The background jobs that draft a template and a station from an uploaded document, and that
+check a platform station's facts.
 
 Enqueued in the same transaction as the row they concern (ADR 0006): either the
 import row and its job both land or neither does. The model calls run here
@@ -20,6 +21,7 @@ log = get_logger(__name__)
 QUEUE = "station_imports"
 TEMPLATE_TASK = "draft_import_template"
 STATION_TASK = "draft_import_station"
+FACTS_TASK = "check_station_facts"
 
 
 async def enqueue_template_draft(session: AsyncSession, *, import_id: uuid.UUID) -> None:
@@ -44,8 +46,21 @@ async def enqueue_station_draft(session: AsyncSession, *, import_id: uuid.UUID) 
     )
 
 
+async def enqueue_fact_check(
+    session: AsyncSession, *, version_id: uuid.UUID, requested_by: uuid.UUID
+) -> None:
+    """Queue checking one version's facts. The queueing lock keeps it to one run at a time."""
+    await defer_in_transaction(
+        session,
+        queue=QUEUE,
+        task=FACTS_TASK,
+        args={"version_id": str(version_id), "requested_by": str(requested_by)},
+        queueing_lock=f"station-version:{version_id}:facts",
+    )
+
+
 def register() -> None:
-    """Attach the two import tasks to the jobs app, so the worker picks them up."""
+    """Attach the import and fact check tasks to the jobs app, so the worker picks them up."""
     app = get_jobs_app()
 
     @app.task(name=TEMPLATE_TASK, queue=QUEUE)
@@ -67,3 +82,13 @@ def register() -> None:
         async with job_session() as session:
             await run_station_job(session, uuid.UUID(import_id), settings=get_settings())
             log.info("station import station drafted", import_id=import_id)
+
+    @app.task(name=FACTS_TASK, queue=QUEUE)
+    async def check_station_facts(version_id: str, requested_by: str) -> None:
+        """Check one platform station version's clinical claims and keep the result on it."""
+        from app.core.db import job_session
+        from app.features.stations.service_facts import run_check
+
+        async with job_session() as session:
+            await run_check(session, uuid.UUID(version_id), requested_by=uuid.UUID(requested_by))
+            log.info("station facts checked", version_id=version_id)

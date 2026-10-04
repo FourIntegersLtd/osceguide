@@ -41,9 +41,10 @@ write-script  -> write_media_script  status writing_script, then awaiting_review
 voicing route -> the three jobs below, refused unless the script is the one that was checked
 ```
 
-- **Fact check** (`fact_check.py`): one model call lists the checkable clinical claims (60 at
-  most). Each is put to Clinical Buddy's guideline library; only a claim the library does not
-  support goes on to Clinical Buddy's web search. Verdicts: `supported`, `contradicted`,
+- **Fact check** (`service_facts.py`, which `stations` uses too): one model call lists the checkable clinical claims (60 at
+  most). Each is put to Clinical Buddy's guideline library and its web search at once, and each
+  source's own verdict is kept in `evidence`, labelled `guideline` or `web` with Clinical
+  Buddy's reliability and source type. Verdicts: `supported`, `contradicted`,
   `not_found`, `conflict` (library and web disagree), `not_checked` (neither could be asked).
 - **Script check** (`script_check.py`): writes whatever is not yet written (a deck's narration
   and framing, or a dialogue), then a second model reads every line against the material it
@@ -64,7 +65,7 @@ and `scripts/regenerate_podcasts.py` call the pipeline directly and are not gate
 | `produce_summary_podcast` | `media` | Script + TTS for a summary |
 | `regenerate_slide_av` | `media` | Slide video: ElevenLabs voice (Ben, or Michelle when the deck's content has `"presenter": "Michelle"`), Pillow frames, ffmpeg |
 | `produce_podcast_audio` | `media` | Audio-only podcast |
-| `check_media_facts` | `media` | Claims against the guideline library, then the web. No text changed |
+| `check_media_facts` | `media` | Claims against the guideline library and the web, side by side. No text changed |
 | `write_media_script` | `media` | Narration or dialogue, then the second read. No ElevenLabs call |
 
 Podcasts are voiced by ElevenLabs Eleven v4 (text-to-dialogue). Regenerate them all with

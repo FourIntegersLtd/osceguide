@@ -47,7 +47,7 @@ async def test_generate_podcast_route(client: AsyncClient, make_actor) -> None: 
 
     with patch(
         "app.features.generation.service._json_completion",
-        new=AsyncMock(return_value={"script": 'Ben: "hello"\nTom: "hi"'}),
+        new=AsyncMock(return_value={"title": "Hypertension Review", "script": 'Ben: "hello"\nTom: "hi"'}),
     ):
         res = await client.post(
             "/api/v1/platform/generate/podcast",
@@ -57,3 +57,61 @@ async def test_generate_podcast_route(client: AsyncClient, make_actor) -> None: 
 
     assert res.status_code == 200, res.text
     assert "hello" in res.json()["content"]["script"]
+
+
+async def test_a_deck_titled_with_the_opening_words_of_the_brief_is_given_a_real_title(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("gen-deck@osceguide.com", platform_admin=True)
+    brief = "57 yr old on evorel sequi last 4 yrs when she was perimenopausal, since then spotting"
+    replies = [
+        {"topic": brief[:80], "about": "In this course...", "slides": [{"title": "Bleeding on HRT"}]},
+        {"title": "HRT Bleeding: Spotting on Sequential Evorel"},
+    ]
+
+    with patch("app.features.generation.service._json_completion", new=AsyncMock(side_effect=replies)):
+        res = await client.post(
+            "/api/v1/platform/generate/slide-deck",
+            headers=bearer(admin),
+            json={"prompt": brief, "exam_code": "sca"},
+        )
+
+    assert res.status_code == 200, res.text
+    assert res.json()["content"]["topic"] == "HRT Bleeding: Spotting on Sequential Evorel"
+
+
+async def test_a_podcast_keeps_the_title_it_was_given_beside_its_script(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("gen-pod-title@osceguide.com", platform_admin=True)
+
+    with patch(
+        "app.features.generation.service._json_completion",
+        new=AsyncMock(return_value={"title": "Asthma Control in Primary Care", "content": "Ben: hi"}),
+    ) as model:
+        res = await client.post(
+            "/api/v1/platform/generate/podcast",
+            headers=bearer(admin),
+            json={"prompt": "Topic: asthma", "exam_code": "sca"},
+        )
+
+    assert res.status_code == 200, res.text
+    assert res.json()["content"] == {"title": "Asthma Control in Primary Care", "script": "Ben: hi"}
+    assert model.await_count == 1
+
+
+async def test_a_deck_with_no_slides_is_refused_rather_than_saved_empty(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("gen-deck-empty@osceguide.com", platform_admin=True)
+    # What a brief asking to sign off its twists first got back: the twists, and no deck.
+    reply = {"real_world_complexity": {"competing_problem_late_in_call": "A swollen calf."}}
+
+    with patch("app.features.generation.service._json_completion", new=AsyncMock(return_value=reply)):
+        res = await client.post(
+            "/api/v1/platform/generate/slide-deck",
+            headers=bearer(admin),
+            json={"prompt": "Sequential HRT bleeding", "exam_code": "sca"},
+        )
+
+    assert (res.status_code, res.json()["code"]) == (422, "generation_empty")

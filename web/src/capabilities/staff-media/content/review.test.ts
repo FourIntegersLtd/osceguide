@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   acceptSuggestion,
   dismissSuggestion,
+  reopenSuggestion,
   firstOpenStep,
   isChecked,
   reviewSteps,
@@ -10,8 +11,8 @@ import {
   scriptGroups,
   setScriptLine,
   spokenLines,
-  type FactClaim,
 } from "@/capabilities/staff-media/content/review";
+import type { FactClaim } from "@/capabilities/fact-check/facts";
 
 const DECK_LINES = [
   "Here is the reading that matters.",
@@ -107,7 +108,7 @@ describe("the staff review of a spoken item", () => {
       ...deck(),
       review: { facts: { checked_at: "t", claims: [CLAIM] } },
     };
-    const accepted = acceptSuggestion(content, CLAIM, "160/100");
+    const accepted = acceptSuggestion(content, CLAIM, { from: CLAIM.suggestion!.old!, to: "160/100" });
     const slide = (accepted.slides as Record<string, unknown>[])[0]!;
     assert.deepEqual(slide.bullets, ["Stage 2 is a clinic reading of 160/100 or more"]);
     assert.equal(slide.source_notes, "Clinic 160/100.");
@@ -123,6 +124,30 @@ describe("the staff review of a spoken item", () => {
     const dismissed = dismissSuggestion(content, CLAIM);
     assert.deepEqual(dismissed.slides, content.slides);
     assert.equal(reviewOf(dismissed).facts?.claims[0]?.decision, "dismissed");
+  });
+
+  it("reopening an accepted correction puts the original words back and needs a ruling again", () => {
+    const content: Record<string, unknown> = {
+      ...deck(),
+      review: { facts: { checked_at: "t", claims: [CLAIM] } },
+    };
+    const accepted = acceptSuggestion(content, CLAIM, { from: CLAIM.suggestion!.old!, to: "160/100" });
+    const claim = reviewOf(accepted).facts!.claims[0]!;
+    const reopened = reopenSuggestion(accepted, claim);
+    assert.deepEqual(reopened.slides, content.slides);
+    assert.equal(reviewOf(reopened).facts?.claims[0]?.decision, undefined);
+    assert.equal(reviewOf(reopened).facts?.claims[0]?.swap, undefined);
+  });
+
+  it("reopening a kept claim changes nothing but the decision", () => {
+    const content: Record<string, unknown> = {
+      ...deck(),
+      review: { facts: { checked_at: "t", claims: [CLAIM] } },
+    };
+    const dismissed = dismissSuggestion(content, CLAIM);
+    const reopened = reopenSuggestion(dismissed, reviewOf(dismissed).facts!.claims[0]!);
+    assert.deepEqual(reopened.slides, content.slides);
+    assert.equal(reviewOf(reopened).facts?.claims[0]?.decision, undefined);
   });
 
   it("walks a deck through its steps", () => {

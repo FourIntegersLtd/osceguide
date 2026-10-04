@@ -95,9 +95,10 @@ def normalize_podcast_response(raw: dict[str, Any]) -> dict[str, Any]:
     """
     if "script" in raw:
         return raw
+    title = {"title": str(raw["title"])} if raw.get("title") else {}
     if "content" in raw:
-        return {"script": str(raw["content"])}
-    return {"script": json_dumps_safe(raw)}
+        return {**title, "script": str(raw["content"])}
+    return {**title, "script": json_dumps_safe(raw)}
 
 
 def json_dumps_safe(value: Any) -> str:

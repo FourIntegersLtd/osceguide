@@ -114,6 +114,15 @@ async def set_version_content(
     )
 
 
+async def set_version_review(session: AsyncSession, version_id: uuid.UUID, review: dict[str, Any]) -> None:
+    """Overwrite a platform station version's fact check, whatever its status."""
+    await session.execute(
+        update(StationVersion)
+        .where(owned_by(StationVersion, None), StationVersion.id == version_id)
+        .values(review=review)
+    )
+
+
 async def set_version_status(
     session: AsyncSession,
     org_id: uuid.UUID | None,

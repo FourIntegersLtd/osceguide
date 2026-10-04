@@ -75,6 +75,17 @@ class CreateStation(BaseModel):
 
 class UpdateVersion(BaseModel):
     content: dict[str, Any]
+    # The fact check with the reader's rulings on it, saved with the corrections they made. Platform
+    # stations only; the org route ignores it.
+    facts: dict[str, Any] | None = None
+
+
+class StationReview(BaseModel):
+    """A platform station version's fact check. Never part of what a trainee is served."""
+
+    checking: bool = False
+    facts: dict[str, Any] | None = None
+    error: dict[str, Any] | None = None
 
 
 class UpdateBrief(BaseModel):

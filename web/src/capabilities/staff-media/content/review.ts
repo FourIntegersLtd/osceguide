@@ -7,38 +7,21 @@
  * lines voicing would speak must be exactly the lines that were last checked.
  */
 
+import {
+  corrected,
+  factsOf,
+  needsRuling,
+  record,
+  records,
+  reopened,
+  ruled,
+  uncorrected,
+  type FactClaim,
+  type Facts,
+  type Swap,
+} from "@/capabilities/fact-check/facts";
+
 type Content = Record<string, unknown>;
-
-export type Evidence = {
-  kind: "guideline" | "web";
-  source: string;
-  section: string;
-  page: number | null;
-  url: string | null;
-  quote: string;
-};
-
-export type FactVerdict =
-  | "supported"
-  | "contradicted"
-  | "not_found"
-  | "conflict"
-  | "not_checked";
-
-export type FactClaim = {
-  id: string;
-  /** The slide of a deck the claim sits on; null for a summary or podcast. */
-  slide: number | null;
-  claim: string;
-  verdict: FactVerdict;
-  why: string;
-  checked: string[];
-  evidence: Evidence[];
-  /** `old` is null when the words to replace could not be pinned down. */
-  suggestion: { old: string | null; new: string } | null;
-  /** Set here, by the reader: what they did with the suggestion. */
-  decision?: "accepted" | "dismissed";
-};
 
 export type ScriptIssue = {
   part: "slide" | "framing" | "deck" | "script";
@@ -61,7 +44,7 @@ export type ScriptChange = {
 };
 
 export type Review = {
-  facts: { checked_at: string; claims: FactClaim[] } | null;
+  facts: Facts | null;
   script: {
     checked_at: string | null;
     lines: string[];
@@ -85,36 +68,16 @@ export function isSpokenKind(kind: string): boolean {
   return SPOKEN_KINDS.includes(kind);
 }
 
-function record(value: unknown): Content | null {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Content)
-    : null;
-}
-
-function records(value: unknown): Content[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((entry: unknown): Content[] => {
-    const fields = record(entry);
-    return fields ? [fields] : [];
-  });
-}
-
 function text(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
 export function reviewOf(content: Content): Review {
   const review = record(content.review) ?? {};
-  const facts = record(review.facts);
   const script = record(review.script);
   const error = record(review.error);
   return {
-    facts: facts
-      ? {
-          checked_at: text(facts.checked_at),
-          claims: records(facts.claims) as unknown as FactClaim[],
-        }
-      : null,
+    facts: factsOf(review.facts),
     script: script
       ? {
           checked_at: text(script.checked_at) || null,
@@ -284,61 +247,36 @@ export function setScriptLine(
   };
 }
 
-/** Every string under `value` with `old` swapped for `next`; what was spoken is left alone. */
-function replaced(value: unknown, old: string, next: string, key = ""): unknown {
-  if (key === "review" || key === "narration" || key === "presentation") return value;
-  if (typeof value === "string") return value.split(old).join(next);
-  if (Array.isArray(value)) return value.map((entry) => replaced(entry, old, next));
-  const fields = record(value);
-  if (!fields) return value;
-  return Object.fromEntries(
-    Object.entries(fields).map(([name, entry]) => [
-      name,
-      replaced(entry, old, next, name),
-    ]),
-  );
-}
-
+/** `content` with the reader's ruling on a claim recorded in its review. */
 function decided(
   content: Content,
   claimId: string,
   decision: "accepted" | "dismissed",
+  swap?: Swap,
 ): Content {
-  const review = record(content.review) ?? {};
-  const facts = record(review.facts) ?? {};
-  const claims = records(facts.claims).map((claim) =>
-    claim.id === claimId ? { ...claim, decision } : claim,
-  );
-  return { ...content, review: { ...review, facts: { ...facts, claims } } };
+  return withFacts(content, (facts) => ruled(facts, claimId, decision, swap));
 }
 
-/**
- * `content` with a claim's suggested correction made, in the slide it sits on
- * (or everywhere, for a summary or podcast). `wording` is what to put in its
- * place: the suggestion, or the reader's own edit of it.
- */
-export function acceptSuggestion(
-  content: Content,
-  claim: FactClaim,
-  wording: string,
-): Content {
-  const old = claim.suggestion?.old;
-  if (!old) return content;
-  const slides = Array.isArray(content.slides) ? content.slides : null;
-  const corrected =
-    claim.slide !== null && slides
-      ? {
-          ...content,
-          slides: slides.map((slide, index) =>
-            index === (claim.slide ?? 0) - 1 ? replaced(slide, old, wording) : slide,
-          ),
-        }
-      : (replaced(content, old, wording) as Content);
-  return decided(corrected, claim.id, "accepted");
+function withFacts(content: Content, change: (facts: Facts) => Facts): Content {
+  const review = record(content.review) ?? {};
+  const facts = factsOf(review.facts);
+  return facts ? { ...content, review: { ...review, facts: change(facts) } } : content;
+}
+
+/** `content` with a claim's correction made and recorded; with no swap, the reader made it by hand. */
+export function acceptSuggestion(content: Content, claim: FactClaim, swap: Swap | null): Content {
+  return swap
+    ? decided(corrected(content, claim, swap), claim.id, "accepted", swap)
+    : decided(content, claim.id, "accepted");
 }
 
 export function dismissSuggestion(content: Content, claim: FactClaim): Content {
   return decided(content, claim.id, "dismissed");
+}
+
+/** `content` with a ruling taken back: an accepted correction's words swapped out again, and the claim open. */
+export function reopenSuggestion(content: Content, claim: FactClaim): Content {
+  return withFacts(uncorrected(content, claim), (facts) => reopened(facts, claim.id));
 }
 
 export type StepId = "draft" | "facts" | "script" | "voice";
@@ -365,14 +303,6 @@ function hasDraft(kind: string, content: Content): boolean {
       name !== "status" &&
       !name.endsWith("_url") &&
       (Array.isArray(value) ? value.length > 0 : text(value).trim() !== ""),
-  );
-}
-
-/** A claim the reader still has to rule on: the sources say it is wrong, or disagree. */
-export function needsRuling(claim: FactClaim): boolean {
-  return (
-    (claim.verdict === "contradicted" || claim.verdict === "conflict") &&
-    !claim.decision
   );
 }
 
