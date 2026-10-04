@@ -21,7 +21,7 @@ export function InstitutionsBuyerSection() {
           You bring stations and rubrics. We handle the rest.
         </p>
 
-        <div className="mt-10 grid gap-5 lg:grid-cols-2">
+        <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-2">
           {BUYER_TYPES.map((buyer) => (
             <article
               key={buyer.label}

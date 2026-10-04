@@ -1,19 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Alert,
-  B2CPageHeader,
-  B2CSegmentedTabs,
-  BandPill,
-  Button,
-  ButtonLink,
-  EmptyState,
-  Textarea,
-  type BandVariant,
-} from "@/foundation/ui";
+import { Alert, B2CPageHeader, B2CSegmentedTabs, BandPill, Button, ButtonLink, EmptyState, Textarea, type BandVariant, Panel } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
-import { Panel, PreviewNotice } from "@/domains/assess/programmes/parts";
+import { PreviewNotice } from "@/domains/assess/programmes/parts";
 
 type Agreement = "agree" | "partly" | "disagree";
 
@@ -104,11 +94,11 @@ export function SharedReview({ reviewId }: { reviewId: string }) {
       />
       <PreviewNotice needs="There is no shared-review route to read a request from or send feedback to." />
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-5">
           <Panel
             title="Athena's marking"
-            action={
+            actions={
               <span className="flex items-center gap-2 text-osce-meta tabular-nums text-b2b-mid">
                 <BandPill variant={request.overall.band} />
                 {request.overall.score}

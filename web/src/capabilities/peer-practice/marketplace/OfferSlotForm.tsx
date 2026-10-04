@@ -3,9 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { HiOutlineClock } from "react-icons/hi2";
 import { addDays, format, isSameDay, startOfDay } from "date-fns";
-import { Button, B2CInlineError, productTokens } from "@/foundation/ui";
+import { Button, B2CInlineError, productTokens, FoldSection } from "@/foundation/ui";
 import {
-  FormStep,
   TIME_OPTIONS,
   TimeSlotList,
 } from "@/capabilities/peer-practice/marketplace/formParts";
@@ -103,8 +102,8 @@ export function OfferSlotForm({
         </p>
       </div>
 
-      <div className="grid items-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(16rem,18.5rem)]">
-        <FormStep step={1} label="Choose a date" done={hasDate}>
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(16rem,18.5rem)]">
+        <FoldSection number={1} title="Choose a date">
           <div
             className={`availability-form-calendar w-full overflow-hidden rounded-xl bg-b2c-surface-muted p-3 sm:p-4 ${
               selectedAnotherDay ? "availability-form-calendar--other-day-selected" : ""
@@ -117,10 +116,10 @@ export function OfferSlotForm({
               toDate={maxDate}
             />
           </div>
-        </FormStep>
+        </FoldSection>
 
         <div className="flex min-w-0 flex-col gap-6">
-          <FormStep step={2} label="Choose a time" done={hasTime} hint={hasDate ? undefined : "Choose a date first"}>
+          <FoldSection number={2} title="Choose a time" description={hasDate ? undefined : "Choose a date first"}>
             <div ref={timeRef} className="relative md:hidden">
               <button
                 type="button"
@@ -180,11 +179,15 @@ export function OfferSlotForm({
                 </p>
               )}
             </div>
-          </FormStep>
+          </FoldSection>
         </div>
       </div>
 
-      <FormStep step={3} label="Add a note" optional done={Boolean(note)}>
+      <FoldSection
+        number={3}
+        title="Add a note"
+        meta={<span className="text-osce-meta font-normal text-ink-subtle">Optional</span>}
+      >
         <input
           type="text"
           value={note}
@@ -193,7 +196,7 @@ export function OfferSlotForm({
           maxLength={100}
           className={`${b2cInputBase} w-full`}
         />
-      </FormStep>
+      </FoldSection>
 
       <B2CInlineError message={validationError} />
 

@@ -124,8 +124,8 @@ export function MatchNotificationModal({
             <ModalSecondaryButton onClick={onDecline} disabled={isAccepting} className="flex-1 sm:flex-none">
               Not Now
             </ModalSecondaryButton>
-            <ModalPrimaryButton onClick={onAccept} disabled={isAccepting} className="flex-1 sm:flex-none">
-              Start Session
+            <ModalPrimaryButton onClick={onAccept} disabled={isAccepting} aria-busy={isAccepting || undefined} className="flex-1 sm:flex-none">
+              {isAccepting ? "Starting…" : "Start Session"}
             </ModalPrimaryButton>
           </ModalFooterActions>
         </ModalContent>

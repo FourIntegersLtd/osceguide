@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { HiOutlinePaperAirplane } from "react-icons/hi2";
-import { Alert, AsyncBoundary, B2CHero, B2CPageHeader, Button, EmptyState, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CHero, B2CPageHeader, Button, EmptyState, b2bTokens, Panel } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
@@ -85,7 +85,7 @@ function Report({
             variant="secondary"
             isLoading={downloading}
             disabled={downloading}
-            onClick={() => void downloadCsv()}
+            onClick={() => downloadCsv()}
           >
             Download CSV
           </Button>
@@ -162,7 +162,7 @@ function OutcomeTiles({
     { label: "Awaiting marking", value: awaitingMarking },
   ];
   return (
-    <section aria-label="Outcomes" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <section aria-label="Outcomes" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {tiles.map((tile) => (
         <div key={tile.label} className={b2bTokens.b2bStatCard}>
           <span className={b2bTokens.b2bEyebrow}>{tile.label}</span>
@@ -264,7 +264,7 @@ function ReleaseAll({
             variant="commit"
             isLoading={busy}
             disabled={busy || chosen.length === 0}
-            onClick={() => void release()}
+            onClick={() => release()}
           >
             <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden />
             {allPicked ? `Release all ${waiting.length}` : `Release ${chosen.length} selected`}
@@ -283,7 +283,8 @@ function ReleaseAll({
         Releasing lets each of them read their outcome. Untick anyone to hold back.
       </B2CHero>
 
-      <fieldset className="space-y-2 rounded-panel border border-b2b-border bg-b2b-surface p-4">
+      <Panel title="Candidates to release" padding="sm">
+      <fieldset className="space-y-2">
         <legend className="sr-only">Candidates to release</legend>
         {waiting.length > 1 ? (
           <label className="flex items-center gap-2 text-osce-meta font-medium text-b2b-headline">
@@ -300,7 +301,7 @@ function ReleaseAll({
             All {waiting.length}
           </label>
         ) : null}
-        <ul className="grid gap-1 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
           {waiting.map((candidate) => (
             <li key={candidate.user_id}>
               <label className="flex items-center gap-2 text-osce-body text-b2b-headline">
@@ -316,6 +317,7 @@ function ReleaseAll({
           ))}
         </ul>
       </fieldset>
+      </Panel>
 
       {released !== null ? (
         <Alert tone={failures.length === 0 ? "success" : "warning"}>

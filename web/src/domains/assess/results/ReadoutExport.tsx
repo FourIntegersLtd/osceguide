@@ -56,7 +56,7 @@ export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sitting
         size="sm"
         isLoading={busy}
         disabled={busy}
-        onClick={() => void exportReadout()}
+        onClick={() => exportReadout()}
       >
         {busy ? "Exporting…" : "Export readout"}
       </Button>

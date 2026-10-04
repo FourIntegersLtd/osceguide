@@ -35,7 +35,7 @@ export function LandingFeatureCards({ features }: LandingFeatureCardsProps) {
   const { type } = useLandingVariant();
 
   return (
-    <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
+    <div className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
       {features.map((feature) => (
         <article key={feature.title} className="flex gap-3.5">
           <LandingIconBadge

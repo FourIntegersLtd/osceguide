@@ -191,7 +191,7 @@ function Editor({
           variant="secondary"
           isLoading={busy === "draft"}
           disabled={busy !== null}
-          onClick={() => void save("draft")}
+          onClick={() => save("draft")}
         >
           Save draft
         </Button>
@@ -200,7 +200,7 @@ function Editor({
           variant="commit"
           isLoading={busy === "completed"}
           disabled={busy !== null}
-          onClick={() => void save("completed")}
+          onClick={() => save("completed")}
         >
           {completed ? "Save changes" : "Complete review"}
         </Button>

@@ -6,6 +6,9 @@ import { SessionProvider } from "@/foundation/session";
 import { ToastHost } from "@/foundation/ui";
 import { AnalyticsConsentGate } from "@/foundation/analytics/AnalyticsConsentGate";
 import InstallPrompt from "@/domains/marketing/InstallPrompt";
+import { PullToRefresh } from "@/foundation/pwa/PullToRefresh";
+import { UpdateNotice } from "@/foundation/pwa/UpdateNotice";
+import { ServiceWorkerRegistration } from "@/foundation/pwa/ServiceWorkerRegistration";
 import "@/app/globals.css";
 
 /*
@@ -122,6 +125,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               forms part of that answer.
             */}
             <InstallPrompt />
+            <ServiceWorkerRegistration />
+            <PullToRefresh />
+            <UpdateNotice />
           </ToastHost>
         </SessionProvider>
       </body>

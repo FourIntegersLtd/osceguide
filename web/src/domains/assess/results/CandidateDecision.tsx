@@ -190,7 +190,7 @@ function Form({
 
       <fieldset className="space-y-2" disabled={signedOff}>
         <legend className="mb-2 text-osce-meta font-medium text-b2b-headline">Outcome</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {ASSESSMENT_OUTCOMES.map((value: AssessmentOutcome) => (
             <button
               key={value}
@@ -242,7 +242,7 @@ function Form({
               isLoading={busy === "save"}
               disabled={busy !== null}
               onClick={() =>
-                void run("save", () => saveDecision(orgSlug, sittingId, traineeId, draft), "Draft saved.")
+                run("save", () => saveDecision(orgSlug, sittingId, traineeId, draft), "Draft saved.")
               }
             >
               Save draft
@@ -253,7 +253,7 @@ function Form({
               isLoading={busy === "signoff"}
               disabled={busy !== null || blockers.length > 0}
               onClick={() =>
-                void run(
+                run(
                   "signoff",
                   async () => {
                     // Sign-off reads what is stored, so the draft goes first —
@@ -275,7 +275,7 @@ function Form({
             isLoading={busy === "release"}
             disabled={busy !== null}
             onClick={() =>
-              void run(
+              run(
                 "release",
                 () => releaseDecision(orgSlug, sittingId, traineeId, evidenceFor(candidate)),
                 "Released. The candidate can read it now.",

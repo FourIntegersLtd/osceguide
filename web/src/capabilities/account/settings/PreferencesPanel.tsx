@@ -7,14 +7,14 @@ import {
   HiOutlineMicrophone,
   HiOutlineSparkles,
 } from "react-icons/hi2";
-import { AsyncBoundary, Button, Input, Modal } from "@/foundation/ui";
+import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
 import { useAsync } from "@/foundation/hooks";
 import { useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { OnboardingFlow, rememberOnboardingSeen } from "@/capabilities/onboarding";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
-import { SettingsCard, SettingsRow, SettingsRows, Switch } from "@/capabilities/account/settings/SettingsKit";
+import { SettingsRow, SettingsRows, Switch } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { describeTimer, formatTimer, parseTimer } from "@/capabilities/account/settings/timerFields";
 
@@ -126,7 +126,7 @@ function PreferencesForm({ me }: { me: Me }) {
         {successMessage ? <Alert message={successMessage} type="success" /> : null}
         {error ? <Alert message={error} type="error" /> : null}
 
-        <SettingsCard title="Preferences" description="Accessibility, AI consent and notifications.">
+        <Panel title="Preferences" description="Accessibility, AI consent and notifications.">
           <SettingsRows className="rounded-none border-0">
             <SettingsRow
               icon={HiOutlineSparkles}
@@ -183,7 +183,7 @@ function PreferencesForm({ me }: { me: Me }) {
               />
             ) : null}
           </SettingsRows>
-        </SettingsCard>
+        </Panel>
 
         <div className="flex justify-end">
           <Button type="submit" isLoading={saving}>

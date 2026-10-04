@@ -88,6 +88,14 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // A cached worker script would pin every installed app to an old one.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
     ];
   },
 };

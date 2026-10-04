@@ -138,13 +138,16 @@ export function MicrophoneCheck({
   const [result, setResult] = useState<MicCheckResult | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const mounted = useRef(true);
+  const lastStatus = useRef<MicCheckStatus | "checking" | null>(null);
   const browser = useMemo(
     () => detectBrowser(typeof navigator === "undefined" ? "" : navigator.userAgent),
     [],
   );
 
   const check = useCallback(async () => {
+    lastStatus.current = "checking";
     const next = await checkMicrophoneAccess();
+    lastStatus.current = next.status;
     if (!mounted.current) return;
     setResult(next);
     setIsChecking(false);
@@ -168,7 +171,19 @@ export function MicrophoneCheck({
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.permissions?.query) return undefined;
     let permission: PermissionStatus | null = null;
-    const onChange = () => run();
+    /*
+     * Only a change the person made. The check itself moves the permission —
+     * to granted when it opens the microphone, and on an installed iOS app
+     * back to "prompt" when it lets go — and answering those re-ran the check
+     * in a loop that never settled.
+     */
+    const onChange = () => {
+      const state = permission?.state;
+      if (state === "prompt" || lastStatus.current === "checking" || state === lastStatus.current) {
+        return;
+      }
+      run();
+    };
     navigator.permissions
       .query({ name: "microphone" as PermissionName })
       .then((status) => {

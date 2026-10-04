@@ -28,10 +28,7 @@ from app.features.media_production.podcast_tts import ffmpeg_binary
 from app.features.media_production.s3 import s3_client
 from app.features.media_production.slide_narration import (
     is_question,
-    item_words,
-    narrate_slide,
-    plan_deck,
-    spoken_notes,
+    narrate_deck,
 )
 from app.features.media_production.slide_scenes import (
     ASSETS,
@@ -43,7 +40,7 @@ from app.features.media_production.slide_scenes import (
     Scene,
     resolve_image_path,
 )
-from app.features.media_production.slide_voice import SAMPLE_RATE, TAIL_PAUSE_MS, speak
+from app.features.media_production.slide_voice import PRESENTERS, SAMPLE_RATE, TAIL_PAUSE_MS, speak
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +55,6 @@ SCENE_TAIL = 0.35
 CAPTION_CHARACTERS = 72
 # ElevenLabs allows three requests at once.
 VOICE_WORKERS = 3
-NARRATION_WORKERS = 4
 S3_FOLDER = "teaching_videos/v2"
 
 _AUDIO_TAG = re.compile(r"\[[^\]]*\]")
@@ -258,12 +254,14 @@ def _caption_chunks(text: str, start: float, voiced: float) -> list[tuple[float,
     return timed
 
 
-def _voice_lines(settings: Settings, takes: list[_Take], voice_dir: Path) -> dict[str, tuple[Path, float]]:
-    """Ben's recording of every distinct line in the talk: its wav file and exact length."""
+def _voice_lines(
+    settings: Settings, takes: list[_Take], voice_dir: Path, presenter: str
+) -> dict[str, tuple[Path, float]]:
+    """The presenter's recording of every distinct line in the talk: its wav file and exact length."""
     voice_dir.mkdir(parents=True, exist_ok=True)
     texts = list(dict.fromkeys(text for take in takes for text, _ in take.lines))
     with httpx.Client(timeout=httpx.Timeout(180.0)) as client, ThreadPoolExecutor(VOICE_WORKERS) as pool:
-        voiced = list(pool.map(lambda text: speak(settings, text, voice_dir, client), texts))
+        voiced = list(pool.map(lambda text: speak(settings, text, voice_dir, client, presenter), texts))
     return dict(zip(texts, voiced, strict=True))
 
 
@@ -429,22 +427,16 @@ def regenerate_slide_av(
     if not isinstance(slides, list) or not slides or not all(isinstance(slide, dict) for slide in slides):
         raise AvUnavailable("This deck has no slides to render")
     payload["slides"] = slides = [dict(slide) for slide in slides]
+    # A deck names who presents it; Ben presents the ones that do not.
+    presenter = str(payload.get("presenter") or "Ben")
+    if presenter not in PRESENTERS:
+        raise AvUnavailable(f"Unknown presenter '{presenter}'")
 
-    with ThreadPoolExecutor(NARRATION_WORKERS) as pool:
-        plan = pool.submit(plan_deck, settings, payload)
-        words = item_words(slides)
-        narrations = list(pool.map(lambda slide: narrate_slide(settings, slide, len(slides), words), slides))
-        payload["presentation"] = plan.result()
-    for slide, narration in zip(slides, narrations, strict=True):
-        slide["narration"] = narration
-        # The notes the deck was written from stay as the source of its facts; the notes shown
-        # with the slide become what Ben actually says.
-        slide.setdefault("source_notes", slide.get("speaker_notes", ""))
-        slide["speaker_notes"] = spoken_notes(narration)
+    narrate_deck(settings, payload)
 
     font_dir = Path(settings.media_av_font_dir) if settings.media_av_font_dir.strip() else None
     takes = _storyboard(Painter(font_dir), payload, payload["presentation"], work_dir)
-    voiced = _voice_lines(settings, takes, voice_dir or work_dir / "voice")
+    voiced = _voice_lines(settings, takes, voice_dir or work_dir / "voice", presenter)
     total, soundtrack = _schedule(takes, voiced)
     soundtrack_path = work_dir / "soundtrack.wav"
     _write_soundtrack(soundtrack, total, soundtrack_path)

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { HiCheckCircle } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, b2bTokens, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import {
   finalizeCircuitReview,
@@ -88,11 +88,11 @@ function FeedbackForm({
   const publishedAt = current.state === "published" ? current.review.finalized_at : null;
 
   return (
-    <section className="space-y-3 rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
-      <h2 className={b2bTokens.b2bSectionTitle}>Share this circuit&apos;s feedback</h2>
-      <p className="text-osce-body text-b2b-mid">
-        Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one.
-      </p>
+    <Panel
+      title="Share this circuit's feedback"
+      description="Shares one summary of all the marking on this circuit. Candidates see it as their feedback. If you edit it and share again, the new version replaces the old one."
+    >
+      <div className="space-y-3">
       <p className="text-osce-caption font-medium text-b2b-headline">
         Marked on {marked} of {total} station{total === 1 ? "" : "s"}
       </p>
@@ -129,11 +129,12 @@ function FeedbackForm({
         variant="secondary"
         isLoading={busy === "publish"}
         disabled={busy !== null || marked === 0}
-        onClick={() => void publish(notes.trim() || null)}
+        onClick={() => publish(notes.trim() || null)}
       >
         <HiCheckCircle className="h-4 w-4 shrink-0 text-b2b-success-text" aria-hidden />
         {publishedAt ? "Publish again" : "Publish circuit feedback"}
       </Button>
-    </section>
+      </div>
+    </Panel>
   );
 }

@@ -45,7 +45,7 @@ check(`platform-api ${API}/health -> ${health}`, health === 200, "cd ../api && m
 
 // The first request compiles /login, which takes ~15s on webpack dev.
 const login = await status(`${WEB}/login`);
-check(`platform-web ${WEB}/login -> ${login}`, login === 200, "npm run dev:webpack (not `npm run dev`: Turbopack panics)");
+check(`platform-web ${WEB}/login -> ${login}`, login === 200, "npm run dev (`npm run dev:webpack` only if Turbopack panics)");
 
 if (health === 200) {
   let signedIn = false;

@@ -18,6 +18,38 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* No grey flash on tap: controls show their own pressed state. */
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    /* Taps act at once instead of waiting to see if they are a double-tap
+       zoom. Pinch zoom still works. */
+    touch-action: manipulation;
+  }
+  /*
+   * Installed to the home screen, the chrome behaves like an app's: a long
+   * press on a button or link does not open the browser's preview sheet or
+   * start selecting its label. Text in the content stays selectable.
+   */
+  @media (display-mode: standalone) {
+    /* Android's own pull-to-refresh is off: `PullToRefresh` is the one
+       gesture, so it behaves the same on iOS and knows when not to reload. */
+    html {
+      overscroll-behavior-y: contain;
+    }
+    a,
+    button,
+    [role="button"],
+    img {
+      -webkit-touch-callout: none;
+    }
+    button,
+    [role="button"],
+    nav,
+    header {
+      -webkit-user-select: none;
+      user-select: none;
+    }
   }
   /*
    * Preflight sets `border-color: currentColor`. Body ink is near-black, so a

@@ -19,6 +19,7 @@ from app.core.ports import (
     SourcePassages,
     SsoBrokerUnavailable,
     SsoIdentity,
+    WebAnswer,
 )
 
 FIXED_NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
@@ -413,6 +414,18 @@ class FakeGuidelineIndex:
         self.searches.append((query, limit, rerank))
         await asyncio.sleep(self.delay)
         return self.passages[:limit]
+
+
+class FakeGuidelineWeb:
+    """Answers every question with the one answer it was given, and remembers what it was asked."""
+
+    def __init__(self, answer: WebAnswer | None = None) -> None:
+        self.reply = answer
+        self.questions: list[str] = []
+
+    async def answer(self, *, question: str) -> WebAnswer | None:
+        self.questions.append(question)
+        return self.reply
 
 
 class FakeCheckoutSessions:

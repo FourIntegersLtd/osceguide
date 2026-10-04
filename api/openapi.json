@@ -5479,6 +5479,7 @@
               "scim_token_not_found",
               "scim_unauthorized",
               "scim_uniqueness",
+              "script_not_checked",
               "set_entry_has_attempts",
               "set_entry_not_found",
               "set_has_attempts",
@@ -15755,6 +15756,18 @@
           "scheduled_at"
         ],
         "title": "ScoringJobRead",
+        "type": "object"
+      },
+      "ScriptWriteRequest": {
+        "description": "How much of the script to write before it is checked.",
+        "properties": {
+          "rewrite": {
+            "default": false,
+            "title": "Rewrite",
+            "type": "boolean"
+          }
+        },
+        "title": "ScriptWriteRequest",
         "type": "object"
       },
       "SearchHit": {
@@ -34606,9 +34619,9 @@
         ]
       }
     },
-    "/api/v1/media/{item_id}/generate-audio": {
+    "/api/v1/media/{item_id}/check-facts": {
       "post": {
-        "operationId": "media_production_generate_podcast_audio",
+        "operationId": "media_production_check_media_facts",
         "parameters": [
           {
             "in": "path",
@@ -34669,6 +34682,110 @@
             "description": "av_already_running",
             "x-codes": [
               "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Check Media Facts",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/generate-audio": {
+      "post": {
+        "operationId": "media_production_generate_podcast_audio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_already_running, script_not_checked",
+            "x-codes": [
+              "av_already_running",
+              "script_not_checked"
             ]
           },
           "422": {
@@ -34769,9 +34886,10 @@
                 }
               }
             },
-            "description": "av_already_running",
+            "description": "av_already_running, script_not_checked",
             "x-codes": [
-              "av_already_running"
+              "av_already_running",
+              "script_not_checked"
             ]
           },
           "422": {
@@ -34960,6 +35078,120 @@
                 }
               }
             },
+            "description": "av_already_running, script_not_checked",
+            "x-codes": [
+              "av_already_running",
+              "script_not_checked"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Regenerate Slide Av",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/write-script": {
+      "post": {
+        "operationId": "media_production_write_media_script",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScriptWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
             "description": "av_already_running",
             "x-codes": [
               "av_already_running"
@@ -34997,7 +35229,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Regenerate Slide Av",
+        "summary": "Write Media Script",
         "tags": [
           "media-production"
         ]

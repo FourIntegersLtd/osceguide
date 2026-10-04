@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
-import { Alert, Button, Input, Spinner, cn } from "@/foundation/ui";
+import { useCallback, useState } from "react";
+import { Alert, Button, Input, Spinner, cn, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { StationLibrary, type LibraryStation } from "@/capabilities/stations";
 import type { CircuitShape } from "@/domains/assess/api";
@@ -377,24 +377,5 @@ export function CircuitBuilder({
         </Button>
       </div>
     </div>
-  );
-}
-
-/** A quiet section: a hairline panel with a title, an optional line under it, and the fields. */
-function Panel({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <section className="rounded-panel border border-b2b-border bg-b2b-surface p-5 sm:p-6">
-      <h2 className="text-osce-subheading font-semibold text-b2b-headline">{title}</h2>
-      {description ? <p className="mt-1 text-osce-body text-b2b-mid">{description}</p> : null}
-      {children ? <div className="mt-4">{children}</div> : null}
-    </section>
   );
 }

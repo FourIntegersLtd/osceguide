@@ -64,8 +64,10 @@ export function WorkspaceSwitcher({
     </span>
   );
 
+  // With nothing to switch to, the phone drawer leaves it out: the top bar
+  // already names the product and the foot already names the exam.
   if (workspaces.length < 2) {
-    return <div className="flex min-h-11 items-center px-2.5">{label}</div>;
+    return <div className="hidden min-h-11 items-center px-2.5 lg:flex">{label}</div>;
   }
 
   return (
@@ -97,7 +99,7 @@ export function WorkspaceSwitcher({
           />
           <ul
             role="menu"
-            className="absolute left-0 right-0 z-50 mt-1 overflow-hidden rounded-panel border border-border bg-surface py-1 shadow-lg"
+            className="absolute left-0 right-0 z-50 mt-1 max-h-[60dvh] overflow-y-auto rounded-panel border border-border bg-surface py-1 shadow-lg"
           >
             {workspaces.map((workspace) => {
               const active = workspace.slug === current.slug;
@@ -108,7 +110,7 @@ export function WorkspaceSwitcher({
                     role="menuitem"
                     onClick={() => void choose(workspace)}
                     className={cn(
-                      "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-raised",
+                      "flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-raised",
                       active ? "text-ink" : "text-ink-muted",
                     )}
                   >

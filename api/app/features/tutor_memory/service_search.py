@@ -30,11 +30,18 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
-from app.core.ports import GuidelineIndex, GuidelinePassage, MaterialIndex, Passage, VectorIndex
+from app.core.ports import (
+    GuidelineIndex,
+    GuidelinePassage,
+    GuidelineWeb,
+    MaterialIndex,
+    Passage,
+    VectorIndex,
+)
 from app.features.entitlements import service as entitlements
 from app.features.tutor_memory import domain
 from app.features.tutor_memory.embedder import EmbeddingFailed as EmbeddingFailed
-from app.features.tutor_memory.guidelines import build_guideline_index
+from app.features.tutor_memory.guidelines import build_guideline_index, build_guideline_web
 from app.features.tutor_memory.index import build_material_index
 from app.features.tutor_memory.media_index import build_media_index
 from app.features.tutor_memory.schemas import ToolResult
@@ -253,3 +260,8 @@ def material_index(session: AsyncSession) -> MaterialIndex | None:
 def guideline_index() -> GuidelineIndex | None:
     """The clinical guideline library, or `None` where this deployment has no key for it."""
     return build_guideline_index()
+
+
+def guideline_web() -> GuidelineWeb | None:
+    """The clinical web search behind the guideline library, for a slice checking what it will publish."""
+    return build_guideline_web()

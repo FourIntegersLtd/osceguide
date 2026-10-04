@@ -2,13 +2,15 @@
 
 import { BarVisualizer, useConnectionState, useVoiceAssistant } from "@livekit/components-react";
 import { ConnectionState } from "livekit-client";
+import { useState } from "react";
 import { HiOutlinePhoneXMark } from "react-icons/hi2";
-import { AthenaIdentity, Button, cn, productTokens } from "@/foundation/ui";
+import { AthenaIdentity, Button, cn, productTokens, Spinner } from "@/foundation/ui";
 import { AssistantCardSlot } from "@/foundation/livekit/guidance";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { cardLinkFor } from "@/capabilities/help/refRoutes";
 
-export function DebriefVoiceStage({ onEnd }: { onEnd: () => void }) {
+export function DebriefVoiceStage({ onEnd }: { onEnd: () => Promise<unknown> }) {
+  const [ending, setEnding] = useState(false);
   const { state, audioTrack } = useVoiceAssistant();
   const connection = useConnectionState();
   const connecting = connection !== ConnectionState.Connected;
@@ -23,8 +25,18 @@ export function DebriefVoiceStage({ onEnd }: { onEnd: () => void }) {
         {state !== "disconnected" && <p role="status" className="mt-1.5 text-center text-osce-body font-medium capitalize text-b2c-text-muted">{state}</p>}
       </div>
       {connecting ? <Button fullWidth disabled isLoading>Connecting...</Button> : (
-        <button type="button" className={cn(productTokens.b2cLivekitEndButton, "w-full gap-2")} onClick={onEnd}>
-          <HiOutlinePhoneXMark className="h-4 w-4" aria-hidden /><span>End debrief</span>
+        <button
+          type="button"
+          className={cn(productTokens.b2cLivekitEndButton, "w-full gap-2")}
+          disabled={ending}
+          aria-busy={ending || undefined}
+          onClick={() => {
+            setEnding(true);
+            void onEnd().finally(() => setEnding(false));
+          }}
+        >
+          {ending ? <Spinner label="Ending" /> : <HiOutlinePhoneXMark className="h-4 w-4" aria-hidden />}
+          <span>{ending ? "Ending debrief…" : "End debrief"}</span>
         </button>
       )}
     </>

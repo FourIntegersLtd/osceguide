@@ -1,11 +1,10 @@
 "use client";
 
-import { B2CPageHeader, Badge, Button, EmptyState } from "@/foundation/ui";
+import { B2CPageHeader, Badge, Button, EmptyState, Panel } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import {
   Columns,
   Completion,
-  Panel,
   Person,
   PreviewNotice,
   SimpleTable,
@@ -190,7 +189,7 @@ function Recruitment({ programme }: { programme: RecruitmentProgramme }) {
             </p>
           </Panel>
           <Panel title={`Findings for ${spotlight.name}`}>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <FindingList title="Did well" items={spotlight.didWell} />
               <FindingList title="Needs improving" items={spotlight.toImprove} />
               <FindingList title="Not done" items={spotlight.notDone} />

@@ -1,5 +1,6 @@
-"""Registers the background jobs a platform admin's production request runs as: turning a
-summary into a podcast, re-rendering a slide deck's narration, or voicing a podcast script.
+"""Registers the background jobs a platform admin's production request runs as: checking an
+item's facts, writing and checking its script, turning a summary into a podcast, re-rendering a
+slide deck's narration, or voicing a podcast script.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ log = get_logger(__name__)
 
 
 def register() -> None:
-    """Wires the three AV production tasks into the shared job queue app.
+    """Wires the production tasks into the shared job queue app.
 
     Each task opens its own database session rather than reusing the request's, since a
     background job runs long after the request that enqueued it has returned.
@@ -49,3 +50,30 @@ def register() -> None:
         async with job_session() as session:
             await run_podcast_audio_job(session, uuid.UUID(media_id), requested_by=uuid.UUID(requested_by))
             log.info("podcast audio produced", media_id=media_id)
+
+    @app.task(name="check_media_facts", queue="media")
+    async def check_media_facts(media_id: str, requested_by: str, previous_status: str | None = None) -> None:
+        """Checks an item's clinical claims against the guidelines, and the web where they are silent."""
+        from app.core.db import job_session
+        from app.features.media_production.service import run_fact_check_job
+
+        async with job_session() as session:
+            await run_fact_check_job(
+                session,
+                uuid.UUID(media_id),
+                requested_by=uuid.UUID(requested_by),
+                previous_status=previous_status,
+            )
+            log.info("media facts checked", media_id=media_id)
+
+    @app.task(name="write_media_script", queue="media")
+    async def write_media_script(media_id: str, requested_by: str, rewrite: bool = False) -> None:
+        """Writes what an item will say and checks it against its source, voicing nothing."""
+        from app.core.db import job_session
+        from app.features.media_production.service import run_script_write_job
+
+        async with job_session() as session:
+            await run_script_write_job(
+                session, uuid.UUID(media_id), requested_by=uuid.UUID(requested_by), rewrite=rewrite
+            )
+            log.info("media script written", media_id=media_id)

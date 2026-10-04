@@ -131,7 +131,7 @@ export function ReportersPanel({ partner }: { partner: string }) {
           setRemoving(null);
           setRemoveError(null);
         }}
-        onConfirm={() => void remove()}
+        onConfirm={() => remove()}
         isLoading={removeBusy}
         error={removeError}
         tone="danger"

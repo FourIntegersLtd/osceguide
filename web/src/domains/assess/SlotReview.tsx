@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, ButtonLink, Card, B2CPageHeader, Spinner } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, ButtonLink, B2CPageHeader, Spinner, Panel } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { readFeedback, RubricFeedback, type AttemptFeedbackRead } from "@/capabilities/feedback";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
@@ -112,7 +112,7 @@ function CandidateStepper({ orgSlug, sittingId, slotId }: { orgSlug: string; sit
   if (!steps || steps.total < 2) return null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <span className="text-osce-meta tabular-nums text-b2b-mid">
         Candidate {steps.position} of {steps.total}
       </span>
@@ -196,10 +196,9 @@ function Editor({
   );
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <div className="flex flex-col gap-4">
-        <Card
-          themeType="b2b"
+        <Panel
           title="Your marking"
           actions={
             <Badge variant={submitted ? "success" : "neutral"} dot>
@@ -233,27 +232,27 @@ function Editor({
 
             {!submitted && (
               <div className="flex justify-end gap-2">
-                <Button themeType="b2b" variant="secondary" onClick={() => void persist("draft")} disabled={busy !== null}>
+                <Button themeType="b2b" variant="secondary" onClick={() => persist("draft")} disabled={busy !== null}>
                   {busy === "draft" ? <Spinner /> : "Save draft"}
                 </Button>
-                <Button themeType="b2b" variant="commit" onClick={() => void persist("completed")} disabled={busy !== null}>
+                <Button themeType="b2b" variant="commit" onClick={() => persist("completed")} disabled={busy !== null}>
                   {busy === "completed" ? <Spinner /> : "Submit review"}
                 </Button>
               </div>
             )}
           </div>
-        </Card>
+        </Panel>
 
         {/* The lead's review is one per station and the observers' are one
             each, so they are separate panels rather than tabs of the same
             thing — a reviewer should be able to see both at once. */}
-        <Card themeType="b2b" title="The lead's review" description="One overall mark for the station. This is the mark that counts.">
+        <Panel title="The lead's review" description="One overall mark for the station. This is the mark that counts.">
           <GpLeadReview orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} />
-        </Card>
+        </Panel>
 
-        <Card themeType="b2b" title="What the reviewers agreed">
+        <Panel title="What the reviewers agreed">
           <SlotReviewers reviews={reviews} />
-        </Card>
+        </Panel>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -261,13 +260,13 @@ function Editor({
         {result && feedback?.rubric ? (
           <RubricFeedback rubric={feedback.rubric} result={result} narrow />
         ) : (
-          <Card themeType="b2b" padding="md">
+          <Panel padding="md">
             <p className="text-osce-body text-b2b-mid">
               {result
                 ? "This station was taken before the exam had a marking scheme, so there are no automatic marks to show."
                 : "Automatic marking is not ready yet. It appears here when it finishes."}
             </p>
-          </Card>
+          </Panel>
         )}
         {/* The marking is the machine's reading of the consultation; this is
             the consultation. A marker is asked to agree or disagree with the

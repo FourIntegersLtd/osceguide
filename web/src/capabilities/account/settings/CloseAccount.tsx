@@ -85,7 +85,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
       <ConfirmModal
         isOpen={open}
         onCancel={reset}
-        onConfirm={() => void close()}
+        onConfirm={() => close()}
         title="Delete your account?"
         message="This permanently removes your account, your attempts and all your feedback. Any active subscription ends. Type DELETE to confirm."
         confirmText="Delete my account"

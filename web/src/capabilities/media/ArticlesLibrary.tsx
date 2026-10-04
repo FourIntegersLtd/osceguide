@@ -60,7 +60,7 @@ export function ArticlesLibrary({
 
   return (
     <div className="space-y-6 pb-4">
-      <section className={cn(b2cCard, "grid overflow-hidden md:grid-cols-[1fr_280px]")}>
+      <section className={cn(b2cCard, "grid grid-cols-1 overflow-hidden md:grid-cols-[1fr_280px]")}>
         <div className="flex flex-col gap-2 p-6 md:p-8">
           <p className={t.b2cMonoEyebrow}>Latest · {articleMeta(featured) || "New"}</p>
           <h2 className="text-balance text-osce-title font-semibold text-osce-ink-900">{featured.title}</h2>

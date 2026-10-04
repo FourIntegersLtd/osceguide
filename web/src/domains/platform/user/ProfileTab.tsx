@@ -183,7 +183,7 @@ function ProfileForm({
             onChange={(e) => setExtraTime(e.target.checked)}
             disabled={busy}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               type="number"
               min={1}
@@ -210,7 +210,7 @@ function ProfileForm({
         </div>
 
         <div className="flex justify-end">
-          <Button disabled={busy} onClick={() => void save()}>
+          <Button disabled={busy} onClick={() => save()}>
             {busy ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -243,7 +243,7 @@ function PasswordReset({ userId }: { userId: string }) {
   return (
     <ActionRail title="Sign-in">
       {error ? <Alert tone="danger">{error}</Alert> : null}
-      <Button variant="secondary" disabled={busy} onClick={() => void reset()}>
+      <Button variant="secondary" disabled={busy} onClick={() => reset()}>
         {busy ? "Sending…" : "Send password reset"}
       </Button>
     </ActionRail>

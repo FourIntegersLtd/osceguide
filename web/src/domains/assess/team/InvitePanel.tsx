@@ -2,9 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
-import { Alert, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { PanelCard } from "@/domains/assess/team/chrome";
 import { inviteMember, type Membership } from "@/domains/assess/team/api";
 import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
 import {
@@ -74,9 +73,9 @@ export function InvitePanel({
 
   return (
     <div className="space-y-6">
-      <PanelCard
+      <Panel
         title="Invite someone to the team"
-        subtitle="Supervisors run circuits and mark them. Admins also manage the team and sign off results."
+        description="Supervisors run circuits and mark them. Admins also manage the team and sign off results."
       >
         <form
           className="space-y-5"
@@ -149,16 +148,16 @@ export function InvitePanel({
             {busy ? "Inviting…" : "Add person"}
           </Button>
         </form>
-      </PanelCard>
+      </Panel>
 
-      <PanelCard
+      <Panel
         title="Import a spreadsheet"
-        subtitle="Upload a list of staff saved from Excel or Google Sheets as a .csv file. Anyone already on the team is skipped and shown to you."
+        description="Upload a list of staff saved from Excel or Google Sheets as a .csv file. Anyone already on the team is skipped and shown to you."
       >
         <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>
           Import from spreadsheet
         </Button>
-      </PanelCard>
+      </Panel>
 
       <BulkInviteDialog
         orgSlug={orgSlug}

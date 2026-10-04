@@ -53,7 +53,7 @@ export function PracticeColleaguesShowcase() {
         />
       </div>
 
-      <div className="mt-6 grid gap-6 border-t border-landing-hairline pt-6 sm:grid-cols-2 sm:gap-8">
+      <div className="mt-6 grid grid-cols-1 gap-6 border-t border-landing-hairline pt-6 sm:grid-cols-2 sm:gap-8">
         <div>
           <p className="font-landing-body text-xs font-medium text-osce-accent">
             Patient problem

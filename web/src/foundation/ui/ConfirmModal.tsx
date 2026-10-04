@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId } from "react";
+import React, { useId, useState } from "react";
 import {
   HiOutlineExclamationTriangle,
   HiOutlineQuestionMarkCircle,
@@ -19,7 +19,8 @@ import { B2CInlineError } from "@/foundation/ui/B2CErrorState";
 export interface ConfirmModalProps {
   isOpen: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  /** Return the promise and the confirm button says it is working until it settles. */
+  onConfirm: () => unknown;
   message: string | React.ReactNode;
   title?: string;
   confirmText?: string;
@@ -55,12 +56,22 @@ const ConfirmModal = ({
   closeOnBack = true,
 }: ConfirmModalProps) => {
   const titleId = useId();
+  const [pending, setPending] = useState(false);
   if (!isOpen) return null;
+
+  const busy = isLoading || pending;
+  const handleConfirm = () => {
+    const result = onConfirm();
+    if (result instanceof Promise) {
+      setPending(true);
+      void result.finally(() => setPending(false));
+    }
+  };
 
   const ConfirmButton =
     tone === "danger" ? ModalDangerButton : ModalPrimaryButton;
   const handleCancel = () => {
-    if (!isLoading) onCancel();
+    if (!busy) onCancel();
   };
 
   return (
@@ -70,8 +81,8 @@ const ConfirmModal = ({
       height="fit-content"
       hideCloseButton
       labelledBy={titleId}
-      closeOnBackdrop={!isLoading}
-      closeOnEscape={!isLoading}
+      closeOnBackdrop={!busy}
+      closeOnEscape={!busy}
       closeOnBack={closeOnBack}
     >
       <ModalContent>
@@ -92,16 +103,16 @@ const ConfirmModal = ({
         <B2CInlineError message={error} />
         <ModalFooterActions>
           {cancelButton ? (
-            <ModalSecondaryButton onClick={handleCancel} disabled={isLoading}>
+            <ModalSecondaryButton onClick={handleCancel} disabled={busy}>
               {cancelText}
             </ModalSecondaryButton>
           ) : null}
           <ConfirmButton
-            onClick={onConfirm}
-            disabled={isLoading || confirmDisabled}
-            aria-busy={isLoading || undefined}
+            onClick={handleConfirm}
+            disabled={busy || confirmDisabled}
+            aria-busy={busy || undefined}
           >
-            {isLoading ? "Working…" : confirmText}
+            {busy ? "Working…" : confirmText}
           </ConfirmButton>
         </ModalFooterActions>
       </ModalContent>

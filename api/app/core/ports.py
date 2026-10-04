@@ -357,6 +357,36 @@ class GuidelinePassage:
     source: str
     text: str
     score: float
+    section: str = ""
+    page: int | None = None
+
+
+@dataclass(frozen=True)
+class WebAnswer:
+    """What a search of the clinical web says about a question, and what that rests on.
+
+    `references` are the pages the answer cites (`n`, `title`, `url`, `website_name`, `quotes`),
+    `gaps` what the search could not establish, and `flagged` the sentences of the answer that
+    could not be tied to a source.
+    """
+
+    answer: str
+    references: Sequence[Mapping[str, Any]] = ()
+    gaps: Sequence[str] = ()
+    flagged: Sequence[str] = ()
+
+
+@runtime_checkable
+class GuidelineWeb(Protocol):
+    """A sourced answer from the clinical web, for what the guideline library does not hold.
+
+    Slow (many seconds) and never in a voice loop. Returns `None`, rather than raising, when
+    the search cannot be reached or found nothing to stand on.
+    """
+
+    async def answer(self, *, question: str) -> WebAnswer | None:
+        """The web's answer to `question` with its references, or `None`."""
+        ...
 
 
 @runtime_checkable

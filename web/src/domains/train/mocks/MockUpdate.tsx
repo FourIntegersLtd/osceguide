@@ -3,15 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
 import Alert from "@/foundation/forms/Alert";
-import {
-  AsyncBoundary,
-  B2CPageHeader,
-  Button,
-  ButtonLink,
-  Card,
-  cn,
-  productTokens,
-} from "@/foundation/ui";
+import { AsyncBoundary, B2CPageHeader, Button, ButtonLink, cn, productTokens, Panel } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync, useSearchQuery } from "@/foundation/hooks";
 import { browseLibrary } from "@/capabilities/stations";
@@ -160,7 +152,7 @@ function UpdateForm({
 
   return (
     <form onSubmit={(event) => void handleUpdateMock(event)} className="max-w-[640px]">
-      <Card title="Session">
+      <Panel title="Session">
         <div className="space-y-5">
           {successMessage && <Alert message={successMessage} type="success" />}
           {error && <Alert message={error} type="error" />}
@@ -260,7 +252,7 @@ function UpdateForm({
             </Button>
           </div>
         </div>
-      </Card>
+      </Panel>
     </form>
   );
 }

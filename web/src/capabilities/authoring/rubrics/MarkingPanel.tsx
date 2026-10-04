@@ -3,7 +3,7 @@
 import { useId } from "react";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import { cn, getInputClassName, Textarea } from "@/foundation/ui";
+import { cn, getInputClassName, Textarea, FoldSection } from "@/foundation/ui";
 
 /** The four pacing numbers a rubric's station runs on, in seconds. */
 export const PACING_KEYS = [
@@ -47,8 +47,8 @@ export function MarkingPanel({
   const promptId = useId();
   return (
     <div className="space-y-6">
-      <div>
-        <label htmlFor={promptId} className="block text-osce-meta font-medium text-ink-muted">
+      <FoldSection title="Marking instructions">
+        <label htmlFor={promptId} className="sr-only">
           Marking instructions (system prompt)
         </label>
         <Textarea
@@ -64,11 +64,10 @@ export function MarkingPanel({
         <p className="mt-0.5 text-osce-caption text-ink-subtle">
           What the marking model reads before the transcript. A version cannot be published without it.
         </p>
-      </div>
+      </FoldSection>
 
-      <div>
-        <p className="text-osce-meta font-medium text-ink-muted">Pacing, in seconds</p>
-        <div className="mt-2 grid gap-3 sm:grid-cols-4">
+      <FoldSection title="Pacing, in seconds">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           {PACING_KEYS.map((item) => (
             <label key={item.key} className="block">
               <span className="block text-osce-caption font-medium text-ink-muted">{item.label}</span>
@@ -88,18 +87,17 @@ export function MarkingPanel({
             </label>
           ))}
         </div>
-      </div>
+      </FoldSection>
 
-      <div>
-        <p className="text-osce-meta font-medium text-ink-muted">Examiner layout</p>
-        <p className="mt-0.5 text-osce-caption text-ink-subtle">
+      <FoldSection title="Examiner layout">
+        <p className="text-osce-caption text-ink-subtle">
           The form a human reviewer fills in for a slot.
           {layoutRequired ? " Platform catalogue rubrics need one before they can be published." : ""}
         </p>
         <div className={cn("mt-3 rounded-osce-md border border-osce-border bg-osce-surface p-3", readOnly && "pointer-events-none opacity-80")}>
           <StructureBuilder kind="feedback" value={markingLayout} onChange={onMarkingLayout} title={title} />
         </div>
-      </div>
+      </FoldSection>
     </div>
   );
 }

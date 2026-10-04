@@ -98,7 +98,7 @@ export function OrganizationSettings({
             <Button
               disabled={busy || !dirty || !name.trim()}
               onClick={() =>
-                void commit(
+                commit(
                   { name: name.trim(), org_type: orgType },
                   "Details saved",
                 )
@@ -172,7 +172,7 @@ function StaffMfaPolicy({
           <Button
             variant={required ? "secondary" : "primary"}
             disabled={busy}
-            onClick={() => void toggle()}
+            onClick={() => toggle()}
           >
             {busy
               ? "Saving…"
@@ -258,7 +258,7 @@ function ContractDates({
             size="sm"
             disabled={busy}
             onClick={() =>
-              void onCommit(
+              onCommit(
                 { contract_starts_at: null, contract_ends_at: null },
                 "Contract dates cleared",
               )

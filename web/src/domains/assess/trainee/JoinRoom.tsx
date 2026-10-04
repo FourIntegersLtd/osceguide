@@ -114,7 +114,7 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
         <Clock sitting={sitting} />
         {sitting.paused ? <Badge tone="warning">Paused</Badge> : null}
         {sitting.can_join ? (
-          <Button themeType="b2b" variant="commit" onClick={() => void join()} disabled={joining}>
+          <Button themeType="b2b" variant="commit" onClick={() => join()} disabled={joining}>
             {joining ? <Spinner /> : <LuDoorOpen className="h-4 w-4" aria-hidden />}
             {left ? "Re-join" : "Join"}
           </Button>

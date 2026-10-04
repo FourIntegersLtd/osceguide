@@ -111,7 +111,7 @@ export default function PlanPicker({
         <ModalHelper className="mb-5 mt-0">Choose the option that suits you best</ModalHelper>
       ) : null}
 
-      <div role="radiogroup" aria-label="Plan" className="grid gap-3 sm:grid-cols-3">
+      <div role="radiogroup" aria-label="Plan" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {plans.map((plan) => {
           const isSelected = selected === plan.code;
           return (
@@ -188,7 +188,7 @@ export default function PlanPicker({
       <div className="mt-6 space-y-3">
         <div className="flex sm:justify-end">
           <Button
-            onClick={() => void handleCheckout()}
+            onClick={() => handleCheckout()}
             disabled={isLoading || !chosen}
             className="w-full gap-2 whitespace-nowrap sm:w-auto"
           >

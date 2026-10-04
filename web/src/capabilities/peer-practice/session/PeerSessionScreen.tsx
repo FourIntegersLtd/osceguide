@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineUsers } from "react-icons/hi2";
-import { Button, ConfirmModal, Spinner } from "@/foundation/ui";
+import { Button, ConfirmModal, Spinner, cn } from "@/foundation/ui";
+import { b2cRoomOverlay } from "@/foundation/ui/productTokens";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { VoiceRoom } from "@/foundation/livekit";
 import { PeerVideoPanel } from "@/foundation/livekit/PeerVideoPanel";
@@ -85,7 +86,7 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
   return (
     // Fills the content column, toolbar included, as the station room does. Only
     // the call takes the room skin; the script beside it stays light to read.
-    <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-osce-canvas">
+    <div className={cn(b2cRoomOverlay, "flex flex-col overflow-hidden bg-osce-canvas")}>
       <SessionHeader
         sessionId={sessionId}
         role={role}
@@ -98,7 +99,7 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
       <ConfirmModal
         isOpen={confirmingEnd}
         onCancel={() => setConfirmingEnd(false)}
-        onConfirm={() => void confirmEnd()}
+        onConfirm={() => confirmEnd()}
         title="End practice session?"
         message={<EndSessionMessage role={role} phase={phase} remaining={state.remaining ?? 0} />}
         confirmText="End session"
@@ -178,7 +179,7 @@ function VideoArea({ state, role, onEnd }: { state: PeerSessionState; role: "doc
           <p className="mb-4 text-osce-meta text-b2c-text-muted">
             {failure ? failureText(failure, "Failed to start video session") : mic.message ?? "Failed to start video session"}
           </p>
-          <Button type="button" variant="secondary" onClick={() => void connect()}>
+          <Button type="button" variant="secondary" onClick={() => connect()}>
             Try again
           </Button>
         </div>
@@ -290,7 +291,7 @@ function EndSessionMessage({ role, phase, remaining }: { role: "doctor" | "patie
 
 function SessionLoading() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-b2c-surface-muted px-4">
+    <div className="flex min-h-[60dvh] items-center justify-center bg-b2c-surface-muted px-4">
       <div className="text-center">
         <div className="mb-3"><Spinner /></div>
         <p className="text-osce-meta text-b2c-text-muted">Loading practice session…</p>
@@ -301,7 +302,7 @@ function SessionLoading() {
 
 function SessionError({ message, onReturn }: { message: string | null; onReturn: () => void }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-b2c-surface-muted px-4">
+    <div className="flex min-h-[60dvh] items-center justify-center bg-b2c-surface-muted px-4">
       <div className="mx-auto max-w-md text-center">
         <div className="mb-4 px-2 text-osce-body font-semibold text-osce-ink-900">{message || "Session not found"}</div>
         <Button type="button" onClick={onReturn}>

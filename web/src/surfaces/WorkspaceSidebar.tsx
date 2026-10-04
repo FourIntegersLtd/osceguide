@@ -2,8 +2,9 @@
 
 import { useCallback } from "react";
 import { GoSidebarCollapse } from "react-icons/go";
-import { MdClose, MdMenu } from "react-icons/md";
+import { MdClose, MdMenu, MdRefresh } from "react-icons/md";
 import Logo from "@/foundation/ui/Logo";
+import { useStandaloneDisplay } from "@/foundation/pwa/standalone";
 import { cn } from "@/foundation/ui";
 import { b2cIconButton, b2cNavMobileBar, b2cNavShell } from "@/foundation/ui/productTokens";
 import { NavRailList, type NavRailGroups } from "@/surfaces/NavRailList";
@@ -47,12 +48,13 @@ export function WorkspaceSidebar({
   onMenuOpenChange,
 }: WorkspaceSidebarProps) {
   const ariaLabel = `${label} sections`;
+  const standalone = useStandaloneDisplay();
   const closeMenu = useCallback(() => onMenuOpenChange(false), [onMenuOpenChange]);
 
   return (
     <>
       <header
-        className={`fixed top-0 left-0 z-20 flex h-14 w-full items-center justify-between px-4 md:hidden ${b2cNavMobileBar}`}
+        className={`fixed top-0 left-0 z-20 flex h-14 w-full items-center gap-2 px-4 md:hidden ${b2cNavMobileBar}`}
       >
         <button
           type="button"
@@ -64,20 +66,33 @@ export function WorkspaceSidebar({
           {menuOpen ? <MdClose className="h-5 w-5" /> : <MdMenu className="h-5 w-5" />}
         </button>
         <Logo variant="light" interactive={false} />
-        <div className="h-11 w-11 shrink-0" aria-hidden />
+        {/* The installed app has no browser toolbar, so no way to reload a
+            screen that has stuck. In a browser tab the browser's own is enough. */}
+        {standalone ? (
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            aria-label="Reload"
+            className={cn(b2cIconButton, "ml-auto")}
+          >
+            <MdRefresh className="h-5 w-5" />
+          </button>
+        ) : null}
       </header>
 
       <div
         className={cn(
-          "fixed top-0 left-0 z-50 flex h-[100dvh] flex-col overflow-hidden border-r md:border-r-0",
+          // On phones the drawer opens under the top bar, so its logo and
+          // close button stay the only ones on screen.
+          "fixed top-14 left-0 z-50 flex h-[calc(100dvh-3.5rem)] flex-col overflow-hidden border-r md:top-0 md:h-[100dvh] md:border-r-0",
           b2cNavShell,
-          "w-[240px] md:w-20",
+          "w-72 max-w-[85vw] md:w-20 md:max-w-none",
           navCollapsed ? "lg:w-20" : "lg:w-[240px]",
           "md:transition-all md:duration-300 md:ease-in-out",
           menuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
       >
-        <div className={cn("px-3 pt-4 md:px-2", navCollapsed ? "lg:px-2" : "lg:px-3")}>
+        <div className={cn("px-3 pt-3 md:px-2 md:pt-4", navCollapsed ? "lg:px-2" : "lg:px-3")}>
           <div className="hidden flex-col items-center gap-2 pb-3 md:flex lg:hidden">
             <Logo variant="light" compact />
           </div>
@@ -100,18 +115,15 @@ export function WorkspaceSidebar({
                 type="button"
                 onClick={() => onNavCollapsedChange(true)}
                 aria-label="Collapse sidebar"
-                className={cn(b2cIconButton, "opacity-0 focus:opacity-100 group-hover:opacity-100 sm:h-7 sm:w-7")}
+                className={cn(b2cIconButton, "sm:h-7 sm:w-7")}
               >
                 <GoSidebarCollapse className="h-4 w-4" />
               </button>
             </div>
           )}
-          <div className="px-2.5 pb-4 pt-1 md:hidden">
-            <Logo variant="light" />
-          </div>
           <div className={cn("mb-1.5 md:hidden", navCollapsed ? "lg:hidden" : "lg:block")}>
             {staff ? (
-              <div className="flex min-h-11 items-center px-2.5">
+              <div className="hidden min-h-11 items-center px-2.5 lg:flex">
                 <span className="min-w-0 flex-1 text-left">
                   <span className="block truncate text-[13.5px] font-semibold leading-[18px] text-osce-ink-900">
                     Platform console
@@ -161,7 +173,7 @@ export function WorkspaceSidebar({
           aria-label="Close menu"
           tabIndex={-1}
           onClick={closeMenu}
-          className="fixed inset-0 z-40 bg-osce-ink-900/20 md:hidden"
+          className="fixed inset-x-0 top-14 bottom-0 z-40 bg-osce-ink-900/20 md:hidden"
         />
       ) : null}
     </>

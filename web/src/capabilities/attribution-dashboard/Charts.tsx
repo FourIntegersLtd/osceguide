@@ -273,7 +273,7 @@ export function ExamBreakdownSection({
           hint="Try widening the date range or removing filters."
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-[220px_1fr] md:items-center">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-[220px_1fr] md:items-center">
           <OutcomeDonut
             data={shares.map((row) => ({ name: row.exam, value: row.visits, color: row.color }))}
             centerValue={String(total)}

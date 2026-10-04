@@ -59,7 +59,7 @@ export function WorkspaceJumpTo({ items, onClose }: { items: NavItem[]; onClose:
           className="h-12 min-w-0 flex-1 bg-transparent text-osce-body text-osce-ink-900 outline-none placeholder:text-osce-ink-400"
         />
       </div>
-      <ul className="max-h-[50vh] overflow-y-auto p-1.5" role="listbox" aria-label="Sections">
+      <ul className="max-h-[50dvh] overflow-y-auto p-1.5" role="listbox" aria-label="Sections">
         {matches.length === 0 ? (
           <li className="px-3 py-6 text-center text-osce-meta text-b2c-text-muted">Nothing matches “{query}”.</li>
         ) : (
@@ -77,7 +77,7 @@ export function WorkspaceJumpTo({ items, onClose }: { items: NavItem[]; onClose:
                   )}
                 >
                   {Icon ? <Icon className="h-4 w-4 shrink-0 text-osce-ink-500" /> : null}
-                  {item.label}
+                  <span className="min-w-0 truncate">{item.label}</span>
                 </button>
               </li>
             );

@@ -3,15 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineArrowPath, HiOutlineCheck } from "react-icons/hi2";
-import {
-  Alert,
-  Button,
-  Card,
-  Modal,
-  StationCompletionProgressBar,
-  cn,
-  productTokens,
-} from "@/foundation/ui";
+import { Alert, Button, Modal, StationCompletionProgressBar, cn, productTokens, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { useCurrentExam, useSession } from "@/foundation/session";
@@ -136,7 +128,7 @@ export function MockSetup({
       />
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <Card title="Session setup">
+        <Panel title="Session setup">
             <div className="flex flex-col gap-4">
               {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
               {error ? <Alert tone="danger">{error}</Alert> : null}
@@ -195,7 +187,7 @@ export function MockSetup({
                 </Button>
               </div>
             </div>
-        </Card>
+        </Panel>
 
         <section className="rounded-osce-lg bg-b2c-surface-muted p-6">
           <span className={productTokens.b2cMonoEyebrow}>Before you start</span>

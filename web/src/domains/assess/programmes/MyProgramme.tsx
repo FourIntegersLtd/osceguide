@@ -1,9 +1,9 @@
 "use client";
 
 import { LuCircle, LuCircleCheck } from "react-icons/lu";
-import { B2CGroupedRow, B2CGroupedSection, B2CPageHeader, Badge, BandPill, EmptyState } from "@/foundation/ui";
+import { B2CGroupedRow, B2CGroupedSection, B2CPageHeader, Badge, BandPill, EmptyState, Panel } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
-import { Panel, PreviewNotice } from "@/domains/assess/programmes/parts";
+import { PreviewNotice } from "@/domains/assess/programmes/parts";
 import { PREVIEW_MY_PROGRAMME, type MyProgrammeData } from "@/domains/assess/programmes/preview";
 
 const STATE_LABEL: Record<MyProgrammeData["stages"][number]["state"], string> = {
@@ -43,7 +43,7 @@ export function MyProgramme({ programmeId }: { programmeId: string }) {
       <B2CPageHeader back={back} title={programme.name} subtitle={programme.summary} />
       <PreviewNotice needs="No route returns the programmes a trainee is in." />
 
-      <ol className="grid gap-3 md:grid-cols-3">
+      <ol className="grid grid-cols-1 gap-3 md:grid-cols-3">
         {programme.stages.map((stage, index) => (
           <li key={stage.title} className="rounded-panel border border-b2b-border bg-b2b-surface p-5">
             <p className="text-osce-caption font-medium text-b2b-mid">Stage {index + 1}</p>
@@ -58,7 +58,7 @@ export function MyProgramme({ programmeId }: { programmeId: string }) {
         ))}
       </ol>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <B2CGroupedSection eyebrow={`Modules · ${done} of ${programme.modules.length} done`}>
           {programme.modules.map((module) => (
             <B2CGroupedRow

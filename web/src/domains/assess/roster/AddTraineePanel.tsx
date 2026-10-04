@@ -2,9 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
-import { Alert, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { PanelCard } from "@/domains/assess/team/chrome";
 import { addTrainee, type Cohort } from "@/domains/assess/roster/api";
 import { BulkImportDialog } from "@/domains/assess/roster/BulkImportDialog";
 
@@ -81,9 +80,9 @@ export function AddTraineePanel({
 
   return (
     <div className="space-y-6">
-      <PanelCard
+      <Panel
         title="Add one person"
-        subtitle="They are invited by email. If they have no account yet, we create one and send them a link to choose a password."
+        description="They are invited by email. If they have no account yet, we create one and send them a link to choose a password."
       >
         <form
           className="space-y-5"
@@ -167,16 +166,16 @@ export function AddTraineePanel({
             {busy ? "Saving…" : "Add trainee"}
           </Button>
         </form>
-      </PanelCard>
+      </Panel>
 
-      <PanelCard
+      <Panel
         title="Import a spreadsheet"
-        subtitle="Upload a list of trainees saved from Excel or Google Sheets as a .csv file. Anyone already on the list is skipped and shown to you."
+        description="Upload a list of trainees saved from Excel or Google Sheets as a .csv file. Anyone already on the list is skipped and shown to you."
       >
         <Button themeType="b2b" variant="secondary" onClick={() => setImportOpen(true)}>
           Import from spreadsheet
         </Button>
-      </PanelCard>
+      </Panel>
 
       <BulkImportDialog
         orgSlug={orgSlug}

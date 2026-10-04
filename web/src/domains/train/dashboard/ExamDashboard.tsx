@@ -352,7 +352,7 @@ function ExamSections({
       ) : null}
 
       {view.composition.length > 0 && !view.counted ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <RagCompositionBars data={view.composition} emptyHint="Complete a station to see how each domain went." />
           <CategoryVolumeList data={view.composition} />
         </div>

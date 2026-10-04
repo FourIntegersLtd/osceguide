@@ -154,7 +154,7 @@ export function StationFlags() {
                           variant="ghost"
                           size="sm"
                           disabled={busy}
-                          onClick={() => void decide(flag, { status: "open" })}
+                          onClick={() => decide(flag, { status: "open" })}
                         >
                           Reopen
                         </Button>

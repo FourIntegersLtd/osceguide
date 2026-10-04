@@ -118,7 +118,7 @@ function ScaLandingContent() {
               gathering, clinical management, and interpersonal skills.
             </p>
           </div>
-          <div className="grid gap-6 sm:gap-8 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2">
             {workflow.map((item) => (
               <div key={item.title} className={type.featureCardMuted}>
                 <LandingIconBadge icon={item.icon} color={item.color} size="md" />
@@ -146,7 +146,7 @@ function ScaLandingContent() {
               no theme feels unfamiliar on exam day.
             </p>
           </div>
-          <div className="grid flex-1 gap-6 sm:gap-8 md:grid-cols-2">
+          <div className="grid grid-cols-1 flex-1 gap-6 sm:gap-8 md:grid-cols-2">
             {domainColumns.map((column, index) => (
               <ul
                 key={index}

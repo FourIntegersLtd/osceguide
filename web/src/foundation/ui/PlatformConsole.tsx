@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import type { IconType } from "react-icons";
 import { HiOutlineChevronRight } from "react-icons/hi2";
@@ -19,12 +20,78 @@ import { EmptyState } from "@/foundation/ui/EmptyState";
  * No raw sizes, no black.
  */
 
-/** A titled surface. The console is a stack of these on every screen. */
+/**
+ * A part of a long form that folds from its header: one slide, one group of
+ * lines, one group of fields. It sits inside a `Panel` and shares its tinted
+ * header, so every editable part of the console reads and folds the same way.
+ * A folded body stays mounted, so it keeps what was typed.
+ */
+export function FoldSection({
+  title,
+  description,
+  number,
+  meta,
+  actions,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  /** A line of help shown at the top of the open body. */
+  description?: string;
+  /** A position in a list, drawn as a chip before the title. */
+  number?: number;
+  /** Badges or counts shown after the title. */
+  meta?: React.ReactNode;
+  actions?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="overflow-hidden rounded-osce-md border border-border">
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-canvas px-4 py-2">
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+          className="flex min-w-0 flex-1 items-center gap-2 text-left text-osce-body font-semibold text-ink"
+        >
+          <HiOutlineChevronRight
+            className={cn(
+              "h-4 w-4 shrink-0 text-ink-subtle transition-transform",
+              open && "rotate-90",
+            )}
+            aria-hidden
+          />
+          {number !== undefined ? (
+            <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-osce-meta font-semibold text-ink-inverse">
+              {number}
+            </span>
+          ) : null}
+          <span className="truncate">{title}</span>
+          {meta ? <span className="flex shrink-0 gap-1">{meta}</span> : null}
+        </button>
+        {actions ? <div className="flex shrink-0 items-center gap-1">{actions}</div> : null}
+      </div>
+      <div className={open ? "border-t border-border p-4" : "hidden"}>
+        {description ? <p className="mb-3 text-osce-meta text-ink-subtle">{description}</p> : null}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A titled surface. The console is a stack of these on every screen. A titled
+ * panel folds from its header, which is tinted so one panel reads apart from
+ * the next; a folded body stays mounted, so a form inside keeps what was typed.
+ */
 export function Panel({
   title,
   description,
   actions,
   padding = "md",
+  defaultOpen = true,
   className,
   children,
 }: {
@@ -33,9 +100,12 @@ export function Panel({
   actions?: React.ReactNode;
   /** `"none"` for a panel whose body is its own full-bleed list (rows carry their own padding). */
   padding?: "none" | "sm" | "md";
+  defaultOpen?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const shown = open || !title;
   const bodyPadding =
     padding === "none" ? "" : padding === "sm" ? "p-4" : "p-5 sm:p-6";
   return (
@@ -46,13 +116,32 @@ export function Panel({
       )}
     >
       {title ? (
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
+        <header
+          className={cn(
+            "flex flex-wrap items-start justify-between gap-3 rounded-t-[inherit] bg-canvas px-5 py-3.5 sm:px-6",
+            open ? "border-b border-border" : "rounded-b-[inherit]",
+          )}
+        >
           <div className="min-w-0">
             <h2 className="font-heading text-osce-subheading font-semibold text-ink">
-              {title}
+              <button
+                type="button"
+                aria-expanded={open}
+                onClick={() => setOpen((value) => !value)}
+                className="flex items-center gap-2 text-left"
+              >
+                <HiOutlineChevronRight
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-ink-subtle transition-transform",
+                    open && "rotate-90",
+                  )}
+                  aria-hidden
+                />
+                {title}
+              </button>
             </h2>
             {description ? (
-              <p className="mt-0.5 text-osce-meta text-ink-subtle">
+              <p className="mt-0.5 pl-6 text-osce-meta text-ink-subtle">
                 {description}
               </p>
             ) : null}
@@ -62,7 +151,9 @@ export function Panel({
           ) : null}
         </header>
       ) : null}
-      <div className={bodyPadding}>{children}</div>
+      <div hidden={!shown} className={bodyPadding}>
+        {children}
+      </div>
     </section>
   );
 }
@@ -191,7 +282,7 @@ export function LoadMore({
 /** A grid of `StatTile` that fills the row whatever the count — three tiles never leave a hole. */
 export function StatGrid({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
       {children}
     </div>
   );
@@ -242,7 +333,7 @@ export function DetailLayout({
 }) {
   if (!rail) return <div className="flex flex-col gap-6">{main}</div>;
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <div className="flex min-w-0 flex-col gap-6">{main}</div>
       <div className="flex flex-col gap-6 lg:sticky lg:top-6">{rail}</div>
     </div>

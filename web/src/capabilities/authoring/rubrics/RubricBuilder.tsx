@@ -136,13 +136,13 @@ export function RubricBuilder({
           </p>
           {readOnly ? null : (
             <div className="flex flex-wrap gap-2">
-              <AuthoringButton variant="ghost" size="sm" isLoading={action.busy === "draft"} disabled={action.busy !== null || !valid} onClick={() => void fillInstructions()}>
+              <AuthoringButton variant="ghost" size="sm" isLoading={action.busy === "draft"} disabled={action.busy !== null || !valid} onClick={() => fillInstructions()}>
                 Draft instructions
               </AuthoringButton>
-              <AuthoringButton variant="secondary" size="sm" isLoading={action.busy === "save"} disabled={action.busy !== null || !draft.dirty || promptMissing} onClick={() => void action.run("save", draft.save)}>
+              <AuthoringButton variant="secondary" size="sm" isLoading={action.busy === "save"} disabled={action.busy !== null || !draft.dirty || promptMissing} onClick={() => action.run("save", draft.save)}>
                 Save draft
               </AuthoringButton>
-              <AuthoringButton variant="commit" size="sm" isLoading={action.busy === "publish"} disabled={action.busy !== null || publishBlocked !== null} onClick={() => void publish()}>
+              <AuthoringButton variant="commit" size="sm" isLoading={action.busy === "publish"} disabled={action.busy !== null || publishBlocked !== null} onClick={() => publish()}>
                 Publish
               </AuthoringButton>
             </div>
@@ -153,7 +153,7 @@ export function RubricBuilder({
         {note ? <Alert tone="info">{note}</Alert> : null}
         {draft.previewError ? <Alert tone="warning">The draft could not be checked: {draft.previewError.message}</Alert> : null}
 
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
           <div className="min-w-0 space-y-4">
             <B2CSegmentedTabs items={editorTabs} value={tab} onChange={setTab} compact aria-label="Rubric editor" />
             {tab === "structure" ? <SectionList /> : null}

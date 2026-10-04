@@ -102,7 +102,7 @@ export function PlansPanel() {
                     size="sm"
                     variant="secondary"
                     disabled={busyCode !== null}
-                    onClick={() => void toggle(plan)}
+                    onClick={() => toggle(plan)}
                   >
                     {busyCode === plan.code
                       ? "Saving…"

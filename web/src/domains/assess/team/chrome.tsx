@@ -72,36 +72,6 @@ export function TabStrip<T extends string>({
   );
 }
 
-/** A quiet white panel with a title, an optional line under it and a body. */
-export function PanelCard({
-  title,
-  subtitle,
-  children,
-  headerRight,
-  bodyClassName,
-}: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-  headerRight?: ReactNode;
-  bodyClassName?: string;
-}) {
-  return (
-    <div className="overflow-hidden rounded-panel border border-b2b-border bg-b2b-surface">
-      <div className="flex items-start gap-3 px-5 pb-1 pt-4">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-osce-body font-semibold text-b2b-headline">{title}</h3>
-          {subtitle ? (
-            <p className="mt-1 text-osce-meta leading-relaxed text-b2b-mid">{subtitle}</p>
-          ) : null}
-        </div>
-        {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
-      </div>
-      <div className={bodyClassName ?? "p-5 pt-3"}>{children}</div>
-    </div>
-  );
-}
-
 /** One dialog shape: title, body, inline failure, Cancel and a commit. */
 export function Dialog({
   open,

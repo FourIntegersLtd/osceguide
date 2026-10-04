@@ -6,7 +6,7 @@ import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalSection, cn, produc
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { BarVisualizer, useVoiceAssistant } from "@livekit/components-react";
-import { MicrophoneCheck, VoiceRoom, agentStateLabel } from "@/foundation/livekit";
+import { VoiceRoom, agentStateLabel } from "@/foundation/livekit";
 import type { OnboardingScene } from "@/capabilities/onboarding/api";
 import { useOnboardingVoice } from "@/capabilities/onboarding/useOnboardingVoice";
 
@@ -138,7 +138,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       {voice.error && (
         <Alert tone="warning">
           {errorMessage(voice.error)} You can still read through the demo, but {voice.assistantName} will not speak.{" "}
-          <Button size="sm" variant="secondary" onClick={() => void voice.start()}>
+          <Button size="sm" variant="secondary" onClick={() => voice.start()}>
             Try voice again
           </Button>
         </Alert>
@@ -188,7 +188,10 @@ function MeetAthena({
         description={`Listen to ${assistantName} introduce herself${userName ? `, ${userName}` : ""}, then continue when you are ready.`}
       />
       <AthenaVoice assistantName={assistantName} />
-      <MicrophoneCheck variant="plain" className="text-left" />
+      {/* No microphone card here: it opened the microphone a second time while
+          the session start was already asking, and on an installed iOS app the
+          two requests left each other unanswered. A blocked microphone is
+          reported by the alert under the steps. */}
       <Button onClick={onNext} isLoading={connecting}>
         Show me how it works <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
       </Button>

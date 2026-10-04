@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HiOutlineArrowLeft } from "react-icons/hi2";
-import { Alert, Badge, Button, Input, Panel, Textarea } from "@/foundation/ui";
+import { Alert, Badge, Button, ConfirmModal, Input, Panel, Textarea } from "@/foundation/ui";
 import {
   errorMessage,
   useAsync,
@@ -21,19 +21,35 @@ import { BlogContentForm } from "@/capabilities/staff-media/forms/BlogContentFor
 import { B2cSlideDeckForm } from "@/capabilities/staff-media/forms/B2cSlideDeckForm";
 import { PodcastContentForm } from "@/capabilities/staff-media/forms/PodcastContentForm";
 import { SummaryContentForm } from "@/capabilities/staff-media/forms/SummaryContentForm";
+import {
+  firstOpenStep,
+  isSpokenKind,
+  reviewOf,
+  reviewSteps,
+  type StepId,
+} from "@/capabilities/staff-media/content/review";
 import { ContentJsonEditor } from "@/capabilities/staff-media/parts/ContentJsonEditor";
 import {
+  FactsStep,
+  ScriptStep,
+  StepNav,
+  VoiceStep,
+} from "@/capabilities/staff-media/parts/ReviewSteps";
+import {
+  checkMediaFacts,
   deleteMedia,
   generateBlog,
   generatePodcast,
   generatePodcastAudio,
   generateSlideDeck,
+  generatedTitle,
   generateSummary,
   generateSummaryPodcast,
   publishMedia,
   readMediaById,
   regenerateSlideAv,
   updateMedia,
+  writeMediaScript,
   type MediaItem,
 } from "@/capabilities/staff-media/api";
 import { learnerMediaPreviewPath } from "@/capabilities/staff-media/paths";
@@ -65,7 +81,9 @@ export function MediaDetailScreen({
   const [content, setContent] = useState<Record<string, unknown>>({});
   const [prompt, setPrompt] = useState("");
   const [jsonOpen, setJsonOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [pollAv, setPollAv] = useState(false);
+  const [step, setStep] = useState<StepId | null>(null);
 
   useEffect(() => {
     if (!load.data) return;
@@ -75,6 +93,9 @@ export function MediaDetailScreen({
     setContent(contentRecord(load.data));
     const status = avStatus(contentRecord(load.data));
     setPollAv(isAvRunning(status));
+    // Open on the first step still to do, and stay where the reader then goes.
+    const opened = firstOpenStep(load.data.kind, contentRecord(load.data));
+    setStep((current) => current ?? opened);
   }, [load.data]);
 
   // The AV job publishes `media.updated` to the staff member who requested it
@@ -119,8 +140,34 @@ export function MediaDetailScreen({
       load.reload();
     });
 
+  // A check or a voicing reads what is stored, so the panel holds its buttons
+  // back while the form is ahead of the server.
+  const unsaved = useMemo(
+    () =>
+      JSON.stringify(content) !== JSON.stringify(contentRecord(load.data)),
+    [content, load.data],
+  );
+
+  const start = (key: string, started: string, work: () => Promise<unknown>) =>
+    action.run(key, async () => {
+      await work();
+      setPollAv(true);
+      toast.success(started);
+      load.reload();
+    });
+
+  const voice = () => {
+    const runner =
+      kind === "slide_deck"
+        ? regenerateSlideAv
+        : kind === "podcast"
+          ? generatePodcastAudio
+          : generateSummaryPodcast;
+    return start("voice", "Voicing started", () => runner(itemId));
+  };
+
   const runGenerate = () => {
-    if (!prompt.trim() || !isMediaKind(kind)) return;
+    if (!prompt.trim() || !isMediaKind(kind)) return undefined;
     const runner =
       kind === "blog"
         ? generateBlog
@@ -129,11 +176,9 @@ export function MediaDetailScreen({
           : kind === "podcast"
             ? generatePodcast
             : generateSummary;
-    void action.run("generate", async () => {
+    return action.run("generate", async () => {
       const generated = await runner(prompt.trim(), examCode.trim() || null);
-      if (typeof generated.title === "string" && generated.title.trim()) {
-        setTitle(generated.title.trim());
-      }
+      if (generatedTitle(generated)) setTitle(generatedTitle(generated));
       if (typeof generated.summary === "string") {
         setSummary(generated.summary);
       }
@@ -162,47 +207,11 @@ export function MediaDetailScreen({
         return <BlogContentForm content={content} onChange={setContent} />;
       case "slide_deck":
         return (
-          <B2cSlideDeckForm
-            content={content}
-            onChange={setContent}
-            avBusy={action.busy === "regenerate-av"}
-            onRegenerateAv={() =>
-              void action.run("regenerate-av", async () => {
-                await regenerateSlideAv(itemId);
-                setPollAv(true);
-                toast.success(
-                  "Regeneration started",
-                  "This may take several minutes.",
-                );
-                load.reload();
-              })
-            }
-          />
+          <B2cSlideDeckForm content={content} onChange={setContent} />
         );
       case "podcast":
         return (
-          <div className="flex flex-col gap-4">
-            <PodcastContentForm content={content} onChange={setContent} />
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={
-                action.busy === "generate-audio" ||
-                isAvRunning(avStatus(content))
-              }
-              onClick={() =>
-                void action.run("generate-audio", async () => {
-                  await generatePodcastAudio(itemId);
-                  setPollAv(true);
-                  toast.success("Audio generation started");
-                  load.reload();
-                })
-              }
-            >
-              Generate audio (TTS)
-            </Button>
-          </div>
+          <PodcastContentForm content={content} onChange={setContent} />
         );
       default:
         return null;
@@ -229,6 +238,20 @@ export function MediaDetailScreen({
   if (!item) return null;
 
   const isDraft = item.status === "draft";
+  const spoken = isSpokenKind(kind);
+  const steps = reviewSteps(kind, content);
+  const current = step ?? "draft";
+  const position = steps.findIndex((entry) => entry.id === current);
+  const review = reviewOf(content);
+  const status = avStatus(content);
+  const locked = unsaved || action.busy !== null || isAvRunning(status);
+  // A step's button keeps saying it is working until its background job settles,
+  // not only while the request that started it is in flight.
+  const working = {
+    facts: action.busy === "check-facts" || status === "checking_facts",
+    script: action.busy === "write-script" || status === "writing_script",
+    voice: action.busy === "voice" || (status?.startsWith("generating") ?? false),
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -237,10 +260,24 @@ export function MediaDetailScreen({
           <HiOutlineArrowLeft className="h-4 w-4" aria-hidden />
           Back to list
         </Button>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isDraft ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={action.busy !== null}
+              onClick={() => setDeleteOpen(true)}
+            >
+              Delete draft
+            </Button>
+          ) : null}
           <Button variant="ghost" size="sm" onClick={() => setJsonOpen(true)}>
-            Edit JSON
+            Edit as JSON
           </Button>
+          <span className="hidden h-6 border-l border-border sm:block" aria-hidden />
+          {unsaved ? (
+            <span className="text-osce-meta text-ink-subtle">Unsaved changes</span>
+          ) : null}
           {previewHref && item.status === "published" ? (
             <Link
               href={previewHref}
@@ -253,80 +290,65 @@ export function MediaDetailScreen({
               </Button>
             </Link>
           ) : null}
-          {kind === "summary" ? (
+          {kind === "blog" ? (
             <Button
-              size="sm"
               variant="secondary"
-              disabled={
-                action.busy === "generate-podcast" ||
-                isAvRunning(avStatus(content))
-              }
-              onClick={() =>
-                void action.run("generate-podcast", async () => {
-                  await generateSummaryPodcast(itemId);
-                  setPollAv(true);
-                  toast.success("Podcast generation started");
-                  load.reload();
-                })
-              }
-            >
-              Generate podcast
-            </Button>
-          ) : null}
-          {isDraft ? (
-            <Button
               size="sm"
-              disabled={action.busy !== null}
+              disabled={!title.trim() || action.busy !== null}
+              isLoading={action.busy === "save-publish"}
+              onClick={() => save(true)}
+            >
+              {action.busy === "save-publish" ? "Publishing…" : "Save and publish"}
+            </Button>
+          ) : isDraft ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={unsaved || action.busy !== null}
               onClick={() =>
-                void action.run("publish", async () => {
+                action.run("publish", async () => {
                   await publishMedia(itemId);
                   toast.success("Published");
                   load.reload();
                 })
               }
+              isLoading={action.busy === "publish"}
             >
-              Publish
-            </Button>
-          ) : null}
-          {kind === "blog" ? (
-            <Button
-              size="sm"
-              disabled={!title.trim() || action.busy !== null}
-              onClick={() => void save(true)}
-            >
-              Save & publish
-            </Button>
-          ) : null}
-          {isDraft ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={action.busy !== null}
-              onClick={() =>
-                void action.run("delete", async () => {
-                  await deleteMedia(itemId);
-                  toast.success("Deleted");
-                  onBack();
-                })
-              }
-            >
-              Delete draft
+              {action.busy === "publish" ? "Publishing…" : "Publish"}
             </Button>
           ) : null}
           <Button
             size="sm"
-            disabled={!title.trim() || action.busy === "save"}
-            onClick={() => void save()}
+            disabled={!title.trim() || action.busy !== null}
+            isLoading={action.busy === "save"}
+            onClick={() => save()}
           >
-            Save
+            {action.busy === "save" ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
 
+      <ConfirmModal
+        isOpen={deleteOpen}
+        tone="danger"
+        title="Delete this draft?"
+        message={`"${title.trim() || kindLabel}" will be removed. This cannot be undone.`}
+        confirmText="Delete draft"
+        isLoading={action.busy === "delete"}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() =>
+          void action.run("delete", async () => {
+            await deleteMedia(itemId);
+            toast.success("Deleted");
+            onBack();
+          })
+        }
+      />
+
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
       {pollAv ? (
         <Alert tone="info">
-          Production in progress… status updates every few seconds.
+          Working on it… this page updates when it finishes.
         </Alert>
       ) : null}
 
@@ -352,48 +374,179 @@ export function MediaDetailScreen({
         </p>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Panel
-          title="Details"
-          description="The exam is fixed when the item is created."
-        >
-          <div className="flex flex-col gap-4">
-            <Input
-              label="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <Input
-              label="Summary"
-              hint="Shown on the list card."
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-            />
-          </div>
-        </Panel>
+      {!spoken ? (
+        <>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <Panel
+            title="Details"
+            description="The exam is fixed when the item is created."
+          >
+            <div className="flex flex-col gap-4">
+              <Input
+                label="Title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <Input
+                label="Summary"
+                hint="Shown on the list card."
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+              />
+            </div>
+          </Panel>
 
-        <Panel title="Generate from a prompt" padding="sm">
-          <div className="flex flex-col gap-3">
-            <Textarea
-              aria-label="Prompt"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              rows={4}
-              placeholder="Describe the topic…"
-            />
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!prompt.trim()}
-              onClick={() => void runGenerate()}
+          <Panel title="Rewrite the draft from a brief" padding="sm">
+            <div className="flex flex-col gap-3">
+              <Textarea
+                aria-label="Prompt"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={4}
+                placeholder="Paste the case, notes or topic…"
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!prompt.trim() || (action.busy !== null && action.busy !== "generate")}
+                isLoading={action.busy === "generate"}
+                onClick={() => runGenerate()}
+              >
+                {action.busy === "generate" ? "Generating…" : `Generate ${kindLabel.toLowerCase()}`}
+              </Button>
+            </div>
+          </Panel>
+        </div>
+
+        <Panel title="Content">{contentForm()}</Panel>
+        </>
+      ) : (
+        <>
+          <StepNav steps={steps} current={current} onSelect={setStep} />
+          {review.error ? (
+            <Alert tone="danger">
+              The last {review.error.step === "facts" ? "fact check" : "script check"} failed:{" "}
+              {review.error.message}
+            </Alert>
+          ) : null}
+          {unsaved && current !== "draft" ? (
+            <Alert tone="info">
+              You have unsaved changes. Save before checking or voicing, so the check reads what you
+              see.
+            </Alert>
+          ) : null}
+
+          {current === "draft" ? (
+            <>
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+            <Panel
+              title="Details"
+              description="The exam is fixed when the item is created."
             >
-              Generate {kindLabel.toLowerCase()}
-            </Button>
-          </div>
-        </Panel>
-      </div>
+              <div className="flex flex-col gap-4">
+                <Input
+                  label="Title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+                <Input
+                  label="Summary"
+                  hint="Shown on the list card."
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                />
+              </div>
+            </Panel>
 
-      <Panel title="Content">{contentForm()}</Panel>
+            <Panel title="Rewrite the draft from a brief" padding="sm">
+              <div className="flex flex-col gap-3">
+                <Textarea
+                  aria-label="Prompt"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  rows={4}
+                  placeholder="Paste the case, notes or topic…"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!prompt.trim() || (action.busy !== null && action.busy !== "generate")}
+                  isLoading={action.busy === "generate"}
+                  onClick={() => runGenerate()}
+                >
+                  {action.busy === "generate" ? "Generating…" : `Generate ${kindLabel.toLowerCase()}`}
+                </Button>
+              </div>
+            </Panel>
+          </div>
+
+          <Panel title="Content">{contentForm()}</Panel>
+            </>
+          ) : null}
+          {current === "facts" ? (
+            <Panel title="Step 2: Check the facts">
+              <FactsStep
+                kind={kind}
+                content={content}
+                onChange={setContent}
+                locked={locked}
+                working={working.facts}
+                onCheck={() =>
+                  start("check-facts", "Fact check started", () => checkMediaFacts(itemId))
+                }
+              />
+            </Panel>
+          ) : null}
+          {current === "script" ? (
+            <Panel title="Step 3: Write and check the script">
+              <ScriptStep
+                kind={kind}
+                content={content}
+                onChange={setContent}
+                locked={locked}
+                working={working.script}
+                onWrite={(rewrite) =>
+                  start("write-script", "Script check started", () =>
+                    writeMediaScript(itemId, rewrite),
+                  )
+                }
+              />
+            </Panel>
+          ) : null}
+          {current === "voice" ? (
+            <Panel title="Step 4: Approve and voice">
+              <VoiceStep
+                kind={kind}
+                content={content}
+                locked={locked}
+                working={working.voice}
+                steps={steps}
+                onVoice={voice}
+              />
+            </Panel>
+          ) : null}
+
+          <div className="flex justify-between gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={position === 0}
+              onClick={() => setStep(steps[position - 1]?.id ?? current)}
+            >
+              Back
+            </Button>
+            {position < steps.length - 1 ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setStep(steps[position + 1]?.id ?? current)}
+              >
+                Next: {steps[position + 1]?.label}
+              </Button>
+            ) : null}
+          </div>
+        </>
+      )}
     </div>
   );
 }

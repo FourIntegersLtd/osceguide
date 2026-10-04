@@ -116,10 +116,10 @@ export function AttemptRunner(props: AttemptRunnerProps) {
               </p>
             )}
             <div className="flex gap-2">
-              <Button onClick={() => void session.startConsultation()}>
+              <Button onClick={() => session.startConsultation()}>
                 I am ready, call the patient
               </Button>
-              <Button variant="ghost" onClick={() => void session.abandon()}>
+              <Button variant="ghost" onClick={() => session.abandon()}>
                 Leave
               </Button>
             </div>
@@ -151,7 +151,7 @@ export function AttemptRunner(props: AttemptRunnerProps) {
         >
           <div className="flex flex-col items-center gap-5">
             <AgentTile name={patientName} detail={patientDetail} className="w-full max-w-sm" />
-            <Button variant="danger" onClick={() => void session.end()}>
+            <Button variant="danger" onClick={() => session.end()}>
               <LuPhoneOff className="h-4 w-4" aria-hidden /> End consultation
             </Button>
           </div>
@@ -168,7 +168,7 @@ export function AttemptRunner(props: AttemptRunnerProps) {
 
       {session.phase === "failed" && (
         <Card>
-          <Button onClick={() => void session.startConsultation()}>Try again</Button>
+          <Button onClick={() => session.startConsultation()}>Try again</Button>
         </Card>
       )}
     </div>

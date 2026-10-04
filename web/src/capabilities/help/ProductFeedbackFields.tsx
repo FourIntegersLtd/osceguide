@@ -91,7 +91,7 @@ export function TestimonialChoice({
       </legend>
       <div
         className={cn(
-          compact ? "mt-2 flex flex-wrap gap-x-4 gap-y-2" : "grid gap-2 sm:grid-cols-3",
+          compact ? "mt-2 flex flex-wrap gap-x-4 gap-y-2" : "grid grid-cols-1 gap-2 sm:grid-cols-3",
         )}
       >
         {TESTIMONIAL_OPTIONS.map((option) => (

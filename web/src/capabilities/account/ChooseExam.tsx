@@ -138,7 +138,7 @@ function ExamChoice({ exams }: { exams: Exam[] }) {
           type="button"
           variant="primary"
           size="md"
-          onClick={() => void save()}
+          onClick={() => save()}
           disabled={saving || !selected}
           className="inline-flex w-full items-center justify-center gap-2 sm:w-auto"
         >

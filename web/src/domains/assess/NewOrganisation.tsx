@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Button, Checkbox, Input, Select } from "@/foundation/ui";
+import { Alert, Button, Checkbox, Input, Select, FoldSection } from "@/foundation/ui";
 import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import { AuthShell } from "@/capabilities/account";
 import { PURPOSES, type ProgrammePurpose } from "@/domains/assess/programmes/purposes";
@@ -53,6 +53,8 @@ export function NewOrganisation() {
           setSubmitted(true);
         }}
       >
+        <FoldSection number={1} title="Organisation">
+        <div className="space-y-5">
         <Input label="Organisation name" required value={name} onChange={(event) => setName(event.target.value)} />
         <Select label="Type" value={orgType} onChange={(event) => setOrgType(event.target.value)}>
           {ORG_TYPES.map((type) => (
@@ -61,7 +63,11 @@ export function NewOrganisation() {
             </option>
           ))}
         </Select>
+        </div>
+        </FoldSection>
 
+        <FoldSection number={2} title="Exams and purpose">
+        <div className="space-y-5">
         <fieldset className="space-y-2">
           <legend className="text-osce-meta font-medium text-ink">Exams your trainees prepare for</legend>
           {EXAMS.map((exam) => (
@@ -96,7 +102,11 @@ export function NewOrganisation() {
             </p>
           )}
         </fieldset>
+        </div>
+        </FoldSection>
 
+        <FoldSection number={3} title="Your account">
+        <div className="space-y-5">
         <Input
           label="Your name"
           required
@@ -122,6 +132,8 @@ export function NewOrganisation() {
           onChange={(event) => setPassword(event.target.value)}
           hint="Use 10 or more characters. Or set up single sign-on later in Settings."
         />
+        </div>
+        </FoldSection>
 
         {submitted && !purposeMissing ? (
           <Alert tone="warning" title="Nothing was created">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, b2bTokens } from "@/foundation/ui";
+import { Badge, b2bTokens, FoldSection } from "@/foundation/ui";
 import { ratingLabel, type RatingValue } from "@/capabilities/feedback/rubric";
 import { RatingInput } from "@/domains/assess/results/RatingInput";
 import { formDomains, machineRating, unratedRequired, type ReviewForm } from "@/domains/assess/results/reviewForm";
@@ -45,7 +45,7 @@ export function ReviewFields({
 
   return (
     <div className="space-y-4">
-      <ul className="divide-y divide-b2b-border">
+      <ul className="space-y-3">
         {domains.map((domain) => {
           // A domain-level field repeats the domain's name, so its rating sits
           // in the domain's own heading row; competency fields get a row each.
@@ -67,19 +67,18 @@ export function ReviewFields({
             ) : null;
           };
           return (
-            <li key={domain.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className={b2bTokens.b2bSectionTitle}>{domain.label}</span>
-                  {domain.required ? <Badge variant="neutral" size="xs">Required</Badge> : null}
-                </div>
+            <li key={domain.id}>
+              <FoldSection
+                title={domain.label}
+                meta={domain.required ? <Badge variant="neutral" size="xs">Required</Badge> : null}
+              >
+              <div className="space-y-2">
                 {own.map((field) => (
-                  <div key={field.path} className="flex flex-wrap items-center gap-3">
+                  <div key={field.path} className="flex flex-wrap items-center justify-end gap-3">
                     {machineNote(field.path)}
                     {input(field)}
                   </div>
                 ))}
-              </div>
               {parts.map((field) => (
                 <div key={field.path} className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex min-w-0 flex-col">
@@ -102,6 +101,8 @@ export function ReviewFields({
                   />
                 </label>
               ) : null}
+              </div>
+              </FoldSection>
             </li>
           );
         })}

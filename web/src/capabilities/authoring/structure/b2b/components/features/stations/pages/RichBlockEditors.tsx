@@ -1,6 +1,6 @@
 "use client";
 
-import { Textarea } from "@/foundation/ui";
+import { FoldSection, Textarea } from "@/foundation/ui";
 import { useState, type ReactNode } from "react";
 import { HiOutlinePlus, HiOutlineXMark } from "react-icons/hi2";
 import {
@@ -22,7 +22,6 @@ import { b2bInputBase } from "@/capabilities/authoring/structure/b2b/theme/b2bUi
 type RichBlock = Extract<StationBlock, { type: "media" | "records" | "qaList" | "groupedList" }>;
 
 const input = `${b2bInputBase} py-2 text-osce-body`;
-const card = "rounded-osce-md border border-border bg-surface-raised/30 p-3";
 
 function text(value: unknown): string {
   return typeof value === "string" ? value : value === undefined || value === null ? "" : String(value);
@@ -146,15 +145,18 @@ function RecordsEditor({
   return (
     <div className="space-y-3">
       {records.map((record, index) => (
-        <div key={index} className={card}>
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-osce-caption font-semibold text-ink-muted">Record {index + 1}</span>
+        <FoldSection
+          key={index}
+          number={index + 1}
+          title="Record"
+          actions={
             <RemoveButton
               label={`Remove record ${index + 1}`}
               readOnly={readOnly}
               onRemove={() => onChange(records.filter((_, at) => at !== index))}
             />
-          </div>
+          }
+        >
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {columns.map(({ key, label }) => {
               const cell = record[key];
@@ -181,7 +183,7 @@ function RecordsEditor({
               );
             })}
           </div>
-        </div>
+        </FoldSection>
       ))}
       <RowActions addLabel="Add record" readOnly={readOnly} onAdd={() => onChange([...records, {}])} />
     </div>
@@ -202,10 +204,19 @@ function QaEditor({
   return (
     <div className="space-y-3">
       {pairs.map((pair, index) => (
-        <div key={index} className={card}>
-          <div className="flex items-start gap-2">
-            <span className="pt-2 text-osce-body font-semibold text-ink-muted">{index + 1}.</span>
-            <div className="min-w-0 flex-1 space-y-2">
+        <FoldSection
+          key={index}
+          number={index + 1}
+          title={pair.question.trim() || "New question"}
+          actions={
+            <RemoveButton
+              label={`Remove question ${index + 1}`}
+              readOnly={readOnly}
+              onRemove={() => onChange(pairs.filter((_, at) => at !== index))}
+            />
+          }
+        >
+            <div className="space-y-2">
               <input
                 readOnly={readOnly}
                 aria-label={`Question ${index + 1}`}
@@ -223,13 +234,7 @@ function QaEditor({
                 rows={3}
               />
             </div>
-            <RemoveButton
-              label={`Remove question ${index + 1}`}
-              readOnly={readOnly}
-              onRemove={() => onChange(pairs.filter((_, at) => at !== index))}
-            />
-          </div>
-        </div>
+        </FoldSection>
       ))}
       <RowActions
         addLabel="Add question"
@@ -257,8 +262,19 @@ function GroupsEditor({
   return (
     <div className="space-y-3">
       {entries.map(([name, items], index) => (
-        <div key={index} className={card}>
-          <div className="mb-2 flex items-center gap-2">
+        <FoldSection
+          key={index}
+          number={index + 1}
+          title={name.trim() || "Unnamed group"}
+          actions={
+            <RemoveButton
+              label={`Remove group ${name}`}
+              readOnly={readOnly}
+              onRemove={() => write(entries.filter((_, at) => at !== index))}
+            />
+          }
+        >
+          <div className="space-y-2">
             <input
               readOnly={readOnly}
               aria-label={`Group ${index + 1} name`}
@@ -268,18 +284,13 @@ function GroupsEditor({
               }
               className={`${input} font-semibold`}
             />
-            <RemoveButton
-              label={`Remove group ${name}`}
-              readOnly={readOnly}
-              onRemove={() => write(entries.filter((_, at) => at !== index))}
-            />
-          </div>
           <GroupItemsText
             items={items}
             readOnly={readOnly}
             onChange={(next) => write(entries.map((entry, at) => (at === index ? [entry[0], next] : entry)))}
           />
-        </div>
+          </div>
+        </FoldSection>
       ))}
       <p className="text-osce-caption text-ink-muted">
         One item per line. Start a line with &quot;- &quot; to add a reason under the item above.

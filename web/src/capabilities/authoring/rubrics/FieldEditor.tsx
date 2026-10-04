@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
-import { cn, Select, Textarea } from "@/foundation/ui";
+import { Badge, FoldSection, Select, Textarea } from "@/foundation/ui";
 import { useRubricBuilder } from "@/capabilities/authoring/rubrics/builderContext";
 import {
   GroupHeading,
@@ -14,7 +14,7 @@ import {
 } from "@/capabilities/authoring/rubrics/formParts";
 import { getAt, isJsonObject, listAt, pathText, setAt, type JsonPath } from "@/capabilities/authoring/rubrics/jsonPath";
 import { problemsAt, problemsWithin } from "@/capabilities/authoring/rubrics/problems";
-import { appendAt, newField, readRating, withFieldType } from "@/capabilities/authoring/rubrics/rubricEdits";
+import { appendAt, newField, readRating, textAt, withFieldType } from "@/capabilities/authoring/rubrics/rubricEdits";
 import {
   FIELD_ROLES,
   FIELD_SOURCES,
@@ -74,7 +74,7 @@ export function FieldList({
 function AddFieldPicker({ types, onAdd }: { types: { value: FieldType; label: string }[]; onAdd: (type: FieldType) => void }) {
   const pickerId = useId();
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <label htmlFor={pickerId} className="sr-only">
         Add a field
       </label>
@@ -118,16 +118,14 @@ export function FieldCard({
   const typeChoices = FIELD_TYPES.filter((choice) => allowRating || choice.value !== "rating" || type === "rating");
   const inside = problemsWithin(problems, path);
   return (
-    <div
-      data-path={pathText(path)}
-      className={cn(
-        "space-y-3 rounded-osce-md border bg-osce-surface p-3",
-        inside > 0 ? "border-osce-danger/40" : "border-osce-border",
-        depth > 0 && "bg-osce-canvas",
-      )}
-    >
-      <div className="flex items-start gap-2">
-        <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-3">
+    <div data-path={pathText(path)}>
+      <FoldSection
+        title={textAt(structure, [...path, "label"]).trim() || "Untitled field"}
+        meta={inside > 0 ? <Badge tone="danger" size="sm">Needs fixing</Badge> : null}
+        actions={controls}
+      >
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <TextAtPath path={[...path, "label"]} label="Label" placeholder="What the reader sees" />
           <SelectAtPath
             path={[...path, "type"]}
@@ -137,9 +135,7 @@ export function FieldCard({
           />
           <SelectAtPath path={[...path, "role"]} label="Role" choices={FIELD_ROLES} />
         </div>
-        {controls}
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <TextAtPath path={[...path, "id"]} label="Id" mono hint={type === "rating" ? "Always the rating's field name." : undefined} />
         <SelectAtPath path={[...path, "source"]} label="Written by" choices={FIELD_SOURCES} emptyLabel="The marker" />
         {type === "list" || type === "records" ? (
@@ -157,6 +153,8 @@ export function FieldCard({
           <FieldList listPath={[...path, "fields"]} heading={type === "records" ? "Each entry holds" : "The group holds"} depth={depth + 1} />
         </div>
       ) : null}
+      </div>
+      </FoldSection>
     </div>
   );
 }

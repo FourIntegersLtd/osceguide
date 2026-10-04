@@ -175,7 +175,7 @@ function MessageRow({
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => void handle()}
+          onClick={() => handle()}
           disabled={busy}
         >
           {busy ? "Saving…" : "Mark handled"}

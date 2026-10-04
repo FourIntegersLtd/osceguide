@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { LuClipboardCheck } from "react-icons/lu";
-import { Alert, B2CGroupedRowLink, B2CGroupedSection, Badge, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, B2CGroupedRowLink, B2CGroupedSection, Badge, Button, b2bTokens, FoldSection } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
@@ -110,7 +110,7 @@ export function CandidateCard({
                 size="sm"
                 isLoading={downloading}
                 disabled={downloading}
-                onClick={() => void downloadPdf()}
+                onClick={() => downloadPdf()}
               >
                 Result PDF
               </Button>
@@ -151,15 +151,14 @@ export function CandidateCard({
               )}
             </B2CGroupedSection>
 
-            <section className="space-y-2">
-              <h3 className={b2bTokens.b2bSectionTitle}>The decision</h3>
+            <FoldSection title="The decision">
               <CandidateDecision
                 orgSlug={orgSlug}
                 sittingId={sittingId}
                 candidate={candidate}
                 onChanged={onChanged}
               />
-            </section>
+            </FoldSection>
           </td>
         </tr>
       ) : null}

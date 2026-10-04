@@ -198,7 +198,7 @@ function Setup({ data }: { data: Data }) {
         </div>
       </div>
 
-      <ol className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {steps.map((step) => {
           const Icon = step.done ? LuCheck : (STEP_ICONS[step.key] ?? LuClipboardList);
           return (
@@ -234,7 +234,7 @@ function Counts({ data }: { data: Data }) {
   ];
 
   return (
-    <section aria-label="At a glance" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <section aria-label="At a glance" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {tiles.map((tile) => (
         <Link key={tile.label} href={hrefFor(tile.path)} className={b2bTokens.b2bStatCard}>
           <span className={b2bTokens.b2bEyebrow}>{tile.label}</span>

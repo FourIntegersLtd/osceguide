@@ -73,7 +73,7 @@ export function SlidesWorkspace({
         />
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1.8fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.8fr_1fr]">
         <div className="min-w-0 space-y-4">
           <div
             className={cn(

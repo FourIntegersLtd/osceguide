@@ -109,7 +109,7 @@ function PlabLandingContent() {
               as you speak.
             </p>
           </div>
-          <div className="grid gap-8 sm:grid-cols-3 sm:gap-10">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-10">
             {plabHighlights.map((item) => (
               <div key={item.title}>
                 <LandingIconBadge icon={item.icon} color={item.color} size="sm" />
@@ -133,7 +133,7 @@ function PlabLandingContent() {
               circuit.
             </p>
           </div>
-          <div className="mt-12 grid gap-8 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
+          <div className="mt-12 grid grid-cols-1 gap-8 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3 lg:gap-10">
             {stationTypes.map((station) => (
               <div key={station.title} className="space-y-2">
                 <h3 className={type.itemTitle}>{station.title}</h3>
@@ -157,7 +157,7 @@ function PlabLandingContent() {
               every practice session.
             </p>
           </div>
-          <div className="mt-12 grid gap-6 sm:gap-8 lg:grid-cols-3">
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-3">
             {preparationWorkflow.map((step, index) => (
               <div key={step.title} className={type.featureCard}>
                 <LandingIconBadge

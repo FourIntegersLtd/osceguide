@@ -60,7 +60,7 @@ export function RecoveryCodes({
         ))}
       </ul>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="secondary" size="sm" className="gap-1.5" onClick={() => void copy()}>
+        <Button type="button" variant="secondary" size="sm" className="gap-1.5" onClick={() => copy()}>
           <HiOutlineClipboard className="h-4 w-4" aria-hidden />
           {copied ? "Copied" : "Copy"}
         </Button>

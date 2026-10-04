@@ -79,7 +79,7 @@ export function SessionCardActions({
             setShowDeleteConfirmation(false);
             setDeletionStatus(null);
           }}
-          onConfirm={() => void handleConfirmDelete()}
+          onConfirm={() => handleConfirmDelete()}
           setDeletionStatus={setDeletionStatus}
           setLoading={setIsLoading}
           deletionStatus={deletionStatus}

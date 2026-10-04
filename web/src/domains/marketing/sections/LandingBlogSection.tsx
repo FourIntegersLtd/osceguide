@@ -67,7 +67,7 @@ export function LandingBlogSection() {
           </Link>
         </div>
 
-        <div className="mt-9 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+        <div className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
           {blogs.map((blog) => (
             <article key={blog.blog_id} className="flex">
               <Link

@@ -93,7 +93,7 @@ export function Hero({
           </div>
         </div>
       ) : (
-        <div className="grid gap-0 lg:grid-cols-[1fr_200px] lg:items-center">
+        <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1fr_200px] lg:items-center">
           <div className="px-4 py-5 sm:px-8 sm:py-8">
             <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
               {stats.map((stat) => (

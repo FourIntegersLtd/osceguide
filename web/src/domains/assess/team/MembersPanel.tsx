@@ -227,7 +227,7 @@ export function MembersPanel({
             variant="secondary"
             size="sm"
             disabled={resendingAll}
-            onClick={() => void resendAll()}
+            onClick={() => resendAll()}
           >
             {resendingAll ? "Resending…" : `Resend invitations (${awaiting.length})`}
           </Button>

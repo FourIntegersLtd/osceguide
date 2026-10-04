@@ -164,7 +164,7 @@ export function CvPanel() {
             </div>
             {latest ? (
               <div className="mt-6 flex items-center justify-between gap-3 border-t border-border pt-4">
-                <p className="text-osce-meta text-ink-subtle">
+                <p className="min-w-0 break-all text-osce-meta text-ink-subtle">
                   {latest.original_filename}
                   {latest.status === "completed"
                     ? ` · uploaded ${new Date(latest.uploaded_at).toLocaleDateString("en-GB")}`
@@ -297,7 +297,7 @@ function Upload({ onUploaded }: { onUploaded: (cvId: string) => void }) {
           >
             <HiOutlineXMark className="h-4 w-4" /> Discard
           </Button>
-          <Button size="sm" onClick={() => void send()} disabled={busy}>
+          <Button size="sm" onClick={() => send()} disabled={busy}>
             {busy ? "Uploading…" : "Upload CV"}
           </Button>
         </div>
@@ -316,7 +316,7 @@ function Sections({ structured }: { structured: StructuredCv }) {
     );
   }
   return (
-    <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+    <dl className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
       {filled.map(({ key, title, icon: Icon }) => (
         <div key={key} className="rounded-panel border border-osce-border bg-white p-4">
           <dt className="flex items-center gap-2 text-osce-meta font-semibold uppercase tracking-wide text-ink-subtle">

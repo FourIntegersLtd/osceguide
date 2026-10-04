@@ -126,7 +126,7 @@ function Runner({
         </Alert>
       ))}
 
-      <section className="grid gap-6 rounded-panel bg-canvas p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+      <section className="grid grid-cols-1 gap-6 rounded-panel bg-canvas p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0 space-y-5">
           <RunnerStepper steps={runnerSteps(data)} />
           <SupervisorControls

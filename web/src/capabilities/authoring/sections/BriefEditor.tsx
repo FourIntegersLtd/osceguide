@@ -36,11 +36,10 @@ export function BriefEditor({
   const action = useAction();
 
   return (
-    <Panel padding="md">
-      <h3 className="text-osce-body font-semibold text-ink">Reading brief</h3>
-      <p className="mt-0.5 text-osce-caption text-ink-muted">
-        What the candidate reads before the station starts. Saving this does not cut a new version.
-      </p>
+    <Panel
+      title="Reading brief"
+      description="What the candidate reads before the station starts. Saving this does not cut a new version."
+    >
       <Textarea
         value={brief}
         rows={8}
@@ -48,7 +47,6 @@ export function BriefEditor({
           setBrief(e.target.value);
           setSaved(false);
         }}
-        className="mt-3"
       />
       {action.error ? (
         <Alert tone="danger" className="mt-3">
@@ -61,7 +59,7 @@ export function BriefEditor({
           size="sm"
           disabled={action.busy !== null || brief === initial}
           onClick={() =>
-            void action.run("brief", async () => {
+            action.run("brief", async () => {
               onSaved(await editStationBrief(scope, stationId, version, brief));
               setSaved(true);
             })

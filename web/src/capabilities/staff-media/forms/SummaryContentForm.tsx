@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Checkbox, Input, Textarea } from "@/foundation/ui";
+import { Checkbox, FoldSection, Input, Textarea } from "@/foundation/ui";
 import {
   mergeContent,
   setSpecialties,
@@ -51,30 +51,44 @@ export function SummaryContentForm({
 
   return (
     <div className="flex flex-col gap-5">
-      <StringListField
-        label="Red flags"
+      <FoldSection title="Red flags">
+        <StringListField
+          label="Red flags"
+          labelHidden
         items={stringListField(content, "red_flags")}
         onChange={(items) => setList("red_flags", items)}
-      />
-      <StringListField
-        label="Examinations"
+        />
+      </FoldSection>
+      <FoldSection title="Examinations">
+        <StringListField
+          label="Examinations"
+          labelHidden
         items={stringListField(content, "examinations")}
         onChange={(items) => setList("examinations", items)}
-      />
-      <StringListField
-        label="Brief management"
+        />
+      </FoldSection>
+      <FoldSection title="Brief management">
+        <StringListField
+          label="Brief management"
+          labelHidden
         items={stringListField(content, "brief_management")}
         onChange={(items) => setList("brief_management", items)}
-      />
-      <StringListField
-        label="Psychosocial aspects"
+        />
+      </FoldSection>
+      <FoldSection title="Psychosocial aspects">
+        <StringListField
+          label="Psychosocial aspects"
+          labelHidden
         items={stringListField(content, "psychosocial_aspects")}
         onChange={(items) => setList("psychosocial_aspects", items)}
-      />
-      <div className="flex flex-col gap-2">
-        <span className="text-osce-meta font-medium text-ink-muted">Specialties</span>
-        <div className="max-h-48 overflow-y-auto rounded-osce-md border border-border p-3">
-          <ul className="grid gap-2 sm:grid-cols-2">
+        />
+      </FoldSection>
+      <FoldSection
+        title="Specialties"
+        meta={<span className="text-osce-meta font-normal text-ink-subtle">{selected.length} chosen</span>}
+      >
+        <div className="max-h-48 overflow-y-auto">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {MEDICAL_SPECIALTY_NAMES.map((name) => (
               <li key={name}>
                 <Checkbox
@@ -86,14 +100,18 @@ export function SummaryContentForm({
             ))}
           </ul>
         </div>
-      </div>
+      </FoldSection>
+      <FoldSection title="Body (markdown, optional)" defaultOpen={Boolean(bodyMd.trim())}>
       <Textarea
-        label="Body (markdown, optional)"
+        aria-label="Body (markdown, optional)"
           value={bodyMd}
           onChange={(e) => patch({ body_md: e.target.value })}
           rows={8}
           className="font-mono"
         />
+      </FoldSection>
+      <FoldSection title="Podcast">
+      <div className="flex flex-col gap-3">
       <Input
         label="Podcast URL"
         value={typeof content.podcast_url === "string" ? content.podcast_url : ""}
@@ -109,6 +127,8 @@ export function SummaryContentForm({
           />
         </div>
       ) : null}
+      </div>
+      </FoldSection>
     </div>
   );
 }

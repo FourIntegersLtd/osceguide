@@ -13,6 +13,9 @@ import { fetchOnboardingScenes, type OnboardingScene } from "@/capabilities/onbo
 /** The worker's name for a scene announcement; `handlers.py` reads this exact word. */
 const SCENE_CHANGE = "scene_change";
 
+/** How long the session start waits for the microphone prompt to be answered. */
+const MIC_PROMPT_WAIT_MS = 10_000;
+
 export type OnboardingPhase = "intro" | "demo";
 
 /**
@@ -41,7 +44,15 @@ export function useOnboardingVoice() {
     setStarting(true);
     setError(null);
     try {
-      if (mic.status !== "ready") await mic.request();
+      // Bounded: an installed iOS app can leave the permission request
+      // unanswered for good, and waiting on it kept the walkthrough loading
+      // for ever. Athena can still speak without the microphone.
+      if (mic.status !== "ready") {
+        await Promise.race([
+          mic.request(),
+          new Promise((resolve) => setTimeout(resolve, MIC_PROMPT_WAIT_MS)),
+        ]);
+      }
       const context = buildClientContext({ surface: assistantSurfaceFor(surface), pathname });
       const session = await startAssistantSession("onboarding", context);
       setGrant(await assistantVoiceToken(session.id));

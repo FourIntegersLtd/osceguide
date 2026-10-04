@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, B2CPageHeader, Button, ButtonLink, Input, Select, cn } from "@/foundation/ui";
+import { Alert, B2CPageHeader, Button, ButtonLink, Input, Select, cn, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listMemberships } from "@/domains/assess/team/api";
-import { Panel } from "@/domains/assess/programmes/parts";
 import { PURPOSES, purposeCopy, type ProgrammePurpose } from "@/domains/assess/programmes/purposes";
 
 /**
@@ -41,7 +40,7 @@ export function NewProgramme({ orgSlug }: { orgSlug: string }) {
       />
 
       <form
-        className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+        className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
         onSubmit={(event) => {
           event.preventDefault();
           setNotSaved(true);
@@ -49,7 +48,7 @@ export function NewProgramme({ orgSlug }: { orgSlug: string }) {
       >
         <div className="flex flex-col gap-5">
           <Panel title="What is it for?">
-            <fieldset className="grid gap-3 sm:grid-cols-2">
+            <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <legend className="sr-only">Purpose</legend>
               {PURPOSES.map((option) => (
                 <label
@@ -78,7 +77,7 @@ export function NewProgramme({ orgSlug }: { orgSlug: string }) {
           </Panel>
 
           <Panel title="Details">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label="Name"
                 required

@@ -178,7 +178,7 @@ export function NoShowGuidelines({ sessionId, afterReport }: { sessionId: string
           setConfirming(false);
           setError(null);
         }}
-        onConfirm={() => void report()}
+        onConfirm={() => report()}
         title="Report no-show?"
         message={
           <>

@@ -57,7 +57,7 @@ function PilotForm({ partner, initial }: { partner: string; initial: PilotConfig
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Input
           type="number"
           min="0"
@@ -83,7 +83,7 @@ function PilotForm({ partner, initial }: { partner: string; initial: PilotConfig
       {error ? <Alert tone="danger">{error}</Alert> : null}
       {success ? <Alert tone="success">{success}</Alert> : null}
       <div className="flex justify-end">
-        <Button type="button" onClick={() => void save()} disabled={saving}>
+        <Button type="button" onClick={() => save()} disabled={saving}>
           {saving ? "Saving…" : "Save settings"}
         </Button>
       </div>

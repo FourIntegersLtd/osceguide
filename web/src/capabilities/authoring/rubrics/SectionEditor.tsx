@@ -1,13 +1,13 @@
 "use client";
 
-import { Badge, cn } from "@/foundation/ui";
+import { Badge, FoldSection } from "@/foundation/ui";
 import { useRubricBuilder } from "@/capabilities/authoring/rubrics/builderContext";
 import { CompetencyList } from "@/capabilities/authoring/rubrics/CompetencyEditor";
 import { FieldCard, FieldList } from "@/capabilities/authoring/rubrics/FieldEditor";
 import { AddButton, ItemControls, ProblemNote, TextAtPath, ToggleAtPath } from "@/capabilities/authoring/rubrics/formParts";
 import { getAt, isJsonObject, listAt, pathText, type JsonPath } from "@/capabilities/authoring/rubrics/jsonPath";
 import { problemsAt, problemsWithin } from "@/capabilities/authoring/rubrics/problems";
-import { appendAt, newSection } from "@/capabilities/authoring/rubrics/rubricEdits";
+import { appendAt, newSection, textAt } from "@/capabilities/authoring/rubrics/rubricEdits";
 import { labelFor, SECTION_KINDS, type SectionKind } from "@/capabilities/authoring/rubrics/rubricVocabulary";
 
 /**
@@ -53,16 +53,12 @@ function SectionCard({ index, count }: { index: number; count: number }) {
   const kind = section.kind as SectionKind;
   const inside = problemsWithin(problems, path);
   return (
-    <section
-      data-path={pathText(path)}
-      className={cn(
-        "space-y-4 rounded-osce-lg border bg-osce-surface p-4 shadow-sm",
-        inside > 0 ? "border-osce-danger/40" : "border-osce-border",
-      )}
-    >
-      <header className="flex items-start gap-3">
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
+    <div data-path={pathText(path)}>
+      <FoldSection
+        number={index + 1}
+        title={textAt(structure, [...path, "title"]).trim() || labelFor(SECTION_KINDS, kind)}
+        meta={
+          <>
             <Badge tone={kind === "domain" ? "accent" : kind === "section" ? "info" : "neutral"} size="sm">
               {labelFor(SECTION_KINDS, kind)}
             </Badge>
@@ -71,12 +67,11 @@ function SectionCard({ index, count }: { index: number; count: number }) {
                 {inside} {inside === 1 ? "problem" : "problems"}
               </Badge>
             ) : null}
-          </div>
-          <ProblemNote messages={problemsAt(problems, [...path, "kind"])} />
-        </div>
-        <ItemControls listPath={["sections"]} index={index} count={count} noun="part" />
-      </header>
-
+          </>
+        }
+        actions={<ItemControls listPath={["sections"]} index={index} count={count} noun="part" />}
+      >
+      <ProblemNote messages={problemsAt(problems, [...path, "kind"])} />
       {kind === "field" ? (
         <div className="space-y-3">
           <TextAtPath path={[...path, "title"]} label="Heading" />
@@ -84,7 +79,7 @@ function SectionCard({ index, count }: { index: number; count: number }) {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
             <TextAtPath path={[...path, "title"]} label={kind === "domain" ? "Domain" : "Section"} placeholder="e.g. Data gathering" />
             <TextAtPath path={[...path, "id"]} label="Id" mono hint="Lower case and underscores; results are stored under it." />
           </div>
@@ -92,7 +87,8 @@ function SectionCard({ index, count }: { index: number; count: number }) {
           {kind === "domain" ? <DomainBody path={path} /> : <FieldList listPath={[...path, "fields"]} heading="Fields" />}
         </div>
       )}
-    </section>
+      </FoldSection>
+    </div>
   );
 }
 
@@ -102,7 +98,7 @@ function DomainBody({ path }: { path: JsonPath }) {
   const nullable = getAt(structure, [...path, "nullable"]) === true;
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <ToggleAtPath path={[...path, "live"]} label="Judged live" hint="Can be judged while the consultation is still running." />
         <ToggleAtPath path={[...path, "nullable"]} label="May be left out" hint="One of several alternatives; a result may leave it empty." />
       </div>

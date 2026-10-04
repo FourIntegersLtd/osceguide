@@ -156,7 +156,7 @@ function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; ve
           size="sm"
           isLoading={action.busy === "add"}
           onClick={() =>
-            void action.run("add", async () => {
+            action.run("add", async () => {
               const created = await addRubricVersion(scope, rubric.id);
               router.push(rubricEditPath(hrefFor, rubric.id, created.version));
             })
@@ -176,7 +176,7 @@ function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; ve
           size="sm"
           isLoading={action.busy === "copy"}
           onClick={() =>
-            void action.run("copy", async () => {
+            action.run("copy", async () => {
               const copy = await copyRubric(scope, { source_rubric_id: rubric.id, source_version: version });
               const first = (copy.versions ?? [])[0];
               router.push(rubricEditPath(hrefFor, copy.id, first?.version ?? 1));

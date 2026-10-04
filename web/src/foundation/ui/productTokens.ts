@@ -267,6 +267,14 @@ export const b2cPageColumn =
   "mx-auto w-full min-w-0 max-w-osce-page space-y-6 overflow-x-hidden";
 export const b2cScrollY = "overflow-y-auto overflow-x-hidden";
 
+/**
+ * A live room (station, peer session) laid over the content column, toolbar
+ * included. On phones it starts under the fixed 56px top bar instead of at the
+ * column's top: iOS gives the scrolling main its own stacking context, so the
+ * room's z-index cannot lift it over that bar and the bar hid the clock.
+ */
+export const b2cRoomOverlay = "absolute inset-x-0 bottom-0 top-14 z-30 md:top-0";
+
 export const b2cShellMain = [
   "w-full min-h-0 min-w-0 flex-1 bg-osce-surface",
   // Canvas: 36px 40px 56px under the toolbar. Mobile clears the fixed top bar

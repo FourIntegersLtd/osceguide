@@ -182,3 +182,9 @@ passages are always labelled as the second line.
 A question about how the app works (the `help` corpus) never asks it. Any
 failure, or `CLINICAL_BUDDY_SERVICE_KEY` being unset (the address defaults to
 Clinical Buddy's production API; `CLINICAL_BUDDY_URL` overrides it), means no guideline passages and never an error.
+
+The same client also asks Clinical Buddy's web search (`POST /api/web-search`, same key,
+`service_search.guideline_web()`), which answers a question from the clinical web with its
+references. Only `media_production`'s fact check uses it, and only for a claim the library
+did not support; it waits up to 90 seconds and any failure reads as "not checked on the web".
+A passage now carries its `section` and `page`, so a check can cite where it rests.

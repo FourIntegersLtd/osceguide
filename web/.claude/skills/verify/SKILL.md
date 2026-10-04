@@ -24,8 +24,9 @@ export PATH="$HOME/.nvm/versions/node/v22.22.3/bin:$PATH"   # npm is not on PATH
 make db-up                                   # postgres :5433, redis :6380
 nohup make start > "$TMP/api.log" 2>&1 & echo $! > "$TMP/api.pid"
 
-# Web (from platform-web) — webpack, never `npm run dev` (Turbopack panics)
-nohup npm run dev:webpack > "$TMP/web.log" 2>&1 & echo $! > "$TMP/web.pid"
+# Web (from platform-web) — Turbopack. `npm run dev:webpack` only if it panics:
+# webpack compiles each route 3-10x slower and its cache grows to gigabytes.
+nohup npm run dev > "$TMP/web.log" 2>&1 & echo $! > "$TMP/web.pid"
 ```
 
 A migrated database is empty: `poetry run python scripts/seed_platform.py`

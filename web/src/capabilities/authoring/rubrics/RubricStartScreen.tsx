@@ -78,7 +78,7 @@ export function RubricStartScreen() {
           <SectionSearchField value={search} onChange={setSearch} placeholder="Search published rubrics…" ariaLabel="Search starting points" />
           <AsyncBoundary state={points}>
             {(data) => (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Start from">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Start from">
                 {data.items.map((point) => (
                   <StartCard key={keyOf(point)} point={point} selected={keyOf(point) === chosen} onSelect={() => setChosen(keyOf(point))} />
                 ))}

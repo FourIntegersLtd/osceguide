@@ -224,7 +224,7 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
         <ClaimConfirmationModal
           slot={claiming}
           isClaiming={claiming !== null && claimingId === claiming.id}
-          onConfirm={() => void confirmClaim()}
+          onConfirm={() => confirmClaim()}
           onCancel={() => setClaiming(null)}
         />
 
@@ -233,7 +233,7 @@ function PeerPracticeContent({ orgId }: { orgId: string | null }) {
         <ConfirmModal
           isOpen={withdrawing !== null}
           onCancel={() => setWithdrawing(null)}
-          onConfirm={() => void confirmWithdraw()}
+          onConfirm={() => confirmWithdraw()}
           title="Cancel post?"
           message="Are you sure you want to cancel this post?"
           confirmText="Yes, cancel post"

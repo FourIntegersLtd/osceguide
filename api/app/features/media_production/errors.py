@@ -28,6 +28,13 @@ class WrongMediaKind(InvalidInput):
     default_message = "That operation does not apply to this kind of study material"
 
 
+class ScriptNotChecked(Conflict):
+    """Raised when voicing is asked for words that have not been checked, or were edited since."""
+
+    code = "script_not_checked"
+    default_message = "Write and check the script before voicing it"
+
+
 from app.features.media.errors import ItemNotFound  # noqa: E402
 
-__all__ = ["AvUnavailable", "AvAlreadyRunning", "WrongMediaKind", "ItemNotFound"]
+__all__ = ["AvUnavailable", "AvAlreadyRunning", "WrongMediaKind", "ScriptNotChecked", "ItemNotFound"]

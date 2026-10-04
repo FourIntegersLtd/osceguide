@@ -61,7 +61,7 @@ export function MockStationsTable({
                 <span className="inline-flex h-[22px] min-w-[28px] items-center justify-center rounded-[6px] bg-b2c-surface-muted px-1.5 font-mono text-osce-meta tabular-nums text-osce-ink-900">
                   {index + 1}
                 </span>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-40">
                   <Link
                     href={stationHref(entry.id)}
                     className="block truncate text-osce-body font-medium text-osce-ink-900 hover:text-osce-accent"

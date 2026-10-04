@@ -13,7 +13,7 @@ export function InstitutionsPlatformSection() {
       className={`scroll-mt-20 ${landingSectionSurfaces.practice} py-16 sm:py-20`}
     >
       <div className={type.sectionShell}>
-        <div className="grid gap-12 lg:grid-cols-12 lg:items-start">
+        <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:items-start">
           <div className="lg:col-span-5">
             <p className={type.eyebrow}>Platform</p>
             <h2 className="mt-3 font-landing-heading text-[clamp(1.375rem,2.4vw,1.75rem)] font-semibold leading-[1.2] tracking-[-0.025em] text-osce-ink-900">

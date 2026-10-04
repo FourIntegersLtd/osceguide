@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, B2CPageHeader, Button, ButtonLink, Input, Spinner } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, Button, ButtonLink, Input, Spinner, Panel } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createSitting, listProgrammes, type Programme, type SittingMode } from "@/domains/assess/api";
@@ -93,9 +93,8 @@ function Form({
   }
 
   return (
-    <section className="max-w-3xl rounded-panel border border-b2b-border bg-b2b-surface p-5 sm:p-6">
+    <Panel title="Details" className="max-w-3xl">
       <form onSubmit={submit} className="flex flex-col gap-5">
-        <h2 className="text-osce-title font-semibold text-b2b-headline">Details</h2>
         {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
 
         <Input
@@ -125,6 +124,6 @@ function Form({
           </Button>
         </div>
       </form>
-    </section>
+    </Panel>
   );
 }

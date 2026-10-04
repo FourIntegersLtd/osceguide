@@ -83,3 +83,49 @@ async def test_a_dropped_connection_is_no_guidelines_rather_than_an_error() -> N
     guidelines, _seen = guidelines_over(refuse)
 
     assert await guidelines.search(query="gout", limit=5, rerank=False) == []
+
+
+@pytest.mark.asyncio
+async def test_a_passage_carries_the_section_and_page_it_is_cited_by() -> None:
+    guidelines, _seen = guidelines_over(lambda request: httpx.Response(200, json=REPLY))
+
+    found = await guidelines.search(query="gout", limit=5, rerank=False)
+
+    assert [(p.section, p.page) for p in found] == [("Step 1", 4), ("", None)]
+
+
+WEB_REPLY = {
+    "status": 200,
+    "answer": "Stage 2 is 160/100 or more [1].",
+    "references": [
+        {"title": "NICE NG136", "url": "https://www.nice.org.uk/guidance/ng136", "quotes": ["160/100"]}
+    ],
+    "evidence_gaps": ["No trial data"],
+    "flagged_claims": [],
+}
+
+
+@pytest.mark.asyncio
+async def test_a_web_answer_is_one_keyed_request_and_keeps_its_references() -> None:
+    guidelines, seen = guidelines_over(lambda request: httpx.Response(200, json=WEB_REPLY))
+
+    found = await guidelines.answer(question="  stage 2   threshold ")
+
+    assert found is not None
+    assert found.answer == "Stage 2 is 160/100 or more [1]."
+    assert [reference["url"] for reference in found.references] == ["https://www.nice.org.uk/guidance/ng136"]
+    assert list(found.gaps) == ["No trial data"]
+    assert [str(request.url) for request in seen] == ["https://buddy.test/api/web-search"]
+    assert seen[0].headers["X-Service-Key"] == "s3cret"
+    assert json.loads(seen[0].content) == {"question": "stage 2 threshold"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "reply",
+    [httpx.Response(401), httpx.Response(503), httpx.Response(200, json={"status": 500, "answer": "x"})],
+)
+async def test_a_web_search_that_fails_is_no_answer_rather_than_an_error(reply: httpx.Response) -> None:
+    guidelines, _seen = guidelines_over(lambda request: reply)
+
+    assert await guidelines.answer(question="stage 2 threshold") is None

@@ -104,7 +104,7 @@ export function PlatformOverview() {
                 <StatTile label="Users" value={overview.users} icon={LuUsers} />
               </StatGrid>
 
-              <div className="grid items-start gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
                 <Panel title="Needs attention" padding="none">
                   {attention.length === 0 ? (
                     <EmptyPanel

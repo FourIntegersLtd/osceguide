@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, Button, b2bTokens, Panel, FoldSection } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { PanelCard } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import { addTraineeGroup, type Cohort, type TraineeGroup } from "@/domains/assess/roster/api";
 import { CohortsPanel } from "@/domains/assess/roster/CohortsPanel";
@@ -84,9 +83,9 @@ export function GroupsPanel({
         onChanged={onChanged}
       />
 
-      <PanelCard
+      <Panel
         title="Groups"
-        subtitle="A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one."
+        description="A named list of people you can add to a circuit together, such as a rotation team or a resit group. A person can be in more than one."
       >
         {groups.length === 0 ? (
           <p className="text-osce-body text-b2b-mid">
@@ -141,12 +140,12 @@ export function GroupsPanel({
         )}
 
         {canManage ? (
-          <div className="mt-5 border-t border-b2b-border pt-4">
-            <p className="text-osce-body font-semibold text-b2b-headline">Create a group</p>
-            <p className="mt-0.5 text-osce-caption text-b2b-mid">
-              Everyone in your organisation sees the same group names.
-            </p>
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-5">
+            <FoldSection
+              title="Create a group"
+              description="Everyone in your organisation sees the same group names."
+            >
+            <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 aria-label="New group name"
                 value={groupLabel}
@@ -159,14 +158,15 @@ export function GroupsPanel({
                 themeType="b2b"
                 variant="secondary"
                 disabled={busy || groupLabel.trim() === ""}
-                onClick={() => void createGroup()}
+                onClick={() => createGroup()}
               >
                 {busy ? "Working…" : "Create group"}
               </Button>
             </div>
+            </FoldSection>
           </div>
         ) : null}
-      </PanelCard>
+      </Panel>
 
       <GroupMembersDialog
         orgSlug={orgSlug}

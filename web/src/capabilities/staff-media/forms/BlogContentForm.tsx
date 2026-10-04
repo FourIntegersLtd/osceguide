@@ -13,7 +13,7 @@ export function BlogContentForm({
   const bodyMd = typeof content.body_md === "string" ? content.body_md : "";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <Textarea
         label="Article body (markdown)"
         value={bodyMd}

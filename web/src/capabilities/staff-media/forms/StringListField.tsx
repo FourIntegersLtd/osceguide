@@ -8,11 +8,14 @@ export function StringListField({
   items,
   onChange,
   placeholder,
+  labelHidden = false,
 }: {
   label: string;
   items: string[];
   onChange: (items: string[]) => void;
   placeholder?: string;
+  /** The enclosing section already names the list. */
+  labelHidden?: boolean;
 }) {
   const updateAt = (index: number, value: string) => {
     const next = [...items];
@@ -22,7 +25,9 @@ export function StringListField({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-osce-meta font-medium text-ink-muted">{label}</span>
+      {labelHidden ? null : (
+        <span className="text-osce-meta font-medium text-ink-muted">{label}</span>
+      )}
       <ul className="flex flex-col gap-2">
         {items.map((line, index) => (
           <li key={index} className="flex gap-2">

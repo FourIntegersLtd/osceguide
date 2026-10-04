@@ -77,7 +77,11 @@ export function avStatus(content: Record<string, unknown>): AvStatus | null {
 
 export function isAvRunning(status: AvStatus | null): boolean {
   if (!status) return false;
-  return status.startsWith("generating");
+  return (
+    status.startsWith("generating") ||
+    status === "checking_facts" ||
+    status === "writing_script"
+  );
 }
 
 export function slidesFromContent(content: Record<string, unknown>): B2cSlide[] {

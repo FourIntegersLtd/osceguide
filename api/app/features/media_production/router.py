@@ -1,5 +1,6 @@
-"""The three routes a platform admin uses to kick off AV production: narrating a summary as
-a podcast, re-rendering a slide deck's video, and voicing a podcast episode.
+"""The routes a platform admin uses to produce spoken material: checking its facts, writing and
+checking its script, and then voicing it (narrating a summary as a podcast, re-rendering a slide
+deck's video, or voicing a podcast episode). Voicing is refused until the script has been checked.
 """
 
 from __future__ import annotations
@@ -26,6 +27,34 @@ _PRODUCTION_ERRORS = (
     errors.AvAlreadyRunning,
     errors.AvUnavailable,
 )
+# Voicing is also refused for words nobody has checked.
+_VOICING_ERRORS = (*_PRODUCTION_ERRORS, errors.ScriptNotChecked)
+
+
+# Starts checking an item's clinical claims against the guidelines; the result lands in its review.
+@router.post(
+    "/media/{item_id}/check-facts",
+    response_model=schemas.MediaRead,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(Forbidden, *_PRODUCTION_ERRORS),
+)
+async def check_media_facts(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> schemas.MediaRead:
+    return await service.enqueue_fact_check(session, item_id, requested_by=admin.user_id)
+
+
+# Starts writing what an item will say and checking it against its source. Nothing is voiced.
+@router.post(
+    "/media/{item_id}/write-script",
+    response_model=schemas.MediaRead,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(Forbidden, *_PRODUCTION_ERRORS),
+)
+async def write_media_script(
+    item_id: uuid.UUID, body: schemas.ScriptWriteRequest, admin: PlatformAdmin, session: Session
+) -> schemas.MediaRead:
+    return await service.enqueue_script_write(
+        session, item_id, requested_by=admin.user_id, rewrite=body.rewrite
+    )
 
 
 # Starts narrating a summary item's text as a two-host podcast episode.
@@ -33,7 +62,7 @@ _PRODUCTION_ERRORS = (
     "/media/{item_id}/generate-podcast",
     response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(Forbidden, *_PRODUCTION_ERRORS),
+    responses=error_responses(Forbidden, *_VOICING_ERRORS),
 )
 async def generate_summary_podcast(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
@@ -46,7 +75,7 @@ async def generate_summary_podcast(
     "/media/{item_id}/regenerate-av",
     response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(Forbidden, *_PRODUCTION_ERRORS),
+    responses=error_responses(Forbidden, *_VOICING_ERRORS),
 )
 async def regenerate_slide_av(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
@@ -59,7 +88,7 @@ async def regenerate_slide_av(
     "/media/{item_id}/generate-audio",
     response_model=schemas.MediaRead,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(Forbidden, *_PRODUCTION_ERRORS),
+    responses=error_responses(Forbidden, *_VOICING_ERRORS),
 )
 async def generate_podcast_audio(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session

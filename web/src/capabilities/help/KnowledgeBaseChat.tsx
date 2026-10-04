@@ -171,7 +171,7 @@ export function KnowledgeBaseChat({
             type="button"
             variant="primary"
             size="md"
-            onClick={() => void handleSend()}
+            onClick={() => handleSend()}
             disabled={loading}
             className="shrink-0"
           >

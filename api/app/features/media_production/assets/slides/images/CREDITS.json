@@ -1,197 +1,365 @@
 {
- "vitiligo1.jpg": {
-  "author": "Simone Trovato Monastra",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Vitiligo_on_hand.jpg"
- },
- "vitiligo2.jpg": {
-  "author": "AmayoErvin",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Vitiligo_stages_in_development.jpg"
- },
- "vitiligo3.jpg": {
-  "author": "Klaus D. Peter",
-  "licence": "CC BY 3.0 DE",
-  "source": "https://commons.wikimedia.org/wiki/File:Vitiligo_and_Poliosis.jpg"
- },
- "bloods.jpg": {
-  "author": "Tannim101",
-  "licence": "CC BY 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Vacutainer_blood_bottles.jpg",
-  "title": "File:Vacutainer blood bottles.jpg"
- },
- "consultation.jpg": {
-  "author": "Rhoda Baer (Photographer)",
-  "licence": "Public domain",
-  "source": "https://commons.wikimedia.org/wiki/File:Doctor_and_couple_talking_(1).jpg",
-  "title": "File:Doctor and couple talking (1).jpg"
- },
- "listening.jpg": {
-  "author": "National Cancer Institute",
-  "licence": "Public domain",
-  "source": "https://commons.wikimedia.org/wiki/File:Doctor_talking_with_a_patient.jpg",
-  "title": "File:Doctor talking with a patient.jpg"
- },
- "explaining.jpg": {
-  "author": "Shixart1985",
-  "licence": "CC BY 2.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Middle-aged_female_doctor_talking_to_a_patient_during_a_video_consultation_at_home_in_a_cozy_setting.jpg",
-  "title": "File:Middle-aged female doctor talking to a patient during a video consultation at home in a cozy setting.jpg"
- },
- "stethoscope.jpg": {
-  "author": "Jacek Halicki",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:2023_Stetoskop.jpg",
-  "title": "File:2023 Stetoskop.jpg"
- },
- "tablets.jpg": {
-  "author": "沈澄心",
-  "licence": "CC0",
-  "source": "https://commons.wikimedia.org/wiki/File:A_blister_pack_of_Androcur_50mg_tablets_in_Turkey_(obverse).jpg",
-  "title": "File:A blister pack of Androcur 50mg tablets in Turkey (obverse).jpg"
- },
- "calendar.jpg": {
-  "author": "Fumitake Taniguchi",
-  "licence": "CC BY 2.0",
-  "source": "https://commons.wikimedia.org/wiki/File:%E3%83%AA%E3%82%A2%E3%83%AB%E3%82%B7%E3%83%B3%E3%83%97%E3%83%AB%E3%83%80%E3%82%A4%E3%82%A2%E3%83%AA%E3%83%BC_(1755128997).jpg",
-  "title": "File:リアルシンプルダイアリー (1755128997).jpg"
- },
- "pilonidal.jpg": {
-  "author": "JerryTahl",
-  "licence": "Public domain",
-  "source": "https://commons.wikimedia.org/wiki/File:Two_pilonidal_cysts_in_the_natal_cleft.jpg",
-  "title": "File:Two pilonidal cysts in the natal cleft.jpg"
- },
- "pilonidal_exam.jpg": {
-  "author": "GiggsHammouri",
-  "licence": "CC BY 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Pilonidal_cyst.JPG",
-  "title": "File:Pilonidal cyst.JPG"
- },
- "inner_ear.jpg": {
-  "author": "Christian Pfeiffer, Andrea Serino, and Olaf Blanke",
-  "licence": "CC BY 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Peripheral_vestibular_organs_in_the_inner_ear.jpg",
-  "title": "File:Peripheral vestibular organs in the inner ear.jpg"
- },
- "chlamydia.jpg": {
-  "author": "User Marcus007 on de.wikipedia",
-  "licence": "Public domain",
-  "source": "https://commons.wikimedia.org/wiki/File:ChlamydiaTrachomatisEinschlussk%C3%B6rperchen.jpg",
-  "title": "File:ChlamydiaTrachomatisEinschlusskörperchen.jpg"
- },
- "rapid_test.jpg": {
-  "author": "Sciencia58",
-  "licence": "CC0",
-  "source": "https://commons.wikimedia.org/wiki/File:Chlamydien_Schnelltest_1.jpg",
-  "title": "File:Chlamydien Schnelltest 1.jpg"
- },
- "af_ecg.jpg": {
-  "author": "Ewingdo",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:ECG_Atrial_Fibrillation_98_bpm.jpg",
-  "title": "File:ECG Atrial Fibrillation 98 bpm.jpg"
- },
- "oedema.jpg": {
-  "author": "James Heilman, MD",
-  "licence": "CC BY-SA 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Combinpedal.jpg",
-  "title": "File:Combinpedal.jpg"
- },
- "wet_sheet.jpg": {
-  "author": "Headlock0225",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Wet_bed.jpg",
-  "title": "File:Wet bed.jpg"
- },
- "migraine_aura.jpg": {
-  "author": "Tehom",
-  "licence": "Public domain",
-  "source": "https://commons.wikimedia.org/wiki/File:Migraine_aura.jpg",
-  "title": "File:Migraine aura.jpg"
- },
- "cocp.jpg": {
-  "author": "Béria Lima de Rodríguez",
-  "licence": "CC BY-SA 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Combined_oral_contraceptive_pill_(2).JPG",
-  "title": "File:Combined oral contraceptive pill (2).JPG"
- },
- "pmr.jpg": {
-  "author": "openAi",
-  "licence": "Public domain",
-  "source": "https://commons.wikimedia.org/wiki/File:Polymyalgia_rheumatica.png",
-  "title": "File:Polymyalgia rheumatica.png"
- },
- "carotid_doppler.jpg": {
-  "author": "Mme Mim",
-  "licence": "CC BY-SA 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Internal_carotid_artery_stenosis_in_ultrasound_near_occlusion.jpg",
-  "title": "File:Internal carotid artery stenosis in ultrasound near occlusion.jpg"
- },
- "eeg.jpg": {
-  "author": "Bromfield EB, Cavazos JE, Sirven JI, editors.",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:EEG_Absence_seizure.png",
-  "title": "File:EEG Absence seizure.png"
- },
- "pregnancy_test.jpg": {
-  "author": "Ajay Kumar Chaurasiya",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Urine_Pregnancy_Test_-Positive.jpg",
-  "title": "File:Urine Pregnancy Test -Positive.jpg"
- },
- "hair_loss_scale.jpg": {
-  "author": "Keministi",
-  "licence": "CC0",
-  "source": "https://commons.wikimedia.org/wiki/File:Partial_Norwood_scale_for_male_pattern_baldness.png",
-  "title": "File:Partial Norwood scale for male pattern baldness.png"
- },
- "hair_loss_crown.jpg": {
-  "author": "BlaiserPascal",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Male-pattern_hair_loss.jpg",
-  "title": "File:Male-pattern hair loss.jpg"
- },
- "copd_xray.jpg": {
-  "author": "Smartbyte - siehe auch w:de:Ticket:2020052610009557",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Lung_with_Coils.JPG",
-  "title": "File:Lung with Coils.JPG"
- },
- "spacer.jpg": {
-  "author": "Apocheir",
-  "licence": "CC0",
-  "source": "https://commons.wikimedia.org/wiki/File:Canine_inhaler.jpg",
-  "title": "File:Canine inhaler.jpg"
- },
- "scabies.jpg": {
-  "author": "Gzzz",
-  "licence": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Scabies_hand_and_fingers_1.jpg",
-  "title": "File:Scabies hand and fingers 1.jpg"
- },
- "scabies_mite.jpg": {
-  "author": "Kalumet",
-  "licence": "CC BY-SA 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Sarcoptes_scabei_2.jpg",
-  "title": "File:Sarcoptes scabei 2.jpg"
- },
- "osteoporotic_bone.jpg": {
-  "author": "Laboratoires Servier",
-  "licence": "CC BY-SA 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Spongy_bone_-_Trabecular_bone_-_Normal_trabecular_bone_Trabecular_bone_etc_--_Smart-Servier_(cropped).jpg",
-  "title": "File:Spongy bone - Trabecular bone - Normal trabecular bone Trabecular bone etc -- Smart-Servier (cropped).jpg"
- },
- "vertebral_compression.jpg": {
-  "author": "Laboratoires Servier",
-  "licence": "CC BY-SA 3.0",
-  "source": "https://commons.wikimedia.org/wiki/File:Vertebral_fracture_-_Compression_of_the_vertebrae_--_Smart-Servier.jpg",
-  "title": "File:Vertebral fracture - Compression of the vertebrae -- Smart-Servier.jpg"
- },
- "alendronate.jpg": {
-  "author": "Unknown authorUnknown author",
-  "licence": "Public domain",
-  "source": "https://commons.wikimedia.org/wiki/File:003783568lg_Alendronic_acid_35_MG_(as_alendronate_sodium_45.7_MG)_Oral_Tablet.jpg",
-  "title": "File:003783568lg Alendronic acid 35 MG (as alendronate sodium 45.7 MG) Oral Tablet.jpg"
- }
+  "vitiligo1.jpg": {
+    "author": "Simone Trovato Monastra",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Vitiligo_on_hand.jpg"
+  },
+  "vitiligo2.jpg": {
+    "author": "AmayoErvin",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Vitiligo_stages_in_development.jpg"
+  },
+  "vitiligo3.jpg": {
+    "author": "Klaus D. Peter",
+    "licence": "CC BY 3.0 DE",
+    "source": "https://commons.wikimedia.org/wiki/File:Vitiligo_and_Poliosis.jpg"
+  },
+  "bloods.jpg": {
+    "author": "Tannim101",
+    "licence": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Vacutainer_blood_bottles.jpg",
+    "title": "File:Vacutainer blood bottles.jpg"
+  },
+  "consultation.jpg": {
+    "author": "Rhoda Baer (Photographer)",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Doctor_and_couple_talking_(1).jpg",
+    "title": "File:Doctor and couple talking (1).jpg"
+  },
+  "listening.jpg": {
+    "author": "National Cancer Institute",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Doctor_talking_with_a_patient.jpg",
+    "title": "File:Doctor talking with a patient.jpg"
+  },
+  "explaining.jpg": {
+    "author": "Shixart1985",
+    "licence": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Middle-aged_female_doctor_talking_to_a_patient_during_a_video_consultation_at_home_in_a_cozy_setting.jpg",
+    "title": "File:Middle-aged female doctor talking to a patient during a video consultation at home in a cozy setting.jpg"
+  },
+  "stethoscope.jpg": {
+    "author": "Jacek Halicki",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:2023_Stetoskop.jpg",
+    "title": "File:2023 Stetoskop.jpg"
+  },
+  "tablets.jpg": {
+    "author": "沈澄心",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:A_blister_pack_of_Androcur_50mg_tablets_in_Turkey_(obverse).jpg",
+    "title": "File:A blister pack of Androcur 50mg tablets in Turkey (obverse).jpg"
+  },
+  "calendar.jpg": {
+    "author": "Fumitake Taniguchi",
+    "licence": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:%E3%83%AA%E3%82%A2%E3%83%AB%E3%82%B7%E3%83%B3%E3%83%97%E3%83%AB%E3%83%80%E3%82%A4%E3%82%A2%E3%83%AA%E3%83%BC_(1755128997).jpg",
+    "title": "File:リアルシンプルダイアリー (1755128997).jpg"
+  },
+  "pilonidal.jpg": {
+    "author": "JerryTahl",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Two_pilonidal_cysts_in_the_natal_cleft.jpg",
+    "title": "File:Two pilonidal cysts in the natal cleft.jpg"
+  },
+  "pilonidal_exam.jpg": {
+    "author": "GiggsHammouri",
+    "licence": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Pilonidal_cyst.JPG",
+    "title": "File:Pilonidal cyst.JPG"
+  },
+  "inner_ear.jpg": {
+    "author": "Christian Pfeiffer, Andrea Serino, and Olaf Blanke",
+    "licence": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Peripheral_vestibular_organs_in_the_inner_ear.jpg",
+    "title": "File:Peripheral vestibular organs in the inner ear.jpg"
+  },
+  "chlamydia.jpg": {
+    "author": "User Marcus007 on de.wikipedia",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:ChlamydiaTrachomatisEinschlussk%C3%B6rperchen.jpg",
+    "title": "File:ChlamydiaTrachomatisEinschlusskörperchen.jpg"
+  },
+  "rapid_test.jpg": {
+    "author": "Sciencia58",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Chlamydien_Schnelltest_1.jpg",
+    "title": "File:Chlamydien Schnelltest 1.jpg"
+  },
+  "af_ecg.jpg": {
+    "author": "Ewingdo",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:ECG_Atrial_Fibrillation_98_bpm.jpg",
+    "title": "File:ECG Atrial Fibrillation 98 bpm.jpg"
+  },
+  "oedema.jpg": {
+    "author": "James Heilman, MD",
+    "licence": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Combinpedal.jpg",
+    "title": "File:Combinpedal.jpg"
+  },
+  "wet_sheet.jpg": {
+    "author": "Headlock0225",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Wet_bed.jpg",
+    "title": "File:Wet bed.jpg"
+  },
+  "migraine_aura.jpg": {
+    "author": "Tehom",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Migraine_aura.jpg",
+    "title": "File:Migraine aura.jpg"
+  },
+  "cocp.jpg": {
+    "author": "Béria Lima de Rodríguez",
+    "licence": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Combined_oral_contraceptive_pill_(2).JPG",
+    "title": "File:Combined oral contraceptive pill (2).JPG"
+  },
+  "pmr.jpg": {
+    "author": "openAi",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Polymyalgia_rheumatica.png",
+    "title": "File:Polymyalgia rheumatica.png"
+  },
+  "carotid_doppler.jpg": {
+    "author": "Mme Mim",
+    "licence": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Internal_carotid_artery_stenosis_in_ultrasound_near_occlusion.jpg",
+    "title": "File:Internal carotid artery stenosis in ultrasound near occlusion.jpg"
+  },
+  "eeg.jpg": {
+    "author": "Bromfield EB, Cavazos JE, Sirven JI, editors.",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:EEG_Absence_seizure.png",
+    "title": "File:EEG Absence seizure.png"
+  },
+  "pregnancy_test.jpg": {
+    "author": "Ajay Kumar Chaurasiya",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Urine_Pregnancy_Test_-Positive.jpg",
+    "title": "File:Urine Pregnancy Test -Positive.jpg"
+  },
+  "hair_loss_scale.jpg": {
+    "author": "Keministi",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Partial_Norwood_scale_for_male_pattern_baldness.png",
+    "title": "File:Partial Norwood scale for male pattern baldness.png"
+  },
+  "hair_loss_crown.jpg": {
+    "author": "BlaiserPascal",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Male-pattern_hair_loss.jpg",
+    "title": "File:Male-pattern hair loss.jpg"
+  },
+  "copd_xray.jpg": {
+    "author": "Smartbyte - siehe auch w:de:Ticket:2020052610009557",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Lung_with_Coils.JPG",
+    "title": "File:Lung with Coils.JPG"
+  },
+  "spacer.jpg": {
+    "author": "Apocheir",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Canine_inhaler.jpg",
+    "title": "File:Canine inhaler.jpg"
+  },
+  "scabies.jpg": {
+    "author": "Gzzz",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Scabies_hand_and_fingers_1.jpg",
+    "title": "File:Scabies hand and fingers 1.jpg"
+  },
+  "scabies_mite.jpg": {
+    "author": "Kalumet",
+    "licence": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Sarcoptes_scabei_2.jpg",
+    "title": "File:Sarcoptes scabei 2.jpg"
+  },
+  "osteoporotic_bone.jpg": {
+    "author": "Laboratoires Servier",
+    "licence": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Spongy_bone_-_Trabecular_bone_-_Normal_trabecular_bone_Trabecular_bone_etc_--_Smart-Servier_(cropped).jpg",
+    "title": "File:Spongy bone - Trabecular bone - Normal trabecular bone Trabecular bone etc -- Smart-Servier (cropped).jpg"
+  },
+  "vertebral_compression.jpg": {
+    "author": "Laboratoires Servier",
+    "licence": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Vertebral_fracture_-_Compression_of_the_vertebrae_--_Smart-Servier.jpg",
+    "title": "File:Vertebral fracture - Compression of the vertebrae -- Smart-Servier.jpg"
+  },
+  "alendronate.jpg": {
+    "author": "Unknown authorUnknown author",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:003783568lg_Alendronic_acid_35_MG_(as_alendronate_sodium_45.7_MG)_Oral_Tablet.jpg",
+    "title": "File:003783568lg Alendronic acid 35 MG (as alendronate sodium 45.7 MG) Oral Tablet.jpg"
+  },
+  "coach.jpg": {
+    "author": "Secret Coach Park",
+    "licence": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:ALEXCARS_Cirencester_-_Flickr_-_secret_coach_park_(6).jpg",
+    "title": "File:ALEXCARS Cirencester - Flickr - secret coach park (6).jpg"
+  },
+  "finger_prick.jpg": {
+    "author": "Reversing Your Diabetes Today",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Testing_Blood_Sugar_Levels.jpg",
+    "title": "File:Testing Blood Sugar Levels.jpg"
+  },
+  "coach_driver_seat.jpg": {
+    "author": "HAbdu MEW Lmsio 9Dewlm",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:GD_%E5%BB%A3%E6%9D%B1_Guangdong_%E6%83%A0%E5%B7%9E%E5%B8%82_Huizhou_%E6%97%85%E9%81%8A%E5%B7%B4%E5%A3%AB_coach_bus_%E5%8F%B8%E6%A9%9F%E5%BA%A7%E4%BD%8D_driver_seat_n_%E6%96%B9%E5%90%91%E8%BB%9A%E7%9B%A4_control_Steering_wheel_December_2025_N13P_03.jpg",
+    "title": "File:GD 廣東 Guangdong 惠州市 Huizhou 旅遊巴士 coach bus 司機座位 driver seat n 方向軚盤 control Steering wheel December 2025 N13P 03.jpg"
+  },
+  "insulin_pens.jpg": {
+    "author": "Mr Hyde at Czech Wikipedia (Original text: moje foto)",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Inzul%C3%ADnov%C3%A1_pera.jpg",
+    "title": "File:Inzulínová pera.jpg"
+  },
+  "coach_station.jpg": {
+    "author": "Derek Harper",
+    "licence": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Coach,_Torquay_coach_station_-_geograph.org.uk_-_7754200.jpg",
+    "title": "File:Coach, Torquay coach station - geograph.org.uk - 7754200.jpg"
+  },
+  "insulin_pen.jpg": {
+    "author": "Marius Vassnes",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Green_insulin_pen_(Insulatard_insulin).jpg",
+    "title": "File:Green insulin pen (Insulatard insulin).jpg"
+  },
+  "glucose_meter.jpg": {
+    "author": "Tomwsulcer",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Device_to_check_for_diabetes_2.jpg",
+    "title": "File:Device to check for diabetes 2.jpg"
+  },
+  "coach_cab.jpg": {
+    "author": "Dmitry G",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Driver_cabin_of_Ikarus_255.JPG",
+    "title": "File:Driver cabin of Ikarus 255.JPG"
+  },
+  "coach_touring.jpg": {
+    "author": "Secret Coach Park",
+    "licence": "CC BY-SA 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:ADAMS_TOURS_BLOXWICH_-_Flickr_-_secret_coach_park_(1).jpg",
+    "title": "File:ADAMS TOURS BLOXWICH - Flickr - secret coach park (1).jpg"
+  },
+  "glucose_sensor.jpg": {
+    "author": "Thirunavukkarasye-Raveendran",
+    "licence": "CC BY 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:FreeStyle_libre_am_Oberarm_und_Ausleseger%C3%A4t-4.JPG",
+    "title": "File:FreeStyle libre am Oberarm und Auslesegerät-4.JPG"
+  },
+  "bus_depot_night.jpg": {
+    "author": "Briancollison47",
+    "licence": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Slatyford_Bus_Depot_at_night_2008.jpg",
+    "title": "File:Slatyford Bus Depot at night 2008.jpg"
+  },
+  "insulins.jpg": {
+    "author": "MallardTV",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Insulin_Collage.png",
+    "title": "File:Insulin Collage.png"
+  },
+  "jelly_babies.jpg": {
+    "author": "https://www.flickr.com/photos/father_jack/",
+    "licence": "CC BY 2.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Jelly_babies.jpg",
+    "title": "File:Jelly babies.jpg"
+  },
+  "metformin.jpg": {
+    "author": "User:Ash",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:Metformin_500mg_Tablets.jpg",
+    "title": "File:Metformin 500mg Tablets.jpg"
+  },
+  "diabetes_foot_check.jpg": {
+    "author": "U.S. Navy photo by Culinary Specialist 2nd Class Michelle Pereira",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:US_Navy_111104-N-PE811-001_Naval_Hospital_Jacksonville_diabetes_education_nurse_Nyve_Tinajero_checks_a_patient%27s_foot_in_the_hospital%27s_diabetes_ce.jpg",
+    "title": "File:US Navy 111104-N-PE811-001 Naval Hospital Jacksonville diabetes education nurse Nyve Tinajero checks a patient's foot in the hospital's diabetes ce.jpg"
+  },
+  "restaurant_cook.jpg": {
+    "author": "PattayaPatrol",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:DFC_2431_A_cook_flips_food_in_a_hot_pan_while_working_in_a_compact_well-used_kitchen_filled_with_pots_utensils_and_shelves_of_ingredients.jpg",
+    "title": "File:DFC 2431 A cook flips food in a hot pan while working in a compact well-used kitchen filled with pots utensils and shelves of ingredients.jpg"
+  },
+  "restaurant_kitchen.jpg": {
+    "author": "Takeaway",
+    "licence": "CC BY-SA 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Chiang_Mai_restaurant_kitchen.JPG",
+    "title": "File:Chiang Mai restaurant kitchen.JPG"
+  },
+  "bp_monitor.jpg": {
+    "author": "Jacek Halicki",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:2020_Sfigmomanometr_elektroniczny.jpg",
+    "title": "File:2020 Sfigmomanometr elektroniczny.jpg"
+  },
+  "ibuprofen.jpg": {
+    "author": "Derrick Coetzee (User:Dcoetzee)",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Ibuprofen_tablets_in_palm_of_hand.jpg",
+    "title": "File:Ibuprofen tablets in palm of hand.jpg"
+  },
+  "bp_measurement.jpg": {
+    "author": "rawpixel.com",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Blood_pressure_monitoring.jpg",
+    "title": "File:Blood pressure monitoring.jpg"
+  },
+  "bp_monitor_home.jpg": {
+    "author": "Albarubescens",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Sphygmomanometer,_automatic_blood_pressure_monitor._Oscillometric_measurements,_millimeter_of_mercury_(mmHg)_unit.jpg",
+    "title": "File:Sphygmomanometer, automatic blood pressure monitor. Oscillometric measurements, millimeter of mercury (mmHg) unit.jpg"
+  },
+  "energy_drinks.jpg": {
+    "author": "Coolgurl5555",
+    "licence": "CC0",
+    "source": "https://commons.wikimedia.org/wiki/File:Energy_Drink_Display.jpg",
+    "title": "File:Energy Drink Display.jpg"
+  },
+  "bp_monitor_blank.jpg": {
+    "author": "Adefanike",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Blood_pressure_monitor.jpg",
+    "title": "File:Blood pressure monitor.jpg"
+  },
+  "fundoscopy.jpg": {
+    "author": "U.S. Navy photo by Journalist 1st Class Donald P. Rule",
+    "licence": "Public domain",
+    "source": "https://commons.wikimedia.org/wiki/File:US_Navy_050217-N-6240R-006_Hospital_Corpsman_Seaman_Kathryn_Wessell_checks_a_patient%27s_eyes_in_the_Medical_Department_aboard_the_amphibious_assault_ship_USS_Iwo_Jima_(LHD_7).jpg",
+    "title": "File:US Navy 050217-N-6240R-006 Hospital Corpsman Seaman Kathryn Wessell checks a patient's eyes in the Medical Department aboard the amphibious assault ship USS Iwo Jima (LHD 7).jpg"
+  },
+  "abpm_monitor.jpg": {
+    "author": "Urban Versis 32",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Blood_Pressure_Monitor.jpg",
+    "title": "File:Blood Pressure Monitor.jpg"
+  },
+  "hypertensive_retinopathy.jpg": {
+    "author": "Frank Wood",
+    "licence": "CC BY 3.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Hypertensiveretinopathy.jpg",
+    "title": "File:Hypertensiveretinopathy.jpg"
+  },
+  "salt.jpg": {
+    "author": "Poyraz 72",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Table_salt_with_salt_shaker_V1.jpg",
+    "title": "File:Table salt with salt shaker V1.jpg"
+  },
+  "amlodipine.jpg": {
+    "author": "Tomino de WS",
+    "licence": "CC BY-SA 4.0",
+    "source": "https://commons.wikimedia.org/wiki/File:Apo-amlo_5_mg_tbl.jpg",
+    "title": "File:Apo-amlo 5 mg tbl.jpg"
+  }
 }

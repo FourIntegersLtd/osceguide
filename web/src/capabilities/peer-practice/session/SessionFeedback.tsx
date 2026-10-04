@@ -2,11 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 import { HiOutlineStar } from "react-icons/hi2";
-import { Button, productTokens } from "@/foundation/ui";
+import { Button, productTokens, Panel } from "@/foundation/ui";
 import { submitPracticeFeedback } from "../api";
 import { failureText } from "../support/failure";
-import { b2cCard } from "@/foundation/ui/productTokens";
-import { cn } from "@/foundation/ui/cn";
 
 const RATING_LABELS: Record<number, string> = { 5: "Excellent", 4: "Very Good", 3: "Good", 2: "Fair", 1: "Poor" };
 
@@ -45,13 +43,10 @@ export function SessionFeedback({ sessionId, onDone }: { sessionId: string; onDo
   };
 
   return (
-    <section className={cn(b2cCard, "p-5 text-left")}>
-      <div className="mb-5">
-        <h3 className="text-osce-subheading font-semibold text-osce-ink-900">Colleague practice feedback</h3>
-        <p className="mt-0.5 text-osce-meta text-b2c-text-muted">
-          Your answers help us match you with better practice partners.
-        </p>
-      </div>
+    <Panel
+      title="Colleague practice feedback"
+      description="Your answers help us match you with better practice partners."
+    >
       <form onSubmit={(event) => void submit(event)} className="space-y-5">
         <div>
           <p className="mb-1.5 text-osce-meta text-b2c-text-muted">
@@ -136,6 +131,6 @@ export function SessionFeedback({ sessionId, onDone }: { sessionId: string; onDo
           </Button>
         </div>
       </form>
-    </section>
+    </Panel>
   );
 }

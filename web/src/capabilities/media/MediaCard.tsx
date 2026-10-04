@@ -67,7 +67,7 @@ function previewOf(item: MediaItem): string | null {
 }
 
 export function MediaCardGrid({ children }: { children: ReactNode }) {
-  return <ul className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">{children}</ul>;
+  return <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">{children}</ul>;
 }
 
 /** One card, every kind. `href` comes from `hrefFor` so it works on any arm. */

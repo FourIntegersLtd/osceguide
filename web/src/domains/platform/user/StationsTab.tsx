@@ -188,7 +188,7 @@ function StationRow({
           setConfirmReset(false);
           setError(null);
         }}
-        onConfirm={() => void reset()}
+        onConfirm={() => reset()}
         isLoading={busy}
         error={error}
         title="Reset attempts?"

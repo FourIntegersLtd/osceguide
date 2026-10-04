@@ -71,7 +71,7 @@ export default function Achievements({
         {currentStreak > 0 ? " Practise tomorrow to keep the streak." : " Practise three days in a row to start a streak."}
       </B2CHero>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="min-w-0 space-y-4">
           <section className={cn(CARD, "border-amber-200 bg-gradient-to-br from-amber-50/70 to-white")}>
             <div className="flex items-center gap-3">

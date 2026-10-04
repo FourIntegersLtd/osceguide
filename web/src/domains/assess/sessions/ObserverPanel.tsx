@@ -59,7 +59,7 @@ export function ObserverPanel({
             isLoading={observer.joining}
             disabled={!live}
             title={live ? undefined : "The circuit is not running"}
-            onClick={() => void observer.join()}
+            onClick={() => observer.join()}
           >
             <HiOutlineEye className="h-4 w-4 shrink-0" aria-hidden /> Listen in
           </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { cn, getInputClassName } from "@/foundation/ui";
+import { cn, getInputClassName, FoldSection } from "@/foundation/ui";
 import { useRubricBuilder } from "@/capabilities/authoring/rubrics/builderContext";
 import { AddButton, NumberAtPath, ProblemNote, SelectAtPath } from "@/capabilities/authoring/rubrics/formParts";
 import { problemsAt } from "@/capabilities/authoring/rubrics/problems";
@@ -35,8 +35,8 @@ export function RatingPanel() {
   return (
     <div className="space-y-6">
       <div data-path="rating.kind">
-        <p className="text-osce-meta font-medium text-ink-muted">Rated as</p>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <FoldSection title="Rated as">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {RATING_KINDS.map((kind) => {
             const active = rating.kind === kind.value;
             return (
@@ -58,8 +58,11 @@ export function RatingPanel() {
           })}
         </div>
         <ProblemNote messages={[...problemsAt(problems, ["rating"]), ...problemsAt(problems, ["rating", "kind"])]} />
+        </FoldSection>
       </div>
 
+      <FoldSection title="Grades and field name">
+      <div className="space-y-6">
       <div className="max-w-sm">
         <label htmlFor={fieldId} className="block text-osce-meta font-medium text-ink-muted">
           Field name
@@ -87,7 +90,7 @@ export function RatingPanel() {
       ) : null}
       {rating.kind === "scale" ? <ScaleEditor scale={rating.scale} /> : null}
       {rating.kind === "range" ? (
-        <div className="grid max-w-xl gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 max-w-xl gap-3 sm:grid-cols-3">
           <NumberAtPath path={["rating", "minimum"]} label="Lowest" />
           <NumberAtPath path={["rating", "maximum"]} label="Highest" />
           <SelectAtPath path={["rating", "step"]} label="Values" choices={STEP_CHOICES} />
@@ -96,6 +99,8 @@ export function RatingPanel() {
       {rating.kind === "boolean" ? (
         <p className="text-osce-meta text-ink-muted">Each competency is met or not met. Colour it on the Results tab with tones.</p>
       ) : null}
+      </div>
+      </FoldSection>
     </div>
   );
 }
@@ -108,7 +113,7 @@ function ScaleEditor({ scale }: { scale: readonly string[] }) {
     <div className="max-w-md space-y-2" data-path="rating.scale">
       <p className="text-osce-meta font-medium text-ink-muted">Grades, best first</p>
       {scale.map((grade, position) => (
-        <div key={position} className="flex items-center gap-2">
+        <div key={position} className="flex min-w-0 items-center gap-2">
           <span className="w-6 text-right text-osce-caption text-ink-subtle">{position + 1}</span>
           <input
             aria-label={`Grade ${position + 1}`}

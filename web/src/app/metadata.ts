@@ -35,10 +35,9 @@ export function metadataRobotsFor(siteUrl: string): NonNullable<Metadata["robots
  * comes from `app/manifest.ts`, which Next links on its own; it gives a saved
  * home-screen shortcut its icon.
  *
- * The service worker was not carried across either: `frontend/public/
- * sw.js` registers `install` and `activate` handlers that log, with every line
- * of push handling commented out, and `web-push` was never adopted here. There
- * is no PWA in the old product to port — there is a `console.log` — and push
+ * The retiring client's service worker was not carried across: it logged on
+ * `install` and `activate` and had every line of push handling commented out.
+ * `public/sw.js` here is new and serves only the offline page; push
  * notifications remain the open product decision the gap register says they are.
  *
  * `metadataBase` is the load-bearing one. Without it, every relative `url` and
@@ -124,6 +123,11 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "OSCE Guide",
-    statusBarStyle: "black-translucent",
+    // Not "black-translucent": that draws the page underneath the status bar
+    // with white clock text, so every fixed top bar collided with it and the
+    // text vanished on the light skin. "default" keeps the page below the bar.
+    statusBarStyle: "default",
   },
+  // iOS otherwise turns any run of digits (a dose, a score) into a phone link.
+  formatDetection: { telephone: false },
 };

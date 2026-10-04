@@ -8,10 +8,7 @@ import {
 } from "react-icons/hi2";
 import {
   Alert,
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
+  Panel,
   Button,
   cn,
   productTokens,
@@ -134,9 +131,8 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
 
       {incompleteIds.length === 0 ? null : (
         <form onSubmit={handleCreate} className="max-w-3xl">
-          <B2CPanelCard className="mt-0 !overflow-visible">
-            <B2CPanelCardHeader className={productTokens.b2cSectionTitle}>Session details</B2CPanelCardHeader>
-            <B2CPanelCardBody className="space-y-5">
+          <Panel title="Session details">
+            <div className="space-y-5">
               <div>
                 <label htmlFor="mock_name" className={productTokens.b2cFieldLabel}>
                   Session name
@@ -197,10 +193,10 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
                   </div>
                 ) : null}
               </div>
-            </B2CPanelCardBody>
+            </div>
 
             {selected.length > 0 ? (
-              <div className="px-4 pb-1 sm:px-5">
+              <div className="mt-5">
                 <p className={productTokens.b2cFieldLabel}>Selected stations ({selected.length})</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {selected.map((station) => (
@@ -228,23 +224,23 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
             ) : null}
 
             {errorText ? (
-              <div className="px-4 pt-3 sm:px-5">
+              <div className="mt-3">
                 <Alert tone="danger">{errorText}</Alert>
               </div>
             ) : null}
             {successMessage ? (
-              <div className="px-4 pt-3 sm:px-5">
+              <div className="mt-3">
                 <Alert tone="success">{successMessage}</Alert>
               </div>
             ) : null}
 
-            <B2CPanelCardFooter>
+            <div className="mt-5 flex justify-end">
               <Button type="submit" variant="primary" size="md" disabled={isCreating}>
                 {isCreating ? <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden /> : null}
                 {isCreating ? "Creating" : "Create session"}
               </Button>
-            </B2CPanelCardFooter>
-          </B2CPanelCard>
+            </div>
+          </Panel>
         </form>
       )}
     </div>

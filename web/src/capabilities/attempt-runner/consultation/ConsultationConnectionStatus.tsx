@@ -48,7 +48,7 @@ export function ConsultationConnectionStatus() {
             variant="secondary"
             size="sm"
             className="mt-3"
-            onClick={() => void localParticipant.setMicrophoneEnabled(true)}
+            onClick={() => localParticipant.setMicrophoneEnabled(true)}
           >
             Try again
           </Button>

@@ -132,7 +132,7 @@ export function PlatformTeam() {
           setRevokeTarget(null);
           setRevokeError(null);
         }}
-        onConfirm={() => void confirmRevoke()}
+        onConfirm={() => confirmRevoke()}
         isLoading={revokeBusy}
         error={revokeError}
         tone="danger"

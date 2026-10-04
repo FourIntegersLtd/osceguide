@@ -20,10 +20,14 @@ from app.features.media.schemas import MediaRead
 
 
 async def read_one(
-    session: AsyncSession, item: MediaItem, *, unlocked_exam_ids: frozenset[uuid.UUID] | None = None
+    session: AsyncSession,
+    item: MediaItem,
+    *,
+    unlocked_exam_ids: frozenset[uuid.UUID] | None = None,
+    with_review: bool = False,
 ) -> MediaRead:
     """One stored item, shaped into what a route returns."""
-    return (await read_many(session, [item], unlocked_exam_ids=unlocked_exam_ids))[0]
+    return (await read_many(session, [item], unlocked_exam_ids=unlocked_exam_ids, with_review=with_review))[0]
 
 
 async def read_many(
@@ -31,6 +35,7 @@ async def read_many(
     items: list[MediaItem],
     *,
     unlocked_exam_ids: frozenset[uuid.UUID] | None = None,
+    with_review: bool = False,
 ) -> list[MediaRead]:
     """The items, with their bodies only for a reader entitled to them.
 
@@ -47,11 +52,16 @@ async def read_many(
     withheld — it is a public catalogue facet like `kind` and `title`, so a
     locked item still needs it to appear on a facet list, and filing one no
     longer means reading the body it is about to hide.
+
+    `with_review` keeps `content["review"]`, the fact and script checks with the sources they
+    rest on. Only the staff routes that edit an item ask for it: a learner is never sent it.
     """
     codes = await catalog.exam_codes_by_id(session, [item.exam_id for item in items if item.exam_id])
     reads: list[MediaRead] = []
     for item in items:
         content = dict(item.content or {})
+        if not with_review:
+            content.pop("review", None)
         locked = _locked(item, unlocked_exam_ids)
         reads.append(
             MediaRead(

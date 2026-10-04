@@ -105,7 +105,7 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                       themeType="b2b"
                       variant="commit"
                       isLoading={acknowledging}
-                      onClick={() => void acknowledge()}
+                      onClick={() => acknowledge()}
                     >
                       I have read this
                     </Button>

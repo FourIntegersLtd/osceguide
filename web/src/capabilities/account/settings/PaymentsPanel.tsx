@@ -1,7 +1,7 @@
 "use client";
 
 import { HiOutlineBuildingOffice2, HiOutlineClock, HiOutlineCreditCard } from "react-icons/hi2";
-import { AsyncBoundary, productTokens } from "@/foundation/ui";
+import { AsyncBoundary, productTokens, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatLongDate } from "@/foundation/format";
 import { useCurrentExam } from "@/foundation/session";
@@ -16,14 +16,7 @@ import {
 import { paidAccess } from "@/capabilities/account/access";
 import PlanPicker, { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
 import ReceiptList from "@/capabilities/account/settings/ReceiptList";
-import {
-  DotEyebrow,
-  SettingsCard,
-  SettingsRow,
-  SettingsRows,
-  StatusPill,
-  settingsSub,
-} from "@/capabilities/account/settings/SettingsKit";
+import { DotEyebrow, SettingsRow, SettingsRows, StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 
@@ -111,7 +104,7 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
           : "You have full access: every station, the study library and debriefs with Athena."}
       </B2CHero>
 
-      <SettingsCard title={purchased ? "Your own plan" : "Organisation access"}>
+      <Panel title={purchased ? "Your own plan" : "Organisation access"}>
         <SettingsRows>
           <SettingsRow
             icon={purchased ? HiOutlineCreditCard : HiOutlineBuildingOffice2}
@@ -120,12 +113,12 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
             trailing={<StatusPill tone="ok">Active</StatusPill>}
           />
         </SettingsRows>
-      </SettingsCard>
+      </Panel>
 
       {receipts.length > 0 ? (
-        <SettingsCard title="Receipts">
+        <Panel title="Receipts">
           <ReceiptList receipts={receipts} />
-        </SettingsCard>
+        </Panel>
       ) : purchased ? (
         <p className={settingsSub}>
           Receipt unavailable.{" "}
@@ -179,11 +172,11 @@ function Plans({ trial }: { trial: Trial | null }) {
         return (
           <>
             {hero}
-            <SettingsCard title="Choose the option that suits you best">
+            <Panel title="Choose the option that suits you best">
               <PlanPicker key={exam.code ?? "any"} plans={onSale} />
-            </SettingsCard>
+            </Panel>
             {trial ? (
-              <SettingsCard title="Receipts">
+              <Panel title="Receipts">
                 <SettingsRows>
                   <SettingsRow
                     icon={HiOutlineClock}
@@ -192,7 +185,7 @@ function Plans({ trial }: { trial: Trial | null }) {
                     trailing={<StatusPill tone="ok">Active</StatusPill>}
                   />
                 </SettingsRows>
-              </SettingsCard>
+              </Panel>
             ) : null}
           </>
         );

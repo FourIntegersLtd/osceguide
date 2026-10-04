@@ -7,7 +7,7 @@ import {
   contentSliceForSection,
   mergeSectionIntoContent,
 } from "@/capabilities/authoring/lib/b2cStationContentScope";
-import { Dropdown } from "@/foundation/table";
+import { FoldSection } from "@/foundation/ui";
 
 /** Template-shaped station content — B2C admin-style sections + list fields. */
 export function StationInstanceContentPanel({
@@ -26,15 +26,13 @@ export function StationInstanceContentPanel({
   return (
     <div className="space-y-3">
       {structure.sections.map((sec, sectionIndex) => (
-        <Dropdown
+        <FoldSection
           key={sec.id}
+          number={sectionIndex + 1}
           title={sec.title}
-          className="mt-0"
+          description={sec.description || undefined}
           defaultOpen={sectionIndex === 0}
         >
-          {sec.description ? (
-            <p className="mb-4 text-osce-body text-ink-subtle">{sec.description}</p>
-          ) : null}
           <StationInstanceBlocks
             blocks={sec.blocks}
             content={contentSliceForSection(content, sec)}
@@ -43,7 +41,7 @@ export function StationInstanceContentPanel({
             listEditor="admin"
             media={media}
           />
-        </Dropdown>
+        </FoldSection>
       ))}
     </div>
   );

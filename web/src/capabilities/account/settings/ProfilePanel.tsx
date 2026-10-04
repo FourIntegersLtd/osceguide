@@ -8,7 +8,7 @@ import {
   HiOutlineCheck,
   HiOutlineKey,
 } from "react-icons/hi2";
-import { AsyncBoundary, Button, Input, Modal } from "@/foundation/ui";
+import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
 import { getButtonClassName } from "@/foundation/ui/buttonStyles";
 import Alert from "@/foundation/forms/Alert";
 import { errorMessage, useAsync } from "@/foundation/hooks";
@@ -21,12 +21,7 @@ import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
 import { CloseAccount } from "@/capabilities/account/settings/CloseAccount";
 import { DownloadMyData } from "@/capabilities/account/settings/DownloadMyData";
-import {
-  SettingsCard,
-  SettingsTile,
-  settingsMeta,
-  settingsSub,
-} from "@/capabilities/account/settings/SettingsKit";
+import { SettingsTile, settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { TwoFactorPanel } from "@/capabilities/account/settings/TwoFactorPanel";
 
@@ -171,7 +166,7 @@ function AccountForm({
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <SettingsCard title="Account" description="Your sign-in details and account actions.">
+      <Panel title="Account" description="Your sign-in details and account actions.">
         <div className="space-y-4">
           {successMessage ? <Alert message={successMessage} type="success" /> : null}
           {error ? <Alert message={error} type="error" /> : null}
@@ -207,7 +202,7 @@ function AccountForm({
             />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               id="username"
               label="Username"
@@ -236,7 +231,7 @@ function AccountForm({
             </Button>
           </div>
         </div>
-      </SettingsCard>
+      </Panel>
 
       {isPasswordModalOpen ? (
         <Modal width="400px" title="Update password" onClose={() => setIsPasswordModalOpen(false)}>
@@ -268,7 +263,7 @@ function Organisations({ user }: { user: Me }) {
   if (memberships.length === 0) return null;
 
   return (
-    <SettingsCard title="Organisations">
+    <Panel title="Organisations">
       <div className="space-y-3">
         {memberships.map((membership) => (
           <div key={membership.org_slug} className="flex items-center gap-3">
@@ -293,6 +288,6 @@ function Organisations({ user }: { user: Me }) {
           How this affects your plan
         </Link>
       </div>
-    </SettingsCard>
+    </Panel>
   );
 }

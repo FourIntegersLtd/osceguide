@@ -111,7 +111,7 @@ export function ModerationHome() {
           setTarget(null);
           setError(null);
         }}
-        onConfirm={() => void confirmDelete()}
+        onConfirm={() => confirmDelete()}
         isLoading={busy}
         error={error}
         tone="danger"

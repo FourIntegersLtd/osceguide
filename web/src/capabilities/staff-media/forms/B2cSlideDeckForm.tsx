@@ -22,6 +22,7 @@ import {
   Select,
   Textarea,
   type BadgeTone,
+  FoldSection,
 } from "@/foundation/ui";
 import {
   HiOutlineArrowDown,
@@ -33,20 +34,16 @@ import {
 function statusTone(status: string): BadgeTone {
   if (status === "completed") return "success";
   if (status === "failed") return "danger";
-  if (status.startsWith("generating")) return "accent";
+  if (isAvRunning(status)) return "accent";
   return "warning";
 }
 
 export function B2cSlideDeckForm({
   content,
   onChange,
-  onRegenerateAv,
-  avBusy,
 }: {
   content: Record<string, unknown>;
   onChange: (content: Record<string, unknown>) => void;
-  onRegenerateAv?: () => void;
-  avBusy?: boolean;
 }) {
   const slides = slidesFromContent(content);
   const status = avStatus(content) ?? "completed";
@@ -75,19 +72,6 @@ export function B2cSlideDeckForm({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Badge tone={statusTone(status)}>{status.replace(/_/g, " ")}</Badge>
-        {onRegenerateAv ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={avBusy || isAvRunning(status)}
-            onClick={onRegenerateAv}
-          >
-            {avBusy || isAvRunning(status)
-              ? "Regenerating…"
-              : "Regenerate audio & video"}
-          </Button>
-        ) : null}
       </div>
 
       <Input
@@ -139,12 +123,12 @@ export function B2cSlideDeckForm({
 
       <ul className="flex flex-col gap-4">
         {slides.map((slide, index) => (
-          <li key={index} className="rounded-osce-md border border-border p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-osce-data font-medium text-ink">
-                Slide {index + 1}
-              </span>
-              <div className="flex flex-wrap gap-1">
+          <li key={index}>
+            <FoldSection
+              number={index + 1}
+              title={slide.title?.trim() || "Untitled slide"}
+              actions={
+                <>
                 <Button
                   type="button"
                   variant="ghost"
@@ -176,8 +160,9 @@ export function B2cSlideDeckForm({
                 >
                   <HiOutlineTrash className="h-4 w-4" aria-hidden />
                 </Button>
-              </div>
-            </div>
+              </>
+              }
+            >
             <div className="flex flex-col gap-3">
               <Input
                 label="Position"
@@ -237,6 +222,7 @@ export function B2cSlideDeckForm({
                 placeholder="https://…"
               />
             </div>
+            </FoldSection>
           </li>
         ))}
       </ul>

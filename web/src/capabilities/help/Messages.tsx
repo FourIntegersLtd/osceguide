@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Alert, B2CPageHeader, Button, Card, productTokens } from "@/foundation/ui";
+import { Alert, B2CPageHeader, Button, productTokens, Panel } from "@/foundation/ui";
 import {
   B2CSegmentedTabs,
   type B2CSegmentedTabItem,
@@ -73,7 +73,7 @@ function ContactForm() {
       </B2CHero>
 
       <form onSubmit={handleSubmit}>
-        <Card title="Your message">
+        <Panel title="Your message">
           <div className="space-y-4">
             <div>
               <label htmlFor="subject" className={b2cFieldLabel}>
@@ -108,7 +108,7 @@ function ContactForm() {
             {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
             {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
           </div>
-        </Card>
+        </Panel>
       </form>
     </div>
   );

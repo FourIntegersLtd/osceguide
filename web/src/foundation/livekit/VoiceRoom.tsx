@@ -60,6 +60,8 @@ export function VoiceRoom({
   return (
     <LiveKitRoom
       className={className}
+      // Read by the installed app's pull-to-refresh, which must not reload a live session.
+      data-live-room={grant ? "" : undefined}
       room={room}
       token={grant?.token}
       serverUrl={grant?.server_url}

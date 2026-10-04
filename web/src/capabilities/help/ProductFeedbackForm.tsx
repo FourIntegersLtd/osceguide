@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { LuMessageSquare } from "react-icons/lu";
-import { Alert, Button, Card, ModalHelper, ModalTitle, cn, productTokens } from "@/foundation/ui";
+import { Alert, Button, ModalHelper, ModalTitle, cn, productTokens, Panel } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
 import { sendSiteMessage } from "@/capabilities/help/api";
 import { StarRating, TestimonialChoice } from "@/capabilities/help/ProductFeedbackFields";
@@ -188,9 +188,9 @@ export function ProductFeedbackForm({
     if (cardTitle) {
       return (
         <div className={className}>
-          <Card title={cardTitle}>
+          <Panel title={cardTitle}>
             <Alert tone="success">Thanks. Your feedback was sent.</Alert>
-          </Card>
+          </Panel>
         </div>
       );
     }
@@ -229,12 +229,12 @@ export function ProductFeedbackForm({
         onSubmit={handleSubmit}
       >
         {cardTitle ? (
-          <Card title={cardTitle} description="Your feedback helps us improve.">
+          <Panel title={cardTitle} description="Your feedback helps us improve.">
             <div className={compact ? "space-y-4" : "space-y-5"}>
               {fields}
               <div>{submitButton}</div>
             </div>
-          </Card>
+          </Panel>
         ) : (
           <>
             {fields}

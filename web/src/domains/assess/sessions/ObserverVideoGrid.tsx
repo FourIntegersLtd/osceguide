@@ -49,7 +49,7 @@ export function ObserverVideoGrid() {
           aria-pressed={isMicrophoneEnabled}
           disabled={busy}
           onClick={() => void toggle("microphone")}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-b2b-border transition-colors ${
+          className={`inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-b2b-border transition-colors ${
             isMicrophoneEnabled
               ? "bg-b2b-surface text-b2b-icon hover:bg-b2b-subtle"
               : "border-transparent bg-osce-danger text-white hover:bg-osce-danger/90"
@@ -68,7 +68,7 @@ export function ObserverVideoGrid() {
           aria-pressed={isCameraEnabled}
           disabled={busy}
           onClick={() => void toggle("camera")}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-b2b-border transition-colors ${
+          className={`inline-flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-b2b-border transition-colors ${
             isCameraEnabled
               ? "bg-b2b-surface text-b2b-icon hover:bg-b2b-subtle"
               : "border-transparent bg-osce-danger text-white hover:bg-osce-danger/90"

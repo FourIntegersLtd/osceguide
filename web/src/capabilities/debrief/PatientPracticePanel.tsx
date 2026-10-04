@@ -195,7 +195,7 @@ function AthenaDoctorVoicePanel({
           <Button
             type="button"
             fullWidth
-            onClick={() => void startVoice()}
+            onClick={() => startVoice()}
             disabled={starting || ended || !stationId}
             isLoading={starting}
             className="gap-2"

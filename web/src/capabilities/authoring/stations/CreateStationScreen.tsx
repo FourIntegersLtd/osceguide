@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Checkbox, getInputClassName, Select, Textarea } from "@/foundation/ui";
+import { Alert, Button, Checkbox, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
 import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { useSurface } from "@/capabilities";
 import { listStationTemplates } from "@/capabilities/authoring/api";
@@ -129,6 +129,7 @@ export function CreateStationScreen() {
           </div>
         </div>
 
+        <FoldSection title="Station details">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="create-station-screen-station-title" className="block text-osce-body font-semibold text-ink">
@@ -216,6 +217,7 @@ export function CreateStationScreen() {
             </div>
           ) : null}
         </div>
+        </FoldSection>
 
         {/*
           The AI tab stays selectable for an institution, because with a
@@ -232,17 +234,14 @@ export function CreateStationScreen() {
         ) : null}
 
         {form.mode === "ai" && (form.structure || (form.examCode && promptGeneration)) ? (
-          <div className="rounded-osce-lg border border-border bg-white p-4">
-            <p className="text-osce-body font-semibold text-ink">Generate draft</p>
-            <p className="mt-1 text-osce-body text-ink-muted">
-              Paste a short prompt (a few lines). We’ll auto-fill the template fields below; you can
-              edit anything afterward.
-            </p>
+          <FoldSection
+            title="Generate draft"
+            description="Paste a short prompt (a few lines). We’ll auto-fill the template fields below; you can edit anything afterward."
+          >
             <Textarea
               value={form.prompt}
               onChange={(e) => form.setPrompt(e.target.value)}
               rows={6}
-              className="mt-3"
               placeholder="e.g. 72F falls at home, hip pain, shortened externally rotated leg. Candidate to assess and plan management including peri-op considerations."
             />
             <div className="mt-3 flex items-center justify-end gap-2">
@@ -256,12 +255,12 @@ export function CreateStationScreen() {
                   !form.prompt.trim() ||
                   form.saving
                 }
-                onClick={() => void form.handleGenerateDraft()}
+                onClick={() => form.handleGenerateDraft()}
               >
                 {form.generating ? "Generating…" : "Generate draft"}
               </Button>
             </div>
-          </div>
+          </FoldSection>
         ) : null}
 
         {form.structure ? (
@@ -307,7 +306,7 @@ export function CreateStationScreen() {
           type="button"
           variant="commit"
           disabled={!canSave}
-          onClick={() => void form.handleCreate()}
+          onClick={() => form.handleCreate()}
         >
           {form.saving
             ? form.publishNow

@@ -309,7 +309,7 @@ function SectionAnswers({ answers }: { answers: AnswerView[] }) {
     <div className="space-y-4">
       {others.length > 0 ? <Answers answers={others} /> : null}
       {lists.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {lists.map((list) => (
             <ListCard key={list.label} answer={list} />
           ))}
@@ -459,7 +459,7 @@ function Answer({ answer }: { answer: AnswerView }) {
       return (
         <div>
           <p className="mb-2 text-osce-meta font-semibold text-osce-ink-700">{answer.label}</p>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {answer.records.map((record, index) => (
               <div key={index} className="space-y-2 rounded-lg border border-b2c-border-light bg-b2c-surface-muted p-4">
                 <Answers answers={record} />

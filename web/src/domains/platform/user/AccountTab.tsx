@@ -248,7 +248,7 @@ export function AccountTab({
       <ConfirmModal
         isOpen={confirmOff}
         onCancel={() => setConfirmOff(false)}
-        onConfirm={() => void setStatus("deactivated")}
+        onConfirm={() => setStatus("deactivated")}
         isLoading={busy}
         error={error}
         tone="danger"
@@ -262,7 +262,7 @@ export function AccountTab({
           setPending(null);
           setError(null);
         }}
-        onConfirm={() => void confirmConsole()}
+        onConfirm={() => confirmConsole()}
         isLoading={busy}
         error={error}
         tone={pending === false ? "danger" : "default"}

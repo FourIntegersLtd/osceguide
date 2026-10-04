@@ -45,7 +45,8 @@ _BLOG_JSON_APPENDIX = (
 
 _SLIDE_JSON_APPENDIX = (
     "\n\nReturn a single JSON object only (no markdown). AI-generated fields:\n"
-    "- topic (string)\n"
+    "- topic (string): the deck's title, 4 to 12 words naming the condition and the clinical "
+    "problem. Never the opening words of the request.\n"
     "- about (string, 50-300 chars)\n"
     "- slides (array of objects with title, layout, bullets, highlights, speaker_notes, "
     "optional explanation)\n"
@@ -54,6 +55,8 @@ _SLIDE_JSON_APPENDIX = (
 
 _PODCAST_JSON_APPENDIX = (
     "\n\nReturn a single JSON object only (no markdown). Keys:\n"
+    "- title (string): the episode's title, 4 to 12 words naming the condition and the "
+    "clinical problem. Never the opening words of the source material.\n"
     "- script (string): full Ben/Michelle dialogue as plain text, matching the format "
     "in the system prompt.\n"
 )

@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/foundation/ui";
+import { Badge, FoldSection } from "@/foundation/ui";
 import { useRubricBuilder } from "@/capabilities/authoring/rubrics/builderContext";
 import { AddButton, GroupHeading, ItemControls, ProblemNote, TextAtPath } from "@/capabilities/authoring/rubrics/formParts";
 import { listAt, pathText, setAt, type JsonPath } from "@/capabilities/authoring/rubrics/jsonPath";
@@ -28,23 +28,22 @@ export function CompetencyList({ domainPath }: { domainPath: JsonPath }) {
       {competencies.map((_competency, index) => {
         const path = [...listPath, index];
         return (
-          <div
-            key={index}
-            data-path={pathText(path)}
-            className={cn(
-              "space-y-3 rounded-osce-md border bg-osce-surface p-3",
-              problemsWithin(problems, path) > 0 ? "border-osce-danger/40" : "border-osce-border",
-            )}
-          >
-            <div className="flex items-start gap-2">
-              <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-[3fr_2fr]">
+          <div key={index} data-path={pathText(path)}>
+            <FoldSection
+              number={index + 1}
+              title={textAt(structure, [...path, "label"]).trim() || "Untitled competency"}
+              meta={problemsWithin(problems, path) > 0 ? <Badge tone="danger" size="sm">Needs fixing</Badge> : null}
+              actions={<ItemControls listPath={listPath} index={index} count={competencies.length} noun="competency" />}
+            >
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[3fr_2fr]">
                 <TextAtPath path={[...path, "label"]} label="Competency" placeholder="e.g. Explores the patient's concerns" />
                 <TextAtPath path={[...path, "id"]} label="Id" mono />
-              </div>
-              <ItemControls listPath={listPath} index={index} count={competencies.length} noun="competency" />
-            </div>
+                </div>
             <TextAtPath path={[...path, "instructions"]} label="What the marker looks for" rows={2} />
             {grades.length > 0 ? <Descriptors path={[...path, "descriptors"]} grades={grades} /> : null}
+              </div>
+            </FoldSection>
           </div>
         );
       })}

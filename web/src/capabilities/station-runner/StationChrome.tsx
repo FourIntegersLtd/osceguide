@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { HiOutlineCheck } from "react-icons/hi2";
 import { LuFlag, LuMessageSquareWarning } from "react-icons/lu";
-import { Back, cn, productTokens } from "@/foundation/ui";
+import { Back, cn, productTokens, Spinner } from "@/foundation/ui";
 import { useToast } from "@/foundation/hooks";
 import { flagStation } from "@/capabilities/stations/api";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
@@ -71,6 +71,7 @@ export function StationHeader({
   const [flagged, setFlagged] = useState(false);
   const [marked, setMarked] = useState(comeBack?.initial ?? false);
   const [marking, setMarking] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   const onMark = async () => {
     if (!comeBack || marking) return;
@@ -98,7 +99,8 @@ export function StationHeader({
     attemptsUsed !== null && attemptLimit !== null && attemptsUsed >= attemptLimit;
 
   const onFlag = async () => {
-    if (!flagStationId) return;
+    if (!flagStationId || reporting) return;
+    setReporting(true);
     try {
       await flagStation(flagStationId);
       setFlagged(true);
@@ -113,6 +115,8 @@ export function StationHeader({
         title: "We couldn't report this station",
         message: "Please try again in a moment.",
       });
+    } finally {
+      setReporting(false);
     }
   };
 
@@ -141,30 +145,41 @@ export function StationHeader({
               type="button"
               onClick={() => void onMark()}
               disabled={marking}
+              aria-busy={marking || undefined}
               aria-pressed={marked}
               aria-label="Flag this station to come back to"
               title={marked ? "Flagged to come back to" : "Flag this station to come back to"}
               className={productTokens.b2cIconButton}
             >
-              <LuFlag
-                aria-hidden
-                className={cn("h-4 w-4", marked && "fill-current text-osce-accent")}
-              />
+              {marking ? (
+                <Spinner label="Saving flag" />
+              ) : (
+                <LuFlag
+                  aria-hidden
+                  className={cn("h-4 w-4", marked && "fill-current text-osce-accent")}
+                />
+              )}
             </button>
           ) : null}
           {flagStationId ? (
             <button
               type="button"
               onClick={() => void onFlag()}
+              disabled={reporting}
+              aria-busy={reporting || undefined}
               aria-pressed={flagged}
               aria-label="Report a problem with this station"
               title="Report a problem with this station"
               className={productTokens.b2cIconButton}
             >
-              <LuMessageSquareWarning
-                aria-hidden
-                className={cn("h-4 w-4", flagged && "text-osce-danger")}
-              />
+              {reporting ? (
+                <Spinner label="Reporting" />
+              ) : (
+                <LuMessageSquareWarning
+                  aria-hidden
+                  className={cn("h-4 w-4", flagged && "text-osce-danger")}
+                />
+              )}
             </button>
           ) : null}
         </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState, type FormEvent } from "react";
-import { Alert, Button, Card, productTokens } from "@/foundation/ui";
+import { Alert, Button, productTokens, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { reply as postReply } from "@/capabilities/community/api";
 import { fieldClass, useViewer } from "@/capabilities/community/posts";
@@ -54,7 +54,7 @@ export function AnswerQuestion({
 
   return (
     <form onSubmit={submit} className="mb-24">
-      <Card title="Post your answer" description="Help a colleague by answering this question.">
+      <Panel title="Post your answer" description="Help a colleague by answering this question.">
         <div className="space-y-4">
           <div>
             <label htmlFor="community-answer" className={productTokens.b2cFieldLabel}>Your answer</label>
@@ -80,7 +80,7 @@ export function AnswerQuestion({
             Submit answer
           </Button>
         </div>
-      </Card>
+      </Panel>
     </form>
   );
 }

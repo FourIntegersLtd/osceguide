@@ -1,9 +1,14 @@
-"""Enqueues AV production jobs against a media item, and runs each job's actual work: narrating
-a summary as a podcast, re-rendering a slide deck's video, or voicing a podcast episode.
+"""Enqueues production jobs against a media item, and runs each job's actual work: checking its
+facts, writing and checking what will be spoken, and then the voicing itself (narrating a summary
+as a podcast, re-rendering a slide deck's video, or voicing a podcast episode).
+
+Voicing is the step that costs money, so it is refused until the words it would speak are the
+words that were last checked.
 """
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 import uuid
 from pathlib import Path
@@ -12,19 +17,28 @@ from typing import Any, BinaryIO
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
+from app.core.logging import get_logger
+from app.core.ports import GuidelineIndex, GuidelineWeb
 from app.core.settings import Settings, get_settings
 from app.features.catalog import service as catalog
 from app.features.media import service as media_service
 from app.features.media.service import production_item, replace_content
-from app.features.media_production import domain
-from app.features.media_production.errors import AvAlreadyRunning, WrongMediaKind
+from app.features.media_production import domain, fact_check, script_check
+from app.features.media_production.errors import AvAlreadyRunning, ScriptNotChecked, WrongMediaKind
 from app.features.media_production.repository import defer_job, lock_for_media
 from app.features.media_production.s3 import delete_object, upload_fileobj
 from app.features.media_production.schemas import MediaRead
+from app.features.media_production.slide_narration import complete as model_reply
+from app.features.tutor_memory import service_search as tutor_search
+
+log = get_logger(__name__)
 
 # Published to the requesting admin's `/me/events` topic once a production job
 # settles, success or failure, so `MediaDetailScreen` learns without polling.
 MEDIA_UPDATED = "media.updated"
+# The kinds of item that are spoken, and so are checked before they are.
+CHECKED_KINDS = frozenset({"slide_deck", "summary", "podcast"})
+_ERROR_CHARACTERS = 300
 
 
 async def _set_status(
@@ -49,6 +63,8 @@ async def enqueue_summary_podcast(
         raise WrongMediaKind()
     if domain.is_running(str(item.content.get("status"))):
         raise AvAlreadyRunning()
+    if not script_check.is_checked(item.kind, item.content):
+        raise ScriptNotChecked()
     await _set_status(session, item_id, item.content, domain.GENERATING_PODCAST)
     await defer_job(
         session,
@@ -69,6 +85,8 @@ async def enqueue_slide_regenerate(
         raise WrongMediaKind()
     if domain.is_running(str(item.content.get("status"))):
         raise AvAlreadyRunning()
+    if not script_check.is_checked(item.kind, item.content):
+        raise ScriptNotChecked()
     await _set_status(session, item_id, item.content, domain.GENERATING_AUDIO)
     await defer_job(
         session,
@@ -89,6 +107,8 @@ async def enqueue_podcast_audio(
         raise WrongMediaKind()
     if domain.is_running(str(item.content.get("status"))):
         raise AvAlreadyRunning()
+    if not script_check.is_checked(item.kind, item.content):
+        raise ScriptNotChecked()
     await _set_status(session, item_id, item.content, domain.GENERATING_PODCAST)
     await defer_job(
         session,
@@ -96,6 +116,59 @@ async def enqueue_podcast_audio(
         task="produce_podcast_audio",
         args={"media_id": str(item_id), "requested_by": str(requested_by)},
         queueing_lock=lock_for_media(item_id, "episode"),
+    )
+    return await _read(session, item_id)
+
+
+async def enqueue_fact_check(
+    session: AsyncSession, item_id: uuid.UUID, *, requested_by: uuid.UUID
+) -> MediaRead:
+    """Starts checking an item's clinical claims against the guidelines.
+
+    The item's status goes back to what it was once the check settles: checking facts changes
+    nothing a learner is served.
+    """
+    item = await production_item(session, item_id)
+    if item.kind not in CHECKED_KINDS:
+        raise WrongMediaKind()
+    previous = item.content.get("status")
+    if domain.is_running(str(previous)):
+        raise AvAlreadyRunning()
+    await _set_status(session, item_id, item.content, domain.CHECKING_FACTS)
+    await defer_job(
+        session,
+        queue="media",
+        task="check_media_facts",
+        args={
+            "media_id": str(item_id),
+            "requested_by": str(requested_by),
+            "previous_status": previous if isinstance(previous, str) else None,
+        },
+        queueing_lock=lock_for_media(item_id, "facts"),
+    )
+    return await _read(session, item_id)
+
+
+async def enqueue_script_write(
+    session: AsyncSession, item_id: uuid.UUID, *, requested_by: uuid.UUID, rewrite: bool
+) -> MediaRead:
+    """Starts writing what an item will say, and checking it, without voicing any of it.
+
+    `rewrite` throws away the lines already written; otherwise only what is missing or out of
+    date is written, and everything is checked.
+    """
+    item = await production_item(session, item_id)
+    if item.kind not in CHECKED_KINDS:
+        raise WrongMediaKind()
+    if domain.is_running(str(item.content.get("status"))):
+        raise AvAlreadyRunning()
+    await _set_status(session, item_id, item.content, domain.WRITING_SCRIPT)
+    await defer_job(
+        session,
+        queue="media",
+        task="write_media_script",
+        args={"media_id": str(item_id), "requested_by": str(requested_by), "rewrite": rewrite},
+        queueing_lock=lock_for_media(item_id, "script"),
     )
     return await _read(session, item_id)
 
@@ -116,6 +189,102 @@ def upload_image(settings: Settings, content: BinaryIO, key: str) -> str:
 def delete_image(settings: Settings, url: str) -> None:
     """Deletes a previously uploaded image. Exposed for `identity`, same as `upload_image`."""
     delete_object(settings, url)
+
+
+def _voice_dir(media_id: str) -> Path:
+    """Where a deck's voiced lines are kept between runs, so a second render pays only for the
+    lines that changed. Outside `work_dir`, which every run empties."""
+    return Path(tempfile.gettempdir()) / "media_av_voice" / media_id
+
+
+def _second_reader(settings: Settings, system: str) -> script_check.Complete:
+    """The model that checks: Claude before o3, the reverse of the order the writer is asked in."""
+    return lambda prompt: model_reply(settings, prompt, system=system, claude_first=True)
+
+
+def _with_error(content: dict[str, Any], step: str, error: Exception) -> dict[str, Any]:
+    """`content` with why a check failed kept in its review, for the staff screen to show."""
+    review = dict(content.get("review") or {})
+    review["error"] = {"step": step, "message": str(error)[:_ERROR_CHARACTERS] or type(error).__name__}
+    return {**content, "review": review}
+
+
+async def run_fact_check_job(
+    session: AsyncSession,
+    media_id: uuid.UUID,
+    *,
+    requested_by: uuid.UUID,
+    previous_status: str | None,
+    guidelines: GuidelineIndex | None = None,
+    web: GuidelineWeb | None = None,
+    complete: script_check.Complete | None = None,
+) -> None:
+    """Checks an item's clinical claims and stores the result in its review, changing nothing else.
+
+    The library, the web search and the model are this deployment's unless a test hands in its own.
+    """
+    item = await production_item(session, media_id)
+    settings = get_settings()
+    content = dict(item.content)
+    try:
+        facts = await fact_check.check_facts(
+            kind=item.kind,
+            title=item.title,
+            content=content,
+            guidelines=guidelines or tutor_search.guideline_index(),
+            web=web or tutor_search.guideline_web(),
+            complete=complete or _second_reader(settings, fact_check.FACT_SYSTEM),
+        )
+        review = dict(content.get("review") or {})
+        review.pop("error", None)
+        content["review"] = {**review, "facts": facts}
+    except Exception as error:  # noqa: BLE001 - any failure is recorded on the item for the staff screen
+        log.warning("fact check failed", media_id=str(media_id), error=str(error))
+        content = _with_error(content, "facts", error)
+    if previous_status is None:
+        content.pop("status", None)
+    else:
+        content["status"] = previous_status
+    await replace_content(session, media_id, content)
+    publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})
+
+
+async def run_script_write_job(
+    session: AsyncSession,
+    media_id: uuid.UUID,
+    *,
+    requested_by: uuid.UUID,
+    rewrite: bool,
+    complete: script_check.Complete | None = None,
+) -> None:
+    """Writes and checks what an item will say, leaving it awaiting review. Nothing is voiced.
+
+    The checking model is this deployment's unless a test hands in its own.
+    """
+    item = await production_item(session, media_id)
+    settings = get_settings()
+    reader = complete or _second_reader(settings, script_check.CHECK_SYSTEM)
+    try:
+        if item.kind == "slide_deck":
+            content = await asyncio.to_thread(
+                script_check.prepare_deck, settings, item.content, rewrite=rewrite, complete=reader
+            )
+        else:
+            content = await asyncio.to_thread(
+                script_check.prepare_podcast,
+                settings,
+                kind=item.kind,
+                title=item.title,
+                content=item.content,
+                rewrite=rewrite,
+                complete=reader,
+            )
+        content["status"] = domain.AWAITING_REVIEW
+    except Exception as error:  # noqa: BLE001 - any failure is recorded on the item as failed
+        log.warning("script write failed", media_id=str(media_id), error=str(error))
+        content = {**_with_error(item.content, "script", error), "status": domain.FAILED}
+    await replace_content(session, media_id, content)
+    publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})
 
 
 async def run_summary_podcast_job(
@@ -157,6 +326,7 @@ async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID, *, reques
             job_work_dir,
             str(media_id),
             exam_code=exam_code,
+            voice_dir=_voice_dir(str(media_id)),
         )
         await replace_content(session, media_id, content)
     except Exception:  # noqa: BLE001 - any render failure is recorded on the item as failed

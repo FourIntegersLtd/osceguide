@@ -3,10 +3,7 @@
 import { useState } from "react";
 import Alert from "@/foundation/forms/Alert";
 import {
-  B2CPanelCard,
-  B2CPanelCardBody,
-  B2CPanelCardFooter,
-  B2CPanelCardHeader,
+  Panel,
   ModalHelper,
   ModalPrimaryButton,
   ModalSecondaryButton,
@@ -65,9 +62,8 @@ export function AddExamDate({
   };
 
   return (
-    <B2CPanelCard className="mt-0">
-      <B2CPanelCardHeader className="text-osce-accent-hover">{dateLabel}</B2CPanelCardHeader>
-      <B2CPanelCardBody className="space-y-4">
+    <Panel title={dateLabel}>
+      <div className="space-y-4">
         <ModalHelper className="mt-0">
           Adding your {dateLabel.toLowerCase()} helps us personalize your study plan and track your
           progress more effectively.
@@ -92,8 +88,8 @@ export function AddExamDate({
             className={`${productTokens.b2cSettingsFieldInput} sm:w-32`}
           />
         </div>
-      </B2CPanelCardBody>
-      <B2CPanelCardFooter>
+      </div>
+      <div className="mt-5 flex flex-wrap justify-end gap-2">
         {onSkip ? (
           <ModalSecondaryButton type="button" onClick={onSkip} disabled={isUpdating}>
             I don&apos;t have a date yet
@@ -102,7 +98,7 @@ export function AddExamDate({
         <ModalPrimaryButton type="button" onClick={() => void handleSave()} disabled={isUpdating}>
           {isUpdating ? "Saving…" : "Save date"}
         </ModalPrimaryButton>
-      </B2CPanelCardFooter>
-    </B2CPanelCard>
+      </div>
+    </Panel>
   );
 }

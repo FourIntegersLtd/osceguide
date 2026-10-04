@@ -121,7 +121,7 @@ function OrthoLandingContent() {
               frameworks.
             </p>
           </div>
-          <div className="grid gap-6 sm:gap-8 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2">
             {interviewStations.map((item) => (
               <div key={item.title} className={type.featureCardMuted}>
                 <LandingIconBadge icon={item.icon} color={item.color} size="md" />
@@ -147,7 +147,7 @@ function OrthoLandingContent() {
               consolidate your knowledge.
             </p>
           </div>
-          <div className="grid flex-1 gap-6 sm:gap-8 md:grid-cols-2">
+          <div className="grid grid-cols-1 flex-1 gap-6 sm:gap-8 md:grid-cols-2">
             {areaColumns.map((column, index) => (
               <ul
                 key={index}

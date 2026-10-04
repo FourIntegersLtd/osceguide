@@ -1,4 +1,4 @@
-"""The item the AV routes return after enqueueing production."""
+"""The item the AV routes return after enqueueing production, and what writing a script takes."""
 
 from __future__ import annotations
 
@@ -23,3 +23,10 @@ class MediaRead(BaseModel):
     status: str
     created_at: datetime
     published_at: datetime | None
+
+
+class ScriptWriteRequest(BaseModel):
+    """How much of the script to write before it is checked."""
+
+    # False keeps every line already written and writes only what is missing or out of date.
+    rewrite: bool = False

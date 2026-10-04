@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge } from "@/foundation/ui";
+import { Badge, Panel } from "@/foundation/ui";
 import { SlotReview } from "@/domains/assess/SlotReview";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { orderedSlots, stationLabel } from "@/domains/assess/sessions/support";
@@ -34,9 +34,8 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
   const active = finished.find((slot) => slot.id === activeId) ?? first;
 
   return (
-    <section className="space-y-3 rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
-      <h2 className="text-osce-body font-semibold text-b2b-headline">Mark a finished station</h2>
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Finished stations">
+    <Panel title="Mark a finished station">
+      <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Finished stations">
         {finished.map((slot) => (
           <button
             key={slot.id}
@@ -64,6 +63,6 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
         ))}
       </div>
       <SlotReview orgSlug={orgSlug} slotId={active.id} attemptId={active.attempt_id ?? null} />
-    </section>
+    </Panel>
   );
 }

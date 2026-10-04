@@ -36,14 +36,14 @@ export function SessionHeader({
   return (
     <div className="flex-shrink-0 border-b border-osce-border bg-osce-surface">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-48">
           <p className={productTokens.b2cMonoEyebrow}>
             Peer practice · You are the {role}
             {!isDoctor ? ` · ${stationName}` : ""}
           </p>
           <h1 className="truncate text-osce-title font-semibold text-osce-ink-900">{phaseTitle(phase)}</h1>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex w-full shrink-0 flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
           <div className="text-right">
             <p className={productTokens.b2cMonoEyebrow}>{caption}</p>
             <p role="timer" className={b2cMetric}>

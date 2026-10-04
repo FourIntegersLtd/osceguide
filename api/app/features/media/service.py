@@ -67,7 +67,7 @@ async def create(
         exam_id=exam_id,
         author_id=author_id,
     )
-    return await service_reads.read_one(session, item)
+    return await service_reads.read_one(session, item, with_review=True)
 
 
 async def update(
@@ -95,7 +95,7 @@ async def update(
         values["specialty"] = domain.specialty_of(content)
     if values:
         await repository.update_item(session, item_id, **values)
-    return await service_reads.read_one(session, await _require(session, item_id))
+    return await service_reads.read_one(session, await _require(session, item_id), with_review=True)
 
 
 async def publish(
@@ -125,7 +125,9 @@ async def publish(
         queueing_lock=f"reindex-media:{item_id}",
         args={"media_item_id": str(item_id)},
     )
-    return await service_reads.read_one(session, await _require(session, item_id), unlocked_exam_ids=None)
+    return await service_reads.read_one(
+        session, await _require(session, item_id), unlocked_exam_ids=None, with_review=True
+    )
 
 
 async def read_by_id(session: AsyncSession, item_id: uuid.UUID, *, viewer_is_admin: bool) -> MediaRead:
@@ -134,7 +136,9 @@ async def read_by_id(session: AsyncSession, item_id: uuid.UUID, *, viewer_is_adm
     if not domain.is_public(status=item.status) and not viewer_is_admin:
         raise errors.ItemNotFound()
     unlocked = None if viewer_is_admin else frozenset[uuid.UUID]()
-    return await service_reads.read_one(session, item, unlocked_exam_ids=unlocked)
+    return await service_reads.read_one(
+        session, item, unlocked_exam_ids=unlocked, with_review=viewer_is_admin
+    )
 
 
 async def read_by_slug(

@@ -122,7 +122,7 @@ function MemberRow({
           variant={revoked ? "primary" : "danger"}
           size="sm"
           onClick={() =>
-            void run(
+            run(
               () =>
                 revoked
                   ? restoreMembership(slug, membership.id)

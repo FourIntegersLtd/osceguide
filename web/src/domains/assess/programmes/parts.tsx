@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Alert, cn } from "@/foundation/ui";
+import { Alert } from "@/foundation/ui";
 import type { ProgrammeStage, ProgrammeStation } from "@/domains/assess/programmes/preview";
 
 /**
@@ -16,29 +16,6 @@ export function PreviewNotice({ needs }: { needs: string }) {
   );
 }
 
-/** A titled card: the unit every programme screen is built from. */
-export function Panel({
-  title,
-  action,
-  children,
-  className,
-}: {
-  title: ReactNode;
-  action?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={cn("rounded-panel border border-b2b-border bg-b2b-surface p-5", className)}>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-osce-title font-semibold text-b2b-headline">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 /** The three stages a purpose moves people through, with where the cohort is. */
 export function StageStrip({
   titles,
@@ -48,7 +25,7 @@ export function StageStrip({
   stages: readonly [ProgrammeStage, ProgrammeStage, ProgrammeStage];
 }) {
   return (
-    <ol className="grid gap-3 md:grid-cols-3">
+    <ol className="grid grid-cols-1 gap-3 md:grid-cols-3">
       {stages.map((stage, index) => (
         <li key={titles[index]} className="rounded-panel border border-b2b-border bg-b2b-surface p-5">
           <p className="text-osce-caption font-medium text-b2b-mid">
@@ -120,7 +97,7 @@ export function SimpleTable<Row>({
 /** A name with a quieter second line, as the first cell of a people table. */
 export function Person({ name, detail }: { name: string; detail: string }) {
   return (
-    <span className="block">
+    <span className="block min-w-0 break-words">
       <span className="block font-medium">{name}</span>
       <span className="block text-osce-meta text-b2b-mid">{detail}</span>
     </span>
@@ -130,7 +107,7 @@ export function Person({ name, detail }: { name: string; detail: string }) {
 /** A wide column with a narrow one beside it; one column on a phone. */
 export function Columns({ main, side }: { main: ReactNode; side: ReactNode }) {
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <div className="flex min-w-0 flex-col gap-5">{main}</div>
       <div className="flex min-w-0 flex-col gap-5">{side}</div>
     </div>

@@ -271,7 +271,7 @@ export function StationDetail({
       ) : null}
 
       {structure ? (
-        <Panel padding="md">
+        <Panel title="Station content">
           <p className="mb-4 text-osce-caption text-ink-muted">
             Version {version}.
             {isDraft
@@ -293,7 +293,7 @@ export function StationDetail({
                 variant="commit"
                 disabled={!canSaveContent || action.busy !== null}
                 onClick={() =>
-                  void action.run("content", async () => {
+                  action.run("content", async () => {
                     if (structure) {
                       const v = validateStationContentScoped(structure, editContent);
                       if (!v.ok) {
@@ -336,7 +336,7 @@ function LegacyStationMeta({
       : stationTitle;
   if (!legacyId && !name) return null;
   return (
-    <div className="mb-6 grid gap-4 rounded-osce-lg border border-border bg-surface-raised/40 p-4 md:grid-cols-2">
+    <div className="mb-6 grid grid-cols-1 gap-4 rounded-osce-lg border border-border bg-surface-raised/40 p-4 md:grid-cols-2">
       {legacyId ? (
         <div>
           <p className="text-osce-caption font-medium text-ink-muted">Station ID</p>

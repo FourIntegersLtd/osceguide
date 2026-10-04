@@ -72,7 +72,7 @@ function ReceiptRow({ receipt }: { receipt: Receipt }) {
       title={`${receipt.plan_label} · ${receipt.amount_total}`}
       meta={`Paid ${receipt.paid_at}`}
       trailing={
-        <Button variant="ghost" size="sm" onClick={() => void openDocument()} disabled={isOpening} className="gap-2">
+        <Button variant="ghost" size="sm" onClick={() => openDocument()} disabled={isOpening} className="gap-2">
           <HiOutlineArrowDownTray className="h-4 w-4 shrink-0" aria-hidden />
           {isOpening ? "Downloading…" : "Download receipt"}
         </Button>

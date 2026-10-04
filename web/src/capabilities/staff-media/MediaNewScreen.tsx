@@ -4,12 +4,21 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert, Button, Input, Modal,
   Select,
+  Textarea,
   getInputClassName,
 } from "@/foundation/ui";
 import { MEDIA_KIND_LABELS, MEDIA_KINDS, isMediaKind, type MediaKind } from "@/capabilities/media/api";
 import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
-import { createMedia } from "@/capabilities/staff-media/api";
+import {
+  createMedia,
+  generateBlog,
+  generatePodcast,
+  generateSlideDeck,
+  generatedTitle,
+  generateSummary,
+} from "@/capabilities/staff-media/api";
+import { mergeContent } from "@/capabilities/staff-media/content/b2cMediaShapes";
 import { emptyContentForKind } from "@/capabilities/staff-media/contentScaffolds";
 import { staffMediaDetailPath } from "@/capabilities/staff-media/paths";
 
@@ -24,7 +33,7 @@ export function MediaNewForm({
 }) {
   const [kind, setKind] = useState<MediaKind>(initialKind);
   const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
+  const [brief, setBrief] = useState("");
   const [examCode, setExamCode] = useState("");
   const action = useAction();
 
@@ -33,6 +42,37 @@ export function MediaNewForm({
   }, [initialKind]);
 
   const kindLabel = MEDIA_KIND_LABELS[kind].one;
+  const generators = {
+    summary: generateSummary,
+    blog: generateBlog,
+    slide_deck: generateSlideDeck,
+    podcast: generatePodcast,
+  };
+
+  // The draft is written before the item is created, so a failed write leaves nothing behind.
+  const create = () =>
+    action.run("create", async () => {
+      const exam = examCode.trim() || null;
+      const written = brief.trim() ? await generators[kind](brief.trim(), exam) : {};
+      const { title: _title, summary: writtenSummary, ...rest } = written;
+      const named =
+        title.trim() ||
+        generatedTitle(written) ||
+        brief.trim().slice(0, 80);
+      const content = mergeContent(emptyContentForKind(kind), rest);
+      if (kind === "slide_deck" && !content.topic) content.topic = named;
+      const item = await createMedia({
+        kind,
+        title: named,
+        exam_code: exam,
+        summary:
+          typeof writtenSummary === "string" && writtenSummary.trim()
+            ? writtenSummary.trim()
+            : null,
+        content,
+      });
+      onCreated(item.id);
+    });
 
   return (
     <div className="flex flex-col gap-4">
@@ -50,7 +90,12 @@ export function MediaNewForm({
             <option key={k} value={k}>{MEDIA_KIND_LABELS[k].one}</option>
           ))}
         </Select>
-      <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <Input
+        label="Title"
+        hint="Leave empty to take the title from the draft."
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
       <label className="flex flex-col gap-1.5">
         <span className="text-osce-meta font-medium text-ink-muted">Exam</span>
         <AuthoringExamSelect
@@ -61,7 +106,13 @@ export function MediaNewForm({
           className={getInputClassName()}
         />
       </label>
-      <Input label="Summary (optional)" value={summary} onChange={(e) => setSummary(e.target.value)} />
+      <Textarea
+        label="What should it cover?"
+        hint="Paste the case, your notes or the topic. The first draft is written from this; leave it empty to start from a blank item."
+        rows={8}
+        value={brief}
+        onChange={(e) => setBrief(e.target.value)}
+      />
       <div className="flex justify-end gap-2 pt-1">
         {onCancel ? (
           <Button type="button" variant="ghost" size="sm" disabled={action.busy === "create"} onClick={onCancel}>
@@ -70,25 +121,16 @@ export function MediaNewForm({
         ) : null}
         <Button
           size="sm"
-          disabled={!title.trim() || action.busy === "create"}
-          onClick={() =>
-            void action.run("create", async () => {
-              const scaffold = emptyContentForKind(kind);
-              if (kind === "slide_deck") {
-                scaffold.topic = title.trim();
-              }
-              const item = await createMedia({
-                kind,
-                title: title.trim(),
-                exam_code: examCode.trim() || null,
-                summary: summary.trim() || null,
-                content: scaffold,
-              });
-              onCreated(item.id);
-            })
-          }
+          disabled={(!title.trim() && !brief.trim()) || action.busy === "create"}
+          onClick={() => create()}
         >
-          {action.busy === "create" ? "Creating…" : `Create ${kindLabel.toLowerCase()}`}
+          {action.busy === "create"
+            ? brief.trim()
+              ? "Writing the draft…"
+              : "Creating…"
+            : brief.trim()
+              ? "Create and write draft"
+              : `Create ${kindLabel.toLowerCase()}`}
         </Button>
       </div>
     </div>

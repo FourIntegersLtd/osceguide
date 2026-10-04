@@ -123,6 +123,7 @@ export {
 } from "@/foundation/ui/PlatformFilterBar";
 export {
   Panel,
+  FoldSection,
   RowList,
   Row,
   RowLink,

@@ -29,6 +29,9 @@ button, status text "Connecting to Athena…" / "Not connected".
 - Headless Chrome blocks the microphone unless the harness's fake-media flags
   and `permissions: ["microphone"]` are set; without them the screen stops at
   "Your browser is blocking the microphone".
+- One microphone request per visit, made by the session start and capped at
+  10s. A second concurrent `getUserMedia` (the old microphone card) hung the
+  walkthrough on an installed iOS app; do not add one back.
 - Locally no assistant worker joins, so "Show me how it works" stays disabled
   and the status stays "Connecting…". That is the environment, not a bug.
 - `make start` runs uvicorn `--reload`: an edit in backend/ mid-run drops

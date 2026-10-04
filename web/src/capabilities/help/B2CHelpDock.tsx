@@ -286,7 +286,7 @@ function NavigateHelpPanel({
             variant="primary"
             size="md"
             fullWidth
-            onClick={() => void startVoice()}
+            onClick={() => startVoice()}
             disabled={starting}
             className="mx-auto gap-1.5 sm:gap-2"
           >
@@ -312,7 +312,7 @@ function NavigateHelpPanel({
             <span>End conversation</span>
           </button>
         )}
-        {!inCall && screenGuidanceAvailable && <Button type="button" variant="secondary" size="md" fullWidth disabled={starting} className="mt-2 gap-1.5" onClick={() => void startVoice("guide", "help")}><LuMousePointer2 className="h-4 w-4" /><span>Guide me on screen</span></Button>}
+        {!inCall && screenGuidanceAvailable && <Button type="button" variant="secondary" size="md" fullWidth disabled={starting} className="mt-2 gap-1.5" onClick={() => startVoice("guide", "help")}><LuMousePointer2 className="h-4 w-4" /><span>Guide me on screen</span></Button>}
         <div className="mt-2 px-1 text-center sm:px-2">
           <p className={helpType.support}>
             {inCall

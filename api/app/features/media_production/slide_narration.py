@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from app.core.settings import Settings
@@ -21,18 +22,24 @@ NARRATION_MODEL = "o3"
 NARRATION_FALLBACK_MODEL = "claude-sonnet-4-5"
 _ATTEMPTS = 3
 _MAX_SECTIONS = 4
+NARRATION_WORKERS = 4
 # About eleven minutes of Ben at his pace, less the cards, countdowns and pauses between slides.
 _TALK_WORDS = 1450
 _INTRO_WORDS = 27
 _ITEM_WORDS = (12, 30)
 _AUDIO_TAG = re.compile(r"\[[^\]]*\]")
+# A filler said before anything else. Every line is written without sight of its neighbours, so
+# the same opener would otherwise start one line after another.
+_OPENING_FILLER = re.compile(
+    r"^(?:right|okay|ok|alright|all right|so|now|well)\s*(?:,|\.{3}|…|\.|!)\s*", re.I
+)
 
 logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
     "You write what Ben says in a medical teaching video, one slide at a time. Ben is an experienced UK GP "
     "giving a relaxed talk to colleagues: calm, warm, dryly funny, never reading from a script. "
-    "You reply with JSON only."
+    "He never says his own name: another presenter may voice his words. You reply with JSON only."
 )
 
 _PROMPT = """\
@@ -53,7 +60,9 @@ How Ben talks:
 - Now and then (not on every slide, and at most once per slide) something human: a dry aside, a gentle joke,
   a "we've all been there on a Friday afternoon" moment, or a nod to a guideline or everyday practice. Never
   forced, never at a patient's expense, and never a fact that is not in the notes.
-- Occasional natural fillers ("right", "now", "so", "honestly") and, sparingly, one audio tag in square
+- Occasional natural fillers ("now", "so", "honestly") in the middle of a line, never as its first word:
+  each line is written on its own and they are played back to back, so an opener like "Right," or
+  "Okay," would be heard again and again. Sparingly, one audio tag in square
   brackets where it fits, such as [chuckles], [sighs] or [thoughtful]. At most one tag per slide.
 - Spoken English: spell out numbers, units and abbreviations as a person says them ("one hundred and forty
   over ninety", "twice a day"). No bullet characters, no markdown, and never read the slide text out verbatim.
@@ -105,7 +114,7 @@ Plan how the talk is framed, as JSON:
 - "signoff": Ben's goodbye over the closing card, one or two warm sentences. He thanks the listener and
   wishes them well. He names no company, podcast or series.
 - Everything Ben says is spoken English in the voice described above: numbers and abbreviations as a
-  person says them, no markdown, no new facts.
+  person says them, no markdown, no new facts. No line opens with a filler such as "Right," or "Okay,".
 """
 
 
@@ -122,31 +131,54 @@ def slide_items(slide: dict[str, Any]) -> list[str]:
     return items
 
 
-def _complete(settings: Settings, prompt: str) -> str:
-    """One model reply, from o3 and then Claude if o3 is unavailable."""
-    if settings.openai_api_key.strip():
-        from openai import OpenAI  # optional dependency
+def _from_o3(api_key: str, system: str, prompt: str) -> str:
+    """One reply from o3."""
+    from openai import OpenAI  # optional dependency
 
-        try:
-            response = OpenAI(api_key=settings.openai_api_key).chat.completions.create(
-                model=NARRATION_MODEL,
-                messages=[{"role": "system", "content": _SYSTEM_PROMPT}, {"role": "user", "content": prompt}],
-            )
-            return response.choices[0].message.content or ""
-        except Exception:
-            logger.warning("Slide narration via %s failed, falling back", NARRATION_MODEL, exc_info=True)
+    response = OpenAI(api_key=api_key).chat.completions.create(
+        model=NARRATION_MODEL,
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
+
+
+def _from_claude(api_key: str, system: str, prompt: str) -> str:
+    """One reply from Claude."""
     from anthropic import Anthropic  # optional dependency
 
-    reply = Anthropic(api_key=settings.anthropic_api_key).messages.create(
+    reply = Anthropic(api_key=api_key).messages.create(
         model=NARRATION_FALLBACK_MODEL,
         max_tokens=3000,
-        system=_SYSTEM_PROMPT,
+        system=system,
         messages=[{"role": "user", "content": prompt}],
     )
     return next((block.text for block in reply.content if block.type == "text"), "")
 
 
-def _json_object(reply: str) -> dict[str, Any] | None:
+def complete(
+    settings: Settings, prompt: str, *, system: str = _SYSTEM_PROMPT, claude_first: bool = False
+) -> str:
+    """One model reply, from o3 and then Claude if o3 is unavailable.
+
+    `claude_first` turns the order round, for a second reader that should not be the model
+    that wrote the words it is reading.
+    """
+    askers = [(settings.openai_api_key, _from_o3), (settings.anthropic_api_key, _from_claude)]
+    if claude_first:
+        askers.reverse()
+    usable = [(key, ask) for key, ask in askers if key.strip()]
+    if not usable:
+        raise AvUnavailable("No language model is configured on this environment")
+    for key, ask in usable[:-1]:
+        try:
+            return ask(key, system, prompt)
+        except Exception:
+            logger.warning("Model call via %s failed, falling back", ask.__name__, exc_info=True)
+    key, ask = usable[-1]
+    return ask(key, system, prompt)
+
+
+def json_object(reply: str) -> dict[str, Any] | None:
     """The JSON object in a model reply, or None if there is none."""
     match = re.search(r"\{.*\}", reply, re.S)
     if not match:
@@ -159,8 +191,12 @@ def _json_object(reply: str) -> dict[str, Any] | None:
 
 
 def _said(value: object) -> str:
-    """A string as written by the model with its dashes turned into commas, or "" for anything else."""
-    return re.sub(r"\s*[—–]\s*", ", ", value).strip() if isinstance(value, str) else ""
+    """A string as written by the model with its dashes turned into commas and any opening filler
+    ("Right, ...") dropped, or "" for anything else."""
+    if not isinstance(value, str):
+        return ""
+    said = _OPENING_FILLER.sub("", re.sub(r"\s*[—–]\s*", ", ", value).strip())
+    return said[:1].upper() + said[1:]
 
 
 def item_words(slides: list[dict[str, Any]]) -> int:
@@ -193,7 +229,7 @@ def _callout(entry: object, shown: str) -> dict[str, str] | None:
 
 def _parse(reply: str, shown: list[str]) -> dict[str, Any] | None:
     """The narration JSON if it has an intro and one non-empty line per item in `shown`, else None."""
-    parsed = _json_object(reply)
+    parsed = json_object(reply)
     if parsed is None:
         return None
     intro, items = _said(parsed.get("intro")), parsed.get("items")
@@ -239,7 +275,7 @@ def narrate_slide(
     if is_question(slide):
         prompt += _QUESTION_RULE
     for _ in range(_ATTEMPTS):
-        narration = _parse(_complete(settings, prompt), items)
+        narration = _parse(complete(settings, prompt), items)
         if narration:
             return narration
     raise AvUnavailable(f"Could not write a narration with {len(items)} items for '{slide.get('title')}'")
@@ -256,7 +292,7 @@ def is_question(slide: dict[str, Any]) -> bool:
 
 def _parse_plan(reply: str, slides: list[dict[str, Any]]) -> dict[str, Any] | None:
     """The deck plan if it has three takeaways, a recap line and a sign-off, with its usable sections."""
-    parsed = _json_object(reply)
+    parsed = json_object(reply)
     if parsed is None:
         return None
     takeaways = parsed.get("takeaways")
@@ -310,7 +346,31 @@ def plan_deck(settings: Settings, content: dict[str, Any]) -> dict[str, Any]:
     parts = "three or four" if count >= 12 else "two or three" if count >= 6 else "no (an empty list of)"
     prompt = _PLAN_PROMPT.format(title=content.get("title", ""), outline="\n".join(outline), parts=parts)
     for _ in range(_ATTEMPTS):
-        plan = _parse_plan(_complete(settings, prompt), slides)
+        plan = _parse_plan(complete(settings, prompt), slides)
         if plan:
             return plan
     raise AvUnavailable(f"Could not plan the talk '{content.get('title')}'")
+
+
+def keeps_stored_narration(slide: dict[str, Any]) -> bool:
+    """Whether `narrate_slide` would reuse this slide's stored narration instead of writing a new one."""
+    stored = slide.get("narration")
+    return isinstance(stored, dict) and _parse(json.dumps(stored), slide_items(slide)) is not None
+
+
+def narrate_deck(settings: Settings, payload: dict[str, Any]) -> None:
+    """Writes onto `payload` what Ben says: the talk's framing, and a narration on every slide.
+
+    The notes a slide was written from stay as the source of its facts (`source_notes`); the
+    notes shown with the slide become what Ben actually says.
+    """
+    slides = payload["slides"]
+    with ThreadPoolExecutor(NARRATION_WORKERS) as pool:
+        plan = pool.submit(plan_deck, settings, payload)
+        words = item_words(slides)
+        narrations = list(pool.map(lambda slide: narrate_slide(settings, slide, len(slides), words), slides))
+        payload["presentation"] = plan.result()
+    for slide, narration in zip(slides, narrations, strict=True):
+        slide["narration"] = narration
+        slide.setdefault("source_notes", slide.get("speaker_notes", ""))
+        slide["speaker_notes"] = spoken_notes(narration)

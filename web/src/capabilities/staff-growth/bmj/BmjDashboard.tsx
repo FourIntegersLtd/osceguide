@@ -196,7 +196,7 @@ export function BmjDashboard() {
       {tab === "access" ? (
         <div className="space-y-5">
           <PilotConfigPanel partner={partner} />
-          <div className="grid items-start gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
             <ReportersPanel partner={partner} />
             <TrackingReferences partner={partner} />
           </div>

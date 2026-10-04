@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Alert, AsyncBoundary, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, b2bTokens, Panel } from "@/foundation/ui";
 import Table, { type Column, type TableMore } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { cn } from "@/foundation/ui/cn";
 import { errorMessage, useAsync, useCursorPages, useSearchQuery } from "@/foundation/hooks";
-import { PanelCard, formatWhen } from "@/domains/assess/team/chrome";
+import { formatWhen } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import {
   grantEntitlement,
@@ -99,12 +99,12 @@ export function AccessPanel({
       {notice ? <Alert tone="success">{notice}</Alert> : null}
 
       {canManage ? (
-        <PanelCard
+        <Panel
           title="Grant exam access"
-          subtitle="Lets trainees practise between sittings. They do not need it to take an exam they are booked on."
+          description="Lets trainees practise between sittings. They do not need it to take an exam they are booked on."
         >
           <form
-            className="grid gap-4 sm:grid-cols-3"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-3"
             onSubmit={(event) => {
               event.preventDefault();
               void grant();
@@ -180,7 +180,7 @@ export function AccessPanel({
               </Button>
             </div>
           </form>
-        </PanelCard>
+        </Panel>
       ) : null}
 
       <div>
@@ -209,7 +209,7 @@ export function AccessPanel({
               more={pages}
               trainees={trainees}
               canManage={canManage}
-              onRevoke={(entitlement) => void revoke(entitlement)}
+              onRevoke={(entitlement) => revoke(entitlement)}
             />
           )
         }
@@ -237,7 +237,7 @@ function GrantsTable({
   more: TableMore;
   trainees: Trainee[];
   canManage: boolean;
-  onRevoke: (entitlement: Entitlement) => void;
+  onRevoke: (entitlement: Entitlement) => Promise<void>;
 }) {
   /* A grant names a user account; the roster names a trainee. They meet at
      `Trainee.user_id`, which is null until the person has signed in — so a

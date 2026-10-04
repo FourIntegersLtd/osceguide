@@ -260,6 +260,7 @@ class Scene:
         self.callouts = callouts or {}
         self._painted: dict[tuple[int, int, str], Image.Image] = {}
         self._images: list[tuple[Image.Image, tuple[int, int, int, int]]] = []
+        self.ring_middle = RING_MIDDLE[0]
 
         if kind == "card":
             self.title_lines, self.title_size = painter.headline(title, 96, 1560, 3, 60)
@@ -292,6 +293,11 @@ class Scene:
                 left = LEFT + 670
             else:
                 self._add_image(usable[0], (RIGHT - 600, content_top, 600, box_height))
+        elif usable and kind == "question":
+            # Beside the thinking ring, never under it: the ring moves to the middle of what is left.
+            box_height = min(520, CONTENT_BOTTOM - content_top)
+            self._add_image(usable[0], (RIGHT - 600, content_top, 600, box_height))
+            self.ring_middle = (LEFT + RIGHT - 670) // 2
         elif usable:
             self._add_image(usable[0], (LEFT, content_top, RIGHT - LEFT, CONTENT_BOTTOM - content_top))
         elif self.callouts:
@@ -430,7 +436,7 @@ class Scene:
         """The thinking ring in the middle of a question slide: idle while Ben asks, then counting
         three seconds down."""
         diameter, stroke, scale = 240, 16, _SUPERSAMPLE
-        left = RING_MIDDLE[0] - diameter // 2
+        left = self.ring_middle - diameter // 2
         top = max(self.title_bottom + 50, RING_MIDDLE[1] - diameter // 2)
         large = Image.new("RGBA", (diameter * scale, diameter * scale), (0, 0, 0, 0))
         ring = ImageDraw.Draw(large)

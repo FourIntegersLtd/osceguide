@@ -131,7 +131,7 @@ export function FeedbackStep({
           </Button>
           <Button
             type="button"
-            onClick={() => void openDebrief()}
+            onClick={() => openDebrief()}
             isLoading={loadingDebrief}
             className="gap-2"
           >

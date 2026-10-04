@@ -100,7 +100,7 @@ function CopyValue({
         variant="ghost"
         size="sm"
         aria-label={`Copy ${label}`}
-        onClick={() => void copy()}
+        onClick={() => copy()}
       >
         {copied ? "Copied" : "Copy"}
       </Button>
@@ -258,7 +258,7 @@ export function ReferralPayouts() {
                           size="sm"
                           disabled={busy}
                           onClick={() =>
-                            void record(referral, { payoutStatus: "unpaid" })
+                            record(referral, { payoutStatus: "unpaid" })
                           }
                         >
                           Not paid after all
@@ -302,7 +302,7 @@ export function ReferralPayouts() {
                           size="sm"
                           disabled={busy}
                           onClick={() =>
-                            void record(settling, {
+                            record(settling, {
                               payoutStatus: "paid",
                               payoutReference: reference.trim() || null,
                             })

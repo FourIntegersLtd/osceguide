@@ -249,7 +249,7 @@ function SsoForm({
       </div>
 
       <div className="flex justify-end">
-        <Button disabled={busy} onClick={() => void commit()}>
+        <Button disabled={busy} onClick={() => commit()}>
           {busy ? "Saving…" : "Save"}
         </Button>
       </div>

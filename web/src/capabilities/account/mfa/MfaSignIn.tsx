@@ -229,7 +229,7 @@ function MfaEnrolStep({
         finish signing in. It takes about a minute.
       </p>
       {failure ? <Alert tone="danger">{failure.message}</Alert> : null}
-      <Button type="button" fullWidth size="lg" isLoading={busy} onClick={() => void start()}>
+      <Button type="button" fullWidth size="lg" isLoading={busy} onClick={() => start()}>
         Set up an authenticator
       </Button>
       <p className="text-center text-osce-meta">

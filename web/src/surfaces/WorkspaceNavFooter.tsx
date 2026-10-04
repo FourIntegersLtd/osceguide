@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { LuLogOut } from "react-icons/lu";
 import { PiSparkle } from "react-icons/pi";
-import { cn } from "@/foundation/ui";
+import { cn, Spinner } from "@/foundation/ui";
 import { b2cIconButton, b2cNavUpgradeButton } from "@/foundation/ui/productTokens";
 import { PERSONAL_WORKSPACE, workspaceBasePath } from "@/foundation/routing";
 import { isPlatformAdmin, useCurrentExam, useSession } from "@/foundation/session";
@@ -28,6 +29,7 @@ export function WorkspaceNavFooter({
   collapsed?: boolean;
 }) {
   const { session, signOut } = useSession();
+  const [signingOut, setSigningOut] = useState(false);
   const { hrefFor } = useSurface();
   const { codes, code, setCode } = useCurrentExam();
   const userId = session?.user.id ?? null;
@@ -39,7 +41,9 @@ export function WorkspaceNavFooter({
 
   const name = session?.user.name || session?.user.email || "Account";
   const email = session?.user.name ? session.user.email : null;
-  const meta = consumer ? examMeta(code, session?.user.exam_date ?? null) : null;
+  // Only a countdown earns a line; the bare exam code is noise in the foot.
+  const examDate = session?.user.exam_date ?? null;
+  const meta = consumer && examDate ? examMeta(code, examDate) : null;
   // `codes` is the exam the account was opened for plus any grants, so it is
   // not evidence of payment; only a paid entitlement is.
   const showUpgrade =
@@ -60,12 +64,21 @@ export function WorkspaceNavFooter({
   const signOutButton = (
     <button
       type="button"
-      onClick={() => void signOut()}
+      onClick={() => {
+        setSigningOut(true);
+        void signOut().finally(() => setSigningOut(false));
+      }}
+      disabled={signingOut}
+      aria-busy={signingOut || undefined}
       aria-label="Sign out"
       title="Sign out"
       className={cn(b2cIconButton, "sm:h-[30px] sm:w-[30px]")}
     >
-      <LuLogOut className="h-4 w-4" aria-hidden />
+      {signingOut ? (
+        <Spinner label="Signing out" />
+      ) : (
+        <LuLogOut className="h-4 w-4" aria-hidden />
+      )}
     </button>
   );
 

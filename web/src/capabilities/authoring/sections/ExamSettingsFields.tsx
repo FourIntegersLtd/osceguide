@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox, getInputClassName, Textarea } from "@/foundation/ui";
+import { Checkbox, getInputClassName, Textarea, FoldSection } from "@/foundation/ui";
 import type { ExamSettings } from "@/capabilities/authoring/api";
 
 type SessionMode = NonNullable<ExamSettings["session_modes"]>[number];
@@ -63,11 +63,8 @@ export function ExamSettingsFields({
     });
 
   return (
-    <details className="rounded-osce-md border border-border px-4 py-3">
-      <summary className="cursor-pointer text-osce-body font-semibold text-ink">
-        Exam settings
-      </summary>
-      <div className="mt-4 space-y-4">
+    <FoldSection title="Exam settings" defaultOpen={false}>
+      <div className="space-y-4">
         <Field label="Date label">
           <input
             value={value.date_label ?? ""}
@@ -126,7 +123,7 @@ export function ExamSettingsFields({
           </Field>
         ))}
       </div>
-    </details>
+    </FoldSection>
   );
 }
 

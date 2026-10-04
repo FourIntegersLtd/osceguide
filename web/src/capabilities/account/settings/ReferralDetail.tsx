@@ -1,12 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { AsyncBoundary, Back, LoadingSpinner } from "@/foundation/ui";
+import { AsyncBoundary, Back, LoadingSpinner, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatLongDateTime } from "@/foundation/format";
 import { useCurrentExam } from "@/foundation/session";
 import { readReferralHistory, type ReferralHistoryRow } from "@/capabilities/account/api";
-import { SettingsCard, StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
+import { StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 /** The page cap `/me/referrals/history` uses per request. */
 const HISTORY_PAGE_LIMIT = 100;
@@ -77,9 +77,9 @@ function ReferralMissing() {
   return (
     <div className="mx-auto w-full max-w-[1100px] space-y-4">
       <Back />
-      <SettingsCard title="Referral">
+      <Panel title="Referral">
         <p className={settingsSub}>Referral not found.</p>
-      </SettingsCard>
+      </Panel>
     </div>
   );
 }
@@ -94,15 +94,15 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
         <h1 className="font-title text-osce-heading font-semibold text-ink">Referral</h1>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SettingsCard title="Core information">
+        <Panel title="Core information">
           <dl className={FACTS}>
             <Fact label="Date created">{formatLongDateTime(referral.redeemed_at)}</Fact>
             <Fact label="Code used">{referral.code}</Fact>
             <Fact label="App type">{examCode}</Fact>
           </dl>
-        </SettingsCard>
+        </Panel>
 
-        <SettingsCard title="Financials &amp; payout">
+        <Panel title="Financials &amp; payout">
           <dl className={FACTS}>
             <Fact label="Amount earned">{`£${(referral.earned_pence / 100).toFixed(2)}`}</Fact>
             <Fact label="Payout status">
@@ -112,13 +112,13 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
             </Fact>
             <Fact label="Subscription">{(referral.plan_code ?? "").replace("_", " ")}</Fact>
           </dl>
-        </SettingsCard>
+        </Panel>
 
-        <SettingsCard title="Referee details">
+        <Panel title="Referee details">
           <dl className={FACTS}>
             <Fact label="Email">{referral.referee_email}</Fact>
           </dl>
-        </SettingsCard>
+        </Panel>
       </div>
     </div>
   );

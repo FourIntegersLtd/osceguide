@@ -27,7 +27,7 @@ function Unavailable({ retry }: { retry: () => Promise<void> }) {
     <div className="mx-auto max-w-md px-4 py-16">
       <Alert tone="danger" title="We could not check your session">
         <p>The server did not answer. It is asked again on its own, or you can try now.</p>
-        <Button variant="secondary" size="sm" className="mt-3" onClick={() => void retry()}>
+        <Button variant="secondary" size="sm" className="mt-3" onClick={() => retry()}>
           Try again
         </Button>
       </Alert>

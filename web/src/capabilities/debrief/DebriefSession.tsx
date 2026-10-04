@@ -72,7 +72,7 @@ export function DebriefSession({
           {session.phase === "live" && session.grant ? (
             <VoiceRoom grant={session.grant} onConnected={session.attachRoom} onError={session.reportError}
               onDisconnected={(unexpected) => { if (unexpected) void session.end(); }}>
-              <DebriefVoiceStage onEnd={() => void endDebrief()} />
+              <DebriefVoiceStage onEnd={endDebrief} />
             </VoiceRoom>
           ) : (
             <>

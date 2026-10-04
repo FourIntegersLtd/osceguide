@@ -7,6 +7,7 @@ import { HiOutlineDotsHorizontal, HiOutlineDotsVertical } from "react-icons/hi"
 import { Button } from "@/foundation/ui"
 import { hasAnsweredAnalyticsConsent } from "@/foundation/analytics/AnalyticsConsentGate"
 import { useSession } from "@/foundation/session"
+import { isStandaloneDisplay } from "@/foundation/pwa/standalone"
 import { needsDashboardOnboarding } from "@/domains/marketing/support/onboardingDismissedStorage"
 
 /**
@@ -72,7 +73,7 @@ function InstallPrompt() {
 
     setIsAndroid(/android/i.test(navigator.userAgent))
 
-    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
+    setIsStandalone(isStandaloneDisplay())
 
     // Check if previously dismissed
     const dismissedState = localStorage.getItem('installPromptDismissed')

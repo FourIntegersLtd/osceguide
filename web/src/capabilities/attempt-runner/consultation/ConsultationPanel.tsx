@@ -101,7 +101,7 @@ export function ConsultationPanel({
                 <p className="text-center text-osce-caption text-b2c-text-muted sm:text-osce-meta">{disabledReason ?? "Consultation completed"}</p>
               </>
             ) : (
-              <Button variant="primary" size="md" onClick={() => void start()} className="w-full gap-2">
+              <Button variant="primary" size="md" onClick={() => start()} className="w-full gap-2">
                 <HiOutlineMicrophone className="h-4 w-4" aria-hidden />
                 {session.phase === "failed" ? "Try again" : startLabel}
               </Button>
@@ -193,7 +193,7 @@ function ConsultationLiveStage({
               variant="secondary"
               size="sm"
               aria-pressed={!isMicrophoneEnabled}
-              onClick={() => void localParticipant.setMicrophoneEnabled(mic.next)}
+              onClick={() => localParticipant.setMicrophoneEnabled(mic.next)}
               className="gap-2"
             >
               {isMicrophoneEnabled ? (

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { LuMail, LuPlus } from "react-icons/lu";
-import { Alert, AsyncBoundary, Button, Card, EmptyState, Input, B2CPageHeader } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, EmptyState, Input, B2CPageHeader, Panel } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import {
@@ -41,11 +41,11 @@ export function PartnerReporting({ partner }: { partner: string }) {
       {canAddReporter ? (
         <AddReporter partner={partner} />
       ) : (
-        <Card title="Who can read this">
+        <Panel title="Who can read this">
           <p className="text-sm text-ink-muted">
             A reporter sees these numbers and nothing else. Ask OSCE Guide staff to add someone. Reporters are added by us, not by your team.
           </p>
-        </Card>
+        </Panel>
       )}
     </div>
   );
@@ -55,7 +55,7 @@ function RefIds({ data }: { data: TrackingPage }) {
   const items = data.items ?? [];
 
   return (
-    <Card title="Tracking references">
+    <Panel title="Tracking references">
       {items.length === 0 ? (
         <EmptyState
           title="No references yet"
@@ -75,7 +75,7 @@ function RefIds({ data }: { data: TrackingPage }) {
           ))}
         </ul>
       )}
-    </Card>
+    </Panel>
   );
 }
 
@@ -104,12 +104,11 @@ function AddReporter({ partner }: { partner: string }) {
   );
 
   return (
-    <Card title="Who can read this">
-      <p className="text-sm text-ink-muted">
-        A reporter sees these numbers and nothing else. They are not given access to the
-        platform&rsquo;s content or to any candidate&rsquo;s work.
-      </p>
-      <form onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
+    <Panel
+      title="Who can read this"
+      description="A reporter sees these numbers and nothing else. They are not given access to the platform’s content or to any candidate’s work."
+    >
+      <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
         <div className="min-w-56 flex-1">
           <Input
             label="Email"
@@ -119,7 +118,7 @@ function AddReporter({ partner }: { partner: string }) {
             onChange={(event) => setEmail(event.target.value)}
           />
         </div>
-        <Button type="submit" disabled={busy || email.trim() === ""}>
+        <Button type="submit" disabled={busy || email.trim() === ""} isLoading={busy}>
           <LuPlus className="h-4 w-4" aria-hidden /> Add reporter
         </Button>
       </form>
@@ -134,6 +133,6 @@ function AddReporter({ partner }: { partner: string }) {
           {added} can now read your reporting.
         </Alert>
       )}
-    </Card>
+    </Panel>
   );
 }

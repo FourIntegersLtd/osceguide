@@ -57,7 +57,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                 variant="secondary"
                 size="sm"
                 disabled={action.busy !== null}
-                onClick={() => void action.run("add", () => addRubricVersion(scope, data.id))}
+                onClick={() => action.run("add", () => addRubricVersion(scope, data.id))}
               >
                 {action.busy === "add" ? "Creating…" : "New draft version"}
               </AuthoringButton>

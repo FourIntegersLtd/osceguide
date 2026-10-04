@@ -6,8 +6,14 @@ export { getButtonClassName };
 export type { ButtonSize, ButtonStyleProps, ButtonVariant };
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>, ButtonStyleProps {
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "onClick">,
+    ButtonStyleProps {
   isLoading?: boolean;
+  /**
+   * Return the promise and the button shows its spinner until it settles, so
+   * every async action says it is working without its own busy flag.
+   */
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => unknown;
 }
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -22,15 +28,27 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       disabled,
       type = "button",
+      onClick,
       ...props
     },
     ref,
   ) => {
+    const [pending, setPending] = React.useState(false);
+    const loading = isLoading || pending;
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      const result = onClick?.(event);
+      if (result instanceof Promise) {
+        setPending(true);
+        void result.finally(() => setPending(false));
+      }
+    };
     return (
       <button
         ref={ref}
         type={type}
-        disabled={disabled || isLoading}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
+        onClick={onClick ? handleClick : undefined}
         className={getButtonClassName({
           variant,
           size,
@@ -40,7 +58,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         })}
         {...props}
       >
-        {isLoading && (
+        {loading && (
           <svg
             className="mr-2 h-4 w-4 animate-spin"
             xmlns="http://www.w3.org/2000/svg"

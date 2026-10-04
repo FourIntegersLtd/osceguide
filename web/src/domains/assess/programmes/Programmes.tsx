@@ -36,7 +36,7 @@ export function Programmes() {
       />
       <PreviewNotice needs="The programmes route returns no purpose, people count or progress." />
 
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {PURPOSES.map((purpose) => {
           const count = programmes.filter((programme) => programme.purpose === purpose.id).length;
           return (

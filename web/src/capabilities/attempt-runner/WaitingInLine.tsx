@@ -19,7 +19,7 @@ export function WaitingInLine({ position, onLeave }: { position: number | null; 
         {position ? `You are number ${position} in line. ` : ""}
         Keep this page open to hold your place. Your time starts when the patient joins.
       </p>
-      <Button variant="secondary" onClick={() => void onLeave()}>
+      <Button variant="secondary" onClick={() => onLeave()}>
         Leave the line
       </Button>
     </div>

@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, Input } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, Input, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { Settings } from "@/capabilities/account";
 import { readOrganization, type Organization } from "@/domains/assess/api";
-import { Panel } from "@/domains/assess/programmes/parts";
 
 /**
  * Settings, with the organisation's own tabs for the people who run it.

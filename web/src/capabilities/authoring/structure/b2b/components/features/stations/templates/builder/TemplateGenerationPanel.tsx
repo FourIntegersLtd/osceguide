@@ -1,6 +1,6 @@
 "use client";
 
-import { Select, Textarea } from "@/foundation/ui";
+import { Select, Textarea, FoldSection } from "@/foundation/ui";
 import { useEffect, useState } from "react";
 import {
   listStationGenerationProfiles,
@@ -113,11 +113,8 @@ export function TemplateGenerationPanel({
         </p>
       </div>
       {profileKey !== "custom" && (systemPrompt?.trim() || profileGuidesLoading) ? (
-        <details className="mt-3 max-w-2xl rounded-osce-lg border border-osce-border bg-osce-surface">
-          <summary className="cursor-pointer px-3 py-2 text-osce-caption font-medium text-ink-muted">
-            Built-in instructions for this exam (read-only)
-          </summary>
-          <div className="border-t border-osce-border px-3 py-3">
+        <div className="mt-3 max-w-2xl">
+          <FoldSection title="Built-in instructions for this exam (read-only)" defaultOpen={false}>
             {profileGuidesLoading ? (
               <p className={inspectorHint}>Loading…</p>
             ) : (
@@ -129,8 +126,8 @@ export function TemplateGenerationPanel({
                 aria-label="Built-in exam instructions for Generate draft"
               />
             )}
-          </div>
-        </details>
+          </FoldSection>
+        </div>
       ) : null}
       <div className="mt-3">
         <label htmlFor="template-generation-panel-extra-notes" className={inspectorLabel}>Extra notes for the AI (optional)</label>

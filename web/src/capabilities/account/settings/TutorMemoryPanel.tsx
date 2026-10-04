@@ -97,7 +97,7 @@ export default function TutorMemoryPanel() {
       <ConfirmModal
         isOpen={confirmForget}
         onCancel={() => setConfirmForget(false)}
-        onConfirm={() => void handleForgetAll()}
+        onConfirm={() => handleForgetAll()}
         title="Make Athena forget?"
         message="She loses every note and every event she has about you. Your attempts, your feedback and your results are untouched."
         confirmText="Forget it all"
@@ -150,7 +150,7 @@ function NoteRow({ note, onForgotten }: { note: TutorNote; onForgotten: () => vo
         </>
       }
       trailing={
-        <Button variant="ghost" size="sm" onClick={() => void handleForget()} isLoading={busy}>
+        <Button variant="ghost" size="sm" onClick={() => handleForget()} isLoading={busy}>
           Forget this note
         </Button>
       }

@@ -82,6 +82,15 @@ async function generateContent(
   return {};
 }
 
+/** The title a generated draft gives itself: a deck calls it `topic`, a summary `name`. */
+export function generatedTitle(generated: Record<string, unknown>): string {
+  for (const key of ["title", "topic", "name"]) {
+    const value = generated[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
 export function generateSummary(prompt: string, examCode?: string | null) {
   return generateContent("/api/v1/platform/generate/summary", prompt, examCode);
 }
@@ -113,5 +122,20 @@ export function regenerateSlideAv(itemId: string): Promise<MediaItem> {
 export function generatePodcastAudio(itemId: string): Promise<MediaItem> {
   return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/generate-audio`, {
     method: "POST",
+  });
+}
+
+/** Queues a check of the item's clinical claims against the guidelines. Changes no text. */
+export function checkMediaFacts(itemId: string): Promise<MediaItem> {
+  return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/check-facts`, {
+    method: "POST",
+  });
+}
+
+/** Queues writing (or, with `rewrite`, rewriting) what will be said, and checking it. Voices nothing. */
+export function writeMediaScript(itemId: string, rewrite: boolean): Promise<MediaItem> {
+  return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/write-script`, {
+    method: "POST",
+    body: { rewrite },
   });
 }

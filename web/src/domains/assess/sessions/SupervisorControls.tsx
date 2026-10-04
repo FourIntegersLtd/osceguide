@@ -85,7 +85,7 @@ export function SupervisorControls({
             variant="commit"
             isLoading={busy === "start"}
             disabled={working}
-            onClick={() => void run("start", () => runControls.start(orgSlug, circuitId))}
+            onClick={() => run("start", () => runControls.start(orgSlug, circuitId))}
           >
             <HiPlay className="h-4 w-4 shrink-0" aria-hidden /> Start circuit
           </Button>
@@ -96,7 +96,7 @@ export function SupervisorControls({
               variant="commit"
               isLoading={busy === "advance"}
               disabled={working}
-              onClick={() => void run("advance", () => runControls.advance(orgSlug, circuitId))}
+              onClick={() => run("advance", () => runControls.advance(orgSlug, circuitId))}
             >
               <HiChevronDoubleRight className="h-4 w-4 shrink-0" aria-hidden /> Next station
             </Button>

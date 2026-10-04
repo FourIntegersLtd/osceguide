@@ -71,7 +71,7 @@ export function Ops() {
         {(m) => <NowHero machinery={m} />}
       </AsyncBoundary>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
         <Panel title="Platform">
           <AsyncBoundary state={health}>
             {(h) => (
@@ -240,7 +240,7 @@ function TutorIndex() {
           variant="secondary"
           size="sm"
           isLoading={reindexing}
-          onClick={() => void run()}
+          onClick={() => run()}
         >
           {reindexing ? "Rebuilding…" : "Rebuild now"}
         </Button>

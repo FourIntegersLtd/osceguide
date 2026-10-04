@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncBoundary, Button, Input } from "@/foundation/ui";
+import { AsyncBoundary, Button, Input, Panel } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
 import { useAsync } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import { examLabel } from "@/capabilities/account/settings/examLabel";
-import { SettingsCard, settingsMeta } from "@/capabilities/account/settings/SettingsKit";
+import { settingsMeta } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
 /**
@@ -40,7 +40,7 @@ function ExamCards({ me }: { me: Me }) {
 
   return (
     <>
-      <SettingsCard title="Exam">
+      <Panel title="Exam">
         <Input
           label="Exam type"
           name="examType"
@@ -48,7 +48,7 @@ function ExamCards({ me }: { me: Me }) {
           disabled
           readOnly
         />
-      </SettingsCard>
+      </Panel>
 
       <ExamDateCard
         initialDate={me.exam_date ?? ""}
@@ -115,11 +115,11 @@ function ExamDateCard({
   const timeLabel = dateLabel.replace(/date$/i, "time");
 
   return (
-    <SettingsCard title={dateLabel}>
+    <Panel title={dateLabel}>
       <div className="space-y-4">
         {successMessage ? <Alert message={successMessage} type="success" /> : null}
         {error ? <Alert message={error} type="error" /> : null}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Input
             label="Date"
             name="examDate"
@@ -139,14 +139,14 @@ function ExamDateCard({
           Adding your {dateLabel.toLowerCase()} helps us pace your practice and track your countdown.
         </p>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="ghost" onClick={() => void clear()} isLoading={clearing} disabled={saving}>
+          <Button variant="ghost" onClick={() => clear()} isLoading={clearing} disabled={saving}>
             I don&apos;t have a date yet
           </Button>
-          <Button onClick={() => void save()} isLoading={saving} disabled={clearing}>
+          <Button onClick={() => save()} isLoading={saving} disabled={clearing}>
             Save date
           </Button>
         </div>
       </div>
-    </SettingsCard>
+    </Panel>
   );
 }

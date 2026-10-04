@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { HiOutlineShieldCheck } from "react-icons/hi2";
 import { hasCode } from "@/foundation/platform-client";
-import {
-  AsyncBoundary,
-  Button,
-  Input,
-  Modal,
-} from "@/foundation/ui";
+import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import {
   confirmMyMfa,
@@ -22,7 +17,7 @@ import {
 import { AuthenticatorSetup } from "@/capabilities/account/mfa/AuthenticatorSetup";
 import { RecoveryCodes } from "@/capabilities/account/mfa/RecoveryCodes";
 import { isCompleteTotp, normaliseTotp } from "@/capabilities/account/mfa/codes";
-import { SettingsCard, settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
+import { settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 /** Which dialog is open. Each one needs a current code, so each is its own step. */
 type Dialog =
@@ -78,7 +73,7 @@ export function TwoFactorPanel() {
 
   return (
     <>
-      <SettingsCard title="Two-factor sign-in">
+      <Panel title="Two-factor sign-in">
         <AsyncBoundary state={status}>
           {(mfa: MfaStatus) => (
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -110,7 +105,7 @@ export function TwoFactorPanel() {
                     ) : null}
                   </>
                 ) : (
-                  <Button variant="secondary" disabled={starting} onClick={() => void start()} className="gap-2">
+                  <Button variant="secondary" disabled={starting} onClick={() => start()} className="gap-2">
                     <HiOutlineShieldCheck className="h-4 w-4" aria-hidden />
                     {starting ? "Starting…" : "Set up"}
                   </Button>
@@ -119,7 +114,7 @@ export function TwoFactorPanel() {
             </div>
           )}
         </AsyncBoundary>
-      </SettingsCard>
+      </Panel>
 
       {dialog ? (
         <Modal width="440px" title={DIALOG_TITLES[dialog.kind]} onClose={close}>

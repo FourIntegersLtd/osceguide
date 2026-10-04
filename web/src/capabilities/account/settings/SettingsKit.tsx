@@ -1,32 +1,8 @@
 import type { ComponentType, ReactNode } from "react";
 import { cn } from "@/foundation/ui";
 
-/**
- * The pieces every settings tab is drawn from (canvas `train-settings*`): a
- * card whose title sits on the card with no rule under it, a list of rows with
- * a grey icon tile, a switch and a status pill.
- */
-export function SettingsCard({
-  title,
-  description,
-  children,
-  className,
-}: {
-  title: ReactNode;
-  description?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={cn("min-w-0 overflow-hidden rounded-osce-lg border border-border bg-surface", className)}>
-      <header className="px-5 pb-1 pt-[18px]">
-        <h2 className="text-osce-subheading font-semibold text-ink">{title}</h2>
-        {description ? <p className="text-osce-meta text-ink-muted">{description}</p> : null}
-      </header>
-      <div className="px-5 pb-5 pt-3">{children}</div>
-    </section>
-  );
-}
+// The pieces every settings tab is drawn from beside the shared `Panel`: a list
+// of rows with a grey icon tile, a switch and a status pill.
 
 /** A label over a card of rows, for a list that stands outside a card. */
 export function SettingsSection({ eyebrow, children }: { eyebrow: ReactNode; children: ReactNode }) {

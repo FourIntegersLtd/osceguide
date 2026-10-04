@@ -88,7 +88,7 @@ export function InlineAction({
           variant={tone === "danger" ? "danger" : "primary"}
           size="sm"
           disabled={busy || (requireReason && !reason.trim())}
-          onClick={() => void confirm()}
+          onClick={() => confirm()}
         >
           {busy ? "Working…" : (confirmLabel ?? label)}
         </Button>

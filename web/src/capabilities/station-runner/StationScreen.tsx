@@ -20,6 +20,7 @@ import {
   Timer,
   cn,
 } from "@/foundation/ui";
+import { b2cRoomOverlay } from "@/foundation/ui/productTokens";
 import { errorMessage } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
@@ -341,7 +342,7 @@ export function StationScreen(props: StationScreenProps) {
       className={cn(
         "flex flex-col",
         // The live room fills the content column, toolbar included.
-        inRoom && "absolute inset-0 z-30 overflow-y-auto bg-osce-canvas p-4",
+        inRoom && cn(b2cRoomOverlay, "overflow-y-auto bg-osce-canvas p-3 sm:p-4"),
       )}
     >
       <StationHeader
@@ -490,7 +491,7 @@ export function StationScreen(props: StationScreenProps) {
         title="End session"
         isOpen={completeSessionConfirm}
         onCancel={() => setCompleteSessionConfirm(false)}
-        onConfirm={() => void confirmCompleteSession()}
+        onConfirm={() => confirmCompleteSession()}
         message="This ends the session and starts marking your consultation. If you haven't started the simulation yet, cancel and press Start simulation first."
       />
 
