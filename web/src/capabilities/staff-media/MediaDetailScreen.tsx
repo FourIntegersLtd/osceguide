@@ -172,11 +172,16 @@ export function MediaDetailScreen({
     });
 
   // A check or a voicing reads what is stored, so the panel holds its buttons
-  // back while the form is ahead of the server.
+  // back while the form is ahead of the server. The details count too, or a
+  // deck's exam or title edit would have no Save to reach the server.
   const unsaved = useMemo(
     () =>
-      JSON.stringify(content) !== JSON.stringify(contentRecord(load.data)),
-    [content, load.data],
+      !!load.data &&
+      (title !== load.data.title ||
+        summary !== (load.data.summary ?? "") ||
+        examCode.trim().toLowerCase() !== (load.data.exam_code ?? "").toLowerCase() ||
+        JSON.stringify(content) !== JSON.stringify(contentRecord(load.data))),
+    [title, summary, examCode, content, load.data],
   );
 
   const start = (key: string, started: string, work: () => Promise<unknown>) =>
