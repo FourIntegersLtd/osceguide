@@ -127,9 +127,9 @@ export function StationFactCheck({
                 hint="What the station tests and for which exam. With nothing written the agent drafts it; then it checks the facts and corrects what the sources contradict, listing what it changed."
                 locked={unsaved || busy || action.busy !== null}
                 working={producing}
-                onProduce={(brief, sourceText) =>
+                onProduce={(brief) =>
                   void action.run("produce", async () => {
-                    await produceStation(scope, stationId, version, { brief, source_text: sourceText });
+                    await produceStation(scope, stationId, version, { brief });
                     setProducing(true);
                     load.reload();
                   })

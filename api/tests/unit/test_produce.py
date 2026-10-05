@@ -23,7 +23,7 @@ DECK: dict[str, Any] = {
         {"title": "Safety net", "bullets": [DISPUTED]},
     ],
 }
-BRIEF = {"brief": {"brief": "A deck on HRT.", "source_text": "Mrs X, 52, hot flushes. HRT."}}
+BRIEF = {"brief": {"brief": "A deck on HRT. Mrs X, 52, hot flushes. HRT."}}
 LIBRARY = sorted(library_credits())[0]
 # The model gives slide 1 a bundled picture and searches for the others, picking the first found.
 PICTURED = {
@@ -84,7 +84,7 @@ async def test_a_deck_is_drafted_pictured_checked_ruled_and_scripted_in_that_ord
     )
     assert made.content["review"]["run"]["open"] == [
         "Added (for sign-off): She drives a school bus",
-        f"Corrected (slide 1, claim-1): {WRONG!r} -> {RIGHT!r}",
+        "Review the claims in the fact check: 1 corrected by the agent.",
     ]
     assert made.content["review"]["run"]["summary"] == (
         "Drafted the slide deck 'Menopause' in 3 slides, 3 with a picture. Checked 1 claims "
@@ -96,11 +96,11 @@ async def test_the_draft_is_asked_for_the_deck_shape_and_takes_only_the_diagnosi
     _, _, record, _, _ = await produced(PICTURED)
 
     [prompt] = record.drafts
-    assert prompt.startswith("A deck on HRT.\n\nWrite 15 to 17 slides in this order")
+    assert prompt.startswith("Write 15 to 17 slides in this order")
     assert "never a welcome" in prompt and "The Twist" in prompt
     assert "telephone call, never video" in prompt
     assert "Take only the diagnosis and its relevant management" in prompt
-    assert prompt.endswith("Source case:\nMrs X, 52, hot flushes. HRT.")
+    assert prompt.endswith("What to cover:\nA deck on HRT. Mrs X, 52, hot flushes. HRT.")
 
 
 async def test_a_dismissed_flag_leaves_the_text_and_is_listed_with_its_reason() -> None:
@@ -110,8 +110,9 @@ async def test_a_dismissed_flag_leaves_the_text_and_is_listed_with_its_reason() 
     assert made.content["slides"][2]["bullets"] == [DISPUTED]
     [claim] = made.content["review"]["facts"]["claims"]
     assert (claim["decision"], claim["by"]) == ("dismissed", "agent")
+    assert claim["reason"] == "Three months is NICE's review."
     assert (
-        f"Dismissed (slide 3, claim-1): {DISPUTED} Because: Three months is NICE's review."
+        "Review the claims in the fact check: 1 dismissed by the agent."
         in made.content["review"]["run"]["open"]
     )
 
@@ -128,8 +129,7 @@ async def test_a_claim_the_model_does_not_rule_on_or_whose_words_are_gone_is_lef
     assert ("rule_claim", "claim-2: no ruling, left for staff.") in steps
     assert made.content["slides"][0]["bullets"][0] == WRONG
     assert made.content["review"]["run"]["open"][1:] == [
-        f"Contradicted, not fixed (slide 1, claim-1): {WRONG}",
-        f"The sources disagree (slide 3, claim-2): {DISPUTED}",
+        "Review the claims in the fact check: 1 contradicted, 1 where the sources disagree.",
     ]
 
 

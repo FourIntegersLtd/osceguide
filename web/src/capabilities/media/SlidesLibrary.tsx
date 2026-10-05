@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { HiOutlinePhoto } from "react-icons/hi2";
 import { B2CEmptyState } from "@/foundation/ui";
@@ -27,6 +27,8 @@ type SpecialtyFilterProps = {
   onSpecialtyChange: (specialty: string) => void;
   specialtyOptions: string[];
   hasUncategorized: boolean;
+  total: number | null;
+  footer?: ReactNode;
 };
 
 export function SlidesLibrary({

@@ -222,7 +222,10 @@ describe("the agent's run", () => {
       open: ["Corrected (slide 1, claim-1)"],
       stop: false,
     });
-    assert.deepEqual(review.brief, { brief: "Teach HRT.", source_text: "" });
+    assert.deepEqual(review.brief, { brief: "Teach HRT." });
+    // A run from before the case had its own box shows the case under the brief.
+    const older = reviewOf({ review: { brief: { brief: "Teach HRT.", source_text: "Mrs X, 52." } } });
+    assert.deepEqual(older.brief, { brief: "Teach HRT.\n\nMrs X, 52." });
     const undone = reopenSuggestion(content, review.facts!.claims[0]!);
     assert.deepEqual((undone.slides as { bullets: string[] }[])[0]!.bullets, [
       "Estradiol patch 500 micrograms",

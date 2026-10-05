@@ -19,6 +19,8 @@ from app.core.settings import Settings
 from app.features.media_production.errors import AvUnavailable
 
 NARRATION_MODEL = "o3"
+# The script's second reader: an OpenAI model other than the writer's, so it does not mark its own words.
+READER_MODEL = "gpt-5"
 NARRATION_FALLBACK_MODEL = "claude-sonnet-4-5"
 _ATTEMPTS = 3
 _MAX_SECTIONS = 4
@@ -138,12 +140,12 @@ def slide_items(slide: dict[str, Any]) -> list[str]:
 _REPLY_SECONDS = 240
 
 
-def _from_o3(api_key: str, system: str, prompt: str) -> str:
-    """One reply from o3."""
+def _from_openai(api_key: str, system: str, prompt: str, model: str = NARRATION_MODEL) -> str:
+    """One reply from an OpenAI model, o3 unless told otherwise."""
     from openai import OpenAI  # optional dependency
 
     response = OpenAI(api_key=api_key, timeout=_REPLY_SECONDS, max_retries=1).chat.completions.create(
-        model=NARRATION_MODEL,
+        model=model,
         messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
     )
     return response.choices[0].message.content or ""
@@ -163,14 +165,23 @@ def _from_claude(api_key: str, system: str, prompt: str) -> str:
 
 
 def complete(
-    settings: Settings, prompt: str, *, system: str = _SYSTEM_PROMPT, claude_first: bool = False
+    settings: Settings,
+    prompt: str,
+    *,
+    system: str = _SYSTEM_PROMPT,
+    openai_model: str = NARRATION_MODEL,
+    claude_first: bool = False,
 ) -> str:
-    """One model reply, from o3 and then Claude if o3 is unavailable.
+    """One model reply, from `openai_model` (o3 unless told otherwise) and then Claude if it is unavailable.
 
     `claude_first` turns the order round, for a second reader that should not be the model
     that wrote the words it is reading.
     """
-    askers = [(settings.openai_api_key, _from_o3), (settings.anthropic_api_key, _from_claude)]
+
+    def from_openai(api_key: str, system: str, prompt: str) -> str:
+        return _from_openai(api_key, system, prompt, openai_model)
+
+    askers = [(settings.openai_api_key, from_openai), (settings.anthropic_api_key, _from_claude)]
     if claude_first:
         askers.reverse()
     usable = [(key, ask) for key, ask in askers if key.strip()]

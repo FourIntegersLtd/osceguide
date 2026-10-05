@@ -431,6 +431,12 @@ export function contentUpdatedAt(item: MediaItem): string | null {
   return stringField(item, "updated_at");
 }
 
+/** The voiced deck's running time in seconds, once it has been rendered. */
+export function deckDurationSeconds(item: MediaItem): number | null {
+  const raw = field(item, "total_duration");
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : null;
+}
+
 /** Slide list rows on the retiring client showed `slides_count` from Firestore. */
 export function deckSlidesCount(item: MediaItem): number | null {
   const raw = field(item, "slides_count");

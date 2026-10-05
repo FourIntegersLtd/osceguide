@@ -32,7 +32,7 @@ No tables of its own. Work is keyed by a `media` aggregate id.
 | POST | `/api/v1/media/{id}/generate-audio` | `podcast` → `content.audio_url` |
 | POST | `/api/v1/media/{id}/check-facts` | `slide_deck`, `summary`, `podcast` → `content.review.facts` |
 | POST | `/api/v1/media/{id}/write-script` | same kinds, body `{rewrite}` → narration or script, and `content.review.script` |
-| POST | `/api/v1/media/{id}/produce`, `/stop-produce` | `slide_deck`, `summary`, `podcast`, body `{brief, source_text?}` → the agent run below |
+| POST | `/api/v1/media/{id}/produce`, `/stop-produce` | `slide_deck`, `summary`, `podcast`, body `{brief}` (a topic, notes or a pasted case) → the agent run below |
 | POST | `/api/v1/platform/stations/{id}/versions/{n}/produce`, `/stop-produce` | a platform station's draft version → its `review` |
 
 ## The order of work

@@ -35,6 +35,5 @@ class ScriptWriteRequest(BaseModel):
 class ProduceRequest(BaseModel):
     """What the agent produces an item from."""
 
-    brief: str = Field(min_length=8, max_length=4000)
-    # A case to base the teaching on, pasted whole. Kept in the item's review, never sent to learners.
-    source_text: str | None = Field(default=None, max_length=60000)
+    # What to teach: a topic, notes or a case pasted whole. Kept in the review, never sent to learners.
+    brief: str = Field(min_length=8, max_length=60000)

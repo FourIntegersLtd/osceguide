@@ -477,15 +477,12 @@ async def _producing_station(client: AsyncClient, admin: str) -> tuple[str, str]
     version_path = f"/api/v1/platform/stations/{station_id}/versions/1"
     started = await client.post(
         f"{version_path}/produce",
-        json={"brief": "Breathless smoker, COPD diagnosis.", "source_text": "Mr B, 64, coughs."},
+        json={"brief": "Breathless smoker, COPD diagnosis. Mr B, 64, coughs."},
         headers=bearer(admin),
     )
     assert started.status_code == 202, started.text
     assert (started.json()["producing"], started.json()["run"]["steps"]) == (True, [])
-    assert started.json()["brief"] == {
-        "brief": "Breathless smoker, COPD diagnosis.",
-        "source_text": "Mr B, 64, coughs.",
-    }
+    assert started.json()["brief"] == {"brief": "Breathless smoker, COPD diagnosis. Mr B, 64, coughs."}
     return station_id, version_path
 
 
@@ -530,10 +527,7 @@ async def test_the_agent_drafts_a_station_fixes_what_the_sources_contradict_and_
         "finish",
     ]
     assert "1 contradicted" in review["run"]["steps"][1]["summary"]
-    assert review["run"]["open"] == [
-        "Corrected (Expected answers, claim-1): "
-        "'offers nicotine gum only' -> 'refers to a stop smoking service'",
-    ]
+    assert review["run"]["open"] == ["Review the claims in the fact check: 1 corrected by the agent."]
     [claim] = review["facts"]["claims"]
     assert (claim["field"], claim["decision"], claim["by"]) == ("expected_answers", "accepted", "agent")
     versions = await client.get(f"/api/v1/stations/{station_id}/versions", headers=bearer(admin))

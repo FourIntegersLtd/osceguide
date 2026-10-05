@@ -25,7 +25,7 @@ from app.core.schemas import StationReview
 from app.core.settings import Settings, get_settings
 from app.features.catalog import service as catalog
 from app.features.generation import service as generation
-from app.features.media.service import production_item, replace_content
+from app.features.media.service import production_item, replace_content, replace_title
 from app.features.media_production import agent_loop, domain, script_check, service_facts, slide_pictures
 from app.features.media_production.errors import (
     AvAlreadyRunning,
@@ -85,6 +85,8 @@ class Target:
     done: Callable[[str, dict[str, Any]], str | None]
     # The status a failed run leaves; why it failed is kept in the review either way.
     failed: str | None
+    # Gives an untitled subject the title its draft chose; None where the title is not the run's to set.
+    rename: Callable[[AsyncSession, uuid.UUID, str], Awaitable[None]] | None
     # The job that runs it, and the name its id is handed to the job under.
     task: str
     key: str
@@ -132,6 +134,7 @@ def _media_done(kind: str, content: dict[str, Any]) -> str | None:
 MEDIA = Target(
     read=_read_media,
     write=_write_media,
+    rename=replace_title,
     done=_media_done,
     failed=domain.FAILED,
     task="produce_media",
@@ -141,6 +144,7 @@ MEDIA = Target(
 STATION = Target(
     read=_read_station,
     write=_write_station,
+    rename=None,
     done=lambda kind, content: None,
     failed=None,
     task="produce_station",
@@ -165,7 +169,6 @@ async def enqueue_produce(
     *,
     requested_by: uuid.UUID,
     brief: str,
-    source_text: str | None,
     now: datetime | None = None,
 ) -> MediaRead:
     """Starts the agent on a draft, refusing a published item, a kind that is never spoken, or an
@@ -178,9 +181,7 @@ async def enqueue_produce(
         raise NotEditableError()
     if is_running(item.content) and not _abandoned(item.content, current):
         raise AvAlreadyRunning()
-    await _start(
-        session, MEDIA, item_id, item.content, requested_by, brief_record(brief, source_text), current
-    )
+    await _start(session, MEDIA, item_id, item.content, requested_by, brief_record(brief), current)
     return await read_item(session, item_id)
 
 
@@ -191,7 +192,6 @@ async def enqueue_station_produce(
     *,
     requested_by: uuid.UUID,
     brief: str,
-    source_text: str | None,
     now: datetime | None = None,
 ) -> StationReview:
     """Starts the agent on a platform station's draft version, as on a media item. A station with no
@@ -207,7 +207,7 @@ async def enqueue_station_produce(
         raise FactCheckRunning()
     if status == station_facts.PRODUCING and not _abandoned(station.content, current):
         raise StationBeingProduced()
-    brief_kept = brief_record(brief, source_text)
+    brief_kept = brief_record(brief)
     await _start(session, STATION, station.version_id, station.content, requested_by, brief_kept, current)
     return await station_facts.read_review(session, station_id, version)
 
@@ -375,6 +375,7 @@ async def _save(
     *,
     requested_by: uuid.UUID,
     status: str | None,
+    title: str | None = None,
 ) -> bool:
     """Stores the run's working copy and tells whoever asked. Answers whether the run should go on:
     not once staff have asked it to stop, and not once another run owns the item, when nothing is
@@ -391,6 +392,8 @@ async def _save(
         saved.pop("status", None)
         if status is not None:
             saved["status"] = status
+        if title and target.rename:
+            await target.rename(session, subject_id, title)
         await target.write(session, subject_id, saved, requested_by)
     return not stopping
 
@@ -429,7 +432,14 @@ async def run_produce_job(
     async def save(content: dict[str, Any], status: str | None) -> bool:
         """Keeps the working copy with `status`, answering whether to go on."""
         return await _save(
-            sessions, target, subject_id, run_id, content, requested_by=requested_by, status=status
+            sessions,
+            target,
+            subject_id,
+            run_id,
+            content,
+            requested_by=requested_by,
+            status=status,
+            title=production.named,
         )
 
     async def on_step(tool: str, text: str, tokens: int) -> bool:

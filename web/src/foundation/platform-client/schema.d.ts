@@ -12633,8 +12633,6 @@ export interface components {
         ProduceRequest: {
             /** Brief */
             brief: string;
-            /** Source Text */
-            source_text?: string | null;
         };
         /** ProgrammeRead */
         ProgrammeRead: {

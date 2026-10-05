@@ -27,7 +27,10 @@ import {
 } from "@/capabilities/staff-media/api";
 import { MediaListTable } from "@/capabilities/staff-media/MediaListTable";
 import { MediaNewModal } from "@/capabilities/staff-media/MediaNewScreen";
-import { staffMediaDetailPath } from "@/capabilities/staff-media/paths";
+import {
+  staffMediaDetailPath,
+  staffMediaListPath,
+} from "@/capabilities/staff-media/paths";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 
 const TABS: B2CSegmentedTabItem<MediaKind>[] = [
@@ -40,7 +43,11 @@ const TABS: B2CSegmentedTabItem<MediaKind>[] = [
 export function MediaAuthoringHome() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [kind, setKind] = useState<MediaKind>("summary");
+  // The tab lives in the URL, so a reload, a shared link or Back keeps it.
+  const rawKind = searchParams.get("kind");
+  const kind: MediaKind = rawKind && isMediaKind(rawKind) ? rawKind : "summary";
+  const setKind = (next: MediaKind) =>
+    router.push(staffMediaListPath(next), { scroll: false });
   const [createOpen, setCreateOpen] = useState(false);
   const [examFilter, setExamFilter] = useState(AUTHORING_ALL_EXAMS);
   const [search, setSearch] = useState("");
@@ -73,16 +80,10 @@ export function MediaAuthoringHome() {
     if (searchParams.get("new") === "1") setCreateOpen(true);
   }, [searchParams]);
 
-  const createKind = useMemo(() => {
-    const raw = searchParams.get("kind");
-    if (raw && isMediaKind(raw)) return raw;
-    return kind;
-  }, [searchParams, kind]);
-
   const closeCreate = () => {
     setCreateOpen(false);
     if (searchParams.get("new") === "1") {
-      router.replace("/staff/media");
+      router.replace(staffMediaListPath(kind));
     }
   };
   const action = useAction(list.reload);
@@ -128,7 +129,7 @@ export function MediaAuthoringHome() {
 
       <MediaNewModal
         open={createOpen}
-        initialKind={createKind}
+        initialKind={kind}
         onClose={closeCreate}
         onCreated={() => {
           list.reload();

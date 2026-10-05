@@ -7,8 +7,8 @@ export const ERROR_STEPS: Record<string, string> = {
   produce: "agent run",
 };
 
-/** What the agent was asked to produce the material from. */
-export type ProduceBrief = { brief: string; source_text: string };
+/** What the agent was asked to produce the material from: a topic, notes or a pasted case. */
+export type ProduceBrief = { brief: string };
 
 /** The agent's last run over the material, as it saves it after every step. */
 export type ProduceRun = {
@@ -28,8 +28,13 @@ function text(value: unknown): string {
 
 export function briefOf(value: unknown): ProduceBrief | null {
   const brief = record(value);
+  // A run started before the brief and the source case were one box kept the case apart.
   return brief
-    ? { brief: text(brief.brief), source_text: text(brief.source_text) }
+    ? {
+        brief: [text(brief.brief), text(brief.source_text)]
+          .filter((part) => part.trim())
+          .join("\n\n"),
+      }
     : null;
 }
 

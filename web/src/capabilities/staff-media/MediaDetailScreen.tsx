@@ -10,7 +10,7 @@ import {
   useMeEvents,
   useToast,
 } from "@/foundation/hooks";
-import { MEDIA_KIND_LABELS, isMediaKind } from "@/capabilities/media/api";
+import { MEDIA_KIND_LABELS, isMediaKind, type MediaKind } from "@/capabilities/media/api";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import {
   avStatus,
@@ -72,7 +72,8 @@ export function MediaDetailScreen({
   onBack,
 }: {
   itemId: string;
-  onBack: () => void;
+  /** Back to the list, on the item's own tab once it is known. */
+  onBack: (kind?: MediaKind) => void;
 }) {
   const load = useAsync((signal) => readMediaById(itemId, signal), [itemId]);
   const action = useAction(load.reload);
@@ -121,6 +122,7 @@ export function MediaDetailScreen({
 
   const kind = load.data?.kind ?? "summary";
   const kindLabel = isMediaKind(kind) ? MEDIA_KIND_LABELS[kind].one : "Item";
+  const backToList = () => onBack(isMediaKind(kind) ? kind : undefined);
 
   const previewHref = useMemo(
     () => (load.data ? learnerMediaPreviewPath(load.data) : null),
@@ -218,7 +220,7 @@ export function MediaDetailScreen({
   if (load.error) {
     return (
       <div className="flex flex-col gap-4">
-        <Button variant="ghost" size="sm" className="gap-2" onClick={onBack}>
+        <Button variant="ghost" size="sm" className="gap-2" onClick={() => onBack()}>
           <HiOutlineArrowLeft className="h-4 w-4" aria-hidden />
           Back
         </Button>
@@ -249,7 +251,7 @@ export function MediaDetailScreen({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" className="gap-2" onClick={onBack}>
+        <Button variant="ghost" size="sm" className="gap-2" onClick={backToList}>
           <HiOutlineArrowLeft className="h-4 w-4" aria-hidden />
           Back to list
         </Button>
@@ -333,7 +335,7 @@ export function MediaDetailScreen({
           void action.run("delete", async () => {
             await deleteMedia(itemId);
             toast.success("Deleted");
-            onBack();
+            backToList();
           })
         }
       />
@@ -471,9 +473,9 @@ export function MediaDetailScreen({
                 hint="What to teach and for which exam. The agent drafts, checks the facts, finds pictures and writes the script, then stops before voicing."
                 locked={locked}
                 working={working.produce}
-                onProduce={(brief, sourceText) =>
+                onProduce={(brief) =>
                   start("produce", "Agent started", () =>
-                    produceMedia(itemId, { brief, source_text: sourceText }),
+                    produceMedia(itemId, { brief }),
                   )
                 }
               />

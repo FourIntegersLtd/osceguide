@@ -296,6 +296,11 @@ async def production_item(session: AsyncSession, item_id: uuid.UUID, *, lock: bo
     )
 
 
+async def replace_title(session: AsyncSession, item_id: uuid.UUID, title: str) -> None:
+    """Names an item the production agent drafted without a title from staff."""
+    await repository.update_item(session, item_id, title=title)
+
+
 async def replace_content(session: AsyncSession, item_id: uuid.UUID, content: dict[str, Any]) -> None:
     """Overwrites an item's stored body, used by the AV production jobs to attach rendered media."""
     await repository.update_item(session, item_id, content=content, specialty=domain.specialty_of(content))

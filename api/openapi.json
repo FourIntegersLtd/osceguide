@@ -12916,22 +12916,10 @@
         "description": "What the agent produces an item from.",
         "properties": {
           "brief": {
-            "maxLength": 4000,
+            "maxLength": 60000,
             "minLength": 8,
             "title": "Brief",
             "type": "string"
-          },
-          "source_text": {
-            "anyOf": [
-              {
-                "maxLength": 60000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Text"
           }
         },
         "required": [

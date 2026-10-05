@@ -6,11 +6,14 @@ import { useAsync, type AsyncState } from "@/foundation/hooks/useAsync";
 export interface CursorPage<T> {
   items: T[];
   next_cursor?: string | null;
+  total_count?: number;
 }
 
 export interface CursorPages<T> {
   /** The first page, through `useAsync`, so a failure to load is a failure. */
   state: AsyncState<T[]>;
+  /** How many the server says match, when it says. */
+  total: number | null;
   /** Whether the server said there is more. */
   hasMore: boolean;
   loadingMore: boolean;
@@ -32,6 +35,7 @@ export function useCursorPages<T>(
   deps: readonly unknown[],
 ): CursorPages<T> {
   const [cursor, setCursor] = useState<string | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
   const [extra, setExtra] = useState<T[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState<Error | null>(null);
@@ -49,6 +53,7 @@ export function useCursorPages<T>(
       setLoadingMore(false);
       const page = await loadRef.current(null, signal);
       setCursor(page.next_cursor ?? null);
+      setTotal(page.total_count ?? null);
       return page.items;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,6 +84,7 @@ export function useCursorPages<T>(
   const items = first.data === null ? null : [...first.data, ...extra];
   return {
     state: { ...first, data: items },
+    total,
     hasMore: first.data !== null && cursor !== null,
     loadingMore,
     moreError,

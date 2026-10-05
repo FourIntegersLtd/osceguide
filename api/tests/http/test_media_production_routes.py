@@ -283,15 +283,15 @@ async def test_a_fact_check_stores_its_verdicts_and_puts_the_status_back(
     ]
 
 
-BRIEF = {"brief": "Teach HRT in the menopause.", "source_text": "Mrs A, 52, hot flushes."}
+BRIEF = {"brief": "Teach HRT in the menopause. Mrs A, 52, hot flushes."}
 PRODUCED = {"topic": "Menopause", "slides": [{"title": "HRT", "bullets": ["Offer HRT."]}]}
 
 
-async def _deck(client: AsyncClient, admin: str) -> str:
+async def _deck(client: AsyncClient, admin: str, title: str = "Menopause") -> str:
     """An empty slide deck draft, by id."""
     response = await client.post(
         "/api/v1/media",
-        json={"kind": "slide_deck", "title": "Menopause", "content": {}},
+        json={"kind": "slide_deck", "title": title, "content": {}},
         headers=bearer(admin),
     )
     assert response.status_code == 201
@@ -321,6 +321,23 @@ def _produce_job(db_session, email: str, answers: dict):  # type: ignore[no-unty
         )
 
     return job
+
+
+async def test_an_item_created_untitled_takes_its_drafts_title_and_a_named_one_keeps_its_own(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("produce-title@example.com", platform_admin=True)
+    answers = {"choose": [{"slides": [{"slide": 1, "library": "none"}]}]}
+    titles = []
+    for title in ("Untitled slide deck", "HRT in practice"):
+        item_id = await _deck(client, admin, title)
+        started = await client.post(f"/api/v1/media/{item_id}/produce", json=BRIEF, headers=bearer(admin))
+        await _produce_job(db_session, "produce-title@example.com", answers)(started.json())
+        titles.append(
+            (await client.get(f"/api/v1/media/by-id/{item_id}", headers=bearer(admin))).json()["title"]
+        )
+
+    assert titles == ["Menopause", "HRT in practice"]
 
 
 async def test_producing_drafts_the_item_logs_each_step_and_tells_the_requester(
@@ -428,7 +445,6 @@ async def test_a_run_whose_worker_died_is_taken_over_and_its_old_job_writes_noth
         uuid.UUID(item_id),
         requested_by=user.id,
         brief=BRIEF["brief"],
-        source_text=None,
         now=datetime.now(UTC) + timedelta(minutes=16),
     )
 

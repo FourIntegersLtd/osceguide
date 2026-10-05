@@ -13,7 +13,7 @@ import {
   productTokens as t,
   iconSearchInputClassName,
 } from "@/foundation/ui";
-import { useCursorPages, useAsync } from "@/foundation/hooks";
+import { useCursorPages, useAsync, type CursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { listMedia, listAllMedia, specialtiesOf, type MediaKind } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
@@ -215,6 +215,8 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
                     onSpecialtyChange={setSpecialty}
                     specialtyOptions={deckSpecialties}
                     hasUncategorized={deckHasUncategorized}
+                    total={pages.total}
+                    footer={<LoadMore pages={pages} className="flex justify-center p-3" />}
                   />
                 ) : kind === "podcast" ? (
                   <PodcastLibrary items={items} allItemsCount={items.length} />
@@ -222,26 +224,30 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
                   <ArticlesLibrary items={items} hrefFor={hrefFor} />
                 )}
 
-                {pages.moreError ? (
-                  <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
-                ) : null}
-                {pages.hasMore ? (
-                  <div className="mt-6 flex justify-center">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled={pages.loadingMore}
-                      onClick={pages.loadMore}
-                    >
-                      {pages.loadingMore ? "Loading…" : "Load more"}
-                    </Button>
-                  </div>
-                ) : null}
+                {/* Slides draw it inside their own list. */}
+                {kind === "slide_deck" ? null : <LoadMore pages={pages} className="mt-6 flex justify-center" />}
               </>
             )}
           </AsyncBoundary>
         </div>
       )}
     </div>
+  );
+}
+
+function LoadMore<T>({ pages, className }: { pages: CursorPages<T>; className: string }) {
+  return (
+    <>
+      {pages.moreError ? (
+        <Alert tone="danger">Could not load more: {pages.moreError.message}</Alert>
+      ) : null}
+      {pages.hasMore ? (
+        <div className={className}>
+          <Button variant="secondary" size="sm" disabled={pages.loadingMore} onClick={pages.loadMore}>
+            {pages.loadingMore ? "Loading…" : "Load more"}
+          </Button>
+        </div>
+      ) : null}
+    </>
   );
 }

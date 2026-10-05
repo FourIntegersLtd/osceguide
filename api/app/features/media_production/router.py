@@ -70,7 +70,7 @@ async def produce_media(
     item_id: uuid.UUID, body: schemas.ProduceRequest, admin: PlatformAdmin, session: Session
 ) -> schemas.MediaRead:
     return await service_produce.enqueue_produce(
-        session, item_id, requested_by=admin.user_id, brief=body.brief, source_text=body.source_text
+        session, item_id, requested_by=admin.user_id, brief=body.brief
     )
 
 
@@ -111,7 +111,6 @@ async def produce_station(
         version,
         requested_by=admin.user_id,
         brief=body.brief,
-        source_text=body.source_text,
     )
 
 

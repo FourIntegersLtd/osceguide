@@ -28,6 +28,7 @@ from app.features.media_production.errors import AvAlreadyRunning, ScriptNotChec
 from app.features.media_production.repository import defer_job, lock_for_media
 from app.features.media_production.s3 import delete_object, upload_fileobj
 from app.features.media_production.schemas import MediaRead
+from app.features.media_production.slide_narration import READER_MODEL
 from app.features.media_production.slide_narration import complete as model_reply
 
 log = get_logger(__name__)
@@ -202,8 +203,8 @@ def _voice_dir(media_id: str) -> Path:
 
 
 def second_reader(settings: Settings, system: str) -> script_check.Complete:
-    """The model that checks: Claude before o3, the reverse of the order the writer is asked in."""
-    return lambda prompt: model_reply(settings, prompt, system=system, claude_first=True)
+    """The model that checks the script: GPT-5, not the writer's o3, with Claude if it is unavailable."""
+    return lambda prompt: model_reply(settings, prompt, system=system, openai_model=READER_MODEL)
 
 
 def with_error(content: dict[str, Any], step: str, error: Exception) -> dict[str, Any]:

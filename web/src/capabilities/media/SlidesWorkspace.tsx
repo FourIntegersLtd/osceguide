@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { HiOutlineChevronLeft } from "react-icons/hi2";
 import {
   B2CPageHeader,
@@ -32,8 +32,12 @@ export function SlidesWorkspace({
   onSpecialtyChange,
   specialtyOptions,
   hasUncategorized,
+  total,
+  footer,
 }: {
   selected: MediaItem;
+  total: number | null;
+  footer?: ReactNode;
   decks: MediaItem[];
   deckHref: (slug: string) => string;
   hrefFor: (path: string) => string;
@@ -129,6 +133,8 @@ export function SlidesWorkspace({
           onSpecialtyChange={onSpecialtyChange}
           specialtyOptions={specialtyOptions}
           hasUncategorized={hasUncategorized}
+          total={total}
+          footer={footer}
         />
       </div>
     </div>

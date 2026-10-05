@@ -29,32 +29,24 @@ export function ProduceForm({
   hint: string;
   locked: boolean;
   working: boolean;
-  onProduce: (brief: string, sourceText: string | null) => void;
+  onProduce: (brief: string) => void;
 }) {
   const [text, setText] = useState(brief?.brief ?? "");
-  const [source, setSource] = useState(brief?.source_text ?? "");
   return (
     <div className="flex flex-col gap-3">
       <Textarea
-        label="Brief"
-        hint={hint}
-        rows={4}
+        label="What should it cover?"
+        hint={`${hint} A topic, your notes or a case pasted whole: from a case it keeps only the diagnosis and management.`}
+        rows={8}
         value={text}
         onChange={(e) => setText(e.target.value)}
-      />
-      <Textarea
-        label="Source case (optional)"
-        hint="Pasted whole. The agent changes the patient's details and lists what it adds."
-        rows={4}
-        value={source}
-        onChange={(e) => setSource(e.target.value)}
       />
       <Button
         variant="secondary"
         size="sm"
         disabled={locked || text.trim().length < 8}
         isLoading={working}
-        onClick={() => onProduce(text.trim(), source.trim() || null)}
+        onClick={() => onProduce(text.trim())}
       >
         {working ? "Producing…" : "Produce"}
       </Button>

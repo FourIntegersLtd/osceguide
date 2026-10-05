@@ -42,7 +42,6 @@ export function MediaNewForm({
   const [kind, setKind] = useState<MediaKind>(initialKind);
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
-  const [source, setSource] = useState("");
   const [examCode, setExamCode] = useState("");
   const action = useAction();
 
@@ -54,9 +53,10 @@ export function MediaNewForm({
   // A spoken kind is produced by the agent after the item exists; a blog is drafted inline first,
   // so a failed write leaves nothing behind.
   const produced = isSpokenKind(kind);
-  const ready = produced
-    ? Boolean(title.trim()) && (!brief.trim() || brief.trim().length >= 8)
-    : Boolean(title.trim() || brief.trim());
+  // Without a title the draft names the item, so there must be a brief to draft from.
+  const ready =
+    Boolean(title.trim() || brief.trim()) &&
+    (!produced || !brief.trim() || brief.trim().length >= 8);
 
   const create = () =>
     action.run("create", async () => {
@@ -81,10 +81,7 @@ export function MediaNewForm({
         content,
       });
       if (produced && brief.trim()) {
-        await produceMedia(item.id, {
-          brief: brief.trim(),
-          source_text: source.trim() || null,
-        });
+        await produceMedia(item.id, { brief: brief.trim() });
       }
       onCreated(item.id);
     });
@@ -109,11 +106,7 @@ export function MediaNewForm({
       </Select>
       <Input
         label="Title"
-        hint={
-          produced
-            ? "The agent writes to this title."
-            : "Leave empty to take the title from the draft."
-        }
+        hint="Leave empty to take the title from the draft."
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
@@ -131,22 +124,13 @@ export function MediaNewForm({
         label="What should it cover?"
         hint={
           produced
-            ? "What to teach. The agent drafts, checks the facts, finds pictures and writes the script, then stops before voicing. Leave it empty to start from a blank item."
+            ? "A topic, your notes or a case pasted whole: from a case it keeps only the diagnosis and management and invents the patient. The agent drafts, checks the facts, finds pictures and writes the script, then stops before voicing. Leave it empty to start from a blank item."
             : "Paste the case, your notes or the topic. The first draft is written from this; leave it empty to start from a blank item."
         }
-        rows={produced ? 4 : 8}
+        rows={8}
         value={brief}
         onChange={(e) => setBrief(e.target.value)}
       />
-      {produced ? (
-        <Textarea
-          label="Source case (optional)"
-          hint="Pasted whole. The agent changes the patient's details and lists what it adds."
-          rows={6}
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-        />
-      ) : null}
       <div className="flex justify-end gap-2 pt-1">
         {onCancel ? (
           <Button
