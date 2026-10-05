@@ -78,10 +78,13 @@ async def update(
     summary: str | None,
     content: dict[str, Any] | None,
     exam_code: str | None = None,
+    edited_by: uuid.UUID,
 ) -> MediaRead:
     """Replaces the given fields on a draft, leaving the others as they were. Refuses once published.
 
-    An empty `exam_code` files the item under any exam."""
+    An empty `exam_code` files the item under any exam. An edit that moves what a checked script
+    was written from (a summary's title is part of that) starts the script check again, so the
+    script never keeps an old fact."""
     item = await _require(session, item_id)
     try:
         domain.ensure_editable(status=item.status)
@@ -107,6 +110,10 @@ async def update(
         values["exam_id"] = (await resolve_exam(session, code)).id if code else None
     if values:
         await repository.update_item(session, item_id, **values)
+    if content is not None or title is not None:
+        from app.features.media_production import service as production
+
+        await production.rewrite_script_if_out_of_date(session, item_id, requested_by=edited_by)
     return await service_reads.read_one(session, await _require(session, item_id), with_review=True)
 
 

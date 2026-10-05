@@ -134,9 +134,47 @@ def slide_source(slide: dict[str, Any]) -> str:
     return "\n".join(part for part in (str(slide.get("title") or ""), shown, explanation, notes) if part)
 
 
+def _fingerprint(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
 def source_hash(slide: dict[str, Any]) -> str:
     """A fingerprint of what a slide's narration was written from, to notice when that has changed."""
-    return hashlib.sha256(slide_source(slide).encode()).hexdigest()[:16]
+    return _fingerprint(slide_source(slide))
+
+
+def script_source(kind: str, title: str, content: dict[str, Any]) -> str:
+    """What a summary's or an episode's script is written from: the summary, or the episode's text."""
+    if kind == "summary":
+        return format_summary_for_podcast(title, content)
+    return str(content.get("body_md") or "")
+
+
+def _checked_script(content: dict[str, Any]) -> dict[str, Any]:
+    """The last script check on record, or nothing if the script was never checked."""
+    review = content.get("review")
+    script = review.get("script") if isinstance(review, dict) else None
+    return script if isinstance(script, dict) else {}
+
+
+def moved_slides(content: dict[str, Any]) -> list[int]:
+    """The slides (numbered from 1) whose source changed since the script was last checked."""
+    sources = _checked_script(content).get("sources")
+    if not isinstance(sources, dict):
+        return []
+    return [
+        number
+        for number, slide in enumerate(_slides(content), 1)
+        if sources.get(str(number)) not in (None, source_hash(slide))
+    ]
+
+
+def script_out_of_date(kind: str, title: str, content: dict[str, Any]) -> bool:
+    """Whether what a checked script was written from has changed since, so it may say an old fact."""
+    if kind == "slide_deck":
+        return bool(moved_slides(content))
+    checked = _checked_script(content).get("source")
+    return isinstance(checked, str) and checked != _fingerprint(script_source(kind, title, content))
 
 
 def _slides(content: dict[str, Any]) -> list[dict[str, Any]]:
@@ -384,18 +422,33 @@ def _set_framing(plan: dict[str, Any], lines: list[str]) -> None:
 
 
 def _review(
-    kind: str, content: dict[str, Any], issues: list[dict[str, Any]], changes: list[dict[str, Any]]
+    kind: str,
+    content: dict[str, Any],
+    issues: list[dict[str, Any]],
+    changes: list[dict[str, Any]],
+    *,
+    rewritten: list[int] | None = None,
+    source: str | None = None,
 ) -> None:
-    """Records on `content` what was read, what is still flagged and what was changed."""
+    """Records on `content` what was read, what is still flagged and what was changed.
+
+    `rewritten` holds the slides written afresh because their source moved, for the reader to
+    read first; `source` is what a summary's or an episode's script was written from.
+    """
     review = dict(content.get("review") or {})
     review.pop("error", None)
-    review["script"] = {
+    script: dict[str, Any] = {
         "checked_at": datetime.now(UTC).isoformat(),
         "lines": spoken_lines(kind, content),
         "sources": {str(number): source_hash(slide) for number, slide in enumerate(_slides(content), 1)},
         "issues": issues,
         "changes": changes,
     }
+    if rewritten:
+        script["rewritten"] = rewritten
+    if source is not None:
+        script["source"] = _fingerprint(source)
+    review["script"] = script
     content["review"] = review
 
 
@@ -405,7 +458,12 @@ def talk_words(content: dict[str, Any]) -> int:
 
 
 def check_deck(
-    complete: Complete, content: dict[str, Any], *, written: frozenset[int], plan_written: bool
+    complete: Complete,
+    content: dict[str, Any],
+    *,
+    written: frozenset[int],
+    plan_written: bool,
+    rewritten: list[int] | None = None,
 ) -> dict[str, Any]:
     """Reads a narrated deck, returning its content with the corrections and the review on it.
 
@@ -462,7 +520,7 @@ def check_deck(
         issues.append(
             {"part": "deck", "slide": None, "line": 0, "kind": "length", "quote": "", "why": why, "fix": ""}
         )
-    _review("slide_deck", content, issues, changes)
+    _review("slide_deck", content, issues, changes, rewritten=rewritten)
     return content
 
 
@@ -501,22 +559,27 @@ def prepare_deck(
     if not slides or len(slides) != len(content.get("slides") or []):
         raise AvUnavailable("This deck has no slides to narrate")
     payload = {**content, "slides": slides}
-    stored = (payload.get("review") or {}).get("script") or {}
-    checked = stored.get("sources") if isinstance(stored, dict) else None
-    sources: dict[str, Any] = checked if isinstance(checked, dict) else {}
+    moved = [] if rewrite else moved_slides(content)
 
     written: set[int] = set()
     for number, slide in enumerate(slides, 1):
-        moved = sources.get(str(number)) not in (None, source_hash(slide))
-        if rewrite or moved or not keeps_stored_narration(slide):
+        if rewrite or number in moved or not keeps_stored_narration(slide):
             slide.pop("narration", None)
             written.add(number)
-    plan_written = bool(written) or not _framing_lines(payload.get("presentation"))
+    # Only a rewrite or a missing framing plans the talk afresh. A slide whose source moved keeps
+    # the framing (and its asides); the read below may still correct a framing line it made wrong.
+    plan_written = rewrite or not _framing_lines(payload.get("presentation"))
     if plan_written:
         payload.pop("presentation", None)
 
     narrate_deck(settings, payload, talk)
-    return check_deck(complete, payload, written=frozenset(written), plan_written=plan_written)
+    return check_deck(
+        complete,
+        payload,
+        written=frozenset(written),
+        plan_written=plan_written or bool(written),
+        rewritten=moved,
+    )
 
 
 def prepare_podcast(
@@ -525,12 +588,11 @@ def prepare_podcast(
     """Writes a summary's or an episode's script if it has none (or `rewrite` asks), then reads it.
 
     A summary's script is read against the summary; an episode's against its `body_md`. A
-    script this run wrote is corrected; one already there is only reported on.
+    script this run wrote is corrected, and so is one whose source changed since it was checked
+    (a corrected fact reaches what is said, the rest kept); otherwise it is only reported on.
     """
-    if kind == "summary":
-        source = format_summary_for_podcast(title, content)
-    else:
-        source = str(content.get("body_md") or "")
+    source = script_source(kind, title, content)
+    moved = not rewrite and script_out_of_date(kind, title, content)
     script = content.get("script")
     written = rewrite or not isinstance(script, str) or not split_script(script)
     if written:
@@ -544,10 +606,10 @@ def prepare_podcast(
         source=source,
         context="",
         lines=[line for _speaker, line in turns],
-        fixable=written,
+        fixable=written or moved,
     )
     if written or changes:
         script = "\n\n".join(f"{speaker}: {line}" for (speaker, _old), line in zip(turns, lines, strict=True))
     content = {**content, "script": script}
-    _review(kind, content, _placed(issues, "script", None), _placed(changes, "script", None))
+    _review(kind, content, _placed(issues, "script", None), _placed(changes, "script", None), source=source)
     return content

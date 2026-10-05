@@ -197,6 +197,17 @@ async def enqueue_script_write(
     return await read_item(session, item_id)
 
 
+async def rewrite_script_if_out_of_date(
+    session: AsyncSession, item_id: uuid.UUID, *, requested_by: uuid.UUID
+) -> None:
+    """Starts the script check once what a checked script was written from has changed, so a
+    corrected fact reaches what is said without anyone asking: a deck's moved slides are written
+    afresh, a summary's or an episode's lines corrected. Nothing is voiced."""
+    item = await production_item(session, item_id)
+    if item.kind in CHECKED_KINDS and script_check.script_out_of_date(item.kind, item.title, item.content):
+        await enqueue_script_write(session, item_id, requested_by=requested_by, rewrite=False)
+
+
 def is_running(content: dict[str, Any]) -> bool:
     """Whether a job is working on an item with this content, so nobody else should rewrite it."""
     return domain.is_running(str(content.get("status")))

@@ -220,6 +220,7 @@ async def update(
         summary=body.summary,
         content=body.content,
         exam_code=body.exam_code,
+        edited_by=admin.user_id,
     )
 
 

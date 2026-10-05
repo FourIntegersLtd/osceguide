@@ -12,9 +12,12 @@ from app.features.media_production.script_check import (
     check_deck,
     is_checked,
     lint,
+    moved_slides,
     prepare_deck_to_time,
     prepare_podcast,
     rule_hints,
+    script_out_of_date,
+    source_hash,
     spoken_lines,
 )
 
@@ -216,3 +219,52 @@ def test_a_deck_opener_that_drops_its_slide_hook_is_flagged_and_one_that_uses_it
         "Slide 1's first line does not use the slide's own hook ('Sweats every night'): "
         "open with it, not a general remark."
     ]
+
+
+def test_a_deck_names_only_the_slides_whose_notes_moved_since_its_script_was_checked() -> None:
+    content = deck()
+    assert moved_slides(content) == []
+
+    content["review"] = {"script": {"sources": {"1": source_hash(content["slides"][0])}}}
+    assert moved_slides(content) == []
+    assert not script_out_of_date("slide_deck", "New hypertension", content)
+
+    content["slides"][0]["source_notes"] = SOURCE.replace("152/96", "158/98")
+    assert moved_slides(content) == [1]
+    assert script_out_of_date("slide_deck", "New hypertension", content)
+
+
+def test_a_podcast_whose_episode_text_changed_since_its_check_has_the_moved_fact_corrected() -> None:
+    script = "Ben: Kwame is a head chef.\n\nMichelle: His home average was 152 over 96."
+    checked = prepare_podcast(
+        get_settings(),
+        kind="podcast",
+        title="New hypertension",
+        content={"body_md": SOURCE, "script": script},
+        rewrite=False,
+        complete=reader({}),
+    )
+    assert not script_out_of_date("podcast", "New hypertension", checked)
+
+    moved = {**checked, "body_md": SOURCE.replace("152/96", "158/98")}
+    assert script_out_of_date("podcast", "New hypertension", moved)
+    stale = {
+        "line": 2,
+        "kind": "number",
+        "quote": "152 over 96",
+        "why": "The episode now says 158/98.",
+        "fix": "His home average was 158 over 98.",
+    }
+
+    fixed = prepare_podcast(
+        get_settings(),
+        kind="podcast",
+        title="New hypertension",
+        content=moved,
+        rewrite=False,
+        complete=reader({"152 over 96": [stale]}),
+    )
+
+    assert fixed["script"] == "Ben: Kwame is a head chef.\n\nMichelle: His home average was 158 over 98."
+    assert not script_out_of_date("podcast", "New hypertension", fixed)
+    assert is_checked("podcast", fixed)

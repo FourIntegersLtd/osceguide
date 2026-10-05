@@ -133,6 +133,36 @@ async def test_voicing_is_refused_again_once_a_checked_script_is_edited(
     assert response.json()["code"] == "script_not_checked"
 
 
+async def test_a_save_that_moves_what_a_checked_script_was_written_from_starts_the_check_again(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("av-moved@example.com", platform_admin=True)
+    item = await _summary(client, admin)
+    content = {**item["content"], "red_flags": ["Crushing chest pain at rest"]}
+    content["review"] = {"script": {"lines": LINES, "source": "an-older-summary"}}
+
+    saved = await client.patch(
+        f"/api/v1/media/{item['id']}", json={"content": content}, headers=bearer(admin)
+    )
+
+    assert saved.status_code == 200
+    assert saved.json()["content"]["status"] == "writing_script"
+
+
+async def test_a_save_leaves_a_script_alone_when_nothing_says_what_it_was_written_from(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("av-unmoved@example.com", platform_admin=True)
+    item = await _summary(client, admin)
+
+    saved = await client.patch(
+        f"/api/v1/media/{item['id']}", json={"title": "AV Summary Renamed"}, headers=bearer(admin)
+    )
+
+    assert saved.status_code == 200
+    assert "status" not in saved.json()["content"]
+
+
 @pytest.mark.parametrize("route", ["check-facts", "write-script"])
 async def test_a_check_is_refused_for_material_that_is_never_spoken(
     client: AsyncClient, make_actor, route: str

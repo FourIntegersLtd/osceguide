@@ -21,8 +21,9 @@ No tables of its own. Work is keyed by a `media` aggregate id.
 - **The fact check never changes the material.** It stores verdicts, evidence and suggested
   replacements; a person accepts one in the staff screen and saves.
 - **`content.review` is staff-only.** `media` strips it from every learner read
-  (`service_reads`, `with_review`), and `slide-scripts/tools/publish_deck.py` refuses to
-  publish a row that still has it. Sources and evidence never reach learners.
+  (`service_reads`, `with_review`). `slide-scripts/tools/publish_deck.py` carries it to the
+  platform rows, so staff see what was checked, and never writes it to Firestore. Sources and
+  evidence never reach learners.
 
 ## Routes
 | Method | Path | Kind |
@@ -40,6 +41,7 @@ No tables of its own. Work is keyed by a `media` aggregate id.
 ```
 check-facts   -> check_media_facts   status checking_facts, then back to what it was
 write-script  -> write_media_script  status writing_script, then awaiting_review
+PATCH /media/{id} -> write_media_script  only when the save moved what a checked script was written from
 voicing route -> the three jobs below, refused unless the script is the one that was checked
 ```
 

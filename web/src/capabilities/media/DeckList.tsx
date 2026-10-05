@@ -19,7 +19,8 @@ import { B2CGroupedRowLink } from "@/foundation/ui/B2CGroupedList";
 import { b2cGroupedShell } from "@/foundation/ui/productTokens";
 
 /**
- * The right-hand column: a search and the specialty picker over its list, all filtered server-side.
+ * The right-hand column: a search over the list, whose header carries the count and the specialty
+ * filter. All of it is filtered server-side.
  * The list is a card one viewport tall that scrolls inside, with "Load more" at its foot.
  *
  * `items` is already the specialty-filtered page from the server — the parent
@@ -55,28 +56,32 @@ export function DeckList({
   hasUncategorized: boolean;
 }) {
   return (
-    <div className="flex max-h-[100dvh] min-h-0 flex-col gap-4 lg:h-[100dvh]">
+    <div className="flex max-h-[100dvh] min-h-0 flex-col gap-3 lg:h-[100dvh]">
       <DeckSearch key={query} query={query} onQueryChange={onQueryChange} />
-      {specialtyOptions.length > 0 || hasUncategorized ? (
-        <Select
-          label="Filter by specialty"
-          value={specialty}
-          onChange={(event) => onSpecialtyChange(event.target.value)}
-        >
-          <option value="all">All specialties</option>
-          {specialtyOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-          {hasUncategorized ? <option value="other">Other or uncategorised</option> : null}
-        </Select>
-      ) : null}
 
       <section className="flex min-h-0 flex-1 flex-col">
-        <h2 className={cn(t.b2cMonoEyebrow, "px-1 pb-2")}>
-          {(total ?? items.length).toLocaleString()} presentations
-        </h2>
+        <div className="flex items-center justify-between gap-3 px-1 pb-2">
+          <h2 className={cn(t.b2cMonoEyebrow, "min-w-0 truncate")}>
+            {(total ?? items.length).toLocaleString()} presentations
+          </h2>
+          {specialtyOptions.length > 0 || hasUncategorized ? (
+            <Select
+              aria-label="Filter by specialty"
+              selectSize="sm"
+              className="w-auto max-w-52"
+              value={specialty}
+              onChange={(event) => onSpecialtyChange(event.target.value)}
+            >
+              <option value="all">All specialties</option>
+              {specialtyOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+              {hasUncategorized ? <option value="other">Other or uncategorised</option> : null}
+            </Select>
+          ) : null}
+        </div>
         <div className={cn(b2cGroupedShell, "min-h-0 flex-1 overflow-y-auto")}>
           {items.length === 0 && query !== "" ? (
             <p className="p-4 text-osce-body text-b2c-text-muted">

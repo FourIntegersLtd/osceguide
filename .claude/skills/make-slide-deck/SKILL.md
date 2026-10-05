@@ -124,10 +124,12 @@ from openly licensed medical images. `up.py` needs the `.jpg` extension.
    check): it runs on Clinical Buddy's guideline library and web search, which the user stopped
    on 2026-10-05 for cost. Instead run your own web searches (NICE CKS/NG, BNF, UKMEC, DVLA,
    BASHH) on every management claim, thresholds and doses first, and fix the spec. List what
-   you checked, and anything you could not confirm, in the report. Once the deck exists, record
-   the claims you confirmed, each with the source you searched, through
-   `POST /media/{id}/hand-check` (`work/handcheck.py` is the pattern), so the staff screen shows
-   "N claims checked by hand". Record only claims a search actually confirmed.
+   you checked, and anything you could not confirm, in the report. Once the deck exists and
+   before `chk.sh` voices it, record the claims you confirmed, each with the source you
+   searched, through `POST /media/{id}/hand-check` (`work/handcheck.py` is the pattern). The
+   voiced snapshot then carries it, and `pub.sh` publishes it with the deck (staff-only; never to
+   Firestore), so the staff screen shows "N claims checked by hand" and "Checked" on staging and
+   production. Record only claims a search actually confirmed.
 4. **Create + rewrite**: `python3 new.py <k> <nn-slug>` (e.g. `50-amenorrhoea-...`) builds the
    deck, creates the draft and starts the rewrite (`writing_script`).
 5. (`facts.py` and `decide.py` serve only decks whose platform fact check already ran.)
