@@ -318,7 +318,9 @@ function ClaimRow({
             {claim.decision ? (
               <Badge>
                 {claim.decision === "accepted"
-                  ? "Correction made"
+                  ? claim.by === "agent"
+                    ? "Corrected by the agent"
+                    : "Correction made"
                   : "Kept as written"}
               </Badge>
             ) : null}

@@ -5,10 +5,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import pytest
+
 from app.core.settings import get_settings
 from app.features.media_production.script_check import (
     check_deck,
     is_checked,
+    lint,
+    prepare_deck_to_time,
     prepare_podcast,
     rule_hints,
     spoken_lines,
@@ -178,3 +182,37 @@ def test_a_podcast_script_already_written_is_checked_but_not_rewritten() -> None
         ("script", 1, "Kwame is a head chef.")
     ]
     assert is_checked("podcast", checked)
+
+
+def test_a_talk_that_runs_over_twelve_minutes_is_written_once_more_to_a_tighter_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    aimed_at: list[int] = []
+
+    def narrate(settings: Any, payload: dict[str, Any], talk: int) -> None:
+        """A writer that runs a third over what it is asked for."""
+        aimed_at.append(talk)
+        said = " ".join(["word"] * (talk * 4 // 3))
+        for slide in payload["slides"]:
+            slide["narration"] = {"intro": "Here it is.", "items": [said], "callouts": [None]}
+        payload["presentation"] = deck()["presentation"]
+
+    monkeypatch.setattr("app.features.media_production.script_check.narrate_deck", narrate)
+    unwritten = {"title": "New hypertension", "slides": [{"title": "Readings", "bullets": ["152 over 96"]}]}
+
+    made = prepare_deck_to_time(get_settings(), unwritten, rewrite=False, complete=reader({}))
+
+    assert aimed_at == [1450, 1072]
+    assert [issue for issue in made["review"]["script"]["issues"] if issue["kind"] == "length"] == []
+
+
+def test_a_deck_opener_that_drops_its_slide_hook_is_flagged_and_one_that_uses_it_is_not() -> None:
+    def opening(intro: str) -> dict[str, Any]:
+        slide = {"title": "Sweats every night", "bullets": [], "narration": {"intro": intro, "items": []}}
+        return {"slides": [slide]}
+
+    assert lint("slide_deck", opening("[chuckles] The sweats wake her every night.")) == []
+    assert lint("slide_deck", opening("Today we look at a common presentation in primary care.")) == [
+        "Slide 1's first line does not use the slide's own hook ('Sweats every night'): "
+        "open with it, not a general remark."
+    ]

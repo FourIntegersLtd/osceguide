@@ -11,9 +11,11 @@ const NESTED_SECTION_IDS = new Set([
 
 type SectionRef = Pick<StationSection, "id" | "blocks">;
 
-function nestedOf(content: Record<string, unknown>, sectionId: string): Record<string, unknown> {
+/** The section's own object when the station stores it nested (b2c); null when it is stored flat. */
+function nestedOf(content: Record<string, unknown>, sectionId: string): Record<string, unknown> | null {
+  if (!NESTED_SECTION_IDS.has(sectionId)) return null;
   const nested = content[sectionId];
-  return nested && typeof nested === "object" && !Array.isArray(nested) ? (nested as Record<string, unknown>) : {};
+  return nested && typeof nested === "object" && !Array.isArray(nested) ? (nested as Record<string, unknown>) : null;
 }
 
 /**
@@ -32,10 +34,10 @@ export function contentSliceForSection(
   content: Record<string, unknown>,
   section: SectionRef,
 ): Record<string, unknown> {
-  if (!NESTED_SECTION_IDS.has(section.id)) {
+  const nested = nestedOf(content, section.id);
+  if (!nested) {
     return content;
   }
-  const nested = nestedOf(content, section.id);
   const slice = { ...nested };
   for (const block of section.blocks) {
     const key = storedKey(nested, section.id, block.id);
@@ -50,10 +52,10 @@ export function mergeSectionIntoContent(
   section: SectionRef,
   slice: Record<string, unknown>,
 ): Record<string, unknown> {
-  if (!NESTED_SECTION_IDS.has(section.id)) {
+  const nested = nestedOf(content, section.id);
+  if (!nested) {
     return { ...content, ...slice };
   }
-  const nested = nestedOf(content, section.id);
   const merged = { ...slice };
   for (const block of section.blocks) {
     const key = storedKey(nested, section.id, block.id);

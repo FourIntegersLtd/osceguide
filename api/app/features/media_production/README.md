@@ -32,6 +32,8 @@ No tables of its own. Work is keyed by a `media` aggregate id.
 | POST | `/api/v1/media/{id}/generate-audio` | `podcast` → `content.audio_url` |
 | POST | `/api/v1/media/{id}/check-facts` | `slide_deck`, `summary`, `podcast` → `content.review.facts` |
 | POST | `/api/v1/media/{id}/write-script` | same kinds, body `{rewrite}` → narration or script, and `content.review.script` |
+| POST | `/api/v1/media/{id}/produce`, `/stop-produce` | `slide_deck`, `summary`, `podcast`, body `{brief, source_text?}` → the agent run below |
+| POST | `/api/v1/platform/stations/{id}/versions/{n}/produce`, `/stop-produce` | a platform station's draft version → its `review` |
 
 ## The order of work
 
@@ -59,6 +61,33 @@ leaves it `awaiting_review` until it is voiced again; `media` refuses to save ed
 published item, so accepting a correction applies to drafts; `scripts/regenerate_slides.py`
 and `scripts/regenerate_podcasts.py` call the pipeline directly and are not gated.
 
+## The producing line (Produce)
+
+One button runs a fixed line, the same order a person follows by hand. Code decides every step,
+each stage runs once and nothing goes back; the model (`agent_loop.py`, OpenAI `PRODUCE_MODEL`)
+is only asked narrow questions, each answered with one tool call. `produce.py` holds the line;
+`service_produce.py` starts, stops, saves and takes over runs.
+
+1. Draft, to the deck shape (15 to 17 slides, a varied opener, The Twist, telephone never video,
+   only the diagnosis and management taken from a pasted case).
+2. Decks: pictures (bundled library first, else a Commons search picked from a contact sheet,
+   one retry), at the same time as one fact check of the draft.
+3. Each contradicted or conflicting claim is ruled on (accept with exact words, or dismiss with a
+   reason) in parallel, applied in order. A ruling whose words are gone is left for staff.
+4. Decks, summaries and podcasts: the script is written and read, then `script_check.lint` and the
+   reader's issues go to one edits question. Only edits that hit exactly one place and drop no
+   audio tag are applied, then the script is checked again. At most two rounds; asides stay.
+5. The hand-over (`review.run.summary`, `open`) is built by code: twists for sign-off, every
+   correction and dismissal, what is left, slides without a picture.
+
+A station runs steps 1, 3 and 5. The run stops at `awaiting_review`; voicing stays a person's
+click. Every step saves the working copy and `review.run` (`steps`, `open`, `tokens`,
+`heartbeat_at`) and publishes `media.updated` or `station.updated`; Produce on a run whose
+heartbeat is 15 minutes old takes it over from the saved copy. A station's working copy is its
+version's content plus `review` and `status`; while it is `producing` the version cannot be edited
+or checked. Searched pictures are stored under `teaching_videos/v2/pictures/` in the bucket;
+bundled ones are saved as `images/<name>`.
+
 ## Jobs
 | Task | Queue | Notes |
 |------|-------|-------|
@@ -67,6 +96,7 @@ and `scripts/regenerate_podcasts.py` call the pipeline directly and are not gate
 | `produce_podcast_audio` | `media` | Audio-only podcast |
 | `check_media_facts` | `media` | Claims against the guideline library and the web, side by side. No text changed |
 | `write_media_script` | `media` | Narration or dialogue, then the second read. No ElevenLabs call |
+| `produce_media`, `produce_station` | `produce` | The producing line. No ElevenLabs call |
 
 Podcasts are voiced by ElevenLabs Eleven v4 (text-to-dialogue). Regenerate them all with
 `poetry run python scripts/regenerate_podcasts.py --help`.

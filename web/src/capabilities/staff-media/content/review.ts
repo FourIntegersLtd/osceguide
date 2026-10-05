@@ -20,6 +20,12 @@ import {
   type Facts,
   type Swap,
 } from "@/capabilities/fact-check/facts";
+import {
+  briefOf,
+  runOf,
+  type ProduceBrief,
+  type ProduceRun,
+} from "@/capabilities/fact-check/produce";
 
 type Content = Record<string, unknown>;
 
@@ -52,6 +58,9 @@ export type Review = {
     changes: ScriptChange[];
   } | null;
   error: { step: string; message: string } | null;
+  /** What the agent was asked to produce the item from. */
+  brief: ProduceBrief | null;
+  run: ProduceRun | null;
 };
 
 /** One run of lines that are spoken together: a slide, the framing, or the dialogue. */
@@ -77,6 +86,8 @@ export function reviewOf(content: Content): Review {
   const script = record(review.script);
   const error = record(review.error);
   return {
+    brief: briefOf(review.brief),
+    run: runOf(review.run),
     facts: factsOf(review.facts),
     script: script
       ? {

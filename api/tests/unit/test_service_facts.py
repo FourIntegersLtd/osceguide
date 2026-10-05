@@ -224,3 +224,60 @@ async def test_a_running_check_reports_its_claims_as_each_one_settles() -> None:
     ]
     assert reports[-1]["claims"][0]["verdict"] == "supported"
     assert "progress" not in facts
+
+
+@pytest.mark.asyncio
+async def test_a_claim_found_again_in_the_same_words_keeps_its_verdict_without_asking_again() -> None:
+    wrong = {
+        "verdict": "contradicted",
+        "evidence": 1,
+        "why": "NG136 says 160/100.",
+        "line": 2,
+        "new": "160/100",
+    }
+    first = await claims(model(library=wrong), FakeGuidelineIndex([NG136]), FakeGuidelineWeb(WEB))
+    library, web, prompts = FakeGuidelineIndex([NG136]), FakeGuidelineWeb(WEB), []
+
+    def listing(prompt: str) -> str:
+        prompts.append(prompt)
+        return model(library=wrong)(prompt)
+
+    again = await check_facts(
+        title="New hypertension",
+        sections=sections_of("slide_deck", "New hypertension", DECK),
+        guidelines=library,
+        web=web,
+        complete=listing,
+        earlier=[{**first[0], "left": "Local policy differs."}],
+    )
+
+    assert (library.searches, web.questions) == ([], [])
+    assert f"- {CLAIM}\n" in prompts[0]
+    assert again["claims"] == [{**first[0], "left": "Local policy differs."}]
+
+
+@pytest.mark.asyncio
+async def test_an_earlier_verdict_whose_wrong_line_has_gone_is_judged_afresh() -> None:
+    wrong = {
+        "verdict": "contradicted",
+        "evidence": 1,
+        "why": "NG136 says 160/100.",
+        "line": 2,
+        "new": "160/100",
+    }
+    first = await claims(model(library=wrong), FakeGuidelineIndex([NG136]), FakeGuidelineWeb(WEB))
+    library = FakeGuidelineIndex([NG136])
+    edited = {"slides": [DECK["slides"][0], {"title": "Staging", "bullets": ["Stage 2 is 160/100 or more"]}]}
+    supported = {"verdict": "supported", "evidence": 1, "quote": "160/100", "why": "Same."}
+
+    again = await check_facts(
+        title="New hypertension",
+        sections=sections_of("slide_deck", "New hypertension", edited),
+        guidelines=library,
+        web=None,
+        complete=model(library=supported),
+        earlier=first,
+    )
+
+    assert library.searches == [(QUESTION, 5, True)]
+    assert again["claims"][0]["verdict"] == "supported"

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MediaRead(BaseModel):
@@ -30,3 +30,11 @@ class ScriptWriteRequest(BaseModel):
 
     # False keeps every line already written and writes only what is missing or out of date.
     rewrite: bool = False
+
+
+class ProduceRequest(BaseModel):
+    """What the agent produces an item from."""
+
+    brief: str = Field(min_length=8, max_length=4000)
+    # A case to base the teaching on, pasted whole. Kept in the item's review, never sent to learners.
+    source_text: str | None = Field(default=None, max_length=60000)

@@ -47,7 +47,7 @@ async def _set_status(
     await replace_content(session, item_id, {**content, "status": status})
 
 
-async def _read(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+async def read_item(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
     """Re-reads an item as the production schema's own `MediaRead`, after a status change."""
     item = await media_service.read_by_id(session, item_id, viewer_is_admin=True)
     return MediaRead.model_validate(item.model_dump())
@@ -72,7 +72,7 @@ async def enqueue_summary_podcast(
         args={"media_id": str(item_id), "requested_by": str(requested_by)},
         queueing_lock=lock_for_media(item_id, "podcast"),
     )
-    return await _read(session, item_id)
+    return await read_item(session, item_id)
 
 
 async def enqueue_slide_regenerate(
@@ -94,7 +94,7 @@ async def enqueue_slide_regenerate(
         args={"media_id": str(item_id), "requested_by": str(requested_by)},
         queueing_lock=lock_for_media(item_id, "slides"),
     )
-    return await _read(session, item_id)
+    return await read_item(session, item_id)
 
 
 async def enqueue_podcast_audio(
@@ -116,7 +116,7 @@ async def enqueue_podcast_audio(
         args={"media_id": str(item_id), "requested_by": str(requested_by)},
         queueing_lock=lock_for_media(item_id, "episode"),
     )
-    return await _read(session, item_id)
+    return await read_item(session, item_id)
 
 
 async def enqueue_fact_check(
@@ -145,7 +145,7 @@ async def enqueue_fact_check(
         },
         queueing_lock=lock_for_media(item_id, "facts"),
     )
-    return await _read(session, item_id)
+    return await read_item(session, item_id)
 
 
 async def enqueue_script_write(
@@ -169,7 +169,12 @@ async def enqueue_script_write(
         args={"media_id": str(item_id), "requested_by": str(requested_by), "rewrite": rewrite},
         queueing_lock=lock_for_media(item_id, "script"),
     )
-    return await _read(session, item_id)
+    return await read_item(session, item_id)
+
+
+def is_running(content: dict[str, Any]) -> bool:
+    """Whether a job is working on an item with this content, so nobody else should rewrite it."""
+    return domain.is_running(str(content.get("status")))
 
 
 def work_dir(media_id: str) -> Path:
@@ -196,12 +201,12 @@ def _voice_dir(media_id: str) -> Path:
     return Path(tempfile.gettempdir()) / "media_av_voice" / media_id
 
 
-def _second_reader(settings: Settings, system: str) -> script_check.Complete:
+def second_reader(settings: Settings, system: str) -> script_check.Complete:
     """The model that checks: Claude before o3, the reverse of the order the writer is asked in."""
     return lambda prompt: model_reply(settings, prompt, system=system, claude_first=True)
 
 
-def _with_error(content: dict[str, Any], step: str, error: Exception) -> dict[str, Any]:
+def with_error(content: dict[str, Any], step: str, error: Exception) -> dict[str, Any]:
     """`content` with why a check failed kept in its review, for the staff screen to show."""
     review = dict(content.get("review") or {})
     review["error"] = {"step": step, "message": str(error)[:_ERROR_CHARACTERS] or type(error).__name__}
@@ -239,7 +244,7 @@ async def run_fact_check_job(
         content["review"] = {**review, "facts": facts}
     except Exception as error:  # noqa: BLE001 - any failure is recorded on the item for the staff screen
         log.warning("fact check failed", media_id=str(media_id), error=str(error))
-        content = _with_error(content, "facts", error)
+        content = with_error(content, "facts", error)
     if previous_status is None:
         content.pop("status", None)
     else:
@@ -274,7 +279,7 @@ async def run_script_write_job(
     """
     item = await production_item(session, media_id)
     settings = get_settings()
-    reader = complete or _second_reader(settings, script_check.CHECK_SYSTEM)
+    reader = complete or second_reader(settings, script_check.CHECK_SYSTEM)
     try:
         if item.kind == "slide_deck":
             content = await asyncio.to_thread(
@@ -293,7 +298,7 @@ async def run_script_write_job(
         content["status"] = domain.AWAITING_REVIEW
     except Exception as error:  # noqa: BLE001 - any failure is recorded on the item as failed
         log.warning("script write failed", media_id=str(media_id), error=str(error))
-        content = {**_with_error(item.content, "script", error), "status": domain.FAILED}
+        content = {**with_error(item.content, "script", error), "status": domain.FAILED}
     await replace_content(session, media_id, content)
     publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})
 
@@ -307,7 +312,8 @@ async def run_summary_podcast_job(
     item = await production_item(session, media_id)
     settings = get_settings()
     try:
-        content = produce_summary_podcast(
+        content = await asyncio.to_thread(
+            produce_summary_podcast,
             settings,
             title=item.title,
             content=item.content,
@@ -331,7 +337,9 @@ async def run_slide_av_job(session: AsyncSession, media_id: uuid.UUID, *, reques
     job_work_dir = work_dir(str(media_id))
     exam_code = await catalog.exam_code_by_id(session, item.exam_id) if item.exam_id else None
     try:
-        content = regenerate_slide_av(
+        # In a thread: a render takes minutes, and on the event loop it stalls every other job.
+        content = await asyncio.to_thread(
+            regenerate_slide_av,
             settings,
             item.content,
             job_work_dir,
@@ -359,7 +367,8 @@ async def run_podcast_audio_job(
     item = await production_item(session, media_id)
     settings = get_settings()
     try:
-        content = produce_podcast_episode_audio(
+        content = await asyncio.to_thread(
+            produce_podcast_episode_audio,
             settings,
             title=item.title,
             content=item.content,

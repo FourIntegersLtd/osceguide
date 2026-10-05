@@ -28,3 +28,13 @@ test("a block with nothing stored yet is written under its own id", () => {
   const merged = mergeSectionIntoContent({ doctor_information: {} }, doctorInformation, { doctor_photos: ["a.png"] });
   assert.deepEqual(merged, { doctor_information: { doctor_photos: ["a.png"] } });
 });
+
+test("a station drafted against its template keeps its values flat, read and written by block id", () => {
+  const content = { doctor_patient_biodata: "Jo, 35", doctor_photos: [] };
+
+  const slice = contentSliceForSection(content, doctorInformation);
+  assert.equal(slice.doctor_patient_biodata, "Jo, 35");
+
+  const merged = mergeSectionIntoContent(content, doctorInformation, { ...slice, doctor_patient_biodata: "Jo, 36" });
+  assert.deepEqual(merged, { doctor_patient_biodata: "Jo, 36", doctor_photos: [] });
+});

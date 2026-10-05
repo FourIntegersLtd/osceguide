@@ -19,6 +19,13 @@ class UnknownMediaKindError(InvalidInput):
     default_message = "That is not a kind of study material"
 
 
+class BeingProduced(Conflict):
+    """Raised when a draft is saved while a production job is working on it: one would overwrite the other."""
+
+    code = "media_being_produced"
+    default_message = "Production is in progress for this item; wait for it to finish or stop it"
+
+
 class NotEditableError(Conflict):
     """Raised when someone tries to edit a published item in place, rather than replacing it."""
 

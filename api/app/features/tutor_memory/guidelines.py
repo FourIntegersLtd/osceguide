@@ -14,6 +14,7 @@ failure here is "no guidelines found", logged, and never an error the caller has
 
 from __future__ import annotations
 
+import asyncio
 from functools import lru_cache
 from typing import Any
 
@@ -31,6 +32,10 @@ REQUEST_TIMEOUT_SECONDS = 10
 WEB_SEARCH_PATH = "/api/web-search"
 # A web answer is several searches and model calls on Clinical Buddy's side.
 WEB_SEARCH_TIMEOUT_SECONDS = 90
+# Questions of each kind in flight from this process, whoever asks. Three fact checks at once sent
+# about 72 web searches: 46 came back 502 and 77 library searches timed out, each one read as
+# "nothing found". 24 at once it has answered with none refused.
+AT_ONCE = 24
 
 
 class ClinicalBuddyGuidelines:
@@ -40,6 +45,8 @@ class ClinicalBuddyGuidelines:
         self._http = http
         self._url = base_url.rstrip("/") + RETRIEVE_PATH
         self._web_url = base_url.rstrip("/") + WEB_SEARCH_PATH
+        self._searching = asyncio.Semaphore(AT_ONCE)
+        self._answering = asyncio.Semaphore(AT_ONCE)
 
     async def search(self, *, query: str, limit: int, rerank: bool) -> list[GuidelinePassage]:
         """The passages nearest `query`, best first; empty when nothing was found or it failed."""
@@ -47,9 +54,10 @@ class ClinicalBuddyGuidelines:
         if not cleaned or limit <= 0:
             return []
         try:
-            response = await self._http.post(
-                self._url, json={"question": cleaned, "limit": limit, "rerank": rerank}
-            )
+            async with self._searching:
+                response = await self._http.post(
+                    self._url, json={"question": cleaned, "limit": limit, "rerank": rerank}
+                )
             response.raise_for_status()
             found = [_passage(item) for item in response.json().get("passages") or []]
             return [passage for passage in found if passage.text][:limit]
@@ -63,9 +71,11 @@ class ClinicalBuddyGuidelines:
         if not cleaned:
             return None
         try:
-            response = await self._http.post(
-                self._web_url, json={"question": cleaned}, timeout=WEB_SEARCH_TIMEOUT_SECONDS
-            )
+            async with self._answering:
+                response = await self._web_answer(cleaned)
+                if response.status_code >= 500:
+                    # Overloaded or restarting: worth one more ask before "nothing found".
+                    response = await self._web_answer(cleaned)
             response.raise_for_status()
             body = response.json()
             text = str(body.get("answer") or "").strip()
@@ -80,6 +90,12 @@ class ClinicalBuddyGuidelines:
         except Exception as exc:  # noqa: BLE001 - whatever went wrong, the web has nothing to offer
             log.warning("guideline web search failed", error=str(exc) or type(exc).__name__)
             return None
+
+    async def _web_answer(self, question: str) -> httpx.Response:
+        """One ask of the clinical web."""
+        return await self._http.post(
+            self._web_url, json={"question": question}, timeout=WEB_SEARCH_TIMEOUT_SECONDS
+        )
 
 
 def _passage(item: dict[str, Any]) -> GuidelinePassage:

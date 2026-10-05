@@ -68,6 +68,12 @@ distinct claim, the most consequential first, at most {limit}.
 
 Reply as JSON: {{"claims": [{{"section": 3, "claim": "the claim in one sentence, as the material
 states it", "question": "the question to put to a guideline search to check it"}}]}}
+{earlier}"""
+
+_EARLIER_CLAIMS = """
+An earlier version of this text was checked with these claims. Where the text still makes one of
+them, give it word for word as listed here; word only new or changed claims afresh:
+{claims}
 """
 
 _JUDGE_PROMPT = """\
@@ -348,9 +354,14 @@ async def check_facts(
     web: GuidelineWeb | None,
     complete: Complete,
     on_progress: Progress | None = None,
+    earlier: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """The `facts` review of some material: each clinical claim, its verdict, evidence and suggestion,
     with where its section sits.
+
+    `earlier` is a previous check's claims of the same text: a claim found again in the same words is
+    given its earlier verdict without asking the sources again, unless the wrong line it named has
+    gone from its section.
 
     With neither the library nor the web to ask, every claim comes back "not_checked". While it runs,
     `on_progress` is handed the same review so far, with a `progress` count, once the claims are found
@@ -358,8 +369,15 @@ async def check_facts(
     """
     started = time.monotonic()
     texts = [text for _, text in sections]
-    numbered = "\n\n".join(f"Section {number}:\n{text}" for number, text in enumerate(texts, 1))
-    prompt = _CLAIMS_PROMPT.format(title=title, sections=numbered, limit=MAX_CLAIMS)
+    numbered = _numbered(sections)
+    known = {_wording(str(claim.get("claim") or "")): claim for claim in earlier or []}
+    listed = "\n".join(f"- {claim['claim']}" for claim in earlier or [] if claim.get("claim"))
+    prompt = _CLAIMS_PROMPT.format(
+        title=title,
+        sections=numbered,
+        limit=MAX_CLAIMS,
+        earlier=_EARLIER_CLAIMS.format(claims=listed) if listed else "",
+    )
     claims = _claims(await asyncio.to_thread(complete, prompt), texts) if numbered.strip() else []
     extracted = time.monotonic()
     gate = asyncio.Semaphore(CLAIMS_AT_ONCE)
@@ -379,10 +397,12 @@ async def check_facts(
 
     async def one(number: int, claim: dict[str, Any]) -> dict[str, Any]:
         """Checks one claim, a few at a time across the whole item."""
-        async with gate:
-            where, text = sections[claim["section"] - 1]
-            result = await _check_claim(claim, text, guidelines=guidelines, web=web, complete=complete)
-        settled[number] = {"id": f"claim-{number}", **where, **result}
+        where, text = sections[claim["section"] - 1]
+        result = _still_judged(known.get(_wording(claim["claim"])), text)
+        if result is None:
+            async with gate:
+                result = await _check_claim(claim, text, guidelines=guidelines, web=web, complete=complete)
+        settled[number] = {"id": claim_id(number), **where, **result}
         await report()
         return settled[number]
 
@@ -391,6 +411,7 @@ async def check_facts(
     log.info(
         "fact check timed",
         claims=len(claims),
+        found_again=sum(1 for claim in claims if _wording(claim["claim"]) in known),
         at_once=CLAIMS_AT_ONCE,
         extract_seconds=round(extracted - started, 1),
         check_seconds=round(time.monotonic() - extracted, 1),
@@ -398,13 +419,50 @@ async def check_facts(
     return _review(numbered, list(results))
 
 
+def _wording(claim: str) -> str:
+    """A claim's words without case or spacing, which an earlier check's claim is matched on."""
+    return " ".join(claim.lower().split())
+
+
+# What a check keeps of an earlier claim it finds again: its verdict, what the sources said, and a
+# reason it was left for staff, so it is not put to anyone a second time.
+_JUDGED_KEYS = ("claim", "verdict", "why", "checked", "evidence", "suggestion", "left")
+
+
+def _still_judged(earlier: dict[str, Any] | None, text: str) -> dict[str, Any] | None:
+    """An earlier verdict on the same words, if it still stands in `text`: one naming a wrong line
+    stands only while that line is still there to be swapped."""
+    if earlier is None:
+        return None
+    old = (earlier.get("suggestion") or {}).get("old")
+    if old and old not in lines_of(text):
+        return None
+    return {key: earlier[key] for key in _JUDGED_KEYS if key in earlier}
+
+
+def claim_id(number: int) -> str:
+    """The id a check gives its claim numbered `number`, which a ruling names it by."""
+    return f"claim-{number}"
+
+
+def _numbered(sections: list[Section]) -> str:
+    """The sections as the claims are listed from: numbered, in order."""
+    return "\n\n".join(f"Section {number}:\n{text}" for number, (_, text) in enumerate(sections, 1))
+
+
+def _hash(numbered: str) -> str:
+    """A fingerprint of numbered text."""
+    return hashlib.sha256(numbered.encode()).hexdigest()[:16]
+
+
+def fingerprint(sections: list[Section]) -> str:
+    """The `source_hash` a check of `sections` is stored with, to tell whether the text has moved since."""
+    return _hash(_numbered(sections))
+
+
 def _review(numbered: str, claims: list[dict[str, Any]]) -> dict[str, Any]:
     """The stored shape of a check: when, of what text, and its claims."""
-    return {
-        "checked_at": datetime.now(UTC).isoformat(),
-        "source_hash": hashlib.sha256(numbered.encode()).hexdigest()[:16],
-        "claims": claims,
-    }
+    return {"checked_at": datetime.now(UTC).isoformat(), "source_hash": _hash(numbered), "claims": claims}
 
 
 async def check_as_deployed(
@@ -415,6 +473,7 @@ async def check_as_deployed(
     web: GuidelineWeb | None = None,
     complete: Complete | None = None,
     on_progress: Progress | None = None,
+    earlier: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """`check_facts` against this deployment's guideline library, web search and checking model,
     for whichever of them a test has not handed in. Claude checks before o3, the reverse of the
@@ -428,4 +487,5 @@ async def check_as_deployed(
         complete=complete
         or (lambda prompt: model_reply(settings, prompt, system=FACT_SYSTEM, claude_first=True)),
         on_progress=on_progress,
+        earlier=earlier,
     )

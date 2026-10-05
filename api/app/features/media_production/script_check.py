@@ -26,10 +26,12 @@ from app.features.media_production.errors import AvUnavailable
 from app.features.media_production.podcast_script import generate_script, split_script
 from app.features.media_production.slide_narration import (
     _TALK_WORDS,
+    AUDIO_TAG,
     NARRATION_WORKERS,
     json_object,
     keeps_stored_narration,
     narrate_deck,
+    plain_speech,
     slide_items,
     spoken_notes,
 )
@@ -50,7 +52,7 @@ _CONTEXT_CHARACTERS = 14000
 _THIN_SOURCE_CHARACTERS = 200
 _LENGTH_ALLOWANCE = 1.1
 
-_AUDIO_TAG = re.compile(r"\[[^\]]*\]")
+_SPACED_PUNCTUATION = re.compile(r"\s[,.;:!?]")
 _SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
 _OPENER = re.compile(r"^(?:right|okay|ok|alright|all right|so|now|well)\b", re.I)
 _VIDEO = re.compile(r"\bvideo\s+(?:consultation|consult|call|appointment)", re.I)
@@ -124,11 +126,6 @@ _NO_SOURCE = (
 )
 
 
-def _plain(line: str) -> str:
-    """A line as it is heard: without the audio tags that only the voice reads."""
-    return " ".join(_AUDIO_TAG.sub(" ", line).split())
-
-
 def slide_source(slide: dict[str, Any]) -> str:
     """What a slide's narration was written from: its title, what it shows, and its notes."""
     notes = str(slide.get("source_notes") or slide.get("speaker_notes") or "")
@@ -148,7 +145,7 @@ def _slides(content: dict[str, Any]) -> list[dict[str, Any]]:
     return [slide for slide in slides if isinstance(slide, dict)] if isinstance(slides, list) else []
 
 
-def _narration_lines(slide: dict[str, Any]) -> list[str]:
+def narration_lines(slide: dict[str, Any]) -> list[str]:
     """What is said on one slide, in order: the intro, then a line per item; empty if not yet written."""
     narration = slide.get("narration")
     if not isinstance(narration, dict) or not isinstance(narration.get("items"), list):
@@ -181,11 +178,69 @@ def spoken_lines(kind: str, content: dict[str, Any]) -> list[str]:
         script = content.get("script")
         turns = split_script(script) if isinstance(script, str) else []
         return [f"{speaker}: {line}" for speaker, line in turns]
-    per_slide = [_narration_lines(slide) for slide in _slides(content)]
+    per_slide = [narration_lines(slide) for slide in _slides(content)]
     framing = _framing_lines(content.get("presentation"))
     if not per_slide or not framing or not all(per_slide):
         return []
     return [line for lines in per_slide for line in lines] + framing
+
+
+# Words too common to show that an opener took up its slide's hook.
+_COMMON = frozenset(
+    [
+        "the",
+        "and",
+        "but",
+        "for",
+        "you",
+        "she",
+        "her",
+        "his",
+        "him",
+        "they",
+        "them",
+        "was",
+        "are",
+        "has",
+        "had",
+        "not",
+        "this",
+        "that",
+    ]
+)
+
+
+def _words(text: str) -> set[str]:
+    """The words in `text` that carry meaning, in lower case: three letters or more, so that HRT
+    and BMI count, less the commonest."""
+    return {word for word in re.findall(r"[a-z]+", text.lower()) if len(word) >= 3} - _COMMON
+
+
+def lint(kind: str, content: dict[str, Any]) -> list[str]:
+    """What a rule can see wrong with the script without a reader: a welcome opener, an opener
+    that has dropped its slide's hook, a space before punctuation, an ellipsis.
+    Asides and audio tags are never flagged."""
+    slides = _slides(content)
+    flags: list[str] = []
+    said = narration_lines(slides[0]) if kind == "slide_deck" and slides else []
+    if said:
+        opener = said[0]
+        hook = " ".join([str(slides[0].get("title") or ""), *slide_items(slides[0])])
+        if "welcome" in opener.lower():
+            flags.append(
+                "Slide 1 opens with a welcome: open with a patient's words, a scene, a number or a question."
+            )
+        elif hook.strip() and not _words(hook) & _words(opener):
+            flags.append(
+                f"Slide 1's first line does not use the slide's own hook ({hook.strip()!r}): open with it, "
+                "not a general remark."
+            )
+    for line in spoken_lines(kind, content):
+        if _SPACED_PUNCTUATION.search(line):
+            flags.append(f"A space before punctuation in: {line!r}")
+        if "..." in line or "…" in line:
+            flags.append(f"An ellipsis in: {line!r}")
+    return flags
 
 
 def is_checked(kind: str, content: dict[str, Any]) -> bool:
@@ -212,7 +267,7 @@ def rule_hints(lines: list[str], source: str, whole: str) -> list[dict[str, Any]
         hints.append({"line": number, "kind": kind, "quote": quote, "why": why, "fix": ""})
 
     for number, line in enumerate(lines, 1):
-        heard = _plain(line)
+        heard = plain_speech(line)
         for sentence in _SENTENCE_END.split(heard):
             for word in re.findall(r"[A-Za-z']+", sentence)[1:]:
                 name = word.removesuffix("'s")
@@ -269,7 +324,7 @@ def _issues(
 def _fixed(before: str, fix: str) -> str:
     """A proposed line made safe to use: on one line, with any audio tag of the original kept."""
     after = " ".join(fix.split())
-    missing = [tag for tag in _AUDIO_TAG.findall(before) if tag not in after]
+    missing = [tag for tag in AUDIO_TAG.findall(before) if tag not in after]
     return " ".join([*missing, after]) if after else before
 
 
@@ -344,6 +399,11 @@ def _review(
     content["review"] = review
 
 
+def talk_words(content: dict[str, Any]) -> int:
+    """How many words a deck's whole talk is."""
+    return sum(len(plain_speech(line).split()) for line in spoken_lines("slide_deck", content))
+
+
 def check_deck(
     complete: Complete, content: dict[str, Any], *, written: frozenset[int], plan_written: bool
 ) -> dict[str, Any]:
@@ -364,7 +424,7 @@ def check_deck(
             what="video",
             source=slide_source(slide),
             context=whole,
-            lines=_narration_lines(slide),
+            lines=narration_lines(slide),
             fixable=number in written,
         )
 
@@ -396,7 +456,7 @@ def check_deck(
     issues += _placed(framing_issues, "framing", None)
     changes += _placed(framing_changes, "framing", None)
 
-    words = sum(len(_plain(line).split()) for line in spoken_lines("slide_deck", content))
+    words = talk_words(content)
     if words > _TALK_WORDS * _LENGTH_ALLOWANCE:
         why = f"The talk is about {words} words; twelve minutes is about {_TALK_WORDS}"
         issues.append(
@@ -406,8 +466,30 @@ def check_deck(
     return content
 
 
-def prepare_deck(
+def prepare_deck_to_time(
     settings: Settings, content: dict[str, Any], *, rewrite: bool, complete: Complete
+) -> dict[str, Any]:
+    """`prepare_deck`, written once more to a tighter word count if the talk ran over twelve minutes.
+
+    The writer runs over what it is asked for, so the second writing aims below twelve minutes by as
+    much as the first overshot.
+    """
+    made = prepare_deck(settings, content, rewrite=rewrite, complete=complete)
+    words = talk_words(made)
+    if words <= _TALK_WORDS * _LENGTH_ALLOWANCE:
+        return made
+    return prepare_deck(
+        settings, made, rewrite=True, complete=complete, talk=_TALK_WORDS * _TALK_WORDS // words
+    )
+
+
+def prepare_deck(
+    settings: Settings,
+    content: dict[str, Any],
+    *,
+    rewrite: bool,
+    complete: Complete,
+    talk: int = _TALK_WORDS,
 ) -> dict[str, Any]:
     """Writes whatever of a deck's narration is missing or out of date, then reads all of it.
 
@@ -433,7 +515,7 @@ def prepare_deck(
     if plan_written:
         payload.pop("presentation", None)
 
-    narrate_deck(settings, payload)
+    narrate_deck(settings, payload, talk)
     return check_deck(complete, payload, written=frozenset(written), plan_written=plan_written)
 
 

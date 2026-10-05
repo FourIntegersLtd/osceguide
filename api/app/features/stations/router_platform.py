@@ -23,6 +23,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.schemas import StationReview
 from app.core.settings import SettingsDep
 from app.core.tenancy import PlatformAdmin
 from app.features.stations import (
@@ -153,7 +154,7 @@ async def add_platform_station_version(
 @router.patch(
     "/platform/stations/{station_id}/versions/{version}",
     response_model=schemas.StationVersionRead,
-    responses=error_responses(*_AUTH, *_STATION, errors.NotEditableError),
+    responses=error_responses(*_AUTH, *_STATION, errors.NotEditableError, errors.StationBeingProduced),
 )
 async def edit_platform_station_version(
     station_id: uuid.UUID,
@@ -169,25 +170,25 @@ async def edit_platform_station_version(
 
 @router.get(
     "/platform/stations/{station_id}/versions/{version}/review",
-    response_model=schemas.StationReview,
+    response_model=StationReview,
     responses=error_responses(*_AUTH, *_STATION),
 )
 async def read_platform_station_review(
     station_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session
-) -> schemas.StationReview:
+) -> StationReview:
     """The version's fact check, if one has been run."""
     return await service_facts.read_review(session, station_id, version)
 
 
 @router.post(
     "/platform/stations/{station_id}/versions/{version}/check-facts",
-    response_model=schemas.StationReview,
+    response_model=StationReview,
     status_code=status.HTTP_202_ACCEPTED,
-    responses=error_responses(*_AUTH, *_STATION, errors.FactCheckRunning),
+    responses=error_responses(*_AUTH, *_STATION, errors.FactCheckRunning, errors.StationBeingProduced),
 )
 async def check_platform_station_facts(
     station_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session
-) -> schemas.StationReview:
+) -> StationReview:
     """Starts checking the version's clinical claims; `station.updated` says when it settles."""
     return await service_facts.enqueue_check(session, station_id, version, requested_by=admin.user_id)
 

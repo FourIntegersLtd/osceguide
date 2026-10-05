@@ -44,9 +44,13 @@ async def create(
     return item
 
 
-async def by_id(session: AsyncSession, item_id: uuid.UUID) -> MediaItem | None:
-    """One item by its primary key, draft or published, or `None` if it does not exist."""
-    return (await session.execute(select(MediaItem).where(MediaItem.id == item_id))).scalar_one_or_none()
+async def by_id(session: AsyncSession, item_id: uuid.UUID, *, lock: bool = False) -> MediaItem | None:
+    """One item by its primary key, draft or published, or `None` if it does not exist.
+
+    `lock` holds the row until the transaction ends, for a caller about to rewrite what it read.
+    """
+    stmt = select(MediaItem).where(MediaItem.id == item_id)
+    return (await session.execute(stmt.with_for_update() if lock else stmt)).scalar_one_or_none()
 
 
 async def by_slug(session: AsyncSession, slug: str) -> MediaItem | None:

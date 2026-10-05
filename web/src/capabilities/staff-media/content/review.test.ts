@@ -183,3 +183,49 @@ describe("the staff review of a spoken item", () => {
     );
   });
 });
+
+describe("the agent's run", () => {
+  it("reads the steps, what it used and what it left, and an agent fix undoes like a reader's", () => {
+    const content = {
+      slides: [{ title: "HRT", bullets: ["Estradiol patch 50 micrograms"] }],
+      review: {
+        brief: { brief: "Teach HRT." },
+        run: {
+          steps: [{ at: "t", tool: "check_facts", summary: "1 contradicted" }],
+          tokens: 700,
+          outcome: "finished",
+          open: ["Corrected (slide 1, claim-1)"],
+        },
+        facts: {
+          checked_at: "t",
+          claims: [
+            {
+              id: "claim-1",
+              slide: 1,
+              claim: "Estradiol patch 500 micrograms",
+              verdict: "contradicted",
+              decision: "accepted",
+              by: "agent",
+              swap: { from: "500 micrograms", to: "50 micrograms" },
+            },
+          ],
+        },
+      },
+    };
+
+    const review = reviewOf(content);
+    assert.deepEqual(review.run, {
+      steps: [{ at: "t", tool: "check_facts", summary: "1 contradicted" }],
+      tokens: 700,
+      outcome: "finished",
+      summary: "",
+      open: ["Corrected (slide 1, claim-1)"],
+      stop: false,
+    });
+    assert.deepEqual(review.brief, { brief: "Teach HRT.", source_text: "" });
+    const undone = reopenSuggestion(content, review.facts!.claims[0]!);
+    assert.deepEqual((undone.slides as { bullets: string[] }[])[0]!.bullets, [
+      "Estradiol patch 500 micrograms",
+    ]);
+  });
+});

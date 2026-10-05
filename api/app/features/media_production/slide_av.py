@@ -16,8 +16,10 @@ from bisect import bisect_right
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from PIL import Image
@@ -29,7 +31,9 @@ from app.features.media_production.s3 import s3_client
 from app.features.media_production.slide_narration import (
     is_question,
     narrate_deck,
+    plain_speech,
 )
+from app.features.media_production.slide_pictures import fetch_pictures
 from app.features.media_production.slide_scenes import (
     ASSETS,
     COUNTDOWN_SECONDS,
@@ -56,8 +60,6 @@ CAPTION_CHARACTERS = 72
 # ElevenLabs allows three requests at once.
 VOICE_WORKERS = 3
 S3_FOLDER = "teaching_videos/v2"
-
-_AUDIO_TAG = re.compile(r"\[[^\]]*\]")
 
 
 @dataclass
@@ -95,13 +97,35 @@ def _prepare_slide_payload(
 
 
 # Poppins has no subscript digits; CHA₂DS₂-VASc would draw as boxes.
-_PLAIN_DIGITS = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
+# Characters Poppins has no glyph for, which it draws as an empty box, written as it can draw them.
+# Models write arrows and non-breaking hyphens freely; deck 3's frames showed the boxes. An arrow
+# becomes the word a presenter would read it as.
+_FONT_SAFE = str.maketrans(
+    {
+        **{chr(0x2080 + digit): str(digit) for digit in range(10)},  # subscript digits
+        "\u2010": "-",  # hyphen
+        "\u2011": "-",  # non-breaking hyphen
+        "\u2012": "-",  # figure dash
+        "\u2015": "\u2014",  # horizontal bar, as an em dash
+        "\u2032": "'",  # prime
+        "\u2033": '"',  # double prime
+        "\u207a": "+",  # superscript plus
+        "\u207b": "-",  # superscript minus
+        "\u03bc": "\u00b5",  # Greek mu, as the micro sign
+        "\u200b": "",  # zero-width space
+        "\u2192": " to ",
+        "\u21d2": " so ",
+        "\u2190": " from ",
+        "\u2191": " raised ",
+        "\u2193": " reduced ",
+    }
+)
 
 
 def _flowing(text: object) -> str:
     """Text with its stored line breaks and runs of spaces removed (the renderer does the wrapping),
-    and subscript digits made plain."""
-    return " ".join(str(text or "").translate(_PLAIN_DIGITS).split())
+    and the characters the font cannot draw made plain."""
+    return " ".join(str(text or "").translate(_FONT_SAFE).split())
 
 
 def _rows(slide: dict[str, Any]) -> list[Row]:
@@ -132,13 +156,19 @@ def _rows(slide: dict[str, Any]) -> list[Row]:
     return rows
 
 
+def picture_file(image_url: str, deck_dir: Path) -> Path:
+    """Where a slide's picture is on disk: a stored one by its file name alone, under the deck's
+    `pictures` folder (`fetch_pictures` puts only this deployment's there), else a bundled one."""
+    if image_url.startswith("https://"):
+        return deck_dir / "pictures" / Path(urlparse(image_url).path).name
+    return resolve_image_path(image_url, ASSETS / "slides", deck_dir)
+
+
 def _slide_take(painter: Painter, slide: dict[str, Any], counter: str, deck_dir: Path) -> _Take:
     """One stored slide as a scene with Ben's lines: a list, a paragraph, a question or a bare title."""
     narration = slide["narration"]
     intro, title, rows = narration["intro"], _flowing(slide.get("title")), _rows(slide)
-    images = [
-        resolve_image_path(str(url), ASSETS / "slides", deck_dir) for url in slide.get("image_urls") or []
-    ]
+    images = [picture_file(str(url), deck_dir) for url in slide.get("image_urls") or []]
     image_left = slide.get("layout") == "text_image_left"
     if rows:
         callouts = {
@@ -181,6 +211,25 @@ def _slide_take(painter: Painter, slide: dict[str, Any], counter: str, deck_dir:
         images=images,
     )
     return _Take(scene, [(intro, None)], slide, countdown=asks)
+
+
+@lru_cache(maxsize=1)
+def _measuring_painter() -> Painter:
+    """The bundled fonts, loaded once, for measuring text without drawing it."""
+    return Painter()
+
+
+def text_scale(slide: dict[str, Any]) -> float:
+    """How large a slide's text is drawn beside its picture, as a share of its full size: 1.0 fits
+    as written, and the renderer shrinks a crowded slide until it fits."""
+    explanation = _flowing(slide.get("explanation"))
+    rows = _rows(slide) or ([Row(explanation, marker="")] if explanation else [])
+    if not rows:
+        return 1.0
+    # Any picture stands in for the slide's own: only the room it takes from the text matters.
+    stand_in = ASSETS / "slides" / "images" / "calendar.jpg"
+    scene = Scene(_measuring_painter(), title=_flowing(slide.get("title")), rows=rows, images=[stand_in])
+    return scene.placed[0].size / rows[0].size
 
 
 def _storyboard(
@@ -229,7 +278,7 @@ def _caption_chunks(text: str, start: float, voiced: float) -> list[tuple[float,
     The split is by clause and the timing by length, which follows speech closely without
     needing word timestamps from the voice.
     """
-    spoken = re.sub(r"\s+([,.;:!?])", r"\1", " ".join(_AUDIO_TAG.sub(" ", text).split()))
+    spoken = re.sub(r"\s+([,.;:!?])", r"\1", plain_speech(text))
     chunks: list[str] = []
     current = ""
     for clause in re.split(r"(?<=[.!?…,;:—–])\s+", spoken):
@@ -433,6 +482,7 @@ def regenerate_slide_av(
         raise AvUnavailable(f"Unknown presenter '{presenter}'")
 
     narrate_deck(settings, payload)
+    fetch_pictures(settings, slides, work_dir)
 
     font_dir = Path(settings.media_av_font_dir) if settings.media_av_font_dir.strip() else None
     takes = _storyboard(Painter(font_dir), payload, payload["presentation"], work_dir)

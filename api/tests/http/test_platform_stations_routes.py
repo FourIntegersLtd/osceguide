@@ -375,7 +375,14 @@ async def test_a_platform_station_is_fact_checked_beside_its_content_and_ruled_o
 
     queued = await client.post(f"{version_path}/check-facts", headers=bearer(admin))
     assert queued.status_code == 202, queued.text
-    assert queued.json() == {"checking": True, "facts": None, "error": None}
+    assert queued.json() == {
+        "checking": True,
+        "producing": False,
+        "facts": None,
+        "error": None,
+        "brief": None,
+        "run": None,
+    }
     again = await client.post(f"{version_path}/check-facts", headers=bearer(admin))
     assert again.json()["code"] == "fact_check_running"
 
@@ -448,3 +455,124 @@ async def test_a_platform_station_is_fact_checked_beside_its_content_and_ruled_o
 async def _version_id(client: AsyncClient, admin: str, station_id: str) -> str:
     versions = await client.get(f"/api/v1/stations/{station_id}/versions", headers=bearer(admin))
     return str(versions.json()[0]["id"])
+
+
+DRAFTED = {
+    **CONTENT,
+    "expected_answers": "Elicits the smoking history and offers nicotine gum only.",
+}
+
+
+async def _producing_station(client: AsyncClient, admin: str) -> tuple[str, str]:
+    """A blank platform station on a template, set to be produced; its id and version path."""
+    await create_exam(client, admin, code="sca")
+    template_version_id = await a_platform_template(client, admin)
+    created = await client.post(
+        "/api/v1/platform/stations",
+        json={"title": "COPD", "exam_code": "sca", "content": {}, "template_version_id": template_version_id},
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+    station_id = str(created.json()["id"])
+    version_path = f"/api/v1/platform/stations/{station_id}/versions/1"
+    started = await client.post(
+        f"{version_path}/produce",
+        json={"brief": "Breathless smoker, COPD diagnosis.", "source_text": "Mr B, 64, coughs."},
+        headers=bearer(admin),
+    )
+    assert started.status_code == 202, started.text
+    assert (started.json()["producing"], started.json()["run"]["steps"]) == (True, [])
+    assert started.json()["brief"] == {
+        "brief": "Breathless smoker, COPD diagnosis.",
+        "source_text": "Mr B, 64, coughs.",
+    }
+    return station_id, version_path
+
+
+async def test_the_agent_drafts_a_station_fixes_what_the_sources_contradict_and_leaves_a_draft(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.identity import repository as identity_repository
+    from app.features.media_production.service_produce import STATION, run_produce_job
+    from tests.support.produce_kit import answering, one_session, produce_kit
+
+    admin = await admin_token(make_actor)
+    station_id, version_path = await _producing_station(client, admin)
+    user = await identity_repository.user_by_email(db_session, "admin@osceguide.com")
+    assert user is not None
+    version_id = uuid.UUID(await _version_id(client, admin, station_id))
+    run_id = (await client.get(f"{version_path}/review", headers=bearer(admin))).json()["run"]["id"]
+
+    # Code drafts, checks and hands over; the model only rules on the contradiction.
+    turn, asked = answering(
+        {"rule": [{"decision": "accept", "reason": "Gum alone is not enough."}]}, tokens=50
+    )
+    kit, record = produce_kit(DRAFTED, wrong={"offers nicotine gum only": "refers to a stop smoking service"})
+    await run_produce_job(
+        version_id,
+        requested_by=user.id,
+        run_id=run_id,
+        sessions=one_session(db_session),
+        target=STATION,
+        turn=turn,
+        kit=kit,
+    )
+
+    assert [tool for tool, _ in asked] == ["rule"]
+    assert "Mr B, 64, coughs." in record.drafts[0]
+    review = (await client.get(f"{version_path}/review", headers=bearer(admin))).json()
+    assert review["producing"] is False
+    assert review["run"]["outcome"] == "finished"
+    assert [step["tool"] for step in review["run"]["steps"]] == [
+        "write_draft",
+        "check_facts",
+        "rule_claim",
+        "finish",
+    ]
+    assert "1 contradicted" in review["run"]["steps"][1]["summary"]
+    assert review["run"]["open"] == [
+        "Corrected (Expected answers, claim-1): "
+        "'offers nicotine gum only' -> 'refers to a stop smoking service'",
+    ]
+    [claim] = review["facts"]["claims"]
+    assert (claim["field"], claim["decision"], claim["by"]) == ("expected_answers", "accepted", "agent")
+    versions = await client.get(f"/api/v1/stations/{station_id}/versions", headers=bearer(admin))
+    content = versions.json()[0]["content"]
+    assert content == {
+        **CONTENT,
+        "expected_answers": "Elicits the smoking history and refers to a stop smoking service.",
+    }
+
+
+async def test_a_station_being_produced_is_not_edited_checked_or_produced_again(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    _, version_path = await _producing_station(client, admin)
+
+    stopped = await client.post(f"{version_path}/stop-produce", headers=bearer(admin))
+    assert (stopped.status_code, stopped.json()["run"]["stop"]) == (202, True)
+    again = await client.post(
+        f"{version_path}/produce", json={"brief": "Another go at it."}, headers=bearer(admin)
+    )
+    assert again.json()["code"] == "station_being_produced"
+    checked = await client.post(f"{version_path}/check-facts", headers=bearer(admin))
+    assert checked.json()["code"] == "station_being_produced"
+    edited = await client.patch(version_path, json={"content": CONTENT}, headers=bearer(admin))
+    assert edited.json()["code"] == "station_being_produced"
+
+
+async def test_a_station_without_a_template_is_not_produced(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    created = await client.post(
+        "/api/v1/platform/stations",
+        json={"title": "COPD", "exam_code": "sca", "content": CONTENT, "template_version_id": None},
+        headers=bearer(admin),
+    )
+    response = await client.post(
+        f"/api/v1/platform/stations/{created.json()['id']}/versions/1/produce",
+        json={"brief": "Breathless smoker."},
+        headers=bearer(admin),
+    )
+    assert response.json()["code"] == "station_has_no_template"

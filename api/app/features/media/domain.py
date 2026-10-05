@@ -71,9 +71,14 @@ def is_public(*, status: str) -> bool:
     return status == "published"
 
 
+def is_editable(*, status: str) -> bool:
+    """Whether an item in this status may be changed in place: only a draft may."""
+    return status == "draft"
+
+
 def ensure_editable(*, status: str) -> None:
     """Refuses to let a published item be edited in place; it must be replaced instead."""
-    if status != "draft":
+    if not is_editable(status=status):
         raise NotEditable("Published material is edited by replacing it, not in place.")
 
 

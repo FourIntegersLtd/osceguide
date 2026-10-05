@@ -6,8 +6,9 @@ from collections.abc import Callable
 from typing import Any
 
 
-def station_block_ids(structure: Any) -> list[str]:
-    """Every block id declared in a station template structure, in template order."""
+def station_block_ids(structure: Any, *, media: bool = True) -> list[str]:
+    """Every block id declared in a station template structure, in template order; without the
+    media blocks when `media` is false."""
     ids: list[str] = []
     if not isinstance(structure, dict):
         return ids
@@ -15,7 +16,7 @@ def station_block_ids(structure: Any) -> list[str]:
         if not isinstance(section, dict):
             continue
         for block in section.get("blocks") or []:
-            if isinstance(block, dict):
+            if isinstance(block, dict) and (media or block.get("type") != "media"):
                 block_id = block.get("id")
                 if isinstance(block_id, str) and block_id:
                     ids.append(block_id)
@@ -45,8 +46,12 @@ def collect_required_station_block_ids(structure: Any) -> list[str]:
 
 
 def normalize_station_ai_content(structure: Any, payload: Any) -> dict[str, Any]:
-    """Flatten AI JSON into blockId -> value map (handles nested section objects)."""
-    block_ids = collect_station_block_ids(structure)
+    """Flatten AI JSON into blockId -> value map (handles nested section objects).
+
+    Media blocks are dropped: a model has no picture of ours to point at, so any URL it gives is
+    made up (one drafted `cdn.exampleclinicalimages.org`) and would show as a broken image.
+    """
+    block_ids = set(station_block_ids(structure, media=False))
     if not block_ids or not isinstance(payload, dict):
         return {}
 

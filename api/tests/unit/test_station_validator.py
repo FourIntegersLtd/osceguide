@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.features.stations.station_content import (
+    normalize_station_ai_content,
     validate_station_content,
 )
 from app.features.stations.station_validator import validate_station_structure
@@ -115,3 +116,29 @@ def test_a_grouped_list_names_its_groups_as_text() -> None:
     ok, errs = validate_station_structure(structure(["Reaction", ""]))
     assert not ok and any("groups" in e for e in errs)
     assert not validate_station_structure(structure("Reaction"))[0]
+
+
+def test_a_drafted_station_keeps_its_text_and_drops_a_picture_url_the_model_made_up() -> None:
+    structure = {
+        "sections": [
+            {
+                "id": "doctor_information",
+                "blocks": [
+                    {"id": "doctor_patient_biodata", "type": "longText"},
+                    {"id": "doctor_photos", "type": "media"},
+                ],
+            }
+        ]
+    }
+    drafted = {
+        "content": {
+            "doctor_information": {
+                "doctor_patient_biodata": "Maria Fernandez, 45",
+                "doctor_photos": "https://cdn.exampleclinicalimages.org/photos/gout.jpg",
+            }
+        }
+    }
+
+    assert normalize_station_ai_content(structure, drafted) == {
+        "doctor_patient_biodata": "Maria Fernandez, 45"
+    }

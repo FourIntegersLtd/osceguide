@@ -91,6 +91,12 @@ async def update(
     if summary is not None:
         values["summary"] = summary
     if content is not None:
+        # Imported here, not at the top: media_production is built on this slice, and what counts
+        # as running is its to say.
+        from app.features.media_production import service as production
+
+        if production.is_running(dict(item.content or {})):
+            raise errors.BeingProduced()
         values["content"] = content
         values["specialty"] = domain.specialty_of(content)
     if values:
@@ -268,11 +274,16 @@ class ProductionItem:
     title: str
     content: dict[str, Any]
     exam_id: uuid.UUID | None
+    # False once published: a published item is replaced, never rewritten in place.
+    editable: bool = True
 
 
-async def production_item(session: AsyncSession, item_id: uuid.UUID) -> ProductionItem:
-    """One item's production-relevant fields, refusing with `ItemNotFound` if the id matches nothing."""
-    item = await repository.by_id(session, item_id)
+async def production_item(session: AsyncSession, item_id: uuid.UUID, *, lock: bool = False) -> ProductionItem:
+    """One item's production-relevant fields, refusing with `ItemNotFound` if the id matches nothing.
+
+    `lock` keeps anyone else from rewriting the item until this transaction ends.
+    """
+    item = await repository.by_id(session, item_id, lock=lock)
     if item is None:
         raise errors.ItemNotFound()
     return ProductionItem(
@@ -281,6 +292,7 @@ async def production_item(session: AsyncSession, item_id: uuid.UUID) -> Producti
         title=item.title,
         content=dict(item.content or {}),
         exam_id=item.exam_id,
+        editable=domain.is_editable(status=item.status),
     )
 
 

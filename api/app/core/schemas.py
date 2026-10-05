@@ -144,3 +144,17 @@ class TrialCandidateRead(BaseModel):
     station_title: str | None
     created_at: datetime
     turn_count: int
+
+
+class StationReview(BaseModel):
+    """A platform station version's fact check and agent run, returned by stations and by media
+    production. Never part of what a trainee is served."""
+
+    checking: bool = False
+    # The producing agent is working on the version; its steps are under `run`.
+    producing: bool = False
+    facts: dict[str, Any] | None = None
+    error: dict[str, Any] | None = None
+    # What the agent was asked to produce the version from, and its latest run.
+    brief: dict[str, Any] | None = None
+    run: dict[str, Any] | None = None

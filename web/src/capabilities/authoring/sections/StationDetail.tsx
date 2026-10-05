@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   HiOutlineArchiveBox,
   HiOutlineArrowLeft,
@@ -38,6 +38,7 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { StationFactCheck } from "@/capabilities/authoring/sections/StationFactCheck";
 import type { Facts } from "@/capabilities/fact-check";
+import { listStationVersions } from "@/capabilities/stations";
 import { BriefEditor } from "@/capabilities/authoring/sections/BriefEditor";
 import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
 
@@ -113,6 +114,17 @@ export function StationDetail({
             setEditContent((updated.content ?? {}) as Record<string, unknown>);
           },
         };
+
+  /** Puts what the agent saved on screen, dropping nothing: it only ran while there were no edits. */
+  const reloadProduced = useCallback(() => {
+    void listStationVersions(station.id).then((versions) => {
+      const produced = versions.find((entry) => entry.version === version);
+      if (!produced) return;
+      setWorking(produced);
+      setEditContent({ ...((produced.content ?? {}) as Record<string, unknown>) });
+      setRuledFacts(null);
+    });
+  }, [station.id, version]);
 
   async function handlePublish() {
     void action.run("publish", async () => {
@@ -335,6 +347,7 @@ export function StationDetail({
           onContentChange={setEditContent}
           onRuled={setRuledFacts}
           editable={isDraft}
+          onProduced={reloadProduced}
           unsaved={
             ruledFacts !== null ||
             JSON.stringify(editContent) !==

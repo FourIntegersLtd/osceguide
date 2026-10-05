@@ -22,6 +22,8 @@ export type B2cSlide = {
   pause_duration?: number;
   image_urls?: string[];
   image_url?: string;
+  /** Who made each picture and under what licence, in the order of `image_urls`. */
+  image_credits?: { author?: string; licence?: string; source?: string }[];
   body?: string;
 };
 
@@ -80,7 +82,8 @@ export function isAvRunning(status: AvStatus | null): boolean {
   return (
     status.startsWith("generating") ||
     status === "checking_facts" ||
-    status === "writing_script"
+    status === "writing_script" ||
+    status === "producing"
   );
 }
 

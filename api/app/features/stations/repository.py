@@ -296,6 +296,21 @@ async def versions_with_stations_any_owner(
     return [(version, station) for version, station in (await session.execute(stmt)).all()]
 
 
+async def version_with_station(
+    session: AsyncSession, version_id: uuid.UUID, *, lock: bool = False
+) -> tuple[StationVersion, Station] | None:
+    """One platform version and its station; `lock` holds the version until the transaction ends."""
+    stmt = (
+        select(StationVersion, Station)
+        .join(Station, Station.id == StationVersion.station_id)
+        .where(owned_by(StationVersion, None), StationVersion.id == version_id)
+    )
+    if lock:
+        stmt = stmt.with_for_update(of=StationVersion)
+    found = (await session.execute(stmt)).one_or_none()
+    return (found[0], found[1]) if found else None
+
+
 async def version_ids_matching_title(session: AsyncSession, search: str) -> list[uuid.UUID]:
     """Ids of every station version whose station's title contains `search`, case-insensitively.
 

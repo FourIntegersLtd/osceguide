@@ -80,14 +80,6 @@ class UpdateVersion(BaseModel):
     facts: dict[str, Any] | None = None
 
 
-class StationReview(BaseModel):
-    """A platform station version's fact check. Never part of what a trainee is served."""
-
-    checking: bool = False
-    facts: dict[str, Any] | None = None
-    error: dict[str, Any] | None = None
-
-
 class UpdateBrief(BaseModel):
     """The one field a published version will accept a change to."""
 

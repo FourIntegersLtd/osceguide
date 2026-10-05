@@ -1,6 +1,6 @@
 """Registers the background jobs a platform admin's production request runs as: checking an
-item's facts, writing and checking its script, turning a summary into a podcast, re-rendering a
-slide deck's narration, or voicing a podcast script.
+item's facts, writing and checking its script, having the agent produce it whole, turning a
+summary into a podcast, re-rendering a slide deck's narration, or voicing a podcast script.
 """
 
 from __future__ import annotations
@@ -12,6 +12,10 @@ from app.core.jobs import get_jobs_app
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
+
+# Agent runs have a queue of their own, so a worker can be given to them alone and a long
+# render never holds one up.
+PRODUCE_QUEUE = "produce"
 
 
 def register() -> None:
@@ -86,3 +90,29 @@ def register() -> None:
                 session, uuid.UUID(media_id), requested_by=uuid.UUID(requested_by), rewrite=rewrite
             )
             log.info("media script written", media_id=media_id)
+
+    @app.task(name="produce_media", queue=PRODUCE_QUEUE)
+    async def produce_media(media_id: str, requested_by: str, run_id: str) -> None:
+        """Runs the agent that drafts, checks and corrects an item, stopping before it is voiced."""
+        from app.core.db import job_session
+        from app.features.media_production.service_produce import run_produce_job
+
+        await run_produce_job(
+            uuid.UUID(media_id), requested_by=uuid.UUID(requested_by), run_id=run_id, sessions=job_session
+        )
+        log.info("media produced", media_id=media_id)
+
+    @app.task(name="produce_station", queue=PRODUCE_QUEUE)
+    async def produce_station(version_id: str, requested_by: str, run_id: str) -> None:
+        """Runs the agent that drafts a platform station and checks and corrects its facts."""
+        from app.core.db import job_session
+        from app.features.media_production.service_produce import STATION, run_produce_job
+
+        await run_produce_job(
+            uuid.UUID(version_id),
+            requested_by=uuid.UUID(requested_by),
+            run_id=run_id,
+            sessions=job_session,
+            target=STATION,
+        )
+        log.info("station produced", version_id=version_id)

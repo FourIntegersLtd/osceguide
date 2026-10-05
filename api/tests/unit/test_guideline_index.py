@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 import httpx
@@ -129,3 +130,38 @@ async def test_a_web_search_that_fails_is_no_answer_rather_than_an_error(reply: 
     guidelines, _seen = guidelines_over(lambda request: reply)
 
     assert await guidelines.answer(question="stage 2 threshold") is None
+
+
+@pytest.mark.asyncio
+async def test_a_web_search_met_by_an_overloaded_clinical_buddy_is_asked_once_more() -> None:
+    replies = iter([httpx.Response(502), httpx.Response(200, json=WEB_REPLY)])
+    guidelines, seen = guidelines_over(lambda request: next(replies))
+
+    found = await guidelines.answer(question="stage 2 threshold")
+
+    assert found is not None and found.answer == "Stage 2 is 160/100 or more [1]."
+    assert len(seen) == 2
+
+
+@pytest.mark.asyncio
+async def test_only_so_many_web_searches_are_in_flight_at_once_whoever_asks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.features.tutor_memory.guidelines.AT_ONCE", 2)
+    flying: list[int] = []
+    now = 0
+
+    async def slow(request: httpx.Request) -> httpx.Response:
+        nonlocal now
+        now += 1
+        flying.append(now)
+        await asyncio.sleep(0.01)
+        now -= 1
+        return httpx.Response(200, json=WEB_REPLY)
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(slow))
+    guidelines = ClinicalBuddyGuidelines(http=http, base_url="https://buddy.test/")
+
+    await asyncio.gather(*(guidelines.answer(question=f"question {number}") for number in range(6)))
+
+    assert max(flying) == 2

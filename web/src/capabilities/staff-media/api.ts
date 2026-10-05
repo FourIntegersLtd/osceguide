@@ -91,20 +91,8 @@ export function generatedTitle(generated: Record<string, unknown>): string {
   return "";
 }
 
-export function generateSummary(prompt: string, examCode?: string | null) {
-  return generateContent("/api/v1/platform/generate/summary", prompt, examCode);
-}
-
 export function generateBlog(prompt: string, examCode?: string | null) {
   return generateContent("/api/v1/platform/generate/blog", prompt, examCode);
-}
-
-export function generateSlideDeck(prompt: string, examCode?: string | null) {
-  return generateContent("/api/v1/platform/generate/slide-deck", prompt, examCode);
-}
-
-export function generatePodcast(prompt: string, examCode?: string | null) {
-  return generateContent("/api/v1/platform/generate/podcast", prompt, examCode);
 }
 
 export function generateSummaryPodcast(itemId: string): Promise<MediaItem> {
@@ -137,5 +125,20 @@ export function writeMediaScript(itemId: string, rewrite: boolean): Promise<Medi
   return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/write-script`, {
     method: "POST",
     body: { rewrite },
+  });
+}
+
+/** Starts the agent that drafts, checks and fixes the item until it is ready to voice. Voices nothing. */
+export function produceMedia(itemId: string, input: S["ProduceRequest"]): Promise<MediaItem> {
+  return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/produce`, {
+    method: "POST",
+    body: input,
+  });
+}
+
+/** Asks a running agent to stop after the step it is on. */
+export function stopProduce(itemId: string): Promise<MediaItem> {
+  return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/stop-produce`, {
+    method: "POST",
   });
 }

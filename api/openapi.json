@@ -5402,6 +5402,7 @@
               "legacy_exchange_unavailable",
               "marker_unavailable",
               "media_already_published",
+              "media_being_produced",
               "media_not_deletable",
               "media_not_editable",
               "media_not_found",
@@ -5498,7 +5499,9 @@
               "sso_not_configured",
               "sso_provider_unsupported",
               "sso_verification_failed",
+              "station_being_produced",
               "station_flag_not_found",
+              "station_has_no_template",
               "station_import_not_found",
               "station_not_found",
               "station_not_on_circuit",
@@ -12909,6 +12912,34 @@
         "title": "PracticeStationRead",
         "type": "object"
       },
+      "ProduceRequest": {
+        "description": "What the agent produces an item from.",
+        "properties": {
+          "brief": {
+            "maxLength": 4000,
+            "minLength": 8,
+            "title": "Brief",
+            "type": "string"
+          },
+          "source_text": {
+            "anyOf": [
+              {
+                "maxLength": 60000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Text"
+          }
+        },
+        "required": [
+          "brief"
+        ],
+        "title": "ProduceRequest",
+        "type": "object"
+      },
       "ProgrammeRead": {
         "properties": {
           "exam_code": {
@@ -17687,8 +17718,20 @@
         "type": "object"
       },
       "StationReview": {
-        "description": "A platform station version's fact check. Never part of what a trainee is served.",
+        "description": "A platform station version's fact check and agent run, returned by stations and by media\nproduction. Never part of what a trainee is served.",
         "properties": {
+          "brief": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brief"
+          },
           "checking": {
             "default": false,
             "title": "Checking",
@@ -17717,6 +17760,23 @@
               }
             ],
             "title": "Facts"
+          },
+          "producing": {
+            "default": false,
+            "title": "Producing",
+            "type": "boolean"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run"
           }
         },
         "title": "StationReview",
@@ -34642,9 +34702,10 @@
                 }
               }
             },
-            "description": "media_not_editable",
+            "description": "media_not_editable, media_being_produced",
             "x-codes": [
-              "media_not_editable"
+              "media_not_editable",
+              "media_being_produced"
             ]
           },
           "422": {
@@ -34980,6 +35041,120 @@
         ]
       }
     },
+    "/api/v1/media/{item_id}/produce": {
+      "post": {
+        "operationId": "media_production_produce_media",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProduceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_editable, av_already_running",
+            "x-codes": [
+              "media_not_editable",
+              "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind",
+            "x-codes": [
+              "media_wrong_kind"
+            ]
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_unavailable",
+            "x-codes": [
+              "av_unavailable"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Produce Media",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
     "/api/v1/media/{item_id}/publish": {
       "post": {
         "description": "Indexed on publish, so a draft nobody can read does not surface in search.",
@@ -35167,6 +35342,80 @@
           }
         ],
         "summary": "Regenerate Slide Av",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/stop-produce": {
+      "post": {
+        "operationId": "media_production_stop_producing_media",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stop Producing Media",
         "tags": [
           "media-production"
         ]
@@ -58977,9 +59226,10 @@
                 }
               }
             },
-            "description": "not_editable",
+            "description": "not_editable, station_being_produced",
             "x-codes": [
-              "not_editable"
+              "not_editable",
+              "station_being_produced"
             ]
           },
           "422": {
@@ -59203,9 +59453,10 @@
                 }
               }
             },
-            "description": "fact_check_running",
+            "description": "fact_check_running, station_being_produced",
             "x-codes": [
-              "fact_check_running"
+              "fact_check_running",
+              "station_being_produced"
             ]
           },
           "422": {
@@ -59522,6 +59773,116 @@
         ]
       }
     },
+    "/api/v1/platform/stations/{station_id}/versions/{version}/produce": {
+      "post": {
+        "operationId": "media_production_produce_station",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProduceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationReview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found, version_not_found",
+            "x-codes": [
+              "station_not_found",
+              "version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_editable, station_has_no_template, fact_check_running, station_being_produced",
+            "x-codes": [
+              "not_editable",
+              "station_has_no_template",
+              "fact_check_running",
+              "station_being_produced"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Produce Station",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
     "/api/v1/platform/stations/{station_id}/versions/{version}/publish": {
       "post": {
         "description": "Publish it into the library, where every organisation may draw on it.",
@@ -59733,6 +60094,90 @@
         "summary": "Read Platform Station Review",
         "tags": [
           "stations"
+        ]
+      }
+    },
+    "/api/v1/platform/stations/{station_id}/versions/{version}/stop-produce": {
+      "post": {
+        "operationId": "media_production_stop_producing_station",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StationReview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found, version_not_found",
+            "x-codes": [
+              "station_not_found",
+              "version_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stop Producing Station",
+        "tags": [
+          "media-production"
         ]
       }
     },

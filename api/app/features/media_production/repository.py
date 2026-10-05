@@ -16,9 +16,9 @@ async def defer_job(
     queue: str,
     task: str,
     args: dict[str, Any],
-    queueing_lock: str,
+    queueing_lock: str | None = None,
 ) -> None:
-    """Enqueues a background task, refusing a second one under the same lock while one is running."""
+    """Enqueues a background task, refusing a second one under the same lock while one is queued."""
     await session.execute(
         text(
             "SELECT procrastinate_defer_jobs_v1(ARRAY[ROW("

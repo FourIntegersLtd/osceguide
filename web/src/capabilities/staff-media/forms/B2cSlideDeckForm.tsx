@@ -221,6 +221,28 @@ export function B2cSlideDeckForm({
                 onChange={(urls) => setImageUrls(index, urls)}
                 placeholder="https://…"
               />
+              {slide.image_urls?.length ? (
+                <div className="flex flex-wrap gap-3">
+                  {slide.image_urls.map((url, picture) => {
+                    const credit = slide.image_credits?.[picture];
+                    return (
+                      <figure key={url} className="flex w-40 flex-col gap-1">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- a stored picture at its own URL */}
+                        <img
+                          src={url}
+                          alt={`Slide ${index + 1}, ${picture + 1} of ${slide.image_urls?.length ?? 1}`}
+                          className="aspect-video w-full rounded-osce-md border border-border object-cover"
+                        />
+                        {credit?.author || credit?.licence ? (
+                          <figcaption className="text-osce-caption text-ink-subtle">
+                            {[credit.author, credit.licence].filter(Boolean).join(", ")}
+                          </figcaption>
+                        ) : null}
+                      </figure>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
             </FoldSection>
           </li>

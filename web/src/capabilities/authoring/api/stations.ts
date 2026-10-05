@@ -104,6 +104,35 @@ export function checkStationFacts(
   );
 }
 
+/**
+ * Starts the agent on a catalogue station's draft: it drafts from the brief
+ * when there is nothing written, checks the facts and corrects what the
+ * sources contradict. `station.updated` arrives after every step.
+ */
+export function produceStation(
+  scope: AuthoringScope,
+  station: string,
+  version: number,
+  input: S["ProduceRequest"],
+): Promise<StationReview> {
+  return platformRequest(
+    `${scope.base}/stations/${pathId(station)}/versions/${version}/produce`,
+    { method: "POST", body: input },
+  );
+}
+
+/** Asks the agent to stop after the step it is on. */
+export function stopProducingStation(
+  scope: AuthoringScope,
+  station: string,
+  version: number,
+): Promise<StationReview> {
+  return platformRequest(
+    `${scope.base}/stations/${pathId(station)}/versions/${version}/stop-produce`,
+    { method: "POST" },
+  );
+}
+
 export function deleteStationVersion(
   scope: AuthoringScope,
   station: string,

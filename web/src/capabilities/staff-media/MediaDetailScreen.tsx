@@ -31,6 +31,7 @@ import {
   reviewSteps,
   type StepId,
 } from "@/capabilities/staff-media/content/review";
+import { ERROR_STEPS, ProduceForm, RunLog } from "@/capabilities/fact-check";
 import { ContentJsonEditor } from "@/capabilities/staff-media/parts/ContentJsonEditor";
 import { FactCheck } from "@/capabilities/fact-check";
 import {
@@ -42,15 +43,14 @@ import {
   checkMediaFacts,
   deleteMedia,
   generateBlog,
-  generatePodcast,
   generatePodcastAudio,
-  generateSlideDeck,
   generatedTitle,
-  generateSummary,
   generateSummaryPodcast,
+  produceMedia,
   publishMedia,
   readMediaById,
   regenerateSlideAv,
+  stopProduce,
   updateMedia,
   writeMediaScript,
   type MediaItem,
@@ -169,27 +169,17 @@ export function MediaDetailScreen({
     return start("voice", "Voicing started", () => runner(itemId));
   };
 
+  // Only a blog is rewritten from a brief here; spoken kinds are produced by the agent.
   const runGenerate = () => {
-    if (!prompt.trim() || !isMediaKind(kind)) return undefined;
-    const runner =
-      kind === "blog"
-        ? generateBlog
-        : kind === "slide_deck"
-          ? generateSlideDeck
-          : kind === "podcast"
-            ? generatePodcast
-            : generateSummary;
+    if (!prompt.trim()) return undefined;
     return action.run("generate", async () => {
-      const generated = await runner(prompt.trim(), examCode.trim() || null);
+      const generated = await generateBlog(prompt.trim(), examCode.trim() || null);
       if (generatedTitle(generated)) setTitle(generatedTitle(generated));
       if (typeof generated.summary === "string") {
         setSummary(generated.summary);
       }
       const { title: _t, summary: _s, ...rest } = generated;
       setContent((prev) => mergeContent(prev, rest));
-      if (kind === "slide_deck" && typeof generated.topic === "string") {
-        setContent((prev) => mergeContent(prev, { topic: generated.topic }));
-      }
       toast.success("Draft generated", "Review and save.");
     });
   };
@@ -254,8 +244,8 @@ export function MediaDetailScreen({
     facts: action.busy === "check-facts" || status === "checking_facts",
     script: action.busy === "write-script" || status === "writing_script",
     voice: action.busy === "voice" || (status?.startsWith("generating") ?? false),
+    produce: action.busy === "produce" || status === "producing",
   };
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -425,10 +415,23 @@ export function MediaDetailScreen({
         </>
       ) : (
         <>
+          {review.run ? (
+            <RunLog
+              run={review.run}
+              running={status === "producing"}
+              stopping={action.busy === "stop"}
+              onStop={() =>
+                void action.run("stop", async () => {
+                  await stopProduce(itemId);
+                  load.reload();
+                })
+              }
+            />
+          ) : null}
           <StepNav steps={steps} current={current} onSelect={setStep} />
           {review.error ? (
             <Alert tone="danger">
-              The last {review.error.step === "facts" ? "fact check" : "script check"} failed:{" "}
+              The last {ERROR_STEPS[review.error.step] ?? review.error.step} failed:{" "}
               {review.error.message}
             </Alert>
           ) : null}
@@ -461,25 +464,19 @@ export function MediaDetailScreen({
               </div>
             </Panel>
 
-            <Panel title="Rewrite the draft from a brief" padding="sm">
-              <div className="flex flex-col gap-3">
-                <Textarea
-                  aria-label="Prompt"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  rows={4}
-                  placeholder="Paste the case, notes or topic…"
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  disabled={!prompt.trim() || (action.busy !== null && action.busy !== "generate")}
-                  isLoading={action.busy === "generate"}
-                  onClick={() => runGenerate()}
-                >
-                  {action.busy === "generate" ? "Generating…" : `Generate ${kindLabel.toLowerCase()}`}
-                </Button>
-              </div>
+            <Panel title="Produce with the agent" padding="sm">
+              <ProduceForm
+                key={review.brief?.brief ?? ""}
+                brief={review.brief}
+                hint="What to teach and for which exam. The agent drafts, checks the facts, finds pictures and writes the script, then stops before voicing."
+                locked={locked}
+                working={working.produce}
+                onProduce={(brief, sourceText) =>
+                  start("produce", "Agent started", () =>
+                    produceMedia(itemId, { brief, source_text: sourceText }),
+                  )
+                }
+              />
             </Panel>
           </div>
 

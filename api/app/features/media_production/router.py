@@ -1,6 +1,7 @@
-"""The routes a platform admin uses to produce spoken material: checking its facts, writing and
-checking its script, and then voicing it (narrating a summary as a podcast, re-rendering a slide
-deck's video, or voicing a podcast episode). Voicing is refused until the script has been checked.
+"""The routes a platform admin uses to produce spoken material: having the agent draft and check
+it from a brief, or step by step checking its facts, writing and checking its script, and then
+voicing it (narrating a summary as a podcast, re-rendering a slide deck's video, or voicing a
+podcast episode). Voicing is refused until the script has been checked.
 """
 
 from __future__ import annotations
@@ -13,8 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
+from app.core.schemas import StationReview
 from app.core.tenancy import PlatformAdmin
-from app.features.media_production import errors, schemas, service
+from app.features.media_production import errors, schemas, service, service_produce
 
 router = APIRouter(tags=["media-production"])
 
@@ -54,6 +56,77 @@ async def write_media_script(
 ) -> schemas.MediaRead:
     return await service.enqueue_script_write(
         session, item_id, requested_by=admin.user_id, rewrite=body.rewrite
+    )
+
+
+# Starts the agent that drafts an item from a brief, checks it and corrects it, stopping before voicing.
+@router.post(
+    "/media/{item_id}/produce",
+    response_model=schemas.MediaRead,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(Forbidden, errors.NotEditableError, *_PRODUCTION_ERRORS),
+)
+async def produce_media(
+    item_id: uuid.UUID, body: schemas.ProduceRequest, admin: PlatformAdmin, session: Session
+) -> schemas.MediaRead:
+    return await service_produce.enqueue_produce(
+        session, item_id, requested_by=admin.user_id, brief=body.brief, source_text=body.source_text
+    )
+
+
+# Asks a running agent to stop after the step it is on. What it has done so far is kept.
+@router.post(
+    "/media/{item_id}/stop-produce",
+    response_model=schemas.MediaRead,
+    responses=error_responses(Forbidden, errors.ItemNotFound),
+)
+async def stop_producing_media(
+    item_id: uuid.UUID, admin: PlatformAdmin, session: Session
+) -> schemas.MediaRead:
+    return await service_produce.stop_produce(session, item_id, requested_by=admin.user_id)
+
+
+# Starts the agent on a platform station's draft version: it drafts from the brief if asked, checks
+# the facts and corrects what the sources contradict. The screen reads progress from the review.
+@router.post(
+    "/platform/stations/{station_id}/versions/{version}/produce",
+    response_model=StationReview,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(
+        Forbidden,
+        errors.StationNotFound,
+        errors.VersionNotFound,
+        errors.StationNotEditable,
+        errors.StationHasNoTemplate,
+        errors.FactCheckRunning,
+        errors.StationBeingProduced,
+    ),
+)
+async def produce_station(
+    station_id: uuid.UUID, version: int, body: schemas.ProduceRequest, admin: PlatformAdmin, session: Session
+) -> StationReview:
+    return await service_produce.enqueue_station_produce(
+        session,
+        station_id,
+        version,
+        requested_by=admin.user_id,
+        brief=body.brief,
+        source_text=body.source_text,
+    )
+
+
+# Asks the agent producing a station version to stop after the step it is on.
+@router.post(
+    "/platform/stations/{station_id}/versions/{version}/stop-produce",
+    response_model=StationReview,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(Forbidden, errors.StationNotFound, errors.VersionNotFound),
+)
+async def stop_producing_station(
+    station_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session
+) -> StationReview:
+    return await service_produce.stop_station_produce(
+        session, station_id, version, requested_by=admin.user_id
     )
 
 

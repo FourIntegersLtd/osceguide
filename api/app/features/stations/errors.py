@@ -42,6 +42,13 @@ class FactCheckRunning(Conflict):
     default_message = "This version's facts are already being checked"
 
 
+class StationBeingProduced(Conflict):
+    """The agent is working on this version; a save now would be overwritten by its next step."""
+
+    code = "station_being_produced"
+    default_message = "The agent is working on this version; stop it or wait for it to finish"
+
+
 class NotDeletableError(Conflict):
     """Only a draft can be deleted; a published or archived version is a record of what ran."""
 

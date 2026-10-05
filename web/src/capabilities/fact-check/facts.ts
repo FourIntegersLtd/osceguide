@@ -1,7 +1,8 @@
 /**
  * A fact check of clinical teaching material as the server stores it
  * (`media_production/service_facts.py`), and the edits a reader makes in answer
- * to it. The media review and platform stations both use it.
+ * to it, and the producing agent's run that drafts, checks and corrects it. The
+ * media review and platform stations both use it.
  */
 
 type Content = Record<string, unknown>;
@@ -40,6 +41,8 @@ export type FactClaim = {
   suggestion: { old: string | null; new: string } | null;
   /** Set here, by the reader: what they did with the suggestion. */
   decision?: "accepted" | "dismissed";
+  /** Set when the producing agent made the correction rather than a reader. */
+  by?: "agent";
   /** What an accepted correction swapped, so reopening it can swap it back. */
   swap?: Swap;
 };
@@ -183,7 +186,7 @@ export function reopened(facts: Facts, claimId: string): Facts {
     ...facts,
     claims: facts.claims.map((claim) => {
       if (claim.id !== claimId) return claim;
-      const { decision: _decision, swap: _swap, ...open } = claim;
+      const { decision: _decision, swap: _swap, by: _by, ...open } = claim;
       return open;
     }),
   };

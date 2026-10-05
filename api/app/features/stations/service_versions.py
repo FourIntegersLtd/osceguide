@@ -20,6 +20,7 @@ from app.features.stations.models import StationVersion
 from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
 from app.features.stations.service import read_station
+from app.features.stations.service_facts import refuse_while_produced
 from app.features.tutor_memory import jobs as tutor_jobs
 
 # What a candidate is shown before the station starts. Presentation rather than
@@ -70,6 +71,7 @@ async def edit_version(
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
+    refuse_while_produced(station_version.review)
     await repository.set_version_content(session, org_id, station_version.id, content=content)
     if facts is not None:
         await repository.set_version_review(

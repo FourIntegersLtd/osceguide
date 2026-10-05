@@ -22,12 +22,14 @@ NARRATION_MODEL = "o3"
 NARRATION_FALLBACK_MODEL = "claude-sonnet-4-5"
 _ATTEMPTS = 3
 _MAX_SECTIONS = 4
-NARRATION_WORKERS = 4
+# Slides narrated (and read) at once: a deck's whole script in about the time of its slowest slide.
+NARRATION_WORKERS = 16
 # About eleven minutes of Ben at his pace, less the cards, countdowns and pauses between slides.
 _TALK_WORDS = 1450
 _INTRO_WORDS = 27
 _ITEM_WORDS = (12, 30)
-_AUDIO_TAG = re.compile(r"\[[^\]]*\]")
+# An ElevenLabs audio tag such as [chuckles]: voiced, never read out or captioned.
+AUDIO_TAG = re.compile(r"\[[^\]]*\]")
 # A filler said before anything else. Every line is written without sight of its neighbours, so
 # the same opener would otherwise start one line after another.
 _OPENING_FILLER = re.compile(
@@ -131,11 +133,16 @@ def slide_items(slide: dict[str, Any]) -> list[str]:
     return items
 
 
+# One reply is a slide's lines or a whole deck read through: minutes, never the SDKs' default of ten
+# minutes tried three times, which held an agent run half an hour on one stalled connection.
+_REPLY_SECONDS = 240
+
+
 def _from_o3(api_key: str, system: str, prompt: str) -> str:
     """One reply from o3."""
     from openai import OpenAI  # optional dependency
 
-    response = OpenAI(api_key=api_key).chat.completions.create(
+    response = OpenAI(api_key=api_key, timeout=_REPLY_SECONDS, max_retries=1).chat.completions.create(
         model=NARRATION_MODEL,
         messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
     )
@@ -146,7 +153,7 @@ def _from_claude(api_key: str, system: str, prompt: str) -> str:
     """One reply from Claude."""
     from anthropic import Anthropic  # optional dependency
 
-    reply = Anthropic(api_key=api_key).messages.create(
+    reply = Anthropic(api_key=api_key, timeout=_REPLY_SECONDS, max_retries=1).messages.create(
         model=NARRATION_FALLBACK_MODEL,
         max_tokens=3000,
         system=system,
@@ -199,19 +206,27 @@ def _said(value: object) -> str:
     return said[:1].upper() + said[1:]
 
 
-def item_words(slides: list[dict[str, Any]]) -> int:
-    """How many words Ben gets per bullet so that the whole deck runs for about eleven minutes."""
+def item_words(slides: list[dict[str, Any]], talk: int = _TALK_WORDS) -> int:
+    """How many words Ben gets per bullet so that the whole deck runs for about eleven minutes.
+
+    `talk` is the words to aim the whole talk at: fewer than usual, with a shorter shortest line,
+    when a first writing ran over.
+    """
     items = sum(len(slide_items(slide)) for slide in slides)
-    return max(
-        _ITEM_WORDS[0], min(_ITEM_WORDS[1], (_TALK_WORDS - _INTRO_WORDS * len(slides)) // max(1, items))
-    )
+    shortest = _ITEM_WORDS[0] * talk // _TALK_WORDS
+    return max(shortest, min(_ITEM_WORDS[1], (talk - _INTRO_WORDS * len(slides)) // max(1, items)))
+
+
+def plain_speech(line: str) -> str:
+    """A line as it is heard: without the audio tags that only the voice reads."""
+    return " ".join(AUDIO_TAG.sub(" ", line).split())
 
 
 def spoken_notes(narration: dict[str, Any]) -> str:
     """Ben's words for one slide as its speaker notes: the intro, then a line per bullet, without
     the audio tags that only the voice needs."""
     lines = [narration["intro"], *narration["items"]]
-    return "\n\n".join(" ".join(_AUDIO_TAG.sub(" ", line).split()) for line in lines)
+    return "\n\n".join(plain_speech(line) for line in lines)
 
 
 def _callout(entry: object, shown: str) -> dict[str, str] | None:
@@ -358,8 +373,9 @@ def keeps_stored_narration(slide: dict[str, Any]) -> bool:
     return isinstance(stored, dict) and _parse(json.dumps(stored), slide_items(slide)) is not None
 
 
-def narrate_deck(settings: Settings, payload: dict[str, Any]) -> None:
-    """Writes onto `payload` what Ben says: the talk's framing, and a narration on every slide.
+def narrate_deck(settings: Settings, payload: dict[str, Any], talk: int = _TALK_WORDS) -> None:
+    """Writes onto `payload` what Ben says: the talk's framing, and a narration on every slide, aimed
+    at `talk` words in all.
 
     The notes a slide was written from stay as the source of its facts (`source_notes`); the
     notes shown with the slide become what Ben actually says.
@@ -367,7 +383,7 @@ def narrate_deck(settings: Settings, payload: dict[str, Any]) -> None:
     slides = payload["slides"]
     with ThreadPoolExecutor(NARRATION_WORKERS) as pool:
         plan = pool.submit(plan_deck, settings, payload)
-        words = item_words(slides)
+        words = item_words(slides, talk)
         narrations = list(pool.map(lambda slide: narrate_slide(settings, slide, len(slides), words), slides))
         payload["presentation"] = plan.result()
     for slide, narration in zip(slides, narrations, strict=True):

@@ -35,6 +35,34 @@ class ScriptNotChecked(Conflict):
     default_message = "Write and check the script before voicing it"
 
 
-from app.features.media.errors import ItemNotFound  # noqa: E402
+class StationHasNoTemplate(Conflict):
+    """Raised when the agent is asked to produce a station that has no template to draft it in."""
 
-__all__ = ["AvUnavailable", "AvAlreadyRunning", "WrongMediaKind", "ScriptNotChecked", "ItemNotFound"]
+    code = "station_has_no_template"
+    default_message = "This station has no template, so it cannot be drafted"
+
+
+# Refusals of other slices that this slice's routes answer, so the router documents them from here.
+from app.features.media.errors import ItemNotFound, NotEditableError  # noqa: E402
+from app.features.stations.errors import (  # noqa: E402
+    FactCheckRunning,
+    StationBeingProduced,
+    StationNotFound,
+    VersionNotFound,
+)
+from app.features.stations.errors import NotEditableError as StationNotEditable  # noqa: E402
+
+__all__ = [
+    "AvUnavailable",
+    "AvAlreadyRunning",
+    "WrongMediaKind",
+    "ScriptNotChecked",
+    "ItemNotFound",
+    "NotEditableError",
+    "StationHasNoTemplate",
+    "FactCheckRunning",
+    "StationBeingProduced",
+    "StationNotFound",
+    "StationNotEditable",
+    "VersionNotFound",
+]
