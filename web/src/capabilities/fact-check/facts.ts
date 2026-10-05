@@ -57,6 +57,8 @@ export type Facts = {
   checked_at: string;
   claims: FactClaim[];
   progress?: FactProgress;
+  /** Who checked it, when a person checked it themselves rather than the platform. */
+  checked_by?: string;
 };
 
 export function record(value: unknown): Content | null {

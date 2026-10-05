@@ -32,6 +32,24 @@ class ScriptWriteRequest(BaseModel):
     rewrite: bool = False
 
 
+class HandCheckedClaim(BaseModel):
+    """One clinical claim a person checked themselves, and the source that bears it out."""
+
+    # The deck slide the claim sits on; None for a summary or a podcast.
+    slide: int | None = Field(default=None, ge=1)
+    claim: str = Field(min_length=1, max_length=1000)
+    # The guideline or page it was checked against, e.g. "NICE CKS: Panic disorder".
+    source: str = Field(min_length=1, max_length=300)
+    url: str | None = Field(default=None, max_length=2000)
+    quote: str = Field(default="", max_length=400)
+
+
+class HandCheckRequest(BaseModel):
+    """A fact check done by a person rather than the platform's check, every claim supported."""
+
+    claims: list[HandCheckedClaim] = Field(min_length=1, max_length=60)
+
+
 class ProduceRequest(BaseModel):
     """What the agent produces an item from."""
 

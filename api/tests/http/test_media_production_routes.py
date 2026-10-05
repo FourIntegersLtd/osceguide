@@ -471,3 +471,48 @@ async def test_a_run_that_fails_is_recorded_on_the_item(client: AsyncClient, mak
     content = (await client.get(f"/api/v1/media/by-id/{item_id}", headers=bearer(admin))).json()["content"]
     assert content["status"] == "failed"
     assert content["review"]["error"]["step"] == "produce"
+
+
+async def test_a_hand_check_shows_as_checked_with_its_sources(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """A person's own check is stored where the platform's goes, so the screen shows it checked."""
+    admin = await make_actor("av-hand-check@osceguide.com", platform_admin=True)
+    item = await _summary(client, admin)
+    claim = {
+        "claim": "Chest pain on exertion needs an ECG",
+        "source": "NICE CG95",
+        "url": "https://www.nice.org.uk/guidance/cg95",
+        "quote": "12-lead ECG",
+    }
+
+    response = await client.post(
+        f"/api/v1/media/{item['id']}/hand-check", json={"claims": [claim]}, headers=bearer(admin)
+    )
+
+    assert response.status_code == 200
+    review = response.json()["content"]["review"]
+    assert review["script"] == {"lines": LINES}
+    facts = review["facts"]
+    assert facts["checked_by"]
+    assert [(c["id"], c["slide"], c["claim"], c["verdict"], c["suggestion"]) for c in facts["claims"]] == [
+        ("claim-1", None, "Chest pain on exertion needs an ECG", "supported", None)
+    ]
+    evidence = facts["claims"][0]["evidence"][0]
+    assert (evidence["source"], evidence["url"], evidence["quote"]) == (
+        "NICE CG95",
+        "https://www.nice.org.uk/guidance/cg95",
+        "12-lead ECG",
+    )
+
+
+async def test_a_hand_check_is_refused_for_a_slide_the_item_lacks(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("av-hand-slide@osceguide.com", platform_admin=True)
+    item = await _summary(client, admin)
+
+    response = await client.post(
+        f"/api/v1/media/{item['id']}/hand-check",
+        json={"claims": [{"slide": 3, "claim": "x", "source": "NICE"}]},
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "claim_outside_item"

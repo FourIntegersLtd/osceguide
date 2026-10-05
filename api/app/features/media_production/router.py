@@ -44,6 +44,25 @@ async def check_media_facts(item_id: uuid.UUID, admin: PlatformAdmin, session: S
     return await service.enqueue_fact_check(session, item_id, requested_by=admin.user_id)
 
 
+# Records a fact check a person did themselves, each claim with its source, in place of the platform's.
+@router.post(
+    "/media/{item_id}/hand-check",
+    response_model=schemas.MediaRead,
+    responses=error_responses(
+        Forbidden,
+        errors.ItemNotFound,
+        errors.WrongMediaKind,
+        errors.AvAlreadyRunning,
+        errors.ClaimOutsideItem,
+    ),
+)
+async def record_hand_check(
+    item_id: uuid.UUID, body: schemas.HandCheckRequest, admin: PlatformAdmin, session: Session
+) -> schemas.MediaRead:
+    claims = [claim.model_dump() for claim in body.claims]
+    return await service.record_hand_check(session, item_id, claims, checked_by=admin.user_id)
+
+
 # Starts writing what an item will say and checking it against its source. Nothing is voiced.
 @router.post(
     "/media/{item_id}/write-script",

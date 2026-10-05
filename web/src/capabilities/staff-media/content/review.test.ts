@@ -231,4 +231,20 @@ describe("the agent's run", () => {
       "Estradiol patch 500 micrograms",
     ]);
   });
+
+  it("labels a fact check a person did themselves", () => {
+    const byHand = {
+      ...deck(),
+      review: {
+        script: { lines: DECK_LINES, issues: [], changes: [] },
+        facts: { checked_at: "t", checked_by: "staff-1", claims: [{ ...CLAIM, verdict: "supported" }] },
+      },
+    };
+    assert.deepEqual(reviewSteps("slide_deck", byHand)[1], {
+      id: "facts",
+      label: "Check facts",
+      state: "done",
+      note: "1 claims checked by hand",
+    });
+  });
 });

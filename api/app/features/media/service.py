@@ -77,8 +77,11 @@ async def update(
     title: str | None,
     summary: str | None,
     content: dict[str, Any] | None,
+    exam_code: str | None = None,
 ) -> MediaRead:
-    """Replaces the given fields on a draft, leaving the others as they were. Refuses once published."""
+    """Replaces the given fields on a draft, leaving the others as they were. Refuses once published.
+
+    An empty `exam_code` files the item under any exam."""
     item = await _require(session, item_id)
     try:
         domain.ensure_editable(status=item.status)
@@ -99,6 +102,9 @@ async def update(
             raise errors.BeingProduced()
         values["content"] = content
         values["specialty"] = domain.specialty_of(content)
+    if exam_code is not None:
+        code = exam_code.strip()
+        values["exam_id"] = (await resolve_exam(session, code)).id if code else None
     if values:
         await repository.update_item(session, item_id, **values)
     return await service_reads.read_one(session, await _require(session, item_id), with_review=True)

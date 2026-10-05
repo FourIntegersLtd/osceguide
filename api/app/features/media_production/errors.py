@@ -28,6 +28,13 @@ class WrongMediaKind(InvalidInput):
     default_message = "That operation does not apply to this kind of study material"
 
 
+class ClaimOutsideItem(InvalidInput):
+    """Raised when a hand check places a claim on a slide the item does not have."""
+
+    code = "claim_outside_item"
+    default_message = "A claim names a slide this item does not have"
+
+
 class ScriptNotChecked(Conflict):
     """Raised when voicing is asked for words that have not been checked, or were edited since."""
 

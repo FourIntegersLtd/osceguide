@@ -1,8 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { HiOutlinePresentationChartBar } from "react-icons/hi2";
-import { Select, cn, productTokens as t } from "@/foundation/ui";
+import { useState, type ReactNode } from "react";
+import {
+  HiOutlineMagnifyingGlass,
+  HiOutlinePresentationChartBar,
+  HiOutlineXMark,
+} from "react-icons/hi2";
+import { Select, cn, iconSearchInputClassName, productTokens as t } from "@/foundation/ui";
 import {
   deckDurationSeconds,
   deckSlidesCount,
@@ -15,7 +19,7 @@ import { B2CGroupedRowLink } from "@/foundation/ui/B2CGroupedList";
 import { b2cGroupedShell } from "@/foundation/ui/productTokens";
 
 /**
- * The right-hand column: the specialty picker over its list, both filtered server-side.
+ * The right-hand column: a search and the specialty picker over its list, all filtered server-side.
  * The list is a card one viewport tall that scrolls inside, with "Load more" at its foot.
  *
  * `items` is already the specialty-filtered page from the server — the parent
@@ -26,6 +30,8 @@ export function DeckList({
   items,
   currentSlug,
   deckHref,
+  query,
+  onQueryChange,
   specialty,
   onSpecialtyChange,
   specialtyOptions,
@@ -40,6 +46,9 @@ export function DeckList({
   footer?: ReactNode;
   currentSlug: string;
   deckHref: (slug: string) => string;
+  /** The search applied to the list; empty is none. */
+  query: string;
+  onQueryChange: (query: string) => void;
   specialty: string;
   onSpecialtyChange: (specialty: string) => void;
   specialtyOptions: string[];
@@ -47,6 +56,7 @@ export function DeckList({
 }) {
   return (
     <div className="flex max-h-[100dvh] min-h-0 flex-col gap-4 lg:h-[100dvh]">
+      <DeckSearch key={query} query={query} onQueryChange={onQueryChange} />
       {specialtyOptions.length > 0 || hasUncategorized ? (
         <Select
           label="Filter by specialty"
@@ -68,6 +78,11 @@ export function DeckList({
           {(total ?? items.length).toLocaleString()} presentations
         </h2>
         <div className={cn(b2cGroupedShell, "min-h-0 flex-1 overflow-y-auto")}>
+          {items.length === 0 && query !== "" ? (
+            <p className="p-4 text-osce-body text-b2c-text-muted">
+              No presentations match &ldquo;{query}&rdquo;.
+            </p>
+          ) : null}
           {items.map((deck) => (
             <B2CGroupedRowLink
               key={deck.id}
@@ -84,6 +99,53 @@ export function DeckList({
         </div>
       </section>
     </div>
+  );
+}
+
+/** Searches on Enter rather than each keystroke, so typing does not refetch the list. */
+function DeckSearch({
+  query,
+  onQueryChange,
+}: {
+  query: string;
+  onQueryChange: (query: string) => void;
+}) {
+  const [term, setTerm] = useState(query);
+  return (
+    <form
+      role="search"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onQueryChange(term.trim());
+      }}
+      className="relative w-full"
+    >
+      <HiOutlineMagnifyingGlass
+        className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-osce-ink-400"
+        aria-hidden
+      />
+      <input
+        type="search"
+        placeholder="Search presentations"
+        value={term}
+        onChange={(event) => setTerm(event.target.value)}
+        aria-label="Search presentations"
+        className={cn(iconSearchInputClassName, "pr-10 text-left")}
+      />
+      {term !== "" ? (
+        <button
+          type="button"
+          onClick={() => {
+            setTerm("");
+            onQueryChange("");
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-osce-ink-400 transition-colors hover:bg-osce-border-light hover:text-osce-ink-600"
+          aria-label="Clear search"
+        >
+          <HiOutlineXMark className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      ) : null}
+    </form>
   );
 }
 

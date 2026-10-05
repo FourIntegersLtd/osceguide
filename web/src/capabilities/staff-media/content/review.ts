@@ -306,6 +306,11 @@ const VOICED_FIELD: Record<string, string> = {
   podcast: "audio_url",
 };
 
+/** Where the voiced recording (the deck's video, or the audio) lives, once voicing has run. */
+export function voicedUrl(kind: string, content: Content): string {
+  return text(content[VOICED_FIELD[kind] ?? ""]).trim();
+}
+
 function hasDraft(kind: string, content: Content): boolean {
   if (kind === "slide_deck") return records(content.slides).length > 0;
   return Object.entries(content).some(
@@ -315,6 +320,11 @@ function hasDraft(kind: string, content: Content): boolean {
       !name.endsWith("_url") &&
       (Array.isArray(value) ? value.length > 0 : text(value).trim() !== ""),
   );
+}
+
+/** How a finished fact check reads in the step list, saying when a person did it by hand. */
+function claimsNote(facts: { checked_by?: string }, count: number): string {
+  return `${count} claims checked${facts.checked_by ? " by hand" : ""}`;
 }
 
 /** The four steps from a brief to a voiced item, each with where it stands. */
@@ -327,7 +337,7 @@ export function reviewSteps(kind: string, content: Content): ReviewStep[] {
   const flagged = review.script?.issues.length ?? 0;
   const status = text(content.status);
   const voiced =
-    text(content[VOICED_FIELD[kind] ?? ""]).trim() !== "" &&
+    voicedUrl(kind, content) !== "" &&
     (status === "" || status === "completed");
   return [
     {
@@ -344,7 +354,7 @@ export function reviewSteps(kind: string, content: Content): ReviewStep[] {
         ? "Not checked"
         : open > 0
           ? `${open} to resolve`
-          : `${claims.length} claims checked`,
+          : claimsNote(review.facts, claims.length),
     },
     {
       id: "script",

@@ -7,6 +7,7 @@ import { B2CEmptyState } from "@/foundation/ui";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import type { MediaItem } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
+import { DeckList } from "@/capabilities/media/DeckList";
 import { SlidesWorkspace } from "@/capabilities/media/SlidesWorkspace";
 import { slidesDeckPath } from "@/capabilities/media/studyPaths";
 
@@ -23,6 +24,8 @@ function resolveSelected(decks: MediaItem[], deckParam: string | null): MediaIte
  * Slides tab — B2C two-pane layout with selection in `?deck=`.
  */
 type SpecialtyFilterProps = {
+  query: string;
+  onQueryChange: (query: string) => void;
   specialty: string;
   onSpecialtyChange: (specialty: string) => void;
   specialtyOptions: string[];
@@ -61,6 +64,10 @@ function SlidesLibraryInner({
 
   const selected = resolveSelected(items, deckParam);
   const deckHref = (slug: string) => hrefFor(slidesDeckPath(slug));
+
+  if (items.length === 0 && specialtyFilter.query !== "") {
+    return <DeckList items={[]} currentSlug="" deckHref={deckHref} {...specialtyFilter} />;
+  }
 
   if (items.length === 0) {
     return (

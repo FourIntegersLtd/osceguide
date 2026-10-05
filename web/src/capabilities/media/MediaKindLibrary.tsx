@@ -81,6 +81,8 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
   // Slide decks alone offer a specialty filter, applied in SQL rather than
   // over an already-loaded page.
   const [specialty, setSpecialty] = useState("all");
+  // Slides search inside their own list, matched on title and summary in SQL.
+  const [deckQuery, setDeckQuery] = useState("");
   const specialtyFilter =
     specialty === "all" ? {} : specialty === "other" ? { hasSpecialty: false } : { specialty };
 
@@ -98,11 +100,12 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
           // creation order, which drifted from publish order once drafts
           // could sit unpublished for a while before going live.
           sort: kind === "blog" ? "published" : undefined,
+          q: deckQuery || undefined,
           ...specialtyFilter,
         },
         signal,
       ),
-    [kind, examCode, specialty],
+    [kind, examCode, specialty, deckQuery],
   );
   const state = pages.state;
 
@@ -195,7 +198,7 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
           <AsyncBoundary state={state}>
             {(items) => (
               <>
-                {items.length === 0 ? (
+                {items.length === 0 && deckQuery === "" ? (
                   <B2CEmptyState
                     icon={MEDIA_KIND_ICON[kind]}
                     title={copy.emptyTitle}
@@ -211,6 +214,8 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
                   <SlidesLibrary
                     items={items}
                     allItemsCount={items.length}
+                    query={deckQuery}
+                    onQueryChange={setDeckQuery}
                     specialty={specialty}
                     onSpecialtyChange={setSpecialty}
                     specialtyOptions={deckSpecialties}

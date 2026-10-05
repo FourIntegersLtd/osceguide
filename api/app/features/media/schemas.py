@@ -45,6 +45,8 @@ class UpdateMedia(BaseModel):
     title: str | None = Field(default=None, max_length=300)
     summary: str | None = None
     content: dict[str, Any] | None = None
+    # Left out keeps the exam; empty files the item under any exam.
+    exam_code: str | None = Field(default=None, max_length=32)
 
 
 class SearchHit(BaseModel):

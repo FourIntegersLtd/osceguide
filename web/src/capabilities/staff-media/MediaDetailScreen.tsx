@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { HiOutlineArrowLeft } from "react-icons/hi2";
 import { Alert, Badge, Button, ConfirmModal, Input, Panel, Textarea } from "@/foundation/ui";
+import { AuthoringExamField } from "@/capabilities/authoring/parts/AuthoringExamField";
 import {
   errorMessage,
   useAsync,
@@ -135,6 +136,7 @@ export function MediaDetailScreen({
         title: title.trim(),
         summary: summary.trim() || null,
         content,
+        exam_code: examCode.trim(),
       });
       if (andPublish) {
         await publishMedia(itemId);
@@ -248,6 +250,21 @@ export function MediaDetailScreen({
     voice: action.busy === "voice" || (status?.startsWith("generating") ?? false),
     produce: action.busy === "produce" || status === "producing",
   };
+  const details = (
+    <Panel title="Details">
+      <div className="flex flex-col gap-4">
+        <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <Input
+          label="Summary"
+          hint="Shown on the list card."
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+        />
+        <AuthoringExamField value={examCode} onChange={setExamCode} />
+      </div>
+    </Panel>
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -372,24 +389,7 @@ export function MediaDetailScreen({
       {!spoken ? (
         <>
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <Panel
-            title="Details"
-            description="The exam is fixed when the item is created."
-          >
-            <div className="flex flex-col gap-4">
-              <Input
-                label="Title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-              <Input
-                label="Summary"
-                hint="Shown on the list card."
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-              />
-            </div>
-          </Panel>
+          {details}
 
           <Panel title="Rewrite the draft from a brief" padding="sm">
             <div className="flex flex-col gap-3">
@@ -447,24 +447,7 @@ export function MediaDetailScreen({
           {current === "draft" ? (
             <>
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            <Panel
-              title="Details"
-              description="The exam is fixed when the item is created."
-            >
-              <div className="flex flex-col gap-4">
-                <Input
-                  label="Title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-                <Input
-                  label="Summary"
-                  hint="Shown on the list card."
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                />
-              </div>
-            </Panel>
+            {details}
 
             <Panel title="Produce with the agent" padding="sm">
               <ProduceForm

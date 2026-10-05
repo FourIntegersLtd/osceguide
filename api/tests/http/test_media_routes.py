@@ -714,3 +714,29 @@ async def test_sort_published_orders_by_when_it_went_out(
         "Written First Published Last",
         "Written Second Published First",
     ]
+
+
+async def test_a_drafts_exam_can_be_set_and_cleared(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    """An item made without its exam is filed under one afterwards, and back under any exam."""
+    from tests.support.catalog import create_exam
+
+    admin = await make_actor("m-exam-edit@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    created = await client.post(
+        "/api/v1/media", json={"kind": "slide_deck", "title": "Forgot Exam"}, headers=bearer(admin)
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["exam_code"] is None
+    url = f"/api/v1/media/{created.json()['id']}"
+
+    set_ = await client.patch(url, json={"exam_code": "sca"}, headers=bearer(admin))
+    assert set_.status_code == 200, set_.text
+    assert set_.json()["exam_code"] == "sca"
+
+    kept = await client.patch(url, json={"title": "Remembered Exam"}, headers=bearer(admin))
+    assert kept.json()["exam_code"] == "sca"
+
+    cleared = await client.patch(url, json={"exam_code": ""}, headers=bearer(admin))
+    assert cleared.json()["exam_code"] is None

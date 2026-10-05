@@ -9,7 +9,6 @@ import {
   Modal,
   Select,
   Textarea,
-  getInputClassName,
 } from "@/foundation/ui";
 import {
   MEDIA_KIND_LABELS,
@@ -17,7 +16,7 @@ import {
   isMediaKind,
   type MediaKind,
 } from "@/capabilities/media/api";
-import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
+import { AuthoringExamField } from "@/capabilities/authoring/parts/AuthoringExamField";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import {
   createMedia,
@@ -110,16 +109,7 @@ export function MediaNewForm({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
-      <label className="flex flex-col gap-1.5">
-        <span className="text-osce-meta font-medium text-ink-muted">Exam</span>
-        <AuthoringExamSelect
-          value={examCode}
-          onChange={setExamCode}
-          allowEmpty
-          emptyLabel="Any exam"
-          className={getInputClassName()}
-        />
-      </label>
+      <AuthoringExamField value={examCode} onChange={setExamCode} />
       <Textarea
         label="What should it cover?"
         hint={

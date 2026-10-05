@@ -26,6 +26,7 @@ from typing import Any
 from app.core.logging import get_logger
 from app.core.ports import GuidelineIndex, GuidelinePassage, GuidelineWeb, WebAnswer
 from app.core.settings import get_settings
+from app.features.media_production.errors import ClaimOutsideItem
 
 # Re-exported: a caller in another slice hands in its own checking model as one.
 from app.features.media_production.script_check import Complete as Complete
@@ -336,10 +337,30 @@ async def _check_claim(
             "old": lines[line - 1] if line is not None and 1 <= line <= len(lines) else None,
             "new": wrong["new"],
         }
+    return _stored_claim(
+        claim["claim"],
+        verdict=verdict,
+        why=decisive["why"] if decisive else "",
+        checked=checked,
+        evidence=evidence,
+        suggestion=suggestion,
+    )
+
+
+def _stored_claim(
+    claim: str,
+    *,
+    verdict: str,
+    why: str,
+    checked: list[str],
+    evidence: list[dict[str, Any]],
+    suggestion: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """A claim as a check stores it, whether the platform or a person checked it."""
     return {
-        "claim": claim["claim"],
+        "claim": claim,
         "verdict": verdict,
-        "why": decisive["why"] if decisive else "",
+        "why": why,
         "checked": checked,
         "evidence": evidence,
         "suggestion": suggestion,
@@ -463,6 +484,41 @@ def fingerprint(sections: list[Section]) -> str:
 def _review(numbered: str, claims: list[dict[str, Any]]) -> dict[str, Any]:
     """The stored shape of a check: when, of what text, and its claims."""
     return {"checked_at": datetime.now(UTC).isoformat(), "source_hash": _hash(numbered), "claims": claims}
+
+
+def checked_by_hand(
+    sections: list[Section], claims: list[dict[str, Any]], *, checked_by: str
+) -> dict[str, Any]:
+    """The `facts` review of a check a person did themselves: each claim supported by the source
+    they name, stored in the shape `check_facts` stores, with `checked_by` naming who did it.
+
+    A claim must sit on a slide the sections have; a summary or a podcast has none."""
+    slides = sum(1 for where, _ in sections if where.get("slide") is not None)
+    if any(claim["slide"] is not None and claim["slide"] > slides for claim in claims):
+        raise ClaimOutsideItem()
+    judged = [
+        {
+            "id": claim_id(number),
+            "slide": claim["slide"],
+            **_stored_claim(
+                claim["claim"],
+                verdict="supported",
+                why=f"Checked by hand against {claim['source']}.",
+                checked=["web"],
+                evidence=[
+                    _finding(
+                        "web",
+                        {"verdict": "supported", "why": "Checked by hand.", "quote": claim["quote"]},
+                        source=claim["source"],
+                        url=claim["url"],
+                    )
+                ],
+                suggestion=None,
+            ),
+        }
+        for number, claim in enumerate(claims, 1)
+    ]
+    return {**_review(_numbered(sections), judged), "checked_by": checked_by}
 
 
 async def check_as_deployed(

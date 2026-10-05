@@ -6,6 +6,7 @@ import {
   reviewOf,
   scriptGroups,
   setScriptLine,
+  voicedUrl,
   type ReviewStep,
   type ScriptChange,
   type ScriptGroup,
@@ -214,6 +215,23 @@ export function ScriptStep({
   );
 }
 
+/** The voiced result, playable where it was made: the deck's video, or the audio. */
+function Recording({ kind, url }: { kind: string; url: string }) {
+  return kind === "slide_deck" ? (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- staff preview of the voiced deck
+    <video
+      key={url}
+      src={url}
+      controls
+      preload="metadata"
+      className="w-full max-w-3xl rounded-panel border border-border bg-black"
+    />
+  ) : (
+    // eslint-disable-next-line jsx-a11y/media-has-caption -- staff preview of the voiced audio
+    <audio key={url} src={url} controls preload="metadata" className="w-full max-w-xl" />
+  );
+}
+
 /** Step 4: the one click that spends voice credits, with what stands behind it. */
 export function VoiceStep({
   kind,
@@ -226,6 +244,7 @@ export function VoiceStep({
   const checked = isChecked(kind, content);
   const before = steps.filter((step) => step.id !== "voice");
   const voiced = steps.find((step) => step.id === "voice")?.state === "done";
+  const recording = voiced ? voicedUrl(kind, content) : "";
 
   return (
     <div className="flex flex-col gap-4">
@@ -245,8 +264,9 @@ export function VoiceStep({
         <Alert tone="info">Voicing unlocks once the script in step 3 has been checked.</Alert>
       ) : null}
       {voiced ? (
-        <Alert tone="success">Voiced. Preview it in the draft, then publish.</Alert>
+        <Alert tone="success">Voiced. Watch or listen below, then publish.</Alert>
       ) : null}
+      {recording ? <Recording kind={kind} url={recording} /> : null}
       <div>
         <Button size="sm" disabled={locked || !checked} isLoading={working} onClick={onVoice}>
           {working

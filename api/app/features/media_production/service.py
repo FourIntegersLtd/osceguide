@@ -120,6 +120,16 @@ async def enqueue_podcast_audio(
     return await read_item(session, item_id)
 
 
+async def _checkable_item(session: AsyncSession, item_id: uuid.UUID) -> Any:
+    """The item, if it is a kind whose facts are checked and no job is working on it."""
+    item = await production_item(session, item_id)
+    if item.kind not in CHECKED_KINDS:
+        raise WrongMediaKind()
+    if domain.is_running(str(item.content.get("status"))):
+        raise AvAlreadyRunning()
+    return item
+
+
 async def enqueue_fact_check(
     session: AsyncSession, item_id: uuid.UUID, *, requested_by: uuid.UUID
 ) -> MediaRead:
@@ -128,12 +138,8 @@ async def enqueue_fact_check(
     The item's status goes back to what it was once the check settles: checking facts changes
     nothing a learner is served.
     """
-    item = await production_item(session, item_id)
-    if item.kind not in CHECKED_KINDS:
-        raise WrongMediaKind()
+    item = await _checkable_item(session, item_id)
     previous = item.content.get("status")
-    if domain.is_running(str(previous)):
-        raise AvAlreadyRunning()
     await _set_status(session, item_id, item.content, domain.CHECKING_FACTS)
     await defer_job(
         session,
@@ -146,6 +152,24 @@ async def enqueue_fact_check(
         },
         queueing_lock=lock_for_media(item_id, "facts"),
     )
+    return await read_item(session, item_id)
+
+
+async def record_hand_check(
+    session: AsyncSession, item_id: uuid.UUID, claims: list[dict[str, Any]], *, checked_by: uuid.UUID
+) -> MediaRead:
+    """Stores a fact check a person did themselves in the item's review, in place of the platform's
+    check, which it replaces. Nothing else on the item changes."""
+    item = await _checkable_item(session, item_id)
+    content = dict(item.content)
+    sections = service_facts.sections_of(item.kind, item.title, content)
+    facts = service_facts.checked_by_hand(sections, claims, checked_by=str(checked_by))
+    review = dict(content.get("review") or {})
+    # A failed platform check left its error here; the hand check replaces that check, so the
+    # error would otherwise sit beside a passing review.
+    review.pop("error", None)
+    content["review"] = {**review, "facts": facts}
+    await replace_content(session, item_id, content)
     return await read_item(session, item_id)
 
 

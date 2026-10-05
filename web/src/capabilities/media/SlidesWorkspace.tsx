@@ -28,6 +28,8 @@ export function SlidesWorkspace({
   hrefFor,
   showPageHeader = false,
   showBackLink = false,
+  query,
+  onQueryChange,
   specialty,
   onSpecialtyChange,
   specialtyOptions,
@@ -43,6 +45,8 @@ export function SlidesWorkspace({
   hrefFor: (path: string) => string;
   showPageHeader?: boolean;
   showBackLink?: boolean;
+  query: string;
+  onQueryChange: (query: string) => void;
   specialty: string;
   onSpecialtyChange: (specialty: string) => void;
   specialtyOptions: string[];
@@ -129,6 +133,8 @@ export function SlidesWorkspace({
           items={decks}
           currentSlug={selected.slug}
           deckHref={deckHref}
+          query={query}
+          onQueryChange={onQueryChange}
           specialty={specialty}
           onSpecialtyChange={onSpecialtyChange}
           specialtyOptions={specialtyOptions}

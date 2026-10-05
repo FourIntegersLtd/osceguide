@@ -219,6 +219,7 @@ async def update(
         title=body.title,
         summary=body.summary,
         content=body.content,
+        exam_code=body.exam_code,
     )
 
 

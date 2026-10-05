@@ -5,7 +5,7 @@ description: Turn an OSCE case (e.g. from the native mock PDF) into a voiced, fa
 
 # Make a slide deck
 
-The pipeline that made decks 1 to 40. Scripts are in `scripts/` next to this
+The pipeline that made decks 1 to 80. Scripts are in `scripts/` next to this
 file; run them from there. Working files live in `slide-scripts/work/`
 (local, not in git), and finished decks live in `slide-scripts/<nn>-<slug>.json` + `.mp4`.
 `slide-scripts/` is the source of truth. Deck `k` is its number; `work/published.txt`
@@ -75,7 +75,31 @@ You Ask? (pause) · Focused History · What They Tell You · The Twist · questi
 diagnosis · Ideas, Concerns and Expectations · What Would You Do? (pause) · one or two
 plan slides · Explaining It to <name> · Learning Points ("Five things to take away") ·
 Conclusion & Summary. Highlights must be substrings of their bullets. Copy a recent
-`work/spec*.py` as the template.
+`work/spec*.py` as the template. Lint reads narration only: write "in person" and
+"online clips", never "face to face" or "videos" (ABOUT's "In this video" is fine).
+
+Validate every spec before `new.py` (from `work/`; picture names must exist):
+
+```python
+import json,runpy
+keys={k[:-4] for k in json.load(open('../../api/app/features/media_production/assets/slides/images/CREDITS.json'))}
+for k in (61,62,63):
+    d=runpy.run_path(f'spec{k}.py')
+    for s in d['SLIDES']:
+        if s[1] not in keys: print(k,'BADIMG',s[1])
+        for h in (s[3] or []):
+            if not any(h in b for b in s[2]): print(k,'BADHL',h)
+        if '...' in s[4] or '…' in s[4]: print(k,'ELLIPSIS')
+    print(k,len(d['SLIDES']))
+```
+
+## Choosing cases
+
+Unless the user names cases, pick from `native mock.pdf` cases not yet used (check
+`work/published.txt` and `work/cases/`). No topic that overlaps a published deck (same
+diagnosis, or the same key presentation); swap and say why. Spread a batch across
+specialties (medicine, mental health, women's, men's, children's, sexual health,
+safeguarding, substance misuse, ethics), and prefer high-impact exam topics.
 
 ## Pictures
 
@@ -92,7 +116,7 @@ cd ../../../../api && PYTHONPATH=. poetry run python ../.claude/skills/make-slid
 Only CC0 / CC BY / CC BY-SA / public-domain pictures. No identifiable patients except
 from openly licensed medical images. `up.py` needs the `.jpg` extension.
 
-## Steps, per batch of 3 decks (k, k+1, k+2)
+## Steps, per batch of 3 to 5 decks (k, k+1, ...)
 
 1. **Case text**: `python3 pdfcase.py "../../../../native mock.pdf" <case#>...` → `work/cases/<n>.txt`. Read it.
 2. **Write** `work/spec<k>.py` for each (rules above).
@@ -100,19 +124,32 @@ from openly licensed medical images. `up.py` needs the `.jpg` extension.
    check): it runs on Clinical Buddy's guideline library and web search, which the user stopped
    on 2026-10-05 for cost. Instead run your own web searches (NICE CKS/NG, BNF, UKMEC, DVLA,
    BASHH) on every management claim, thresholds and doses first, and fix the spec. List what
-   you checked, and anything you could not confirm, in the report.
+   you checked, and anything you could not confirm, in the report. Once the deck exists, record
+   the claims you confirmed, each with the source you searched, through
+   `POST /media/{id}/hand-check` (`work/handcheck.py` is the pattern), so the staff screen shows
+   "N claims checked by hand". Record only claims a search actually confirmed.
 4. **Create + rewrite**: `python3 new.py <k> <nn-slug>` (e.g. `50-amenorrhoea-...`) builds the
    deck, creates the draft and starts the rewrite (`writing_script`).
 5. (`facts.py` and `decide.py` serve only decks whose platform fact check already ran.)
 6. **Rewrite review**: `python3 rewritten.py <k> <k+1> <k+2>` prints every slide's narration and lint flags.
    Read all of it. Keep the asides and tags. Fix wrong facts the rewrite
    introduced (dates, "you see" on a phone call, drug advice drifting from the plan), a
-   cut-down opener or conclusion, "..." and stray spaces. Write `work/e<k>.json` as
+   cut-down opener or conclusion, "..." and stray spaces. The rewrite repeatedly does these:
+   - ellipses, mostly on pause slides ("...what is your plan?") → a full stop.
+   - in-person slips on a call: "sit with her", "walks out", "prodded the tummy",
+     "face to face slot", "came in" → "speak with", "hangs up", "in person".
+   - jokes on sensitive lines: 999/red flags, self-harm, safeguarding, assault, overdose,
+     cancer fears, grief. Drop the tag and the joke there; keep asides elsewhere.
+   - narration that comments on a slide instead of stating its facts, or an opener or
+     conclusion replaced by a stub ("See same corrected line above.") → restore the facts.
+   - drift: wrong drug, dose, timing or reason, or a detail the spec never had.
+   Write `work/e<k>.json` as
    `[[old, new], ...]` with exact substrings (curly quotes matter), then
    `python3 repl.py <k> ../../../../slide-scripts/work/e<k>.json`. Every edit must hit once; lint must be 0.
 7. **Check + voice** (background, ~15 to 30 min): `bash chk.sh <k> <k+1> <k+2>`. Decks
    with `changes: 0` are voiced (asides and audio tags stay). A deck the check changed: run `rewritten.py`/`repl.py` again, then `chk.sh` again.
-8. **Publish** each voiced deck: `bash pub.sh <k>`. It prints the SID and appends to
+8. **Publish** each voiced deck, one at a time (`for k in ...; do bash pub.sh $k; done`), once
+   `chk.sh` shows `completed null` for it: `bash pub.sh <k>`. It prints the SID and appends to
    `work/published.txt`; staging and production say `inserted`, Firestore says `created slides/<id>`.
 9. **Credits**: new pictures are in `CREDITS.json` and the images folder (uncommitted, say so).
 

@@ -5331,6 +5331,7 @@
               "circuit_not_paused",
               "circuit_not_started",
               "circuit_paused",
+              "claim_outside_item",
               "cohort_exists",
               "cohort_in_use",
               "cohort_not_found",
@@ -6755,6 +6756,78 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HandCheckRequest": {
+        "description": "A fact check done by a person rather than the platform's check, every claim supported.",
+        "properties": {
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/HandCheckedClaim"
+            },
+            "maxItems": 60,
+            "minItems": 1,
+            "title": "Claims",
+            "type": "array"
+          }
+        },
+        "required": [
+          "claims"
+        ],
+        "title": "HandCheckRequest",
+        "type": "object"
+      },
+      "HandCheckedClaim": {
+        "description": "One clinical claim a person checked themselves, and the source that bears it out.",
+        "properties": {
+          "claim": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Claim",
+            "type": "string"
+          },
+          "quote": {
+            "default": "",
+            "maxLength": 400,
+            "title": "Quote",
+            "type": "string"
+          },
+          "slide": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slide"
+          },
+          "source": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "claim",
+          "source"
+        ],
+        "title": "HandCheckedClaim",
         "type": "object"
       },
       "HealthResponse": {
@@ -19474,6 +19547,18 @@
               }
             ],
             "title": "Content"
+          },
+          "exam_code": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
           },
           "summary": {
             "anyOf": [
@@ -35024,6 +35109,107 @@
           }
         ],
         "summary": "Generate Summary Podcast",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/hand-check": {
+      "post": {
+        "operationId": "media_production_record_hand_check",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_already_running",
+            "x-codes": [
+              "av_already_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_wrong_kind, claim_outside_item",
+            "x-codes": [
+              "media_wrong_kind",
+              "claim_outside_item"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Hand Check",
         "tags": [
           "media-production"
         ]
