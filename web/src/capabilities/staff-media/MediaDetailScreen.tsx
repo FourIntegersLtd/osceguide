@@ -2,8 +2,24 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HiOutlineArrowLeft } from "react-icons/hi2";
-import { Alert, Badge, Button, ConfirmModal, Input, Panel, Textarea } from "@/foundation/ui";
+import {
+  HiOutlineArrowLeft,
+  HiOutlineCodeBracket,
+  HiOutlineEye,
+  HiOutlineTrash,
+} from "react-icons/hi2";
+import {
+  Alert,
+  Badge,
+  Button,
+  ConfirmModal,
+  Input,
+  NextStepBar,
+  Panel,
+  StepRail,
+  Textarea,
+} from "@/foundation/ui";
+import { AuthoringIconAction } from "@/capabilities/authoring/parts/AuthoringIconAction";
 import { AuthoringExamField } from "@/capabilities/authoring/parts/AuthoringExamField";
 import {
   errorMessage,
@@ -26,18 +42,20 @@ import {
   acceptSuggestion,
   dismissSuggestion,
   reopenSuggestion,
-  firstOpenStep,
   isSpokenKind,
   reviewOf,
+} from "@/capabilities/staff-media/content/review";
+import {
+  nextAction,
   reviewSteps,
   type StepId,
-} from "@/capabilities/staff-media/content/review";
+} from "@/capabilities/staff-media/content/steps";
 import { ERROR_STEPS, ProduceForm, RunLog } from "@/capabilities/fact-check";
 import { ContentJsonEditor } from "@/capabilities/staff-media/parts/ContentJsonEditor";
 import { FactCheck } from "@/capabilities/fact-check";
 import {
+  PublishStep,
   ScriptStep,
-  StepNav,
   VoiceStep,
 } from "@/capabilities/staff-media/parts/ReviewSteps";
 import {
@@ -98,8 +116,11 @@ export function MediaDetailScreen({
     setContent(contentRecord(load.data));
     const status = avStatus(contentRecord(load.data));
     setPollAv(isAvRunning(status));
-    // Open on the first step still to do, and stay where the reader then goes.
-    const opened = firstOpenStep(load.data.kind, contentRecord(load.data));
+    // Open on the step the next action belongs to, and stay where the reader then goes.
+    const opened = nextAction(load.data.kind, contentRecord(load.data), {
+      published: load.data.status === "published",
+      unsaved: false,
+    }).step;
     setStep((current) => current ?? opened);
   }, [load.data]);
 
@@ -132,7 +153,7 @@ export function MediaDetailScreen({
 
   const save = (andPublish = false) =>
     action.run(andPublish ? "save-publish" : "save", async () => {
-      await updateMedia(itemId, {
+      const saved = await updateMedia(itemId, {
         title: title.trim(),
         summary: summary.trim() || null,
         content,
@@ -141,6 +162,9 @@ export function MediaDetailScreen({
       if (andPublish) {
         await publishMedia(itemId);
         toast.success("Saved and published");
+      } else if (isAvRunning(avStatus(contentRecord(saved)))) {
+        // The draft moved under a checked script, so the server is rewriting the lines it touched.
+        toast.success("Saved", "The script is being brought up to date and checked again.");
       } else {
         toast.success("Saved");
       }
@@ -236,9 +260,8 @@ export function MediaDetailScreen({
 
   const isDraft = item.status === "draft";
   const spoken = isSpokenKind(kind);
-  const steps = reviewSteps(kind, content);
+  const steps = reviewSteps(kind, content, !isDraft);
   const current = step ?? "draft";
-  const position = steps.findIndex((entry) => entry.id === current);
   const review = reviewOf(content);
   const status = avStatus(content);
   const locked = unsaved || action.busy !== null || isAvRunning(status);
@@ -250,8 +273,60 @@ export function MediaDetailScreen({
     voice: action.busy === "voice" || (status?.startsWith("generating") ?? false),
     produce: action.busy === "produce" || status === "producing",
   };
-  const details = (
-    <Panel title="Details">
+  const drafted = steps[0]?.state === "done";
+  const next = nextAction(kind, content, { published: !isDraft, unsaved });
+  const publish = () =>
+    action.run("publish", async () => {
+      await publishMedia(itemId);
+      toast.success("Published");
+      load.reload();
+    });
+  const writeScript = (rewrite: boolean) =>
+    start("write-script", "Script check started", () => writeMediaScript(itemId, rewrite));
+
+  const nextButton = () => {
+    const run = (label: string, busyKey: string, onClick: () => unknown) => (
+      <Button
+        size="sm"
+        disabled={busyKey === "save" ? !title.trim() || action.busy !== null : locked}
+        isLoading={action.busy === busyKey}
+        onClick={() => void onClick()}
+      >
+        {label}
+      </Button>
+    );
+    switch (next.id) {
+      case "save":
+        return run("Save", "save", () => save());
+      case "check-facts":
+        return run("Check facts", "check-facts", () =>
+          start("check-facts", "Fact check started", () => checkMediaFacts(itemId)),
+        );
+      case "rule":
+        return current === "facts" ? null : run("Review claims", "", () => setStep("facts"));
+      case "write-script":
+        return run("Write script", "write-script", () => writeScript(false));
+      case "check-script":
+        return run("Check script", "write-script", () => writeScript(false));
+      case "voice":
+        return run("Approve and voice", "voice", voice);
+      case "publish":
+        return run("Publish", "publish", publish);
+      case "preview":
+        return previewHref ? (
+          <Link href={previewHref} target="_blank" rel="noreferrer" className="inline-flex">
+            <Button size="sm" variant="secondary">
+              Preview as learner
+            </Button>
+          </Link>
+        ) : null;
+      default:
+        return null;
+    }
+  };
+
+  const details = (open: boolean) => (
+    <Panel title="Details" defaultOpen={open}>
       <div className="flex flex-col gap-4">
         <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
         <Input
@@ -264,79 +339,87 @@ export function MediaDetailScreen({
       </div>
     </Panel>
   );
+  const produceForm = (
+    <ProduceForm
+      key={review.brief?.brief ?? ""}
+      brief={review.brief}
+      hint="The agent drafts, checks the facts, finds pictures and writes the script, then stops before voicing."
+      locked={locked}
+      working={working.produce}
+      primary={next.id === "produce"}
+      onProduce={(brief) =>
+        start("produce", "Agent started", () => produceMedia(itemId, { brief }))
+      }
+    />
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" className="gap-2" onClick={backToList}>
-          <HiOutlineArrowLeft className="h-4 w-4" aria-hidden />
-          Back to list
-        </Button>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2">
+          <AuthoringIconAction variant="ghost" label="Back to list" onClick={backToList}>
+            <HiOutlineArrowLeft className="h-4 w-4" aria-hidden />
+          </AuthoringIconAction>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-osce-title font-semibold text-ink">
+                {title.trim() || kindLabel}
+              </h1>
+              <Badge tone={item.status === "published" ? "success" : "warning"}>
+                {item.status}
+              </Badge>
+            </div>
+            <p className="mt-1 text-osce-meta text-ink-subtle">
+              {kindLabel} · {item.slug} ·{" "}
+              {examCode.trim() ? examCode.toUpperCase() : "Any exam"}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          {previewHref && item.status === "published" ? (
+            <AuthoringIconAction variant="ghost" label="Preview as learner" href={previewHref}>
+              <HiOutlineEye className="h-4 w-4" aria-hidden />
+            </AuthoringIconAction>
+          ) : null}
+          <AuthoringIconAction variant="ghost" label="Edit as JSON" onClick={() => setJsonOpen(true)}>
+            <HiOutlineCodeBracket className="h-4 w-4" aria-hidden />
+          </AuthoringIconAction>
           {isDraft ? (
-            <Button
-              variant="ghost"
-              size="sm"
+            <AuthoringIconAction
+              variant="danger"
+              label="Delete draft"
               disabled={action.busy !== null}
               onClick={() => setDeleteOpen(true)}
             >
-              Delete draft
-            </Button>
+              <HiOutlineTrash className="h-4 w-4" aria-hidden />
+            </AuthoringIconAction>
           ) : null}
-          <Button variant="ghost" size="sm" onClick={() => setJsonOpen(true)}>
-            Edit as JSON
-          </Button>
-          <span className="hidden h-6 border-l border-border sm:block" aria-hidden />
-          {unsaved ? (
-            <span className="text-osce-meta text-ink-subtle">Unsaved changes</span>
-          ) : null}
-          {previewHref && item.status === "published" ? (
-            <Link
-              href={previewHref}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex"
-            >
-              <Button variant="secondary" size="sm">
-                Preview as learner
+          {/* A blog has no pipeline, so it keeps its save buttons here. */}
+          {!spoken ? (
+            <>
+              <span className="mx-1 hidden h-6 border-l border-border sm:block" aria-hidden />
+              {unsaved ? (
+                <span className="text-osce-meta text-ink-subtle">Unsaved changes</span>
+              ) : null}
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!title.trim() || action.busy !== null}
+                isLoading={action.busy === "save-publish"}
+                onClick={() => save(true)}
+              >
+                {action.busy === "save-publish" ? "Publishing…" : "Save and publish"}
               </Button>
-            </Link>
+              <Button
+                size="sm"
+                disabled={!title.trim() || action.busy !== null}
+                isLoading={action.busy === "save"}
+                onClick={() => save()}
+              >
+                {action.busy === "save" ? "Saving…" : "Save"}
+              </Button>
+            </>
           ) : null}
-          {kind === "blog" ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!title.trim() || action.busy !== null}
-              isLoading={action.busy === "save-publish"}
-              onClick={() => save(true)}
-            >
-              {action.busy === "save-publish" ? "Publishing…" : "Save and publish"}
-            </Button>
-          ) : isDraft ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={unsaved || action.busy !== null}
-              onClick={() =>
-                action.run("publish", async () => {
-                  await publishMedia(itemId);
-                  toast.success("Published");
-                  load.reload();
-                })
-              }
-              isLoading={action.busy === "publish"}
-            >
-              {action.busy === "publish" ? "Publishing…" : "Publish"}
-            </Button>
-          ) : null}
-          <Button
-            size="sm"
-            disabled={!title.trim() || action.busy !== null}
-            isLoading={action.busy === "save"}
-            onClick={() => save()}
-          >
-            {action.busy === "save" ? "Saving…" : "Save"}
-          </Button>
         </div>
       </div>
 
@@ -358,11 +441,6 @@ export function MediaDetailScreen({
       />
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
-      {pollAv ? (
-        <Alert tone="info">
-          Working on it… this page updates when it finishes.
-        </Alert>
-      ) : null}
 
       <ContentJsonEditor
         open={jsonOpen}
@@ -371,25 +449,10 @@ export function MediaDetailScreen({
         onSave={(parsed) => setContent((prev) => mergeContent(prev, parsed))}
       />
 
-      <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-osce-title font-semibold text-ink">
-            {title.trim() || kindLabel}
-          </h1>
-          <Badge tone={item.status === "published" ? "success" : "warning"}>
-            {item.status}
-          </Badge>
-        </div>
-        <p className="mt-1 text-osce-meta text-ink-subtle">
-          {kindLabel} · {item.slug} ·{" "}
-          {examCode.trim() ? examCode.toUpperCase() : "Any exam"}
-        </p>
-      </div>
-
       {!spoken ? (
         <>
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          {details}
+          {details(true)}
 
           <Panel title="Rewrite the draft from a brief" padding="sm">
             <div className="flex flex-col gap-3">
@@ -417,6 +480,16 @@ export function MediaDetailScreen({
         </>
       ) : (
         <>
+          <NextStepBar line={next.line} working={next.id === "wait"}>
+            {nextButton()}
+          </NextStepBar>
+          <StepRail steps={steps} current={current} onSelect={setStep} />
+          {review.error ? (
+            <Alert tone="danger">
+              The last {ERROR_STEPS[review.error.step] ?? review.error.step} failed:{" "}
+              {review.error.message}
+            </Alert>
+          ) : null}
           {review.run ? (
             <RunLog
               run={review.run}
@@ -430,46 +503,28 @@ export function MediaDetailScreen({
               }
             />
           ) : null}
-          <StepNav steps={steps} current={current} onSelect={setStep} />
-          {review.error ? (
-            <Alert tone="danger">
-              The last {ERROR_STEPS[review.error.step] ?? review.error.step} failed:{" "}
-              {review.error.message}
-            </Alert>
-          ) : null}
-          {unsaved && current !== "draft" ? (
-            <Alert tone="info">
-              You have unsaved changes. Save before checking or voicing, so the check reads what you
-              see.
-            </Alert>
-          ) : null}
 
           {current === "draft" ? (
-            <>
-          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            {details}
-
-            <Panel title="Produce with the agent" padding="sm">
-              <ProduceForm
-                key={review.brief?.brief ?? ""}
-                brief={review.brief}
-                hint="What to teach and for which exam. The agent drafts, checks the facts, finds pictures and writes the script, then stops before voicing."
-                locked={locked}
-                working={working.produce}
-                onProduce={(brief) =>
-                  start("produce", "Agent started", () =>
-                    produceMedia(itemId, { brief }),
-                  )
-                }
-              />
-            </Panel>
-          </div>
-
-          <Panel title="Content">{contentForm()}</Panel>
-            </>
+            // Remounted once a draft exists, so its panels open and fold the right way round.
+            <div key={String(drafted)} className="flex flex-col gap-6">
+              {drafted ? null : (
+                <Panel title="What should it cover?" padding="sm">
+                  {produceForm}
+                </Panel>
+              )}
+              <Panel title="Content" defaultOpen={drafted}>
+                {contentForm()}
+              </Panel>
+              {details(false)}
+              {drafted ? (
+                <Panel title="Produce again from a brief" padding="sm" defaultOpen={false}>
+                  {produceForm}
+                </Panel>
+              ) : null}
+            </div>
           ) : null}
           {current === "facts" ? (
-            <Panel title="Step 2: Check the facts">
+            <Panel title="Check the facts">
               <FactCheck
                 facts={review.facts}
                 rulings={{
@@ -487,53 +542,33 @@ export function MediaDetailScreen({
             </Panel>
           ) : null}
           {current === "script" ? (
-            <Panel title="Step 3: Write and check the script">
+            <Panel title="Script">
               <ScriptStep
                 kind={kind}
                 content={content}
                 onChange={setContent}
                 locked={locked}
-                working={working.script}
-                onWrite={(rewrite) =>
-                  start("write-script", "Script check started", () =>
-                    writeMediaScript(itemId, rewrite),
-                  )
-                }
+                onWrite={writeScript}
               />
             </Panel>
           ) : null}
           {current === "voice" ? (
-            <Panel title="Step 4: Approve and voice">
+            <Panel title="Voice">
               <VoiceStep
                 kind={kind}
                 content={content}
                 locked={locked}
                 working={working.voice}
-                steps={steps}
+                voiced={steps.find((entry) => entry.id === "voice")?.state === "done"}
                 onVoice={voice}
               />
             </Panel>
           ) : null}
-
-          <div className="flex justify-between gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={position === 0}
-              onClick={() => setStep(steps[position - 1]?.id ?? current)}
-            >
-              Back
-            </Button>
-            {position < steps.length - 1 ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setStep(steps[position + 1]?.id ?? current)}
-              >
-                Next: {steps[position + 1]?.label}
-              </Button>
-            ) : null}
-          </div>
+          {current === "publish" ? (
+            <Panel title="Publish">
+              <PublishStep steps={steps} />
+            </Panel>
+          ) : null}
         </>
       )}
     </div>

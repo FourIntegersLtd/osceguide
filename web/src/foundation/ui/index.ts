@@ -20,6 +20,8 @@ export { TextLink } from "@/foundation/ui/TextLink";
 export type { TextLinkProps } from "@/foundation/ui/TextLink";
 export { AnchoredTooltip } from "@/foundation/ui/AnchoredTooltip";
 export type { AnchoredTooltipPlacement } from "@/foundation/ui/AnchoredTooltip";
+export { StepRail, NextStepBar } from "@/foundation/ui/StepRail";
+export type { RailStep } from "@/foundation/ui/StepRail";
 export { Alert } from "@/foundation/ui/Alert";
 export type { AlertTone } from "@/foundation/ui/Alert";
 export { EmptyState } from "@/foundation/ui/EmptyState";

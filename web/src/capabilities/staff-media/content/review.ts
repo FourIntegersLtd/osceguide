@@ -10,7 +10,6 @@
 import {
   corrected,
   factsOf,
-  needsRuling,
   record,
   records,
   reopened,
@@ -56,6 +55,8 @@ export type Review = {
     lines: string[];
     issues: ScriptIssue[];
     changes: ScriptChange[];
+    /** Slides written afresh because their notes changed since the last check. */
+    rewritten: number[];
   } | null;
   error: { step: string; message: string } | null;
   /** What the agent was asked to produce the item from. */
@@ -95,6 +96,7 @@ export function reviewOf(content: Content): Review {
           lines: Array.isArray(script.lines) ? script.lines.map(String) : [],
           issues: records(script.issues) as unknown as ScriptIssue[],
           changes: records(script.changes) as unknown as ScriptChange[],
+          rewritten: Array.isArray(script.rewritten) ? script.rewritten.map(Number) : [],
         }
       : null,
     error: error
@@ -288,104 +290,4 @@ export function dismissSuggestion(content: Content, claim: FactClaim): Content {
 /** `content` with a ruling taken back: an accepted correction's words swapped out again, and the claim open. */
 export function reopenSuggestion(content: Content, claim: FactClaim): Content {
   return withFacts(uncorrected(content, claim), (facts) => reopened(facts, claim.id));
-}
-
-export type StepId = "draft" | "facts" | "script" | "voice";
-
-export type ReviewStep = {
-  id: StepId;
-  label: string;
-  /** `attention` is a step that was done and now needs the reader again. */
-  state: "todo" | "attention" | "done";
-  note: string;
-};
-
-const VOICED_FIELD: Record<string, string> = {
-  slide_deck: "final_video_url",
-  summary: "podcast_url",
-  podcast: "audio_url",
-};
-
-/** Where the voiced recording (the deck's video, or the audio) lives, once voicing has run. */
-export function voicedUrl(kind: string, content: Content): string {
-  return text(content[VOICED_FIELD[kind] ?? ""]).trim();
-}
-
-function hasDraft(kind: string, content: Content): boolean {
-  if (kind === "slide_deck") return records(content.slides).length > 0;
-  return Object.entries(content).some(
-    ([name, value]) =>
-      name !== "review" &&
-      name !== "status" &&
-      !name.endsWith("_url") &&
-      (Array.isArray(value) ? value.length > 0 : text(value).trim() !== ""),
-  );
-}
-
-/** How a finished fact check reads in the step list, saying when a person did it by hand. */
-function claimsNote(facts: { checked_by?: string }, count: number): string {
-  return `${count} claims checked${facts.checked_by ? " by hand" : ""}`;
-}
-
-/** The four steps from a brief to a voiced item, each with where it stands. */
-export function reviewSteps(kind: string, content: Content): ReviewStep[] {
-  const review = reviewOf(content);
-  const claims = review.facts?.claims ?? [];
-  const open = claims.filter(needsRuling).length;
-  const written = scriptGroups(kind, content).length > 0;
-  const checked = isChecked(kind, content);
-  const flagged = review.script?.issues.length ?? 0;
-  const status = text(content.status);
-  const voiced =
-    voicedUrl(kind, content) !== "" &&
-    (status === "" || status === "completed");
-  return [
-    {
-      id: "draft",
-      label: "Draft",
-      state: hasDraft(kind, content) ? "done" : "todo",
-      note: hasDraft(kind, content) ? "Written" : "Nothing written yet",
-    },
-    {
-      id: "facts",
-      label: "Check facts",
-      state: !review.facts ? "todo" : open > 0 ? "attention" : "done",
-      note: !review.facts
-        ? "Not checked"
-        : open > 0
-          ? `${open} to resolve`
-          : claimsNote(review.facts, claims.length),
-    },
-    {
-      id: "script",
-      label: "Script",
-      state: !written ? "todo" : checked ? "done" : "attention",
-      note: !written
-        ? "Not written"
-        : !checked
-          ? "Needs checking"
-          : flagged > 0
-            ? `Checked, ${flagged} flagged`
-            : "Checked",
-    },
-    {
-      id: "voice",
-      label: "Voice",
-      state: voiced ? "done" : "todo",
-      note: voiced ? "Voiced" : "Not voiced",
-    },
-  ];
-}
-
-/**
- * Where to put the reader when they open an item: the first step still to do.
- * A draft nobody has checked yet opens on the draft, so it is read before it
- * is checked.
- */
-export function firstOpenStep(kind: string, content: Content): StepId {
-  const review = reviewOf(content);
-  if (!review.facts && !review.script) return "draft";
-  return (
-    reviewSteps(kind, content).find((step) => step.state !== "done")?.id ?? "voice"
-  );
 }

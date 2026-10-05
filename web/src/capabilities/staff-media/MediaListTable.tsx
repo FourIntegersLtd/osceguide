@@ -15,6 +15,12 @@ import {
   AuthoringRowActions,
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
 import type { MediaItem } from "@/capabilities/staff-media/api";
+import {
+  isSpokenKind,
+} from "@/capabilities/staff-media/content/review";
+import {
+  stageOf,
+} from "@/capabilities/staff-media/content/steps";
 
 function mediaDateLabel(iso: string | null | undefined): string {
   if (!iso) return "-";
@@ -68,11 +74,20 @@ export function MediaListTable({
       {
         header: "Status",
         key: "status" as keyof MediaItem,
-        render: (item: MediaItem) => (
-          <Badge tone={item.status === "published" ? "success" : "warning"}>
-            {item.status === "published" ? "Published" : "Draft"}
-          </Badge>
-        ),
+        render: (item: MediaItem) =>
+          item.status === "published" ? (
+            <Badge tone="success">Published</Badge>
+          ) : (
+            <span className="flex flex-col items-start gap-1">
+              <Badge tone="warning">Draft</Badge>
+              {/* Where a spoken draft stands in its pipeline, so the list says what needs staff. */}
+              {item.content && isSpokenKind(item.kind) ? (
+                <span className={cn(b2cTableCellText, "text-osce-meta text-ink-subtle")}>
+                  {stageOf(item.kind, item.content)}
+                </span>
+              ) : null}
+            </span>
+          ),
       },
       {
         header: "Created",

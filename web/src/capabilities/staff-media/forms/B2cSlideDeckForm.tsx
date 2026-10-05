@@ -30,6 +30,7 @@ import {
   HiOutlinePlus,
   HiOutlineTrash,
 } from "react-icons/hi2";
+import { AuthoringIconAction } from "@/capabilities/authoring/parts/AuthoringIconAction";
 
 function statusTone(status: string): BadgeTone {
   if (status === "completed") return "success";
@@ -129,37 +130,29 @@ export function B2cSlideDeckForm({
               title={slide.title?.trim() || "Untitled slide"}
               actions={
                 <>
-                <Button
-                  type="button"
+                <AuthoringIconAction
                   variant="ghost"
-                  size="sm"
-                  aria-label="Move up"
+                  label="Move up"
                   disabled={index === 0}
                   onClick={() => updateSlides(moveSlide(slides, index, -1))}
                 >
                   <HiOutlineArrowUp className="h-4 w-4" aria-hidden />
-                </Button>
-                <Button
-                  type="button"
+                </AuthoringIconAction>
+                <AuthoringIconAction
                   variant="ghost"
-                  size="sm"
-                  aria-label="Move down"
+                  label="Move down"
                   disabled={index === slides.length - 1}
                   onClick={() => updateSlides(moveSlide(slides, index, 1))}
                 >
                   <HiOutlineArrowDown className="h-4 w-4" aria-hidden />
-                </Button>
-                <Button
-                  type="button"
+                </AuthoringIconAction>
+                <AuthoringIconAction
                   variant="ghost"
-                  size="sm"
-                  aria-label="Remove slide"
-                  onClick={() =>
-                    updateSlides(slides.filter((_, i) => i !== index))
-                  }
+                  label="Remove slide"
+                  onClick={() => updateSlides(slides.filter((_, i) => i !== index))}
                 >
                   <HiOutlineTrash className="h-4 w-4" aria-hidden />
-                </Button>
+                </AuthoringIconAction>
               </>
               }
             >

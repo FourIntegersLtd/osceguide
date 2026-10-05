@@ -5,6 +5,8 @@
  * media review and platform stations both use it.
  */
 
+import type { RailStep } from "@/foundation/ui";
+
 type Content = Record<string, unknown>;
 
 /** What one source said about a claim. Checks stored before both sources were always asked lack `verdict`. */
@@ -108,6 +110,39 @@ export function needsRuling(claim: FactClaim): boolean {
     (claim.verdict === "contradicted" || claim.verdict === "conflict") &&
     !claim.decision
   );
+}
+
+/** The draft step every produced item starts with, as the step rail shows it. */
+export function draftStep(drafted: boolean): RailStep<"draft"> {
+  return {
+    id: "draft",
+    label: "Draft",
+    state: drafted ? "done" : "todo",
+    note: drafted ? "Written" : "Nothing written yet",
+  };
+}
+
+/** The fact-check step as the step rail shows it. `unchecked` is its note before any check is on record. */
+export function factsStep(facts: Facts | null, unchecked = "Not checked"): RailStep<"facts"> {
+  const open = facts?.claims.filter(needsRuling).length ?? 0;
+  return {
+    id: "facts",
+    label: "Check facts",
+    state: !facts ? "todo" : open > 0 ? "attention" : "done",
+    note: !facts
+      ? unchecked
+      : open > 0
+        ? `${open} to resolve`
+        : `${facts.claims.length} claims checked${facts.checked_by ? " by hand" : ""}`,
+  };
+}
+
+/** What a running check says it is doing, with how far it has got once the server reports it. */
+export function checkingLine(facts: Facts | null): string {
+  const progress = facts?.progress;
+  return progress
+    ? `Checking facts, ${progress.done} of ${progress.total} claims…`
+    : "Checking facts against the guidelines…";
 }
 
 /** Every string under `value` with `old` swapped for `next`; what is spoken, and the review itself, are left alone. */

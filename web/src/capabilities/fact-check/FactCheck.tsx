@@ -401,28 +401,19 @@ export function FactCheck({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 max-w-prose flex-col gap-1">
-          <p className="text-osce-body text-ink">
-            Each claim is looked up in the guideline library and on the clinical
-            web at the same time, and you see what each one says.
-          </p>
-          <p className="text-osce-meta text-ink-subtle">
-            {progress
-              ? `${progress.done} of ${progress.total} claims checked so far. The rest appear as each one is judged; you can act on them once all are in.`
-              : facts
-                ? `${claims.length} claims, checked ${when(facts.checked_at)}. Nothing changes unless you accept a correction.`
-                : "Nothing changes unless you accept a correction."}
-          </p>
-        </div>
-        <Button
-          size="sm"
-          variant={facts ? "secondary" : "primary"}
-          disabled={locked}
-          isLoading={working}
-          onClick={onCheck}
-        >
-          {working ? "Checking facts…" : facts ? "Check again" : "Check facts"}
-        </Button>
+        <p className="min-w-0 max-w-prose text-osce-meta text-ink-subtle">
+          {progress
+            ? `${progress.done} of ${progress.total} claims checked so far. You can act on them once all are in.`
+            : facts
+              ? `${claims.length} claims, checked ${when(facts.checked_at)} against the guideline library and the clinical web. Nothing changes unless you accept a correction.`
+              : "Each claim is looked up in the guideline library and on the clinical web. Nothing changes unless you accept a correction."}
+        </p>
+        {/* The first check starts from the screen's next-step bar; this one runs it again. */}
+        {facts ? (
+          <Button size="sm" variant="ghost" disabled={locked} isLoading={working} onClick={onCheck}>
+            {working ? "Checking facts…" : "Check again"}
+          </Button>
+        ) : null}
       </div>
 
       {facts && claims.length > 0 ? (

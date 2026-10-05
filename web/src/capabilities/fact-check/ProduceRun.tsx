@@ -22,6 +22,7 @@ export function ProduceForm({
   hint,
   locked,
   working,
+  primary = false,
   onProduce,
 }: {
   brief: ProduceBrief | null;
@@ -29,6 +30,8 @@ export function ProduceForm({
   hint: string;
   locked: boolean;
   working: boolean;
+  /** Producing is the next step, so this is the screen's one primary button. */
+  primary?: boolean;
   onProduce: (brief: string) => void;
 }) {
   const [text, setText] = useState(brief?.brief ?? "");
@@ -36,14 +39,15 @@ export function ProduceForm({
     <div className="flex flex-col gap-3">
       <Textarea
         label="What should it cover?"
-        hint={`${hint} A topic, your notes or a case pasted whole: from a case it keeps only the diagnosis and management.`}
+        hint={`A topic, your notes or a case pasted whole. ${hint}`}
         rows={8}
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       <Button
-        variant="secondary"
+        variant={primary ? "primary" : "secondary"}
         size="sm"
+        className="w-fit"
         disabled={locked || text.trim().length < 8}
         isLoading={working}
         onClick={() => onProduce(text.trim())}

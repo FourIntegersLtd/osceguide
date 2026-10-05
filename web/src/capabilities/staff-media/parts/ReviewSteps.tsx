@@ -6,13 +6,15 @@ import {
   reviewOf,
   scriptGroups,
   setScriptLine,
-  voicedUrl,
-  type ReviewStep,
   type ScriptChange,
   type ScriptGroup,
   type ScriptIssue,
-  type StepId,
 } from "@/capabilities/staff-media/content/review";
+import {
+  scriptStatus,
+  voicedUrl,
+  type ReviewStep,
+} from "@/capabilities/staff-media/content/steps";
 
 type Content = Record<string, unknown>;
 
@@ -34,58 +36,26 @@ function when(iso: string | null): string {
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
 }
 
-/** The four steps across the top: where the item stands, and which one is open. */
-export function StepNav({
-  steps,
-  current,
-  onSelect,
-}: {
-  steps: ReviewStep[];
-  current: StepId;
-  onSelect: (step: StepId) => void;
-}) {
-  return (
-    <ol className="grid grid-cols-2 gap-2 lg:grid-cols-4" aria-label="Steps">
-      {steps.map((step, index) => (
-        <li key={step.id}>
-          <button
-            type="button"
-            aria-current={step.id === current ? "step" : undefined}
-            onClick={() => onSelect(step.id)}
-            className={`flex w-full flex-col gap-1 rounded-panel border p-3 text-left ${
-              step.id === current ? "border-accent" : "border-border"
-            }`}
-          >
-            <span className="text-osce-body font-semibold text-ink">
-              {index + 1}. {step.label}
-            </span>
-            <span>
-              <Badge tone={STATE_TONES[step.state]}>{step.note}</Badge>
-            </span>
-          </button>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 function Group({
   group,
   issues,
   changes,
+  rewritten,
   onEdit,
 }: {
   group: ScriptGroup;
   issues: ScriptIssue[];
   changes: ScriptChange[];
+  rewritten: boolean;
   onEdit: (line: number, value: string) => void;
 }) {
   return (
     <FoldSection
       title={group.label}
-      defaultOpen={issues.length > 0}
+      defaultOpen={issues.length > 0 || rewritten}
       meta={
         <>
+          {rewritten ? <Badge tone="info">Rewritten, read before voicing</Badge> : null}
           {issues.length > 0 ? <Badge tone="warning">{issues.length} flagged</Badge> : null}
           {changes.length > 0 ? <Badge tone="neutral">{changes.length} corrected</Badge> : null}
         </>
@@ -138,7 +108,6 @@ export function ScriptStep({
   content,
   onChange,
   locked,
-  working = false,
   onWrite,
 }: StepProps & { onWrite: (rewrite: boolean) => void }) {
   const script = reviewOf(content).script;
@@ -154,26 +123,11 @@ export function ScriptStep({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-osce-body text-ink">
-        The script is what the presenter will say. It is written from the draft, then read back
-        line by line against it. No voice credits are used here.
+      <p className="text-osce-meta text-ink-subtle">
+        What the presenter will say, read back line by line against the draft. No voice credits are
+        used here.
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <Button
-          size="sm"
-          variant={checked ? "secondary" : "primary"}
-          disabled={locked}
-          isLoading={working}
-          onClick={() => onWrite(false)}
-        >
-          {working
-            ? groups.length === 0
-              ? "Writing script…"
-              : "Checking script…"
-            : groups.length === 0
-              ? "Write script and check"
-              : "Check script"}
-        </Button>
         {groups.length > 0 ? (
           <Button size="sm" variant="ghost" disabled={locked} onClick={() => onWrite(true)}>
             Rewrite the whole script
@@ -188,8 +142,8 @@ export function ScriptStep({
       </div>
       {groups.length > 0 && !checked ? (
         <Alert tone="warning">
-          The script has changed since it was last checked. Save, then check it again before
-          voicing.
+          Changed since its last check. A saved change to the draft rewrites and checks the lines it
+          touches by itself.
         </Alert>
       ) : null}
       {checked && issues.length === 0 ? (
@@ -208,6 +162,7 @@ export function ScriptStep({
           group={group}
           issues={within(issues, group)}
           changes={within(changes, group)}
+          rewritten={group.part === "slide" && group.slide !== null && Boolean(script?.rewritten.includes(group.slide))}
           onEdit={(line, value) => onChange(setScriptLine(content, group, line, value))}
         />
       ))}
@@ -232,52 +187,65 @@ function Recording({ kind, url }: { kind: string; url: string }) {
   );
 }
 
-/** Step 4: the one click that spends voice credits, with what stands behind it. */
+/** Step 4: the recording, once made. Voicing itself starts from the next-step bar. */
 export function VoiceStep({
   kind,
   content,
   locked,
   working = false,
-  steps,
+  voiced,
   onVoice,
-}: Omit<StepProps, "onChange"> & { steps: ReviewStep[]; onVoice: () => void }) {
-  const checked = isChecked(kind, content);
-  const before = steps.filter((step) => step.id !== "voice");
-  const voiced = steps.find((step) => step.id === "voice")?.state === "done";
+}: Omit<StepProps, "onChange"> & { voiced: boolean; onVoice: () => void }) {
+  const script = scriptStatus(kind, content);
   const recording = voiced ? voicedUrl(kind, content) : "";
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-osce-body text-ink">
-        Voicing records the checked script{kind === "slide_deck" ? " and builds the video" : ""}.
-        This is the only step that uses voice credits.
+      <p className="text-osce-meta text-ink-subtle">
+        Records the checked script{kind === "slide_deck" ? " and builds the video" : ""}. The only
+        step that uses voice credits.
       </p>
-      <ul className="flex flex-col gap-2">
-        {before.map((step) => (
-          <li key={step.id} className="flex flex-wrap items-center gap-2 text-osce-body text-ink">
-            <Badge tone={STATE_TONES[step.state]}>{step.note}</Badge>
-            {step.label}
-          </li>
-        ))}
-      </ul>
-      {!checked ? (
-        <Alert tone="info">Voicing unlocks once the script in step 3 has been checked.</Alert>
+      {script === "unwritten" || script === "unchecked" ? (
+        <Alert tone="info">Voicing unlocks once the script has been checked.</Alert>
       ) : null}
-      {voiced ? (
-        <Alert tone="success">Voiced. Watch or listen below, then publish.</Alert>
+      {script === "changed" ? (
+        <Alert tone="info">The script changed since it was voiced. Check it before voicing again.</Alert>
       ) : null}
       {recording ? <Recording kind={kind} url={recording} /> : null}
-      <div>
-        <Button size="sm" disabled={locked || !checked} isLoading={working} onClick={onVoice}>
-          {working
-            ? kind === "slide_deck"
-              ? "Voicing and building the video…"
-              : "Voicing…"
-            : voiced
-              ? "Voice again"
-              : "Approve and voice"}
-        </Button>
-      </div>
+      {voiced ? (
+        <div>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={locked || script !== "checked"}
+            isLoading={working}
+            onClick={onVoice}
+          >
+            {working ? "Voicing…" : "Voice again"}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Step 5: what stands behind the item before learners see it. Publishing starts from the bar. */
+export function PublishStep({ steps }: { steps: ReviewStep[] }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-osce-meta text-ink-subtle">
+        Learners see it once it is published. Each step below can still be revisited.
+      </p>
+      <ul className="flex flex-col gap-2">
+        {steps
+          .filter((step) => step.id !== "publish")
+          .map((step) => (
+            <li key={step.id} className="flex flex-wrap items-center gap-2 text-osce-body text-ink">
+              <Badge tone={STATE_TONES[step.state]}>{step.note}</Badge>
+              {step.label}
+            </li>
+          ))}
+      </ul>
     </div>
   );
 }

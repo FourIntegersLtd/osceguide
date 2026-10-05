@@ -31,17 +31,20 @@ import { staffMediaDetailPath } from "@/capabilities/staff-media/paths";
 
 export function MediaNewForm({
   initialKind,
+  initialExam = "",
   onCancel,
   onCreated,
 }: {
   initialKind: MediaKind;
+  /** The list's exam filter, so a new item lands where the reader is looking. */
+  initialExam?: string;
   onCancel?: () => void;
   onCreated: (itemId: string) => void;
 }) {
   const [kind, setKind] = useState<MediaKind>(initialKind);
   const [title, setTitle] = useState("");
   const [brief, setBrief] = useState("");
-  const [examCode, setExamCode] = useState("");
+  const [examCode, setExamCode] = useState(initialExam);
   const action = useAction();
 
   useEffect(() => {
@@ -89,38 +92,50 @@ export function MediaNewForm({
     <div className="flex flex-col gap-4">
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
 
-      <Select
-        label="Kind"
-        value={kind}
-        onChange={(e) => {
-          const next = e.target.value;
-          if (isMediaKind(next)) setKind(next);
-        }}
-      >
-        {MEDIA_KINDS.map((k) => (
-          <option key={k} value={k}>
-            {MEDIA_KIND_LABELS[k].one}
-          </option>
-        ))}
-      </Select>
-      <Input
-        label="Title"
-        hint="Leave empty to take the title from the draft."
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <AuthoringExamField value={examCode} onChange={setExamCode} />
       <Textarea
         label="What should it cover?"
-        hint={
-          produced
-            ? "A topic, your notes or a case pasted whole: from a case it keeps only the diagnosis and management and invents the patient. The agent drafts, checks the facts, finds pictures and writes the script, then stops before voicing. Leave it empty to start from a blank item."
-            : "Paste the case, your notes or the topic. The first draft is written from this; leave it empty to start from a blank item."
-        }
+        hint="A topic, your notes or a case pasted whole. Leave it empty to start from a blank item."
         rows={8}
         value={brief}
         onChange={(e) => setBrief(e.target.value)}
       />
+      {/* Kind and exam come from the tab and filter the list was on; change them here. */}
+      <details className="rounded-osce-md border border-border px-3 py-2">
+        <summary className="cursor-pointer text-osce-meta text-ink-muted">
+          {kindLabel} · {examCode.trim() ? examCode.toUpperCase() : "Any exam"} ·{" "}
+          {title.trim() || "title from the draft"}
+        </summary>
+        <div className="mt-3 flex flex-col gap-4">
+          <Select
+            label="Kind"
+            value={kind}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (isMediaKind(next)) setKind(next);
+            }}
+          >
+            {MEDIA_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {MEDIA_KIND_LABELS[k].one}
+              </option>
+            ))}
+          </Select>
+          <Input
+            label="Title"
+            hint="Leave empty to take the title from the draft."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <AuthoringExamField value={examCode} onChange={setExamCode} />
+        </div>
+      </details>
+      {brief.trim() ? (
+        <p className="text-osce-meta text-ink-subtle">
+          {produced
+            ? "The agent drafts it, checks the facts, finds pictures and writes the script, then stops before voicing. From a case it keeps only the diagnosis and management and invents the patient."
+            : "The first draft is written from this."}
+        </p>
+      ) : null}
       <div className="flex justify-end gap-2 pt-1">
         {onCancel ? (
           <Button
@@ -142,11 +157,7 @@ export function MediaNewForm({
             ? brief.trim() && !produced
               ? "Writing the draft…"
               : "Creating…"
-            : brief.trim()
-              ? produced
-                ? "Create and produce"
-                : "Create and write draft"
-              : `Create ${kindLabel.toLowerCase()}`}
+            : "Create"}
         </Button>
       </div>
     </div>
@@ -156,11 +167,13 @@ export function MediaNewForm({
 export function MediaNewModal({
   open,
   initialKind,
+  initialExam,
   onClose,
   onCreated,
 }: {
   open: boolean;
   initialKind: MediaKind;
+  initialExam?: string;
   onClose: () => void;
   onCreated?: (itemId: string) => void;
 }) {
@@ -185,6 +198,7 @@ export function MediaNewModal({
         <MediaNewForm
           key={formKey}
           initialKind={initialKind}
+          initialExam={initialExam}
           onCancel={onClose}
           onCreated={(itemId) => {
             onCreated?.(itemId);

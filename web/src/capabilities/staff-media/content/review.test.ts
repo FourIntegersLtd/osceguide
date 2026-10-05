@@ -4,14 +4,18 @@ import {
   acceptSuggestion,
   dismissSuggestion,
   reopenSuggestion,
-  firstOpenStep,
   isChecked,
-  reviewSteps,
   reviewOf,
   scriptGroups,
   setScriptLine,
   spokenLines,
 } from "@/capabilities/staff-media/content/review";
+import {
+  nextAction,
+  reviewSteps,
+  scriptStatus,
+  stageOf,
+} from "@/capabilities/staff-media/content/steps";
 import type { FactClaim } from "@/capabilities/fact-check/facts";
 
 const DECK_LINES = [
@@ -151,11 +155,15 @@ describe("the staff review of a spoken item", () => {
   });
 
   it("walks a deck through its steps", () => {
-    assert.equal(firstOpenStep("slide_deck", { slides: [] }), "draft");
+    const next = (content: Record<string, unknown>, published = false, unsaved = false) => {
+      const action = nextAction("slide_deck", content, { published, unsaved });
+      return [action.id, action.step];
+    };
+    assert.deepEqual(next({ slides: [] }), ["produce", "draft"]);
     // Just written from a brief: read the draft before checking it.
-    assert.equal(firstOpenStep("slide_deck", { ...deck(), review: undefined }), "draft");
+    assert.deepEqual(next({ ...deck(), review: undefined }), ["check-facts", "draft"]);
     // Written and its script checked, but its facts never looked at.
-    assert.equal(firstOpenStep("slide_deck", deck()), "facts");
+    assert.deepEqual(next(deck()), ["check-facts", "facts"]);
     const contradicted = {
       ...deck(),
       review: {
@@ -170,17 +178,61 @@ describe("the staff review of a spoken item", () => {
         ["facts", "attention", "1 to resolve"],
         ["script", "done", "Checked"],
         ["voice", "todo", "Not voiced"],
+        ["publish", "todo", "Not published"],
       ],
     );
+    assert.deepEqual(next(contradicted), ["rule", "facts"]);
+    assert.equal(stageOf("slide_deck", contradicted), "Check facts: 1 to resolve");
+    // Unsaved edits come before anything that reads what is stored.
+    assert.equal(next(contradicted, false, true)[0], "save");
     const ruled = dismissSuggestion(contradicted, CLAIM);
-    assert.equal(firstOpenStep("slide_deck", ruled), "voice");
+    assert.deepEqual(next(ruled), ["voice", "voice"]);
+    assert.deepEqual(next({ ...ruled, status: "generating_audio" }), ["wait", "voice"]);
     const voiced = { ...ruled, final_video_url: "https://cdn/x.mp4", status: "completed" };
     assert.equal(reviewSteps("slide_deck", voiced)[3]!.state, "done");
+    assert.deepEqual(next(voiced), ["publish", "publish"]);
+    assert.deepEqual(next(voiced, true), ["preview", "publish"]);
     // Written again after voicing: the video no longer says what the script does.
     assert.equal(
       reviewSteps("slide_deck", { ...voiced, status: "awaiting_review" })[3]!.state,
       "todo",
     );
+  });
+
+  it("says how far a fact check has got while it runs", () => {
+    const checking = {
+      ...deck(),
+      status: "checking_facts",
+      review: { facts: { checked_at: "t", claims: [], progress: { done: 3, total: 5 } } },
+    };
+    assert.deepEqual(nextAction("slide_deck", checking, { published: false, unsaved: false }), {
+      id: "wait",
+      step: "facts",
+      line: "Checking facts, 3 of 5 claims…",
+    });
+    assert.equal(stageOf("slide_deck", checking), "Working…");
+  });
+
+  it("says a voiced deck's checks are not on record rather than not done", () => {
+    const imported = { ...deck(), review: undefined, final_video_url: "https://cdn/x.mp4", status: "completed" };
+    assert.deepEqual(
+      reviewSteps("slide_deck", imported).map((step) => [step.id, step.state, step.note]),
+      [
+        ["draft", "done", "Written"],
+        ["facts", "todo", "Not recorded"],
+        ["script", "todo", "Not recorded"],
+        ["voice", "done", "Voiced"],
+        ["publish", "todo", "Not published"],
+      ],
+    );
+  });
+
+  it("says a voiced deck's script changed since voicing once a line is edited", () => {
+    const voiced = { ...deck(), final_video_url: "https://cdn/x.mp4", status: "completed" };
+    assert.equal(scriptStatus("slide_deck", voiced), "checked");
+    const edited = setScriptLine(voiced, scriptGroups("slide_deck", voiced)[0]!, 2, "Kwame averaged 152 over 96.");
+    assert.equal(scriptStatus("slide_deck", edited), "changed");
+    assert.equal(reviewSteps("slide_deck", edited)[2]!.note, "Changed since voicing");
   });
 });
 

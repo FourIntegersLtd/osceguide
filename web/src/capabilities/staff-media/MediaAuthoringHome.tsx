@@ -130,6 +130,7 @@ export function MediaAuthoringHome() {
       <MediaNewModal
         open={createOpen}
         initialKind={kind}
+        initialExam={examFilter}
         onClose={closeCreate}
         onCreated={() => {
           list.reload();
