@@ -1,4 +1,6 @@
-import type { MediaKind } from "@/capabilities/media/api";
+import { PERSONAL_SLUG } from "@/foundation/routing";
+import { isMediaKind, type MediaKind } from "@/capabilities/media/api";
+import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
 import type { MediaItem } from "@/capabilities/staff-media/api";
 
 export function staffMediaDetailPath(itemId: string): string {
@@ -14,10 +16,8 @@ export function staffMediaNewPath(kind: MediaKind): string {
   return `/staff/media?new=1&kind=${encodeURIComponent(kind)}`;
 }
 
-/** Consumer library route for preview (staff shell has no workspace). */
-export function learnerMediaPreviewPath(
-  item: Pick<MediaItem, "slug" | "exam_code">,
-): string {
-  const exam = (item.exam_code ?? "sca").toLowerCase();
-  return `/app/${exam}/library/${encodeURIComponent(item.slug)}`;
+/** Where a learner opens the item, in their own workspace (the staff shell has none). */
+export function learnerMediaPreviewPath(item: Pick<MediaItem, "kind" | "slug">): string {
+  const kind = isMediaKind(item.kind) ? item.kind : "summary";
+  return `/app/${PERSONAL_SLUG}${studyTabPathForSlug(kind, item.slug)}`;
 }
