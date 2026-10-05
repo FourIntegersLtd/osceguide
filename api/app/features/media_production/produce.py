@@ -411,16 +411,18 @@ class Production:
         claims = self._claims()
         counts = {
             "corrected by the agent": sum(
-                c.get("by") == "agent" and c.get("decision") == "accepted" for c in claims
+                claim.get("by") == "agent" and claim.get("decision") == "accepted" for claim in claims
             ),
             "dismissed by the agent": sum(
-                c.get("by") == "agent" and c.get("decision") == "dismissed" for c in claims
+                claim.get("by") == "agent" and claim.get("decision") == "dismissed" for claim in claims
             ),
-            "contradicted": sum(c.get("verdict") == "contradicted" and not c.get("decision") for c in claims),
+            "contradicted": sum(
+                claim.get("verdict") == "contradicted" and not claim.get("decision") for claim in claims
+            ),
             "where the sources disagree": sum(
-                c.get("verdict") == "conflict" and not c.get("decision") for c in claims
+                claim.get("verdict") == "conflict" and not claim.get("decision") for claim in claims
             ),
-            "the sources say nothing on": sum(c.get("verdict") == "not_found" for c in claims),
+            "the sources say nothing on": sum(claim.get("verdict") == "not_found" for claim in claims),
         }
         if any(counts.values()):
             told = ", ".join(f"{count} {what}" for what, count in counts.items() if count)
