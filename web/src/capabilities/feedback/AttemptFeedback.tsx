@@ -141,7 +141,7 @@ function Markings({ rubric, results }: { rubric: MarkingRubric | null; results: 
         <B2CEmptyState
           icon={HiOutlineFaceFrown}
           title="No feedback recorded"
-          description="This attempt was marked before its exam had a rubric."
+          description="This attempt was marked before its exam had a marking scheme."
         />
       )}
     </div>

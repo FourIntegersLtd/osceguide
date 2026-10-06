@@ -178,10 +178,14 @@ export function StationTemplatesSection() {
                     )
                 : undefined
             }
-            onAddVersion={() =>
-              void action.run(`add:${template.id}`, () =>
-                addStationTemplateVersion(scope, template.id),
-              )
+            onAddVersion={
+              // An organisation copies a platform template; only the platform edits it.
+              scope.kind === "org" && template.owner_kind === "platform"
+                ? undefined
+                : () =>
+                    void action.run(`add:${template.id}`, () =>
+                      addStationTemplateVersion(scope, template.id),
+                    )
             }
             onPublish={() =>
               void action.run(`publish:${template.id}`, () =>
@@ -327,7 +331,8 @@ function TemplateRow({
   viewHref: string | null;
   /** Set on a platform template seen from an organisation, which copies it rather than edits it. */
   onCopy?: () => void;
-  onAddVersion: () => void;
+  /** Absent on a platform template seen from an organisation. */
+  onAddVersion?: () => void;
   onPublish: () => void;
   onDeleteDraft?: () => void;
   onArchivePublished?: () => void;
@@ -365,15 +370,17 @@ function TemplateRow({
             <HiOutlineDocumentPlus className="h-4 w-4" aria-hidden />
           </AuthoringIconAction>
         ) : null}
-        <AuthoringIconAction
-          label="New draft"
-          busy={addBusy}
-          busyLabel="Creating…"
-          disabled={busy !== null}
-          onClick={onAddVersion}
-        >
-          <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
-        </AuthoringIconAction>
+        {onAddVersion ? (
+          <AuthoringIconAction
+            label="New draft"
+            busy={addBusy}
+            busyLabel="Creating…"
+            disabled={busy !== null}
+            onClick={onAddVersion}
+          >
+            <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
+          </AuthoringIconAction>
+        ) : null}
         {editHref ? (
           <AuthoringIconAction label="Edit draft" href={editHref}>
             <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />

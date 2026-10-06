@@ -9,7 +9,7 @@
 - Read-only for a published version or a platform rubric seen from an org ("New draft version", "Copy to my rubrics").
 
 ## How to get to it (user POV)
-Staff: Authoring → Rubrics → Create rubric (`/staff/authoring/rubrics/new`). Org: `/app/<org>/authoring/rubrics/new`.
+Staff: Authoring → Marking schemes → Create marking scheme (org: Build → Marking schemes) (`/staff/authoring/rubrics/new`). Org: `/app/<org>/authoring/rubrics/new`.
 The builder is `…/authoring/rubrics/<rubricId>/versions/<version>`.
 
 ## Driving it with playwright-core

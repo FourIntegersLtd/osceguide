@@ -3,7 +3,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { useAsync, type AsyncState } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
-import { browseLibrary, type LibraryPage, type LibraryStation } from "@/capabilities/stations/api";
+import {
+  browseLibrary,
+  browseOrgLibrary,
+  type LibraryPage,
+  type LibraryStation,
+  type StationLibraryScope,
+} from "@/capabilities/stations/api";
+import { pageAcrossLegs, uniqueById } from "@/capabilities/stations/libraryPaging";
 
 /** The most the library endpoint will answer in one page; more is a 422. */
 const PAGE_SIZE = 100;
@@ -40,6 +47,35 @@ export interface StationLibraryState {
 }
 
 /**
+ * One page of the library. Consumer: `/stations`. Organisation: its own
+ * stations, then the platform's for the exam (see `pageAcrossLegs`).
+ */
+async function fetchPage(
+  params: {
+    orgSlug: string | null;
+    examCode: string | null;
+    orgOwnedExam: boolean;
+    search: string;
+    cursor: string | null;
+  },
+  signal?: AbortSignal,
+): Promise<LibraryPage> {
+  const { orgSlug, examCode, orgOwnedExam, search, cursor } = params;
+  if (!orgSlug) {
+    return browseLibrary({ examCode, search, cursor, limit: PAGE_SIZE }, signal);
+  }
+  return pageAcrossLegs(
+    {
+      org: (at) => browseOrgLibrary(orgSlug, { examCode, search, cursor: at, limit: PAGE_SIZE }, signal),
+      platform: (at) => browseLibrary({ examCode, search, cursor: at, limit: PAGE_SIZE }, signal),
+    },
+    // An organisation's own exam has no platform stations, so the platform is not asked.
+    Boolean(examCode) && !orgOwnedExam,
+    cursor,
+  );
+}
+
+/**
  * Browsing the library: the search and the cursor, over one exam.
  *
  * The exam is the app's, not this screen's. This used to own an "All exams"
@@ -59,8 +95,12 @@ export interface StationLibraryState {
  * list searched and how `capabilities/media` still does: one request per thing
  * somebody meant, not one per letter.
  */
-export function useStationLibrary(): StationLibraryState {
-  const { code: examCode, loading: examLoading } = useCurrentExam();
+export function useStationLibrary(scope: StationLibraryScope = {}): StationLibraryState {
+  const { orgSlug = null, orgOwnedExam = false } = scope;
+  const current = useCurrentExam();
+  // In an organisation the exam is the caller's (a sitting's), never the user's own consumer exam.
+  const examCode = orgSlug ? (scope.examCode ?? null) : current.code;
+  const examLoading = orgSlug ? false : current.loading;
   const [search, setSearchTerm] = useState("");
   const [applied, setApplied] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
@@ -70,13 +110,13 @@ export function useStationLibrary(): StationLibraryState {
     // the server to choose, and it would choose right — but the page would then
     // show a different exam's stations for one frame.
     (signal) =>
-      examCode
-        ? browseLibrary({ examCode, search: applied, limit: PAGE_SIZE }, signal)
+      orgSlug || examCode
+        ? fetchPage({ orgSlug, examCode, orgOwnedExam, search: applied, cursor: null }, signal)
         : Promise.resolve({ items: [], next_cursor: null } as LibraryPage),
-    [examCode, applied],
+    [orgSlug, examCode, applied],
   );
 
-  const key = `${examCode ?? ""}|${applied}`;
+  const key = `${orgSlug ?? ""}|${examCode ?? ""}|${applied}`;
   const [paged, setPaged] = useState<Paged>({ key, items: [], cursor: null, started: false });
   // A different filter is a different list. Reset during render rather than in
   // an effect: an effect would paint one frame of the old exam's stations
@@ -91,7 +131,7 @@ export function useStationLibrary(): StationLibraryState {
     // out of the unfiltered list is not a cursor into the filtered one.
     if (!cursor || loadingMore || first.loading) return;
     setLoadingMore(true);
-    browseLibrary({ examCode, search: applied, cursor, limit: PAGE_SIZE })
+    fetchPage({ orgSlug, examCode, orgOwnedExam, search: applied, cursor })
       .then((page) => {
         setPaged((current) =>
           current.key !== key
@@ -111,7 +151,7 @@ export function useStationLibrary(): StationLibraryState {
         setPaged((current) => ({ ...current, cursor: null, started: true }));
       })
       .finally(() => setLoadingMore(false));
-  }, [applied, cursor, examCode, first.loading, key, loadingMore]);
+  }, [applied, cursor, examCode, first.loading, key, loadingMore, orgSlug]);
 
   const setSearch = useCallback((term: string) => {
     setSearchTerm(term);
@@ -128,10 +168,10 @@ export function useStationLibrary(): StationLibraryState {
     setApplied("");
   }, []);
 
-  const stations = useMemo(
-    () => [...(first.data?.items ?? []), ...(paged.key === key ? paged.items : [])],
-    [first.data, paged, key],
-  );
+  const stations = useMemo(() => {
+    // An org page and a platform page are two lists: one station is shown once.
+    return uniqueById([...(first.data?.items ?? []), ...(paged.key === key ? paged.items : [])]);
+  }, [first.data, paged, key]);
 
   return {
     first: examLoading ? { ...first, loading: true } : first,

@@ -5,7 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Button } from "@/foundation/ui";
-import { confirmPasswordReset } from "@/foundation/platform-client";
+import { useHydrated } from "@/foundation/hooks";
+import { useSession } from "@/foundation/session";
+import { confirmPasswordReset, login } from "@/foundation/platform-client";
 import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthFormField from "@/capabilities/account/AuthFormField";
@@ -33,6 +35,7 @@ type ResetField = "password" | "confirmPassword";
  */
 export default function ResetPassword({ invitation = false }: { invitation?: boolean }) {
   const router = useRouter();
+  const { refresh } = useSession();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
@@ -46,6 +49,15 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
   const [linkSpent, setLinkSpent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  // Until hydrated the submit is inert: a native submit would put the password in the URL.
+  const hydrated = useHydrated();
+
+  const signInAfterInvitation = async (email: string, password: string) => {
+    const outcome = await login(email, password).catch(() => null);
+    if (outcome?.status !== "signed_in") return;
+    await refresh();
+    router.replace("/app");
+  };
 
   const handleFormSubmission = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -61,8 +73,12 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
 
     setIsSubmitting(true);
     try {
-      await confirmPasswordReset(token, result.data.password);
+      const email = await confirmPasswordReset(token, result.data.password);
       setDone(true);
+      // An invitation signs the new account in with the password just chosen. A plain reset
+      // ends every session on purpose, so it goes back to the sign-in screen instead. If the
+      // account needs a second step, or sign-in fails, the "Sign in" button is the way on.
+      if (invitation) await signInAfterInvitation(email, result.data.password);
     } catch (cause) {
       const refused = mapResetPasswordError(cause, invitation);
       setFormError(refused.formError);
@@ -136,7 +152,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
         invitation ? "Choose a password to finish setting up your account." : "Choose something you'll remember"
       }
     >
-      <form className="space-y-5" onSubmit={handleFormSubmission} noValidate>
+      <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
         <AuthFormField
           label={invitation ? "Password" : "New password"}
           name="password"
@@ -178,6 +194,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
           fullWidth
           size="lg"
           isLoading={isSubmitting}
+          disabled={!hydrated}
           className={authButtonPrimary}
         >
           {isSubmitting ? "Saving…" : invitation ? "Accept invitation" : "Save new password"}

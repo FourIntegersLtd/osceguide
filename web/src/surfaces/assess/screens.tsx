@@ -1,5 +1,7 @@
 "use client";
 
+import { PeopleTabs } from "@/domains/assess/PeopleTabs";
+import { can, useSession } from "@/foundation/session";
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
   MockDetail,
@@ -48,6 +50,9 @@ import {
 const slugOf = ({ workspace }: ScreenProps) => workspace.orgSlug ?? "";
 
 function AssessDashboard(props: ScreenProps) {
+  const { session } = useSession();
+  /* The staff overview is closed to a trainee (403); their home is My training. */
+  if (!can(session, "run_circuits")) return <TraineeHome slotId={null} />;
   return <OrgDashboard orgSlug={slugOf(props)} />;
 }
 
@@ -101,11 +106,21 @@ function AssessSharedReview({ params }: ScreenProps) {
 }
 
 function AssessTrainees(props: ScreenProps) {
-  return <Trainees orgSlug={slugOf(props)} />;
+  return (
+    <>
+      <PeopleTabs active="trainees" />
+      <Trainees orgSlug={slugOf(props)} />
+    </>
+  );
 }
 
 function AssessTeam(props: ScreenProps) {
-  return <Team orgSlug={slugOf(props)} />;
+  return (
+    <>
+      <PeopleTabs active="team" />
+      <Team orgSlug={slugOf(props)} />
+    </>
+  );
 }
 
 function AssessMyTraining({ params }: ScreenProps) {

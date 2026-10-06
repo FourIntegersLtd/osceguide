@@ -93,6 +93,19 @@ async def a_sitting(client: AsyncClient, admin: str, slug: str, *, mode: str = "
     return created.json()
 
 
+async def a_sitting_for(client: AsyncClient, admin: str, slug: str, exam_code: str) -> dict:
+    from tests.support.sittings import add_programme, create_sitting_body
+
+    programme_id = await add_programme(client, admin, org_slug=slug, exam_code=exam_code)
+    created = await client.post(
+        f"/api/v1/orgs/{slug}/sittings",
+        json=create_sitting_body(name="First", programme_id=programme_id, mode="exam"),
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+    return created.json()
+
+
 async def a_library_station(
     client: AsyncClient, make_actor, *, exam_code: str = "sca", title: str = "Wheezy child"
 ) -> str:  # type: ignore[no-untyped-def]
@@ -201,13 +214,81 @@ async def test_the_library_counts_only_what_is_published_for_an_exam_offered(
 async def test_an_empty_org_is_told_what_it_is_missing(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor, slug="empty")
     body = (await client.get("/api/v1/orgs/empty/dashboard", headers=bearer(admin))).json()
+    # `org_with_admin` also publishes a platform `sca` exam and its rubric, and
+    # an organisation may use those, so the two flags read true here.
     assert body["setup"] == {
+        "rubric_published": True,
+        "exam_published": True,
+        "template_published": False,
+        "sitting_scheduled": False,
         "trainees_added": False,
         "stations_available": False,
-        "team_invited": True,
+        "team_invited": False,
         "programme_exam_rubric_ready": False,
         "ready_to_run": False,
     }
+
+
+async def test_each_setup_step_turns_true_when_it_is_done(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.tenancy import repository as tenancy_repo
+    from tests.http.test_org_authored_exams import author_exam, org_admin, seed_org
+    from tests.http.test_roster_edit_routes import add_trainee
+    from tests.http.test_station_template_routes import STRUCTURE
+
+    org_id = await seed_org(client, make_actor, "fresh")
+    admin = await org_admin(make_actor, org_id, "fresh")
+
+    async def setup() -> dict[str, bool]:
+        response = await client.get("/api/v1/orgs/fresh/dashboard", headers=bearer(admin))
+        assert response.status_code == 200, response.text
+        return response.json()["setup"]
+
+    # No platform catalogue here either, so nothing is done.
+    assert await setup() == {
+        "rubric_published": False,
+        "exam_published": False,
+        "template_published": False,
+        "sitting_scheduled": False,
+        "trainees_added": False,
+        "stations_available": False,
+        "team_invited": False,
+        "programme_exam_rubric_ready": False,
+        "ready_to_run": False,
+    }
+
+    exam = await author_exam(client, admin, "fresh", code="own", publish=False)
+    assert (await setup())["rubric_published"] is True
+    assert (await setup())["exam_published"] is False
+    published = await client.post(f"/api/v1/orgs/fresh/exams/{exam['id']}/publish", headers=bearer(admin))
+    assert published.status_code == 200, published.text
+    assert (await setup())["exam_published"] is True
+
+    template = await client.post(
+        "/api/v1/orgs/fresh/station-templates",
+        json={"title": "Own shape", "exam_code": "own", "structure": STRUCTURE},
+        headers=bearer(admin),
+    )
+    assert template.status_code == 201, template.text
+    assert (await setup())["template_published"] is False
+    await client.post(
+        f"/api/v1/orgs/fresh/station-templates/{template.json()['id']}/publish", headers=bearer(admin)
+    )
+    assert (await setup())["template_published"] is True
+
+    # The admin who created the organisation is not "the team".
+    assert (await setup())["team_invited"] is False
+    helper = await a_user(db_session, "sup-fresh@example.com", org_slug="fresh")
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=helper, role="supervisor")
+    assert (await setup())["team_invited"] is True
+
+    await add_trainee(client, admin, "t1@example.com", slug="fresh")
+    assert (await setup())["trainees_added"] is True
+
+    assert (await setup())["sitting_scheduled"] is False
+    await a_sitting_for(client, admin, "fresh", "own")
+    assert (await setup())["sitting_scheduled"] is True
 
 
 async def test_the_org_dashboard_is_refused_to_outsiders(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

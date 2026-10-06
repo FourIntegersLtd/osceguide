@@ -1,5 +1,6 @@
 export { StationLibrary, type StationLibraryProps } from "@/capabilities/stations/StationLibrary";
 export { StationPicker, type StationPickerProps } from "@/capabilities/stations/StationPicker";
+export type { StationLibraryScope } from "@/capabilities/stations/api";
 export { StationDetail } from "@/capabilities/stations/StationDetail";
 export { StationConsultation } from "@/capabilities/stations/StationConsultation";
 export { StationNotFound } from "@/capabilities/stations/StationNotFound";

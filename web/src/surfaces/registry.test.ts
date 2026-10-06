@@ -305,11 +305,26 @@ describe("surface registry", () => {
     });
     const supervisor = SURFACE_MANIFESTS.assess.nav({
       workspace,
-      can: (permission) => permission === "read_org",
+      can: (permission) => permission === "run_circuits",
       href,
     });
-    assert.ok(admin.some((item) => item.key === "team"));
-    assert.ok(!supervisor.some((item) => item.key === "team"));
-    assert.ok(supervisor.some((item) => item.key === "trainees"));
+    const keys = (items: { key: string }[]) => items.map((item) => item.key);
+    assert.deepEqual(keys(admin), ["dashboard", "sittings", "live", "trainees", "build"]);
+    assert.deepEqual(keys(supervisor), ["dashboard", "sittings", "live", "trainees", "build"]);
+    // A trainee (no staff permission) sees only their own items: study and
+    // community come from the mounted capabilities, and the staff ones stay out.
+    const trainee = SURFACE_MANIFESTS.assess.nav({ workspace, can: () => false, href });
+    assert.deepEqual(keys(trainee), ["myTraining", "mocks", "myPractice"]);
+    const titles = (can: Record<string, boolean>) =>
+      capabilitiesFor("assess", { can, basePath: "/app/kings" }).map((capability) => capability.title);
+    const staffTitles = titles({ run_circuits: true });
+    const traineeTitles = titles({});
+    for (const title of ["Community", "Stations", "Slides", "A to Z", "Podcast", "Articles", "Authoring"]) {
+      assert.ok(!staffTitles.includes(title), `staff nav has no ${title}`);
+    }
+    assert.ok(staffTitles.includes("Settings"));
+    for (const title of ["Community", "Stations", "Slides", "A to Z", "Podcast", "Articles", "Settings"]) {
+      assert.ok(traineeTitles.includes(title), `trainee nav has ${title}`);
+    }
   });
 });

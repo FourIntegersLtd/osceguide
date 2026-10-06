@@ -19,6 +19,7 @@ from app.features.dashboard.schemas_org import (
     SupervisorCircuits,
 )
 from app.features.roster import service as roster
+from app.features.rubrics import service as rubrics
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 from app.features.tenancy import service as tenancy
@@ -51,9 +52,13 @@ async def build_org_dashboard(session: AsyncSession, org_id: uuid.UUID) -> OrgDa
     # it was already running examinations.
     stations_available = counts.stations > 0 or counts.library_stations > 0
     setup = OrgSetup(
+        rubric_published=await rubrics.has_published_rubric(session, org_id),
+        exam_published=await catalog.has_published_exam(session, org_id),
+        template_published=await stations.has_published_template(session, org_id),
+        sitting_scheduled=counts.sittings > 0,
         trainees_added=counts.trainees > 0,
         stations_available=stations_available,
-        team_invited=counts.staff > 0,
+        team_invited=counts.staff > 1,
         programme_exam_rubric_ready=counts.programmes_with_markable_exam > 0,
         ready_to_run=(
             counts.trainees > 0

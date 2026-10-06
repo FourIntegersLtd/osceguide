@@ -15,7 +15,7 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAsync } from "@/foundation/hooks";
 import { stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
-import { platformTemplateWizardFooterEndClass } from "@/capabilities/authoring/templates/PlatformTemplateWizardStepStrip";
+import { platformTemplateWizardFooterEndClass } from "@/capabilities/authoring/templates/wizardFooter";
 import { b2bInputBase } from "@/foundation/ui/b2bTokens";
 
 export function StationTemplateEditScreen({

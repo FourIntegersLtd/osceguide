@@ -6,31 +6,48 @@
  * the console should see words; the identifiers stay what the API branches on.
  */
 
+import { roleLabel } from "@/foundation/session/roles";
+
 /** Any API identifier as words: `org.mfa_policy_changed` → "Org mfa policy changed". */
 export function humanise(code: string): string {
   const words = code.replace(/[._]+/g, " ").replace(/\s+/g, " ").trim();
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : code;
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  owner: "Owner",
-  admin: "Administrator",
-  institution_admin: "Institution administrator",
-  partner_admin: "Partner administrator",
-  supervisor: "Supervisor",
-  trainee: "Trainee",
-  practice_user: "Practice user",
-};
-
-export function roleLabel(role: string): string {
-  return ROLE_LABELS[role] ?? humanise(role);
-}
-
-/** The roles worth seating a first member as. An org admin adds everyone else. */
-export const SEAT_ROLES = ["owner", "admin", "institution_admin", "partner_admin"] as const;
+/**
+ * The roles worth seating a first member as: the tenant-shaped admin. An owner
+ * is created with the organisation and an org admin adds everyone else.
+ */
+export const SEAT_ROLES = ["institution_admin", "partner_admin"] as const;
 
 /** Every role the server's `GRANTABLE_ROLES` admits, in the order a menu offers them. */
-export const MEMBER_ROLES = [...SEAT_ROLES, "supervisor", "trainee", "practice_user"] as const;
+export const MEMBER_ROLES = [
+  "owner",
+  "admin",
+  ...SEAT_ROLES,
+  "supervisor",
+  "trainee",
+  "practice_user",
+] as const;
+
+/**
+ * One option per distinct label: the admin roles read alike, so a menu offers
+ * the first of `prefer` that is present (else the first listed) and no twin.
+ */
+export function oneOptionPerLabel(roles: readonly string[], prefer: readonly string[] = []): string[] {
+  const rank = (role: string) => {
+    const at = prefer.indexOf(role);
+    return at < 0 ? prefer.length : at;
+  };
+  const out: string[] = [];
+  for (const role of roles) {
+    const twin = out.findIndex((kept) => roleLabel(kept) === roleLabel(role));
+    const kept = out[twin];
+    if (kept === undefined) out.push(role);
+    else if (rank(role) < rank(kept)) out[twin] = role;
+  }
+  return out;
+}
 
 /** Roles that only make sense in one kind of organisation. */
 const ROLE_ORG_TYPE: Record<string, string> = {

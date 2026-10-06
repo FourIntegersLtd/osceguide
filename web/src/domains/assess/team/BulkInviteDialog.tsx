@@ -1,5 +1,6 @@
 "use client";
 
+import { roleLabel } from "@/foundation/session/roles";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { HiOutlineArrowUpTray } from "react-icons/hi2";
@@ -12,7 +13,6 @@ import {
   type Membership,
 } from "@/domains/assess/team/api";
 import { parseStaffCsv, teamSkipReason, type StaffCsvParse } from "@/domains/assess/team/csv";
-import { roleLabel } from "@/domains/assess/team/support";
 
 /**
  * The staff spreadsheet.
@@ -136,6 +136,12 @@ export function BulkInviteDialog({
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
               No email address on line{parsed.skippedLines.length === 1 ? "" : "s"}{" "}
               {parsed.skippedLines.join(", ")}, so those rows are left out.
+            </p>
+          ) : null}
+          {parsed.invalidLines.length > 0 ? (
+            <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
+              Line{parsed.invalidLines.length === 1 ? "" : "s"} {parsed.invalidLines.join(", ")}:
+              not a valid email address, so {parsed.invalidLines.length === 1 ? "that row is" : "those rows are"} left out.
             </p>
           ) : null}
           {parsed.badRoles.length > 0 ? (

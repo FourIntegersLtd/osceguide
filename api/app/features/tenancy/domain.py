@@ -22,7 +22,8 @@ ORG_ADMIN_ROLES = frozenset({"owner", "admin", "institution_admin", "partner_adm
 INSTITUTION_ADMIN_ROLES = frozenset({"owner", "admin", "institution_admin"})
 
 # End users: people who sit stations rather than run them.
-END_USER_ROLES = frozenset({"trainee", "practice_user"})
+TRAINEE_ROLE = "trainee"
+END_USER_ROLES = frozenset({TRAINEE_ROLE, "practice_user"})
 
 ASSIGNED_STAFF_ROLE = "supervisor"
 

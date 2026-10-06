@@ -7,3 +7,4 @@ export { useModalHistory } from "@/foundation/hooks/useModalHistory";
 export { useCursorPages, type CursorPage, type CursorPages } from "@/foundation/hooks/useCursorPages";
 export { useSearchQuery } from "@/foundation/hooks/useSearchQuery";
 export { useLeaveGuard } from "@/foundation/hooks/useLeaveGuard";
+export { useHydrated } from "@/foundation/hooks/useHydrated";

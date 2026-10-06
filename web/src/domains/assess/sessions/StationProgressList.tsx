@@ -129,7 +129,7 @@ function Row({
       </td>
       <td className="px-4 py-3 text-right">
         {/* Marking opens once the station has actually been sat. Offering it
-            before is how a reviewer fills in a rubric for a consultation
+            before is how a reviewer fills in a marking scheme for a consultation
             nobody had. */}
         {markable(slot) ? (
           <ButtonLink href={reviewHref} themeType="b2b" variant="secondary" size="sm">

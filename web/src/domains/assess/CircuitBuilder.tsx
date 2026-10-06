@@ -3,11 +3,12 @@
 import { useCallback, useState } from "react";
 import { Alert, Button, Input, Spinner, cn, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { StationLibrary, type LibraryStation } from "@/capabilities/stations";
+import { StationLibrary, type LibraryStation, type StationLibraryScope } from "@/capabilities/stations";
 import type { CircuitShape } from "@/domains/assess/api";
 import {
   BREAK_MINUTES_BOUNDS,
   DEFAULT_BREAK_MINUTES,
+  MAX_EXAM_CANDIDATES,
   MAX_EXAM_STATIONS,
   breakPositions,
   clampBreakMinutes,
@@ -71,6 +72,7 @@ export function CircuitBuilder({
   onSubmit,
   above,
   disabled = false,
+  scope,
 }: {
   mode: string;
   trainees: TraineeRow[];
@@ -83,6 +85,8 @@ export function CircuitBuilder({
   above?: React.ReactNode;
   /** True when the caller already knows the submit will be refused — an edit lock, chiefly. */
   disabled?: boolean;
+  /** Whose stations the picker offers, and for which exam: the sitting's programme's. */
+  scope: StationLibraryScope;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [stations, setStations] = useState<PickedStation[]>(initial?.stations ?? []);
@@ -105,6 +109,7 @@ export function CircuitBuilder({
   // stations. Offering the control where the server discards the answer is how
   // a save starts to look ignored.
   const isExam = modeSupportsBreaks(mode);
+  const candidatesFull = isExam && picked.size >= MAX_EXAM_CANDIDATES;
   const tooManyStations = isExam && stations.length > MAX_EXAM_STATIONS;
   const gaps = breakPositions(stations.length);
 
@@ -260,7 +265,7 @@ export function CircuitBuilder({
         title="Trainees"
         description={`${picked.size} of ${trainees.length} selected. ${
           isExam
-            ? "Each candidate goes through every station."
+            ? "An exam circuit is one candidate's sitting: they go through every station."
             : "Each trainee is paired with one station, then they rotate."
         }`}
       >
@@ -306,6 +311,12 @@ export function CircuitBuilder({
                   <button
                     type="button"
                     aria-pressed={on}
+                    disabled={!on && candidatesFull}
+                    title={
+                      !on && candidatesFull
+                        ? "An exam circuit is one candidate's sitting. Deselect the current candidate to pick another."
+                        : undefined
+                    }
                     onClick={() =>
                       setPicked((current) => {
                         const next = new Set(current);
@@ -353,6 +364,7 @@ export function CircuitBuilder({
             </ul>
           )}
           <StationLibrary
+            scope={scope}
             onPick={(station: LibraryStation) =>
               setStations((current) =>
                 current.some((item) => item.version_id === station.version_id)

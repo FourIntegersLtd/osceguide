@@ -1,15 +1,17 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { HiOutlinePaperAirplane } from "react-icons/hi2";
-import { Alert, AsyncBoundary, B2CHero, B2CPageHeader, Button, EmptyState, b2bTokens, Panel } from "@/foundation/ui";
+import { Alert, AsyncBoundary, B2CPageHeader, Button, EmptyState, Panel, StepGuide, b2bTokens } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { downloadSittingResults, readSittingReport, releaseDecisions } from "@/domains/assess/results/api";
 import type { CandidateReport, SittingReport } from "@/domains/assess/results/api";
 import { CandidateCard } from "@/domains/assess/results/CandidateCard";
+import { ReleaseButton } from "@/domains/assess/results/DecisionParts";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
+import { countsFromReport, sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
+import { can, useSession } from "@/foundation/session";
 import { evidenceFor, releasable, releaseRefusal } from "@/domains/assess/results/support";
 
 /**
@@ -54,6 +56,13 @@ function Report({
   onChanged: () => void;
 }) {
   const { hrefFor } = useSurface();
+  const { session } = useSession();
+  const progress: SittingStepsInput = {
+    scheduledFor: report.sitting.scheduled_for ?? null,
+    circuits: null,
+    counts: countsFromReport(report),
+    can: { schedule: can(session, "schedule_sittings"), signOff: can(session, "sign_off_results") },
+  };
   const candidates = report.candidates ?? [];
   const waiting = candidates.filter(releasable);
   const [downloading, setDownloading] = useState(false);
@@ -99,6 +108,7 @@ function Report({
         <>
           <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />
 
+          {waiting.length === 0 ? <StepGuide steps={sittingSteps(progress)} line={sittingNext(progress).line} /> : null}
           {waiting.length > 0 ? (
             <ReleaseAll
               // A fresh selection whenever who is waiting changes (after a release).
@@ -107,8 +117,7 @@ function Report({
               sittingId={sittingId}
               waiting={waiting}
               onChanged={onChanged}
-              released={report.totals.decisions_released}
-              total={report.totals.candidates}
+              progress={progress}
             />
           ) : null}
 
@@ -160,10 +169,15 @@ function OutcomeTiles({
     { label: "Passed", value: count("pass") },
     { label: "Failed", value: count("fail") },
     { label: "Inconclusive", value: count("inconclusive") },
+    { label: "Withheld", value: count("withheld") },
+    {
+      label: "Undecided",
+      value: candidates.filter((candidate) => !candidate.decision?.assessment_outcome).length,
+    },
     { label: "Awaiting marking", value: awaitingMarking },
   ];
   return (
-    <section aria-label="Outcomes" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <section aria-label="Outcomes" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {tiles.map((tile) => (
         <div key={tile.label} className={b2bTokens.b2bStatCard}>
           <span className={b2bTokens.b2bEyebrow}>{tile.label}</span>
@@ -190,17 +204,15 @@ function ReleaseAll({
   sittingId,
   waiting,
   onChanged,
-  released: releasedTotal,
-  total,
+  progress,
 }: {
   orgSlug: string;
   sittingId: string;
   waiting: CandidateReport[];
   onChanged: () => void;
-  /** Decisions already released, and candidates in all, for the tally beside the heading. */
-  released: number;
-  total: number;
+  progress: SittingStepsInput;
 }) {
+  const next = sittingNext(progress);
   const [busy, setBusy] = useState(false);
   const [failures, setFailures] = useState<string[]>([]);
   const [released, setReleased] = useState<number | null>(null);
@@ -256,35 +268,19 @@ function ReleaseAll({
 
   return (
     <div className="space-y-3">
-      <B2CHero
-        eyebrow="Ready to release"
-        title={`${waiting.length} signed off and not yet released`}
-        action={
-          <Button
-            themeType="b2b"
-            variant="commit"
-            isLoading={busy}
+      <StepGuide steps={sittingSteps(progress)} line={next.line}>
+        {next.actionable && next.id === "release" ? (
+          <ReleaseButton
+            busy={busy}
             disabled={busy || chosen.length === 0}
-            onClick={() => release()}
-          >
-            <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden />
-            {allPicked ? `Release all ${waiting.length}` : `Release ${chosen.length} selected`}
-          </Button>
-        }
-        aside={
-          <div className="text-right">
-            <p className="font-mono text-[36px] leading-10 tabular-nums text-b2b-headline">
-              {releasedTotal}{" "}
-              <span className="text-osce-subheading text-b2b-mid">of {total}</span>
-            </p>
-            <p className="text-osce-meta text-b2b-mid">released</p>
-          </div>
-        }
-      >
-        Releasing lets each of them read their outcome. Untick anyone to hold back.
-      </B2CHero>
+            count={chosen.length}
+            label={`Release ${chosen.length} signed-off ${chosen.length === 1 ? "result" : "results"}`}
+            onConfirm={() => void release()}
+          />
+        ) : null}
+      </StepGuide>
 
-      <Panel title="Candidates to release" padding="sm">
+      <Panel title="Candidates to release" description="Untick anyone to hold their result back." padding="sm">
       <fieldset className="space-y-2">
         <legend className="sr-only">Candidates to release</legend>
         {waiting.length > 1 ? (

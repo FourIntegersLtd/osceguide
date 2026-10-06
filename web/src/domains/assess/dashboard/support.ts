@@ -1,3 +1,4 @@
+import type { RailStep } from "@/foundation/ui";
 import type { LiveCircuit, OrgSetup } from "@/domains/assess/dashboard/api";
 
 /**
@@ -10,67 +11,57 @@ import type { LiveCircuit, OrgSetup } from "@/domains/assess/dashboard/api";
  * left over.
  */
 
-export interface SetupStep {
-  key: string;
-  done: boolean;
+export type SetupStepId =
+  | "rubric"
+  | "exam"
+  | "programme"
+  | "template"
+  | "stations"
+  | "team"
+  | "trainees"
+  | "sitting";
+
+/** A rail step plus where to go to do it (surface-relative; the caller runs it through `hrefFor`). */
+export type SetupStep = RailStep<SetupStepId> & { path: string };
+
+/** Per step: how it reads while to do, how it is done, and where. */
+const SETUP: {
+  id: SetupStepId;
   label: string;
-  hint: string;
-  /** Surface-relative; the caller runs it through `hrefFor`. */
+  todo: string;
+  done: (setup: OrgSetup) => boolean;
+  line: string;
+  action: string;
   path: string;
-}
+}[] = [
+  { id: "rubric", label: "Marking scheme", todo: "Publish one", done: (s) => s.rubric_published, line: "Start with a marking scheme: what candidates are marked against.", action: "Write a marking scheme", path: "/authoring/rubrics" },
+  { id: "exam", label: "Exam", todo: "Publish one", done: (s) => s.exam_published, line: "Next, an exam that uses the marking scheme.", action: "Write an exam", path: "/authoring/exams" },
+  { id: "programme", label: "Programme", todo: "Add one", done: (s) => s.programme_exam_rubric_ready, line: "Every sitting belongs to a programme, which offers an exam.", action: "Add a programme", path: "/programmes" },
+  { id: "template", label: "Station template", todo: "Publish one", done: (s) => s.template_published, line: "Next, a station template: the shape your stations take.", action: "Make a template", path: "/authoring/station-templates" },
+  { id: "stations", label: "Stations", todo: "None to run", done: (s) => s.stations_available, line: "Your own cases count, and so does the platform library for an exam you offer.", action: "Add stations", path: "/authoring/stations" },
+  { id: "team", label: "Team", todo: "Invite a supervisor", done: (s) => s.team_invited, line: "Somebody besides you has to be able to supervise a circuit.", action: "Invite your team", path: "/team" },
+  { id: "trainees", label: "Trainees", todo: "None added", done: (s) => s.trainees_added, line: "Add the people who will sit your examinations and training sessions.", action: "Add trainees", path: "/trainees" },
+  { id: "sitting", label: "First sitting", todo: "Not scheduled", done: (s) => s.sitting_scheduled, line: "Everything is in place. Schedule the first sitting.", action: "Schedule a sitting", path: "/sittings/new" },
+];
 
 /**
- * The steps to a first examination, in the order they have to happen.
- *
- * `ready_to_run` is the backend's judgement and not a count assembled here, so
- * the screen cannot disagree with what the API will accept.
+ * The steps to a first examination, in the order they are built. A marking
+ * scheme, exam, template or station the platform publishes for the organisation
+ * counts as done, as the API reads it.
  */
 export function setupSteps(setup: OrgSetup): SetupStep[] {
-  return [
-    {
-      key: "team",
-      done: setup.team_invited,
-      label: "Invite your team",
-      hint: "Somebody has to be able to supervise a circuit while it runs.",
-      path: "/team",
-    },
-    {
-      key: "trainees",
-      done: setup.trainees_added,
-      label: "Add your trainees",
-      hint: "The people who will sit your examinations and training sessions.",
-      path: "/trainees",
-    },
-    {
-      key: "stations",
-      done: setup.stations_available,
-      label: "Have stations to run",
-      hint: "Your own authored cases count, and so does the platform's published library for an exam you offer.",
-      path: "/authoring",
-    },
-    {
-      key: "programme",
-      done: setup.programme_exam_rubric_ready,
-      label: "Add a programme",
-      hint: "Every sitting belongs to a programme, and its exam needs a published marking scheme.",
-      path: "/programmes",
-    },
-  ];
+  return SETUP.map(({ id, label, todo, done, path }) => {
+    const isDone = done(setup);
+    return { id, label, path, state: isDone ? "done" : "todo", note: isDone ? "Done" : todo };
+  });
 }
 
-/** The one thing to do next, or null when there is nothing left. */
-export function nextStep(setup: OrgSetup): SetupStep | null {
-  return setupSteps(setup).find((step) => !step.done) ?? null;
-}
+export type SetupAction = { step: SetupStepId; line: string; label: string; path: string };
 
-export function setupProgress(setup: OrgSetup): { done: number; total: number; percent: number } {
-  const steps = setupSteps(setup);
-  const done = steps.filter((step) => step.done).length;
-  return {
-    done,
-    total: steps.length,
-    percent: steps.length === 0 ? 100 : Math.round((done / steps.length) * 100),
-  };
+/** The single thing to do next, or null when every step is done. */
+export function nextSetupAction(setup: OrgSetup): SetupAction | null {
+  const step = SETUP.find((item) => !item.done(setup));
+  return step ? { step: step.id, path: step.path, line: step.line, label: step.action } : null;
 }
 
 /* ------------------------------------------------------------------------

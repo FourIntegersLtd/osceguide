@@ -6,16 +6,17 @@ import { Alert, B2CGroupedRowLink, B2CGroupedSection, Badge, Button, b2bTokens, 
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
-import { reviewPath } from "@/domains/assess/results/candidateSteps";
+import { reviewPath } from "@/domains/assess/results/candidateNeighbours";
 import { ratingLabel, type Rating } from "@/capabilities/feedback/rubric";
 import { ratingVariant } from "@/domains/assess/results/reviewForm";
 import { downloadCandidateResult, type CandidateReport, type StationReport } from "@/domains/assess/results/api";
+import { candidateStage } from "@/domains/assess/results/candidateProgress";
 import { CandidateDecision } from "@/domains/assess/results/CandidateDecision";
 import {
   candidateName,
   formatScore,
+  outcomeLabel,
   outcomeTone,
-  workflowLabel,
   workflowTone,
 } from "@/domains/assess/results/support";
 
@@ -88,12 +89,12 @@ export function CandidateCard({
           </div>
         </td>
         <td className="px-4 py-3 font-mono text-osce-body tabular-nums text-b2b-headline">
-          {formatScore(candidate.score)}
+          {formatScore(candidate.score, candidate.stations_marked > 0 ? "No automatic score" : undefined)}
         </td>
         <td className="px-4 py-3">
           {decision?.assessment_outcome ? (
             <Badge variant={outcomeTone(decision.assessment_outcome)} dot>
-              {decision.assessment_outcome}
+              {outcomeLabel(decision.assessment_outcome)}
             </Badge>
           ) : (
             <span className="text-osce-meta text-b2b-mid">Not decided</span>
@@ -101,7 +102,7 @@ export function CandidateCard({
         </td>
         <td className="px-4 py-3">
           <Badge variant={workflowTone(decision?.workflow_state)} dot>
-            {workflowLabel(decision?.workflow_state)}
+            {candidateStage(candidate)}
           </Badge>
         </td>
         <td className="px-4 py-3">

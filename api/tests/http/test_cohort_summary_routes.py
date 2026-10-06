@@ -196,8 +196,8 @@ async def test_an_unmarked_candidate_has_no_score_rather_than_a_zero(
     row = body["candidates"][0]
     assert row["assessment_score"] is None
     assert row["completion_rate"] == 1.0
-    # A finished examination nobody has marked is what gets it marked.
-    assert row["review_priority"] == "high"
+    # A finished examination with no automatic score has nothing to rank on.
+    assert row["review_priority"] == "standard"
 
 
 async def test_a_training_sitting_has_no_cohort(

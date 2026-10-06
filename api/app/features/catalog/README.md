@@ -80,7 +80,7 @@ rubric is. **Programme** is org-owned and references an exam it can see.
 | PATCH | `/api/v1/platform/exams/{id}` | platform admin | everything but the code |
 | POST | `/api/v1/platform/exams/{id}/publish` | platform admin | `exam_not_publishable` (409) without a rubric |
 | POST | `/api/v1/platform/exams/{id}/retire` | platform admin | past attempts keep working |
-| GET | `/api/v1/orgs/{org_slug}/exams` | org member | the org's own plus the platform's; `?drafts=true` narrows to its own |
+| GET | `/api/v1/orgs/{org_slug}/exams` | org member | the org's own plus the platform's; `?status=published` (default), `draft` (own drafts only) or `all` (own in any status) |
 | POST | `/api/v1/orgs/{org_slug}/exams` | org admin | the org's own, as a draft |
 | PATCH | `/api/v1/orgs/{org_slug}/exams/{id}` | org admin | `unknown_exam` (404) for a platform exam |
 | POST | `/api/v1/orgs/{org_slug}/exams/{id}/publish` | org admin | the org's own schedule |

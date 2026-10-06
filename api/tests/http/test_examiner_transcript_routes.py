@@ -186,10 +186,8 @@ async def test_a_supervisor_not_named_on_that_circuit_is_refused(
 ) -> None:
     """Being staff in the organisation is not the permission. This is the "no broader".
 
-    b2b let any administrator of the organisation read any slot's feedback, and
-    that half is deliberately not ported: a transcript is one candidate's
-    consultation, and the claims on it are the person who spoke it and the person
-    named to watch it.
+    Another supervisor of the organisation is not let in: a transcript is one
+    candidate's consultation. The organisation's administrator is (below).
     """
     org_id, admin = await org_with_admin(client, make_actor)
     examiner, _ = await an_examiner(db_session, org_id, "hers@kings.example")
@@ -203,7 +201,7 @@ async def test_a_supervisor_not_named_on_that_circuit_is_refused(
     assert response.json()["code"] == "attempt_not_yours"
 
 
-async def test_an_administrator_not_named_on_the_circuit_is_refused(
+async def test_an_administrator_not_named_on_the_circuit_reads_it(
     client: AsyncClient,
     make_actor,
     db_session: AsyncSession,
@@ -216,8 +214,38 @@ async def test_an_administrator_not_named_on_the_circuit_is_refused(
 
     response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(admin))
 
-    assert response.status_code == 403, response.text
-    assert response.json()["code"] == "attempt_not_yours"
+    assert response.status_code == 200, response.text
+    assert len(response.json()["messages"]) == 2
+
+
+async def test_another_organisations_administrator_and_a_trainee_are_refused(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    org_id, admin = await org_with_admin(client, make_actor, "kings")
+    _, guys_admin = await org_with_admin(client, make_actor, "guys")
+    _, _, attempt_id = await a_consultation(client, db_session, admin, examiner=None)
+    await a_delivered_transcript(db_session, attempt_id)
+    trainee = await identity_repo.create_user(
+        db_session, email="trainee@kings.example", name="T", password_hash=None
+    )
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=trainee.id, role="trainee")
+    await db_session.flush()
+    trainee_token = mint_token(
+        user_id=trainee.id,
+        email="trainee@kings.example",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="trainee"),),
+        active_org_slug="kings",
+    )
+    url = f"/api/v1/attempts/{attempt_id}/transcript"
+
+    other = await client.get(url, headers=bearer(guys_admin))
+    as_trainee = await client.get(url, headers=bearer(trainee_token))
+
+    assert other.status_code == 403, other.text
+    assert as_trainee.status_code == 403, as_trainee.text
 
 
 async def test_another_organisations_examiner_is_refused(

@@ -66,7 +66,7 @@ export function RubricFeedback({
       <B2CEmptyState
         icon={HiOutlineFaceFrown}
         title="No feedback recorded"
-        description="This marking has no answers the rubric recognises."
+        description="This marking has no answers the marking scheme recognises."
       />
     );
   }

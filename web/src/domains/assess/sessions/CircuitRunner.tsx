@@ -78,7 +78,8 @@ function Runner({
   const circuit = data.circuit;
   const isExam = data.sitting.mode === "exam";
   const live = circuit.started_at !== null && circuit.ended_at === null;
-  const supervisor = circuit.supervisor;
+  // An invited supervisor has no name yet (it arrives empty), so fall back to the address.
+  const supervisorName = circuit.supervisor?.name || circuit.supervisor?.email;
 
   return (
     <>
@@ -86,7 +87,7 @@ function Runner({
         back={{ href: hrefFor(`/sittings/${sittingId ?? data.sitting.id}`), label: data.sitting.name }}
         title={circuit.name}
         subtitle={`${observerSubtitle(data)}${
-          supervisor ? ` · Supervisor: ${supervisor.name ?? supervisor.email ?? "assigned"}` : ""
+          supervisorName ? ` · Supervisor: ${supervisorName}` : " · No supervisor assigned"
         }`}
         action={
           <div className="flex flex-wrap items-center gap-2">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { HiOutlineAcademicCap, HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
-import { Alert, getInputClassName, Select } from "@/foundation/ui";
+import { Alert, Select } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -11,6 +11,7 @@ import {
 import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRow";
 import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
 import { useAsync } from "@/foundation/hooks";
+import { can, useSession } from "@/foundation/session";
 import {
   addProgramme,
   listExams,
@@ -37,24 +38,28 @@ export function ProgrammesSection() {
   const exams = useAsync((signal) => listExams(scope, {}, signal), [scope.base]);
   const action = useAction(programmes.reload);
 
+  const { session } = useSession();
   const [adding, setAdding] = useState(false);
   const [examCode, setExamCode] = useState("");
 
   const items = programmes.data?.items ?? [];
+  const publishedExams = (exams.data?.items ?? []).filter((exam) => exam.status === "published");
 
   return (
     <div className="space-y-5">
       <AuthoringSectionLead
         action={
-          <AuthoringButton
-            variant="commit"
-            size="sm"
-            className="gap-2"
-            onClick={() => setAdding(true)}
-          >
-            <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-            New programme
-          </AuthoringButton>
+          can(session, "schedule_sittings") ? (
+            <AuthoringButton
+              variant="commit"
+              size="sm"
+              className="gap-2"
+              onClick={() => setAdding(true)}
+            >
+              <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
+              New programme
+            </AuthoringButton>
+          ) : null
         }
       >
         A programme groups this institution&apos;s sittings under one exam.
@@ -145,19 +150,15 @@ export function ProgrammesSection() {
             className="mt-1"
           >
             <option value="">Select an exam…</option>
-            {(exams.data?.items ?? []).map((exam) => (
+            {publishedExams.map((exam) => (
               <option key={exam.id} value={exam.code}>
                 {exam.name} ({exam.code})
               </option>
             ))}
           </Select>
-          <input
-            value={examCode}
-            onChange={(e) => setExamCode(e.target.value)}
-            className={`mt-2 ${getInputClassName()}`}
-            aria-label="Exam code"
-            placeholder="…or type an exam code"
-          />
+          {publishedExams.length === 0 ? (
+            <p className="mt-2 text-osce-caption text-ink-muted">Publish an exam to use it here.</p>
+          ) : null}
         </div>
       </AuthoringDialog>
     </div>

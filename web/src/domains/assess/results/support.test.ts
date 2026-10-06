@@ -11,6 +11,8 @@ import {
   recruitmentLabel,
   releasable,
   signOffBlockers,
+  formatScore,
+  outcomeLabel,
   workflowLabel,
 } from "@/domains/assess/results/support";
 
@@ -119,7 +121,7 @@ test("only a signed-off decision that is not yet out can be released", () => {
 });
 
 test("a decision nobody has started is not called a draft", () => {
-  assert.equal(workflowLabel(null), "Not started");
+  assert.equal(workflowLabel(null), "Not decided");
   assert.equal(workflowLabel("signed_off"), "Signed off");
 });
 
@@ -215,4 +217,16 @@ test("a recruitment outcome is named in words, and an unknown one is shown as it
   assert.equal(recruitmentLabel("reserve"), "Reserve list");
   assert.equal(recruitmentLabel("not_hired"), "Not hired");
   assert.equal(recruitmentLabel("seconded"), "seconded");
+});
+
+test("a missing score reads as no automatic score once stations are marked", () => {
+  assert.equal(formatScore(null), "Not assessed");
+  assert.equal(formatScore(null, "No automatic score"), "No automatic score");
+  assert.equal(formatScore(71.4, "No automatic score"), "71/100");
+});
+
+test("outcomeLabel names each outcome and shows an unknown one as it came", () => {
+  assert.equal(outcomeLabel("pass"), "Pass");
+  assert.equal(outcomeLabel("withheld"), "Withheld");
+  assert.equal(outcomeLabel("something_new"), "something_new");
 });

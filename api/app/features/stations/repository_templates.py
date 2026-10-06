@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import delete, exists, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import lifecycle
 from app.core.ownership import owned_by, owner_kind_for, visible_to
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
@@ -221,3 +222,16 @@ async def structure_for_version(session: AsyncSession, version_id: uuid.UUID) ->
     stmt = select(StationTemplateVersion.structure).where(StationTemplateVersion.id == version_id)
     structure = (await session.execute(stmt)).scalar_one_or_none()
     return dict(structure) if isinstance(structure, dict) else None
+
+
+async def has_published_version(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether a published template version is the organisation's own or the platform's."""
+    stmt = (
+        select(StationTemplateVersion.id)
+        .where(
+            visible_to(StationTemplateVersion, org_id),
+            StationTemplateVersion.status == lifecycle.Status.PUBLISHED,
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None

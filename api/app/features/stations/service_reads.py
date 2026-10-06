@@ -16,7 +16,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.stations import repository, repository_library
+from app.features.stations import repository, repository_library, repository_templates
 
 
 @dataclass(frozen=True)
@@ -211,3 +211,8 @@ def _flatten(value: Any) -> list[str]:
     if isinstance(value, Sequence):
         return [text for item in value for text in _flatten(item)]
     return [str(value).strip()]
+
+
+async def has_published_template(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether the organisation has a published station template it can use: its own or the platform's."""
+    return await repository_templates.has_published_version(session, org_id)

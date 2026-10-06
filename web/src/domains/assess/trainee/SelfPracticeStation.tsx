@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
-import { AsyncBoundary } from "@/foundation/ui";
+import { useCallback, useState } from "react";
+import { AsyncBoundary, Button, Card, CardContent } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createAttempt } from "@/capabilities/attempt-runner";
@@ -28,6 +28,10 @@ export function SelfPracticeStation({
   attemptId?: string | null;
 }) {
   const { hrefFor } = useSurface();
+  // Opening the page only offers the station; the attempt (which the reading period
+  // reads its brief from) is created by this explicit Start. A link to a review, or
+  // back into an attempt in progress, goes straight through.
+  const [started, setStarted] = useState(false);
 
   const context = useAsync(
     async (signal) => {
@@ -56,7 +60,21 @@ export function SelfPracticeStation({
   return (
     <AsyncBoundary state={context}>
       {({ station, exam }) =>
-        station ? (
+        station && action === "attempt" && !attemptId && !started ? (
+          <Card>
+            <CardContent className="space-y-3 py-6">
+              <h1 className="text-osce-title font-semibold text-ink">{station.title}</h1>
+              <p className="text-osce-body text-ink-muted">
+                {Math.round((exam?.default_reading_seconds ?? 0) / 60)} min reading,{" "}
+                {Math.round((exam?.default_simulation_seconds ?? 600) / 60)} min station. Nothing here is
+                marked for the record. Starting begins your attempt.
+              </p>
+              <Button variant="commit" onClick={() => setStarted(true)}>
+                Start
+              </Button>
+            </CardContent>
+          </Card>
+        ) : station ? (
           <StationScreen
             source={{ kind: "self_practice", orgSlug, stationId }}
             action={action}

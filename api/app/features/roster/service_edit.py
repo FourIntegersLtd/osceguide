@@ -61,7 +61,9 @@ async def update_trainee(
     return _trainee_read(refreshed)  # type: ignore[arg-type]
 
 
-async def delete_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID) -> None:
+async def delete_trainee(
+    session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID, *, now: datetime
+) -> None:
     """Remove a roster row nobody ever examined.
 
     Revoking access, not deletion, is used everywhere else since a candidate's
@@ -71,11 +73,12 @@ async def delete_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id: u
 
     Group and cohort membership cascade away with the row (`ondelete=CASCADE`).
     """
-    await _require_trainee(session, org_id, trainee_id)
+    trainee = await _require_trainee(session, org_id, trainee_id)
     try:
         await repository.delete_trainee(session, org_id, trainee_id)
     except IntegrityError as exc:
         raise errors.TraineeInUse() from exc
+    await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
 
 
 async def anonymise_trainee(
@@ -93,6 +96,7 @@ async def anonymise_trainee(
         await repository.anonymise_trainee(
             session, org_id, trainee_id, email=f"anon-{trainee_id}@anonymised.invalid", at=now
         )
+        await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
         await service_audit.record_for_org(
             session,
             org_id=org_id,

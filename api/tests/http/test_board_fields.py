@@ -63,6 +63,9 @@ async def test_sittings_carry_their_programme_name_and_candidate_count(
     detail = (await client.get(f"/api/v1/orgs/kings/sittings/{sitting['id']}", headers=bearer(admin))).json()
     assert detail["candidate_count"] == 2
     assert detail["programme_name"] == exam_name
+    # The sitting's exam code is what the circuit builder filters the station library by.
+    assert detail["exam_code"] == "sca"
+    assert {item["exam_code"] for item in listed} == {"sca"}
 
 
 async def test_circuits_carry_trainee_count_and_supervisor_name(

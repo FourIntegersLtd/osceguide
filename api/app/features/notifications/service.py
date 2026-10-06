@@ -138,10 +138,14 @@ def _password_reset(escaped_fields: dict[str, str]) -> str:
 
 def _result_released(escaped_fields: dict[str, str]) -> str:
     """The body telling a candidate their sitting's outcome is ready to read."""
-    link = f"{get_settings().frontend_url.rstrip('/')}/results/{escaped_fields.get('sitting_id', '')}"
+    link = (
+        f"{get_settings().frontend_url.rstrip('/')}/app/{escaped_fields.get('org_slug', '')}"
+        f"/trainee/results/{escaped_fields.get('sitting_id', '')}"
+    )
+    institution = escaped_fields.get("org_name") or "Your institution"
     return (
         "<h1>Your result is available</h1>"
-        "<p>Your institution has released the outcome for this sitting.</p>"
+        f"<p>{institution} has released the outcome for this sitting.</p>"
         f'<p><a href="{link}">Read your result</a></p>'
     )
 

@@ -21,13 +21,16 @@ export interface CsvRow {
 
 export interface CsvParse {
   rows: CsvRow[];
-  /** Line numbers (1-based, header included) that carried no usable address. */
+  /** File line numbers (1-based, header and blank lines counted) whose address cell was empty. */
   skippedLines: number[];
+  /** File line numbers whose address cell had text but no `@`. */
+  invalidLines: number[];
   error: string | null;
 }
 
 const EMAIL_KEYS = ["email", "emailaddress", "e-mail"];
 const FIRST_KEYS = ["firstname", "first", "forename", "givenname"];
+const NAME_KEYS = ["name", "fullname"];
 const LAST_KEYS = ["lastname", "last", "surname", "familyname"];
 const COHORT_KEYS = ["cohort", "group"];
 
@@ -75,6 +78,25 @@ export function splitCsvLine(line: string): string[] {
   return fields.map((field) => field.trim());
 }
 
+/** The file's lines, trailing space trimmed. Blank lines are dropped but every line keeps its file number. */
+export function numberedLines(text: string): { text: string; number: number }[] {
+  return text
+    .split(/\r\n|\r|\n/)
+    .map((line, index) => ({ text: line.trimEnd(), number: index + 1 }))
+    .filter((line, index) => index === 0 || line.text.trim() !== "");
+}
+
+/** Whether the header row names an email column. */
+export function hasEmailColumn(headers: string[]): boolean {
+  return headers.some((entry) => EMAIL_KEYS.includes(entry));
+}
+
+/** An address cell is usable, empty (a skipped line) or text with no `@` (an invalid one). */
+export function classifyAddress(cell: string | null | undefined): "ok" | "skipped" | "invalid" {
+  if (!cell) return "skipped";
+  return cell.includes("@") ? "ok" : "invalid";
+}
+
 function pick(row: Record<string, string>, keys: string[]): string | null {
   for (const key of keys) {
     const value = row[key];
@@ -84,43 +106,50 @@ function pick(row: Record<string, string>, keys: string[]): string | null {
 }
 
 export function parseTraineeCsv(text: string): CsvParse {
-  const lines = text
-    .split(/\r\n|\r|\n/)
-    .map((line) => line.trimEnd())
-    .filter((line, index) => index === 0 || line.trim() !== "");
+  const lines = numberedLines(text);
 
-  const header = lines[0] ?? "";
+  const header = lines[0]?.text ?? "";
   if (header.trim() === "") {
-    return { rows: [], skippedLines: [], error: "That file is empty." };
+    return { rows: [], skippedLines: [], invalidLines: [], error: "That file is empty." };
   }
 
   const headers = splitCsvLine(header).map(normalise);
-  if (!headers.some((header) => EMAIL_KEYS.includes(header))) {
+  if (!hasEmailColumn(headers)) {
     return {
       rows: [],
       skippedLines: [],
+      invalidLines: [],
       error: "The first row must name the columns, and one of them must be `email`.",
     };
   }
 
   const rows: CsvRow[] = [];
   const skippedLines: number[] = [];
+  const invalidLines: number[] = [];
 
   for (let index = 1; index < lines.length; index += 1) {
-    const cells = splitCsvLine(lines[index] ?? "");
+    const cells = splitCsvLine(lines[index]?.text ?? "");
     const record: Record<string, string> = {};
     headers.forEach((header, column) => {
       record[header] = cells[column] ?? "";
     });
 
     const email = pick(record, EMAIL_KEYS);
-    if (!email || !email.includes("@")) {
-      skippedLines.push(index + 1);
+    const lineNumber = lines[index]?.number ?? index + 1;
+    const verdict = classifyAddress(email);
+    if (verdict !== "ok" || !email) {
+      (verdict === "skipped" ? skippedLines : invalidLines).push(lineNumber);
       continue;
     }
 
-    const first = pick(record, FIRST_KEYS);
-    const last = pick(record, LAST_KEYS);
+    let first = pick(record, FIRST_KEYS);
+    let last = pick(record, LAST_KEYS);
+    const full = first || last ? null : pick(record, NAME_KEYS);
+    if (full) {
+      const space = full.indexOf(" ");
+      first = space === -1 ? full : full.slice(0, space);
+      last = space === -1 ? null : full.slice(space + 1).trim() || null;
+    }
     rows.push({
       email: email.toLowerCase(),
       firstName: first,
@@ -130,9 +159,9 @@ export function parseTraineeCsv(text: string): CsvParse {
   }
 
   if (rows.length === 0) {
-    return { rows, skippedLines, error: "No rows in that file had an email address." };
+    return { rows, skippedLines, invalidLines, error: "No rows in that file had an email address." };
   }
-  return { rows, skippedLines, error: null };
+  return { rows, skippedLines, invalidLines, error: null };
 }
 
 /** Why the backend skipped a row, in words an administrator can act on. */

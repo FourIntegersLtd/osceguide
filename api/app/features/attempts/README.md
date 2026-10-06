@@ -35,11 +35,12 @@ and the job that scores a delivered transcript.
 - Exactly one optional reference matches the kind — a CHECK, because six paths
   create attempts and only one needs to be wrong.
 - A slot has at most one attempt that has not failed: a partial unique index.
-- **The transcript and the marking have two readers, not one.** The candidate who
-  spoke them, and the supervisor named on the circuit they were spoken in —
+- **The transcript and the marking have three readers.** The candidate who
+  spoke them, the supervisor named on the circuit they were spoken in, and an
+  institution administrator of the owning organisation (B7) —
   `service_access.ensure_readable`. Being named *is* the permission, as being
   rostered on is the permission to join the room; a supervisor of another
-  circuit, an administrator who was not named, and a platform job that brings no
+  circuit, an administrator of another organisation, a trainee, and a platform job that brings no
   memberships are all refused, as they were before. Nothing else this slice serves
   was widened: the brief, the model answer, the attempt row and the stream still
   answer to their owner alone. Who a circuit names comes from

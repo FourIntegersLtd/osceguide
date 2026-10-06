@@ -20,7 +20,7 @@ export type StationLibraryProps = Partial<StationPickerProps>;
  * `capability.ts` and not a tree of pages per arm.
  */
 export function StationLibrary(props: StationLibraryProps) {
-  const { onPick, pickLabel, selectedVersionIds } = props;
+  const { onPick, pickLabel, selectedVersionIds, scope } = props;
 
   // A picker reads no query string, so it needs no boundary — and must not be
   // suspended by one, since it renders inside a form that is already open.
@@ -30,6 +30,7 @@ export function StationLibrary(props: StationLibraryProps) {
         onPick={onPick}
         pickLabel={pickLabel}
         selectedVersionIds={selectedVersionIds}
+        scope={scope}
       />
     );
   }

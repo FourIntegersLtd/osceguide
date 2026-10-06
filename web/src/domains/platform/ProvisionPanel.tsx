@@ -49,7 +49,7 @@ export function ProvisionForm({
           slug: slug.trim(),
           orgType,
         });
-        toast.success(`Created ${organization.slug}`, "Next, add its first administrator.");
+        toast.success(`Created ${organization.slug}`, "Next, add its first admin.");
         setName("");
         setSlug("");
         setSlugEdited(false);

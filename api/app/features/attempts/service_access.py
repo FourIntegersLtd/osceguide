@@ -3,9 +3,10 @@
 `service_reads._ensure_visible` covers the attempt itself, the brief and the model answer: yours, or
 you run the platform. The transcript and the marking need one narrow widening beyond that: the caller
 must be the supervisor named on the circuit that owns the attempt's slot, and must still hold a role
-that may run a circuit in that organisation. Being named *is* the permission — the same way being
-rostered on is the permission to join a room (`sittings.service_join`) — so an org admin who is not
-named on this circuit is not let in by it.
+that may run a circuit in that organisation. Being named *is* the permission for a supervisor — the
+same way being rostered on is the permission to join a room (`sittings.service_join`). An institution
+administrator of that organisation reads any of its slots without being named, since they review and
+sign off the results; an admin of another organisation is not let in.
 """
 
 from __future__ import annotations
@@ -30,13 +31,11 @@ async def ensure_readable(
     is_admin: bool,
     memberships: Sequence[Membership] = (),
 ) -> None:
-    """Owner, platform admin, or the examiner named on the attempt's circuit.
+    """Raise `AttemptNotYours` unless the module's access rule admits this caller.
 
-    `memberships` is what makes the third of those checkable without this slice
-    learning to read another's tables. A caller who brings none — a job, or
-    another slice reading on a candidate's own behalf — is served the old rule,
-    which is the one it was written against and which it cannot satisfy more
-    loosely than the candidate could.
+    `memberships` is what makes the supervisor and administrator checks possible
+    without this slice reading another's tables. A caller who brings none (a job,
+    or another slice reading on a candidate's own behalf) gets owner-or-admin only.
     """
     if attempt.user_id == requester_id or is_admin:
         return
@@ -46,6 +45,8 @@ async def ensure_readable(
         raise errors.AttemptNotYours()
     if not _runs_circuits_in(memberships, org_id=attempt.org_id):
         raise errors.AttemptNotYours()
+    if _administers(memberships, org_id=attempt.org_id):
+        return
     supervisor = await sittings.supervisor_for_slot(session, attempt.org_id, attempt.slot_id)
     if supervisor != requester_id:
         raise errors.AttemptNotYours()
@@ -60,3 +61,9 @@ def _runs_circuits_in(memberships: Sequence[Membership], *, org_id: uuid.UUID) -
     """
     may_run = policy("may_run_circuit")
     return any(membership.org_id == org_id and may_run(membership.role) for membership in memberships)
+
+
+def _administers(memberships: Sequence[Membership], *, org_id: uuid.UUID) -> bool:
+    """Whether this caller is an institution administrator of that organisation."""
+    is_admin = policy("is_institution_admin")
+    return any(membership.org_id == org_id and is_admin(membership.role) for membership in memberships)

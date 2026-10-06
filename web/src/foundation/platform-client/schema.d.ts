@@ -3479,10 +3479,9 @@ export interface paths {
         };
         /**
          * List Org Exams
-         * @description This institution's own exams, plus the platform catalogue.
+         * @description This institution's own exams, plus the platform catalogue, by `status`.
          *
-         *     `drafts=true` narrows to the institution's own rows, published or not. The
-         *     platform's own drafts are never included.
+         *     The platform's own drafts are never included.
          */
         get: operations["catalog_list_org_exams"];
         put?: never;
@@ -5153,7 +5152,7 @@ export interface paths {
         };
         /**
          * List Trainees
-         * @description Readable by any member: a supervisor needs names to run a circuit.
+         * @description Readable by staff who run circuits; a trainee cannot read the roster.
          */
         get: operations["roster_list_trainees"];
         put?: never;
@@ -11414,14 +11413,22 @@ export interface components {
          *     take the length of.
          */
         OrgSetup: {
+            /** Exam Published */
+            exam_published: boolean;
             /** Programme Exam Rubric Ready */
             programme_exam_rubric_ready: boolean;
             /** Ready To Run */
             ready_to_run: boolean;
+            /** Rubric Published */
+            rubric_published: boolean;
+            /** Sitting Scheduled */
+            sitting_scheduled: boolean;
             /** Stations Available */
             stations_available: boolean;
             /** Team Invited */
             team_invited: boolean;
+            /** Template Published */
+            template_published: boolean;
             /** Trainees Added */
             trainees_added: boolean;
         };
@@ -11923,6 +11930,19 @@ export interface components {
             password: string;
             /** Token */
             token: string;
+        };
+        /**
+         * PasswordResetDone
+         * @description The account the token belonged to, so an invitation can sign it in.
+         */
+        PasswordResetDone: {
+            /** Email */
+            email: string;
+            /**
+             * Status
+             * @default accepted
+             */
+            status: string;
         };
         /** PasswordResetRequest */
         PasswordResetRequest: {
@@ -14092,6 +14112,8 @@ export interface components {
             candidate_count: number;
             /** Circuits */
             circuits?: components["schemas"]["CircuitRead"][];
+            /** Exam Code */
+            exam_code?: string | null;
             /**
              * Id
              * Format: uuid
@@ -15102,6 +15124,11 @@ export interface components {
              * @default false
              */
             invitation_pending: boolean;
+            /**
+             * Is Member
+             * @default false
+             */
+            is_member: boolean;
             /** Last Name */
             last_name: string | null;
             /** Programme Names */
@@ -17719,7 +17746,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["app__features__identity__schemas__Accepted"];
+                    "application/json": components["schemas"]["PasswordResetDone"];
                 };
             };
             /** @description invalid_reset_token, weak_password */
@@ -26485,7 +26512,8 @@ export interface operations {
     catalog_list_org_exams: {
         parameters: {
             query?: {
-                drafts?: boolean;
+                /** @description published (default), draft or all */
+                status?: "published" | "draft" | "all";
             };
             header?: never;
             path: {

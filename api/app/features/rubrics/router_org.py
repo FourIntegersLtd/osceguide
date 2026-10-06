@@ -17,7 +17,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
-from app.core.tenancy import OrgAdmin, OrgReader
+from app.core.tenancy import OrgAdmin, OrgStaff
 from app.features.rubrics import errors, schemas, service, service_authoring
 
 router = APIRouter(tags=["rubrics"])
@@ -35,7 +35,7 @@ _LIFECYCLE = (errors.NotEditableError, errors.AlreadyPublishedError, errors.NotA
     responses=error_responses(Forbidden),
 )
 async def list_org_rubrics(
-    workspace: OrgReader,
+    workspace: OrgStaff,
     session: Session,
     page: Pager,
     search: str | None = None,
@@ -87,7 +87,7 @@ async def list_org_trial_candidates(
     response_model=schemas.RubricRead,
     responses=error_responses(Forbidden, *_NOT_FOUND),
 )
-async def read_org_rubric(rubric_id: uuid.UUID, workspace: OrgReader, session: Session) -> schemas.RubricRead:
+async def read_org_rubric(rubric_id: uuid.UUID, workspace: OrgStaff, session: Session) -> schemas.RubricRead:
     return await service.read_rubric(session, workspace.org_id, rubric_id)
 
 

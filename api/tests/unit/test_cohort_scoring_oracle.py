@@ -160,11 +160,12 @@ def test_the_review_priority_bands(completion_rate: float, assessment_score: flo
     assert review_priority(completion_rate=completion_rate, assessment_score=assessment_score) == band
 
 
-def test_an_unscored_candidate_is_treated_as_scoring_nothing_for_ranking() -> None:
-    """Oracle: `score = assessment_score if assessment_score is not None else 0.0`.
+def test_an_unscored_candidate_ranks_on_completion_alone() -> None:
+    """A finished examination with no automatic score is `standard`, not a poor score.
 
-    Deliberate, and worth reading twice: a complete examination nobody has
-    marked ranks as `high` priority, which is what gets it marked.
+    Departs from the legacy oracle (which read a missing score as 0, so `high`):
+    the badge sent a lead to a candidate with nothing yet to judge.
     """
-    assert review_priority(completion_rate=1.0, assessment_score=None) == "high"
+    assert review_priority(completion_rate=1.0, assessment_score=None) == "standard"
+    assert review_priority(completion_rate=0.8, assessment_score=None) == "high"
     assert review_priority(completion_rate=0.2, assessment_score=None) == "urgent"

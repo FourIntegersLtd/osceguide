@@ -17,7 +17,7 @@ import { RubricsSection } from "@/capabilities/authoring/sections/RubricsSection
 import { ExamsSection } from "@/capabilities/authoring/sections/ExamsSection";
 import { ProgrammesSection } from "@/capabilities/authoring/sections/ProgrammesSection";
 
-const DEFAULT_SECTION: AuthoringSection = "stations";
+const DEFAULT_SECTION: AuthoringSection = "rubrics";
 
 export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
   const scope = useAuthoringScope();
@@ -61,7 +61,7 @@ export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
     return (
       <PlatformTabbedScreen
         title="Authoring"
-        description="Stations, templates, rubrics, exams and programmes."
+        description="Marking schemes, exams, programmes, templates and stations."
         tabs={items}
         value={active}
         onChange={onTabChange}
@@ -74,7 +74,7 @@ export function AuthoringHome({ section: sectionSlug }: { section?: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <B2CPageHeader title="Authoring" subtitle="Stations, templates, rubrics, exams and programmes." />
+      <B2CPageHeader title="Authoring" subtitle="Marking schemes, exams, programmes, templates and stations." />
       <B2CSegmentedTabs
         items={items}
         value={active}

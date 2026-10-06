@@ -15,7 +15,7 @@ from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.rate_limit import OUTBOUND_EMAIL, TooManyRequests, per_user
-from app.core.tenancy import OrgAdmin, OrgReader
+from app.core.tenancy import OrgAdmin, OrgStaff
 from app.features.roster import errors, router_admin, schemas, service, service_groups
 
 router = APIRouter(tags=["roster"])
@@ -32,7 +32,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(Forbidden),
 )
 async def list_trainees(
-    workspace: OrgReader,
+    workspace: OrgStaff,
     session: Session,
     page: Annotated[CursorParams, Depends()],
     search: Annotated[str | None, Query(description="A trainee's name, email, or cohort")] = None,
@@ -40,7 +40,7 @@ async def list_trainees(
         bool | None, Query(description="true: only trainees whose access is revoked; false: only live ones.")
     ] = None,
 ) -> Page[schemas.TraineeRead]:
-    """Readable by any member: a supervisor needs names to run a circuit."""
+    """Readable by staff who run circuits; a trainee cannot read the roster."""
     trainees, next_cursor = await service.list_trainees(
         session,
         workspace.org_id,
@@ -113,7 +113,7 @@ async def set_access(
     response_model=Page[schemas.CohortRead],
     responses=error_responses(Forbidden),
 )
-async def list_cohorts(workspace: OrgReader, session: Session) -> Page[schemas.CohortRead]:
+async def list_cohorts(workspace: OrgStaff, session: Session) -> Page[schemas.CohortRead]:
     return Page(items=await service_groups.list_cohorts(session, workspace.org_id), next_cursor=None)
 
 
@@ -137,7 +137,7 @@ async def add_cohort(body: schemas.CreateCohort, workspace: OrgAdmin, session: S
     response_model=Page[schemas.GroupRead],
     responses=error_responses(Forbidden),
 )
-async def list_groups(workspace: OrgReader, session: Session) -> Page[schemas.GroupRead]:
+async def list_groups(workspace: OrgStaff, session: Session) -> Page[schemas.GroupRead]:
     return Page(items=await service_groups.list_groups(session, workspace.org_id), next_cursor=None)
 
 
@@ -177,7 +177,7 @@ async def set_group_members(
 )
 async def list_group_members(
     group_id: uuid.UUID,
-    workspace: OrgReader,
+    workspace: OrgStaff,
     session: Session,
     page: Annotated[CursorParams, Depends()],
 ) -> Page[schemas.TraineeRead]:
@@ -193,7 +193,7 @@ async def list_group_members(
     responses=error_responses(Forbidden, errors.GroupNotFound),
 )
 async def resolve_roster(
-    body: schemas.ResolveRosterRequest, workspace: OrgReader, session: Session
+    body: schemas.ResolveRosterRequest, workspace: OrgStaff, session: Session
 ) -> schemas.ResolvedRoster:
     """Preview who a circuit would contain.
 

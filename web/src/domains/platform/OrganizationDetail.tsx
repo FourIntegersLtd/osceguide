@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import {
   ActionRail,
@@ -61,7 +62,8 @@ const ORG_TABS: B2CSegmentedTabItem<Tab>[] = [
  */
 export function OrganizationDetail({ slug }: { slug: string }) {
   const { hrefFor } = useSurface();
-  const [tab, setTab] = useState<Tab>("overview");
+  const requested = useSearchParams().get("tab");
+  const [tab, setTab] = useState<Tab>(ORG_TABS.some((entry) => entry.id === requested) ? (requested as Tab) : "overview");
   const state = useAsync((signal) => readOrganization(slug, signal), [slug]);
   const [fresh, setFresh] = useState<Organization | null>(null);
   // Bumped when someone is seated, so the members list below reloads with them in it.
@@ -190,7 +192,7 @@ function OrganizationFacts({ organization }: { organization: Organization }) {
           {STATUS_HELP[organization.status] ??
             `Status "${organization.status}". Members cannot sign in.`}
         </p>
-        <FactList items={items} />
+        <FactList items={items} columns={3} />
       </div>
     </Panel>
   );

@@ -13,7 +13,7 @@
  * invited and chooses its own password, so a sheet can no longer carry a
  * credential and an administrator no longer relays one.
  */
-import { splitCsvLine } from "@/domains/assess/roster/csv";
+import { classifyAddress, hasEmailColumn, numberedLines, splitCsvLine } from "@/domains/assess/roster/csv";
 import { ASSIGNABLE_ROLES, type AssignableRole } from "@/domains/assess/team/support";
 
 /** The backend's `MAX_BULK_MEMBERSHIPS`. One request cannot invite a hospital. */
@@ -26,8 +26,10 @@ export interface StaffRow {
 
 export interface StaffCsvParse {
   rows: StaffRow[];
-  /** Line numbers (1-based, header included) that carried no usable address. */
+  /** File line numbers (1-based, header and blank lines counted) whose address cell was empty. */
   skippedLines: number[];
+  /** File line numbers whose address cell had text but no `@`. */
+  invalidLines: number[];
   /** A line whose role column named something this organisation cannot grant. */
   badRoles: { line: number; value: string }[];
   error: string | null;
@@ -64,21 +66,19 @@ function roleFrom(value: string): AssignableRole | null {
 }
 
 export function parseStaffCsv(text: string): StaffCsvParse {
-  const lines = text
-    .split(/\r\n|\r|\n/)
-    .map((line) => line.trimEnd())
-    .filter((line, index) => index === 0 || line.trim() !== "");
+  const lines = numberedLines(text);
 
-  const header = lines[0] ?? "";
+  const header = lines[0]?.text ?? "";
   if (header.trim() === "") {
-    return { rows: [], skippedLines: [], badRoles: [], error: "That file is empty." };
+    return { rows: [], skippedLines: [], invalidLines: [], badRoles: [], error: "That file is empty." };
   }
 
   const headers = splitCsvLine(header).map(normalise);
-  if (!headers.some((entry) => EMAIL_KEYS.includes(entry))) {
+  if (!hasEmailColumn(headers)) {
     return {
       rows: [],
       skippedLines: [],
+      invalidLines: [],
       badRoles: [],
       error: "The first row must name the columns, and one of them must be `email`.",
     };
@@ -86,10 +86,11 @@ export function parseStaffCsv(text: string): StaffCsvParse {
 
   const rows: StaffRow[] = [];
   const skippedLines: number[] = [];
+  const invalidLines: number[] = [];
   const badRoles: { line: number; value: string }[] = [];
 
   for (let index = 1; index < lines.length; index += 1) {
-    const cells = splitCsvLine(lines[index] ?? "");
+    const cells = splitCsvLine(lines[index]?.text ?? "");
     const record: Record<string, string> = {};
     headers.forEach((entry, column) => {
       record[entry] = cells[column] ?? "";
@@ -98,8 +99,10 @@ export function parseStaffCsv(text: string): StaffCsvParse {
     const address = EMAIL_KEYS.map((key) => record[key] ?? "")
       .find((value) => value.trim() !== "")
       ?.trim();
-    if (!address || !address.includes("@")) {
-      skippedLines.push(index + 1);
+    const lineNumber = lines[index]?.number ?? index + 1;
+    const verdict = classifyAddress(address);
+    if (verdict !== "ok" || !address) {
+      (verdict === "skipped" ? skippedLines : invalidLines).push(lineNumber);
       continue;
     }
 
@@ -108,7 +111,7 @@ export function parseStaffCsv(text: string): StaffCsvParse {
       ?.trim();
     const role = stated ? roleFrom(stated) : null;
     if (!role) {
-      badRoles.push({ line: index + 1, value: stated ?? "" });
+      badRoles.push({ line: lineNumber, value: stated ?? "" });
       continue;
     }
 
@@ -119,6 +122,7 @@ export function parseStaffCsv(text: string): StaffCsvParse {
     return {
       rows,
       skippedLines,
+      invalidLines,
       badRoles,
       error: "No row in that file had an address and a role we can grant.",
     };
@@ -127,11 +131,12 @@ export function parseStaffCsv(text: string): StaffCsvParse {
     return {
       rows: [],
       skippedLines,
+      invalidLines,
       badRoles,
       error: `That file has ${rows.length} people. One upload takes ${MAX_TEAM_UPLOAD} at most, so split it into smaller sheets.`,
     };
   }
-  return { rows, skippedLines, badRoles, error: null };
+  return { rows, skippedLines, invalidLines, badRoles, error: null };
 }
 
 /** Why the backend skipped a row, in words an administrator can act on. */

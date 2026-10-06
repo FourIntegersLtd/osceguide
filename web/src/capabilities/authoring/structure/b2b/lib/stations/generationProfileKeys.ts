@@ -28,8 +28,10 @@ export function profileKeyForStartPoint(start: StationTemplateStartPoint): strin
 }
 
 export function profileKeyForExamCode(examCode: string | null | undefined): string {
-  const code = (examCode ?? "sca").trim().toLowerCase();
-  return EXAM_DEFAULT_PROFILE_KEY[code] ?? "sca.station";
+  const code = (examCode ?? "").trim().toLowerCase();
+  if (!code) return "sca.station";
+  // An exam with no built-in profile (an institution's own) writes from its own guidance.
+  return EXAM_DEFAULT_PROFILE_KEY[code] ?? "custom";
 }
 
 /** Inverse of {@link START_POINT_PROFILE_KEY} for swapping layout when exam type changes. */

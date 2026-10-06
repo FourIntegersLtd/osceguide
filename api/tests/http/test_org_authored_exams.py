@@ -221,8 +221,8 @@ async def test_retiring_a_platform_exam_leaves_a_programme_alone(client: AsyncCl
 
 
 async def test_a_school_sees_its_own_drafts_and_nobody_elses(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
-    """`drafts=true` narrows to this school's own rows. It never widens the
-    listing to the platform's drafts, which it cannot see at all."""
+    """`status` picks published (default), own drafts, or all; none of them
+    widens the listing to the platform's drafts, which a school cannot see."""
     admin = await make_actor("admin@osceguide.com", platform_admin=True)
     our_draft_rubric = await create_rubric(client, admin, title="secret rubric")
     ours = await client.post(
@@ -240,10 +240,21 @@ async def test_a_school_sees_its_own_drafts_and_nobody_elses(client: AsyncClient
 
     org_id = await seed_org(client, make_actor, "ashford")
     token = await org_admin(make_actor, org_id, "ashford")
-    theirs = await author_exam(client, token, "ashford", code="finals", publish=False)
+    await author_exam(client, token, "ashford", code="finals", publish=False)
 
-    drafts = await client.get("/api/v1/orgs/ashford/exams?drafts=true", headers=bearer(token))
-    assert [e["id"] for e in drafts.json()["items"]] == [theirs["id"]]
+    published = await author_exam(client, token, "ashford", code="boards", publish=True)
+
+    async def codes(status: str | None) -> list[str]:
+        params = {"status": status} if status else {}
+        response = await client.get("/api/v1/orgs/ashford/exams", params=params, headers=bearer(token))
+        assert response.status_code == 200
+        return [e["code"] for e in response.json()["items"]]
+
+    assert published["code"] == "boards"
+    assert await codes(None) == ["boards"]
+    assert await codes("published") == ["boards"]
+    assert await codes("draft") == ["finals"]
+    assert await codes("all") == ["boards", "finals"]
 
 
 async def test_an_org_exam_cannot_name_another_orgs_rubric(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

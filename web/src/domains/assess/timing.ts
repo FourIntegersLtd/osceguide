@@ -27,6 +27,9 @@ export const BREAK_MINUTES_BOUNDS = { min: 1, max: 60 } as const;
 /** `domain.EXAM_MAX_STATIONS`. */
 export const MAX_EXAM_STATIONS = 12;
 
+/** `domain.plan_slots`: an exam circuit is one candidate's sitting. */
+export const MAX_EXAM_CANDIDATES = 1;
+
 /**
  * The station numbers a break may follow: 1-based, and never the last one.
  *

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { listenForSnapshots, streamUrl } from "./eventStreamProtocol";
+import { listenForSnapshots, shouldRetry, streamUrl } from "./eventStreamProtocol";
 
 it("connects through a same-origin proxy with an encoded stream ticket", () => {
   const url = new URL(streamUrl("", "/api/v1/me/practice-sessions/one/stream", "http://localhost:3100", "ticket+one"));
@@ -21,4 +21,10 @@ it("delivers backend snapshot phases, ignores heartbeats, and cleans up", () => 
   stop();
   source.dispatchEvent(new MessageEvent("snapshot", { data: '{"current_phase":"debrief"}' }));
   assert.deepEqual(phases, ["preparation", "consultation"]);
+});
+it("does not retry a refused ticket but retries other failures", () => {
+  assert.equal(shouldRetry(401), false);
+  assert.equal(shouldRetry(403), false);
+  assert.equal(shouldRetry(500), true);
+  assert.equal(shouldRetry(undefined), true);
 });

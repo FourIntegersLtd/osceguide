@@ -248,7 +248,7 @@ export function dashboardView(performance: Performance | null): DashboardView {
     trend,
     composition: (performance?.composition ?? []).map((row) => ({ name: row.label, ...foldTones(row.tones) })),
     bands: bandLegend(display),
-    versionNotice: performance?.mixed_versions ? `Scored under ${versions} rubric versions` : null,
+    versionNotice: performance?.mixed_versions ? `Scored under ${versions} marking scheme versions` : null,
     insights: weakestDomains(domains),
     display,
   };

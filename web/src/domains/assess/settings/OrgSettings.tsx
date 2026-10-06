@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, Input, Panel } from "@/foundation/ui";
+import { AsyncBoundary, Badge, Input, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { Settings } from "@/capabilities/account";
-import { readOrganization, type Organization } from "@/domains/assess/api";
+import { readOrganization } from "@/domains/assess/api";
 
 /**
  * Settings, with the organisation's own tabs for the people who run it.
@@ -35,60 +34,24 @@ export function WorkspaceSettings() {
 }
 
 /**
- * The organisation's name, contact address and logo.
+ * The organisation's name and address, read-only.
  *
- * The name is read from `GET /orgs/{slug}`. There is no route to change it,
- * and the organisation has no contact email or logo column, so saving says
- * so and stores nothing.
+ * There is no route to change an organisation (U-17 in the backlog), so the
+ * fields are shown as they are and changes go through support.
  */
 function OrganisationPanel({ orgSlug }: { orgSlug: string }) {
   const state = useAsync((signal) => readOrganization(orgSlug, signal), [orgSlug]);
-  return <AsyncBoundary state={state}>{(org) => <OrganisationForm org={org} />}</AsyncBoundary>;
-}
-
-function OrganisationForm({ org }: { org: Organization }) {
-  const [name, setName] = useState(org.name);
-  const [contactEmail, setContactEmail] = useState("");
-  const [notSaved, setNotSaved] = useState(false);
-
   return (
-    <Panel title="Organisation">
-      <form
-        className="flex max-w-xl flex-col gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          setNotSaved(true);
-        }}
-      >
-        <Input label="Name" required value={name} onChange={(event) => setName(event.target.value)} />
-        <Input
-          label="Contact email"
-          type="email"
-          value={contactEmail}
-          onChange={(event) => setContactEmail(event.target.value)}
-          hint="Not stored yet: the organisation has no contact address on the API."
-        />
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-osce-meta font-medium text-b2b-headline">Logo</p>
-            <p className="text-osce-meta text-b2b-mid">Shown on results and certificates.</p>
+    <AsyncBoundary state={state}>
+      {(org) => (
+        <Panel title="Organisation" description="Contact support to change these.">
+          <div className="flex max-w-xl flex-col gap-4">
+            <Input label="Name" readOnly value={org.name} />
+            <Input label="Web address" readOnly value={`/${org.slug}`} />
           </div>
-          <Button themeType="b2b" variant="secondary" size="sm" disabled title="Not connected yet">
-            Upload
-          </Button>
-        </div>
-        {notSaved ? (
-          <Alert tone="warning" title="Nothing was saved">
-            Changing an organisation&apos;s details needs an API route that does not exist yet.
-          </Alert>
-        ) : null}
-        <div className="flex justify-end">
-          <Button themeType="b2b" variant="commit" type="submit" disabled={name.trim().length === 0}>
-            Save
-          </Button>
-        </div>
-      </form>
-    </Panel>
+        </Panel>
+      )}
+    </AsyncBoundary>
   );
 }
 

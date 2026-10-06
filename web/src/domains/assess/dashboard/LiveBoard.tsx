@@ -17,6 +17,7 @@ import {
 } from "@/foundation/ui";
 import { useAsync, useCursorPages, useEventStream } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
+import { can, useSession } from "@/foundation/session";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { alertCopy } from "@/domains/assess/sessions/support";
 import {
@@ -48,7 +49,10 @@ import {
  */
 export function LiveBoard({ orgSlug }: { orgSlug: string }) {
   const initial = useAsync((signal) => readLiveBoard(orgSlug, signal), [orgSlug]);
-  const stream = useEventStream<Board>(liveBoardStreamPath(orgSlug));
+  const { session } = useSession();
+  const stream = useEventStream<Board>(liveBoardStreamPath(orgSlug), {
+    enabled: can(session, "run_circuits"),
+  });
   const board = stream.data ?? initial.data;
   const { hrefFor } = useSurface();
 
@@ -63,6 +67,10 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
           </Badge>
         }
       />
+
+      {stream.error ? (
+        <Alert tone="danger">The live view is unavailable: {stream.error.message}</Alert>
+      ) : null}
 
       <AsyncBoundary state={initial}>
         {() => {

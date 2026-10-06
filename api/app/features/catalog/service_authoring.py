@@ -11,7 +11,7 @@ else's.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,21 +31,30 @@ from app.features.catalog.schemas import ExamRead
 from app.features.catalog.service import exam_read, exam_row
 from app.features.rubrics import service_marking as rubrics
 
+ExamListStatus = Literal["published", "draft", "all"]
+
 
 async def list_exams(
     session: AsyncSession,
     *,
     org_id: uuid.UUID | None = None,
-    include_unpublished: bool = False,
+    status: ExamListStatus = "published",
 ) -> list[ExamRead]:
-    """What this caller may see: their own exams, plus the platform catalogue.
+    """What this caller may see, by `status`.
 
-    Drafts are shown only to the owner that wrote them, so `include_unpublished`
-    narrows the listing to this caller's own rows rather than widening it.
+    `published` is the caller's own published exams plus the platform catalogue.
+    `draft` is the caller's own drafts only. `all` is the caller's own exams in
+    any status plus the platform's published ones. Another owner's drafts are
+    never shown.
     """
-    if include_unpublished:
-        return [exam_read(exam) for exam in await repository.list_exams(session, org_id, owned_only=True)]
-    exams = await repository.list_exams(session, org_id, statuses=[domain.ExamStatus.PUBLISHED])
+    if status == "draft":
+        exams = await repository.list_exams(
+            session, org_id, statuses=[domain.ExamStatus.DRAFT], owned_only=True
+        )
+    else:
+        exams = await repository.list_exams(
+            session, org_id, statuses=[domain.ExamStatus.PUBLISHED], own_any_status=status == "all"
+        )
     return [exam_read(exam) for exam in exams]
 
 

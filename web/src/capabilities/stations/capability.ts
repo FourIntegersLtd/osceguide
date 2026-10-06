@@ -16,5 +16,6 @@ export const stationsCapability: CapabilityModule = {
   permission: null,
   section: "practice",
   path: "/stations",
+  staffHiddenOn: ["assess"],
   icon: LuStethoscope,
 };

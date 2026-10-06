@@ -92,7 +92,7 @@ export function MarkingPanel({
       <FoldSection title="Examiner layout">
         <p className="text-osce-caption text-ink-subtle">
           The form a human reviewer fills in for a slot.
-          {layoutRequired ? " Platform catalogue rubrics need one before they can be published." : ""}
+          {layoutRequired ? " Platform catalogue marking schemes need one before they can be published." : ""}
         </p>
         <div className={cn("mt-3 rounded-osce-md border border-osce-border bg-osce-surface p-3", readOnly && "pointer-events-none opacity-80")}>
           <StructureBuilder kind="feedback" value={markingLayout} onChange={onMarkingLayout} title={title} />

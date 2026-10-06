@@ -13,7 +13,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
-from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin
+from app.core.tenancy import OrgAdmin, OrgStaff, PlatformAdmin
 from app.features.catalog import errors, schemas, service_authoring, service_import, service_programmes
 
 router = APIRouter(tags=["catalog"])
@@ -32,7 +32,9 @@ async def list_exams(principal: CurrentPrincipal, session: Session) -> Page[sche
     The consumer catalogue: platform exams only. See `/orgs/{org_slug}/exams`
     for an institution's own. A platform admin also sees the platform's drafts.
     """
-    exams = await service_authoring.list_exams(session, include_unpublished=principal.is_platform_admin)
+    exams = await service_authoring.list_exams(
+        session, status="all" if principal.is_platform_admin else "published"
+    )
     return Page(items=exams, next_cursor=None)
 
 
@@ -129,14 +131,18 @@ async def retire_exam(exam_id: uuid.UUID, admin: PlatformAdmin, session: Session
     responses=error_responses(Forbidden),
 )
 async def list_org_exams(
-    workspace: OrgReader, session: Session, drafts: bool = False
+    workspace: OrgStaff,
+    session: Session,
+    status: Annotated[
+        service_authoring.ExamListStatus,
+        Query(description="published (default), draft or all"),
+    ] = "published",
 ) -> Page[schemas.ExamRead]:
-    """This institution's own exams, plus the platform catalogue.
+    """This institution's own exams, plus the platform catalogue, by `status`.
 
-    `drafts=true` narrows to the institution's own rows, published or not. The
-    platform's own drafts are never included.
+    The platform's own drafts are never included.
     """
-    exams = await service_authoring.list_exams(session, org_id=workspace.org_id, include_unpublished=drafts)
+    exams = await service_authoring.list_exams(session, org_id=workspace.org_id, status=status)
     return Page(items=exams, next_cursor=None)
 
 
@@ -262,7 +268,7 @@ async def delete_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Sess
     responses=error_responses(Forbidden),
 )
 async def list_programmes(
-    workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
+    workspace: OrgStaff, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.ProgrammeRead]:
     programmes, next_cursor = await service_programmes.list_programmes(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor

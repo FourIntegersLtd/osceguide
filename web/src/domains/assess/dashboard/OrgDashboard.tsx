@@ -1,15 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { IconType } from "react-icons";
+import { useRouter } from "next/navigation";
 import {
   LuCalendarDays,
-  LuCheck,
-  LuClipboardList,
-  LuFolderKanban,
   LuPlus,
-  LuUserCog,
-  LuUsers,
 } from "react-icons/lu";
 import {
   AsyncBoundary,
@@ -19,6 +14,7 @@ import {
   B2CPageHeader,
   Badge,
   ButtonLink,
+  StepGuide,
   b2bTokens,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
@@ -27,11 +23,7 @@ import { useSurface } from "@/capabilities";
 import { readOrgDashboard, type OrgDashboard as Data } from "@/domains/assess/dashboard/api";
 import { LiveNow } from "@/domains/assess/dashboard/LiveNow";
 import { SupervisorCircuits } from "@/domains/assess/dashboard/SupervisorCircuits";
-import {
-  nextStep,
-  setupProgress,
-  setupSteps,
-} from "@/domains/assess/dashboard/support";
+import { nextSetupAction, setupSteps } from "@/domains/assess/dashboard/support";
 import { greetingFor } from "@/domains/assess/trainee/support";
 
 /**
@@ -72,7 +64,7 @@ function Body({
 }) {
   const { hrefFor } = useSurface();
   const { session } = useSession();
-  const step = nextStep(data.setup);
+  const step = nextSetupAction(data.setup);
   const sittings = data.recent_sittings ?? [];
 
   return (
@@ -95,7 +87,7 @@ function Body({
         }
       />
 
-      {!data.setup.ready_to_run ? <Setup data={data} /> : null}
+      <Setup data={data} />
 
       {/* What is happening now comes before what exists: on an examination
           morning it is the only thing anybody wants. */}
@@ -150,64 +142,33 @@ function sentenceCase(status: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-const STEP_ICONS: Record<string, IconType> = {
-  team: LuUserCog,
-  trainees: LuUsers,
-  stations: LuClipboardList,
-  programme: LuFolderKanban,
-};
-
 /**
- * What is left before a first examination, as the canvas draws it: a grey
- * panel, a progress bar and one tile per step.
+ * What is left before a first sitting, in build order: the one thing to do
+ * next, then every step with where it stands. It goes away once all are done.
  *
- * `ready_to_run` is the backend's judgement. The old checklist counted five
- * listings in the browser, so a failed fetch told somebody to do work they had
- * already done.
+ * `ready_to_run` stays the backend's judgement of whether a sitting can be
+ * scheduled; this is the longer road to a fully built institution.
  */
 function Setup({ data }: { data: Data }) {
   const { hrefFor } = useSurface();
+  const router = useRouter();
   const steps = setupSteps(data.setup);
-  const progress = setupProgress(data.setup);
+  const next = nextSetupAction(data.setup);
+  if (!next) return null;
 
   return (
-    <section className="rounded-osce-2xl bg-canvas p-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className={b2bTokens.b2bEyebrow}>
-            Setup · {progress.done} of {progress.total} done
-          </p>
-          <h2 className="text-osce-title font-semibold text-b2b-headline">
-            Getting started
-          </h2>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-b2b-border sm:w-[200px]">
-          <div
-            className="h-full rounded-full bg-b2b-accent transition-[width] duration-500 ease-out"
-            style={{ width: `${progress.percent}%` }}
-          />
-        </div>
-      </div>
-
-      <ol className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {steps.map((step) => {
-          const Icon = step.done ? LuCheck : (STEP_ICONS[step.key] ?? LuClipboardList);
-          return (
-            <li key={step.key}>
-              <Link
-                href={hrefFor(step.path)}
-                className="flex h-full flex-col gap-1 rounded-panel bg-b2b-surface p-4 transition-colors hover:bg-b2b-surface/70"
-              >
-                <span className="mb-2 flex h-8 w-8 items-center justify-center rounded-control bg-canvas text-b2b-graphite">
-                  <Icon className="h-4 w-4" aria-hidden />
-                </span>
-                <span className="text-osce-body font-medium text-b2b-headline">{step.label}</span>
-                <span className="text-osce-meta text-b2b-mid">{step.done ? "Done" : step.hint}</span>
-              </Link>
-            </li>
-          );
-        })}
-      </ol>
+    <section className="flex flex-col gap-4 rounded-osce-2xl bg-canvas p-6">
+      <h2 className="text-osce-title font-semibold text-b2b-headline">Getting started</h2>
+      <StepGuide
+        steps={steps}
+        current={next.step}
+        onSelect={(id) => router.push(hrefFor(steps.find((step) => step.id === id)!.path))}
+        line={next.line}
+      >
+        <ButtonLink href={hrefFor(next.path)} themeType="b2b" variant="commit">
+          {next.label}
+        </ButtonLink>
+      </StepGuide>
     </section>
   );
 }

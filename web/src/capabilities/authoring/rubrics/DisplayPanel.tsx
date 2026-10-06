@@ -49,7 +49,7 @@ export function DisplayPanel() {
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <SelectAtPath path={["display", "total", "aggregate"]} label="Total" choices={TOTAL_AGGREGATES} emptyLabel="Default" />
-            <NumberAtPath path={["display", "total", "max"]} label="Out of" hint="Empty: worked out from the rubric." />
+            <NumberAtPath path={["display", "total", "max"]} label="Out of" hint="Empty: worked out from the marking scheme." />
             <NumberAtPath path={["display", "total", "passAtLeast"]} label="Pass line" />
           </div>
           <ToggleAtPath

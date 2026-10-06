@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { listenForSnapshots, streamUrl } from "./eventStreamProtocol";
-import { mintStreamTicket, platformApiUrl } from "@/foundation/platform-client";
+import { listenForSnapshots, shouldRetry, streamUrl } from "./eventStreamProtocol";
+import { isPlatformError, mintStreamTicket, platformApiUrl } from "@/foundation/platform-client";
 
 export interface EventStreamState<T> {
   /** The most recent payload the server pushed. */
@@ -70,6 +70,8 @@ export function useEventStream<T>(
         if (!live) return;
         setConnected(false);
         setError(cause instanceof Error ? cause : new Error(String(cause)));
+        // Not allowed to listen: retrying cannot change that, so stop and say so.
+        if (!shouldRetry(isPlatformError(cause) ? cause.status : undefined)) return;
         const delay = Math.min(30_000, 1_000 * 2 ** retryRef.current);
         retryRef.current += 1;
         retryTimer = window.setTimeout(() => setGeneration((n) => n + 1), delay);

@@ -88,7 +88,8 @@ async def test_seating_invites_an_address_with_no_account(
         "/api/v1/auth/password-reset/confirm",
         json={"token": invitations[0].payload["token"], "password": "Str0ng-Passw0rd!"},
     )
-    assert confirmed.status_code in (200, 204), confirmed.text
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json() == {"status": "accepted", "email": "new.dean@ashford.ac.uk"}
     login = await client.post(
         "/api/v1/auth/login", json={"email": "new.dean@ashford.ac.uk", "password": "Str0ng-Passw0rd!"}
     )

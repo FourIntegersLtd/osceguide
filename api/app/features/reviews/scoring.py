@@ -94,13 +94,18 @@ def review_priority(*, completion_rate: float, assessment_score: float | None) -
     """Which candidates a GP lead should look at first.
 
     An unfinished examination outranks a poor score: a candidate who sat half
-    the stations has a problem nobody has looked at yet.
+    the stations has a problem nobody has looked at yet. A finished examination
+    with no automatic score has nothing to rank on, so it is `standard`, not a
+    poor score.
     """
     if completion_rate < 0.5:
         return "urgent"
-    score = assessment_score if assessment_score is not None else 0.0
-    if completion_rate < 1.0 or score < 60.0:
+    if completion_rate < 1.0:
         return "high"
-    if score >= 80.0 and completion_rate >= 1.0:
+    if assessment_score is None:
+        return "standard"
+    if assessment_score < 60.0:
+        return "high"
+    if assessment_score >= 80.0:
         return "low"
     return "standard"

@@ -87,3 +87,43 @@ export function sectionSubtitle(
       return "Give a trainee access to an exam they can practise between sittings.";
   }
 }
+
+export type TraineeStage = "added" | "invited" | "accepted" | "member" | "booked";
+
+const STAGE_LABEL: Record<TraineeStage, string> = {
+  added: "Added",
+  invited: "Invited",
+  accepted: "Accepted",
+  member: "Member",
+  booked: "Booked",
+};
+
+/**
+ * Where a roster row stands between being added and sitting: the furthest step
+ * reached, and, when the person looks stuck, what is wrong. Added means no
+ * account yet; Invited an account nobody has used; Accepted an account in use
+ * but not yet a member; Booked a place on a sitting. Revoked access is always
+ * flagged. Whether practice access applies is not on the row, so it has no step.
+ */
+export function traineeStatus(trainee: Trainee): {
+  stage: TraineeStage;
+  label: string;
+  attention: string | null;
+} {
+  const stage: TraineeStage =
+    trainee.user_id === null
+      ? "added"
+      : trainee.invitation_pending
+        ? "invited"
+        : !trainee.is_member
+          ? "accepted"
+          : (trainee.programme_names?.length ?? 0) > 0 || trainee.stations_sat > 0
+            ? "booked"
+            : "member";
+  let attention: string | null = null;
+  if (!accessActive(trainee)) attention = "Access revoked";
+  else if (stage === "added") attention = "Added, no account yet";
+  else if (stage === "invited") attention = "Invited, not accepted";
+  else if (stage === "accepted") attention = "Accepted, not a member";
+  return { stage, label: STAGE_LABEL[stage], attention };
+}

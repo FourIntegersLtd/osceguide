@@ -120,13 +120,15 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
         )}
       </AsyncBoundary>
 
-      <p className="text-osce-caption text-b2b-mid">
-        Looking for supervisors and admins?{" "}
-        <TextLink themeType="b2b" href={hrefFor("/team")}>
-          Go to the team
-        </TextLink>
-        .
-      </p>
+      {canManage ? (
+        <p className="text-osce-caption text-b2b-mid">
+          Looking for supervisors and admins?{" "}
+          <TextLink themeType="b2b" href={hrefFor("/team")}>
+            Go to the team
+          </TextLink>
+          .
+        </p>
+      ) : null}
     </div>
   );
 }

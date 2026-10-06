@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
-from app.core.tenancy import OrgAdmin, OrgReader, OrgStaff
+from app.core.tenancy import OrgAdmin, OrgStaff
 from app.features.sittings import errors, schemas, service, service_edit, service_structure
 
 router = APIRouter(tags=["sittings"])
@@ -31,7 +31,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(Forbidden),
 )
 async def list_sittings(
-    workspace: OrgReader, session: Session, page: Annotated[CursorParams, Depends()]
+    workspace: OrgStaff, session: Session, page: Annotated[CursorParams, Depends()]
 ) -> Page[schemas.SittingRead]:
     sittings, next_cursor = await service.list_sittings(
         session, workspace.org_id, limit=page.limit, cursor=page.cursor
@@ -72,7 +72,7 @@ async def create_sitting(
     response_model=schemas.SittingRead,
     responses=error_responses(Forbidden, errors.SittingNotFound),
 )
-async def read_sitting(sitting_id: uuid.UUID, workspace: OrgReader, session: Session) -> schemas.SittingRead:
+async def read_sitting(sitting_id: uuid.UUID, workspace: OrgStaff, session: Session) -> schemas.SittingRead:
     """Circuits and slots are embedded, since a sitting screen needs all three."""
     return await service.read_sitting(session, workspace.org_id, sitting_id)
 

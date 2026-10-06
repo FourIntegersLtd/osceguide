@@ -4,7 +4,8 @@ import { useCallback, useState } from "react";
 import { Alert, Button, Input, Panel, Select } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { seatMembership } from "@/domains/platform/api";
-import { SEAT_ROLES, roleLabel, rolesForOrgType } from "@/domains/platform/support";
+import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
+import { SEAT_ROLES, humanise, rolesForOrgType } from "@/domains/platform/support";
 
 /**
  * Seat the first administrator of a freshly provisioned organisation.
@@ -30,7 +31,9 @@ export function SeatMemberPanel({
   const toast = useToast();
   const roles = rolesForOrgType(SEAT_ROLES, orgType);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<string>(roles[0] ?? SEAT_ROLES[0]);
+  const [role, setRole] = useState<string>(
+    roles.find((value) => value === "institution_admin") ?? roles[0] ?? SEAT_ROLES[0],
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -42,7 +45,7 @@ export function SeatMemberPanel({
       try {
         const membership = await seatMembership(slug, { email: email.trim(), role });
         toast.success(
-          `${email.trim()} added as ${roleLabel(role).toLowerCase()}`,
+          `${email.trim()} added as ${roleLabel(role, humanise(role)).toLowerCase()}`,
           membership.invited
             ? "They have no account yet, so they have been emailed a link to choose a password."
             : "They already had an account and can sign in now.",
@@ -60,12 +63,12 @@ export function SeatMemberPanel({
 
   return (
     <Panel
-      title="Add an administrator"
-      description="For a new organisation with nobody in it yet."
+      title="Add an admin"
+      description="For a new organisation with nobody in it yet. Someone without an account is emailed a link to choose a password; you never see or set it."
     >
-      <form onSubmit={submit} className="flex max-w-lg flex-col gap-3">
-          {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
-
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+        <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_14rem_auto]">
           <Input
             type="email"
             label="Email"
@@ -73,28 +76,25 @@ export function SeatMemberPanel({
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             disabled={busy}
-            hint="If they do not have an account yet, we email them a link to choose a password. You never see or set their password."
           />
-
           <Select
-          label="Role"
-              value={role}
-              onChange={(event) => setRole(event.target.value)}
-              disabled={busy}
-            >
-              {roles.map((value) => (
-                <option key={value} value={value}>
-                  {roleLabel(value)}
-                </option>
-              ))}
-            </Select>
-
-          <div className="flex justify-end">
-            <Button type="submit" disabled={busy || !email.trim()}>
-              {busy ? "Adding…" : "Add administrator"}
-            </Button>
-          </div>
-        </form>
-      </Panel>
+            label="Role"
+            value={role}
+            onChange={(event) => setRole(event.target.value)}
+            hint={ROLE_DESCRIPTIONS[role]}
+            disabled={busy}
+          >
+            {roles.map((value) => (
+              <option key={value} value={value}>
+                {roleLabel(value, humanise(value))}
+              </option>
+            ))}
+          </Select>
+          <Button type="submit" disabled={busy || !email.trim()}>
+            {busy ? "Adding…" : "Add admin"}
+          </Button>
+        </div>
+      </form>
+    </Panel>
   );
 }

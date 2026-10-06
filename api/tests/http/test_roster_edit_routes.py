@@ -453,6 +453,11 @@ async def test_the_roster_says_which_rows_are_still_waiting_on_their_invitation(
         "waiting@example.com": True,
         "joined@example.com": False,
     }
+    # Adding a trainee also grants the membership, so both rows are members.
+    assert {row["email"]: row["is_member"] for row in rows} == {
+        "waiting@example.com": True,
+        "joined@example.com": True,
+    }
 
 
 async def test_a_roster_row_left_unlinked_is_invited_and_linked(

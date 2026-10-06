@@ -21,6 +21,7 @@ groups a circuit can be built from.
 **Trainee**, **Cohort** and **TraineeGroup** are each org-owned roots;
 **TraineeGroupMember** joins the last two.
 
+- Rostering also grants a `trainee` membership through `tenancy` (idempotent; skipped when the person already holds a live role there). Revoke, delete and anonymise revoke only that `trainee` row; restore reactivates it. Trainees are hidden from the Team list, and every staff read (`/trainees`, sittings, programmes, dashboard, reviews) is `OrgStaff`, so a trainee gets 403.
 - A trainee is identified within an organisation by email (`citext`, unique per
   org). `user_id` is always filled: rostering somebody who already has an
   account links them, and rostering somebody who does not **invites** them —

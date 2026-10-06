@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Alert, Button, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
 import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
@@ -14,7 +15,8 @@ import { StationDetail } from "@/capabilities/authoring/sections/StationDetail";
 import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
 import { useCreateStationForm } from "@/capabilities/authoring/hooks/useCreateStationForm";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
-import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/PlatformTemplateWizardStepStrip";
+import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
+import { stationTemplateNewPath } from "@/capabilities/authoring/templates/paths";
 import { stationsListPath } from "@/capabilities/authoring/stations/paths";
 import { stationListUrl } from "@/capabilities/authoring/parts/stationListUrl";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
@@ -73,6 +75,7 @@ export function CreateStationScreen() {
   const canSave =
     Boolean(form.title.trim()) &&
     Boolean(form.examCode || form.templateVersionId) &&
+    !form.needsTemplateForLayout &&
     !form.busy;
   if (created) {
     return (
@@ -288,9 +291,15 @@ export function CreateStationScreen() {
               {form.needsTemplateForLayout ? "This exam needs a template" : "Choose a template or an exam"}
             </p>
             <p className="mt-1 text-osce-body text-ink-muted">
-              {form.needsTemplateForLayout
-                ? "This exam has no built-in station layout, so pick a published template to write against."
-                : "The full station form appears here as soon as you pick a published template, or say which exam this station is for."}
+              {form.needsTemplateForLayout ? (
+                <>
+                  This exam has no built-in station layout. Create a station template for this exam
+                  first, then publish it and pick it here.{" "}
+                  <Link href={stationTemplateNewPath(hrefFor)} className="font-semibold text-accent underline">
+                    Create a station template
+                  </Link>
+                </>
+              ) : "The full station form appears here as soon as you pick a published template, or say which exam this station is for."}
             </p>
           </div>
         )}

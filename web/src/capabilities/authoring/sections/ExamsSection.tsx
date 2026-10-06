@@ -8,7 +8,7 @@ import {
   HiOutlinePlusCircle,
   HiOutlineTrash,
 } from "react-icons/hi2";
-import { Alert, Checkbox, ConfirmModal } from "@/foundation/ui";
+import { Alert, Checkbox, ConfirmModal, StepGuide } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -30,6 +30,7 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
+import { examNextAction, examSteps } from "@/capabilities/authoring/sections/examSteps";
 import { ExamFields, blankExam, type ExamDraft } from "@/capabilities/authoring/sections/ExamFields";
 
 /**
@@ -38,14 +39,14 @@ import { ExamFields, blankExam, type ExamDraft } from "@/capabilities/authoring/
  * An institution writes its own without asking the platform and without
  * picking from a list — its `finals` and another school's are different rows —
  * and the same screen, under the staff scope, writes the platform catalogue.
- * "Drafts only" narrows to the organisation's own rows, which is the backend's
- * `drafts=true` and not a client-side filter.
+ * The list shows every status (a new exam stays visible, with a Draft pill);
+ * "Drafts only" narrows it to the drafts.
  */
 export function ExamsSection() {
   const scope = useAuthoringScope();
   const [draftsOnly, setDraftsOnly] = useState(false);
   const exams = useAsync(
-    (signal) => listExams(scope, { drafts: draftsOnly || undefined }, signal),
+    (signal) => listExams(scope, { status: draftsOnly ? "draft" : "all" }, signal),
     [scope.base, draftsOnly],
   );
   const action = useAction(exams.reload);
@@ -57,6 +58,9 @@ export function ExamsSection() {
   const [retiring, setRetiring] = useState<Exam | null>(null);
 
   const items = exams.data?.items ?? [];
+
+  // The form's scheme, not the stored one, so the rail follows the pick.
+  const editingExam = editing ? { status: editing.status, rubric_version_id: form.rubricVersionId } : null;
 
   return (
     <div className="space-y-4">
@@ -93,7 +97,7 @@ export function ExamsSection() {
           title: draftsOnly ? "No draft exams" : "No exams yet",
           description: draftsOnly
             ? "Everything here is published. Clear the filter to see the whole catalogue."
-            : "Create an exam, attach a rubric version, then publish it to run sittings against it.",
+            : "Create an exam, attach a marking scheme version, then publish it to run sittings against it.",
         }}
       >
         {items.map((exam) => {
@@ -135,7 +139,7 @@ export function ExamsSection() {
                   <AuthoringIconAction
                     variant="primary"
                     // The server refuses to publish an exam that names no rubric.
-                    label={exam.rubric_version_id ? "Publish" : "Choose a rubric version first"}
+                    label={exam.rubric_version_id ? "Publish" : "Choose a marking scheme version first"}
                     busy={publishBusy}
                     busyLabel="Publishing…"
                     disabled={action.busy !== null || !exam.rubric_version_id}
@@ -147,7 +151,7 @@ export function ExamsSection() {
                   </AuthoringIconAction>
                 ) : null}
                 {/* Only a published exam can be retired; a draft is simply not offered. */}
-                {exam.status === "published" ? (
+                {exam.status === "published" && !locked ? (
                   <AuthoringIconAction
                     variant="warning"
                     label="Retire"
@@ -206,7 +210,7 @@ export function ExamsSection() {
       <AuthoringDialog
         open={editing !== null}
         title="Edit exam"
-        lead="Publishing is refused without a rubric version."
+        lead="Publishing is refused without a marking scheme version."
         busy={action.busy === "edit"}
         busyLabel="Saving…"
         commitLabel="Save"
@@ -228,6 +232,11 @@ export function ExamsSection() {
           })
         }
       >
+        {editingExam ? (
+          <div className="mb-4 space-y-3">
+            <StepGuide steps={examSteps(editingExam)} line={examNextAction(editingExam).line} />
+          </div>
+        ) : null}
         <ExamFields value={form} onChange={setForm} codeDisabled />
       </AuthoringDialog>
 

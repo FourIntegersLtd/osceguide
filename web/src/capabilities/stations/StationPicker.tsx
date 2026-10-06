@@ -3,6 +3,7 @@
 import { AsyncBoundary, Badge, Button, Spinner } from "@/foundation/ui";
 import { StationFilters } from "@/capabilities/stations/StationFilters";
 import { StationIdentity } from "@/capabilities/stations/LibraryBrowse";
+import type { StationLibraryScope } from "@/capabilities/stations/api";
 import { useStationLibrary } from "@/capabilities/stations/useStationLibrary";
 import type { LibraryStation } from "@/capabilities/stations/api";
 
@@ -10,6 +11,8 @@ export interface StationPickerProps {
   onPick: (station: LibraryStation) => void;
   pickLabel?: string;
   selectedVersionIds?: ReadonlySet<string>;
+  /** Whose stations are offered, and for which exam. Left out, the signed-in user's own exam's library. */
+  scope?: StationLibraryScope;
 }
 
 /**
@@ -25,8 +28,9 @@ export function StationPicker({
   onPick,
   pickLabel = "Select",
   selectedVersionIds,
+  scope,
 }: StationPickerProps) {
-  const library = useStationLibrary();
+  const library = useStationLibrary(scope);
   const state = {
     ...library.first,
     data: library.first.data === null ? null : library.stations,
@@ -41,7 +45,9 @@ export function StationPicker({
         isEmpty={(rows) => rows.length === 0}
         empty={{
           title: "No stations here yet",
-          description: "Published stations for this exam will appear here.",
+          description: library.examCode
+            ? `Published stations for ${library.examCode.toUpperCase()} will appear here.`
+            : "Published stations for this exam will appear here.",
         }}
       >
         {(rows) => (

@@ -252,3 +252,43 @@ def _org_read(org: Any) -> OrganizationRead:
         require_staff_mfa=org.require_staff_mfa,
         parent_org_id=org.parent_org_id,
     )
+
+
+async def grant_trainee_membership(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """Give a rostered person the `trainee` membership that makes the organisation theirs to open.
+
+    Idempotent: a revoked trainee membership is reactivated, and somebody who already
+    holds another live role here (a supervisor who is also rostered) is left alone.
+    True when a membership was created or reactivated.
+    """
+    held = await repository.memberships_for_user_in_org(session, org_id, user_id)
+    trainee_row = next((membership for membership in held if membership.role == domain.TRAINEE_ROLE), None)
+    if trainee_row is not None:
+        if trainee_row.revoked_at is None:
+            return False
+        await repository.set_membership_revoked(session, org_id, trainee_row.id, at=None)
+        return True
+    if any(membership.revoked_at is None for membership in held):
+        return False
+    await repository.add_membership(session, org_id=org_id, user_id=user_id, role=domain.TRAINEE_ROLE)
+    return True
+
+
+async def revoke_trainee_membership(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID | None, *, at: datetime
+) -> None:
+    """Revoke only the `trainee` membership; a staff role the same person holds stays."""
+    if user_id is None:
+        return
+    membership = await repository.membership_for_user_in_org(
+        session, org_id, user_id, role=domain.TRAINEE_ROLE
+    )
+    if membership is not None and membership.revoked_at is None:
+        await repository.set_membership_revoked(session, org_id, membership.id, at=at)
+
+
+async def member_user_ids(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: list[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Which of these people are live members of the organisation, for the roster's status column."""
+    return await repository.member_user_ids(session, org_id, user_ids)

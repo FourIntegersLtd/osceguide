@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { LuClipboardCheck } from "react-icons/lu";
 import {
   AsyncBoundary,
@@ -11,12 +11,21 @@ import {
   Badge,
   Button,
   ButtonLink,
+  StepGuide,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { useSession } from "@/foundation/session";
+import { can, useSession } from "@/foundation/session";
 import { readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
 import { SittingEditForm } from "@/domains/assess/SittingEditForm";
+import { readSittingReport } from "@/domains/assess/results/api";
+import {
+  countsFromReport,
+  sittingNext,
+  sittingSteps,
+  type SittingNextId,
+  type SittingStepsInput,
+} from "@/domains/assess/sittingSteps";
 import { sittingModeLabel, sittingStatusLabel } from "@/domains/assess/support";
 import { formatShortDateTime } from "@/foundation/format";
 
@@ -27,46 +36,85 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
   const userId = session?.user.id ?? null;
   const state = useAsync((signal) => readSitting(orgSlug, sittingId, signal), [orgSlug, sittingId]);
   const [editing, setEditing] = useState(false);
+  // The report's counts feed the steps; someone who cannot read it sees the steps up to Run.
+  const mayReadReport = can(session, "sign_off_results");
+  const report = useAsync(
+    (signal) => (mayReadReport ? readSittingReport(orgSlug, sittingId, signal).catch(() => null) : Promise.resolve(null)),
+    [orgSlug, sittingId, mayReadReport],
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <AsyncBoundary state={state}>
-        {(sitting) => (
+        {(sitting) => {
+          const input: SittingStepsInput = {
+            scheduledFor: sitting.scheduled_for,
+            circuits: sitting.circuits ?? [],
+            counts: report.data ? countsFromReport(report.data) : null,
+            can: { schedule: can(session, "schedule_sittings"), signOff: mayReadReport },
+          };
+          const next = sittingNext(input);
+          const actions: Partial<Record<SittingNextId, ReactNode>> = {
+            schedule: (
+              <Button themeType="b2b" size="sm" variant="commit" onClick={() => setEditing(true)}>
+                Set a date
+              </Button>
+            ),
+            circuits: (
+              <ButtonLink themeType="b2b" size="sm" variant="commit" href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}>
+                Add a circuit
+              </ButtonLink>
+            ),
+            mark: <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />,
+            decide: <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />,
+            release: <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />,
+          };
+          return (
           <>
             <B2CPageHeader
               back={{ href: hrefFor("/sittings"), label: "Sittings" }}
               eyebrow={sittingModeLabel(sitting.mode)}
               title={sitting.name}
               subtitle={
-                sitting.scheduled_for ? formatShortDateTime(sitting.scheduled_for) : "Not scheduled"
+                sitting.scheduled_for ? formatShortDateTime(sitting.scheduled_for) : "No date set"
               }
               action={
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={sitting.status === "live" ? "success" : "neutral"} dot>
                     {sittingStatusLabel(sitting.status)}
                   </Badge>
-                  <Button themeType="b2b" size="sm" variant="secondary" onClick={() => setEditing(true)}>
-                    Edit
-                  </Button>
-                  <ButtonLink
-                    themeType="b2b"
-                    size="sm"
-                    variant="secondary"
-                    href={hrefFor(`/sittings/${sitting.id}/results`)}
-                  >
-                    Results
-                  </ButtonLink>
-                  <ButtonLink
-                    themeType="b2b"
-                    size="sm"
-                    variant="commit"
-                    href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
-                  >
-                    Add a circuit
-                  </ButtonLink>
+                  {can(session, "schedule_sittings") ? (
+                    <Button themeType="b2b" size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                      Edit
+                    </Button>
+                  ) : null}
+                  {can(session, "sign_off_results") ? (
+                    <ButtonLink
+                      themeType="b2b"
+                      size="sm"
+                      variant="secondary"
+                      href={hrefFor(`/sittings/${sitting.id}/results`)}
+                    >
+                      Results
+                    </ButtonLink>
+                  ) : null}
+                  {can(session, "schedule_sittings") ? (
+                    <ButtonLink
+                      themeType="b2b"
+                      size="sm"
+                      variant="commit"
+                      href={hrefFor(`/sittings/${sitting.id}/circuits/new`)}
+                    >
+                      Add a circuit
+                    </ButtonLink>
+                  ) : null}
                 </div>
               }
             />
+
+            <StepGuide steps={sittingSteps(input)} line={next.line}>
+              {next.actionable ? actions[next.id] : null}
+            </StepGuide>
 
             {editing ? (
               <SittingEditForm
@@ -111,7 +159,8 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               </B2CGroupedSection>
             )}
           </>
-        )}
+          );
+        }}
       </AsyncBoundary>
     </div>
   );
@@ -133,4 +182,12 @@ function circuitState(circuit: Circuit): string {
   if (circuit.ended_at) return "Finished";
   if (circuit.started_at) return `Running since ${new Date(circuit.started_at).toLocaleTimeString()}`;
   return "Not started";
+}
+
+function OpenResults({ href }: { href: string }) {
+  return (
+    <ButtonLink themeType="b2b" size="sm" variant="commit" href={href}>
+      Open results
+    </ButtonLink>
+  );
 }

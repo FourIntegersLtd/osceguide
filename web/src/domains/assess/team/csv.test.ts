@@ -22,7 +22,7 @@ test("a file with no email column is refused rather than half-imported", () => {
 test("a row with no usable address is reported by line number, not dropped silently", () => {
   const parsed = parseStaffCsv("email,role\na@b.uk,admin\n,admin\nnot-an-address,supervisor");
   assert.equal(parsed.rows.length, 1);
-  assert.deepEqual(parsed.skippedLines, [3, 4]);
+  assert.deepEqual(parsed.skippedLines.concat(parsed.invalidLines).sort(), [3, 4]);
   assert.deepEqual(parsed.badRoles, []);
 });
 

@@ -70,14 +70,17 @@ export function ExamFields({
     [scope.base],
   );
 
+  // The latest published version of each rubric; a selected older one stays listed.
   const versions = useMemo(
     () =>
-      (rubrics.data?.items ?? []).flatMap((rubric) =>
-        (rubric.versions ?? [])
-          .filter((v) => v.status === "published")
-          .map((v) => ({ id: v.id, label: `${rubric.title} · v${v.version}` })),
-      ),
-    [rubrics.data],
+      (rubrics.data?.items ?? []).flatMap((rubric) => {
+        const published = (rubric.versions ?? []).filter((v) => v.status === "published");
+        const latest = Math.max(0, ...published.map((v) => v.version));
+        return published
+          .filter((v) => v.version === latest || v.id === value.rubricVersionId)
+          .map((v) => ({ id: v.id, label: `${rubric.title} · v${v.version}` }));
+      }),
+    [rubrics.data, value.rubricVersionId],
   );
 
   const set = (patch: Partial<ExamDraft>) => onChange({ ...value, ...patch });
@@ -128,7 +131,7 @@ export function ExamFields({
             className={`mt-1 ${getInputClassName()}`}
           />
         </Field>
-        <Field label="Rubric version">
+        <Field label="Marking scheme version">
           <Select
             value={value.rubricVersionId}
             onChange={(e) => set({ rubricVersionId: e.target.value })}

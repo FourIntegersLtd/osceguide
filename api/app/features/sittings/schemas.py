@@ -78,6 +78,8 @@ class SittingRead(BaseModel):
     # The exam name the programme offers, and distinct candidates across the
     # sitting's circuits. Filled by the list and detail reads.
     programme_name: str | None = None
+    # The code of that exam, which is what the station library is filtered by.
+    exam_code: str | None = None
     candidate_count: int = 0
     circuits: list[CircuitRead] = Field(default_factory=list)
 

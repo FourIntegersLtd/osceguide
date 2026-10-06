@@ -4,8 +4,9 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AsyncBoundary, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
+import type { StationLibraryScope } from "@/capabilities/stations";
 import { useSurface } from "@/capabilities";
-import { createCircuit, listMemberships, listTrainees, readSitting } from "@/domains/assess/api";
+import { createCircuit, listMemberships, listTrainees, readSitting, sittingLibraryScope } from "@/domains/assess/api";
 import {
   CircuitBuilder,
   type StaffRow,
@@ -38,6 +39,7 @@ export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId:
       ]);
       return {
         sitting,
+        scope: await sittingLibraryScope(orgSlug, sitting, signal),
         trainees: trainees.items,
         staff: staff.items.map((member) => ({
           user_id: member.user_id,
@@ -63,6 +65,7 @@ export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId:
               orgSlug={orgSlug}
               sittingId={sittingId}
               mode={data.sitting.mode}
+              scope={data.scope}
               trainees={data.trainees}
               staff={data.staff}
               onCreated={() => router.push(hrefFor(`/sittings/${sittingId}`))}
@@ -78,6 +81,7 @@ function Builder({
   orgSlug,
   sittingId,
   mode,
+  scope,
   trainees,
   staff,
   onCreated,
@@ -85,6 +89,7 @@ function Builder({
   orgSlug: string;
   sittingId: string;
   mode: string;
+  scope: StationLibraryScope;
   trainees: TraineeRow[];
   staff: StaffRow[];
   onCreated: () => void;
@@ -100,6 +105,7 @@ function Builder({
   return (
     <CircuitBuilder
       mode={mode}
+      scope={scope}
       trainees={trainees}
       staff={staff}
       submitLabel="Create circuit"

@@ -43,12 +43,20 @@ class OrgSetup(BaseModel):
     take the length of.
     """
 
+    # The build order, one flag per step. Marking scheme, exam and template are
+    # done when the organisation owns a published one or the platform publishes
+    # one it may use, the same reading as `stations_available`.
+    rubric_published: bool
+    exam_published: bool
+    template_published: bool
+    sitting_scheduled: bool
     trainees_added: bool
     # "There is something to run", not "you have written it yourself". An
     # institution that adopted the platform catalogue can examine somebody
     # today, and telling it otherwise sent it off to author stations it did not
     # need. `OrgCounts.stations` still carries its own authoring separately.
     stations_available: bool
+    # Staff beyond the admin who created the organisation: a supervisor or a second admin.
     team_invited: bool
     programme_exam_rubric_ready: bool
     ready_to_run: bool

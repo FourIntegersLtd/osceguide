@@ -110,3 +110,29 @@ export function NextStepBar({
     </div>
   );
 }
+
+/** The bar above the rail: where things stand, the one action, and every step. */
+export function StepGuide<Id extends string>({
+  steps,
+  current,
+  onSelect,
+  line,
+  working,
+  children,
+}: {
+  steps: RailStep<Id>[];
+  current?: Id;
+  onSelect?: (id: Id) => void;
+  line: string;
+  working?: boolean;
+  children?: ReactNode;
+}) {
+  return (
+    <>
+      <NextStepBar line={line} working={working}>
+        {children}
+      </NextStepBar>
+      <StepRail steps={steps} current={current} onSelect={onSelect} />
+    </>
+  );
+}

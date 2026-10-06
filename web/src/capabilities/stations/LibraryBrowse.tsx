@@ -19,8 +19,9 @@ import type { LibraryStation } from "@/capabilities/stations/api";
  * institutions had no way to see it at all.
  */
 export function LibraryBrowse() {
-  const { hrefFor } = useSurface();
-  const library = useStationLibrary();
+  const { hrefFor, orgSlug } = useSurface();
+  // Inside an organisation this is its own library, not the signed-in user's consumer exam's.
+  const library = useStationLibrary({ orgSlug });
 
   // The boundary reports on the first page; the filtered rows are what renders.
   const state = {

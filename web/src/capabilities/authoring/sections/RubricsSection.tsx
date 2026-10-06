@@ -27,7 +27,7 @@ import { rubricNewPath } from "@/capabilities/authoring/templates/paths";
 /**
  * Rubrics: what a station is marked against.
  *
- * The listing carries both the organisation's own rubrics and the platform's,
+ * The listing carries both the organisation's own marking schemes and the platform's,
  * because an institution may mark with either. Only its own can be edited, and
  * the backend says so rather than this screen guessing.
  */
@@ -81,7 +81,7 @@ export function RubricsSection() {
             onClick={() => router.push(rubricNewPath(hrefFor))}
           >
             <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
-            Create rubric
+            Create marking scheme
           </AuthoringButton>
         }
       >
@@ -93,21 +93,21 @@ export function RubricsSection() {
         onExamCodeChange={setExamFilter}
         search={search}
         onSearchChange={setSearch}
-        searchPlaceholder="Search rubrics…"
-        searchAriaLabel="Search rubrics"
+        searchPlaceholder="Search marking schemes…"
+        searchAriaLabel="Search marking schemes"
       />
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
 
       <ListCard
         count={items.length}
-        countLabel="Rubrics"
+        countLabel="Marking schemes"
         loading={rubrics.loading && !rubrics.data}
         error={rubrics.error ? rubrics.error.message : null}
         onDismissError={rubrics.reload}
         empty={{
-          title: "No rubrics",
-          description: "Create a rubric, publish a version, then build exams and templates on it.",
+          title: "No marking schemes",
+          description: "Create a marking scheme, publish a version, then build exams and templates on it.",
         }}
       >
         {items.map((rubric) => {
@@ -153,7 +153,7 @@ export function RubricsSection() {
             disabled={pages.loadingMore}
             onClick={pages.loadMore}
           >
-            {pages.loadingMore ? "Loading…" : "Load more rubrics"}
+            {pages.loadingMore ? "Loading…" : "Load more marking schemes"}
           </AuthoringButton>
         </div>
       ) : null}

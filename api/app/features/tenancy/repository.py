@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
+from app.features.tenancy.domain import END_USER_ROLES
 from app.features.tenancy.models import AuditEntry, Membership, Organization
 
 
@@ -135,6 +136,14 @@ async def membership_for_user_in_org(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def memberships_for_user_in_org(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID
+) -> list[Membership]:
+    """Every membership (live or revoked) this person holds at this organisation."""
+    stmt = select(Membership).where(Membership.org_id == org_id, Membership.user_id == user_id)
+    return list((await session.execute(stmt)).scalars())
+
+
 async def membership_by_id(
     session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID
 ) -> Membership | None:
@@ -153,8 +162,11 @@ async def list_memberships(
     matching_user_ids: Sequence[uuid.UUID] | None = None,
     exact_user_id: uuid.UUID | None = None,
     status: str | None = None,
+    staff_only: bool = False,
 ) -> tuple[list[Membership], str | None]:
     """A page of an organisation's memberships, oldest first, optionally only those with `status`.
+
+    `staff_only` leaves out the end-user roles (trainees, practice users).
 
     `role_search`, `matching_user_ids` and `exact_user_id` are the three ways
     a search term can match a row — its role by `ILIKE`, its person's email or
@@ -164,6 +176,8 @@ async def list_memberships(
     the same as no search at all.
     """
     stmt = select(Membership).where(Membership.org_id == org_id)
+    if staff_only:
+        stmt = stmt.where(Membership.role.not_in(sorted(END_USER_ROLES)))
     if status is not None:
         stmt = stmt.where(Membership.status == status)
     if role_search is not None:
@@ -280,3 +294,17 @@ async def count_organizations(session: AsyncSession) -> int:
 
 async def update_organization(session: AsyncSession, org_id: uuid.UUID, **values: Any) -> None:
     await session.execute(update(Organization).where(Organization.id == org_id).values(**values))
+
+
+async def member_user_ids(
+    session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Which of these people hold a live membership here, whatever the role."""
+    if not user_ids:
+        return set()
+    stmt = select(Membership.user_id).where(
+        Membership.org_id == org_id,
+        Membership.user_id.in_(list(user_ids)),
+        Membership.revoked_at.is_(None),
+    )
+    return set((await session.execute(stmt)).scalars())

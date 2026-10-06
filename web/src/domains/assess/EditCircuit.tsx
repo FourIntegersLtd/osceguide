@@ -7,6 +7,8 @@ import { useSurface } from "@/capabilities";
 import {
   listMemberships,
   listTrainees,
+  readSitting,
+  sittingLibraryScope,
   rebuildCircuit,
 } from "@/domains/assess/api";
 import { readConsole, type CircuitConsole } from "@/domains/assess/sessions/api";
@@ -49,7 +51,10 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
         listTrainees(orgSlug, signal, { accessRevoked: false }),
         listMemberships(orgSlug, signal, { status: "active" }),
       ]);
+      // The console's sitting carries no exam; the sitting read does.
+      const sitting = await readSitting(orgSlug, console_.sitting.id, signal);
       return {
+        scope: await sittingLibraryScope(orgSlug, sitting, signal),
         console: console_,
         trainees: trainees.items,
         staff: staff.items.map((member) => ({
@@ -65,7 +70,7 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
   return (
     <div className="flex flex-col gap-6">
       <AsyncBoundary state={context}>
-        {({ console: data, trainees, staff }) => {
+        {({ console: data, trainees, staff, scope }) => {
           const blocked = editLockNotice(data.circuit);
           return (
             <>
@@ -76,6 +81,7 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
               />
               <CircuitBuilder
                 mode={data.sitting.mode}
+                scope={scope}
                 trainees={trainees}
                 staff={staff}
                 initial={draftFrom(data)}

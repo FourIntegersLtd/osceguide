@@ -21,3 +21,8 @@ export function listenForSnapshots<T>(source: EventTarget, onData: (data: T) => 
     source.removeEventListener("message", receive);
   };
 }
+
+/** A refusal (401/403) will not change by asking again; anything else is worth a retry. */
+export function shouldRetry(status: number | undefined): boolean {
+  return status !== 401 && status !== 403;
+}

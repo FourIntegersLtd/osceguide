@@ -64,6 +64,12 @@ export interface CapabilityModule {
    * only hides the nav entry: a direct link still opens the screen, as it did.
    */
   exams?: readonly string[];
+  /**
+   * Arms where somebody who runs circuits does not see it in navigation (the
+   * trainee's study items, community, and Authoring where the arm lists its own
+   * Build entry). The screen stays reachable by link.
+   */
+  staffHiddenOn?: readonly Surface[];
 }
 
 export interface MountedCapability extends CapabilityModule {

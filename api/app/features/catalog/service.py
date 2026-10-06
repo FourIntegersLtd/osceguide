@@ -231,11 +231,11 @@ async def programme_exam_id(session: AsyncSession, org_id: uuid.UUID, programme_
     return programme.exam_id
 
 
-async def programme_names(
+async def programme_exams(
     session: AsyncSession, org_id: uuid.UUID, programme_ids: Sequence[uuid.UUID]
-) -> dict[uuid.UUID, str]:
-    """A programme is shown by the name of the exam it offers."""
-    return await repository.programme_names(session, org_id, programme_ids)
+) -> dict[uuid.UUID, tuple[str, str]]:
+    """A programme is shown by its exam's name; the code filters a station library."""
+    return await repository.programme_exams(session, org_id, programme_ids)
 
 
 async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uuid.UUID) -> int:
@@ -246,3 +246,8 @@ async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uui
 async def org_exam_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
     """The exams this organisation offers, through its programmes."""
     return await repository.org_exam_ids(session, org_id)
+
+
+async def has_published_exam(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether the organisation has a published exam it can use: its own or the platform's."""
+    return await repository.has_published_exam(session, org_id)

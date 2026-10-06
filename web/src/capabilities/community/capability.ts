@@ -16,5 +16,6 @@ export const communityCapability: CapabilityModule = {
   permission: null,
   section: "connect",
   path: "/discussion",
+  staffHiddenOn: ["assess"],
   icon: HiOutlineUsers,
 };

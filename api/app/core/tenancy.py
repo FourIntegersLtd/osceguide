@@ -203,6 +203,9 @@ def may_run_circuit_policy() -> RolePredicate:
     return policy("may_run_circuit")
 
 
+# Trainee-safe reads only: it admits every rostered trainee, so a handler using it must
+# project what a candidate may see (stations list) or return nothing sensitive (org, and
+# platform-admin routes that also demand `PlatformAdmin`). Never for a staff-only read.
 OrgReader = Annotated[Workspace, Depends(require_org(policy("may_read_org")))]
 # Running an examination: an org admin or its assigned supervisor. Not
 # `OrgReader`, which admits the trainee sitting the circuit.

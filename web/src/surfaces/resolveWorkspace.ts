@@ -6,6 +6,18 @@ import {
   type Workspace,
 } from "@/foundation/routing";
 
+type Membership = NonNullable<PlatformUser["memberships"]>[number];
+
+function toWorkspace(membership: Membership): Workspace {
+  return {
+    kind: workspaceKind(membership.org_type),
+    slug: membership.org_slug,
+    name: membership.org_name ?? membership.org_slug,
+    orgSlug: membership.org_slug,
+    role: membership.role,
+  };
+}
+
 /**
  * Which workspace a URL segment names, for this person.
  *
@@ -24,13 +36,7 @@ export function resolveWorkspace(slug: string, user: PlatformUser | null): Works
   const membership = (user.memberships ?? []).find((m) => m.org_slug === slug);
   if (!membership) return null;
 
-  return {
-    kind: workspaceKind(membership.org_type),
-    slug: membership.org_slug,
-    name: membership.org_name ?? membership.org_slug,
-    orgSlug: membership.org_slug,
-    role: membership.role,
-  };
+  return toWorkspace(membership);
 }
 
 /**
@@ -41,14 +47,20 @@ export function resolveWorkspace(slug: string, user: PlatformUser | null): Works
  * institution is something they additionally belong to.
  */
 export function workspacesFor(user: PlatformUser | null): Workspace[] {
-  const orgs = (user?.memberships ?? []).map(
-    (membership): Workspace => ({
-      kind: workspaceKind(membership.org_type),
-      slug: membership.org_slug,
-      name: membership.org_name ?? membership.org_slug,
-      orgSlug: membership.org_slug,
-      role: membership.role,
-    }),
-  );
+  const orgs = (user?.memberships ?? []).map(toWorkspace);
   return [PERSONAL_WORKSPACE, ...orgs];
+}
+
+/**
+ * Where `/app` sends somebody with no deep link: the workspace they were last
+ * in, else their institution (a person who belongs to one is there to work,
+ * and `me` would show them the consumer exam picker), else their own practice.
+ */
+export function landingWorkspace(user: PlatformUser | null, remembered: string | null): Workspace {
+  const available = workspacesFor(user);
+  return (
+    available.find((workspace) => workspace.slug === remembered) ??
+    available.find((workspace) => workspace.slug !== PERSONAL_SLUG) ??
+    PERSONAL_WORKSPACE
+  );
 }

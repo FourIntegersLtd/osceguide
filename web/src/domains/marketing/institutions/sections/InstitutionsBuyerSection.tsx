@@ -18,7 +18,7 @@ export function InstitutionsBuyerSection() {
         </h2>
         <p className={`${type.sectionSubtitle} max-w-[60ch]`}>
           Undergraduate, postgraduate, and workforce programmes on one platform.
-          You bring stations and rubrics. We handle the rest.
+          You bring stations and marking schemes. We handle the rest.
         </p>
 
         <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-2">

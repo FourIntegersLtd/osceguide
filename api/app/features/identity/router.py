@@ -215,7 +215,7 @@ async def begin_password_reset(
 # same as a password change: a reset is itself a sign of possible compromise.
 @router.post(
     "/auth/password-reset/confirm",
-    response_model=schemas.Accepted,
+    response_model=schemas.PasswordResetDone,
     responses=error_responses(errors.InvalidResetToken, errors.WeakPasswordError, TooManyRequests),
 )
 async def confirm_password_reset(
@@ -223,14 +223,14 @@ async def confirm_password_reset(
     body: schemas.PasswordResetConfirm,
     session: Annotated[AsyncSession, Depends(get_session)],
     clock: ClockDep,
-) -> schemas.Accepted:
+) -> schemas.PasswordResetDone:
     # SEC-004: the token is high-entropy, but this caps a brute-force attempt at
     # guessing one rather than leaving the only limit its length.
     await check(PASSWORD_RESET, caller_key(request))
-    await service_passwords.confirm_password_reset(
+    email = await service_passwords.confirm_password_reset(
         session, token=body.token, password=body.password, now=clock.now()
     )
-    return schemas.Accepted()
+    return schemas.PasswordResetDone(email=email)
 
 
 # Change the password when the current one still works. Ends every other

@@ -30,7 +30,7 @@ export function RubricStartScreen() {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const router = useRouter();
-  const action = useAction();
+  const action = useAction(undefined, { holdOnSuccess: true });
   const titleId = useId();
   const [title, setTitle] = useState("");
   const [search, setSearch] = useState("");
@@ -41,7 +41,7 @@ export function RubricStartScreen() {
   const keyOf = (point: RubricStartingPoint) => (point.kind === "blank" ? "blank" : `${point.rubric_id}:${point.version}`);
   const picked = (points.data?.items ?? []).find((point) => keyOf(point) === chosen) ?? null;
 
-  const create = () =>
+  const create = () => {
     void action.run("create", async () => {
       const rubric = await copyRubric(scope, {
         title: title.trim() || null,
@@ -51,13 +51,14 @@ export function RubricStartScreen() {
       const first = (rubric.versions ?? [])[0];
       router.push(rubricEditPath(hrefFor, rubric.id, first?.version ?? 1));
     });
+  };
 
   return (
     <PlatformTemplateWizardPageLayout
-      title="New rubric"
-      subtitle="Start blank or from a published rubric. You get a draft to edit; nothing is used until you publish it."
+      title="New marking scheme"
+      subtitle="Start blank or from a published marking scheme. You get a draft to edit; nothing is used until you publish it."
       backHref={rubricsListPath(hrefFor)}
-      backLabel="Rubrics"
+      backLabel="Marking schemes"
     >
       <div className="space-y-5">
         <div className="max-w-lg">
@@ -71,11 +72,11 @@ export function RubricStartScreen() {
             placeholder={picked && picked.kind !== "blank" ? `Copy of ${picked.title}` : "e.g. Consultation skills"}
             className={cn(getInputClassName(), "mt-1")}
           />
-          <p className="mt-0.5 text-osce-caption text-ink-subtle">Set here; a rubric keeps its title across versions.</p>
+          <p className="mt-0.5 text-osce-caption text-ink-subtle">Set here; a marking scheme keeps its title across versions.</p>
         </div>
 
         <div className="space-y-3">
-          <SectionSearchField value={search} onChange={setSearch} placeholder="Search published rubrics…" ariaLabel="Search starting points" />
+          <SectionSearchField value={search} onChange={setSearch} placeholder="Search published marking schemes…" ariaLabel="Search starting points" />
           <AsyncBoundary state={points}>
             {(data) => (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Start from">

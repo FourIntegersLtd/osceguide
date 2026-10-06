@@ -27,11 +27,26 @@ test("a file with no email column is refused rather than half-imported", () => {
 test("rows with no usable address are reported by line number, not dropped silently", () => {
   const parsed = parseTraineeCsv("email,firstName\na@b.uk,Amina\n,Nobody\nnot-an-address,Someone");
   assert.equal(parsed.rows.length, 1);
-  assert.deepEqual(parsed.skippedLines, [3, 4]);
+  assert.deepEqual(parsed.skippedLines, [3]);
+  assert.deepEqual(parsed.invalidLines, [4]);
   assert.equal(parsed.error, null);
 });
 
 test("addresses are lowercased, so a re-import matches what is already there", () => {
   const parsed = parseTraineeCsv("email\nAmina@NHS.uk");
   assert.equal(parsed.rows[0]?.email, "amina@nhs.uk");
+});
+
+test("a name column is split on the first space into first and last", () => {
+  const parsed = parseTraineeCsv("Name,Email\nAmina Khan,a@b.uk\nMary Ann Lee,m@b.uk\nPrince,p@b.uk");
+  assert.deepEqual(
+    parsed.rows.map((row) => [row.firstName, row.lastName]),
+    [["Amina", "Khan"], ["Mary", "Ann Lee"], ["Prince", null]],
+  );
+});
+
+test("skipped line numbers are file lines even when blank lines come before them", () => {
+  const parsed = parseTraineeCsv("email\na@b.uk\n\n\n,x\nnope");
+  assert.deepEqual(parsed.skippedLines, [5]);
+  assert.deepEqual(parsed.invalidLines, [6]);
 });

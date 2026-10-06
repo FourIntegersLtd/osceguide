@@ -23,7 +23,7 @@ export function ImportInstructions() {
         <ul className="mt-2 space-y-1.5 text-osce-body text-b2b-graphite">
           <li>
             <span className="font-mono">firstName</span>,{" "}
-            <span className="font-mono">lastName</span>. Their name
+            <span className="font-mono">lastName</span>, or one <span className="font-mono">name</span> column. Their name
           </li>
           <li>
             <span className="font-mono">cohort</span> or <span className="font-mono">group</span>.

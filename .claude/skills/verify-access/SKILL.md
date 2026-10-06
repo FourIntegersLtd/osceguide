@@ -122,3 +122,12 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   `capabilities/account/support/mapAuthApiError.ts`. The browser walk of both
   journeys, including spent and expired links, is in the platform-web `verify`
   skill's `features/session.md`.
+- **Accepting an invitation signs the person in (B8).** `password-reset/confirm`
+  answers `{"status": "accepted", "email": ...}` (pinned in
+  `tests/http/test_invitations.py`). `ResetPassword` with `invitation` then calls
+  the ordinary `login(email, password)` and goes to `/app`; an MFA challenge or a
+  failed sign-in leaves the "Sign in" button. A plain reset deliberately still
+  ends on the sign-in screen (it just revoked every session). Browser proof: seat
+  an `@example.com` address from the staff console, take the token from the
+  outbox row, open `/accept-invitation?token=...`, set a password, and expect to
+  land signed in on `/app` (then reload: still signed in).

@@ -1,4 +1,5 @@
 import type { Membership } from "@/domains/assess/team/api";
+import { isAdminRole } from "@/foundation/session/roles";
 
 /**
  * The roles a screen may offer, and what they are called.
@@ -11,33 +12,6 @@ import type { Membership } from "@/domains/assess/team/api";
 export const ASSIGNABLE_ROLES = ["supervisor", "admin"] as const;
 
 export type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
-
-export const ROLE_LABELS: Record<string, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  institution_admin: "Admin",
-  partner_admin: "Admin",
-  supervisor: "Supervisor",
-  trainee: "Trainee",
-  practice_user: "Practice user",
-};
-
-export const ROLE_DESCRIPTIONS: Record<AssignableRole, string> = {
-  supervisor: "Runs circuits and marks the candidates on them.",
-  admin: "Manages the team and the organisation's settings, and signs off results.",
-};
-
-export function roleLabel(role: string | null | undefined): string {
-  const key = (role ?? "").toLowerCase();
-  return ROLE_LABELS[key] ?? role ?? "Member";
-}
-
-/** The backend's `ORG_ADMIN_ROLES`, read here only to display, never to gate. */
-const ADMIN_ROLES = new Set(["owner", "admin", "institution_admin", "partner_admin"]);
-
-export function isAdminRole(role: string | null | undefined): boolean {
-  return ADMIN_ROLES.has((role ?? "").toLowerCase());
-}
 
 export function isOwner(member: Membership): boolean {
   return (member.role ?? "").toLowerCase() === "owner";

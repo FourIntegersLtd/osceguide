@@ -240,7 +240,7 @@ async def test_a_trainee_may_not_add_a_programme(client: AsyncClient, make_actor
     assert response.status_code == 403
 
 
-async def test_a_trainee_may_read_the_programmes(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+async def test_a_trainee_may_not_read_the_programmes(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id = await seed_org(client, make_actor)
     await published_exam(client, make_actor, "sca")
     await client.post(
@@ -252,8 +252,7 @@ async def test_a_trainee_may_read_the_programmes(client: AsyncClient, make_actor
         "/api/v1/orgs/kings/programmes",
         headers=bearer(await member(make_actor, org_id, "kings", "trainee")),
     )
-    assert response.status_code == 200
-    assert [p["exam_code"] for p in response.json()["items"]] == ["sca"]
+    assert response.status_code == 403
 
 
 async def test_another_orgs_programmes_are_invisible(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

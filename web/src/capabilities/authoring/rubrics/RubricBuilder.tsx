@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Alert, B2CSegmentedTabs, Panel } from "@/foundation/ui";
+import { Alert, B2CSegmentedTabs, Panel, StepGuide } from "@/foundation/ui";
 import { PlatformError } from "@/foundation/platform-client";
 import {
   draftRubricInstructions,
@@ -22,6 +22,7 @@ import { PreviewPane } from "@/capabilities/authoring/rubrics/PreviewPane";
 import { ProblemList, revealPath } from "@/capabilities/authoring/rubrics/ProblemList";
 import { problemsFromDetails, tabFor, type BuilderTab, type Problem } from "@/capabilities/authoring/rubrics/problems";
 import { previewInputs, trialInputs } from "@/capabilities/authoring/rubrics/previewModel";
+import { rubricNextAction, rubricSteps } from "@/capabilities/authoring/rubrics/rubricSteps";
 import { RatingPanel } from "@/capabilities/authoring/rubrics/RatingPanel";
 import { SectionList } from "@/capabilities/authoring/rubrics/SectionEditor";
 import { TrialPanel } from "@/capabilities/authoring/rubrics/TrialPanel";
@@ -62,17 +63,15 @@ export function RubricBuilder({
 
   const valid = draft.preview?.valid === true && !draft.checking;
   const promptMissing = draft.systemPrompt.trim() === "";
-  const publishBlocked = readOnly
-    ? null
-    : draft.checking
-      ? "Checking the latest edit…"
-      : draft.problems.length > 0
-        ? `Fix ${draft.problems.length} ${draft.problems.length === 1 ? "problem" : "problems"} to publish.`
-        : promptMissing
-          ? "Add marking instructions on the Marking tab to publish."
-          : draft.dirty
-            ? "Save your changes to publish."
-            : null;
+  const state = {
+    status: version.status,
+    dirty: draft.dirty,
+    checking: draft.checking,
+    problems: draft.problems.length,
+    promptMissing,
+  };
+  const next = rubricNextAction(state);
+  const publishBlocked = readOnly || next.id === "publish" ? null : next.line;
 
   const counts = useMemo(() => {
     const byTab: Record<BuilderTab, number> = { structure: 0, rating: 0, display: 0 };
@@ -125,15 +124,7 @@ export function RubricBuilder({
   return (
     <RubricBuilderProvider value={{ structure: draft.structure, edit: draft.edit, problems: draft.problems, readOnly }}>
       <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-osce-lg border border-osce-border bg-osce-surface px-4 py-3">
-          <p className="text-osce-meta text-ink-muted">
-            {readOnly
-              ? "This version is read-only. Start a new draft to change it."
-              : draft.dirty
-                ? "Unsaved changes."
-                : "All changes saved."}
-            {publishBlocked && !readOnly ? <span className="ml-2 text-ink-subtle">{publishBlocked}</span> : null}
-          </p>
+        <StepGuide steps={rubricSteps(state)} line={readOnly ? "This version is read-only. Start a new draft to change it." : next.line} working={next.id === "wait"}>
           {readOnly ? null : (
             <div className="flex flex-wrap gap-2">
               <AuthoringButton variant="ghost" size="sm" isLoading={action.busy === "draft"} disabled={action.busy !== null || !valid} onClick={() => fillInstructions()}>
@@ -147,7 +138,7 @@ export function RubricBuilder({
               </AuthoringButton>
             </div>
           )}
-        </div>
+        </StepGuide>
 
         {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
         {note ? <Alert tone="info">{note}</Alert> : null}
@@ -155,7 +146,7 @@ export function RubricBuilder({
 
         <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,460px)]">
           <div className="min-w-0 space-y-4">
-            <B2CSegmentedTabs items={editorTabs} value={tab} onChange={setTab} compact aria-label="Rubric editor" />
+            <B2CSegmentedTabs items={editorTabs} value={tab} onChange={setTab} compact aria-label="Marking scheme editor" />
             {tab === "structure" ? <SectionList /> : null}
             {tab === "rating" ? <RatingPanel /> : null}
             {tab === "display" ? <DisplayPanel /> : null}
@@ -187,7 +178,7 @@ export function RubricBuilder({
               <TrialPanel
                 trial={trial}
                 inputs={trialInputs(trial.snapshot, draft.preview, draft.structure)}
-                blockedReason={valid ? null : "A trial needs a rubric with no problems."}
+                blockedReason={valid ? null : "A trial needs a marking scheme with no problems."}
                 onRun={runTrial}
               />
             </Panel>

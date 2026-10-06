@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import Table, { type TableMore } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
@@ -40,6 +41,7 @@ type TypeFilter = "all" | string;
  */
 export function Organizations() {
   const { hrefFor } = useSurface();
+  const router = useRouter();
   const [status, setStatus] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [search, setSearch] = useState("");
@@ -68,7 +70,7 @@ export function Organizations() {
         description="Institutions and partners."
         actions={
           <Button variant="primary" onClick={() => setProvisioning(true)}>
-            Provision
+            New organisation
           </Button>
         }
       />
@@ -76,8 +78,8 @@ export function Organizations() {
       <ProvisionModal
         open={provisioning}
         onClose={() => setProvisioning(false)}
-        onProvisioned={() => {
-          pages.state.reload();
+        onProvisioned={(organization) => {
+          router.push(hrefFor(`/organizations/${organization.slug}?tab=members`));
         }}
       />
 

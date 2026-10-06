@@ -159,6 +159,12 @@ export function BulkImportDialog({
               {parsed.skippedLines.join(", ")}, so those rows are left out.
             </p>
           ) : null}
+          {parsed.invalidLines.length > 0 ? (
+            <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
+              Line{parsed.invalidLines.length === 1 ? "" : "s"} {parsed.invalidLines.join(", ")}:
+              not a valid email address, so {parsed.invalidLines.length === 1 ? "that row is" : "those rows are"} left out.
+            </p>
+          ) : null}
           {unknownCohorts.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
               No cohort here is called {unknownCohorts.join(", ")}. Those people are added without a cohort. Create the cohort under Groups, then set it for them.

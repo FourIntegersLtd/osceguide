@@ -66,6 +66,10 @@ const PLATFORM_TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] =
 const tabsFor = (surface: string) => (surface === "platform" ? PLATFORM_TABS : TABS);
 const firstTabFor = (surface: string): SettingsTab => (surface === "platform" ? "account" : "profile");
 
+/** Organisation admins open on their organisation; everyone else on their own first tab. */
+const openingTab = (surface: string, extraTabs: ExtraSettingsTab[]): string =>
+  extraTabs.some((entry) => entry.id === "organisation") ? "organisation" : firstTabFor(surface);
+
 /**
  * The person, on whichever arm they are standing.
  *
@@ -82,7 +86,7 @@ export function Settings({ extraTabs = NO_EXTRA_TABS }: { extraTabs?: ExtraSetti
   const { surface } = useSurface();
   return (
     <Suspense
-      fallback={<SettingsFrame tab={firstTabFor(surface)} onChange={() => {}} extraTabs={extraTabs} />}
+      fallback={<SettingsFrame tab={openingTab(surface, extraTabs)} onChange={() => {}} extraTabs={extraTabs} />}
     >
       <SettingsTabs extraTabs={extraTabs} />
     </Suspense>
@@ -97,7 +101,7 @@ function SettingsTabs({ extraTabs }: { extraTabs: ExtraSettingsTab[] }) {
   const { surface } = useSurface();
   const tabs = tabsFor(surface);
   const requested = searchParams.get("tab");
-  const [fallback, setFallback] = useState<string>(firstTabFor(surface));
+  const [fallback, setFallback] = useState<string>(openingTab(surface, extraTabs));
   const known =
     tabs.some((entry) => entry.id === requested && (!entry.adminOnly || isAdmin)) ||
     extraTabs.some((entry) => entry.id === requested);

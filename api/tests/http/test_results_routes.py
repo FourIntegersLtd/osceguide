@@ -9,6 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from app.features.notifications import service as notifications
 from tests.support.catalog import create_exam
 from tests.support.rubrics import published_feedback_version
 from tests.support.tokens import bearer
@@ -429,6 +430,10 @@ async def test_releasing_writes_to_the_candidate_and_not_the_administrator(
     )
     assert [m.recipient for m in queued] == [candidate_email]
     assert "admin-kings@example.com" not in {m.recipient for m in queued}
+    assert queued[0].payload == {"sitting_id": str(sitting), "org_slug": "kings", "org_name": "Kings"}
+    body = notifications._render("candidate_result_released", queued[0].payload)
+    assert f"/app/kings/trainee/results/{sitting}" in body
+    assert "Kings has released the outcome" in body
 
 
 async def test_a_users_id_here_is_refused_not_a_crash(

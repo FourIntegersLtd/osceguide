@@ -78,6 +78,7 @@ async def list_memberships(
         matching_user_ids=matching_user_ids,
         exact_user_id=exact_user_id,
         status=status,
+        staff_only=True,
     )
     # The addresses are read for the page instead of being left null. A team
     # list without an email can only show the front of a user id, which is a

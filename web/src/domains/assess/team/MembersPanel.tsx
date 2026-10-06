@@ -1,5 +1,6 @@
 "use client";
 
+import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
 import { useMemo, useState } from "react";
 import { Alert, Badge, Button, EmptyState, PlatformFilterBar, PlatformFilterSearch, b2bTokens } from "@/foundation/ui";
 import Table from "@/foundation/table/Table";
@@ -18,10 +19,8 @@ import {
 } from "@/domains/assess/team/api";
 import {
   ASSIGNABLE_ROLES,
-  ROLE_DESCRIPTIONS,
   isActive,
   isOwner,
-  roleLabel,
   staffCountLabel,
 } from "@/domains/assess/team/support";
 
@@ -246,7 +245,7 @@ export function MembersPanel({
           Loading staff…
         </p>
       ) : rows.length === 0 ? (
-        query ? (
+        pages.state.error ? null : query ? (
           <p className="text-osce-body text-b2b-mid">No staff match &ldquo;{query}&rdquo;.</p>
         ) : (
           <EmptyState

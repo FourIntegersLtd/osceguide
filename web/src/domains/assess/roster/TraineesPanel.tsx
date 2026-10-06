@@ -26,7 +26,7 @@ import {
 } from "@/domains/assess/roster/api";
 import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
 import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
-import { accessActive, cohortName, displayName, traineeCountLabel } from "@/domains/assess/roster/support";
+import { accessActive, cohortName, displayName, traineeCountLabel, traineeStatus } from "@/domains/assess/roster/support";
 
 type Pending = { kind: "revoke" | "restore" | "delete" | "anonymise"; trainee: Trainee } | null;
 
@@ -182,9 +182,11 @@ export function TraineesPanel({
             </span>
             <span className="flex min-w-0 flex-col">
               <span className={cn(b2cTableCellText, "font-medium text-b2b-headline")}>
-                {trainee.first_name || trainee.last_name ? displayName(trainee) : "None"}
+                {trainee.first_name || trainee.last_name ? displayName(trainee) : trainee.email}
               </span>
-              <span className="truncate text-osce-meta text-b2b-mid">{trainee.email}</span>
+              {trainee.first_name || trainee.last_name ? (
+                <span className="truncate text-osce-meta text-b2b-mid">{trainee.email}</span>
+              ) : null}
             </span>
           </span>
         ),
@@ -215,14 +217,16 @@ export function TraineesPanel({
         ),
       },
       {
-        header: "Access",
+        header: "Status",
         key: "id" as keyof Trainee,
-        render: (trainee: Trainee) =>
-          accessActive(trainee) ? (
-            <Badge variant="success" dot>Active</Badge>
-          ) : (
-            <Badge variant="warning" dot>Revoked</Badge>
-          ),
+        render: (trainee: Trainee) => {
+          const status = traineeStatus(trainee);
+          return (
+            <Badge variant={status.attention ? "warning" : "success"} dot>
+              {status.attention ?? status.label}
+            </Badge>
+          );
+        },
       },
       {
         header: "Actions",

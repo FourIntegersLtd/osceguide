@@ -1,4 +1,5 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
+import type { StationLibraryScope } from "@/capabilities/stations";
 
 export type Sitting = components["schemas"]["SittingRead"];
 export type SittingPage = components["schemas"]["Page_SittingRead_"];
@@ -106,6 +107,21 @@ export function listProgrammes(slug: string, signal?: AbortSignal) {
     `${org(slug)}/programmes`,
     { signal },
   );
+}
+
+/**
+ * Where a sitting's station library reads from. An exam the organisation wrote
+ * itself has no platform stations, so that leg is skipped rather than asked and
+ * refused; a programme that cannot be found keeps it (the server still decides).
+ */
+export async function sittingLibraryScope(
+  slug: string,
+  sitting: { programme_id?: string | null; exam_code?: string | null },
+  signal?: AbortSignal,
+): Promise<StationLibraryScope> {
+  const programmes = await listProgrammes(slug, signal);
+  const programme = programmes.items.find((item) => item.id === sitting.programme_id);
+  return { orgSlug: slug, examCode: sitting.exam_code ?? null, orgOwnedExam: programme?.exam_owner_kind === "org" };
 }
 
 /**

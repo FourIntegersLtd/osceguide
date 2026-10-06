@@ -94,7 +94,8 @@ async def test_the_recommendations_say_who_needs_looking_at(
     lines = (await read(client, admin, sitting["id"])).json()["recommendations"]
 
     assert any("1 of 1 candidates (100%) completed every required station" in line for line in lines)
-    assert any("high-priority review" in line for line in lines)
+    # Finished with no automatic score yet: nothing to flag as high priority.
+    assert not any("high-priority review" in line for line in lines)
     assert lines[-1].startswith("The final decision rests with the institution's GP lead.")
 
 

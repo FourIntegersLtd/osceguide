@@ -36,16 +36,26 @@ export function SupervisorCircuits({
   if (state.loading) return <Spinner />;
   if (state.error) return <Alert tone="danger">{errorMessage(state.error)}</Alert>;
 
-  const rows = (state.data?.items ?? []).filter((row) => !row.ended);
+  const all = state.data?.items ?? [];
+  const rows = all.filter((row) => !row.ended);
+  const lastEnded = all.filter((row) => row.ended).at(-1);
 
   if (rows.length === 0) {
     if (!sayWhenEmpty) return null;
     return (
       <Section>
         <B2CGroupedRow
-          title="Nothing is assigned to you."
+          title="Nothing is assigned to you right now."
           meta="A circuit appears here when an administrator names you its supervisor."
         />
+        {lastEnded ? (
+          <B2CGroupedRowLink
+            href={hrefFor(`/circuits/${lastEnded.circuit_id}`)}
+            icon={LuClipboardCheck}
+            title="Your last ended circuit"
+            meta={`${lastEnded.sitting_name} · ${lastEnded.circuit_name}`}
+          />
+        ) : null}
       </Section>
     );
   }

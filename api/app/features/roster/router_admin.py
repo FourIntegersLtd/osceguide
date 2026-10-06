@@ -46,11 +46,13 @@ async def edit_trainee(
     status_code=status.HTTP_204_NO_CONTENT,
     responses=error_responses(Forbidden, errors.TraineeNotFound, errors.TraineeInUse),
 )
-async def delete_trainee(trainee_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> None:
+async def delete_trainee(
+    trainee_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> None:
     """Remove a roster row nothing was ever decided about. Returns 409
     `trainee_in_use` if a decision exists; revoke access instead in that case.
     """
-    await service_edit.delete_trainee(session, workspace.org_id, trainee_id)
+    await service_edit.delete_trainee(session, workspace.org_id, trainee_id, now=clock.now())
 
 
 @router.post(

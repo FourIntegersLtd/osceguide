@@ -47,8 +47,8 @@ export function RubricBuilderScreen({
             <>
               <B2CPageHeader
                 title={owned ? <RubricTitle rubric={data} onRenamed={rubric.reload} /> : data.title}
-                subtitle={`Rubric · version ${version}${owned ? "" : " · OSCE Guide catalogue"}`}
-                back={{ href: rubricsListPath(hrefFor), label: "Rubrics" }}
+                subtitle={`Marking scheme · version ${version}${owned ? "" : " · OSCE Guide catalogue"}`}
+                back={{ href: rubricsListPath(hrefFor), label: "Marking schemes" }}
                 action={found ? <VersionActions rubric={data} version={version} status={found.status} owned={owned} /> : undefined}
                 className="mb-0"
               />
@@ -64,7 +64,7 @@ export function RubricBuilderScreen({
                   onPublished={rubric.reload}
                 />
               ) : (
-                <Alert tone="warning">This rubric has no version {version}.</Alert>
+                <Alert tone="warning">This marking scheme has no version {version}.</Alert>
               )}
             </>
           );
@@ -95,7 +95,7 @@ function RubricTitle({ rubric, onRenamed }: { rubric: Rubric; onRenamed: () => v
           setEditing(true);
         }}
         className="text-left hover:underline"
-        title="Rename this rubric"
+        title="Rename this marking scheme"
       >
         {rubric.title}
       </button>
@@ -119,7 +119,7 @@ function RubricTitle({ rubric, onRenamed }: { rubric: Rubric; onRenamed: () => v
   return (
     <div className="flex items-center gap-2">
       <label htmlFor={inputId} className="sr-only">
-        Rubric title
+        Marking scheme title
       </label>
       <input
         id={inputId}
@@ -183,7 +183,7 @@ function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; ve
             })
           }
         >
-          Copy to my rubrics
+          Copy to my marking schemes
         </AuthoringButton>
       ) : null}
       {action.error ? <span className="text-osce-caption text-osce-danger">{action.error}</span> : null}

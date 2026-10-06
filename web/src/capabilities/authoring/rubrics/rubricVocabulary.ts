@@ -52,7 +52,7 @@ export const SECTION_KINDS: readonly Choice<SectionKind>[] = [
 ];
 
 export const FIELD_TYPES: readonly Choice<FieldType>[] = [
-  { value: "rating", label: "Rating", hint: "The competency's grade, on the rubric's rating." },
+  { value: "rating", label: "Rating", hint: "The competency's grade, on the marking scheme's rating." },
   { value: "shortText", label: "Short text", hint: "A line: a name, a heading, a verdict." },
   { value: "longText", label: "Long text", hint: "A paragraph: evidence, an explanation." },
   { value: "list", label: "List", hint: "Several short lines, e.g. actions to take." },

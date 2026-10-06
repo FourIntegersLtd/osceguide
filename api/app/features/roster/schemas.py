@@ -29,6 +29,8 @@ class TraineeRead(BaseModel):
     # rostered on (exam names, sorted) and how many stations they have sat.
     programme_names: list[str] = Field(default_factory=list)
     stations_sat: int = 0
+    # Filled by the list read: whether the linked account holds a live membership here.
+    is_member: bool = False
 
 
 class CreateTrainee(BaseModel):

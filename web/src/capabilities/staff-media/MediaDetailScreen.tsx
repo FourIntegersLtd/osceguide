@@ -14,9 +14,8 @@ import {
   Button,
   ConfirmModal,
   Input,
-  NextStepBar,
   Panel,
-  StepRail,
+  StepGuide,
   Textarea,
 } from "@/foundation/ui";
 import { AuthoringIconAction } from "@/capabilities/authoring/parts/AuthoringIconAction";
@@ -510,10 +509,9 @@ export function MediaDetailScreen({
         </>
       ) : (
         <>
-          <NextStepBar line={next.line} working={next.id === "wait"}>
+          <StepGuide steps={steps} current={current} onSelect={setStep} line={next.line} working={next.id === "wait"}>
             {nextButton()}
-          </NextStepBar>
-          <StepRail steps={steps} current={current} onSelect={setStep} />
+          </StepGuide>
           {review.error ? (
             <Alert tone="danger">
               The last {ERROR_STEPS[review.error.step] ?? review.error.step} failed:{" "}

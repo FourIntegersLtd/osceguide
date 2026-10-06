@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { HiCheckCircle, HiOutlinePaperAirplane } from "react-icons/hi2";
-import { Alert, Badge, Button, Spinner, b2bTokens } from "@/foundation/ui";
+import { HiCheckCircle } from "react-icons/hi2";
+import { Alert, Badge, Button, Spinner, StepRail, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import {
@@ -23,7 +23,8 @@ import {
   workflowTone,
   type AssessmentOutcome,
 } from "@/domains/assess/results/support";
-import { RecruitmentField, ReleasedDecision, ReopenButton } from "@/domains/assess/results/DecisionParts";
+import { candidateProgress } from "@/domains/assess/results/candidateProgress";
+import { RecruitmentField, ReleaseButton, ReleasedDecision, ReopenButton } from "@/domains/assess/results/DecisionParts";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -66,19 +67,22 @@ export function CandidateDecision({
   if (stored.error) return <Alert tone="danger">{errorMessage(stored.error)}</Alert>;
 
   return (
-    <Form
-      key={stored.data?.revision ?? 0}
-      orgSlug={orgSlug}
-      sittingId={sittingId}
-      traineeId={traineeId}
-      candidate={candidate}
-      hire={hire}
-      decision={stored.data}
-      onChanged={() => {
-        stored.reload();
-        onChanged();
-      }}
-    />
+    <div className="space-y-4">
+      <StepRail steps={candidateProgress(candidate)} />
+      <Form
+        key={stored.data?.revision ?? 0}
+        orgSlug={orgSlug}
+        sittingId={sittingId}
+        traineeId={traineeId}
+        candidate={candidate}
+        hire={hire}
+        decision={stored.data}
+        onChanged={() => {
+          stored.reload();
+          onChanged();
+        }}
+      />
+    </div>
   );
 }
 
@@ -274,26 +278,22 @@ function Form({
                 )
               }
             />
-            <Button
-              themeType="b2b"
-              variant="commit"
-              isLoading={busy === "release"}
+            <ReleaseButton
+              busy={busy === "release"}
               disabled={busy !== null}
-              onClick={() =>
-                run(
+              count={1}
+              label="Release to the candidate"
+              onConfirm={() =>
+                void run(
                   "release",
                   () => releaseDecision(orgSlug, sittingId, traineeId, evidenceFor(candidate)),
                   "Released. The candidate can read it now.",
                 )
               }
-            >
-              <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden /> Release to the
-              candidate
-            </Button>
+            />
           </>
         )}
       </div>
-
 
       {signedOff ? (
         <p className="text-osce-caption text-b2b-mid">

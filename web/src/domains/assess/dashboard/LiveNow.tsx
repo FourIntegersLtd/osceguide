@@ -1,8 +1,9 @@
 "use client";
 
-import { B2CHero, Badge, ButtonLink } from "@/foundation/ui";
+import { Alert, B2CHero, Badge, ButtonLink } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
+import { can, useSession } from "@/foundation/session";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import {
   liveBoardStreamPath,
@@ -22,11 +23,15 @@ import { boardOrder, candidatesLabel, circuitStatus, recordingMissing } from "@/
 export function LiveNow({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const initial = useAsync((signal) => readLiveBoard(orgSlug, signal), [orgSlug]);
-  const stream = useEventStream<Board>(liveBoardStreamPath(orgSlug));
+  const { session } = useSession();
+  const stream = useEventStream<Board>(liveBoardStreamPath(orgSlug), {
+    enabled: can(session, "run_circuits"),
+  });
   const board = stream.data ?? initial.data;
 
   const circuits = boardOrder(board?.circuits ?? []);
   const first = circuits[0];
+  if (stream.error && !first) return <Alert tone="danger">The live view is unavailable: {stream.error.message}</Alert>;
   if (!first) return null;
   const needsALook = recordingMissing(first) || (first.alerts ?? []).length > 0;
 

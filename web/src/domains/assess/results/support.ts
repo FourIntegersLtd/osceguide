@@ -56,6 +56,10 @@ export function recruitmentLabel(value: string): string {
   return known ? RECRUITMENT_LABEL[known] : value;
 }
 
+export function outcomeLabel(outcome: string): string {
+  return OUTCOME_LABEL[outcome as AssessmentOutcome] ?? outcome;
+}
+
 export function outcomeTone(
   outcome: string | null | undefined,
 ): "success" | "danger" | "warning" | "neutral" {
@@ -74,7 +78,7 @@ export const WORKFLOW_LABEL: Record<string, string> = {
 };
 
 export function workflowLabel(state: string | null | undefined): string {
-  if (!state) return "Not started";
+  if (!state) return "Not decided";
   return WORKFLOW_LABEL[state] ?? state.replace(/_/g, " ");
 }
 
@@ -107,8 +111,9 @@ export function candidateName(person: { name?: string | null; email?: string | n
   return person.name ?? person.email ?? "Candidate";
 }
 
-export function formatScore(score: number | null | undefined): string {
-  if (score === null || score === undefined || Number.isNaN(score)) return "Not assessed";
+/** `missing` is what a missing score reads as; callers that know stations were marked say "No automatic score". */
+export function formatScore(score: number | null | undefined, missing = "Not assessed"): string {
+  if (score === null || score === undefined || Number.isNaN(score)) return missing;
   return `${Math.round(score)}/100`;
 }
 
@@ -296,4 +301,9 @@ export function releaseRefusal(code: string): string {
     default:
       return `refused (${code})`;
   }
+}
+
+/** "3 of 5 marked", or "Not started" while there is nothing to count. */
+export function countNote(done: number, total: number, word: string): string {
+  return total === 0 ? "Not started" : `${done} of ${total} ${word}`;
 }

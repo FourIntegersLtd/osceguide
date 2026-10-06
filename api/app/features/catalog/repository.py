@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ownership import visible_to
@@ -22,17 +22,21 @@ async def list_exams(
     *,
     statuses: Sequence[str] | None = None,
     owned_only: bool = False,
+    own_any_status: bool = False,
 ) -> list[Exam]:
     """Exams this caller may see. Unpaged: the set is small.
 
     `owned_only` narrows to rows this caller wrote — an institution's drafts
     are its own business, and so are ours. Otherwise an org sees its own exams
     plus the platform catalogue, and the platform sees only its own.
+    `own_any_status` keeps the caller's own rows whatever their status, so
+    `statuses` then narrows only the platform catalogue seen through them.
     """
     stmt = select(Exam).order_by(Exam.code)
     stmt = stmt.where(Exam.org_id == org_id) if owned_only else stmt.where(visible_to(Exam, org_id))
     if statuses is not None:
-        stmt = stmt.where(Exam.status.in_(list(statuses)))
+        in_status = Exam.status.in_(list(statuses))
+        stmt = stmt.where(or_(in_status, Exam.org_id == org_id) if own_any_status else in_status)
     return list((await session.execute(stmt)).scalars())
 
 
@@ -247,18 +251,18 @@ async def set_programme_status(
     )
 
 
-async def programme_names(
+async def programme_exams(
     session: AsyncSession, org_id: uuid.UUID, programme_ids: Sequence[uuid.UUID]
-) -> dict[uuid.UUID, str]:
-    """The exam name each of this organisation's programmes offers, in one query."""
+) -> dict[uuid.UUID, tuple[str, str]]:
+    """The (exam name, exam code) each of this organisation's programmes offers, in one query."""
     if not programme_ids:
         return {}
     stmt = (
-        select(Programme.id, Exam.name)
+        select(Programme.id, Exam.name, Exam.code)
         .join(Exam, Exam.id == Programme.exam_id)
         .where(Programme.org_id == org_id, Programme.id.in_(list(programme_ids)))
     )
-    return {programme_id: name for programme_id, name in (await session.execute(stmt)).all()}
+    return {programme_id: (name, code) for programme_id, name, code in (await session.execute(stmt)).all()}
 
 
 async def exams_by_ids(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> list[Exam]:
@@ -288,3 +292,9 @@ async def org_exam_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UU
     """Which exams this organisation offers. A programme *is* that statement."""
     stmt = select(Programme.exam_id).where(Programme.org_id == org_id).distinct()
     return list((await session.execute(stmt)).scalars())
+
+
+async def has_published_exam(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether a published exam is the organisation's own or the platform's."""
+    stmt = select(Exam.id).where(visible_to(Exam, org_id), Exam.status == ExamStatus.PUBLISHED).limit(1)
+    return (await session.execute(stmt)).first() is not None

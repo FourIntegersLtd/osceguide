@@ -6,6 +6,16 @@ import {
 
 export type LibraryStation = components["schemas"]["LibraryStationRead"];
 export type LibraryPage = components["schemas"]["Page_LibraryStationRead_"];
+
+/** Where the library reads from. Without `orgSlug` it is the signed-in user's own consumer exam. */
+export interface StationLibraryScope {
+  /** The organisation whose stations are offered. */
+  orgSlug?: string | null;
+  /** The exam to narrow to, inside an organisation. Left out, every exam it authors. */
+  examCode?: string | null;
+  /** The exam is the organisation's own, so the platform has no stations for it and is not asked. */
+  orgOwnedExam?: boolean;
+}
 export type Exam = components["schemas"]["ExamRead"];
 export type ExamPage = components["schemas"]["Page_ExamRead_"];
 export type StationFlag = components["schemas"]["StationFlagRead"];
@@ -55,6 +65,47 @@ export function browseLibrary(
     },
     signal,
   });
+}
+
+/**
+ * One organisation's own published stations, in the library's shape.
+ *
+ * `GET /orgs/{slug}/stations` answers with `StationRead` (for authoring), which
+ * the library never uses: a station is offered when it has a published version,
+ * and that version is what a circuit binds. `content` is dropped here.
+ */
+export async function browseOrgLibrary(
+  orgSlug: string,
+  params: { examCode?: string | null; search?: string | null; cursor?: string | null; limit?: number },
+  signal?: AbortSignal,
+): Promise<LibraryPage> {
+  const search = params.search?.trim();
+  const page = await platformRequest<components["schemas"]["Page_StationRead_"]>(
+    `/api/v1/orgs/${encodeURIComponent(orgSlug)}/stations`,
+    {
+      query: {
+        exam_code: params.examCode ?? undefined,
+        search: search ? search : undefined,
+        cursor: params.cursor ?? undefined,
+        limit: params.limit,
+      },
+      signal,
+    },
+  );
+  const items = page.items.flatMap((station) =>
+    station.current_version_id
+      ? [
+          {
+            id: station.id,
+            title: station.title,
+            exam_code: station.exam_code,
+            version_id: station.current_version_id,
+            version: station.version,
+          },
+        ]
+      : [],
+  );
+  return { items, next_cursor: page.next_cursor };
 }
 
 export function listExams(signal?: AbortSignal): Promise<ExamPage> {

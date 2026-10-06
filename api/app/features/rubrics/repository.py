@@ -16,6 +16,7 @@ from typing import Any
 from sqlalchemy import Select, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import lifecycle
 from app.core.ownership import owned_by, owner_kind_for, visible_to
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
@@ -281,3 +282,13 @@ async def set_current_version(
         .where(owned_by(Rubric, org_id), Rubric.id == rubric_id)
         .values(current_version_id=version_id)
     )
+
+
+async def has_published_version(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether a published marking scheme version is the organisation's own or the platform's."""
+    stmt = (
+        select(RubricVersion.id)
+        .where(visible_to(RubricVersion, org_id), RubricVersion.status == lifecycle.Status.PUBLISHED)
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None

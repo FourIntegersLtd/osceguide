@@ -90,4 +90,14 @@ describe("capability registry", () => {
       assert.match(capability.path, /^\//, `${capability.id} path must start with /`);
     }
   });
+
+  it("keeps authoring out of a staff member's nav but still resolves its route", () => {
+    // Staff reach authoring through Build, so the nav hides it for anyone who
+    // runs circuits; the route guard (`includeHidden`) must still find it.
+    const staff = { run_circuits: true };
+    const nav = capabilitiesFor("assess", { can: staff }).map((capability) => capability.id);
+    assert.ok(!nav.includes("authoring"), "authoring is not a nav item for staff");
+    const route = capabilitiesFor("assess", { can: staff, includeHidden: true }).map((capability) => capability.id);
+    assert.ok(route.includes("authoring"), "the authoring route still resolves for staff");
+  });
 });

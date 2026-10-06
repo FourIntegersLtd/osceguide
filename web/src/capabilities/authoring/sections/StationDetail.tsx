@@ -15,9 +15,8 @@ import {
   ConfirmModal,
   Input,
   LeaveConfirmModal,
-  NextStepBar,
   Panel,
-  StepRail,
+  StepGuide,
 } from "@/foundation/ui";
 import { useLeaveGuard } from "@/foundation/hooks";
 import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
@@ -71,6 +70,9 @@ import {
 } from "@/capabilities/authoring/parts/stationPipeline";
 import { listStationVersions } from "@/capabilities/stations";
 import { BriefEditor } from "@/capabilities/authoring/sections/BriefEditor";
+import Link from "next/link";
+import { useSurface } from "@/capabilities";
+import { stationTemplateNewPath } from "@/capabilities/authoring/templates/paths";
 import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
 
 function structureForTemplateVersion(
@@ -103,6 +105,7 @@ export function StationDetail({
 }) {
   const scope = useAuthoringScope();
   const router = useRouter();
+  const { hrefFor } = useSurface();
   const [working, setWorking] = useState<StationVersion | null>(null);
   const [editContent, setEditContent] = useState<Record<string, unknown>>({});
   /** Fact-check rulings made since the last save; they are saved with the content. */
@@ -319,27 +322,24 @@ export function StationDetail({
               <h2 className="text-osce-body font-semibold text-ink">{savedTitle}</h2>
             )}
             <p className="mt-0.5 text-osce-caption text-ink-muted">
-              {station.exam_code} · working on v{version}
+              {station.exam_code} · version {version}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={status} />
             <AuthoringRowActions>
+              {/* A draft is the version being worked on: a second draft is not offered. */}
+              {isDraft ? null : (
               <AuthoringIconAction
-                label={
-                  isDraft
-                    ? `v${version} is still a draft. Publish or delete it first`
-                    : status === "archived"
-                      ? "New draft from this"
-                      : "New draft version"
-                }
+                label={status === "archived" ? "New draft from this" : "New draft version"}
                 busy={action.busy === "add"}
                 busyLabel="Creating…"
-                disabled={action.busy !== null || isDraft}
+                disabled={action.busy !== null}
                 onClick={newDraft}
               >
                 <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
               </AuthoringIconAction>
+              )}
               {status === "published" ? (
                 <AuthoringIconAction
                   variant="warning"
@@ -375,8 +375,11 @@ export function StationDetail({
         ) : null}
         {!structure && !templateVersionId ? (
           <p className="mt-3 text-osce-caption text-ink-muted">
-            No layout is defined for exam {station.exam_code}. Import uses the B2C library shapes
-            for sca, plab, casc and ortho only.
+            No layout is defined for exam {station.exam_code}. Create a station template for this exam
+            first.{" "}
+            <Link href={stationTemplateNewPath(hrefFor)} className="font-semibold text-accent underline">
+              Create a station template
+            </Link>
           </p>
         ) : null}
       </Panel>
@@ -437,10 +440,9 @@ export function StationDetail({
         }
       />
 
-      <NextStepBar line={next.line} working={next.id === "wait"}>
+      <StepGuide steps={steps} current={current} onSelect={setStep} line={next.line} working={next.id === "wait"}>
         {nextButton()}
-      </NextStepBar>
-      <StepRail steps={steps} current={current} onSelect={setStep} />
+      </StepGuide>
       {action.error && confirming === null ? <Alert tone="danger">{action.error}</Alert> : null}
       {review?.error && !busy ? (
         <Alert tone="danger">
@@ -543,6 +545,12 @@ export function StationDetail({
               Publishing makes v{version} the version candidates are assessed against. A published
               version is what an attempt was marked against, so it is archived rather than deleted.
             </p>
+            {isDraft && !readBrief(working?.content ?? station.content).trim() ? (
+              <Alert tone="warning">
+                This station has no candidate brief, so candidates see nothing during reading time.
+                You can still publish.
+              </Alert>
+            ) : null}
             {steps
               .filter((entry) => entry.id !== "publish" && entry.state !== "done")
               .map((entry) => (
@@ -574,7 +582,8 @@ export function StationDetail({
 
 function readBrief(content: unknown): string {
   if (!content || typeof content !== "object") return "";
-  const brief = (content as { reading_brief?: unknown }).reading_brief;
+  const { reading_brief: reading, candidate_brief: candidate } = content as Record<string, unknown>;
+  const brief = typeof reading === "string" && reading.trim() ? reading : candidate;
   return typeof brief === "string" ? brief : "";
 }
 

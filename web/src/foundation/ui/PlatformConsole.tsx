@@ -365,16 +365,22 @@ export function ActionRail({
 }
 
 /** A key/value definition grid for facts on a detail screen — two columns from `sm`, or one in a rail. */
+const FACT_COLUMNS = {
+  1: "",
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-2 lg:grid-cols-3",
+} as const;
+
 export function FactList({
   items,
   columns = 2,
 }: {
   items: { label: string; value: React.ReactNode }[];
-  columns?: 1 | 2;
+  columns?: 1 | 2 | 3;
 }) {
   return (
     <dl
-      className={cn("grid gap-x-6 gap-y-4", columns === 2 && "sm:grid-cols-2")}
+      className={cn("grid gap-x-6 gap-y-4", FACT_COLUMNS[columns])}
     >
       {items.map((item) => (
         <div key={item.label} className="min-w-0">

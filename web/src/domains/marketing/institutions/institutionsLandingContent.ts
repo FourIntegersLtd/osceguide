@@ -39,7 +39,7 @@ export const VALUE_PROPS: Array<{
   {
     label: "Simple to run for faculty",
     body:
-      "Set up cohorts, stations, and running order in minutes. Supervisors monitor live and score against your rubrics.",
+      "Set up cohorts, stations, and running order in minutes. Supervisors monitor live and score against your marking schemes.",
     icon: HiOutlineClipboardDocumentCheck,
     iconColor: "blue",
   },

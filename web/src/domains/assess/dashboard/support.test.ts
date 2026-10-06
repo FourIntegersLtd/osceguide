@@ -6,14 +6,17 @@ import {
   boardOrder,
   candidatesLabel,
   circuitStatus,
-  nextStep,
+  nextSetupAction,
   recordingMissing,
-  setupProgress,
   setupSteps,
 } from "@/domains/assess/dashboard/support";
 
 function setup(over: Partial<OrgSetup> = {}): OrgSetup {
   return {
+    rubric_published: false,
+    exam_published: false,
+    template_published: false,
+    sitting_scheduled: false,
     trainees_added: false,
     stations_available: false,
     team_invited: false,
@@ -49,37 +52,56 @@ function circuit(over: Partial<LiveCircuit> & { circuit_id: string }): LiveCircu
   } as LiveCircuit;
 }
 
-test("the next step is the first one not done, in order", () => {
-  assert.equal(nextStep(setup())?.key, "team");
-  assert.equal(nextStep(setup({ team_invited: true }))?.key, "trainees");
-  assert.equal(
-    nextStep(
-      setup({
-        team_invited: true,
-        trainees_added: true,
-        stations_available: true,
-        programme_exam_rubric_ready: true,
-      }),
-    ),
-    null,
+test("a fresh organisation sees the eight steps in build order, all to do", () => {
+  assert.deepEqual(
+    setupSteps(setup()).map((step) => [step.id, step.label, step.state, step.note, step.path]),
+    [
+      ["rubric", "Marking scheme", "todo", "Publish one", "/authoring/rubrics"],
+      ["exam", "Exam", "todo", "Publish one", "/authoring/exams"],
+      ["programme", "Programme", "todo", "Add one", "/programmes"],
+      ["template", "Station template", "todo", "Publish one", "/authoring/station-templates"],
+      ["stations", "Stations", "todo", "None to run", "/authoring/stations"],
+      ["team", "Team", "todo", "Invite a supervisor", "/team"],
+      ["trainees", "Trainees", "todo", "None added", "/trainees"],
+      ["sitting", "First sitting", "todo", "Not scheduled", "/sittings/new"],
+    ],
   );
 });
 
-test("progress counts what is done, not what the browser could fetch", () => {
-  assert.deepEqual(setupProgress(setup({ team_invited: true, trainees_added: true })), {
-    done: 2,
-    total: 4,
-    percent: 50,
+test("the one action is the first step not done, in order", () => {
+  assert.deepEqual(nextSetupAction(setup()), {
+    step: "rubric",
+    path: "/authoring/rubrics",
+    label: "Write a marking scheme",
+    line: "Start with a marking scheme: what candidates are marked against.",
   });
+  assert.equal(nextSetupAction(setup({ rubric_published: true }))?.step, "exam");
+  // Done out of order, the earliest gap still leads.
+  assert.equal(nextSetupAction(setup({ rubric_published: true, exam_published: true, team_invited: true }))?.step, "programme");
+});
+
+test("nothing is left to do once every step is done", () => {
+  const all = setup({
+    rubric_published: true,
+    exam_published: true,
+    programme_exam_rubric_ready: true,
+    template_published: true,
+    stations_available: true,
+    team_invited: true,
+    trainees_added: true,
+    sitting_scheduled: true,
+  });
+  assert.equal(nextSetupAction(all), null);
+  assert.equal(setupSteps(all).every((step) => step.state === "done" && step.note === "Done"), true);
 });
 
 test("the station step follows what is available, not what was authored", () => {
   // An institution that adopted the platform catalogue can examine somebody
   // today, so telling it to author a station was a step it had already taken.
-  const done = setupSteps(setup({ stations_available: true })).find((step) => step.key === "stations");
-  const not = setupSteps(setup()).find((step) => step.key === "stations");
-  assert.equal(done?.done, true);
-  assert.equal(not?.done, false);
+  const done = setupSteps(setup({ stations_available: true })).find((step) => step.id === "stations");
+  const not = setupSteps(setup()).find((step) => step.id === "stations");
+  assert.equal(done?.state, "done");
+  assert.equal(not?.state, "todo");
 });
 
 test("a consultation with no attempt behind it is a station nobody is recording", () => {

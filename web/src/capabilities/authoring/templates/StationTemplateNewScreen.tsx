@@ -14,7 +14,7 @@ import type {
 } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
 import { TemplateStartPanel } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/TemplateLayoutGallery";
-import { Button, getInputClassName } from "@/foundation/ui";
+import { Button, getInputClassName, StepRail } from "@/foundation/ui";
 import { AuthoringExamSelect } from "@/capabilities/authoring/parts/AuthoringExamSelect";
 import {
   b2bTemplateTitleSchema,
@@ -25,10 +25,8 @@ import { createStationTemplate } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
-import {
-  PlatformTemplateWizardStepStrip,
-  platformTemplateWizardFooterClass,
-} from "@/capabilities/authoring/templates/PlatformTemplateWizardStepStrip";
+import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
+import { wizardSteps } from "@/capabilities/authoring/templates/wizardSteps";
 
 export function StationTemplateNewScreen() {
   const scope = useAuthoringScope();
@@ -115,9 +113,20 @@ function CreateStationTemplateWizardBody({
     if (fallback !== startPoint) setStartPoint(fallback);
   }
 
+  const current = step === 1 ? "start" : "sections";
+
   return (
     <>
-      <PlatformTemplateWizardStepStrip step={step} onStepChange={setStep} />
+      <div className="px-5 py-3 sm:px-6">
+        <StepRail
+          steps={wizardSteps(current, selectedExamCode !== "" && title.trim() !== "")}
+          current={current}
+          // Only back: the sections need the exam and name from the first screen.
+          onSelect={(id) => {
+            if (id === "start") setStep(1);
+          }}
+        />
+      </div>
       <div className="px-5 py-6 sm:px-6">
         {step === 1 ? (
           <TemplateStartPanel
@@ -153,6 +162,7 @@ function CreateStationTemplateWizardBody({
             onChange={setStructure}
             title={title}
             onTitleChange={setTitle}
+            examCode={selectedExamCode}
             allowCustomGenerationPrompt
           />
         )}

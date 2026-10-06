@@ -147,7 +147,6 @@ per version, Microsoft Entra SSO, and a gated staging-to-production promotion.
 | D8 | Deleting a practice set that has been sat is refused (`set_has_attempts`); legacy orphaned the recordings | Keep. Self-service deletion would be its own audited action |
 | D9 | Deleting a non-empty group or in-use cohort is refused | Keep. Residual hole: a cohort that only scheduled sittings is deletable and detaches them |
 | D10 | A re-sent invitation spends the previous unused link | Confirm supersede; keeping the old link live is a one-line change |
-| D11 | B57: rostering a trainee (`POST /trainees`) links an account but grants no membership, so the candidate's portal (`/app/<org>/trainee/...`) is "Page not found" and `/me/sittings` answers `org_slug: null`. Should rostering grant a `trainee` membership (and revoke it on removal)? | Yes, in `roster.add_trainee` through `tenancy`; but the Team list shows every membership, so decide first whether trainees appear there or the list filters `END_USER_ROLES` |
 | — | Live marking: a rubric a supervisor fills **during** a consultation, independent of machine scoring (`LiveMarkingSidebar` marks finished stations only) | Out of scope until wanted; it is a redesign against `marking_layout` |
 | — | Preferences: AI-training consent, colleague-waiting email, onboarding replay | Decide which are worth storing |
 | — | Push notifications. `web-push` is not a dependency, and legacy's service worker never sent one | Decide whether wanted at all |
@@ -218,3 +217,8 @@ Each is deliberate and explained in the code where it lives.
   `/assistant-sessions/*`, `/attempts/{id}/transcript-chunks`,
   `/livekit-cloud-slot/*`, `/sessions/{id}/complete`,
   `/billing/webhooks/stripe`.
+
+## Institution walkthrough 2026-10-06: decisions and what is still open
+
+- R-2 (decided): signing off while station reviews are incomplete is allowed; the candidate rail shows "Reviews not complete" as an attention step. No API readiness gate.
+- Open, needs staging: live consultation, real automatic marking (score and review-priority columns), email delivery of the result notice.

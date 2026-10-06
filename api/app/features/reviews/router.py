@@ -13,7 +13,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep
-from app.core.tenancy import OrgInstitutionAdmin, OrgReader
+from app.core.tenancy import OrgInstitutionAdmin, OrgStaff
 from app.features.reviews import errors, schemas, service, service_summary
 
 router = APIRouter(tags=["reviews"])
@@ -40,7 +40,7 @@ async def read_my_slot_review(
     responses=error_responses(Forbidden),
 )
 async def list_slot_reviews(
-    slot_id: uuid.UUID, workspace: OrgReader, session: Session
+    slot_id: uuid.UUID, workspace: OrgStaff, session: Session
 ) -> schemas.SlotReviewsRead:
     """Every review of this slot, with what they add up to.
 
@@ -56,7 +56,7 @@ async def list_slot_reviews(
     responses=error_responses(Forbidden, errors.SlotNotFound),
 )
 async def read_my_review(
-    slot_id: uuid.UUID, workspace: OrgReader, session: Session
+    slot_id: uuid.UUID, workspace: OrgStaff, session: Session
 ) -> schemas.SlotReviewRead | None:
     return await service.read_my_slot_review(
         session, workspace.org_id, slot_id, submitted_by=workspace.principal.user_id
@@ -77,7 +77,7 @@ async def read_my_review(
 async def submit_my_review(
     slot_id: uuid.UUID,
     body: schemas.SubmitSlotReview,
-    workspace: OrgReader,
+    workspace: OrgStaff,
     session: Session,
     clock: ClockDep,
 ) -> schemas.SlotReviewRead:
@@ -151,7 +151,7 @@ async def save_gp_lead_review(
 async def finalize_circuit_review(
     circuit_id: uuid.UUID,
     body: schemas.FinalizeCircuitReview,
-    workspace: OrgReader,
+    workspace: OrgStaff,
     session: Session,
     clock: ClockDep,
 ) -> schemas.CircuitReviewRead:
@@ -172,6 +172,6 @@ async def finalize_circuit_review(
     responses=error_responses(Forbidden),
 )
 async def read_circuit_review(
-    circuit_id: uuid.UUID, workspace: OrgReader, session: Session
+    circuit_id: uuid.UUID, workspace: OrgStaff, session: Session
 ) -> schemas.CircuitReviewRead | None:
     return await service.read_circuit_review(session, workspace.org_id, circuit_id)

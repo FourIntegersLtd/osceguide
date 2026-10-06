@@ -21,6 +21,7 @@ from app.features.results.schemas import (
 )
 from app.features.roster import service as roster
 from app.features.sittings import service_reads as sittings
+from app.features.tenancy import service as tenancy
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.IncompatibleOutcomes: errors.IncompatibleOutcomesError,
@@ -183,6 +184,9 @@ async def release(
     # Looked up before anything is written, so every refusal comes ahead of the
     # first write and a bulk release can skip this candidate cleanly.
     recipient = await roster.trainee_email(session, org_id, trainee_id)
+    org = await tenancy.org_ref_by_id(session, org_id)
+    if org is None:
+        raise errors.ResultNotFound()
 
     revision_row = await repository.append_revision(
         session,
@@ -219,7 +223,7 @@ async def release(
         recipient=recipient,
         subject="Your result is available",
         template_key="candidate_result_released",
-        payload={"sitting_id": str(sitting_id)},
+        payload={"sitting_id": str(sitting_id), "org_slug": org.slug, "org_name": org.name},
         idempotency_key=f"result_released:{sitting_id}:{trainee_id}",
     )
     return _read(revision_row)

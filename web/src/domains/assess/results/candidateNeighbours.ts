@@ -3,12 +3,13 @@
  *
  * There is no "next candidate" route. The sitting's report already lists every
  * candidate with their stations, so the neighbours are read off it: the same
- * station, by title, for the candidate before and after in the report's order.
+ * station, for the candidate before and after in the report's order.
  */
 interface StepStation {
   slot_id: string;
   attempt_id: string | null;
-  station_title: string | null;
+  circuit_id: string;
+  slot_index: number;
 }
 
 interface StepCandidate {
@@ -38,16 +39,18 @@ export function reviewPath(slotId: string, attemptId: string | null | undefined,
   return `/slots/${slotId}/review?${query.toString()}`;
 }
 
+/**
+ * A slot belongs to one candidate, so the same station for the next candidate is the slot at the
+ * same place in the same circuit, not the same title (two stations can share a title, or have none).
+ */
 export function candidateSteps(candidates: StepCandidate[], slotId: string): CandidateSteps | null {
-  const title = candidates
-    .flatMap((candidate) => candidate.stations ?? [])
-    .find((station) => station.slot_id === slotId)?.station_title;
-  // An untitled station cannot be matched to anybody else's.
-  if (!title) return null;
-
+  const here = candidates.flatMap((candidate) => candidate.stations ?? []).find((station) => station.slot_id === slotId);
+  if (!here) return null;
   const steps: CandidateStep[] = [];
   for (const candidate of candidates) {
-    const station = (candidate.stations ?? []).find((entry) => entry.station_title === title);
+    const station = (candidate.stations ?? []).find(
+      (entry) => entry.circuit_id === here.circuit_id && entry.slot_index === here.slot_index,
+    );
     if (station) steps.push({ slotId: station.slot_id, attemptId: station.attempt_id, name: candidate.name });
   }
   const index = steps.findIndex((step) => step.slotId === slotId);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Badge, Button, Spinner, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
@@ -32,7 +32,7 @@ function asVerdict(value: string | null | undefined): Verdict | "" {
 }
 
 /**
- * The lead's review of one station — the one that counts.
+ * The admin's review of one station — the one that counts.
  *
  * Distinct from the observers' reviews beside it: there are as many of those
  * as there were people watching, and exactly one of these. It is revisioned,
@@ -52,9 +52,12 @@ export function GpLeadReview({
   slotId,
   form,
   payload,
+  onStatus,
 }: {
   orgSlug: string;
   slotId: string;
+  /** Told the stored review's status once read and after each save, for the screen's steps. */
+  onStatus?: (status: string | null) => void;
   /** The slot's review form, for a lead writing the first review. */
   form: ReviewForm | null;
   /** The machine's marked payload, shown beside each field. */
@@ -68,7 +71,9 @@ export function GpLeadReview({
 
   // Loaded once. A save answers with the stored review, which the editor keeps;
   // reloading here would remount the editor and wipe its "saved" note (R-3).
-  return <Editor orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} loaded={state.data} />;
+  return (
+    <Editor orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} loaded={state.data} onStatus={onStatus} />
+  );
 }
 
 function Editor({
@@ -77,9 +82,11 @@ function Editor({
   form,
   payload,
   loaded,
+  onStatus,
 }: {
   orgSlug: string;
   slotId: string;
+  onStatus?: (status: string | null) => void;
   /** The slot's form, used until the review has one of its own. */
   form: ReviewForm | null;
   payload: Record<string, unknown> | null;
@@ -103,6 +110,8 @@ function Editor({
   const [stale, setStale] = useState(false);
 
   const completed = review?.status === "completed";
+  const status = review?.status ?? null;
+  useEffect(() => onStatus?.(status), [onStatus, status]);
 
   const save = useCallback(
     async (status: "draft" | "completed") => {

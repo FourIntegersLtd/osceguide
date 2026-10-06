@@ -168,14 +168,6 @@ export function signOffDecision(
   });
 }
 
-/**
- * Release it to the candidate.
- *
- * The evidence goes up again, and the backend refuses the release if it no
- * longer matches what was signed off: a station re-marked in between would
- * otherwise send somebody an outcome nobody approved. Sending nothing made
- * that check compare two empty objects and always pass.
- */
 export function releaseDecision(
   slug: string,
   sittingId: string,

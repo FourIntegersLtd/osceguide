@@ -387,3 +387,8 @@ def version_read(version: RubricVersion) -> RubricVersionRead:
         marking_layout=dict(version.marking_layout) if version.marking_layout else None,
         published_at=version.published_at,
     )
+
+
+async def has_published_rubric(session: AsyncSession, org_id: uuid.UUID) -> bool:
+    """Whether the organisation has a published marking scheme it can use: its own or the platform's."""
+    return await repository.has_published_version(session, org_id)

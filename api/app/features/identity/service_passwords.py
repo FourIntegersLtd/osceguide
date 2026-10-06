@@ -55,12 +55,13 @@ async def begin_password_reset(
     return raw
 
 
-async def confirm_password_reset(session: AsyncSession, *, token: str, password: str, now: datetime) -> None:
+async def confirm_password_reset(session: AsyncSession, *, token: str, password: str, now: datetime) -> str:
     """Redeem a reset link for a new password, refusing `invalid_reset_token`
     for one that is unknown, spent, expired, or belongs to an account whose
     password sign-in an SSO arrangement has since disabled. Ends every
     existing session on success, since a reset is itself a sign that one
-    of them may not be the account's owner."""
+    of them may not be the account's owner. Returns the account's email, which
+    the holder of the emailed token already controls."""
     try:
         validate_password(password)
     except WeakPassword as exc:
@@ -69,7 +70,7 @@ async def confirm_password_reset(session: AsyncSession, *, token: str, password:
     if record is None or record.used_at is not None or now >= record.expires_at:
         raise InvalidResetToken()
     user = await repository.user_by_id(session, record.user_id)
-    if user is not None and user.password_login_disabled:
+    if user is None or user.password_login_disabled:
         # Defense in depth: `begin_password_reset` above never issues a
         # token for one of these accounts, but a token could in principle
         # reach here by another path (`service_invitations.py` also mints
@@ -83,6 +84,7 @@ async def confirm_password_reset(session: AsyncSession, *, token: str, password:
     await repository.revoke_all_chains_for_user(
         session, user_id=record.user_id, at=now, reason="password_reset"
     )
+    return user.email
 
 
 async def change_password(

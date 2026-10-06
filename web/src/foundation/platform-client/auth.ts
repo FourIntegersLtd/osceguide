@@ -434,12 +434,14 @@ export async function requestPasswordReset(email: string): Promise<void> {
  * The token comes from the emailed link. A refused one is expired or already
  * spent, and the person has to ask for another — there is no way to tell those
  * two apart without telling an attacker which addresses have accounts.
+ * Returns the account's email, so an accepted invitation can sign straight in.
  */
-export async function confirmPasswordReset(token: string, newPassword: string): Promise<void> {
-  await platformRequest<void>("/api/v1/auth/password-reset/confirm", {
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<string> {
+  const done = await platformRequest<{ email: string }>("/api/v1/auth/password-reset/confirm", {
     method: "POST",
     body: { token, password: newPassword },
   });
+  return done.email;
 }
 
 export function hasStoredSession(): boolean {

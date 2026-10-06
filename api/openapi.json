@@ -9444,12 +9444,24 @@
       "OrgSetup": {
         "description": "Whether the organisation can actually hold a sitting yet.\n\nEach flag is a step the browser was deriving from a list it fetched only to\ntake the length of.",
         "properties": {
+          "exam_published": {
+            "title": "Exam Published",
+            "type": "boolean"
+          },
           "programme_exam_rubric_ready": {
             "title": "Programme Exam Rubric Ready",
             "type": "boolean"
           },
           "ready_to_run": {
             "title": "Ready To Run",
+            "type": "boolean"
+          },
+          "rubric_published": {
+            "title": "Rubric Published",
+            "type": "boolean"
+          },
+          "sitting_scheduled": {
+            "title": "Sitting Scheduled",
             "type": "boolean"
           },
           "stations_available": {
@@ -9460,12 +9472,20 @@
             "title": "Team Invited",
             "type": "boolean"
           },
+          "template_published": {
+            "title": "Template Published",
+            "type": "boolean"
+          },
           "trainees_added": {
             "title": "Trainees Added",
             "type": "boolean"
           }
         },
         "required": [
+          "rubric_published",
+          "exam_published",
+          "template_published",
+          "sitting_scheduled",
           "trainees_added",
           "stations_available",
           "team_invited",
@@ -11044,6 +11064,25 @@
           "password"
         ],
         "title": "PasswordResetConfirm",
+        "type": "object"
+      },
+      "PasswordResetDone": {
+        "description": "The account the token belonged to, so an invitation can sign it in.",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "status": {
+            "default": "accepted",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "PasswordResetDone",
         "type": "object"
       },
       "PasswordResetRequest": {
@@ -16381,6 +16420,17 @@
             "title": "Circuits",
             "type": "array"
           },
+          "exam_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam Code"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -18815,6 +18865,11 @@
           "invitation_pending": {
             "default": false,
             "title": "Invitation Pending",
+            "type": "boolean"
+          },
+          "is_member": {
+            "default": false,
+            "title": "Is Member",
             "type": "boolean"
           },
           "last_name": {
@@ -23767,7 +23822,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__features__identity__schemas__Accepted"
+                  "$ref": "#/components/schemas/PasswordResetDone"
                 }
               }
             },
@@ -38987,7 +39042,7 @@
     },
     "/api/v1/orgs/{org_slug}/exams": {
       "get": {
-        "description": "This institution's own exams, plus the platform catalogue.\n\n`drafts=true` narrows to the institution's own rows, published or not. The\nplatform's own drafts are never included.",
+        "description": "This institution's own exams, plus the platform catalogue, by `status`.\n\nThe platform's own drafts are never included.",
         "operationId": "catalog_list_org_exams",
         "parameters": [
           {
@@ -39002,13 +39057,20 @@
             }
           },
           {
+            "description": "published (default), draft or all",
             "in": "query",
-            "name": "drafts",
+            "name": "status",
             "required": false,
             "schema": {
-              "default": false,
-              "title": "Drafts",
-              "type": "boolean"
+              "default": "published",
+              "description": "published (default), draft or all",
+              "enum": [
+                "published",
+                "draft",
+                "all"
+              ],
+              "title": "Status",
+              "type": "string"
             }
           }
         ],
@@ -50130,7 +50192,7 @@
     },
     "/api/v1/orgs/{org_slug}/trainees": {
       "get": {
-        "description": "Readable by any member: a supervisor needs names to run a circuit.",
+        "description": "Readable by staff who run circuits; a trainee cannot read the roster.",
         "operationId": "roster_list_trainees",
         "parameters": [
           {

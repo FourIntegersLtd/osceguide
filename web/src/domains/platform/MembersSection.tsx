@@ -19,7 +19,8 @@ import {
   restoreMembership,
   revokeMembership,
 } from "@/domains/platform/support/api";
-import { MEMBER_ROLES, humanise, roleLabel, rolesForOrgType } from "@/domains/platform/support";
+import { roleLabel } from "@/foundation/session/roles";
+import { MEMBER_ROLES, humanise, oneOptionPerLabel, rolesForOrgType } from "@/domains/platform/support";
 
 export function MembersSection({ slug, orgType }: { slug: string; orgType: string }) {
   const state = useAsync(
@@ -72,8 +73,9 @@ function MemberRow({
   onChanged: () => void;
 }) {
   // The member's own role stays in the menu even where it does not fit the type.
-  const roles = rolesForOrgType(MEMBER_ROLES, orgType);
-  if (!roles.includes(membership.role)) roles.push(membership.role);
+  const fitting = rolesForOrgType(MEMBER_ROLES, orgType);
+  if (!fitting.includes(membership.role)) fitting.push(membership.role);
+  const roles = oneOptionPerLabel(fitting, [membership.role, "institution_admin", "partner_admin"]);
   const toast = useToast();
   const run = async (work: () => Promise<unknown>, done: string) => {
     try {
@@ -93,7 +95,7 @@ function MemberRow({
           {membership.email ?? membership.user_id}
         </p>
         <p className="truncate text-osce-meta text-ink-subtle">
-          {roleLabel(membership.role)}
+          {roleLabel(membership.role, humanise(membership.role))}
           {membership.product_surface ? ` · ${humanise(membership.product_surface)}` : ""}
         </p>
       </div>
@@ -115,7 +117,7 @@ function MemberRow({
         >
           {roles.map((value) => (
             <option key={value} value={value}>
-              {roleLabel(value)}
+              {roleLabel(value, humanise(value))}
             </option>
           ))}
         </Select>

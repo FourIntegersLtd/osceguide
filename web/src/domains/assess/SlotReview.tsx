@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, ButtonLink, B2CPageHeader, Spinner, Panel } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, ButtonLink, B2CPageHeader, FoldSection, Spinner, Panel, StepGuide } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
+import { isPlatformError } from "@/foundation/platform-client";
 import { readFeedback, RubricFeedback, type AttemptFeedbackRead } from "@/capabilities/feedback";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
 import { readMySlotReview, saveReview } from "@/domains/assess/api";
 import { useSurface } from "@/capabilities";
+import { can, useSession } from "@/foundation/session";
 import { GpLeadReview, SlotReviewers, readSittingReport, readSlotReviews } from "@/domains/assess/results";
-import { candidateSteps, reviewPath } from "@/domains/assess/results/candidateSteps";
+import { candidateSteps, reviewPath } from "@/domains/assess/results/candidateNeighbours";
+import { markingNotice, markingState, openForm, slotNextLine, slotReviewSteps } from "@/domains/assess/results/slotReviewSteps";
 import type { SlotReviews } from "@/domains/assess/results";
 import { ReviewFields } from "@/domains/assess/results/ReviewFields";
 import { fieldValuesFor, initialRatings } from "@/domains/assess/results/reviewForm";
@@ -29,6 +32,12 @@ import { fieldValuesFor, initialRatings } from "@/domains/assess/results/reviewF
  * The backend refuses a submit that leaves a required domain unrated, so that
  * rule is shown, not enforced, in the browser.
  */
+/** Only "not found" means "no marking yet"; every other error is rethrown. */
+function notFoundAsNull(err: unknown): null {
+  if (isPlatformError(err) && err.status === 404) return null;
+  throw err;
+}
+
 export function SlotReview({
   orgSlug,
   slotId,
@@ -41,6 +50,7 @@ export function SlotReview({
   /** The sitting this was opened from, when it was opened from its results. */
   sittingId?: string | null;
 }) {
+  const { session } = useSession();
   /*
    * My review is read directly (`GET .../reviews/mine`). An earlier version
    * called that route before it existed, answered 405 on every load and
@@ -51,9 +61,9 @@ export function SlotReview({
   const state = useAsync(
     async (signal) => {
       const [feedback, reviews, mine] = await Promise.all([
-        // No marking yet (or none readable) is an ordinary state beside a
-        // review form, not a failure of the page.
-        attemptId ? readFeedback(attemptId, signal).catch(() => null) : Promise.resolve(null),
+        // No marking yet (a 404) is an ordinary state beside a review form. Any other failure,
+        // a 403 included, is a failure: the boundary shows it with a retry.
+        attemptId ? readFeedback(attemptId, signal).catch(notFoundAsNull) : Promise.resolve(null),
         readSlotReviews(orgSlug, slotId, signal),
         readMySlotReview(orgSlug, slotId, signal),
       ]);
@@ -66,8 +76,8 @@ export function SlotReview({
     <div className="flex flex-col gap-6">
       <B2CPageHeader
         title="Mark this station"
-        subtitle="Your marks, next to the automatic marking."
-        action={sittingId ? <CandidateStepper orgSlug={orgSlug} sittingId={sittingId} slotId={slotId} /> : undefined}
+        subtitle="The automatic marking, your marks and the admin's review."
+        action={sittingId && can(session, "sign_off_results") ? <CandidateStepper orgSlug={orgSlug} sittingId={sittingId} slotId={slotId} /> : undefined}
       />
       {attemptId ? null : (
         /*
@@ -157,6 +167,11 @@ function Editor({
   initial: { field_values: Record<string, unknown>; notes: string | null; status: string } | null;
   onSaved: () => void;
 }) {
+  const { session } = useSession();
+  const isAdmin = can(session, "sign_off_results");
+  const open = openForm(isAdmin);
+  // The admin's review status is read by its own form; the steps only follow it.
+  const [adminStatus, setAdminStatus] = useState<string | null>(null);
   const form = reviews.form ?? null;
   // Results arrive oldest first; the latest marking is the one to agree or disagree with.
   const result = feedback?.results?.at(-1) ?? null;
@@ -177,6 +192,16 @@ function Editor({
   const [saved, setSaved] = useState<string | null>(null);
 
   const submitted = initial?.status === "completed";
+  const marking = markingState({
+    attemptId,
+    hasResult: result !== null,
+    hasRubric: Boolean(feedback?.rubric),
+  });
+  const steps = slotReviewSteps({
+    marking,
+    mine: initial?.status === "completed" ? "completed" : initial ? "draft" : "none",
+    admin: !isAdmin ? null : adminStatus === "completed" ? "completed" : adminStatus ? "draft" : "none",
+  });
 
   const persist = useCallback(
     async (status: "draft" | "completed") => {
@@ -195,84 +220,89 @@ function Editor({
     [orgSlug, slotId, ratings, notes, onSaved],
   );
 
+  const mineReadOnly = submitted || open !== "mine";
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-      <div className="flex flex-col gap-4">
-        <Panel
-          title="Your marking"
-          actions={
-            <Badge variant={submitted ? "success" : "neutral"} dot>
-              {submitted ? "Submitted" : "Draft"}
-            </Badge>
-          }
-        >
-          <div className="flex flex-col gap-4">
-            {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
-            {saved && !error && <Alert tone="success">{saved}</Alert>}
+    <>
+      <StepGuide steps={steps} current={open} line={slotNextLine(open, steps)} />
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="flex flex-col gap-4">
+          <FoldSection
+            title="Your marks"
+            defaultOpen={open === "mine"}
+            description={open === "mine" ? undefined : "Read-only here. An admin writes the review that counts."}
+            meta={
+              <Badge variant={submitted ? "success" : "neutral"} dot>
+                {submitted ? "Submitted" : "Draft"}
+              </Badge>
+            }
+          >
+            <div className="flex flex-col gap-4">
+              {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
+              {saved && !error && <Alert tone="success">{saved}</Alert>}
 
-            <ReviewFields
-              form={form}
-              ratings={ratings}
-              onRate={(path, value) => setRatings((current) => ({ ...current, [path]: value }))}
-              payload={payload}
-              disabled={submitted}
-            />
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-osce-meta font-medium text-b2b-headline">Notes</span>
-              <textarea
-                rows={5}
-                value={notes}
-                disabled={submitted}
-                onChange={(event) => setNotes(event.target.value)}
-                className="rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-body text-b2b-headline disabled:bg-canvas"
-                placeholder="What you saw, in the words you would say to them."
+              <ReviewFields
+                form={form}
+                ratings={ratings}
+                onRate={(path, value) => setRatings((current) => ({ ...current, [path]: value }))}
+                payload={payload}
+                disabled={mineReadOnly}
               />
-            </label>
 
-            {!submitted && (
-              <div className="flex justify-end gap-2">
-                <Button themeType="b2b" variant="secondary" onClick={() => persist("draft")} disabled={busy !== null}>
-                  {busy === "draft" ? <Spinner /> : "Save draft"}
-                </Button>
-                <Button themeType="b2b" variant="commit" onClick={() => persist("completed")} disabled={busy !== null}>
-                  {busy === "completed" ? <Spinner /> : "Submit review"}
-                </Button>
-              </div>
-            )}
-          </div>
-        </Panel>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-osce-meta font-medium text-b2b-headline">Notes</span>
+                <textarea
+                  rows={5}
+                  value={notes}
+                  disabled={mineReadOnly}
+                  onChange={(event) => setNotes(event.target.value)}
+                  className="rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-body text-b2b-headline disabled:bg-canvas"
+                  placeholder="What you saw, in the words you would say to them."
+                />
+              </label>
 
-        {/* The lead's review is one per station and the observers' are one
-            each, so they are separate panels rather than tabs of the same
-            thing — a reviewer should be able to see both at once. */}
-        <Panel title="The lead's review" description="One overall mark for the station. This is the mark that counts.">
-          <GpLeadReview orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} />
-        </Panel>
+              {!mineReadOnly && (
+                <div className="flex justify-end gap-2">
+                  <Button themeType="b2b" variant="secondary" onClick={() => persist("draft")} disabled={busy !== null}>
+                    {busy === "draft" ? <Spinner /> : "Save draft"}
+                  </Button>
+                  <Button themeType="b2b" variant="commit" onClick={() => persist("completed")} disabled={busy !== null}>
+                    {busy === "completed" ? <Spinner /> : "Submit review"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </FoldSection>
 
-        <Panel title="What the reviewers agreed">
-          <SlotReviewers reviews={reviews} />
-        </Panel>
-      </div>
+          {isAdmin ? (
+            <FoldSection
+              title="Admin's review"
+              defaultOpen={open === "admin"}
+              description="One overall mark for the station. This is the mark that counts."
+            >
+              <GpLeadReview orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} onStatus={setAdminStatus} />
+            </FoldSection>
+          ) : null}
 
-      <div className="flex flex-col gap-4">
-        {/* The same feedback the candidate reads, drawn from the same rubric. */}
-        {result && feedback?.rubric ? (
-          <RubricFeedback rubric={feedback.rubric} result={result} heading="Automatic marking" narrow />
-        ) : (
-          <Panel padding="md">
-            <p className="text-osce-body text-b2b-mid">
-              {result
-                ? "This station was taken before the exam had a marking scheme, so there are no automatic marks to show."
-                : "Automatic marking is not ready yet. It appears here when it finishes."}
-            </p>
+          <Panel title="What the reviewers agreed">
+            <SlotReviewers reviews={reviews} />
           </Panel>
-        )}
-        {/* The marking is the machine's reading of the consultation; this is
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {/* The same feedback the candidate reads, drawn from the same rubric. */}
+          {result && feedback?.rubric ? (
+            <RubricFeedback rubric={feedback.rubric} result={result} heading="Automatic marking" narrow />
+          ) : (
+            <Panel padding="md">
+              <p className="text-osce-body text-b2b-mid">{markingNotice(marking)}</p>
+            </Panel>
+          )}
+          {/* The marking is the machine's reading of the consultation; this is
             the consultation. A marker is asked to agree or disagree with the
             first, which is not a judgement they can make from a score alone. */}
-        <AttemptTranscript attemptId={attemptId} />
+          <AttemptTranscript attemptId={attemptId} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

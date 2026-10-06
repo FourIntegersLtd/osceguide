@@ -7,18 +7,23 @@ type S = components["schemas"];
 
 /* ------------------------------------------------------- exams, programmes */
 
+/**
+ * An organisation's list is published exams (its own and the platform's) by
+ * default; `draft` is its own drafts, `all` its own in any status plus the
+ * platform's published. The platform's list already returns every status.
+ */
 export function listExams(
   scope: AuthoringScope,
-  params: { drafts?: boolean } = {},
+  params: { status?: "published" | "draft" | "all" } = {},
   signal?: AbortSignal,
 ): Promise<S["Page_ExamRead_"]> {
-  return platformRequest<S["Page_ExamRead_"]>(examListPath(scope), {
-    // An organisation narrows with `drafts`; the platform's list takes
-    // `status` for the same question.
-    query:
-      scope.kind === "org"
-        ? { drafts: params.drafts }
-        : { status: params.drafts ? "draft" : undefined, limit: 100 },
+  const path = examListPath(scope);
+  if (scope.kind === "org") {
+    return platformRequest<S["Page_ExamRead_"]>(path, { query: { status: params.status }, signal });
+  }
+  // The platform's list takes `status` for the drafts question.
+  return platformRequest<S["Page_ExamRead_"]>(path, {
+    query: { status: params.status === "draft" ? "draft" : undefined, limit: 100 },
     signal,
   });
 }

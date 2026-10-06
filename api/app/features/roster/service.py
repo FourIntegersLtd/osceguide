@@ -66,6 +66,7 @@ async def add_trainee(
             now=now,
         )
     await repository.link_trainee_to_user(session, org_id, trainee.id, user_id=existing.id)
+    await tenancy.grant_trainee_membership(session, org_id, existing.id)
     await session.refresh(trainee)
     return _trainee_read(trainee)
 
@@ -92,20 +93,24 @@ async def list_trainees(
     sat, programme_ids = await sittings.trainee_activity(
         session, org_id, [trainee.user_id for trainee in trainees if trainee.user_id is not None]
     )
-    names = await catalog.programme_names(
+    exams = await catalog.programme_exams(
         session, org_id, sorted({pid for pids in programme_ids.values() for pid in pids}, key=str)
     )
     people = await identity.user_refs_by_ids(
         session, [trainee.user_id for trainee in trainees if trainee.user_id is not None]
     )
+    members = await tenancy.member_user_ids(
+        session, org_id, [trainee.user_id for trainee in trainees if trainee.user_id is not None]
+    )
     for read in reads:
         if read.user_id is None:
             continue
         person = people.get(read.user_id)
+        read.is_member = read.user_id in members
         read.invitation_pending = person is not None and person.invitation_pending
         read.stations_sat = sat.get(read.user_id, 0)
         read.programme_names = sorted(
-            {names[pid] for pid in programme_ids.get(read.user_id, set()) if pid in names}
+            {exams[pid][0] for pid in programme_ids.get(read.user_id, set()) if pid in exams}
         )
     return reads, next_cursor
 
@@ -119,8 +124,12 @@ async def set_access(
     now: datetime,
 ) -> TraineeRead:
     """Revoke or restore a trainee's access to their organisation."""
-    await _require_trainee(session, org_id, trainee_id)
+    trainee = await _require_trainee(session, org_id, trainee_id)
     await repository.set_trainee_access(session, org_id, trainee_id, revoked_at=now if revoked else None)
+    if revoked:
+        await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
+    elif trainee.user_id is not None:
+        await tenancy.grant_trainee_membership(session, org_id, trainee.user_id)
     refreshed = await repository.trainee_by_id(session, org_id, trainee_id)
     return _trainee_read(refreshed)  # type: ignore[arg-type]
 
@@ -211,6 +220,8 @@ async def claim_roster_entries(session: AsyncSession, user_id: uuid.UUID, email:
     for trainee in await repository.trainees_by_email_everywhere(session, email):
         if trainee.user_id is None:
             await repository.link_trainee_to_user(session, trainee.org_id, trainee.id, user_id=user_id)
+            if trainee.access_revoked_at is None:
+                await tenancy.grant_trainee_membership(session, trainee.org_id, user_id)
 
 
 async def ensure_rosterable(session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]) -> None:

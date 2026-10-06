@@ -246,15 +246,21 @@ class PasswordResetConfirm(BaseModel):
     password: str = Field(min_length=1, max_length=512)
 
 
-class ChangePasswordRequest(BaseModel):
-    current_password: str = Field(min_length=1, max_length=512)
-    new_password: str = Field(min_length=1, max_length=512)
-
-
 class Accepted(BaseModel):
     """Returned where the answer must not depend on whether a record exists."""
 
     status: str = "accepted"
+
+
+class PasswordResetDone(Accepted):
+    """The account the token belonged to, so an invitation can sign it in."""
+
+    email: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=512)
+    new_password: str = Field(min_length=1, max_length=512)
 
 
 # --- The personal data export (E-5): `GET /me/export`.

@@ -16,7 +16,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
-from app.core.tenancy import OrgAdmin, OrgReader
+from app.core.tenancy import OrgAdmin, OrgStaff
 from app.features.stations import errors, schemas, service_templates
 
 router = APIRouter(tags=["stations"])
@@ -31,7 +31,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(Forbidden),
 )
 async def list_station_templates(
-    workspace: OrgReader,
+    workspace: OrgStaff,
     session: Session,
     page: Annotated[CursorParams, Depends()],
     search: str | None = None,

@@ -3,10 +3,9 @@ import {
   LuGauge,
   LuGraduationCap,
   LuLayers,
-  LuLayoutList,
   LuRadio,
   LuSparkles,
-  LuUserCog,
+  LuPencilRuler,
   LuUsers,
 } from "react-icons/lu";
 import type { NavContext, NavItem, ScreenName, SurfaceManifest } from "@/surfaces/contract";
@@ -21,38 +20,31 @@ import type { NavContext, NavItem, ScreenName, SurfaceManifest } from "@/surface
  */
 export function assessNav({ can, href }: NavContext): NavItem[] {
   /* The canvas draws two lists: the people who run the organisation and the
-   * people who sit its sittings. `read_org` is the line between them. */
-  const staff = can("read_org");
-  const items: NavItem[] = [];
-  if (staff) {
-    items.push(
-      { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
-      { key: "programmes", label: "Programmes", href: href("/programmes"), icon: LuLayoutList },
-      { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
-    );
-  }
-  /* The exam-day board is for the people who run circuits, and it names every
-   * candidate on them — which is why the backend gates it on staff rather than
-   * on being able to read the organisation. */
+   * people who sit its sittings. `run_circuits` is the line between them: the
+   * backend closes every staff read to a trainee, so a trainee is shown only
+   * their own items. */
+  /* The exam-day board names every candidate on a circuit, which is why the
+   * backend gates it on staff rather than on being able to read the organisation.
+   * The staff menu is the admin's list: what they run, who they run it for and
+   * what it is built from. Their own training is not in it. */
   if (can("run_circuits")) {
-    items.push({ key: "live", label: "Now running", href: href("/live"), icon: LuRadio });
+    return [
+      { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
+      { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
+      { key: "live", label: "Now running", href: href("/live"), icon: LuRadio },
+      { key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers },
+      { key: "build", label: "Build", href: href("/authoring"), icon: LuPencilRuler },
+    ];
   }
+  const items: NavItem[] = [];
   /*
-   * Everybody in the organisation, and deliberately ungated.
+   * Everybody else in the organisation, deliberately ungated.
    *
-   * There is no "is a trainee" permission and there should not be one: an
-   * examiner is often rostered onto something themselves, and the backend
-   * answers `/me/sittings` for whoever asks. Somebody on nothing sees an
-   * empty state, which is honest; hiding the item from them would hide it
-   * from the supervisor who is also a candidate.
+   * There is no "is a trainee" permission and there should not be one: the
+   * backend answers `/me/sittings` for whoever asks, and somebody on nothing
+   * sees an empty state, which is honest.
    */
   items.push({ key: "myTraining", label: "My training", href: href("/trainee"), icon: LuGraduationCap });
-  if (!staff) {
-    items.push(
-      { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
-      { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
-    );
-  }
   /*
    * Several stations on one clock.
    *
@@ -65,12 +57,6 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
    * personal one does and gets the same answer.
    */
   items.push({ key: "mocks", label: "Practice sessions", href: href("/mocks"), icon: LuLayers });
-  if (can("read_org")) {
-    items.push({ key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers });
-  }
-  if (can("manage_team")) {
-    items.push({ key: "team", label: "Team", href: href("/team"), icon: LuUserCog });
-  }
   /* One library station, alone. It sits with the other things to practise with. */
   items.push({
     key: "myPractice",

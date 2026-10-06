@@ -43,7 +43,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
         className="inline-flex items-center gap-1.5 text-osce-body font-medium text-accent hover:underline"
       >
         <HiOutlineArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
-        Rubrics
+        Marking schemes
       </button>
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
@@ -66,7 +66,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
             {(data.versions ?? []).length === 0 ? (
               <Panel padding="md">
                 <p className="text-osce-body text-ink-muted">
-                  This rubric has no versions yet. Cut a draft to start writing it.
+                  This marking scheme has no versions yet. Cut a draft to start writing it.
                 </p>
               </Panel>
             ) : null}

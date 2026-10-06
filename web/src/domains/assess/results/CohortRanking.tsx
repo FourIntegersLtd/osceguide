@@ -49,9 +49,11 @@ export function CohortRanking({ orgSlug, sittingId }: { orgSlug: string; sitting
           title={`${candidate.rank}. ${candidateName(candidate.trainee)}`}
           meta={`${cohortSubtitle(candidate)} · ${formatCompletion(candidate.completion_rate)} complete`}
           trailing={
-            <Badge variant={priorityTone(candidate.review_priority)} dot>
-              {PRIORITY_LABEL[candidate.review_priority] ?? candidate.review_priority}
-            </Badge>
+            candidate.review_priority ? (
+              <Badge variant={priorityTone(candidate.review_priority)} dot>
+                {PRIORITY_LABEL[candidate.review_priority] ?? candidate.review_priority}
+              </Badge>
+            ) : undefined
           }
         />
       ))}

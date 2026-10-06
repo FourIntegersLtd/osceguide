@@ -94,3 +94,12 @@ requests is still broken. Then run `node scripts/smoke.mjs` if you touched an `a
   decision with a recruitment outcome, release, candidate view).
 - Seed SCA stations link images on a made-up host; a station copied from one logs
   `ERR_NAME_NOT_RESOLVED` unless the links are stripped (fix-W1 does).
+- Trainees now get 403 on staff reads (trainees, cohorts, sittings, programmes, rubrics, templates, review and
+  dashboard routes; Phase 1 B4). A proof run that reads one as a candidate must expect 403, not data; the
+  trainee portal reads `/me/*` and `/orgs/{slug}/stations` only. An institution admin reads any slot's
+  transcript and marking (B7); only a supervisor needs to be named on the circuit.
+
+## Traps found walking a new org
+- A capability with `staffHiddenOn` plus `Capability` using `includeHidden` must not 404 staff (guard in `capabilities/registry.ts`).
+- A trainee lands on `/app/<org>/dashboard`; `AssessDashboard` must render TraineeHome when `run_circuits` is false.
+- An exam circuit is one candidate's sitting. Playwright through a route proxy hangs on SSE: `process.exit` at the end.

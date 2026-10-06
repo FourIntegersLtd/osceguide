@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Alert, Button } from "@/foundation/ui";
+import { useHydrated } from "@/foundation/hooks";
 import { login, type components, type MfaChallenge } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
@@ -64,6 +65,9 @@ function noticeTone(tone: AuthNoticeTone): "info" | "success" | "danger" {
  * served and called by nothing).
  */
 export default function Login() {
+  // Until hydrated the submit is inert: a native submit would put the password in the URL.
+  const hydrated = useHydrated();
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const examCode = normalizeExamCode(searchParams.get("appType"));
@@ -216,7 +220,7 @@ export default function Login() {
         </Alert>
       ) : null}
       {showPasswordForm && (
-        <form className="space-y-5" onSubmit={handleFormSubmission} noValidate>
+        <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
           <AuthFormField
             label="Email"
             name="email"
@@ -250,6 +254,7 @@ export default function Login() {
             fullWidth
             size="lg"
             isLoading={isSubmitting}
+            disabled={!hydrated}
             className={authButtonPrimary}
           >
             {isSubmitting ? "Signing you in…" : "Sign in"}

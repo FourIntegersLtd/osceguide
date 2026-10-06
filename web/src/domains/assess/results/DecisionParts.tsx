@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HiOutlinePaperAirplane } from "react-icons/hi2";
 import { Badge, Button, ConfirmModal, Select } from "@/foundation/ui";
 import { formatShortDateTime } from "@/foundation/format";
 import type { Decision } from "@/domains/assess/results/api";
@@ -66,6 +67,43 @@ export function ReopenButton({ busy, disabled, onConfirm }: { busy: boolean; dis
         title="Back to draft?"
         message="The sign-off is withdrawn and the decision becomes a draft you can change. It has to be signed off again before it can be released."
         confirmText="Back to draft"
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false);
+          onConfirm();
+        }}
+      />
+    </>
+  );
+}
+
+/** Releases signed-off results after a confirm, because it emails the candidates and cannot be undone. */
+export function ReleaseButton({
+  busy,
+  disabled,
+  count,
+  label,
+  onConfirm,
+}: {
+  busy: boolean;
+  disabled: boolean;
+  /** How many candidates the release emails. */
+  count: number;
+  label: string;
+  onConfirm: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const who = count === 1 ? "1 candidate" : `${count} candidates`;
+  return (
+    <>
+      <Button themeType="b2b" variant="commit" isLoading={busy} disabled={disabled} onClick={() => setConfirming(true)}>
+        <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden /> {label}
+      </Button>
+      <ConfirmModal
+        isOpen={confirming}
+        title={`Email ${who} their result?`}
+        message="Each can read their outcome as soon as it is released, and a released result is final."
+        confirmText="Release"
         onCancel={() => setConfirming(false)}
         onConfirm={() => {
           setConfirming(false);

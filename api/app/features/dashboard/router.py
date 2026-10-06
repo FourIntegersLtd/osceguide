@@ -17,7 +17,7 @@ from app.core.openapi import sse_responses
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.core.tenancy import OrgAdmin, OrgReader, may_read_org_policy, resolve_workspace
+from app.core.tenancy import OrgAdmin, OrgStaff, may_read_org_policy, resolve_workspace
 from app.features.dashboard import (
     errors,
     schemas,
@@ -93,7 +93,7 @@ async def read_my_sittings(
     response_model=schemas_org.OrgDashboard,
     responses=error_responses(Forbidden),
 )
-async def read_org_dashboard(workspace: OrgReader, session: Session) -> schemas_org.OrgDashboard:
+async def read_org_dashboard(workspace: OrgStaff, session: Session) -> schemas_org.OrgDashboard:
     """The institutional home screen: counts, setup state and recent sittings."""
     return await service_org.build_org_dashboard(session, workspace.org_id)
 
@@ -103,7 +103,7 @@ async def read_org_dashboard(workspace: OrgReader, session: Session) -> schemas_
     response_model=schemas_org.SupervisorCircuits,
     responses=error_responses(Forbidden),
 )
-async def read_supervisor_circuits(workspace: OrgReader, session: Session) -> schemas_org.SupervisorCircuits:
+async def read_supervisor_circuits(workspace: OrgStaff, session: Session) -> schemas_org.SupervisorCircuits:
     """The circuits assigned to the caller. Assigned, not all visible circuits."""
     return await service_org.supervisor_circuits(session, workspace.org_id, workspace.principal.user_id)
 
@@ -114,7 +114,7 @@ async def read_supervisor_circuits(workspace: OrgReader, session: Session) -> sc
     responses=error_responses(Forbidden, errors.CircuitNotFound),
 )
 async def read_circuit_console(
-    circuit_id: uuid.UUID, workspace: OrgReader, session: Session, clock: ClockDep
+    circuit_id: uuid.UUID, workspace: OrgStaff, session: Session, clock: ClockDep
 ) -> schemas_org.CircuitConsole:
     """The screen an examination is run from: session, stations, trainees, staff and feedback state."""
     return await service_console.build_console(session, workspace.org_id, circuit_id, now=clock.now())
@@ -165,7 +165,7 @@ async def read_sitting_report_csv(sitting_id: uuid.UUID, workspace: OrgAdmin, se
     responses=error_responses(Forbidden, errors.SittingNotFound, errors.NotAnExamSitting),
 )
 async def read_cohort_summary(
-    sitting_id: uuid.UUID, workspace: OrgReader, session: Session
+    sitting_id: uuid.UUID, workspace: OrgStaff, session: Session
 ) -> schemas_org.CohortSummary:
     """How this sitting's candidates compare, ranked. Completion ranks before score.
 

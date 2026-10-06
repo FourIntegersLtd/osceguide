@@ -1,5 +1,6 @@
 "use client";
 
+import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
 import { useCallback, useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
@@ -8,8 +9,6 @@ import { inviteMember, type Membership } from "@/domains/assess/team/api";
 import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
 import {
   ASSIGNABLE_ROLES,
-  ROLE_DESCRIPTIONS,
-  roleLabel,
   type AssignableRole,
 } from "@/domains/assess/team/support";
 

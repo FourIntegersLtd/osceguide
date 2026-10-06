@@ -94,15 +94,16 @@ async def list_sittings(
 async def _with_totals(
     session: AsyncSession, org_id: uuid.UUID, reads: list[SittingRead]
 ) -> list[SittingRead]:
-    """Fill each sitting's programme name and candidate count, two queries for the lot."""
-    names = await catalog.programme_names(
-        session, org_id, [read.programme_id for read in reads if read.programme_id]
-    )
+    """Fill each sitting's programme name, exam code and candidate count, a few queries for the lot."""
+    programme_ids = [read.programme_id for read in reads if read.programme_id]
+    exams = await catalog.programme_exams(session, org_id, programme_ids)
     counts = await repository_reads.candidate_counts_for_sittings(
         session, org_id, [read.id for read in reads]
     )
     for sitting in reads:
-        sitting.programme_name = names.get(sitting.programme_id) if sitting.programme_id else None
+        name, code = exams.get(sitting.programme_id, (None, None))
+        sitting.programme_name = name
+        sitting.exam_code = code
         sitting.candidate_count = counts.get(sitting.id, 0)
     return reads
 
