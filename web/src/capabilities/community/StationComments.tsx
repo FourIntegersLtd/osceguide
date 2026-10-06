@@ -74,7 +74,7 @@ export function StationComments({ stationId }: { stationId: string }) {
   );
 
   return (
-    <Card padding="md" className="flex h-[600px] flex-col md:h-[600px]">
+    <Card padding="md" scrollable={false} className="flex h-[600px] flex-col md:h-[600px]">
       <h3 className="mb-2 pb-2 text-osce-subheading font-semibold text-osce-ink-900 md:mb-4">
         Community Comments
       </h3>

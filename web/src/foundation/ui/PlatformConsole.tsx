@@ -7,6 +7,7 @@ import { HiOutlineChevronRight } from "react-icons/hi2";
 import { cn } from "@/foundation/ui/cn";
 import { Button } from "@/foundation/ui/Button";
 import { EmptyState } from "@/foundation/ui/EmptyState";
+import { cardScrollBody } from "@/foundation/ui/Card";
 
 /**
  * Staff console layout primitives.
@@ -92,6 +93,7 @@ export function Panel({
   actions,
   padding = "md",
   defaultOpen = true,
+  scrollable = true,
   className,
   children,
 }: {
@@ -101,6 +103,8 @@ export function Panel({
   /** `"none"` for a panel whose body is its own full-bleed list (rows carry their own padding). */
   padding?: "none" | "sm" | "md";
   defaultOpen?: boolean;
+  /** Off for a form whose in-flow dropdown would be cut off by the scroll cap. */
+  scrollable?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
@@ -151,7 +155,7 @@ export function Panel({
           ) : null}
         </header>
       ) : null}
-      <div hidden={!shown} className={bodyPadding}>
+      <div hidden={!shown} className={cn(bodyPadding, scrollable && cardScrollBody)}>
         {children}
       </div>
     </section>
@@ -179,7 +183,7 @@ export function RowList({
       className={cn(
         flush
           ? ""
-          : "overflow-hidden rounded-osce-lg border border-border bg-surface",
+          : cn("rounded-osce-lg border border-border bg-surface", cardScrollBody),
         className,
       )}
     >
@@ -380,7 +384,7 @@ export function FactList({
 }) {
   return (
     <dl
-      className={cn("grid gap-x-6 gap-y-4", FACT_COLUMNS[columns])}
+className={cn("grid gap-x-6 gap-y-4", FACT_COLUMNS[columns])}
     >
       {items.map((item) => (
         <div key={item.label} className="min-w-0">

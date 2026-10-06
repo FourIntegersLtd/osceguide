@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 import { HiChevronRight } from "react-icons/hi2";
+import { cardScrollBody } from "@/foundation/ui/Card";
 import { cn } from "@/foundation/ui/cn";
 import {
   b2cGroupedRow,
@@ -34,7 +35,7 @@ export function B2CGroupedSection({
         <h2 className={b2cMonoEyebrow}>{eyebrow}</h2>
         {action ? <div className="text-osce-body font-medium">{action}</div> : null}
       </div>
-      <div className={b2cGroupedShell}>{children}</div>
+      <div className={cn(b2cGroupedShell, cardScrollBody)}>{children}</div>
     </section>
   );
 }

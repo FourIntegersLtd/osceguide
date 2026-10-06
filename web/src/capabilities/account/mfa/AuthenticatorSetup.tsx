@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { Button, Input } from "@/foundation/ui";
 import { groupSecret, isCompleteTotp, normaliseTotp } from "@/capabilities/account/mfa/codes";
 
 /**
  * Add the account to an authenticator app, then prove it with a code.
  *
- * There is no QR code: drawing one needs a new dependency, and the two ways
- * shown cover every app. On a phone the `otpauth://` link opens the installed
- * authenticator directly; on a computer the key is typed in by hand.
+ * On a computer the phone scans the QR code; on a phone the `otpauth://` link
+ * opens the installed authenticator directly. The key is the fallback for apps
+ * that do neither. The QR code stays dark on white in both themes so it scans.
  */
 export function AuthenticatorSetup({
   secret,
@@ -38,11 +39,23 @@ export function AuthenticatorSetup({
       <ol className="list-decimal space-y-3 pl-5 text-osce-body text-ink">
         <li>
           Open an authenticator app such as Google Authenticator, Microsoft Authenticator or
-          1Password.{" "}
-          <a href={otpauthUri} className="font-medium text-accent hover:text-accent-hover">
-            Open in your authenticator app
-          </a>{" "}
-          if you are on your phone.
+          1Password and scan this code.
+          <QRCodeSVG
+            value={otpauthUri}
+            size={176}
+            marginSize={2}
+            bgColor="#ffffff"
+            fgColor="#000000"
+            title="QR code for your authenticator app"
+            className="my-2 block rounded-osce-lg border border-border"
+          />
+          <span className="block">
+            On your phone?{" "}
+            <a href={otpauthUri} className="font-medium text-accent hover:text-accent-hover">
+              Open in your authenticator app
+            </a>
+            .
+          </span>
         </li>
         <li>
           Or add an account by hand with this setup key:

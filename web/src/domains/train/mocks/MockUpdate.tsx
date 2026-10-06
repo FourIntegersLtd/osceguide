@@ -152,7 +152,7 @@ function UpdateForm({
 
   return (
     <form onSubmit={(event) => void handleUpdateMock(event)} className="max-w-[640px]">
-      <Panel title="Session">
+      <Panel title="Session" scrollable={false}>
         <div className="space-y-5">
           {successMessage && <Alert message={successMessage} type="success" />}
           {error && <Alert message={error} type="error" />}

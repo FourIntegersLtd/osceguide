@@ -60,9 +60,9 @@ export function OrganizationSettings({
     name.trim() !== organization.name || orgType !== organization.org_type;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="grid items-start gap-6 lg:grid-cols-2">
       <Panel title="Details">
-        <div className="flex max-w-lg flex-col gap-3">
+        <div className="flex flex-col gap-3">
           {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
 
           <Input
@@ -116,8 +116,10 @@ export function OrganizationSettings({
         </div>
       </Panel>
 
-      <ContractDates organization={organization} onChanged={onChanged} />
-      <StaffMfaPolicy organization={organization} onChanged={onChanged} />
+      <div className="flex flex-col gap-6">
+        <ContractDates organization={organization} onChanged={onChanged} />
+        <StaffMfaPolicy organization={organization} onChanged={onChanged} />
+      </div>
     </div>
   );
 }
@@ -160,7 +162,7 @@ function StaffMfaPolicy({
 
   return (
     <Panel title="Two-factor sign-in">
-      <div className="flex max-w-lg flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
         <p className="text-osce-body text-ink">
           {required
@@ -251,7 +253,7 @@ function ContractDates({
       title="Contract"
       description="When this organisation's access starts, and when it lapses."
     >
-      <div className="flex max-w-lg flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
         {!organization.contract_starts_at && !organization.contract_ends_at ? (
           <WriteOnlyNote>

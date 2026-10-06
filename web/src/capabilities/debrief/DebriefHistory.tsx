@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { HiChevronRight, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
-import { AsyncBoundary, Alert, Button, productTokens } from "@/foundation/ui";
+import { AsyncBoundary, Alert, Button, cardScrollBody, productTokens } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { debriefDate, listDebriefs } from "@/capabilities/debrief/api";
@@ -88,7 +88,7 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
       >
         {(debriefs) => (
           <>
-            <div className={`${b2cCard} overflow-hidden`}>
+            <div className={`${b2cCard} ${cardScrollBody}`}>
               {debriefs.map((debrief) => {
                 const created = debriefDate(debrief.created_at);
                 return (

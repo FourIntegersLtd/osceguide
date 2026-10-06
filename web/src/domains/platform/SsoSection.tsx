@@ -153,13 +153,19 @@ function SsoForm({
   ) => setForm((prev) => ({ ...prev, [key]: value }));
 
   return (
-    <div className="flex max-w-lg flex-col gap-4">
-      {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+    <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+      {error ? (
+        <div className="md:col-span-2">
+          <Alert tone="danger">{errorMessage(error)}</Alert>
+        </div>
+      ) : null}
 
       {config === null ? (
-        <WriteOnlyNote>
-          Organisation sign-in (single sign-on) is not set up yet. Fill in the fields below to set it up.
-        </WriteOnlyNote>
+        <div className="md:col-span-2">
+          <WriteOnlyNote>
+            Organisation sign-in (single sign-on) is not set up yet. Fill in the fields below to set it up.
+          </WriteOnlyNote>
+        </div>
       ) : null}
 
       <Select
@@ -223,7 +229,7 @@ function SsoForm({
         hint="One email domain per line, such as nhs.net. Anyone with a matching email address is offered organisation sign-in."
       />
 
-      <div className="flex flex-col gap-3 border-t border-border pt-4">
+      <div className="flex flex-col gap-3 border-t border-border pt-4 md:col-span-2">
         <Checkbox
           label="Enabled"
           description="Show this organisation's sign-in button."
@@ -245,7 +251,7 @@ function SsoForm({
         ) : null}
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end md:col-span-2">
         <Button disabled={busy} onClick={() => commit()}>
           {busy ? "Saving…" : "Save"}
         </Button>

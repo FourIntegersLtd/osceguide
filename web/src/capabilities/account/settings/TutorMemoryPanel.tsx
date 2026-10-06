@@ -164,7 +164,7 @@ function ActivityCard({ memory }: { memory: TutorMemory }) {
   if (memory.events.length === 0) return null;
   return (
     <SettingsSection eyebrow="What she has seen you do">
-      <SettingsRows>
+      <SettingsRows className="max-h-80 overflow-y-auto">
         {memory.events.map((event) => (
           <SettingsRow
             key={event.id}

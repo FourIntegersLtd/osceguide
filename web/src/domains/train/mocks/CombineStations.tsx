@@ -131,7 +131,7 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
 
       {incompleteIds.length === 0 ? null : (
         <form onSubmit={handleCreate} className="max-w-3xl">
-          <Panel title="Session details">
+          <Panel title="Session details" scrollable={false}>
             <div className="space-y-5">
               <div>
                 <label htmlFor="mock_name" className={productTokens.b2cFieldLabel}>

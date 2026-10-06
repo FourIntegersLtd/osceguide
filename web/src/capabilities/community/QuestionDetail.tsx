@@ -73,7 +73,7 @@ export function QuestionDetail({ questionId }: { questionId: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <header>
         <Back />
         <p className={cn(productTokens.b2cMonoEyebrow, "mt-4")}>

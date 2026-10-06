@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { IconType } from "react-icons";
 import { cn } from "@/foundation/ui/cn";
+import { cardScrollBody } from "@/foundation/ui/Card";
 import { b2cCard, b2cPanelCardHeader } from "@/foundation/ui/productTokens";
 import {
   B2CSectionIconBadge,
@@ -74,7 +75,7 @@ export function B2CPanelCardBody({
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-4 px-4 pb-5 pt-3 sm:px-5", className)}>{children}</div>
+    <div className={cn("space-y-4 px-4 pb-5 pt-3 sm:px-5", cardScrollBody, className)}>{children}</div>
   );
 }
 

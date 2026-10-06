@@ -5,7 +5,7 @@ export { cn } from "@/foundation/ui/cn";
 export { Button, getButtonClassName } from "@/foundation/ui/Button";
 export type { ButtonProps, ButtonVariant, ButtonSize, ButtonStyleProps } from "@/foundation/ui/Button";
 export { ButtonLink } from "@/foundation/ui/ButtonLink";
-export { Card, CardHeader, CardTitle, CardContent, CardFooter, getCardSurfaceClasses } from "@/foundation/ui/Card";
+export { Card, CardHeader, CardTitle, CardContent, CardFooter, cardScrollBody, getCardSurfaceClasses } from "@/foundation/ui/Card";
 export type { CardProps } from "@/foundation/ui/Card";
 export { Input, getInputClassName } from "@/foundation/ui/Input";
 export { Select } from "@/foundation/ui/Select";

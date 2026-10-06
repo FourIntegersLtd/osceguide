@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { cardScrollBody } from "@/foundation/ui/Card";
 import {
   b2cCard,
   b2cDashboardChartWell,
@@ -43,7 +44,7 @@ export default function ChartCard({
         </div>
         {action ? <div className="flex shrink-0 gap-2">{action}</div> : null}
       </div>
-      <div className={flat ? "" : "px-5 pb-5 pt-3"}>
+      <div className={flat ? "" : `px-5 pb-5 pt-3 ${cardScrollBody}`}>
       {loading ? (
         <div
           className="h-[220px] animate-pulse rounded-lg border border-b2c-border bg-b2c-surface-muted"

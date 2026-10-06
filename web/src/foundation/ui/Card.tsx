@@ -8,6 +8,8 @@ export interface CardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "t
   title?: React.ReactNode;
   description?: React.ReactNode;
   actions?: React.ReactNode;
+  /** Cap the card at `cardScrollBody` and scroll what overflows. Off for a card that sizes itself. */
+  scrollable?: boolean;
 }
 
 export const cardPaddingMap = {
@@ -16,6 +18,15 @@ export const cardPaddingMap = {
   md: "p-5 sm:p-6",
   lg: "p-6",
 } as const;
+
+/**
+ * A card stops growing past this height and scrolls its body instead, so one
+ * long list or transcript never pushes the rest of the screen out of reach.
+ * Card primitives with a header put it on the body, so the header stays put;
+ * headerless cards and bare lists scroll as a whole. Opt out with
+ * `scrollable={false}`, or `max-h-none` in className where there is no prop.
+ */
+export const cardScrollBody = "max-h-[min(40rem,70vh)] overflow-y-auto";
 
 /**
  * The canonical card surface — the single definition of "a card".
@@ -47,7 +58,10 @@ export function getCardSurfaceClasses({
  * points, one set of borders.
  */
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, themeType = "b2c", padding = "none", title, description, actions, children, ...props }, ref) => {
+  (
+    { className, themeType = "b2c", padding = "none", title, description, actions, scrollable = true, children, ...props },
+    ref,
+  ) => {
     const surface = getCardSurfaceClasses({ themeType });
     const ink = themeType === "b2b" ? "text-b2b-headline" : "text-osce-ink-900";
     const hasHeader = Boolean(title || actions);
@@ -55,7 +69,13 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={cn(surface, ink, !hasHeader && cardPaddingMap[padding], className)}
+        className={cn(
+          surface,
+          ink,
+          !hasHeader && cardPaddingMap[padding],
+          !hasHeader && scrollable && cardScrollBody,
+          className,
+        )}
         {...props}
       >
         {hasHeader && (
@@ -73,7 +93,11 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
             {actions && <div className="shrink-0">{actions}</div>}
           </header>
         )}
-        {children != null && (hasHeader ? <div className="px-5 pb-5 pt-3">{children}</div> : children)}
+        {children != null && (hasHeader ? (
+            <div className={cn("px-5 pb-5 pt-3", scrollable && cardScrollBody)}>{children}</div>
+          ) : (
+            children
+          ))}
       </div>
     );
   },

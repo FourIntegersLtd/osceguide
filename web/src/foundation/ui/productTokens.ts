@@ -14,7 +14,7 @@
  */
 /** * Shared Tailwind class strings for B2C app surfaces. * Primary CTAs: classic landing blue (`Button variant="primary"` / `b2cButtonPrimary`). * Links / accents: `b2c-primary`, `b2cLink`. * * See `docs/DESIGN.md`. */
 import { getButtonClassName } from "@/foundation/ui/buttonStyles";
-import { getCardSurfaceClasses } from "@/foundation/ui/Card";
+import { cardScrollBody, getCardSurfaceClasses } from "@/foundation/ui/Card";
 import { getInputClassName } from "@/foundation/ui/inputStyles";
 const b2cIconFocus =
   "focus:outline-none focus:ring-2 focus:ring-osce-accent/20 focus:ring-offset-1 rounded-md";
@@ -35,7 +35,7 @@ export const SCA_ABOUT_BAND_MODAL_WIDTH = "480px";
 export const b2cDashboardChartWell =
   "rounded-control bg-b2c-surface-muted p-3 sm:p-4";
 export const b2cCardPadding = "p-4 sm:p-5";
-export const b2cPanelDivided = `${b2cCard} overflow-hidden divide-y divide-b2c-border-light`;
+export const b2cPanelDivided = `${b2cCard} ${cardScrollBody} divide-y divide-b2c-border-light`;
 export const b2cFieldLabel = "text-osce-meta text-b2c-text-muted";
 export const b2cFieldValue = "text-osce-body font-medium text-osce-ink-900";
 

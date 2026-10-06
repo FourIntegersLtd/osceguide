@@ -101,9 +101,8 @@ async def _with_totals(
         session, org_id, [read.id for read in reads]
     )
     for sitting in reads:
-        name, code = exams.get(sitting.programme_id, (None, None))
-        sitting.programme_name = name
-        sitting.exam_code = code
+        if sitting.programme_id in exams:
+            sitting.programme_name, sitting.exam_code = exams[sitting.programme_id]
         sitting.candidate_count = counts.get(sitting.id, 0)
     return reads
 
