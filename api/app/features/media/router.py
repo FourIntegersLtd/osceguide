@@ -204,14 +204,14 @@ async def create(body: schemas.CreateMedia, admin: PlatformAdmin, session: Sessi
     )
 
 
-# Replaces a draft's editable fields. Refuses once the item is published.
+# Replaces an item's fields. Once published, only its details (title, summary, exam) may change.
 @router.patch(
     "/media/{item_id}",
     response_model=schemas.MediaRead,
     responses=error_responses(Forbidden, errors.ItemNotFound, errors.NotEditableError, errors.BeingProduced),
 )
 async def update(
-    item_id: uuid.UUID, body: schemas.UpdateMedia, admin: PlatformAdmin, session: Session
+    item_id: uuid.UUID, body: schemas.UpdateMedia, admin: PlatformAdmin, session: Session, index: Index
 ) -> schemas.MediaRead:
     return await service.update(
         session,
@@ -221,6 +221,7 @@ async def update(
         content=body.content,
         exam_code=body.exam_code,
         edited_by=admin.user_id,
+        index=index,
     )
 
 

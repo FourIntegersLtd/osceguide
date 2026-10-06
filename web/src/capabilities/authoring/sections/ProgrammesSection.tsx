@@ -75,6 +75,8 @@ export function ProgrammesSection() {
       >
         {items.map((programme) => {
           const active = programme.status === "active";
+          // A draft has never been active, so "Reactivate" would say something untrue.
+          const switchLabel = active ? "Retire" : programme.status === "draft" ? "Activate" : "Reactivate";
           const statusBusy = action.busy === `status:${programme.id}`;
           return (
             <AuthoringListRow
@@ -94,7 +96,7 @@ export function ProgrammesSection() {
               <AuthoringRowActions>
                 <AuthoringIconAction
                   variant={active ? "warning" : "primary"}
-                  label={active ? "Retire" : "Reactivate"}
+                  label={switchLabel}
                   busy={statusBusy}
                   busyLabel="Saving…"
                   disabled={action.busy !== null}

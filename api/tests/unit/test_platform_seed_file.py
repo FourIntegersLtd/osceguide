@@ -12,6 +12,7 @@ the moment somebody is setting up a database and has nothing else to go on.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
 
@@ -101,3 +102,38 @@ def test_sca_keeps_its_score_anchors() -> None:
         "Explores two ICE elements but misses opportunities."
     )
     assert "Key aspects:" in competencies["discovers_ice"]["instructions"]
+
+
+def test_the_committed_seed_is_what_the_generator_writes() -> None:
+    """A hand edit to the seed is lost on the next regeneration, and a generator fix never ships without one.
+
+    Both happened: SCA's live domains were set by hand in the file, and the
+    acronym fix to `humanise` never reached it, so staging still read "Discovers ice".
+    """
+    script = SEED.parents[1] / "scripts/generate_platform_seed.py"
+    spec = importlib.util.spec_from_file_location("generate_platform_seed", script)
+    assert spec is not None and spec.loader is not None
+    generator = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(generator)
+    generated, _ = generator.build()
+    assert generated == json.loads(SEED.read_text())
+
+
+def test_sca_marks_tasks_and_relating_live_and_reads_ice_as_initials() -> None:
+    sca = next(exam for exam in EXAMS if exam["code"] == "sca")
+    domains = {
+        section["id"]: section
+        for section in sca["rubric"]["structure"]["sections"]
+        if section["kind"] == "domain"
+    }
+    assert {domain_id for domain_id, section in domains.items() if section["live"]} == {
+        "tasks",
+        "relating_to_others",
+    }
+    labels = {
+        competency["id"]: competency["label"]
+        for section in domains.values()
+        for competency in section["competencies"]
+    }
+    assert labels["discovers_ice"] == "Discovers ICE"
+    assert labels["shares_ice_plan"] == "Shares ICE plan"

@@ -23,7 +23,7 @@ import {
   type Machinery,
   type TutorMemoryReindex,
 } from "@/domains/platform/support/api";
-import { formatMoment, jobStatusTone } from "@/domains/platform/support";
+import { formatDetail, formatMoment, humanise, jobStatusTone, jobTaskLabel } from "@/domains/platform/support";
 
 type JobStatus = "failed" | "todo" | "doing" | "succeeded";
 
@@ -34,9 +34,28 @@ const JOB_LABELS: Record<JobStatus, string> = {
   succeeded: "Succeeded",
 };
 
+/** procrastinate's status in the words the tabs use; an unknown one is still readable. */
+function jobLabel(status: string): string {
+  const labels: Record<string, string> = JOB_LABELS;
+  return labels[status] ?? humanise(status);
+}
+
 const JOB_TABS: B2CSegmentedTabItem<JobStatus>[] = (
   Object.keys(JOB_LABELS) as JobStatus[]
 ).map((id) => ({ id, label: JOB_LABELS[id] }));
+
+/** What procrastinate's event log says happened to a task, in words. */
+const JOB_EVENT_LABELS: Record<string, string> = {
+  deferred: "queued",
+  started: "started",
+  scheduled: "retry set",
+  deferred_for_retry: "sent back",
+  retried: "retried",
+  failed: "failed",
+  succeeded: "done",
+  cancelled: "cancelled",
+  aborted: "stopped",
+};
 
 /**
  * Is the platform working, not only up: the queue, the worker, the Cloud cap.
@@ -137,7 +156,7 @@ export function Ops() {
 
       <Panel
         title="Background tasks"
-        description="To retry a failed marking, open the attempt it belongs to."
+        description="A task whose worker stopped mid-run is tried once more after three minutes, then marked failed. To retry a failed marking, open the attempt it belongs to."
         actions={
           <B2CSegmentedTabs
             items={JOB_TABS}
@@ -164,16 +183,23 @@ export function Ops() {
                 <Row key={job.id}>
                   <div className="min-w-0">
                     <p className="text-osce-data font-medium text-ink">
-                      #{job.id} · {job.task_name}
+                      #{job.id} · {jobTaskLabel(job.task_name)}
                     </p>
                     <p className="truncate text-osce-meta text-ink-subtle">
-                      {Object.entries(job.args)
-                        .map(([key, value]) => `${key}=${String(value)}`)
-                        .join(" · ")}{" "}
-                      · {job.attempts} runs
+                      {[formatDetail(job.args), `${job.attempts} ${job.attempts === 1 ? "run" : "runs"}`]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
+                    {job.status === "failed" && (job.events ?? []).length > 0 ? (
+                      <p className="text-osce-meta text-ink-subtle">
+                        {(job.events ?? [])
+                          .map((event) => `${JOB_EVENT_LABELS[event.type] ?? humanise(event.type)} ${formatMoment(event.at)}`)
+                          .join(" → ")}
+                        . The error itself is in the worker log.
+                      </p>
+                    ) : null}
                   </div>
-                  <Badge tone={jobStatusTone(job.status)}>{job.status}</Badge>
+                  <Badge tone={jobStatusTone(job.status)}>{jobLabel(job.status)}</Badge>
                 </Row>
               ))}
             </RowList>

@@ -26,7 +26,7 @@ Checked against the code on 2026-09-29.
 `capabilities/authoring/api/scope.ts` names the backend's asymmetries:
 
 - Programmes exist only for an organisation.
-- A brief edit and throwing away a station draft are org-only. The catalogue archives a station version instead (decision D4).
+- A brief edit is org-only. Throwing away a station draft is both: the platform has `DELETE /platform/stations/{id}/versions/{n}`, and a station whose last version goes is deleted with it.
 - Drafting a station from a prompt with no template is platform-only (`POST /platform/generate/station`). An organisation generates through its autogenerate-draft route, which needs a published template.
 - A platform exam cannot be deleted; it is retired. An organisation's exam can (`DELETE /orgs/{org_slug}/exams/{exam_id}`, refused with `exam_in_use`). A template is removed only when its last draft version is deleted.
 
@@ -89,7 +89,7 @@ Board elements in the quiet canvas (claude.ai/artifact/N1BqEe2yaLUbht9ePqt7xZ) t
 | U-14 | Media item | Locked for trial users setting (lock is computed per reader); specialty select | migration; field |
 | U-15 | Messages | Tab counts; star rating and may-quote-with-name | field; migration |
 | U-16 | Moderation | Flagged by N users, Keep action, flagged-only list (posts have no flag entity) | migration |
-| U-17 | Assess and hire | Programme purpose and pages; trainee programme view; self-serve organisation sign-up; organisation settings and SSO tabs; shared review; candidate accept page (invitation emails link to /accept-invitation, web has no route) | migration and route |
+| U-17 | Assess and hire | Programme purpose and detail pages; trainee programme view (the mock screens were deleted 2026-10-06; build them on real routes); self-serve organisation sign-up; organisation settings and SSO tabs; shared review | migration and route |
 
 ## Open: enterprise readiness
 
@@ -142,11 +142,12 @@ per version, Microsoft Entra SSO, and a gated staging-to-production promotion.
 | # | Question | Recommendation on record |
 |---|---|---|
 | D2 | A released result now includes the 0–100 score (`GET /me/results/{sitting_id}`). Show it against a pass threshold? | A threshold is not stored on the decision, so the API does not send one. Keep that until an examiner sets a bar |
-| D4 | Platform stations have no brief edit and no draft-version delete, and programmes are org-only. Platform template drafts can be deleted | Keep unless staff actually author briefs |
+| D4 | Platform stations have no brief edit, and programmes are org-only. Platform template drafts can be deleted | Keep unless staff actually author briefs |
 | D7 | Adding a candidate to a live **exam** circuit is refused (`not_permitted_in_mode`), as legacy did | Confirm. A second candidate means one room, one clock and one transcript marked as one doctor's |
 | D8 | Deleting a practice set that has been sat is refused (`set_has_attempts`); legacy orphaned the recordings | Keep. Self-service deletion would be its own audited action |
 | D9 | Deleting a non-empty group or in-use cohort is refused | Keep. Residual hole: a cohort that only scheduled sittings is deletable and detaches them |
 | D10 | A re-sent invitation spends the previous unused link | Confirm supersede; keeping the old link live is a one-line change |
+| D11 | B57: rostering a trainee (`POST /trainees`) links an account but grants no membership, so the candidate's portal (`/app/<org>/trainee/...`) is "Page not found" and `/me/sittings` answers `org_slug: null`. Should rostering grant a `trainee` membership (and revoke it on removal)? | Yes, in `roster.add_trainee` through `tenancy`; but the Team list shows every membership, so decide first whether trainees appear there or the list filters `END_USER_ROLES` |
 | — | Live marking: a rubric a supervisor fills **during** a consultation, independent of machine scoring (`LiveMarkingSidebar` marks finished stations only) | Out of scope until wanted; it is a redesign against `marking_layout` |
 | — | Preferences: AI-training consent, colleague-waiting email, onboarding replay | Decide which are worth storing |
 | — | Push notifications. `web-push` is not a dependency, and legacy's service worker never sent one | Decide whether wanted at all |
@@ -194,8 +195,7 @@ Each is deliberate and explained in the code where it lives.
   takes a title; legacy had one box.
 - **Station images are a plain `<img>`**, not `next/image`: their hosts are not
   configured, and an unconfigured host is a runtime error.
-- **Not surfaced on purpose:** `recruitment_outcome` on exam results (belongs
-  to hire), ranking on training circuits (`not_an_exam_sitting`), the inert
+- **Not surfaced on purpose:** ranking on training circuits (`not_an_exam_sitting`), the inert
   cohort archive field. The live console hides Edit when the circuit cannot be
   rebuilt, and the edit screen says why (`editable` / `edit_block` on the
   console frame). It does not call `GET /orgs/{org_slug}/circuits/{circuit_id}/edit-lock`

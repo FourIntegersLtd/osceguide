@@ -2229,7 +2229,8 @@ export interface paths {
         };
         /**
          * Read My Payout Details
-         * @description This person's own bank details for referral payouts, sort code in full, account number masked.
+         * @description This person's own bank details for referral payouts, sort code in full, account number masked;
+         *     null when none are saved yet.
          */
         get: operations["growth_read_my_payout_details"];
         /**
@@ -2293,7 +2294,7 @@ export interface paths {
         };
         /**
          * Read My Result
-         * @description Released revisions only, and narrower than the internal record.
+         * @description Released revisions only, and narrower than the internal record. Null until one is released.
          */
         get: operations["results_read_my_result"];
         put?: never;
@@ -2381,6 +2382,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/slots/{slot_id}/brief": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Slot Brief
+         * @description The reading brief for one of the caller's slots, once the circuit has reached it.
+         *
+         *     Whatever the station's source (the org's own or the platform library), and
+         *     before the patient is dispatched — the attempt's brief exists only after.
+         */
+        get: operations["sittings_read_slot_brief"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/slots/{slot_id}/review": {
         parameters: {
             query?: never;
@@ -2391,7 +2415,7 @@ export interface paths {
         /**
          * Read My Slot Review
          * @description A candidate's own review of one of their slots, once their result is
-         *     released and the GP lead has completed one. Never for a slot not theirs.
+         *     released and the GP lead has completed one; null before. Never for a slot not theirs (404).
          */
         get: operations["reviews_read_my_slot_review"];
         put?: never;
@@ -4403,7 +4427,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Read Decision */
+        /**
+         * Read Decision
+         * @description Null until somebody records one: no decision yet is an ordinary state, not an error.
+         */
         get: operations["results_read_decision"];
         /**
          * Save Decision
@@ -6202,7 +6229,8 @@ export interface paths {
         };
         /**
          * Read Config
-         * @description The whole arrangement, including the issuer and every binding.
+         * @description The whole arrangement, including the issuer and every binding. `null` when
+         *     the organisation has none yet; an unknown organisation is a 404.
          */
         get: operations["sso_read_config"];
         /**
@@ -6784,7 +6812,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Platform Station Version
+         * @description Only a draft: a published version is what an attempt was assessed against, so it is archived.
+         */
+        delete: operations["stations_delete_platform_station_version"];
         options?: never;
         head?: never;
         /** Edit Platform Station Version */
@@ -9455,10 +9487,18 @@ export interface components {
         DirectorySummary: {
             /** Exams */
             exams: components["schemas"]["ExamDirectorySummary"][];
+            /** Paid */
+            paid: number;
             /** Total */
             total: number;
+            /** Trial */
+            trial: number;
             /** Unassigned */
             unassigned: number;
+            /** Unassigned Paid */
+            unassigned_paid: number;
+            /** Unassigned Trial */
+            unassigned_trial: number;
         };
         /**
          * DirectoryUser
@@ -9729,7 +9769,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "claim_outside_item" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "cv_not_found" | "debrief_not_found" | "decision_revised" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "fact_check_running" | "forbidden" | "generation_empty" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "import_not_ready" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_bucket" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_exam_code" | "invalid_exam_settings" | "invalid_import_file" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rating" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_trial_transcript" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invoice_not_editable" | "invoice_not_found" | "knowledge_unavailable" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "marker_unavailable" | "media_already_published" | "media_being_produced" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "not_a_media_block" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "payout_details_not_found" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_code_taken" | "plan_not_available" | "plan_not_found" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "price_creation_failed" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "reporter_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "review_not_found" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "script_not_checked" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_being_produced" | "station_flag_not_found" | "station_has_no_template" | "station_import_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
+            code: "account_suspended" | "already_published" | "already_queued" | "assistant_session_not_found" | "assistant_session_not_joinable" | "assistant_session_not_ready" | "assistant_session_not_yours" | "attempt_in_progress" | "attempt_limit_reached" | "attempt_mismatch" | "attempt_not_finished" | "attempt_not_found" | "attempt_not_joinable" | "attempt_not_ready" | "attempt_not_yours" | "audience_not_yours" | "av_already_running" | "av_unavailable" | "billing_event_not_found" | "cannot_claim_own_post" | "checkout_failed" | "circuit_already_ended" | "circuit_locked" | "circuit_not_found" | "circuit_not_live" | "circuit_not_paused" | "circuit_not_started" | "circuit_paused" | "claim_outside_item" | "cohort_exists" | "cohort_in_use" | "cohort_not_found" | "conflict" | "content_too_long" | "contract_dates_out_of_order" | "cv_not_found" | "debrief_not_found" | "decision_revised" | "draft_exists" | "email_taken" | "empty_content" | "empty_query" | "entitlement_not_found" | "evidence_changed" | "exam_already_chosen" | "exam_already_imported" | "exam_code_taken" | "exam_in_use" | "exam_not_in_pilot" | "exam_not_publishable" | "exam_rubric_not_ready" | "fact_check_running" | "forbidden" | "generation_empty" | "generation_profile_not_found" | "generation_unavailable" | "gone" | "group_exists" | "group_not_empty" | "group_not_found" | "import_not_ready" | "incompatible_outcomes" | "internal_error" | "invalid_attempt_state" | "invalid_audience" | "invalid_author_filter" | "invalid_avatar_file" | "invalid_bucket" | "invalid_circuit" | "invalid_credentials" | "invalid_cv_file" | "invalid_date_range" | "invalid_email" | "invalid_exam_code" | "invalid_exam_settings" | "invalid_import_file" | "invalid_input" | "invalid_invoice_line" | "invalid_legacy_token" | "invalid_media_status" | "invalid_message" | "invalid_mfa_code" | "invalid_photo" | "invalid_rating" | "invalid_refresh_token" | "invalid_reset_token" | "invalid_review_status" | "invalid_rubric" | "invalid_saml_connection" | "invalid_signature" | "invalid_sso_binding" | "invalid_trial_transcript" | "invalid_webhook" | "invalid_workflow" | "invitation_not_pending" | "invoice_not_editable" | "invoice_not_found" | "knowledge_unavailable" | "last_admin" | "legacy_account_not_imported" | "legacy_exchange_unavailable" | "marker_unavailable" | "media_already_published" | "media_being_produced" | "media_not_deletable" | "media_not_editable" | "media_not_found" | "media_wrong_kind" | "membership_exists" | "membership_not_found" | "message_not_found" | "mfa_already_enrolled" | "mfa_challenge_expired" | "mfa_not_enrolled" | "mfa_required_by_policy" | "no_active_station" | "not_a_media_block" | "not_a_member" | "not_a_partner_reporter" | "not_an_exam_sitting" | "not_archivable" | "not_deletable" | "not_editable" | "not_entitled" | "not_found" | "not_permitted_in_mode" | "not_signable" | "not_your_post" | "nothing_to_debrief" | "nothing_to_review" | "org_not_found" | "org_slug_taken" | "organization_suspended" | "partner_unavailable" | "password_change_required" | "password_login_disabled" | "payment_already_recorded" | "payment_not_found" | "payout_account_number_required" | "peer_session_not_found" | "peer_session_not_open" | "photo_not_on_station" | "photo_storage_unavailable" | "plan_code_taken" | "plan_not_available" | "plan_not_found" | "platform_admin_exists" | "post_not_found" | "post_not_yours" | "post_unavailable" | "practice_access_exists" | "practice_feedback_not_open" | "practice_session_ended" | "practice_session_not_accepted" | "practice_session_not_found" | "price_creation_failed" | "programme_exists" | "programme_not_found" | "programme_required" | "queue_entry_not_found" | "receipt_not_found" | "recruitment_outside_exam" | "referral_code_taken" | "referral_discount_unavailable" | "referral_not_found" | "referral_not_redeemed" | "reporter_not_found" | "result_not_found" | "result_not_released" | "review_conflict" | "review_incomplete" | "rubric_not_found" | "rubric_version_not_found" | "rubric_version_not_published" | "saml_connection_not_found" | "scim_invalid_filter" | "scim_invalid_value" | "scim_mutability" | "scim_not_found" | "scim_token_not_found" | "scim_unauthorized" | "scim_uniqueness" | "script_not_checked" | "set_entry_has_attempts" | "set_entry_not_found" | "set_has_attempts" | "set_locked" | "set_not_found" | "sitting_locked" | "sitting_not_found" | "slot_already_claimed" | "slot_not_found" | "slug_taken" | "sso_binding_taken" | "sso_login_unavailable" | "sso_not_configurable" | "sso_not_configured" | "sso_provider_unsupported" | "sso_verification_failed" | "station_being_produced" | "station_flag_not_found" | "station_has_no_template" | "station_import_not_found" | "station_not_found" | "station_not_on_circuit" | "station_not_published" | "station_template_not_found" | "station_template_version_not_found" | "station_version_not_usable" | "tag_too_long" | "template_not_published" | "too_early_to_join" | "too_many_requests" | "too_many_tags" | "tool_arguments_invalid" | "trainee_already_on_circuit" | "trainee_exists" | "trainee_in_use" | "trainee_not_found" | "trainee_not_on_roster" | "trainee_revoked" | "tutor_note_not_found" | "unauthenticated" | "unavailable" | "unknown_assistant_type" | "unknown_exam" | "unknown_media_kind" | "unknown_partner" | "unknown_plan" | "unknown_sso_provider" | "unknown_tool" | "unusable_title" | "user_not_found" | "version_not_found" | "voice_unavailable" | "weak_password";
             /** Details */
             details?: {
                 [key: string]: unknown;
@@ -10542,6 +10582,19 @@ export interface components {
             label: string;
         };
         /**
+         * JobEventRead
+         * @description One step of a job's history: `deferred`, `started`, `deferred_for_retry`, `failed`, …
+         */
+        JobEventRead: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Type */
+            type: string;
+        };
+        /**
          * JobRead
          * @description One queued job as procrastinate holds it.
          */
@@ -10552,6 +10605,11 @@ export interface components {
             };
             /** Attempts */
             attempts: number;
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["JobEventRead"][];
             /** Id */
             id: number;
             /** Queue Name */
@@ -14120,6 +14178,26 @@ export interface components {
             email: string;
         };
         /**
+         * SlotBriefRead
+         * @description A candidate's reading brief for one of their slots, during reading time and after.
+         */
+        SlotBriefRead: {
+            /**
+             * Sections
+             * @default []
+             */
+            sections: components["schemas"]["AudienceSectionRead"][];
+            /**
+             * Slot Id
+             * Format: uuid
+             */
+            slot_id: string;
+            /** Station Title */
+            station_title: string;
+            /** Text */
+            text?: string | null;
+        };
+        /**
          * SlotRagSummary
          * @description What several reviewers of one slot agreed, or did not, in the rubric's own rating.
          *
@@ -15019,6 +15097,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Invitation Pending
+             * @default false
+             */
+            invitation_pending: boolean;
             /** Last Name */
             last_name: string | null;
             /** Programme Names */
@@ -15468,6 +15551,8 @@ export interface components {
             facts?: {
                 [key: string]: unknown;
             } | null;
+            /** Title */
+            title?: string | null;
         };
         /** UserRead */
         UserRead: {
@@ -22499,20 +22584,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PayoutDetailsRead"];
+                    "application/json": components["schemas"]["PayoutDetailsRead"] | null;
                 };
             };
             /** @description unauthenticated, account_suspended */
             401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description payout_details_not_found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22654,20 +22730,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TraineeResultRead"];
+                    "application/json": components["schemas"]["TraineeResultRead"] | null;
                 };
             };
             /** @description unauthenticated, account_suspended */
             401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description result_not_released */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22856,6 +22923,64 @@ export interface operations {
             };
         };
     };
+    sittings_read_slot_brief: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotBriefRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description slot_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description circuit_not_started */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reviews_read_my_slot_review: {
         parameters: {
             query?: never;
@@ -22873,7 +22998,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MySlotReviewRead"];
+                    "application/json": components["schemas"]["MySlotReviewRead"] | null;
                 };
             };
             /** @description unauthenticated, account_suspended */
@@ -22885,7 +23010,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description review_not_found */
+            /** @description slot_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -25818,20 +25943,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CircuitReviewRead"];
+                    "application/json": components["schemas"]["CircuitReviewRead"] | null;
                 };
             };
             /** @description forbidden, organization_suspended */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description review_not_found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -27345,6 +27461,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description last_admin */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -27393,6 +27518,15 @@ export interface operations {
             };
             /** @description membership_not_found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description last_admin */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -27564,6 +27698,15 @@ export interface operations {
             };
             /** @description membership_not_found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description last_admin */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -29955,20 +30098,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DecisionRead"];
+                    "application/json": components["schemas"]["DecisionRead"] | null;
                 };
             };
             /** @description forbidden, organization_suspended */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description result_not_found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -30023,7 +30157,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description trainee_not_found */
+            /** @description trainee_not_found, sitting_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -30041,7 +30175,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description incompatible_outcomes */
+            /** @description incompatible_outcomes, recruitment_outside_exam */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -30563,20 +30697,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GpLeadReviewRead"];
+                    "application/json": components["schemas"]["GpLeadReviewRead"] | null;
                 };
             };
             /** @description forbidden, organization_suspended */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description review_not_found */
-            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -30720,7 +30845,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SlotReviewRead"];
+                    "application/json": components["schemas"]["SlotReviewRead"] | null;
                 };
             };
             /** @description forbidden, organization_suspended */
@@ -30732,7 +30857,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description slot_not_found, review_not_found */
+            /** @description slot_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -31887,7 +32012,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description version_not_found */
+            /** @description version_not_found, station_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -35266,13 +35391,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description contract_dates_out_of_order */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -35374,13 +35499,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description contract_dates_out_of_order */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -35599,6 +35724,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description last_admin */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -35694,6 +35828,15 @@ export interface operations {
             };
             /** @description org_not_found, membership_not_found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description last_admin */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -35829,7 +35972,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SsoConfigRead"];
+                    "application/json": components["schemas"]["SsoConfigRead"] | null;
                 };
             };
             /** @description unauthenticated, account_suspended */
@@ -35850,7 +35993,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description sso_not_configured */
+            /** @description org_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -35912,7 +36055,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description sso_not_configured */
+            /** @description org_not_found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -38150,6 +38293,81 @@ export interface operations {
             };
             /** @description station_not_found, version_not_found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description draft_exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stations_delete_platform_station_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                station_id: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description station_not_found, version_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description not_deletable */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -61,8 +61,6 @@ export const supportsProgrammes = (s: AuthoringScope) => s.kind === "org";
 export const supportsBrief = (s: AuthoringScope) => s.kind === "org";
 /** Fact checking a station against the guidelines is the catalogue's alone. */
 export const supportsFactCheck = (s: AuthoringScope) => s.kind === "platform";
-/** Throwing a draft away is org-only; the catalogue archives instead. */
-export const supportsVersionDelete = (s: AuthoringScope) => s.kind === "org";
 /**
  * Drafting a station from a prompt alone, with no template behind it.
  *

@@ -767,3 +767,39 @@ async def test_a_finished_circuit_cannot_be_rebuilt(
     )
     assert response.status_code == 409
     assert response.json()["code"] == "circuit_already_ended"
+
+
+async def test_ending_a_circuit_succeeds_when_livekit_cannot_remove_the_patient(
+    client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
+) -> None:  # type: ignore[no-untyped-def]
+    """B19. LiveKit unconfigured or down must not leave a circuit impossible to end."""
+    from structlog.testing import capture_logs
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, _ = await a_started_circuit(client, db_session, org_id, admin)
+    agents.fail_remove = True
+
+    with capture_logs() as logs:
+        response = await client.post(f"/api/v1/orgs/kings/circuits/{circuit_id}/end", headers=bearer(admin))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["ended_at"] is not None
+    warnings = [e for e in logs if e["log_level"] == "warning"]
+    assert [(e["event"], e["circuit_id"]) for e in warnings] == [
+        ("could not remove the patient from the room", circuit_id)
+    ]
+
+
+async def test_leaving_a_consultation_succeeds_when_livekit_cannot_remove_the_patient(
+    client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, _ = await a_started_circuit(client, db_session, org_id, admin)
+    url = f"/api/v1/orgs/kings/circuits/{circuit_id}/advance"
+    await client.post(url, json={}, headers=bearer(admin))  # reading -> consultation
+    agents.fail_remove = True
+
+    response = await client.post(url, json={}, headers=bearer(admin))  # consultation -> over
+
+    assert response.status_code == 200, response.text
+    assert response.json()["ended_at"] is not None

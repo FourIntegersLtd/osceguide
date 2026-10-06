@@ -51,7 +51,10 @@ beside the rubric they narrow).
 
 - A draft may be edited in place; anything published is immutable, because it is
   what past attempts were assessed against. Correcting content means a new version.
-- Only a draft may be deleted. Only a published version may be archived.
+- Only a draft may be deleted, and a station with no version left goes with its last one.
+  Only a published version may be archived.
+- A station has at most one open draft: a new version while one is open is refused
+  `draft_exists` (409), since the second would leave the first one's edits behind.
 - A reading brief is editable on any non-archived version — the one documented
   exception, because a brief is presentation rather than assessed content.
 - A new version is seeded from the latest **published** version, not the latest
@@ -100,6 +103,7 @@ beside the rubric they narrow).
 | POST | `/api/v1/orgs/{org_slug}/stations/{id}/versions/{n}/publish` | org admin | `already_published` (409) |
 | POST | `/api/v1/orgs/{org_slug}/stations/{id}/versions/{n}/archive` | org admin | `not_archivable` (409) |
 | DELETE | `/api/v1/orgs/{org_slug}/stations/{id}/versions/{n}` | org admin | drafts only; `not_deletable` (409) |
+| DELETE | `/api/v1/platform/stations/{id}/versions/{n}` | platform admin | the same, with `org_id=None` |
 | PATCH | `/api/v1/orgs/{org_slug}/stations/{id}/versions/{n}/brief` | org admin | T5: the reading brief is correctable on a published version |
 | GET/POST | `/api/v1/orgs/{org_slug}/station-templates` | org admin / org member to read | the shape a station takes |
 | POST | `/api/v1/orgs/{org_slug}/station-templates/{id}/versions` | org admin | seeded from the latest published |

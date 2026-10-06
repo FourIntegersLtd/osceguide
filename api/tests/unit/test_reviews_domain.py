@@ -10,6 +10,8 @@ import pytest
 
 from app.features.reviews import domain
 
+REQUIRED = {"communication": "Communication", "management": "Management"}
+
 # --------------------------------------------------------------------------
 # A GP lead's overall verdict (a traffic light whatever the rubric rates in)
 # --------------------------------------------------------------------------
@@ -31,25 +33,21 @@ def test_anything_else_is_refused() -> None:
 
 
 def test_a_draft_may_leave_domains_unscored() -> None:
-    domain.ensure_completable(
-        scored={"communication"}, required={"communication", "management"}, status="draft"
-    )
+    domain.ensure_completable(scored={"communication"}, required=REQUIRED, status="draft")
 
 
 def test_completing_requires_every_domain() -> None:
     """Oracle: slot_review.py:321. A half-marked review shown to a candidate is
     worse than one still in progress."""
     with pytest.raises(domain.ReviewIncomplete) as exc:
-        domain.ensure_completable(
-            scored={"communication"}, required={"communication", "management"}, status="completed"
-        )
-    assert "management" in str(exc.value)
+        domain.ensure_completable(scored={"communication"}, required=REQUIRED, status="completed")
+    assert str(exc.value).endswith("still missing: Management")
 
 
 def test_completing_with_everything_scored_is_allowed() -> None:
     domain.ensure_completable(
         scored={"communication", "management"},
-        required={"communication", "management"},
+        required=REQUIRED,
         status="completed",
     )
 
@@ -57,7 +55,7 @@ def test_completing_with_everything_scored_is_allowed() -> None:
 def test_completing_with_nothing_reviewable_is_refused() -> None:
     """Oracle: "No reviewable AI domains are available for this station yet"."""
     with pytest.raises(domain.NothingToReview):
-        domain.ensure_completable(scored=set(), required=set(), status="completed")
+        domain.ensure_completable(scored=set(), required={}, status="completed")
 
 
 @pytest.mark.parametrize("status", ["draft", "completed"])

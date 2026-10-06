@@ -79,7 +79,7 @@ export function UserDetail({ userId }: { userId: string }) {
                     </Badge>
                     {facts.data ? (
                       <Badge tone={facts.data.signed_in ? "success" : "neutral"}>
-                        {facts.data.signed_in ? "Signed in" : "Signed out"}
+                        {facts.data.signed_in ? "Session open" : "No open session"}
                       </Badge>
                     ) : null}
                     {access ? (

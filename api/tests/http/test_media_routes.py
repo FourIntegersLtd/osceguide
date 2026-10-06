@@ -93,16 +93,21 @@ async def test_publishing_twice_conflicts(client: AsyncClient, make_actor, index
     assert response.json()["code"] == "media_already_published"
 
 
-async def test_a_published_item_cannot_be_edited(
+async def test_a_published_item_takes_new_details_but_not_new_content(
     client: AsyncClient, make_actor, index: FakeVectorIndex
 ) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("m-edit@osceguide.com", platform_admin=True)
     item = await draft(client, admin)
     await client.post(f"/api/v1/media/{item['id']}/publish", headers=bearer(admin))
+    url = f"/api/v1/media/{item['id']}"
 
-    response = await client.patch(
-        f"/api/v1/media/{item['id']}", json={"title": "Changed"}, headers=bearer(admin)
+    renamed = await client.patch(
+        url, json={"title": "Changed", "content": item["content"]}, headers=bearer(admin)
     )
+    assert renamed.status_code == 200
+    assert renamed.json()["title"] == "Changed"
+
+    response = await client.patch(url, json={"content": {"body": "Rewritten"}}, headers=bearer(admin))
     assert response.status_code == 409
     assert response.json()["code"] == "media_not_editable"
 

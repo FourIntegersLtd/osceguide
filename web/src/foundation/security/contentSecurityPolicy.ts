@@ -49,7 +49,7 @@ export function generateNonce(): string {
  * `script-src` (nonce + `strict-dynamic`, no `unsafe-inline`); the other
  * directives are tightened from violation reports once enforcing.
  */
-export function contentSecurityPolicyValue(nonce: string, options: { isDev: boolean }): string {
+export function contentSecurityPolicyValue(nonce: string, options: { isDev: boolean; enforce: boolean }): string {
   const scriptSrc = [
     "'self'",
     `'nonce-${nonce}'`,
@@ -80,8 +80,9 @@ export function contentSecurityPolicyValue(nonce: string, options: { isDev: bool
   ];
 
   const parts = directives.map(([name, value]) => `${name} ${value}`);
-  // Only meaningful over HTTPS, so hold it for a production (enforcing) build.
-  if (!options.isDev) parts.push("upgrade-insecure-requests");
+  // Only meaningful over HTTPS, so never in dev; and browsers ignore it (with a
+  // console error on every page) in a Report-Only policy, so only when enforcing.
+  if (!options.isDev && options.enforce) parts.push("upgrade-insecure-requests");
   return parts.join("; ");
 }
 
@@ -93,7 +94,7 @@ export function buildCspHeader(options: { isDev: boolean; enforce: boolean }): C
   const nonce = generateNonce();
   return {
     name: options.enforce ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only",
-    value: contentSecurityPolicyValue(nonce, { isDev: options.isDev }),
+    value: contentSecurityPolicyValue(nonce, options),
     nonce,
     enforce: options.enforce,
   };

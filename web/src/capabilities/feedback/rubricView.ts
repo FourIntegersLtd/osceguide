@@ -203,6 +203,8 @@ export interface SectionView {
 }
 
 export interface FeedbackHeader {
+  /** Whose marking this is: "Your mark" for the learner, "Automatic marking" for an examiner. */
+  heading: string;
   /** The station total in its aggregate's units: "18/50", "20%". */
   total: string | null;
   /** What the total counts: "total score", "competencies achieved", "rated G". */
@@ -343,7 +345,7 @@ export function totalCaption(display: Display | null, rating: Rating): string {
  * candidate did not sit (Ortho has four; one is marked), so it is hidden
  * rather than shown as a row of blanks.
  */
-export function feedbackModel(rubric: MarkingRubric, result: MarkedResult): FeedbackModel {
+export function feedbackModel(rubric: MarkingRubric, result: MarkedResult, heading = "Your mark"): FeedbackModel {
   const display = readDisplay(rubric.display);
   const rating = rubric.rating;
   const payload = result.payload;
@@ -404,6 +406,7 @@ export function feedbackModel(rubric: MarkingRubric, result: MarkedResult): Feed
   const band = bandFor(display, totals?.total ?? null);
   return {
     header: {
+      heading,
       total: display && totals ? formatAggregate(display.total.aggregate, totals.total, display.total.max) : null,
       caption: totalCaption(display, rating),
       outcome: passWord(totals?.passed),

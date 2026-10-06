@@ -5,7 +5,20 @@ import { useState } from "react";
 import { Alert, Button, Checkbox, Input, Select, FoldSection } from "@/foundation/ui";
 import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import { AuthShell } from "@/capabilities/account";
-import { PURPOSES, type ProgrammePurpose } from "@/domains/assess/programmes/purposes";
+
+/**
+ * What an organisation can use the platform for. Product copy, not data: the
+ * backend has no `purpose` column yet, so the ticked choice is not stored.
+ */
+type ProgrammePurpose = "exam_preparation" | "placement" | "recruitment" | "onboarding" | "cpd";
+
+const PURPOSES: readonly { id: ProgrammePurpose; label: string }[] = [
+  { id: "exam_preparation", label: "Exam preparation" },
+  { id: "placement", label: "Placement preparation" },
+  { id: "recruitment", label: "Recruitment" },
+  { id: "onboarding", label: "Onboarding" },
+  { id: "cpd", label: "Continuous development" },
+];
 
 const ORG_TYPES = ["Training programme", "Medical school", "Deanery", "Employer"] as const;
 

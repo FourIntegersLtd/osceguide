@@ -66,7 +66,7 @@ live inside it and are never addressed independently.
 | POST | `/api/v1/auth/exchange-legacy` | a token from the retiring backend | `invalid_legacy_token` (401), `legacy_account_not_imported` (401), `legacy_exchange_unavailable` (503). Deleted at decommission |
 | POST | `/api/v1/auth/logout` | bearer | revokes the presented chain |
 | POST | `/api/v1/auth/password-reset` | none | always 202; never reveals whether the email exists; `too_many_requests` (429) |
-| POST | `/api/v1/auth/password-reset/confirm` | reset token | `invalid_reset_token` (400) |
+| POST | `/api/v1/auth/password-reset/confirm` | reset token | `invalid_reset_token` (422) for unknown, spent or expired; `weak_password` (422); `too_many_requests` (429). Only the first is about the link: the form says the others as themselves |
 | POST | `/api/v1/auth/change-password` | bearer | the only route allowed while `must_change_password` |
 | POST | `/api/v1/auth/stream-ticket` | bearer | a 60-second credential for one `EventSource` (ADR 0015) |
 | GET | `/api/v1/me` | bearer | profile, memberships, active workspace |

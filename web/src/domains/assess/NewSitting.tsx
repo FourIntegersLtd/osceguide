@@ -30,6 +30,7 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
           <Form
             orgSlug={orgSlug}
             programmes={items}
+            programmesHref={hrefFor("/programmes")}
             cancelHref={hrefFor("/sittings")}
             onCreated={(id) => router.push(hrefFor(`/sittings/${id}`))}
           />
@@ -42,11 +43,13 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
 function Form({
   orgSlug,
   programmes,
+  programmesHref,
   cancelHref,
   onCreated,
 }: {
   orgSlug: string;
   programmes: Programme[];
+  programmesHref: string;
   cancelHref: string;
   onCreated: (sittingId: string) => void;
 }) {
@@ -85,9 +88,18 @@ function Form({
   );
 
   if (activeProgrammes.length === 0) {
+    // A programme added but never activated is the usual reason, so name it.
+    const drafts = programmes.filter((programme) => programme.status === "draft").map((programme) => programme.exam_name);
     return (
-      <Alert tone="warning" title="Add a programme first">
-        Every sitting belongs to a programme, and that programme’s exam needs a published marking scheme. Set up a programme under Authoring, then come back here.
+      <Alert tone="warning" title={drafts.length > 0 ? "Activate a programme first" : "Add a programme first"}>
+        <p>
+          {drafts.length > 0
+            ? `${drafts.join(", ")} ${drafts.length === 1 ? "is" : "are"} still a draft. Activate it in Programmes, then come back here.`
+            : "Every sitting belongs to a programme, and that programme’s exam needs a published marking scheme. Add a programme and activate it, then come back here."}
+        </p>
+        <ButtonLink href={programmesHref} themeType="b2b" variant="secondary" className="mt-2">
+          Go to programmes
+        </ButtonLink>
       </Alert>
     );
   }

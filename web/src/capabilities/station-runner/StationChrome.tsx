@@ -51,6 +51,7 @@ export function StationHeader({
   attemptLimit,
   flagStationId,
   comeBack,
+  backHref,
   aside,
 }: {
   index: number;
@@ -64,6 +65,8 @@ export function StationHeader({
    * flag (a practice set's entry); without it only reporting is offered.
    */
   comeBack?: ComeBackFlag | null;
+  /** A link for Back (the session page) instead of the browser history. */
+  backHref?: string;
   /** The clock and the step's one action, at the header's right (canvas `train-reading`). */
   aside?: ReactNode;
 }) {
@@ -122,7 +125,7 @@ export function StationHeader({
 
   return (
     <div className="mb-5 flex flex-col gap-3">
-      <Back />
+      <Back href={backHref} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-wrap items-center gap-2.5">
           <h1 className={productTokens.b2cPageTitle}>

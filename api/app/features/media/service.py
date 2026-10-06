@@ -79,17 +79,28 @@ async def update(
     content: dict[str, Any] | None,
     exam_code: str | None = None,
     edited_by: uuid.UUID,
+    index: VectorIndex,
 ) -> MediaRead:
-    """Replaces the given fields on a draft, leaving the others as they were. Refuses once published.
+    """Replaces the given fields, leaving the others as they were. A published item takes new
+    details (title, summary, exam) but refuses new content; content equal to what is stored is
+    no change, since the editor sends the whole form.
 
     An empty `exam_code` files the item under any exam. An edit that moves what a checked script
     was written from (a summary's title is part of that) starts the script check again, so the
     script never keeps an old fact."""
     item = await _require(session, item_id)
-    try:
-        domain.ensure_editable(status=item.status)
-    except domain.NotEditable as exc:
-        raise_mapped(exc, _REFUSALS)
+    # The editor posts the whole form, content included, so an unchanged body
+    # must not count as a content edit on a published item.
+    if content is not None and content == dict(item.content or {}):
+        content = None
+    # Catalogue details (title, summary, exam) may change at any status: they do not touch
+    # what was checked and voiced. Content may only change on a draft.
+    if content is not None:
+        try:
+            domain.ensure_editable(status=item.status)
+        except domain.NotEditable as exc:
+            raise_mapped(exc, _REFUSALS)
+    published = domain.is_public(status=item.status)
 
     values: dict[str, Any] = {}
     if title is not None:
@@ -110,7 +121,13 @@ async def update(
         values["exam_id"] = (await resolve_exam(session, code)).id if code else None
     if values:
         await repository.update_item(session, item_id, **values)
-    if content is not None or title is not None:
+    # A published item's script is fixed, so only its findability moves; a draft is not indexed.
+    if published:
+        title_now = values.get("title", item.title)
+        summary_now = values.get("summary", item.summary)
+        if (title_now, summary_now) != (item.title, item.summary):
+            await _reindex(session, item, title=title_now, summary=summary_now, index=index)
+    elif content is not None or title is not None:
         from app.features.media_production import service as production
 
         await production.rewrite_script_if_out_of_date(session, item_id, requested_by=edited_by)
@@ -132,20 +149,31 @@ async def publish(
         raise_mapped(exc, _REFUSALS)
 
     await repository.update_item(session, item_id, status=status, published_at=now)
+    await _reindex(session, item, title=item.title, summary=item.summary, index=index)
+    return await service_reads.read_one(
+        session, await _require(session, item_id), unlocked_exam_ids=None, with_review=True
+    )
+
+
+async def _reindex(
+    session: AsyncSession, item: MediaItem, *, title: str, summary: str | None, index: VectorIndex
+) -> None:
+    """Makes a published item findable by the title and summary just written, in search and the tutor.
+
+    The new words are passed in rather than read back, so an edit indexes without a second fetch."""
     await index.index(
         doc_id=str(item.id),
-        text=f"{item.title}\n{item.summary or ''}",
+        text=f"{title}\n{summary or ''}",
         metadata={"kind": item.kind, "slug": item.slug},
     )
     await defer_in_transaction(
         session,
         queue=_TUTOR_MATERIAL_QUEUE,
         task=_TUTOR_REINDEX_MEDIA_TASK,
-        queueing_lock=f"reindex-media:{item_id}",
-        args={"media_item_id": str(item_id)},
-    )
-    return await service_reads.read_one(
-        session, await _require(session, item_id), unlocked_exam_ids=None, with_review=True
+        queueing_lock=f"reindex-media:{item.id}",
+        args={"media_item_id": str(item.id)},
+        # A reindex still waiting reads the item when it runs, so it already covers this edit.
+        ignore_lock_conflict=True,
     )
 
 

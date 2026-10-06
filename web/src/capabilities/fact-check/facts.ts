@@ -49,8 +49,13 @@ export type FactClaim = {
   swap?: Swap;
 };
 
-/** Words in the material (`from`) and what replaced them (`to`). */
+/** Words in the material (`from`) and what replaced them (`to`); an empty `to` removes them. */
 export type Swap = { from: string; to: string };
+
+/** A swap that takes the words out altogether rather than rewording them. */
+export function isRemoval(swap: Swap | undefined): boolean {
+  return swap !== undefined && swap.to === "";
+}
 
 /** How far a check that is still running has got; absent once it has finished. */
 export type FactProgress = { done: number; total: number };
@@ -145,6 +150,25 @@ export function checkingLine(facts: Facts | null): string {
     : "Checking facts against the guidelines…";
 }
 
+/** A line left holding nothing but a list marker or a speaker's name once words were removed from it. */
+const EMPTIED_LINE = /^\s*(?:[-*•]|\d+[.)]|[A-Z][\w ]{0,30}:)?\s*$/;
+
+/**
+ * `text` with `old` swapped for `next`. A removal also drops each line it leaves empty, and only
+ * those: blank lines and headings elsewhere stay.
+ */
+function swappedIn(text: string, old: string, next: string): string {
+  if (next || old.includes("\n")) return text.split(old).join(next);
+  return text
+    .split("\n")
+    .flatMap((line) => {
+      if (!line.includes(old)) return [line];
+      const left = line.split(old).join("");
+      return EMPTIED_LINE.test(left) ? [] : [left];
+    })
+    .join("\n");
+}
+
 /** Every string under `value` with `old` swapped for `next`; what is spoken, and the review itself, are left alone. */
 function replaced(
   value: unknown,
@@ -154,9 +178,12 @@ function replaced(
 ): unknown {
   if (key === "review" || key === "narration" || key === "presentation")
     return value;
-  if (typeof value === "string") return value.split(old).join(next);
+  if (typeof value === "string") return swappedIn(value, old, next);
   if (Array.isArray(value))
-    return value.map((entry) => replaced(entry, old, next));
+    // A list entry a removal empties goes from the list, rather than staying as a blank bullet.
+    return value
+      .map((entry) => replaced(entry, old, next))
+      .filter((entry, at) => next || entry !== "" || value[at] === "");
   const fields = record(value);
   if (!fields) return value;
   return Object.fromEntries(
@@ -193,9 +220,12 @@ export function corrected(
   return replaced(content, swap.from, swap.to) as Content;
 }
 
-/** `content` with an accepted correction taken out again: the original words put back. */
+/**
+ * `content` with an accepted correction taken out again: the original words put back. Removed
+ * words cannot be: where they stood is gone.
+ */
 export function uncorrected(content: Content, claim: FactClaim): Content {
-  return claim.decision === "accepted" && claim.swap
+  return claim.decision === "accepted" && claim.swap && !isRemoval(claim.swap)
     ? corrected(content, claim, { from: claim.swap.to, to: claim.swap.from })
     : content;
 }

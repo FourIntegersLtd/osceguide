@@ -20,7 +20,6 @@ import {
   ASSIGNABLE_ROLES,
   ROLE_DESCRIPTIONS,
   isActive,
-  isLastAdmin,
   isOwner,
   roleLabel,
   staffCountLabel,
@@ -188,7 +187,6 @@ export function MembersPanel({
           canManage ? (
             <RowActions
               member={member}
-              lastAdmin={isLastAdmin(member, rows)}
               onAction={open}
               onResend={resend}
               resending={resendingId === member.id}
@@ -196,7 +194,7 @@ export function MembersPanel({
           ) : null,
       },
     ],
-    [canManage, rows, resendingId],
+    [canManage, resendingId],
   );
 
   return (
@@ -346,13 +344,11 @@ export function MembersPanel({
 
 function RowActions({
   member,
-  lastAdmin,
   onAction,
   onResend,
   resending,
 }: {
   member: Membership;
-  lastAdmin: boolean;
   onAction: (pending: NonNullable<Pending>) => void;
   onResend: (member: Membership) => void;
   resending: boolean;
@@ -360,7 +356,7 @@ function RowActions({
   const owner = isOwner(member);
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      {!owner && isActive(member) ? (
+      {!owner && isActive(member) && member.invited ? (
         <Button
           themeType="b2b"
           variant="secondary"
@@ -387,14 +383,11 @@ function RowActions({
           themeType="b2b"
           variant="secondary"
           size="sm"
-          disabled={owner || lastAdmin}
-          title={
-            owner
-              ? "An organisation's owner cannot be revoked here"
-              : lastAdmin
-                ? "Cannot revoke the last administrator"
-                : undefined
-          }
+          disabled={owner}
+          // Whether this is the last administrator is the server's call (409
+          // `last_admin`), shown in the dialog: a count of the loaded page
+          // was wrong whenever the team ran past one page.
+          title={owner ? "An organisation's owner cannot be revoked here" : undefined}
           onClick={() => onAction({ kind: "revoke", member })}
         >
           Revoke

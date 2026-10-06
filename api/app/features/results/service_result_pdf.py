@@ -105,11 +105,8 @@ async def render_my_result_pdf(
     Goes through the same read as the result screen, so a result that has not
     been released is refused with `result_not_released` and nothing is written.
     """
-    result = await service_candidate.read_my_result(session, sitting_id, user_id)
-    trainee_ids = await roster.trainee_ids_for_user(session, user_id)
-    revision_row = await repository.released_revision(session, sitting_id, trainee_ids)
-    if revision_row is None:
-        raise errors.NotReleased()
+    revision_row = await service_candidate.require_released_revision(session, sitting_id, user_id)
+    result = await service_candidate.project_released_result(session, revision_row, user_id)
     return await _render_known_result(
         session, revision_row, result, generated_at, user_id=user_id, for_admin=False
     )

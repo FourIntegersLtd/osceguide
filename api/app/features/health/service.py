@@ -16,10 +16,11 @@ from app.core.ports import EventBus
 from app.core.settings import Settings, get_settings
 from app.core.sse import Snapshot, event_stream
 from app.features.health import repository, repository_jobs
-from app.features.health.repository_jobs import JobRef
+from app.features.health.repository_jobs import JobEventRef, JobRef
 from app.features.health.schemas import (
     CheckState,
     HealthResponse,
+    JobEventRead,
     JobRead,
     JobsPage,
     Machinery,
@@ -34,6 +35,12 @@ CHECK_TIMEOUT_SECONDS = 2.0
 # it: a job finishing, a worker's heartbeat, a Cloud slot lapsing.
 MACHINERY_REFRESH_SECONDS = 5.0
 MACHINERY_JOB_PAGE = 100
+# A worker beats every 10s by default; three minutes of silence is a dead one,
+# not a slow one, and `worker_id` is null once procrastinate prunes it.
+STALLED_AFTER_SECONDS = 180
+# A stalled job is put back once. A second stall is likely the job itself
+# taking its worker down, so it fails rather than looping.
+MAX_STALLED_REQUEUES = 1
 
 
 async def check_database(session: AsyncSession) -> CheckState:
@@ -98,8 +105,9 @@ async def list_jobs(
         session, status=status, task_name=task_name, before_id=before_id, limit=limit + 1
     )
     page = jobs[:limit]
+    events = await repository_jobs.events_by_job(session, [job.id for job in page])
     return JobsPage(
-        items=[_read(job) for job in page],
+        items=[_read(job, events.get(job.id, [])) for job in page],
         next_before_id=page[-1].id if len(jobs) > limit else None,
     )
 
@@ -149,7 +157,25 @@ def machinery_stream(
     )
 
 
-def _read(job: JobRef) -> JobRead:
+async def reclaim_stalled_jobs(session: AsyncSession) -> tuple[list[int], list[int]]:
+    """Move on every job a dead worker left `doing`: requeued once, failed after that.
+
+    procrastinate prunes a dead worker but leaves its jobs `doing` for ever, which
+    is how two `produce_media` runs sat at 0 attempts. Returns `(requeued, failed)` ids.
+    """
+    requeued: list[int] = []
+    failed: list[int] = []
+    for job in await repository_jobs.stalled_jobs(session, seconds_since_heartbeat=STALLED_AFTER_SECONDS):
+        if job.attempts < MAX_STALLED_REQUEUES:
+            await repository_jobs.requeue(session, job.id)
+            requeued.append(job.id)
+        else:
+            await repository_jobs.fail(session, job.id)
+            failed.append(job.id)
+    return requeued, failed
+
+
+def _read(job: JobRef, events: list[JobEventRef]) -> JobRead:
     """Turn one job reference into the shape the platform console reads."""
     return JobRead(
         id=job.id,
@@ -160,4 +186,5 @@ def _read(job: JobRef) -> JobRead:
         scheduled_at=job.scheduled_at,
         args=job.args,
         queueing_lock=job.queueing_lock,
+        events=[JobEventRead(type=event.type, at=event.at) for event in events],
     )

@@ -40,6 +40,8 @@ FEATURE_TASKS = {
     # A partner pilot's spend crossing a threshold. Unregistered, nobody is told
     # until the partner's invoice arrives.
     "check_partner_spend",
+    # Unregistered, a job whose worker died stays `doing` for ever (B32).
+    "reclaim_stalled_jobs",
 }
 PERIODIC_TASKS = {
     "deliver_outbound_messages",
@@ -49,6 +51,7 @@ PERIODIC_TASKS = {
     "sweep_circuits",
     "reindex_material",
     "check_partner_spend",
+    "reclaim_stalled_jobs",
 }
 
 

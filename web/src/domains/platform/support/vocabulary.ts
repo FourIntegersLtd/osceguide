@@ -50,19 +50,28 @@ export const ORG_TYPES = [
   { value: "partner", label: "Partner" },
 ] as const;
 
-/** The roles worth seating a first member as. An org admin adds everyone else. */
-export const SEAT_ROLES = [
-  { value: "owner", label: "Owner" },
-  { value: "admin", label: "Administrator" },
-  { value: "institution_admin", label: "Institution administrator" },
-  { value: "partner_admin", label: "Partner administrator" },
-] as const;
-
 export function slugify(value: string): string {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+/** The backend's `CreateOrganization.slug`: `^[a-zA-Z0-9][a-zA-Z0-9-]*$`, 2 to 100 characters. */
+const SLUG_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9-]*$/;
+
+/**
+ * Why the API would refuse this slug, or null. Checked before sending, so the
+ * person sees which field is wrong instead of "The request was not valid".
+ */
+export function slugError(slug: string): string | null {
+  const value = slug.trim();
+  if (!value) return null;
+  if (value.length < 2 || value.length > 100) return "A slug is 2 to 100 characters long.";
+  if (!SLUG_PATTERN.test(value)) {
+    return "Use only letters, numbers and hyphens, starting with a letter or number.";
+  }
+  return null;
 }
 
 /**
@@ -81,6 +90,71 @@ export function asContractDate(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? `${trimmed}T00:00:00Z` : null;
 }
+
+export const CONTRACT_DATES_OUT_OF_ORDER = "The end date is before the start date";
+
+/**
+ * The message for the End date field when the contract would end before it
+ * starts, or null. A blank field stands for the stored date, because saving
+ * leaves a blank one alone; ISO day strings compare correctly as text. The
+ * API refuses the same pair (`contract_dates_out_of_order`) and stays the authority.
+ */
+export function contractDatesError(
+  startsAt: string,
+  endsAt: string,
+  stored: { startsAt: string; endsAt: string },
+): string | null {
+  const start = startsAt.trim() || stored.startsAt;
+  const end = endsAt.trim() || stored.endsAt;
+  return start && end && start > end ? CONTRACT_DATES_OUT_OF_ORDER : null;
+}
+
+export interface SsoFormValues {
+  issuer: string;
+  enabled: boolean;
+  sso_only: boolean;
+}
+
+export interface SsoFieldErrors {
+  issuer?: string;
+  sso_only?: string;
+}
+
+/** What the API's `ensure_configurable` would refuse, as messages for the fields at fault. */
+export function ssoFieldErrors(form: SsoFormValues): SsoFieldErrors {
+  const errors: SsoFieldErrors = {};
+  if (form.enabled && !form.issuer.trim()) {
+    errors.issuer = "An issuer is required before SSO can be turned on.";
+  }
+  if (form.sso_only && !form.enabled) {
+    errors.sso_only = "Turn on Enabled first: SSO-only sign-in needs SSO switched on.";
+  }
+  return errors;
+}
+
+/**
+ * "3 days ago (3 Oct 2026)" — when something last happened, for a fact a
+ * support agent compares with "now". `null` means it never has.
+ */
+export function formatSince(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return "Never";
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return iso;
+  const minutes = Math.max(0, Math.floor((now.getTime() - at.getTime()) / 60_000));
+  const ago = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"} ago`;
+  const since =
+    minutes < 1
+      ? "Just now"
+      : minutes < 60
+        ? ago(minutes, "minute")
+        : minutes < 60 * 24
+          ? ago(Math.floor(minutes / 60), "hour")
+          : // Calendar days, so 3 Oct read on 6 Oct is "3 days ago" whatever the hour.
+            ago(Math.max(1, Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000)), "day");
+  return `${since} (${formatDay(iso)})`;
+}
+
+const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 /** "3 Sept 2026" — the console's date, for a row rather than a field. */
 export function formatDay(iso: string | null | undefined): string {

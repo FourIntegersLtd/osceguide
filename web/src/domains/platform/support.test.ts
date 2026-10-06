@@ -5,7 +5,10 @@ import {
   ORG_TYPES,
   STATUS_HELP,
   asContractDate,
+  contractDatesError,
+  ssoFieldErrors,
   permitsSignIn,
+  slugError,
   slugify,
   statusTone,
   attemptStatusTone,
@@ -56,6 +59,14 @@ describe("slugify", () => {
     // with punctuation would otherwise produce a slug it refuses.
     assert.equal(slugify("—Acme—"), "acme");
   });
+
+  it("refuses what the backend's slug pattern refuses, and accepts what it suggests", () => {
+    assert.equal(slugError("Bad Slug!"), "Use only letters, numbers and hyphens, starting with a letter or number.");
+    assert.equal(slugError("-acme"), "Use only letters, numbers and hyphens, starting with a letter or number.");
+    assert.equal(slugError("a"), "A slug is 2 to 100 characters long.");
+    assert.equal(slugError(slugify("Bad Slug!")), null);
+    assert.equal(slugError("st-marys"), null);
+  });
 });
 
 describe("asContractDate", () => {
@@ -91,5 +102,35 @@ describe("the support view's diagnosis", () => {
     assert.equal(attemptStatusTone("failed"), "danger");
     assert.equal(jobStatusTone("failed"), "danger");
     assert.equal(jobStatusTone("succeeded"), "success");
+  });
+});
+
+describe("contractDatesError", () => {
+  const none = { startsAt: "", endsAt: "" };
+
+  it("flags a start after the end, and allows equal, open-ended and blank", () => {
+    assert.equal(
+      contractDatesError("2027-10-01", "2027-01-01", none),
+      "The end date is before the start date",
+    );
+    assert.equal(contractDatesError("2027-01-01", "2027-01-01", none), null);
+    assert.equal(contractDatesError("2027-10-01", "", none), null);
+    assert.equal(contractDatesError("", "", none), null);
+  });
+
+  it("compares a blank field with the stored date it would leave alone", () => {
+    const stored = { startsAt: "2027-01-01", endsAt: "2027-09-30" };
+    assert.notEqual(contractDatesError("2028-01-01", "", stored), null);
+    assert.notEqual(contractDatesError("", "2026-12-31", stored), null);
+    assert.equal(contractDatesError("", "2027-12-31", stored), null);
+  });
+});
+
+describe("ssoFieldErrors", () => {
+  it("names the issuer when enabled without one, and SSO-only without enabled", () => {
+    assert.ok(ssoFieldErrors({ issuer: " ", enabled: true, sso_only: false }).issuer);
+    assert.ok(ssoFieldErrors({ issuer: "https://x", enabled: false, sso_only: true }).sso_only);
+    assert.deepEqual(ssoFieldErrors({ issuer: "", enabled: false, sso_only: false }), {});
+    assert.deepEqual(ssoFieldErrors({ issuer: "https://x", enabled: true, sso_only: true }), {});
   });
 });

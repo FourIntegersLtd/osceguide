@@ -18,6 +18,13 @@ class HealthResponse(BaseModel):
     checks: dict[str, CheckState]
 
 
+class JobEventRead(BaseModel):
+    """One step of a job's history: `deferred`, `started`, `deferred_for_retry`, `failed`, …"""
+
+    type: str
+    at: datetime
+
+
 class JobRead(BaseModel):
     """One queued job as procrastinate holds it."""
 
@@ -29,6 +36,9 @@ class JobRead(BaseModel):
     scheduled_at: datetime | None
     args: dict[str, Any]
     queueing_lock: str | None
+    # Oldest first. procrastinate keeps no exception text; the error itself is
+    # in the worker's log.
+    events: list[JobEventRead] = []
 
 
 class JobsPage(BaseModel):

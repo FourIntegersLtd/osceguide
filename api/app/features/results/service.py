@@ -20,13 +20,28 @@ from app.features.results.schemas import (
     SkippedRelease,
 )
 from app.features.roster import service as roster
+from app.features.sittings import service_reads as sittings
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.IncompatibleOutcomes: errors.IncompatibleOutcomesError,
     domain.NotSignable: errors.NotSignableError,
     domain.InvalidWorkflow: errors.InvalidWorkflowError,
     domain.EvidenceChanged: errors.EvidenceChangedError,
+    domain.RecruitmentOutsideExam: errors.RecruitmentOutsideExamError,
 }
+
+
+async def _ensure_recruitment_allowed(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, recruitment: domain.Recruitment
+) -> None:
+    """A recruitment outcome belongs to an exam-mode (hire) sitting only."""
+    sitting = await sittings.sitting_ref(session, org_id, sitting_id)
+    if sitting is None:
+        raise errors.SittingNotFound()
+    try:
+        domain.ensure_recruitment_allowed(sitting.mode, recruitment)
+    except domain.RecruitmentOutsideExam as exc:
+        raise_mapped(exc, _REFUSALS)
 
 
 async def save_draft(
@@ -65,6 +80,8 @@ async def save_draft(
 
     assessment = domain.Assessment(assessment_outcome) if assessment_outcome else None
     recruitment = domain.Recruitment(recruitment_outcome) if recruitment_outcome else None
+    if recruitment is not None:
+        await _ensure_recruitment_allowed(session, org_id, sitting_id, recruitment)
     if assessment and recruitment:
         try:
             domain.ensure_compatible(assessment, recruitment)
@@ -245,8 +262,10 @@ async def release_many(
 
 async def read_decision(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
-) -> DecisionRead:
-    return _read(await _require(session, org_id, sitting_id, trainee_id))
+) -> DecisionRead | None:
+    """The current revision, or `None` before anybody has recorded one."""
+    revision_row = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
+    return None if revision_row is None else _read(revision_row)
 
 
 async def _require(

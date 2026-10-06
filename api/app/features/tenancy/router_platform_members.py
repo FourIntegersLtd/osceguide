@@ -79,7 +79,9 @@ async def seat_membership(
 @router.patch(
     "/platform/organizations/{org_slug}/memberships/{membership_id}",
     response_model=schemas.MembershipRead,
-    responses=error_responses(Forbidden, errors.OrgNotFound, errors.MembershipNotFound),
+    responses=error_responses(
+        Forbidden, errors.OrgNotFound, errors.MembershipNotFound, errors.LastAdministrator
+    ),
 )
 async def change_membership_role_for_support(
     membership_id: uuid.UUID,
@@ -97,7 +99,9 @@ async def change_membership_role_for_support(
 @router.post(
     "/platform/organizations/{org_slug}/memberships/{membership_id}/revoke",
     response_model=schemas.MembershipRead,
-    responses=error_responses(Forbidden, errors.OrgNotFound, errors.MembershipNotFound),
+    responses=error_responses(
+        Forbidden, errors.OrgNotFound, errors.MembershipNotFound, errors.LastAdministrator
+    ),
 )
 async def revoke_membership_for_support(
     membership_id: uuid.UUID, workspace: OrgReader, admin: PlatformAdmin, session: Session, clock: ClockDep

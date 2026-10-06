@@ -1,5 +1,19 @@
 import { RICH_SHAPES } from "@/capabilities/authoring/structure/b2b/lib/stations/richBlockValues";
-import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes"; /** Client-side mirror of backend validate_station_content (required blocks + types). */
+import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes"; 
+/** "Patient Biodata" reads as "Patient biodata" in a sentence; an acronym like "SCA" stays. */
+export function inSentence(label: string): string {
+  return label
+    .trim()
+    .split(/\s+/)
+    .map((word, index) => {
+      if (word.length > 1 && word === word.toUpperCase()) return word;
+      const lower = word.toLowerCase();
+      return index === 0 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+    })
+    .join(" ");
+}
+
+/** Client-side mirror of backend validate_station_content (required blocks + types). */
 export function validateStationContent(
   structure: StationStructure,
   content: Record<string, unknown>,
@@ -20,7 +34,7 @@ export function validateStationContent(
           (Array.isArray(value) && value.length === 0))
       ) {
         const label = (block as { label?: string }).label || bid;
-        errors.push(`"${label}" Is required`);
+        errors.push(`${inSentence(label)} is required`);
         continue;
       }
       if (value === undefined || value === null) continue;

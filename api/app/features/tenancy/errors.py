@@ -4,7 +4,7 @@ refuse a request with.
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, Forbidden, NotFound
+from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound
 from app.core.tenancy import OrgNotFound
 
 # The same class identity raises. The console route documents it; there is not a second one.
@@ -20,6 +20,13 @@ class OrgSlugTaken(Conflict):
 
     code = "org_slug_taken"
     default_message = "That slug is already in use"
+
+
+class ContractDatesOutOfOrder(InvalidInput):
+    """The contract would start after it ends."""
+
+    code = "contract_dates_out_of_order"
+    default_message = "The end date is before the start date"
 
 
 class NotAMember(Forbidden):
@@ -66,3 +73,12 @@ class UserNotFound(NotFound):
 
     code = "user_not_found"
     default_message = "No account for that email address"
+
+
+class LastAdministrator(Conflict):
+    """Revoking or demoting this member would leave the organisation without an administrator."""
+
+    code = "last_admin"
+    default_message = (
+        "This is the organisation's last administrator. Make someone else an administrator first."
+    )

@@ -32,6 +32,7 @@ export function CandidateCard({
   sittingId,
   candidate,
   rating,
+  hire,
   onChanged,
 }: {
   orgSlug: string;
@@ -39,6 +40,8 @@ export function CandidateCard({
   candidate: CandidateReport;
   /** The sitting's rating (`SittingReport.rating`), which says how a review value is written. */
   rating: Rating | null;
+  /** An exam-mode sitting, where the decision also records the recruitment outcome. */
+  hire: boolean;
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -156,6 +159,7 @@ export function CandidateCard({
                 orgSlug={orgSlug}
                 sittingId={sittingId}
                 candidate={candidate}
+                hire={hire}
                 onChanged={onChanged}
               />
             </FoldSection>

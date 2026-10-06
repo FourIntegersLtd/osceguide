@@ -60,16 +60,8 @@ export function GpLeadReview({
   /** The machine's marked payload, shown beside each field. */
   payload: Record<string, unknown> | null;
 }) {
-  const state = useAsync(async (signal) => {
-    try {
-      return await readGpLeadReview(orgSlug, slotId, signal);
-    } catch (cause) {
-      // No review yet is the ordinary case. Revision zero is what the backend
-      // expects from a first save.
-      if (hasCode(cause, "review_not_found")) return null;
-      throw cause;
-    }
-  }, [orgSlug, slotId]);
+  // `null` (no review yet) is the ordinary case; the editor then saves revision zero.
+  const state = useAsync((signal) => readGpLeadReview(orgSlug, slotId, signal), [orgSlug, slotId]);
 
   if (state.loading) return <Spinner />;
   if (state.error) return <Alert tone="danger">{errorMessage(state.error)}</Alert>;

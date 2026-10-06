@@ -17,6 +17,7 @@ from app.features.sittings import service_reads as sittings
 from app.features.tenancy import domain, repository
 from app.features.tenancy.errors import (
     InvitationNotPending,
+    LastAdministrator,
     MembershipExists,
     MembershipNotFound,
     OrgNotFound,
@@ -85,10 +86,7 @@ async def list_memberships(
     people = await identity.user_refs_by_ids(session, user_ids)
     led = await sittings.circuits_led_counts(session, org_id, user_ids)
     reads = [
-        _membership_read(
-            membership, email=people[membership.user_id].email if membership.user_id in people else None
-        )
-        for membership in memberships
+        _membership_read(membership, person=people.get(membership.user_id)) for membership in memberships
     ]
     for read in reads:
         read.circuits_led = led.get(read.user_id, 0)
@@ -117,7 +115,9 @@ async def add_membership(
         org = await repository.organization_by_id(session, org_id)
         if org is None:
             raise OrgNotFound()
-        user = await invitations.invite_user(session, email=email, name=email, invited_to=org.name, now=now)
+        # No display name until they set one: the address is not a name, and storing it
+        # made every greeting and "led by" read "Good morning, someone@example.com".
+        user = await invitations.invite_user(session, email=email, name="", invited_to=org.name, now=now)
     user_id = user.id
     if await repository.membership_for_user_in_org(session, org_id, user_id, role=role) is not None:
         raise MembershipExists()
@@ -134,7 +134,7 @@ async def add_membership(
         target_id=str(user_id),
         summary=f"Granted {role} to {email}" + (" (invited)" if invited else ""),
     )
-    return _membership_read(membership, email=user.email, invited=invited)
+    return _membership_read(membership, person=user)
 
 
 async def change_membership_role(
@@ -143,6 +143,8 @@ async def change_membership_role(
     """Change what role a membership holds, refusing a role the actor may not grant."""
     _guard_role_grant(actor, org_id, role)
     membership = await _require_membership(session, org_id, membership_id)
+    if not domain.is_org_admin(role):
+        await _ensure_an_admin_remains(session, org_id, membership)
     await repository.set_membership_role(session, org_id, membership_id, role=role)
     await repository.write_audit(
         session,
@@ -158,14 +160,12 @@ async def change_membership_role(
 
 
 async def _read_with_email(session: AsyncSession, membership: Any) -> MembershipRead:
-    """A membership answered the way the list answers it, with the email attached.
+    """A membership answered the way the list answers it: with the person behind it looked up.
 
     `add_membership` does not need this — it looked the person up by address already.
     """
     people = await identity.user_refs_by_ids(session, [membership.user_id])
-    return _membership_read(
-        membership, email=people[membership.user_id].email if membership.user_id in people else None
-    )
+    return _membership_read(membership, person=people.get(membership.user_id))
 
 
 async def set_membership_revoked(
@@ -183,7 +183,9 @@ async def set_membership_revoked(
     that?" stays answerable. It bites on the member's next token: the access
     token lives fifteen minutes and its refresh reads memberships again.
     """
-    await _require_membership(session, org_id, membership_id)
+    membership = await _require_membership(session, org_id, membership_id)
+    if revoked:
+        await _ensure_an_admin_remains(session, org_id, membership)
     await repository.set_membership_revoked(session, org_id, membership_id, at=now if revoked else None)
     await repository.write_audit(
         session,
@@ -221,6 +223,19 @@ async def resend_invitation(
     return InvitationRead(email=ref.email, invited_to=invited_to)
 
 
+async def _ensure_an_admin_remains(session: AsyncSession, org_id: uuid.UUID, membership: Any) -> None:
+    """Refuse a change that takes away the organisation's last live administrator.
+
+    A revoked membership already counts for nothing, so changing it never leaves anyone out;
+    a live one is among the counted administrators, hence the `- 1`.
+    """
+    if membership.revoked_at is not None or not domain.is_org_admin(membership.role):
+        return
+    live_admins = await repository.count_memberships(session, org_id, roles=sorted(domain.ORG_ADMIN_ROLES))
+    if not domain.an_admin_remains(role=membership.role, other_admins=live_admins - 1):
+        raise LastAdministrator()
+
+
 async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID) -> Any:
     """Fetch a membership, or refuse if this organisation has none by that id."""
     membership = await repository.membership_by_id(session, org_id, membership_id)
@@ -229,8 +244,14 @@ async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membersh
     return membership
 
 
-def _membership_read(membership: Any, *, email: str | None = None, invited: bool = False) -> MembershipRead:
-    """Shape a membership row into what a route may return."""
+def _membership_read(membership: Any, *, person: identity.UserRef | None) -> MembershipRead:
+    """Shape a membership row into what a route may return.
+
+    The email and the invited flag come from the `person` behind it, when the
+    account still exists.
+    """
+    email = person.email if person is not None else None
+    invited = person is not None and person.invitation_pending
     return MembershipRead(
         id=membership.id,
         user_id=membership.user_id,

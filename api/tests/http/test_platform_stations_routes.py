@@ -570,3 +570,104 @@ async def test_a_station_without_a_template_is_not_produced(client: AsyncClient,
         headers=bearer(admin),
     )
     assert response.json()["code"] == "station_has_no_template"
+
+
+# --------------------------------------------------------------------------
+# Removing an unwanted draft, and one draft at a time
+# --------------------------------------------------------------------------
+
+
+async def a_library_draft(client: AsyncClient, admin: str, title: str = "Half written") -> str:
+    created = await client.post(
+        "/api/v1/platform/stations",
+        json={"title": title, "exam_code": "sca", "content": CONTENT},
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+    return f"/api/v1/platform/stations/{created.json()['id']}"
+
+
+async def test_a_platform_admin_deletes_a_single_version_draft_and_the_station_goes_with_it(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_library_draft(client, admin)
+
+    deleted = await client.delete(f"{station_path}/versions/1", headers=bearer(admin))
+
+    assert deleted.status_code == 204, deleted.text
+    mine = await client.get("/api/v1/platform/stations?include_archived=true", headers=bearer(admin))
+    assert mine.json()["items"] == []
+
+
+async def test_deleting_a_draft_leaves_the_station_and_its_published_version(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+    await client.post(f"{station_path}/versions", headers=bearer(admin))
+
+    deleted = await client.delete(f"{station_path}/versions/2", headers=bearer(admin))
+
+    assert deleted.status_code == 204, deleted.text
+    library = await client.get("/api/v1/stations", headers=bearer(admin))
+    assert [(s["title"], s["version"]) for s in library.json()["items"]] == [("COPD exacerbation", 1)]
+
+
+async def test_a_published_library_version_is_not_deleted(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+
+    refused = await client.delete(f"{station_path}/versions/1", headers=bearer(admin))
+
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "not_deletable"
+
+
+async def test_deleting_an_unknown_library_version_is_not_found(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_library_draft(client, admin)
+
+    missing = await client.delete(f"{station_path}/versions/9", headers=bearer(admin))
+
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "version_not_found"
+
+
+async def test_only_a_platform_admin_deletes_a_library_draft(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_library_draft(client, admin)
+    org_id = await an_org(client, make_actor)
+    outsider = await org_admin(make_actor, org_id)
+
+    refused = await client.delete(f"{station_path}/versions/1", headers=bearer(outsider))
+
+    assert refused.status_code == 403
+
+
+async def test_a_second_draft_is_refused_while_one_is_open(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_library_draft(client, admin)
+
+    refused = await client.post(f"{station_path}/versions", headers=bearer(admin))
+
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "draft_exists"
+    assert "v1 is still a draft" in refused.json()["message"]
+
+
+async def test_a_new_draft_is_allowed_once_the_open_one_is_published(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await admin_token(make_actor)
+    await create_exam(client, admin, code="sca")
+    station_path = await a_published_library_station(client, admin)
+
+    created = await client.post(f"{station_path}/versions", headers=bearer(admin))
+
+    assert created.status_code == 201, created.text
+    assert created.json()["version"] == 2

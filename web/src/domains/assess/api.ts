@@ -1,4 +1,4 @@
-import { hasCode, platformRequest, type components } from "@/foundation/platform-client";
+import { platformRequest, type components } from "@/foundation/platform-client";
 
 export type Sitting = components["schemas"]["SittingRead"];
 export type SittingPage = components["schemas"]["Page_SittingRead_"];
@@ -326,20 +326,15 @@ export function readAttemptTranscript(
   );
 }
 /** This examiner's own review of a slot, or `null` for none yet. */
-export async function readMySlotReview(
+export function readMySlotReview(
   slug: string,
   slotId: string,
   signal?: AbortSignal,
 ): Promise<SlotReview | null> {
-  try {
-    return await platformRequest<SlotReview>(
-      `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/mine`,
-      { signal },
-    );
-  } catch (error) {
-    if (hasCode(error, "review_not_found")) return null;
-    throw error;
-  }
+  return platformRequest<SlotReview | null>(
+    `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/mine`,
+    { signal },
+  );
 }
 
 /**

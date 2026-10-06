@@ -9,7 +9,7 @@ Three kinds:
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 
 REVIEW_STATUSES = ("draft", "completed")
 
@@ -55,15 +55,19 @@ def normalize_status(status: str) -> str:
     return key
 
 
-def ensure_completable(*, scored: Collection[str], required: Collection[str], status: str) -> None:
-    """A completed review has every reviewable domain scored, or it is refused."""
+def ensure_completable(*, scored: Collection[str], required: Mapping[str, str], status: str) -> None:
+    """A completed review has every reviewable domain scored, or it is refused.
+
+    `required` maps each domain id to its rubric title, in the rubric's order, so the
+    refusal names what the reviewer sees on the form rather than an id (B55).
+    """
     if normalize_status(status) != "completed":
         return
     if not required:
         raise NothingToReview(
             "This station has no reviewable feedback domains yet, so there is nothing to complete."
         )
-    missing = sorted(set(required) - set(scored))
+    missing = [title for domain_id, title in required.items() if domain_id not in scored]
     if missing:
         raise ReviewIncomplete(
             "Score every domain before completing the review; still missing: " + ", ".join(missing)

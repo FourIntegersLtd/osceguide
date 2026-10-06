@@ -47,19 +47,6 @@ export function isActive(member: Membership): boolean {
   return member.status !== "revoked" && !member.revoked_at;
 }
 
-/**
- * Whether revoking this person would leave nobody able to administer the
- * organisation.
- *
- * A courtesy, not a gate: the backend refuses the call either way, and a
- * frontend that decides for itself is how the old client offered actions the
- * API then rejected. All this does is explain in advance.
- */
-export function isLastAdmin(member: Membership, members: Membership[]): boolean {
-  if (!isAdminRole(member.role) || !isActive(member)) return false;
-  return members.filter((row) => isAdminRole(row.role) && isActive(row)).length <= 1;
-}
-
 /** Active first, then admins above supervisors, then by address. */
 export function sortMembers(members: Membership[]): Membership[] {
   const rank = (member: Membership) => {

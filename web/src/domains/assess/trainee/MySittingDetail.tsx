@@ -77,6 +77,7 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
 function Circuit({ sitting }: { sitting: MySitting }) {
   const { hrefFor } = useSurface();
   const slots = orderedSlots(sitting);
+  const briefSlot = readingBriefSlot(sitting);
   const { total } = progressOf(sitting);
   const exam = isExam(sitting);
 
@@ -135,9 +136,7 @@ function Circuit({ sitting }: { sitting: MySitting }) {
         </B2CHero>
       ) : null}
 
-      {readingBriefSlot(sitting) ? (
-        <SlotReadingBrief slot={readingBriefSlot(sitting)!} orgSlug={sitting.org_slug} />
-      ) : null}
+      {briefSlot ? <SlotReadingBrief slot={briefSlot} /> : null}
 
       {slots.length === 0 ? (
         <EmptyState
@@ -211,11 +210,8 @@ function Slot({ slot, exam }: { slot: MySlot; exam: boolean }) {
  */
 function MyReviewLink({ slotId }: { slotId: string }) {
   const { hrefFor } = useSurface();
-  // Not yet readable answers 404, which is not a page failure — no link.
-  const state = useAsync(
-    (signal) => readMyReview(slotId, signal).catch(() => null),
-    [slotId],
-  );
+  // Not yet readable answers null — no link.
+  const state = useAsync((signal) => readMyReview(slotId, signal), [slotId]);
 
   if (!state.data) return null;
 
@@ -240,14 +236,9 @@ function MyReviewLink({ slotId }: { slotId: string }) {
  */
 function MyResultLink({ sittingId }: { sittingId: string }) {
   const { hrefFor } = useSurface();
-  // A result nobody has released yet answers 404 as readily as one that is
-  // not this person's, and neither is a page failure — the link simply is not
-  // there. `AsyncBoundary` would turn both into an alert on a screen the
-  // candidate came to for something else.
-  const state = useAsync(
-    (signal) => readMyResult(sittingId, signal).catch(() => null),
-    [sittingId],
-  );
+  // Nothing released yet (or not this person's) answers null — the link
+  // simply is not there.
+  const state = useAsync((signal) => readMyResult(sittingId, signal), [sittingId]);
 
   if (!state.data?.released_at) return null;
 

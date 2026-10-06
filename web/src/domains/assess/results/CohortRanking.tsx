@@ -2,7 +2,6 @@
 
 import { Alert, B2CGroupedRow, B2CGroupedSection, Badge, Spinner } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { hasCode } from "@/foundation/platform-client";
 import { readCohort } from "@/domains/assess/results/api";
 import { ReadoutExport } from "@/domains/assess/results/ReadoutExport";
 import {
@@ -24,17 +23,11 @@ import {
  *
  * Exam sittings only. A training circuit is people practising, and ranking
  * them against each other would turn practice into an assessment nobody agreed
- * to sit — so a training sitting answers 422 and this renders nothing.
+ * to sit — so the server refuses a training sitting (422) and the results
+ * screen mounts this for exam sittings only.
  */
 export function CohortRanking({ orgSlug, sittingId }: { orgSlug: string; sittingId: string }) {
-  const state = useAsync(async (signal) => {
-    try {
-      return await readCohort(orgSlug, sittingId, signal);
-    } catch (cause) {
-      if (hasCode(cause, "not_an_exam_sitting")) return null;
-      throw cause;
-    }
-  }, [orgSlug, sittingId]);
+  const state = useAsync((signal) => readCohort(orgSlug, sittingId, signal), [orgSlug, sittingId]);
 
   if (state.loading) return <Spinner />;
   if (state.error) return <Alert tone="danger">{errorMessage(state.error)}</Alert>;

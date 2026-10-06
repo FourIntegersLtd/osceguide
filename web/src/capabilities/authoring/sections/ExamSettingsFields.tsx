@@ -165,12 +165,11 @@ export function Field({
   label: string;
   children: React.ReactNode;
 }) {
+  // The label wraps its one control, so the control is named by it.
   return (
-    <div>
-      <label className="block text-osce-body font-semibold text-ink">
-        {label}
-      </label>
+    <label className="block">
+      <span className="block text-osce-body font-semibold text-ink">{label}</span>
       {children}
-    </div>
+    </label>
   );
 }

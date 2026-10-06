@@ -7,6 +7,7 @@ import {
   PlatformFilterSearch,
   PlatformFilterSelect,
 } from "@/foundation/ui";
+import { STATION_STATUS_FILTERS, type StationStatusFilter } from "@/capabilities/authoring/parts/stationListUrl";
 import { AUTHORING_ALL_EXAMS } from "@/capabilities/authoring/parts/examCatalogFilter";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 
@@ -15,6 +16,8 @@ export function AuthoringCatalogFilterBar({
   onExamCodeChange,
   search,
   onSearchChange,
+  status,
+  onStatusChange,
   searchPlaceholder = "Search…",
   searchAriaLabel = "Search catalogue",
   leading,
@@ -25,6 +28,9 @@ export function AuthoringCatalogFilterBar({
   onExamCodeChange: (code: string) => void;
   search?: string;
   onSearchChange?: (value: string) => void;
+  /** The stations list's Active / Archived / All; other catalogues leave it out. */
+  status?: StationStatusFilter;
+  onStatusChange?: (value: StationStatusFilter) => void;
   searchPlaceholder?: string;
   searchAriaLabel?: string;
   leading?: ReactNode;
@@ -48,6 +54,23 @@ export function AuthoringCatalogFilterBar({
           </option>
         ))}
       </PlatformFilterSelect>
+      {status && onStatusChange ? (
+        <>
+          <PlatformFilterDivider />
+          <PlatformFilterSelect
+            aria-label="Filter by status"
+            value={status}
+            onChange={(value) => onStatusChange(value as StationStatusFilter)}
+            className="min-w-[7rem]"
+          >
+            {STATION_STATUS_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </PlatformFilterSelect>
+        </>
+      ) : null}
       {onSearchChange ? (
         <>
           <PlatformFilterDivider />

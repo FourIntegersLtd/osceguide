@@ -95,11 +95,18 @@ export function directoryListingTotal(
   if (filters.q?.trim() || filters.status || filters.planCode) return undefined;
 
   if (filters.unassigned) {
+    if (filters.access === "paid") return summary.unassigned_paid;
+    if (filters.access === "trial") return summary.unassigned_trial;
     if (filters.access) return undefined;
     return summary.unassigned;
   }
 
-  if (!filters.examCode) return undefined;
+  // The whole directory: the same counts the Paid and On trial tiles show.
+  if (!filters.examCode) {
+    if (filters.access === "paid") return summary.paid;
+    if (filters.access === "trial") return summary.trial;
+    return undefined;
+  }
 
   const exam = summary.exams.find((entry) => entry.code === filters.examCode);
   if (!exam) return undefined;

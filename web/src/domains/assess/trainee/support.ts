@@ -244,29 +244,6 @@ export function practisable(stations: readonly OrgStation[]): OrgStation[] {
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
-/**
- * The brief a candidate reads before a station starts.
- *
- * `reading_brief` is the key the backend writes — `stations/service_versions.py`
- * names it, and the PATCH that corrects one without cutting a new version
- * writes there. `candidate_brief` is accepted too because station content
- * authored before that route existed uses it.
- *
- * Nothing else in `content` is read on purpose. The backend strips the
- * patient's material from the organisation's station list for a trainee
- * (`stations/domain_content.py`); picking one field here is the second line
- * between a reading brief and a candidate who can see the diagnosis.
- */
-export function readingBrief(station: OrgStation): string | null {
-  const content = station.content;
-  if (!content) return null;
-  for (const key of ["reading_brief", "candidate_brief"]) {
-    const value = content[key];
-    if (typeof value === "string" && value.trim()) return value;
-  }
-  return null;
-}
-
 /* ---------- copy ---------- */
 
 export function greeting(now: Date): string {
@@ -276,8 +253,14 @@ export function greeting(now: Date): string {
   return "Good evening";
 }
 
+/** "Good morning, Amara." or, with no usable name, "Good morning." */
+export function greetingFor(name: string | null | undefined, now: Date): string {
+  const first = firstName(name);
+  return first ? `${greeting(now)}, ${first}.` : `${greeting(now)}.`;
+}
+
 export function firstName(name: string | null | undefined): string | null {
-  const trimmed = (name ?? "").trim();
-  if (!trimmed) return null;
-  return trimmed.split(/\s+/)[0] ?? null;
+  const first = (name ?? "").trim().split(/\s+/)[0];
+  // Accounts invited before 2026-10-06 stored their address as the name; it is not one.
+  return first && !first.includes("@") ? first : null;
 }

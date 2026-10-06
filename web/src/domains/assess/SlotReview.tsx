@@ -258,7 +258,7 @@ function Editor({
       <div className="flex flex-col gap-4">
         {/* The same feedback the candidate reads, drawn from the same rubric. */}
         {result && feedback?.rubric ? (
-          <RubricFeedback rubric={feedback.rubric} result={result} narrow />
+          <RubricFeedback rubric={feedback.rubric} result={result} heading="Automatic marking" narrow />
         ) : (
           <Panel padding="md">
             <p className="text-osce-body text-b2b-mid">

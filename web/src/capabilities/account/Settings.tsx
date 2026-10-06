@@ -11,14 +11,21 @@ import {
 } from "@/foundation/ui";
 import { isPlatformAdmin, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import ProfilePanel from "@/capabilities/account/settings/ProfilePanel";
+import ProfilePanel, { type ProfilePart } from "@/capabilities/account/settings/ProfilePanel";
 import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
 import ExamPanel from "@/capabilities/account/settings/ExamPanel";
 import PaymentsPanel from "@/capabilities/account/settings/PaymentsPanel";
 import ReferralsPanel from "@/capabilities/account/settings/ReferralsPanel";
 import TutorMemoryPanel from "@/capabilities/account/settings/TutorMemoryPanel";
 
-export type SettingsTab = "profile" | "preferences" | "exam" | "payments" | "referrals" | "memory";
+export type SettingsTab =
+  | "profile"
+  | "preferences"
+  | "exam"
+  | "payments"
+  | "referrals"
+  | "memory"
+  | ProfilePart;
 
 /** A tab an arm adds beside the account's own. */
 export interface ExtraSettingsTab {
@@ -29,14 +36,6 @@ export interface ExtraSettingsTab {
 
 const NO_EXTRA_TABS: ExtraSettingsTab[] = [];
 
-const VALID_TABS: SettingsTab[] = [
-  "profile",
-  "preferences",
-  "exam",
-  "payments",
-  "referrals",
-  "memory",
-];
 
 /**
  * The retiring client's tabs, in its order, plus the tutor's memory.
@@ -55,6 +54,19 @@ const TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
 ];
 
 /**
+ * Staff settings: staff have no exam, plan, referrals or tutor, so they get
+ * the Profile tab's three parts and nothing that would only say "upgrade".
+ */
+const PLATFORM_TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
+  { id: "account", label: "Account" },
+  { id: "security", label: "Security" },
+  { id: "data", label: "Data" },
+];
+
+const tabsFor = (surface: string) => (surface === "platform" ? PLATFORM_TABS : TABS);
+const firstTabFor = (surface: string): SettingsTab => (surface === "platform" ? "account" : "profile");
+
+/**
  * The person, on whichever arm they are standing.
  *
  * Mounted on all five surfaces deliberately. The retiring client had settings
@@ -67,8 +79,11 @@ const TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
  * organisation and sign-in panels) without this capability knowing the arm.
  */
 export function Settings({ extraTabs = NO_EXTRA_TABS }: { extraTabs?: ExtraSettingsTab[] }) {
+  const { surface } = useSurface();
   return (
-    <Suspense fallback={<SettingsFrame tab="profile" onChange={() => {}} extraTabs={extraTabs} />}>
+    <Suspense
+      fallback={<SettingsFrame tab={firstTabFor(surface)} onChange={() => {}} extraTabs={extraTabs} />}
+    >
       <SettingsTabs extraTabs={extraTabs} />
     </Suspense>
   );
@@ -79,11 +94,13 @@ function SettingsTabs({ extraTabs }: { extraTabs: ExtraSettingsTab[] }) {
   const searchParams = useSearchParams();
   const { session } = useSession();
   const isAdmin = isPlatformAdmin(session);
+  const { surface } = useSurface();
+  const tabs = tabsFor(surface);
   const requested = searchParams.get("tab");
-  const [fallback, setFallback] = useState<string>("profile");
-  const known = isSettingsTab(requested)
-    ? requested !== "referrals" || isAdmin
-    : extraTabs.some((entry) => entry.id === requested);
+  const [fallback, setFallback] = useState<string>(firstTabFor(surface));
+  const known =
+    tabs.some((entry) => entry.id === requested && (!entry.adminOnly || isAdmin)) ||
+    extraTabs.some((entry) => entry.id === requested);
   const tab = requested !== null && known ? requested : fallback;
 
   /*
@@ -143,13 +160,16 @@ function SettingsFrame({
   };
 
   const items: B2CSegmentedTabItem<string>[] = [
-    ...TABS.filter((entry) => !entry.adminOnly || isAdmin),
+    ...tabsFor(surface).filter((entry) => !entry.adminOnly || isAdmin),
     ...extraTabs,
   ].map(({ id, label }) => ({ id, label }));
 
   const panels = (
     <>
       {tab === "profile" ? <ProfilePanel onDirtyChange={setDirty} /> : null}
+      {tab === "account" || tab === "security" || tab === "data" ? (
+        <ProfilePanel key={tab} part={tab} onDirtyChange={setDirty} />
+      ) : null}
       {tab === "preferences" ? <PreferencesPanel /> : null}
       {tab === "exam" ? <ExamPanel /> : null}
       {tab === "payments" ? <PaymentsPanel /> : null}
@@ -171,7 +191,7 @@ function SettingsFrame({
     return (
       <PlatformTabbedScreen
         title="Settings"
-        description="Your own account: profile, sign-in and preferences."
+        description="Your own account: profile, sign-in and your data."
         tabs={items}
         value={tab}
         onChange={handleTabChange}
@@ -199,8 +219,4 @@ function SettingsFrame({
       {leaveModal}
     </div>
   );
-}
-
-function isSettingsTab(value: string | null): value is SettingsTab {
-  return value !== null && (VALID_TABS as string[]).includes(value);
 }

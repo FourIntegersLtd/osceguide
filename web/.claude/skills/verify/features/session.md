@@ -40,3 +40,29 @@ Handles: `getByLabel("Email")`, `getByLabel("Password", { exact: true })`,
   the client, then shows "We could not check your session" with "Try again"
   rather than the "Checking your session" spinner.
 - Signing in as a real imported user is never acceptable, even read-only.
+
+## Forgot password and invitations
+Handles: `/forgot-password` → `getByLabel("Email")`, button **Send reset link**, then
+heading "Check your email". `/reset-password?token=` → `getByLabel("New password",
+{ exact: true })`, `getByLabel("Confirm password")`, button **Save new password**.
+`/accept-invitation?token=` is the same screen: label **Password**, button **Accept
+invitation**, then "Your account is ready" with a **Sign in** button. An org admin
+invites from `/app/<org>/team` → tab **Add people** → `getByLabel("Email address")`,
+`getByLabel("Their role")`, button **Add person**.
+
+The link is not sent locally: read the token from the outbox row,
+`select payload->>'token' from outbound_messages where recipient=… and
+template_key in ('password_reset','invitation')`. Expire a link with `update
+password_reset_tokens set expires_at = now() - interval '1 minute'`. Driven end to end
+by `.verify/fix-W2-reset.mjs` and `.verify/fix-W2-invite.mjs`.
+
+- `password-reset` and `password-reset/confirm` share one rate limit: 5 per 5 minutes
+  per caller. One full journey uses most of it; a second run inside the window gets
+  429s that look like a broken link. Wait five minutes between runs.
+- A spent or expired link answers 422 `invalid_reset_token`; the screen then offers
+  **Send a new link** (reset) or **Sign in** (invitation). A deliberate refusal still
+  logs a "Failed to load resource" console line; filter only that status.
+- A script that routes `/api/v1` through `fix-common.mjs`'s `viaApi8013` must end
+  with `process.exit(...)`: a signed-in org page opens EventSource streams, the proxy's
+  `fetch` never finishes them, the script never exits, and the open connections stop
+  uvicorn `--reload` from restarting (the api answers nothing until they close).

@@ -27,7 +27,7 @@ describe("whether a circuit's feedback was published", () => {
   it("is not published when there is a draft or no review at all", async () => {
     respond(200, { ...REVIEW, finalized_at: null });
     assert.equal((await readCircuitReview("kings", "c1")).state, "unpublished");
-    respond(404, { code: "review_not_found", message: "No review" });
+    respond(200, null);
     assert.equal((await readCircuitReview("kings", "c1")).state, "unpublished");
   });
 

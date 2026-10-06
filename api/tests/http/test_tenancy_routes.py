@@ -13,6 +13,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from tests.support.people import mark_signed_in
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -149,6 +150,28 @@ async def test_memberships_are_listed_as_a_page(client: AsyncClient, make_actor)
     )
     body = response.json()
     assert "items" in body and "next_cursor" in body
+
+
+async def test_the_member_list_says_who_is_still_waiting_on_their_invitation(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """B22. A person who has signed in is not offered "Resend invitation"."""
+    org_id = await seed_org(client, make_actor)
+    owner_token = await member_token(make_actor, org_id, "kings", "owner")
+    await client.post(
+        "/api/v1/orgs/kings/memberships",
+        json={"email": "tutor@kings.example", "role": "supervisor"},
+        headers=bearer(owner_token),
+    )
+    url = "/api/v1/orgs/kings/memberships"
+    params = {"search": "tutor@kings"}
+
+    waiting = (await client.get(url, params=params, headers=bearer(owner_token))).json()["items"]
+    assert [m["invited"] for m in waiting] == [True]
+
+    await mark_signed_in(db_session, email="tutor@kings.example")
+    joined = (await client.get(url, params=params, headers=bearer(owner_token))).json()["items"]
+    assert [m["invited"] for m in joined] == [False]
 
 
 async def test_memberships_can_be_searched_by_email_role_or_user_id(client: AsyncClient, make_actor) -> None:
@@ -347,7 +370,10 @@ async def test_a_team_can_be_invited_in_one_request(
 
     org_id = await seed_org(client, make_actor, "kings")
     admin = await member_token(make_actor, org_id, "kings", "owner")
+    # `invited` means "still waiting on their invitation", so the account that
+    # is already here has signed in before.
     await make_actor("already-here@example.com")
+    await mark_signed_in(db_session, email="already-here@example.com")
 
     response = await client.post(
         "/api/v1/orgs/kings/memberships/bulk",
@@ -562,3 +588,52 @@ async def test_memberships_filter_on_status(client: AsyncClient, make_actor) -> 
         "/api/v1/orgs/kings/memberships", params={"status": "maybe"}, headers=bearer(owner)
     )
     assert nonsense.status_code == 422
+
+
+async def test_a_platform_admin_who_is_not_a_member_sets_the_staff_mfa_policy_and_reads_it_back(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+) -> None:
+    await seed_org(client, make_actor, "kings")
+    root = await make_actor("root-policy@osceguide.com", platform_admin=True)
+
+    changed = await client.patch(
+        "/api/v1/orgs/kings/mfa-policy", json={"require_staff_mfa": True}, headers=bearer(root)
+    )
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["require_staff_mfa"] is True
+    read_back = await client.get("/api/v1/orgs/kings", headers=bearer(root))
+    assert read_back.json()["require_staff_mfa"] is True
+
+
+async def test_the_last_administrator_cannot_be_revoked_or_demoted(client: AsyncClient, make_actor) -> None:
+    org_id = await seed_org(client, make_actor)
+    admin = await member_token(make_actor, org_id, "kings", "institution_admin")
+    listed = await client.get("/api/v1/orgs/kings/memberships", headers=bearer(admin))
+    only_admin = next(row["id"] for row in listed.json()["items"] if row["role"] == "institution_admin")
+
+    revoked = await client.post(f"/api/v1/orgs/kings/memberships/{only_admin}/revoke", headers=bearer(admin))
+    demoted = await client.patch(
+        f"/api/v1/orgs/kings/memberships/{only_admin}", json={"role": "supervisor"}, headers=bearer(admin)
+    )
+
+    assert (revoked.status_code, revoked.json()["code"]) == (409, "last_admin")
+    assert (demoted.status_code, demoted.json()["code"]) == (409, "last_admin")
+
+
+async def test_an_administrator_can_be_revoked_while_another_remains(client: AsyncClient, make_actor) -> None:
+    org_id = await seed_org(client, make_actor)
+    admin = await member_token(make_actor, org_id, "kings", "institution_admin")
+    second = await client.post(
+        "/api/v1/orgs/kings/memberships",
+        json={"email": "deputy@kings.example", "role": "institution_admin"},
+        headers=bearer(admin),
+    )
+    assert second.status_code == 201, second.text
+
+    revoked = await client.post(
+        f"/api/v1/orgs/kings/memberships/{second.json()['id']}/revoke", headers=bearer(admin)
+    )
+
+    assert revoked.status_code == 200, revoked.text
+    assert revoked.json()["status"] == "revoked"

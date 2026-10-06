@@ -273,8 +273,8 @@ async def test_another_candidate_cannot_read_it(
 
     stranger = await make_actor("stranger-result@example.com")
     response = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(stranger))
-    assert response.status_code == 404
-    assert response.json()["code"] == "result_not_released"
+    assert response.status_code == 200, response.text
+    assert response.json() is None
 
 
 async def test_a_candidate_sees_nothing_before_release(
@@ -289,8 +289,19 @@ async def test_a_candidate_sees_nothing_before_release(
     )
     candidate = await make_actor("candidate@example.com")
     response = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(candidate))
-    assert response.status_code == 404
-    assert response.json()["code"] == "result_not_released"
+    assert response.status_code == 200, response.text
+    assert response.json() is None
+
+
+async def test_a_decision_read_before_any_draft_is_null(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """B51: no decision yet is an ordinary state, not a 404 in the console."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    response = await client.get(url(sitting, trainee), headers=bearer(admin))
+    assert response.status_code == 200, response.text
+    assert response.json() is None
 
 
 async def test_a_supervisor_may_not_sign_off(
@@ -519,3 +530,82 @@ async def test_a_bulk_release_emails_each_candidate_and_skips_the_unready(
 
     still_draft = await client.get(url(sitting, draft), headers=bearer(admin))
     assert still_draft.json()["workflow_state"] == "draft"
+
+
+async def test_a_released_exam_decision_carries_the_recruitment_outcome(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Hire is exam mode: the employer's hired/reserve call travels through sign-off and release."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    saved = await client.put(
+        url(sitting, trainee),
+        json={
+            "assessment_outcome": "pass",
+            "recruitment_outcome": "reserve",
+            "rationale": "Strong, but one post.",
+            "evidence": EVIDENCE,
+        },
+        headers=bearer(admin),
+    )
+    assert saved.status_code == 200, saved.text
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    released = await client.post(
+        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
+    )
+
+    assert released.json()["workflow_state"] == "released"
+    assert released.json()["recruitment_outcome"] == "reserve"
+
+
+async def test_a_training_sitting_refuses_a_recruitment_outcome(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.sittings.models import Sitting
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    exam_sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    exam = await db_session.get(Sitting, exam_sitting)
+    assert exam is not None
+    practice = Sitting(
+        org_id=org_id, name="Practice", mode="training", rubric_version_id=exam.rubric_version_id
+    )
+    db_session.add(practice)
+    await db_session.flush()
+
+    response = await client.put(
+        url(practice.id, trainee),
+        json={"assessment_outcome": "pass", "recruitment_outcome": "hired", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+
+    assert (response.status_code, response.json()["code"]) == (422, "recruitment_outside_exam")
+
+
+async def test_a_signed_off_decision_goes_back_to_draft_until_it_is_released(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Saving a signed-off decision again is "back to draft"; a released one is final."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    body = {"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE}
+    await client.put(url(sitting, trainee), json=body, headers=bearer(admin))
+    signed = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+
+    reopened = await client.put(
+        url(sitting, trainee),
+        json={**body, "expected_revision": signed.json()["revision"]},
+        headers=bearer(admin),
+    )
+    assert reopened.status_code == 200, reopened.text
+    assert reopened.json()["workflow_state"] == "draft"
+
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    await client.post(url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin))
+    final = await client.get(url(sitting, trainee), headers=bearer(admin))
+    after_release = await client.put(
+        url(sitting, trainee),
+        json={**body, "expected_revision": final.json()["revision"]},
+        headers=bearer(admin),
+    )
+    assert (after_release.status_code, after_release.json()["code"]) == (409, "invalid_workflow")

@@ -25,6 +25,13 @@ class IncompatibleOutcomesError(InvalidInput):
     default_message = "Those assessment and recruitment outcomes cannot go together"
 
 
+class RecruitmentOutsideExamError(InvalidInput):
+    """A recruitment outcome was given for a training sitting; only exam mode records one."""
+
+    code = "recruitment_outside_exam"
+    default_message = "A recruitment outcome is recorded only for an exam-mode sitting"
+
+
 class NotSignableError(InvalidInput):
     """The decision is missing an outcome or a rationale, so it cannot be signed off."""
 

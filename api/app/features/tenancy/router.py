@@ -170,7 +170,7 @@ async def add_memberships(
 @router.patch(
     "/orgs/{org_slug}/memberships/{membership_id}",
     response_model=schemas.MembershipRead,
-    responses=error_responses(Forbidden, errors.MembershipNotFound),
+    responses=error_responses(Forbidden, errors.MembershipNotFound, errors.LastAdministrator),
 )
 async def change_membership_role(
     membership_id: uuid.UUID, body: schemas.UpdateMembership, workspace: OrgAdmin, session: Session
@@ -187,7 +187,7 @@ async def change_membership_role(
 @router.post(
     "/orgs/{org_slug}/memberships/bulk/revoke",
     response_model=schemas.BulkMembershipRevokeResponse,
-    responses=error_responses(Forbidden),
+    responses=error_responses(Forbidden, errors.LastAdministrator),
 )
 async def bulk_revoke_memberships(
     body: schemas.BulkMembershipIds, workspace: OrgAdmin, session: Session, clock: ClockDep
@@ -222,7 +222,7 @@ async def bulk_resend_membership_invitations(
 @router.post(
     "/orgs/{org_slug}/memberships/{membership_id}/revoke",
     response_model=schemas.MembershipRead,
-    responses=error_responses(Forbidden, errors.MembershipNotFound),
+    responses=error_responses(Forbidden, errors.MembershipNotFound, errors.LastAdministrator),
 )
 async def revoke_membership(
     membership_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep

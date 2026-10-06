@@ -125,3 +125,55 @@ async def test_the_machinery_stream_is_refused_to_anybody_but_a_platform_admin(
         "GET", "/api/v1/platform/machinery/stream", headers=bearer(someone)
     ) as response:
         assert response.status_code == 403
+
+
+async def test_a_job_its_worker_died_on_is_requeued_once_then_failed_with_its_history(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """B32: two produce_media jobs sat `doing` at 0 attempts after their worker
+    was pruned, and a failed job said nothing about how it got there."""
+    from sqlalchemy import text
+
+    from app.features.health.service import reclaim_stalled_jobs
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    media_id = str(uuid.uuid4())
+    await queued(db_session, task="produce_media", media_id=media_id)
+    job_id = (
+        await db_session.execute(
+            text("SELECT id FROM procrastinate_jobs WHERE args->>'media_id' = :id"), {"id": media_id}
+        )
+    ).scalar_one()
+
+    async def dies_while_running() -> None:
+        await db_session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing', worker_id = NULL WHERE id = :id"),
+            {"id": job_id},
+        )
+
+    async def state() -> tuple[str, int]:
+        found = await db_session.execute(
+            text("SELECT status, attempts FROM procrastinate_jobs WHERE id = :id"), {"id": job_id}
+        )
+        status, attempts = found.one()
+        return str(status), int(attempts)
+
+    await dies_while_running()
+    assert job_id in (await reclaim_stalled_jobs(db_session))[0]
+    assert await state() == ("todo", 1)
+
+    await dies_while_running()
+    assert job_id in (await reclaim_stalled_jobs(db_session))[1]
+    assert await state() == ("failed", 2)
+
+    failed = await client.get("/api/v1/platform/jobs?status=failed&task=produce_media", headers=bearer(root))
+    assert failed.status_code == 200, failed.text
+    [job] = [job for job in failed.json()["items"] if job["id"] == job_id]
+    assert [event["type"] for event in job["events"]] == [
+        "deferred",
+        "started",
+        "scheduled",  # procrastinate's retry sets a retry time, which logs as scheduled
+        "deferred_for_retry",
+        "started",
+        "failed",
+    ]

@@ -104,6 +104,55 @@ async def list_jobs(
     return [_ref(job_row) for job_row in await session.execute(stmt, params)]
 
 
+@dataclass(frozen=True)
+class JobEventRef:
+    """One row of `procrastinate_events`: what happened to a job, and when."""
+
+    type: str
+    at: datetime
+
+
+async def events_by_job(session: AsyncSession, job_ids: Sequence[int]) -> dict[int, list[JobEventRef]]:
+    """Each job's history, oldest first. procrastinate keeps no exception text,
+    so this is all there is to say why a job failed without the worker's log."""
+    if not job_ids:
+        return {}
+    event_rows = await session.execute(
+        text("SELECT job_id, type, at FROM procrastinate_events WHERE job_id = ANY(:ids) ORDER BY id"),
+        {"ids": list(job_ids)},
+    )
+    events: dict[int, list[JobEventRef]] = {}
+    for event_row in event_rows:
+        event = JobEventRef(type=str(event_row.type), at=event_row.at)
+        events.setdefault(int(event_row.job_id), []).append(event)
+    return events
+
+
+async def stalled_jobs(session: AsyncSession, *, seconds_since_heartbeat: int) -> list[JobRef]:
+    """Jobs left `doing` by a worker that died: its row pruned (`worker_id` null)
+    or its heartbeat older than the limit. procrastinate's own
+    `select_stalled_jobs_by_heartbeat`, read through our session."""
+    stmt = text(
+        f"SELECT {', '.join('job.' + column for column in _COLUMNS.split(', '))} FROM procrastinate_jobs job "  # noqa: S608
+        "LEFT JOIN procrastinate_workers worker ON worker.id = job.worker_id "
+        "WHERE job.status = 'doing' AND (job.worker_id IS NULL "
+        "OR worker.last_heartbeat < now() - make_interval(secs => :seconds)) ORDER BY job.id"
+    )
+    return [_ref(job_row) for job_row in await session.execute(stmt, {"seconds": seconds_since_heartbeat})]
+
+
+async def requeue(session: AsyncSession, job_id: int) -> None:
+    """Put a stalled job back in the queue now, counting the lost run as an attempt."""
+    await session.execute(
+        text("SELECT procrastinate_retry_job_v2(:id, now(), NULL, NULL, NULL)"), {"id": job_id}
+    )
+
+
+async def fail(session: AsyncSession, job_id: int) -> None:
+    """Give up on a stalled job: `failed`, kept for the console."""
+    await session.execute(text("SELECT procrastinate_finish_job_v1(:id, 'failed', false)"), {"id": job_id})
+
+
 async def counts_by_status(session: AsyncSession) -> dict[str, int]:
     """How many jobs sit in each status, including the statuses that currently have none."""
     status_rows = await session.execute(

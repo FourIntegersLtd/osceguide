@@ -1,5 +1,4 @@
 import {
-  hasCode,
   platformRequest,
   rememberPlatformSession,
   type components,
@@ -165,15 +164,10 @@ export function readReferralHistory(
 export async function readPayoutDetails(
   signal?: AbortSignal,
 ): Promise<{ details: PayoutDetails | null }> {
-  try {
-    const details = await platformRequest<PayoutDetails>("/api/v1/me/referral-payout-details", {
-      signal,
-    });
-    return { details };
-  } catch (cause) {
-    if (hasCode(cause, "payout_details_not_found")) return { details: null };
-    throw cause;
-  }
+  const details = await platformRequest<PayoutDetails | null>("/api/v1/me/referral-payout-details", {
+    signal,
+  });
+  return { details };
 }
 
 /** Save where referral rewards are paid. Leaving out the account number keeps the stored one. */

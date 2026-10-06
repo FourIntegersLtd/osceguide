@@ -16,7 +16,7 @@ from app.core.openapi import SAML_METADATA_MEDIA_TYPE
 from app.core.ports import ClockDep
 from app.core.rate_limit import SAML_ACS, SSO_CALLBACK, TooManyRequests, caller_key, check
 from app.core.settings import SettingsDep
-from app.core.tenancy import PlatformAdmin
+from app.core.tenancy import OrgNotFound, PlatformAdmin
 from app.features.sso import errors, schemas, service, service_login, service_saml
 
 router = APIRouter(tags=["sso"])
@@ -129,11 +129,12 @@ async def sso_callback(
 
 @router.get(
     "/platform/orgs/{org_slug}/sso",
-    response_model=schemas.SsoConfigRead,
-    responses=error_responses(Unauthenticated, Forbidden, errors.SsoNotConfigured),
+    response_model=schemas.SsoConfigRead | None,
+    responses=error_responses(Unauthenticated, Forbidden, OrgNotFound),
 )
-async def read_config(org_slug: str, _admin: PlatformAdmin, session: Session) -> schemas.SsoConfigRead:
-    """The whole arrangement, including the issuer and every binding."""
+async def read_config(org_slug: str, _admin: PlatformAdmin, session: Session) -> schemas.SsoConfigRead | None:
+    """The whole arrangement, including the issuer and every binding. `null` when
+    the organisation has none yet; an unknown organisation is a 404."""
     return await service.read_config(session, org_slug)
 
 
@@ -143,7 +144,7 @@ async def read_config(org_slug: str, _admin: PlatformAdmin, session: Session) ->
     responses=error_responses(
         Unauthenticated,
         Forbidden,
-        errors.SsoNotConfigured,
+        OrgNotFound,
         errors.UnknownSsoProvider,
         errors.InvalidSsoBinding,
         errors.SsoNotConfigurableError,

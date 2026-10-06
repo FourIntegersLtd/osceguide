@@ -12,7 +12,6 @@ import {
   Textarea,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
-import { hasCode } from "@/foundation/platform-client";
 import {
   readSsoConfig,
   saveSsoConfig,
@@ -20,6 +19,7 @@ import {
   type SaveSsoConfigInput,
 } from "@/domains/platform/api";
 import { WriteOnlyNote } from "@/domains/platform/chrome";
+import { ssoFieldErrors } from "@/domains/platform/support";
 
 const PROVIDERS = [
   { value: "entra", label: "Microsoft Entra ID" },
@@ -82,26 +82,21 @@ function configToForm(config: SsoConfig | null): SsoFormState {
 /**
  * One organisation's SSO arrangement, read and written by a platform admin.
  *
- * The GET answers `sso_not_configured` when nothing has been set up yet — that
- * is an empty form, not a failure. Every other error goes through
- * `AsyncBoundary`, which is the standard loading/failed/empty gate for a
- * sub-resource section (cf. `MembersSection`).
+ * The GET answers `null` when nothing has been set up yet — that is an empty
+ * form, not a failure. It is wrapped in `{ config }` because `AsyncBoundary`
+ * reads a bare `null` as "not loaded". Every error goes through the boundary,
+ * the standard loading/failed gate for a sub-resource section (cf. `MembersSection`).
  */
 export function SsoSection({ slug }: { slug: string }) {
-  const state = useAsync((signal) => readSsoConfig(slug, signal), [slug]);
-
-  if (hasCode(state.error, "sso_not_configured")) {
-    return (
-      <Panel title="SSO" description={SSO_DESCRIPTION}>
-        <SsoForm slug={slug} config={null} onSaved={state.reload} />
-      </Panel>
-    );
-  }
+  const state = useAsync(
+    async (signal) => ({ config: await readSsoConfig(slug, signal) }),
+    [slug],
+  );
 
   return (
     <Panel title="SSO" description={SSO_DESCRIPTION}>
       <AsyncBoundary state={state}>
-        {(config) => (
+        {({ config }) => (
           <SsoForm slug={slug} config={config} onSaved={state.reload} />
         )}
       </AsyncBoundary>
@@ -122,16 +117,12 @@ function SsoForm({
   const [form, setForm] = useState<SsoFormState>(() => configToForm(config));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const fieldErrors = submitted ? ssoFieldErrors(form) : {};
 
   const commit = useCallback(async () => {
-    if (form.enabled && !form.issuer.trim()) {
-      setError(new Error("SSO cannot be enabled without an issuer."));
-      return;
-    }
-    if (form.sso_only && !form.enabled) {
-      setError(new Error("SSO-only sign-in requires SSO to be enabled first."));
-      return;
-    }
+    setSubmitted(true);
+    if (Object.keys(ssoFieldErrors(form)).length > 0) return;
 
     setBusy(true);
     setError(null);
@@ -193,6 +184,7 @@ function SsoForm({
         onChange={(e) => update("issuer", e.target.value)}
         disabled={busy}
         placeholder="https://login.microsoftonline.com/…"
+        error={fieldErrors.issuer}
         hint="The sign-in address from the organisation’s identity provider. Their IT team can give you this. Required when organisation sign-in is on."
       />
 
@@ -246,6 +238,11 @@ function SsoForm({
           onChange={(e) => update("sso_only", e.target.checked)}
           disabled={busy}
         />
+        {fieldErrors.sso_only ? (
+          <p role="alert" className="text-osce-meta text-osce-danger-text">
+            {fieldErrors.sso_only}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex justify-end">

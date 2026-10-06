@@ -3,9 +3,22 @@
 import { useState } from "react";
 import { Alert, B2CPageHeader, B2CSegmentedTabs, BandPill, Button, ButtonLink, EmptyState, Textarea, type BandVariant, Panel } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
-import { PreviewNotice } from "@/domains/assess/programmes/parts";
 
 type Agreement = "agree" | "partly" | "disagree";
+
+/**
+ * Shown because this screen has no API behind it yet.
+ *
+ * `needs` names the missing route in plain words, so the notice doubles as the
+ * to-do a reviewer reads off the screen.
+ */
+function PreviewNotice({ needs }: { needs: string }) {
+  return (
+    <Alert tone="warning" title="Sample data">
+      This screen is not connected yet, so the people and numbers on it are examples. {needs}
+    </Alert>
+  );
+}
 
 /** What the screen needs from a shared-review route, which does not exist. */
 interface SharedReviewRequest {

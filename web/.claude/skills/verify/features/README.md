@@ -14,6 +14,7 @@ teaches you something it did not say (see `maintain-verification-skill`).
 | Rubric feedback, dashboards and review forms | `feedback.md` | `capabilities/feedback`, `domains/train/dashboard`, `domains/assess/results`, `SlotReview` |
 | Rubric builder (start, edit, preview, trial, publish) | `rubric-builder.md` | `capabilities/authoring/rubrics`, `authoring/sections/Rubric*`, `app/**/authoring/rubrics/**` |
 | Marketplace and live peer practice | `marketplace.md` | `capabilities/peer-practice`, `/app/[workspace]/marketplace/**`, platform-api `peer_practice` / `marketplace` |
+| Exams and staff study media | `content-authoring.md` | `capabilities/authoring/sections/Exam*`, `capabilities/staff-media`, `capabilities/fact-check` |
 
 Test account (seeded): `walkthrough@example.com` — platform admin, owner of
 `kings`, partner admin of `bmj`, institution admin of `st-marys`.

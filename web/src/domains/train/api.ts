@@ -134,21 +134,6 @@ export function startSetAttempt(setId: string, entryId: string): Promise<Started
   );
 }
 
-/**
- * Talk an attempt you have already sat back through.
- *
- * Its own route rather than a flag on `startSetAttempt`, because the backend
- * treats it as a different act with a different limit: asking to debrief a
- * station you never sat is refused with `nothing_to_debrief` rather than
- * quietly starting a first attempt.
- */
-export function startSetDebrief(setId: string, entryId: string): Promise<StartedAttempt> {
-  return platformRequest<StartedAttempt>(
-    `/api/v1/me/station-sets/${encodeURIComponent(setId)}/entries/${encodeURIComponent(entryId)}/debriefs`,
-    { method: "POST" },
-  );
-}
-
 /** What this person may practise. The mocks screens gate on it. */
 export function listEntitlements(signal?: AbortSignal) {
   return platformRequest<{ items: Entitlement[] }>("/api/v1/me/entitlements", { signal });

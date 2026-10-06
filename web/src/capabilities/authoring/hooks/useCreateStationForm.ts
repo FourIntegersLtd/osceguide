@@ -5,7 +5,6 @@ import {
   autogenerateStationDraft,
   createStation,
   generateStation,
-  publishStationVersion,
   type Station,
   type StationTemplate,
 } from "@/capabilities/authoring/api";
@@ -58,7 +57,6 @@ export function useCreateStationForm({
   const [prompt, setPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [publishNow, setPublishNow] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   /*
@@ -93,7 +91,6 @@ export function useCreateStationForm({
     setContent({});
     setPrompt("");
     setGenerating(false);
-    setPublishNow(false);
     setError(null);
   }, []);
 
@@ -104,7 +101,6 @@ export function useCreateStationForm({
       setStructure(null);
       setExamCode("");
       setContent({});
-      setPublishNow(false);
       return;
     }
     const resolved = resolvePublishedVersion(templates, versionId);
@@ -169,7 +165,6 @@ export function useCreateStationForm({
           template_version_id: templateVersionId,
         });
         setContent(r.content ?? {});
-        setPublishNow(false);
         if (!title.trim() && r.suggested_title) {
           setTitle(r.suggested_title);
         }
@@ -180,7 +175,6 @@ export function useCreateStationForm({
           stationSubtype: stationSubtype || null,
         });
         setContent(r.content ?? {});
-        setPublishNow(false);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to generate content.");
@@ -223,10 +217,6 @@ export function useCreateStationForm({
         content,
         template_version_id: templateVersionId || null,
       });
-      const draftVisible = Boolean(effectiveStructure) || Object.keys(content).length > 0;
-      if (publishNow && draftVisible) {
-        await publishStationVersion(scope, created.id, created.version);
-      }
       reset();
       onCreated(created);
     } catch (e: unknown) {
@@ -257,8 +247,6 @@ export function useCreateStationForm({
     prompt,
     setPrompt,
     generating,
-    publishNow,
-    setPublishNow,
     error,
     setError,
     busy,

@@ -6,6 +6,7 @@ import {
   observerSubtitle,
   orderedSlots,
   runnerSteps,
+  markable,
   slotProgress,
 } from "@/domains/assess/sessions/support";
 
@@ -16,7 +17,7 @@ function slot(over: Partial<ConsoleSlot> & { id: string; slot_index: number }): 
     started_at: null,
     ended_at: null,
     exam_completed_at: null,
-    trainee: { user_id: `u-${over.id}`, name: `Person ${over.id}`, email: null, trainee_id: null },
+    trainee: { user_id: "u-a", name: "Person a", email: null, trainee_id: null },
     station: { version_id: `v-${over.id}`, station_id: null, title: `Station ${over.id}`, version: 1, status: "published" },
     has_review: false,
     is_active: false,
@@ -167,4 +168,23 @@ test("a circuit ended with nothing sat does not claim every station was", () => 
     ],
   });
   assert.equal(runnerSteps(data)[1]?.sublabel, "0 of 2 stations sat");
+});
+
+test("a station is markable from its consultation, not its reading time", () => {
+  const of = (status: string, has_review = false) => slot({ id: "a", slot_index: 0, status, has_review });
+  assert.equal(markable(of("scheduled")), false);
+  assert.equal(markable(of("reading")), false);
+  assert.equal(markable(of("skipped")), false);
+  assert.equal(markable(of("in_consultation")), true);
+  assert.equal(markable(of("completed")), true);
+  assert.equal(markable(of("reading", true)), true);
+});
+
+test("a circuit of two trainees counts them instead of naming the first", () => {
+  const second = { user_id: "u-b", name: "Person b", email: null, trainee_id: null };
+  const data = console_({
+    slots: [slot({ id: "a", slot_index: 0 }), slot({ id: "b", slot_index: 1, trainee: second })],
+  });
+  assert.equal(observerSubtitle(data), "Not started · 2 trainees");
+  assert.equal(observerSubtitle(console_({ slots: [slot({ id: "a", slot_index: 0 })] })), "Person a · Not started");
 });

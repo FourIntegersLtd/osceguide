@@ -10,7 +10,6 @@ export {
   supportsProgrammes,
   supportsBrief,
   supportsFactCheck,
-  supportsVersionDelete,
   pathId,
   type AuthoringScope,
   type Json,

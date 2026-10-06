@@ -104,6 +104,8 @@ def capabilities_for(principal: Principal) -> Capabilities:
             "read_org": domain.may_read_org(role),
             "manage_team": domain.is_org_admin(role),
             "run_circuits": domain.is_org_admin(role) or domain.is_assigned_staff(role),
+            # The create-sitting route is OrgAdmin; the screens offer "Schedule a sitting" from this.
+            "schedule_sittings": domain.is_org_admin(role),
             "sign_off_results": domain.is_institution_admin(role),
             "administer_platform": principal.is_platform_admin,
         },

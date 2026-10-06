@@ -8,6 +8,7 @@ import {
   outcomeTone,
   readoutAsMarkdown,
   readoutFilename,
+  recruitmentLabel,
   releasable,
   signOffBlockers,
   workflowLabel,
@@ -208,4 +209,10 @@ describe("why a bulk release skipped somebody", () => {
   it("names an unknown refusal by its code rather than hiding it", () => {
     assert.equal(releaseRefusal("something_new"), "refused (something_new)");
   });
+});
+
+test("a recruitment outcome is named in words, and an unknown one is shown as it came", () => {
+  assert.equal(recruitmentLabel("reserve"), "Reserve list");
+  assert.equal(recruitmentLabel("not_hired"), "Not hired");
+  assert.equal(recruitmentLabel("seconded"), "seconded");
 });

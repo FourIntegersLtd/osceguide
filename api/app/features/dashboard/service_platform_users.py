@@ -149,7 +149,9 @@ async def summarise_directory(session: AsyncSession, *, now: datetime) -> Direct
     """Per published exam: how many accounts, and the paid / trial / not
     started split. An account is on an exam by its own choice or by a live
     grant, so one person may be counted under two exams; `unassigned` is
-    those under none.
+    those under none, counted the way `list_directory(unassigned=True)` pages
+    them. `paid` and `trial` are the whole directory's, whatever exam an
+    account names: summing the exams missed every payer whose grant had lapsed.
     """
     paid = await billing.payer_ids(session)
     started = await attempts.attempted_user_ids(session)
@@ -169,14 +171,22 @@ async def summarise_directory(session: AsyncSession, *, now: datetime) -> Direct
                 not_started=await _count(session, exam.code, live, except_ids=paid | started),
             )
         )
-    total = await accounts.count_users_matching(session)
-    on_some_exam = (
-        await accounts.count_users_matching(session, exam_code=None, only_ids=covered) if covered else 0
+
+    async def unassigned(only_ids: set[uuid.UUID] | None = None) -> int:
+        """How many accounts name no exam that any exam card already counted."""
+        return await accounts.count_users_matching(
+            session, no_exam=True, except_ids=covered, only_ids=only_ids
+        )
+
+    return DirectorySummary(
+        exams=exams,
+        unassigned=await unassigned(),
+        unassigned_paid=await unassigned(paid),
+        unassigned_trial=await unassigned(trial),
+        total=await accounts.count_users_matching(session),
+        paid=await accounts.count_users_matching(session, only_ids=paid),
+        trial=await accounts.count_users_matching(session, only_ids=trial),
     )
-    naming_one = 0
-    for summary in exams:
-        naming_one += await accounts.count_users_matching(session, exam_code=summary.code, except_ids=covered)
-    return DirectorySummary(exams=exams, unassigned=total - on_some_exam - naming_one, total=total)
 
 
 async def _count(

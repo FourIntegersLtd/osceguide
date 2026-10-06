@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, DetailLayout, Input, Panel } from "@/foundation/ui";
-import { errorMessage, useToast } from "@/foundation/hooks";
-import { recordManualPayment } from "@/domains/platform/support/api";
+import { Alert, Button, DetailLayout, Input, Panel, Select } from "@/foundation/ui";
+import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { listPlatformPlans, recordManualPayment } from "@/domains/platform/support/api";
 import { BillingEvents } from "@/domains/platform/billing/BillingEvents";
 import { Payments } from "@/domains/platform/billing/Payments";
 
@@ -48,6 +48,12 @@ function ManualPaymentPanel({
   onRecorded: () => void;
 }) {
   const toast = useToast();
+  // A pick list of the real plans, on sale first: typing a code invited a
+  // guess ("sca_1m") that matched no plan and was refused.
+  const plans = useAsync((signal) => listPlatformPlans(signal), []);
+  const choices = [...(plans.data?.items ?? [])].sort(
+    (a, b) => Number(b.active) - Number(a.active) || a.code.localeCompare(b.code),
+  );
   const [planCode, setPlanCode] = useState("");
   const [reference, setReference] = useState("");
   const [amount, setAmount] = useState("");
@@ -55,33 +61,30 @@ function ManualPaymentPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const submit = useCallback(
-    async (event: React.FormEvent) => {
-      event.preventDefault();
-      setBusy(true);
-      setError(null);
-      try {
-        const pence = amount.trim() ? Math.round(Number(amount) * 100) : null;
-        await recordManualPayment(userId, {
-          planCode: planCode.trim(),
-          reference: reference.trim() || null,
-          amountPence: Number.isFinite(pence) ? pence : null,
-          note: note.trim(),
-        });
-        toast.success(
-          "Payment recorded",
-          "Access given and a receipt created, just as a card payment would.",
-        );
-        setNote("");
-        onRecorded();
-      } catch (cause) {
-        setError(errorMessage(cause));
-      } finally {
-        setBusy(false);
-      }
-    },
-    [userId, planCode, reference, amount, note, toast, onRecorded],
-  );
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const pence = amount.trim() ? Math.round(Number(amount) * 100) : null;
+      await recordManualPayment(userId, {
+        planCode: planCode.trim(),
+        reference: reference.trim() || null,
+        amountPence: Number.isFinite(pence) ? pence : null,
+        note: note.trim(),
+      });
+      toast.success(
+        "Payment recorded",
+        "Access given and a receipt created, just as a card payment would.",
+      );
+      setNote("");
+      onRecorded();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Panel
@@ -91,14 +94,23 @@ function ManualPaymentPanel({
     >
       <form onSubmit={submit} className="flex flex-col gap-3">
         {error ? <Alert tone="danger">{error}</Alert> : null}
-        <Input
-          label="Plan code"
+        {plans.error ? (
+          <Alert tone="danger">Could not load the plans: {errorMessage(plans.error)}</Alert>
+        ) : null}
+        <Select
+          label="Plan"
           value={planCode}
           onChange={(event) => setPlanCode(event.target.value)}
-          disabled={busy}
+          disabled={busy || plans.loading}
           required
-          hint="The plan’s short name from the Billing page, such as sca_1m."
-        />
+        >
+          <option value="">{plans.loading ? "Loading plans…" : "Choose a plan"}</option>
+          {choices.map((plan) => (
+            <option key={plan.code} value={plan.code}>
+              {`${plan.exam_code.toUpperCase()} · £${(plan.amount_pence / 100).toFixed(2)} for ${plan.duration_days} days (${plan.code})${plan.active ? "" : " · retired"}`}
+            </option>
+          ))}
+        </Select>
         <Input
           label="Reference"
           value={reference}

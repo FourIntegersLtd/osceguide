@@ -191,7 +191,9 @@ async def add_version(
 @router.patch(
     "/orgs/{org_slug}/stations/{station_id}/versions/{version}",
     response_model=schemas.StationVersionRead,
-    responses=error_responses(Forbidden, errors.VersionNotFound, errors.NotEditableError),
+    responses=error_responses(
+        Forbidden, errors.VersionNotFound, errors.StationNotFound, errors.NotEditableError
+    ),
 )
 async def edit_version(
     station_id: uuid.UUID,
@@ -201,7 +203,7 @@ async def edit_version(
     session: Session,
 ) -> schemas.StationVersionRead:
     return await service_versions.edit_version(
-        session, workspace.org_id, station_id, version, content=body.content
+        session, workspace.org_id, station_id, version, content=body.content, title=body.title
     )
 
 

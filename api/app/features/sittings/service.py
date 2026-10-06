@@ -77,7 +77,7 @@ async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uui
     )
     for read in reads:
         person = supervisors.get(read.supervisor_user_id) if read.supervisor_user_id else None
-        read.supervisor_name = person.name if person else None
+        read.supervisor_name = (person.name or person.email) if person else None
     return (await _with_totals(session, org_id, [sitting_read(sitting, reads)]))[0]
 
 

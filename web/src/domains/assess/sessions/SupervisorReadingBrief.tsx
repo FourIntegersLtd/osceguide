@@ -129,10 +129,8 @@ function UntemplatedBrief({
 }
 
 /**
- * Extract the reading brief from station content.
- *
- * Same logic as `readingBrief()` in the trainee support module, but operating
- * on the raw content object rather than an `OrgStation`.
+ * Extract the reading brief from station content: `reading_brief`, else the
+ * older `candidate_brief` (the server's `stations.domain_content.BRIEF_KEYS`).
  */
 function extractReadingBrief(content: Record<string, unknown>): string | null {
   for (const key of ["reading_brief", "candidate_brief"]) {

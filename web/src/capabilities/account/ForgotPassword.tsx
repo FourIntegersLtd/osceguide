@@ -7,6 +7,7 @@ import { requestPasswordReset } from "@/foundation/platform-client";
 import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthFormField from "@/capabilities/account/AuthFormField";
+import { mapAuthApiError } from "@/capabilities/account/support/mapAuthApiError";
 import {
   emailSchema,
   validateWith,
@@ -44,8 +45,11 @@ export default function ForgotPassword() {
     try {
       await requestPasswordReset(result.data.email);
       setSent(true);
-    } catch {
-      setFormError("We couldn't send the email. Please try again.");
+    } catch (cause) {
+      // A rate limit says to wait rather than to try again at once.
+      const refused = mapAuthApiError<"email">(cause, "We couldn't send the email. Please try again.");
+      setFormError(refused.formError);
+      setFieldErrors(refused.fieldErrors);
     } finally {
       setIsSubmitting(false);
     }

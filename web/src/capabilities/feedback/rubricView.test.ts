@@ -10,9 +10,16 @@ function domain(blocks: Array<DomainView | SectionView>, identifier: string): Do
 }
 
 describe("feedback rendered from the rubric", () => {
+  it("heads the marking for whoever reads it: the learner's own, or the machine's for an examiner", () => {
+    // B53: the examiner's slot review showed the machine's marking as "Your mark".
+    assert.equal(feedbackModel(SCA.rubric, SCA.result).header.heading, "Your mark");
+    assert.equal(feedbackModel(SCA.rubric, SCA.result, "Automatic marking").header.heading, "Automatic marking");
+  });
+
   it("SCA: a G / A / R mix per domain, the share at G as the total, and no pass line", () => {
     const model = feedbackModel(SCA.rubric, SCA.result);
     assert.deepEqual(model.header, {
+      heading: "Your mark",
       total: "10%",
       caption: "of ratings at G",
       outcome: null,
@@ -101,6 +108,7 @@ describe("feedback rendered from the rubric", () => {
   it("Ortho: the station type first, only the domain sat, and the total in its band", () => {
     const model = feedbackModel(ORTHO.rubric, ORTHO.result);
     assert.deepEqual(model.header, {
+      heading: "Your mark",
       total: "18/50",
       caption: "total score",
       outcome: "Not passed",

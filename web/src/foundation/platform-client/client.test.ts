@@ -178,3 +178,30 @@ test("a download keeps the filename from Content-Disposition and the error code"
   assert.ok(err instanceof PlatformError);
   assert.equal(err.code, "result_not_released");
 });
+
+test("a 405 with FastAPI's own body reads as words, not a status code", async () => {
+  respondWith(405, JSON.stringify({ detail: "Method Not Allowed" }));
+
+  const err = await platformRequest("/api/v1/platform/exams/x", { method: "DELETE" }).then(
+    () => null,
+    (e: unknown) => e,
+  );
+
+  assert.ok(err instanceof PlatformError);
+  assert.equal(err.status, 405);
+  assert.equal(err.message, "That action isn't available here.");
+});
+
+test("a 500 with no body says the fault is ours, not a status code", async () => {
+  respondWith(500, "");
+
+  const err = await platformRequest("/api/v1/attempts", { method: "POST", body: {} }).then(
+    () => null,
+    (e: unknown) => e,
+  );
+
+  assert.ok(err instanceof PlatformError);
+  assert.equal(err.status, 500);
+  assert.equal(err.code, "internal_error");
+  assert.equal(err.message, "Something went wrong on our side. Try again.");
+});

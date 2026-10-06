@@ -8,6 +8,8 @@ that changes is a deliberate product decision, not a refactor.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from app.features.tenancy import domain
@@ -149,3 +151,37 @@ def test_only_trial_and_active_organisations_permit_access(status: str) -> None:
 @pytest.mark.parametrize("status", ["inactive", "suspended", "churned", "", None])
 def test_every_other_organisation_status_refuses_access(status: str | None) -> None:
     assert not domain.org_permits_access(status)
+
+
+def day(d: int, *, tz: bool = True) -> datetime:
+    return datetime(2027, 1, d, tzinfo=UTC if tz else None)
+
+
+@pytest.mark.parametrize(
+    ("starts_at", "ends_at", "in_order"),
+    [
+        (day(2), day(1), False),
+        (day(1), day(1), True),
+        (day(1), day(2), True),
+        (day(2), None, True),
+        (None, day(1), True),
+        (None, None, True),
+        (day(2, tz=False), day(1), False),
+    ],
+)
+def test_a_contract_may_not_start_after_it_ends(
+    starts_at: datetime | None, ends_at: datetime | None, in_order: bool
+) -> None:
+    assert domain.contract_dates_in_order(starts_at, ends_at) is in_order
+
+
+def test_the_last_administrator_cannot_be_removed() -> None:
+    assert domain.an_admin_remains(role="owner", other_admins=0) is False
+
+
+def test_an_administrator_with_a_colleague_can_be_removed() -> None:
+    assert domain.an_admin_remains(role="owner", other_admins=1) is True
+
+
+def test_removing_a_non_administrator_never_needs_another_admin() -> None:
+    assert domain.an_admin_remains(role="supervisor", other_admins=0) is True

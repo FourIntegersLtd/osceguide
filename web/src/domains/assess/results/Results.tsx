@@ -112,7 +112,7 @@ function Report({
             />
           ) : null}
 
-          <CohortRanking orgSlug={orgSlug} sittingId={sittingId} />
+          {report.sitting.mode === "exam" ? <CohortRanking orgSlug={orgSlug} sittingId={sittingId} /> : null}
 
           <section aria-label="Candidates" className="overflow-x-auto rounded-panel border border-b2b-border bg-b2b-surface">
             <table className="w-full min-w-[720px] border-collapse text-left">
@@ -133,6 +133,7 @@ function Report({
                     sittingId={sittingId}
                     candidate={candidate}
                     rating={report.rating ?? null}
+                    hire={report.sitting.mode === "exam"}
                     onChanged={onChanged}
                   />
                 ))}

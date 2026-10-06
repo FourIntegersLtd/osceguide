@@ -68,3 +68,27 @@ export function hasCode(
 ): err is PlatformError {
   return isPlatformError(err) && codes.includes(err.code);
 }
+
+/**
+ * A 422's per-field messages, keyed by field name.
+ *
+ * FastAPI reports a refused body as `details.errors[]`, each with a `loc` such as
+ * `["body", "slug"]` and a `msg`. The last segment of `loc` is the field. A form
+ * puts each message under its field instead of showing "The request was not valid".
+ */
+export function validationFields(err: unknown): Record<string, string> {
+  const fields: Record<string, string> = {};
+  if (!isPlatformError(err)) return fields;
+  const errors = err.details?.errors;
+  if (!Array.isArray(errors)) return fields;
+  for (const entry of errors) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const loc: unknown = "loc" in entry ? entry.loc : null;
+    const msg: unknown = "msg" in entry ? entry.msg : null;
+    if (!Array.isArray(loc)) continue;
+    const field: unknown = loc[loc.length - 1];
+    if (typeof field !== "string" || field === "body" || field in fields) continue;
+    fields[field] = typeof msg === "string" ? msg : err.message;
+  }
+  return fields;
+}

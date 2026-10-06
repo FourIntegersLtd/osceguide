@@ -45,6 +45,9 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 - Org admin is `owner | admin | institution_admin | partner_admin`.
   Institution admin — who alone signs off candidate results — is the narrower
   `owner | admin | institution_admin`.
+- An organisation always keeps an administrator: revoking or demoting the last
+  active org admin is refused `last_admin` (409), on the org and staff routes and
+  for a bulk revoke (refused whole). The browser does not count admins.
 - A suspended or inactive organisation refuses login for its members; only `trial`
   and `active` permit access.
 - Every org-scoped repository method in every slice takes `org_id` first. Guard-enforced.
@@ -55,22 +58,22 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 | POST | `/api/v1/auth/switch-workspace` | bearer | re-issues the token; `forbidden` (403) if not a member |
 | GET | `/api/v1/orgs/{org_slug}` | org member | |
 | GET | `/api/v1/orgs/{org_slug}/memberships` | org admin | cursor-paginated |
-| POST | `/api/v1/orgs/{org_slug}/memberships` | org admin | `membership_exists` (409); an unknown address is **invited** (`invited: true`) |
+| POST | `/api/v1/orgs/{org_slug}/memberships` | org admin | `membership_exists` (409); an unknown address is **invited** (`invited: true`) with no display name until they set one, so nothing greets them by email (B39) |
 | POST | `/api/v1/orgs/{org_slug}/memberships/bulk` | org admin | up to 500 rows; a person already holding the role is reported in `skipped`, never fatal. Each row is the single act above it |
-| PATCH | `/api/v1/orgs/{org_slug}/memberships/{id}` | org admin | role change |
-| POST | `/api/v1/orgs/{org_slug}/memberships/{id}/revoke` | org admin | |
+| PATCH | `/api/v1/orgs/{org_slug}/memberships/{id}` | org admin | role change; `last_admin` (409) |
+| POST | `/api/v1/orgs/{org_slug}/memberships/{id}/revoke` | org admin | `last_admin` (409) |
 | POST | `/api/v1/orgs/{org_slug}/memberships/{id}/restore` | org admin | |
 | GET | `/api/v1/orgs/{org_slug}/audit` | org admin | cursor-paginated |
-| GET | `/api/v1/me/capabilities` | bearer | read model; replaces the browser's copy of this policy |
+| GET | `/api/v1/me/capabilities` | bearer | read model; replaces the browser's copy of this policy. `schedule_sittings` is org admin only, the same guard as creating a sitting (B39) |
 | POST | `/api/v1/platform/organizations` | platform admin | institution or partner |
 | POST | `/api/v1/platform/organizations/{slug}/memberships` | platform admin | seats a member — usually the first owner, or the successor an admin left without naming; the same service and audit row as the org's own route |
 | PATCH | `/api/v1/platform/organizations/{slug}/memberships/{id}` | platform admin | role change, for support |
-| POST | `/api/v1/platform/organizations/{slug}/memberships/{id}/revoke` | platform admin | |
+| POST | `/api/v1/platform/organizations/{slug}/memberships/{id}/revoke` | platform admin | `last_admin` (409) |
 | POST | `/api/v1/platform/organizations/{slug}/memberships/{id}/restore` | platform admin | the admin who locked themselves out |
 | POST | `/api/v1/platform/organizations/{slug}/contract` | platform admin | new dates and, unless `restore: false`, the suspension lifted with them; audited `organization.contract_renewed` |
 | POST | `/api/v1/platform/organizations/{slug}/suspend` | platform admin | |
 | GET | `/api/v1/platform/organizations` | platform admin | every tenant; `?status=` |
-| PATCH | `/api/v1/platform/organizations/{slug}` | platform admin | name, type, contract dates — never the slug |
+| PATCH | `/api/v1/platform/organizations/{slug}` | platform admin | name, type, contract dates — never the slug; a start after the end (the stored other date counts) is 422 `contract_dates_out_of_order`, here and on the renewal |
 | POST | `/api/v1/platform/organizations/{slug}/restore` | platform admin | lifts a suspension |
 | GET | `/api/v1/platform/organizations/{slug}/memberships` | platform admin | read-only member list, for support |
 | GET | `/api/v1/platform/organizations/{slug}/audit` | platform admin | one organisation's audit log, for support |

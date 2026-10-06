@@ -11,6 +11,8 @@ stations.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from app.core.lifecycle import (
     AlreadyPublished,
     LifecycleError,
@@ -30,6 +32,7 @@ from app.core.lifecycle import (
 
 __all__ = [
     "AlreadyPublished",
+    "DraftExists",
     "LifecycleError",
     "NotArchivable",
     "NotDeletable",
@@ -43,6 +46,7 @@ __all__ = [
     "ensure_brief_editable",
     "ensure_deletable",
     "ensure_editable",
+    "ensure_no_open_draft",
     "ensure_usable_in_circuit",
     "next_version_number",
     "publish",
@@ -56,6 +60,17 @@ class TemplateNotPublished(LifecycleError):
 
 class StationNotPublished(LifecycleError):
     """A circuit or an attempt named a station version that is still a draft."""
+
+
+class DraftExists(LifecycleError):
+    """A new draft was asked for while the station already has one."""
+
+
+def ensure_no_open_draft(existing: Sequence[VersionRef]) -> None:
+    """Refuse a second draft: two open at once means one's edits are silently left behind."""
+    for version in existing:
+        if version.status is Status.DRAFT:
+            raise DraftExists(f"v{version.number} is still a draft. Publish or delete it first.")
 
 
 def ensure_bindable(template_version: VersionRef) -> None:

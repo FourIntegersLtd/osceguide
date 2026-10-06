@@ -63,17 +63,20 @@ export function addStationVersion(scope: AuthoringScope, station: string): Promi
   return platformRequest(`${scope.base}/stations/${pathId(station)}/versions`, { method: "POST" });
 }
 
-/** `facts` is the fact check with the reader's rulings on it, saved with the corrections they made. */
+/**
+ * `facts` is the fact check with the reader's rulings on it, saved with the corrections they made.
+ * `title` renames the station.
+ */
 export function editStationVersion(
   scope: AuthoringScope,
   station: string,
   version: number,
   content: Json,
-  facts?: Record<string, unknown>,
+  extra: { facts?: Record<string, unknown>; title?: string } = {},
 ): Promise<StationVersion> {
   return platformRequest(`${scope.base}/stations/${pathId(station)}/versions/${version}`, {
     method: "PATCH",
-    body: facts ? { content, facts } : { content },
+    body: { content, ...extra },
   });
 }
 

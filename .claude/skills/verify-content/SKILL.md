@@ -71,9 +71,20 @@ separately; one combined run was killed once.
   org station list strips the patient's material for trainees
   (`stations/domain_content.py`). A screen missing a field is not a reason to widen a read.
 - **Library stations are adopted by reference**, not copied.
+- Station authoring screens are driven with `web/.verify/fixlib.mjs` (`api()` for a signed-in
+  fetch, `newStation()` for a fresh platform station, `dropExpected()` for the 409s a script
+  provokes on purpose and the external `ERR_NAME_NOT_RESOLVED`). The list keeps `?status=` and
+  `?station=<id>` in the address; a saved new station lands on `?station=<id>`. `scripts/smoke.mjs`
+  needs `PLATFORM_API_URL=http://127.0.0.1:8013` when the api is not on :8002.
 - A community question's title is the first line of its body; the backend takes a title.
 - Station images are a plain `<img>`, not `next/image`: their hosts are not configured.
 - Media facets read `content.specialty`; `MediaRead.specialty` exists but nothing writes it yet.
+- A row action the server refuses for a status (publish without a rubric, retire a draft)
+  is not offered; a failed confirm shows its reason inside
+  the dialog (`error={action.error}`). Screens for exams and staff media:
+  platform-web `verify/features/content-authoring.md`.
+- A published media item's content is fixed (`media_not_editable`); only title, summary and
+  exam save.
 - A migrated database is empty: seed it (`scripts/seed_platform.py`) before
   anything that files a station under an exam.
 - **`tests/conftest.py`'s `override_get_session` reuses one `db_session` across every

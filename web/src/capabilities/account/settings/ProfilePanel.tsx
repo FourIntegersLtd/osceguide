@@ -40,34 +40,55 @@ const NAME_MAX = 50;
  *
  * `onDirtyChange` tells the tab strip an edited username is unsaved, so the
  * old screen's leave guard can stop a tab switch.
+ *
+ * `part` shows one third of it. Staff settings split the tab in three
+ * (Account, Security, Data) because staff have no exam, plan or tutor, so
+ * Profile was the only tab with anything of theirs on it.
  */
+export type ProfilePart = "account" | "security" | "data";
+
 export default function ProfilePanel({
   onDirtyChange,
+  part,
 }: {
   onDirtyChange?: (dirty: boolean) => void;
+  part?: ProfilePart;
 }) {
   const me = useAsync((signal) => readMe(signal), []);
   const { session } = useSession();
   const { codes, name: examName } = useCurrentExam();
   const holdsOrtho = codes.includes("ortho");
+  const shows = (wanted: ProfilePart) => part === undefined || part === wanted;
 
   return (
     <SettingsTabShell>
-      <AsyncBoundary state={me}>
-        {(user: Me) => (
-          <>
-            <AccountForm
-              key={user.id}
-              user={user}
-              exam={examLabel(examName, user.exam_code ?? codes[0] ?? "sca")}
-              onSaved={() => me.reload()}
-              onDirtyChange={onDirtyChange}
-            />
-            <TwoFactorPanel />
-            <Organisations user={user} />
-          </>
-        )}
-      </AsyncBoundary>
+      {shows("account") ? (
+        <AsyncBoundary state={me}>
+          {(user: Me) => (
+            <>
+              <AccountForm
+                key={user.id}
+                user={user}
+                // The split (staff) screen has its own Security tab, and staff hold no exam.
+                exam={part ? null : examLabel(examName, user.exam_code ?? codes[0] ?? "sca")}
+                passwordHere={part === undefined}
+                onSaved={() => me.reload()}
+                onDirtyChange={onDirtyChange}
+              />
+              {part === undefined ? <TwoFactorPanel /> : null}
+              <Organisations user={user} />
+            </>
+          )}
+        </AsyncBoundary>
+      ) : null}
+      {part === "security" ? (
+        <>
+          <Panel title="Password" description="Change the password you sign in with.">
+            <ChangePassword />
+          </Panel>
+          <TwoFactorPanel />
+        </>
+      ) : null}
 
       {/*
         The CV, for the one arm that is scored off a portfolio. The orthopaedic
@@ -76,9 +97,13 @@ export default function ProfilePanel({
         been served for weeks with no screen calling it. Gated on holding the
         exam rather than shown to everybody, which is how the old profile had it.
       */}
-      {holdsOrtho ? <CvPanel /> : null}
-      <DownloadMyData />
-      <CloseAccount isAdmin={isPlatformAdmin(session)} />
+      {holdsOrtho && part === undefined ? <CvPanel /> : null}
+      {shows("data") ? (
+        <>
+          <DownloadMyData />
+          <CloseAccount isAdmin={isPlatformAdmin(session)} />
+        </>
+      ) : null}
     </SettingsTabShell>
   );
 }
@@ -93,11 +118,13 @@ export default function ProfilePanel({
 function AccountForm({
   user,
   exam,
+  passwordHere,
   onSaved,
   onDirtyChange,
 }: {
   user: Me;
-  exam: string;
+  exam: string | null;
+  passwordHere: boolean;
   onSaved: () => void;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
@@ -213,18 +240,20 @@ function AccountForm({
             <Input id="email" type="email" label="Email" value={user.email} disabled />
           </div>
 
-          <Input id="exam" label="Exam" value={exam} disabled />
+          {exam !== null ? <Input id="exam" label="Exam" value={exam} disabled /> : null}
 
           <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsPasswordModalOpen(true)}
-              className="gap-2"
-            >
-              <HiOutlineKey className="h-4 w-4" aria-hidden />
-              Change password
-            </Button>
+            {passwordHere ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="gap-2"
+              >
+                <HiOutlineKey className="h-4 w-4" aria-hidden />
+                Change password
+              </Button>
+            ) : null}
             <Button type="submit" isLoading={saving} className="gap-2">
               <HiOutlineCheck className="h-4 w-4" aria-hidden />
               Update profile

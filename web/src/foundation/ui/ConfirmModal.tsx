@@ -57,6 +57,20 @@ const ConfirmModal = ({
 }: ConfirmModalProps) => {
   const titleId = useId();
   const [pending, setPending] = useState(false);
+  /*
+    The caller owns the error (usually an action hook's), so a failure from an earlier open would
+    show again on the next one. The dialog drops whatever error was there when it opened, until
+    the error clears (a new confirm clears it first) and a fresh one arrives.
+  */
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  const [stale, setStale] = useState<string | null>(isOpen ? (error ?? null) : null);
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen);
+    setStale(isOpen ? (error ?? null) : null);
+  } else if (!error && stale) {
+    setStale(null);
+  }
+  const shownError = error && error !== stale ? error : null;
   if (!isOpen) return null;
 
   const busy = isLoading || pending;
@@ -100,7 +114,7 @@ const ConfirmModal = ({
           iconTone={tone === "danger" ? "rose" : "primary"}
         />
         {children}
-        <B2CInlineError message={error} />
+        <B2CInlineError message={shownError} />
         <ModalFooterActions>
           {cancelButton ? (
             <ModalSecondaryButton onClick={handleCancel} disabled={busy}>

@@ -16,12 +16,15 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings
 from app.features.attempts import service as attempts_service
 from app.features.sittings import domain, domain_run, errors, repository
 from app.features.sittings.models import Circuit, Slot
 from app.features.voice import service as voice
+
+log = get_logger(__name__)
 
 
 async def dispatch_patient(
@@ -76,9 +79,23 @@ async def clear_patient(
     """Take the patient out, and close off the station it was in.
 
     The room stays up and the candidate stays in it: only the patient leaves.
+
+    Taking the agent out is best-effort. LiveKit being down or unconfigured must
+    not stop a circuit ending or moving on: the end is recorded either way. An
+    agent left behind goes when the room does, because the worker ends on the
+    room closing and LiveKit closes an empty room on its own timeout once the
+    candidate leaves.
     """
     if circuit.room_name:
-        await voice.clear_agents_from_room(agents=agents, room=circuit.room_name)
+        try:
+            await voice.clear_agents_from_room(agents=agents, room=circuit.room_name)
+        except Exception:
+            log.warning(
+                "could not remove the patient from the room",
+                circuit_id=str(circuit.id),
+                room=circuit.room_name,
+                exc_info=True,
+            )
     if circuit.active_slot_id is not None and circuit.phase == domain_run.RunPhase.SIMULATION:
         await repository.update_slot(
             session,

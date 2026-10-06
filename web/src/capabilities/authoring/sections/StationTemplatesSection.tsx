@@ -139,7 +139,7 @@ export function StationTemplatesSection() {
         searchAriaLabel="Search station templates"
       />
 
-      {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
+      {action.error && pendingConfirm === null ? <Alert tone="danger">{action.error}</Alert> : null}
 
       <ListCard
         count={items.length}
@@ -165,6 +165,7 @@ export function StationTemplatesSection() {
             template={template}
             busy={action.busy}
             editHref={editHref}
+            viewHref={published ? stationTemplateEditPath(hrefFor, template.id, published.version) : null}
             onCopy={
               scope.kind === "org" &&
               template.owner_kind === "platform" &&
@@ -241,8 +242,11 @@ export function StationTemplatesSection() {
       <ConfirmModal
         isOpen={pendingConfirm !== null}
         onCancel={() => {
-          if (!action.busy) setPendingConfirm(null);
+          if (action.busy) return;
+          action.clearError();
+          setPendingConfirm(null);
         }}
+        error={action.error}
         onConfirm={() => {
           if (!pendingConfirm) return;
           const confirm = pendingConfirm;
@@ -309,6 +313,7 @@ function TemplateRow({
   template,
   busy,
   editHref,
+  viewHref,
   onCopy,
   onAddVersion,
   onPublish,
@@ -318,6 +323,8 @@ function TemplateRow({
   template: StationTemplate;
   busy: string | null;
   editHref: string | null;
+  /** The live version, opened read only from the title; null while nothing is published. */
+  viewHref: string | null;
   /** Set on a platform template seen from an organisation, which copies it rather than edits it. */
   onCopy?: () => void;
   onAddVersion: () => void;
@@ -331,10 +338,12 @@ function TemplateRow({
   const publishBusy = busy === `publish:${template.id}`;
   const archiveBusy = busy === `archive:${template.id}`;
   const deleteBusy = busy === `delete:${template.id}`;
+  const router = useRouter();
 
   return (
     <AuthoringListRow
       title={template.title}
+      onOpen={viewHref ? () => router.push(viewHref) : undefined}
       detail={
         <PublishStatusLine
           kindLabel={onCopy ? [template.exam_code, "OSCE Guide"].filter(Boolean).join(" · ") : template.exam_code}

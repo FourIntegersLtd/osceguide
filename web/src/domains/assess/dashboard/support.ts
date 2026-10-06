@@ -53,7 +53,7 @@ export function setupSteps(setup: OrgSetup): SetupStep[] {
       done: setup.programme_exam_rubric_ready,
       label: "Add a programme",
       hint: "Every sitting belongs to a programme, and its exam needs a published marking scheme.",
-      path: "/authoring/programmes",
+      path: "/programmes",
     },
   ];
 }

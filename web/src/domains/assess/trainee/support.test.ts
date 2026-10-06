@@ -4,13 +4,13 @@ import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api
 import {
   continueLabel,
   greeting,
+  greetingFor,
   firstName,
   liveSittings,
   orderedSlots,
   phaseLabel,
   practisable,
   progressOf,
-  readingBrief,
   slotStatus,
   sortSittings,
   spotlight,
@@ -172,19 +172,7 @@ test("the greeting follows the clock, and a missing name is not a blank hello", 
   assert.equal(greeting(new Date(2026, 8, 19, 20)), "Good evening");
   assert.equal(firstName("  Amara Okafor "), "Amara");
   assert.equal(firstName("   "), null);
-});
-
-test("the reading brief is the one field a candidate may see, under either key", () => {
-  const station = (content: Record<string, unknown> | null) =>
-    ({ id: "a", title: "T", status: "published", content } as unknown as OrgStation);
-  assert.equal(readingBrief(station({ reading_brief: "Read this." })), "Read this.");
-  assert.equal(readingBrief(station({ candidate_brief: "Older key." })), "Older key.");
-  assert.equal(
-    readingBrief(station({ reading_brief: "Newer.", candidate_brief: "Older." })),
-    "Newer.",
-  );
-  // The patient's material is in the same document and is never returned.
-  assert.equal(readingBrief(station({ patient_brief: "You are unwell.", persona: "x" })), null);
-  assert.equal(readingBrief(station({ reading_brief: "   " })), null);
-  assert.equal(readingBrief(station(null)), null);
+  assert.equal(firstName("tutor@ashford.ac.uk"), null);
+  assert.equal(greetingFor("Amara Okafor", new Date(2026, 8, 19, 9)), "Good morning, Amara.");
+  assert.equal(greetingFor(null, new Date(2026, 8, 19, 20)), "Good evening.");
 });

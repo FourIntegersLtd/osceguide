@@ -71,7 +71,6 @@ export function PlatformOverview() {
           return (
             <>
               <B2CHero
-                eyebrow="Needs attention"
                 title={
                   attention.length === 0
                     ? "Nothing is waiting on the team"

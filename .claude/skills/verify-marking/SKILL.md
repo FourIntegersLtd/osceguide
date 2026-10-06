@@ -55,6 +55,10 @@ untouched", and each `exams.rubric_version_id` must point at a published
 version whose `structure->>'schemaVersion'` is `2`. Parse every
 `rubric_versions.structure` through `domain.parse_structure` too: nothing
 stored may fail it.
+Hand-edit nothing in `seeds/platform-starter.json`: put the decision in the
+hints (e.g. `liveDomains`) so `test_the_committed_seed_is_what_the_generator_writes`
+stays green. A deploy does not republish; after one, staging needs the
+`--republish` run against its database before the new rubric marks anything.
 
 ## Level 2 — a real mark in a local database
 
@@ -124,3 +128,15 @@ mark on an already-marked attempt.
   after ten polls (~165 s), so a slower marking never showed.
 - `test_the_engine_only_needs_pydantic` can fail when its file runs whole
   (import order) and pass when selected by id. It passed in the run above.
+- A staging walk (exam mode, 2026-10-06): a circuit's attempt exists only after
+  the reading phase, and the candidate's mic in Playwright is Chrome's
+  `--use-file-for-fake-audio-capture=<wav>%noloop` (48 kHz 16-bit mono, made
+  with `say` + `afconvert`). Start the WAV with a few seconds of silence: the
+  first utterances are lost while the patient joins. Marking reaches
+  `evaluated` ~50 s after completion. The examiner's own ratings lock on
+  submit; the lead's form is page state until "Complete review", so a reload
+  loses it.
+- Two scales on one result: feedback's `total` is the share of G ratings
+  (37.93 for 11G/29), the candidate's released `assessment_score` is the cohort
+  scale (domain = majority rating, G 100 / A 66 / R 33, mean of domains: 66).
+  Both are right; compare each against its own rule.

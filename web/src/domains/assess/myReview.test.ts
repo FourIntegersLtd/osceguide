@@ -22,7 +22,7 @@ describe("an examiner's own slot review", () => {
   });
 
   it("is null when there is none yet", async () => {
-    respond(404, { code: "review_not_found", message: "None" });
+    respond(200, null);
     assert.equal(await readMySlotReview("kings", "s1"), null);
   });
 

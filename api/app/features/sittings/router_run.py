@@ -20,7 +20,7 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep, RoomAgents, VoiceTokens
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgStaff
-from app.features.sittings import errors, schemas, service_circuit, service_join, service_run
+from app.features.sittings import errors, schemas, service_brief, service_circuit, service_join, service_run
 from app.features.sittings import service_control as control
 from app.features.sittings import service_overrides as overrides
 
@@ -157,3 +157,19 @@ async def join_token(
     return await service_join.join_token_for_trainee(
         session, circuit_id, user_id=principal.user_id, tokens=tokens, settings=settings
     )
+
+
+@router.get(
+    "/me/slots/{slot_id}/brief",
+    response_model=schemas.SlotBriefRead,
+    responses=error_responses(Unauthenticated, errors.SlotNotFound, errors.CircuitNotStarted),
+)
+async def read_slot_brief(
+    slot_id: uuid.UUID, principal: CurrentPrincipal, session: Session
+) -> schemas.SlotBriefRead:
+    """The reading brief for one of the caller's slots, once the circuit has reached it.
+
+    Whatever the station's source (the org's own or the platform library), and
+    before the patient is dispatched — the attempt's brief exists only after.
+    """
+    return await service_brief.brief_for_trainee(session, slot_id, user_id=principal.user_id)

@@ -434,6 +434,27 @@ async def test_somebody_who_already_joined_is_not_invited_again(
     assert len(await invitations_to(db_session, "joined@example.com")) == 1
 
 
+async def test_the_roster_says_which_rows_are_still_waiting_on_their_invitation(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """B22. The list is what the screen decides "Resend invitation" from."""
+    _, admin = await org_with_admin(client, make_actor)
+    await add_trainee(client, admin, "waiting@example.com")
+    await add_trainee(client, admin, "joined@example.com")
+    queued = await invitations_to(db_session, "joined@example.com")
+    await client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": queued[0].payload["token"], "password": "Str0ng-Passw0rd!"},  # type: ignore[attr-defined]
+    )
+
+    rows = (await client.get(f"{KINGS}/trainees", headers=bearer(admin))).json()["items"]
+
+    assert {row["email"]: row["invitation_pending"] for row in rows} == {
+        "waiting@example.com": True,
+        "joined@example.com": False,
+    }
+
+
 async def test_a_roster_row_left_unlinked_is_invited_and_linked(
     client: AsyncClient, make_actor, db_session
 ) -> None:  # type: ignore[no-untyped-def]

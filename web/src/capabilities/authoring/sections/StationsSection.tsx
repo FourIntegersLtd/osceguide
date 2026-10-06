@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { HiOutlineCloudArrowUp, HiOutlinePlusCircle } from "react-icons/hi2";
 import { useSurface } from "@/capabilities";
+import {
+  matchesStatusFilter,
+  parseStatusFilter,
+  stationListUrl,
+  type StationStatusFilter,
+} from "@/capabilities/authoring/parts/stationListUrl";
 import { stationNewPath } from "@/capabilities/authoring/stations/paths";
 import { Alert, ConfirmModal } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
@@ -19,7 +25,6 @@ import {
   listStations,
   listStationTemplates,
   STATION_PAGE_LIMIT,
-  type Station,
   type StationTemplate,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
@@ -45,7 +50,17 @@ export function StationsSection() {
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
   const query = useSearchQuery(search);
-  const [open, setOpen] = useState<Station | null>(null);
+  // The status filter and the open station live in the address, so a reload or a shared
+  // link lands on the same list, and a saved station has an address of its own.
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const status = parseStatusFilter(searchParams.get("status"));
+  const openId = searchParams.get("station");
+  // Arriving on a station's own address, it may be an archived one; the filter alone would hide it.
+  const [deepLinked] = useState(openId !== null);
+  const includeArchived = status !== "active" || deepLinked;
+  const goTo = (next: { status: StationStatusFilter; station?: string | null }) =>
+    router.replace(stationListUrl(pathname, next), { scroll: false });
   const [importing, setImporting] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState<{
     id: string;
@@ -61,10 +76,20 @@ export function StationsSection() {
     (cursor, signal) =>
       listStations(
         scope,
-        { cursor, limit: STATION_PAGE_LIMIT, search: query, exam_code: examFilter || undefined },
+        {
+          cursor,
+          limit: STATION_PAGE_LIMIT,
+          search: query,
+          exam_code: examFilter || undefined,
+          // The server leaves archived out unless asked.
+          include_archived: includeArchived,
+        },
         signal,
-      ),
-    [scope.base, query, examFilter],
+      ).then((page) => ({
+        ...page,
+        items: page.items.filter((item) => deepLinked || matchesStatusFilter(item.status, status)),
+      })),
+    [scope.base, query, examFilter, status, deepLinked],
   );
   const stations = pages.state;
   const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
@@ -72,6 +97,11 @@ export function StationsSection() {
 
   // The server already excludes archived stations and matches the exam
   // filter, so this is just the length of what came back.
+  const open = openId ? (stations.data?.find((s) => s.id === openId) ?? null) : null;
+  // The station is on a later page than the first: keep reading until it turns up.
+  useEffect(() => {
+    if (openId && !open && pages.hasMore && !pages.loadingMore) pages.loadMore();
+  }, [openId, open, pages]);
   const visibleCount = stations.data?.length ?? 0;
 
   const published = useMemo(() => {
@@ -86,7 +116,7 @@ export function StationsSection() {
         station={open}
         templates={templates.data?.items ?? []}
         onBack={() => {
-          setOpen(null);
+          goTo({ status });
           stations.reload();
         }}
       />
@@ -134,11 +164,13 @@ export function StationsSection() {
         onExamCodeChange={setExamFilter}
         search={search}
         onSearchChange={setSearch}
+        status={status}
+        onStatusChange={(next) => goTo({ status: next })}
         searchPlaceholder="Search stations by name…"
         searchAriaLabel="Search stations"
       />
 
-      {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
+      {action.error && archiveConfirm === null ? <Alert tone="danger">{action.error}</Alert> : null}
       {stations.error ? (
         <Alert tone="danger">
           {stations.error.message}
@@ -156,7 +188,7 @@ export function StationsSection() {
           more={pages}
           search={query}
           busy={action.busy}
-          onOpen={setOpen}
+          onOpen={(station) => goTo({ status, station: station.id })}
           onArchive={(station) =>
             setArchiveConfirm({
               id: station.id,
@@ -179,8 +211,11 @@ export function StationsSection() {
       <ConfirmModal
         isOpen={archiveConfirm !== null}
         onCancel={() => {
-          if (!action.busy) setArchiveConfirm(null);
+          if (action.busy) return;
+          action.clearError();
+          setArchiveConfirm(null);
         }}
+        error={action.error}
         onConfirm={() => {
           if (!archiveConfirm) return;
           const { id, version } = archiveConfirm;

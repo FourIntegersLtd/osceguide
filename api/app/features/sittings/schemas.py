@@ -11,6 +11,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.core.schemas import AudienceSectionRead
+
 
 class SlotRead(BaseModel):
     id: uuid.UUID
@@ -214,3 +216,14 @@ class RoomGrant(BaseModel):
     # browser needs to know before it offers a camera button, not discover it
     # from a publish failure the token silently enforces.
     can_publish: bool = True
+
+
+class SlotBriefRead(BaseModel):
+    """A candidate's reading brief for one of their slots, during reading time and after."""
+
+    slot_id: uuid.UUID
+    station_title: str
+    # The station template's candidate sections, in template order.
+    sections: list[AudienceSectionRead] = []
+    # A station bound to no template carries its brief as one text instead.
+    text: str | None = None

@@ -54,6 +54,7 @@ export function ExamsSection() {
   const [form, setForm] = useState<ExamDraft>(blankExam);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [deleting, setDeleting] = useState<Exam | null>(null);
+  const [retiring, setRetiring] = useState<Exam | null>(null);
 
   const items = exams.data?.items ?? [];
 
@@ -98,7 +99,6 @@ export function ExamsSection() {
         {items.map((exam) => {
           const locked = exam.owner_kind === "platform" && scope.kind === "org";
           const publishBusy = action.busy === `publish:${exam.id}`;
-          const retireBusy = action.busy === `retire:${exam.id}`;
           return (
             <AuthoringListRow
               key={exam.id}
@@ -130,13 +130,15 @@ export function ExamsSection() {
                 >
                   <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
                 </AuthoringIconAction>
-                {exam.status !== "published" ? (
+                {/* A retired exam cannot be published again. */}
+                {exam.status === "draft" ? (
                   <AuthoringIconAction
                     variant="primary"
-                    label="Publish"
+                    // The server refuses to publish an exam that names no rubric.
+                    label={exam.rubric_version_id ? "Publish" : "Choose a rubric version first"}
                     busy={publishBusy}
                     busyLabel="Publishing…"
-                    disabled={action.busy !== null}
+                    disabled={action.busy !== null || !exam.rubric_version_id}
                     onClick={() =>
                       void action.run(`publish:${exam.id}`, () => publishExam(scope, exam.id))
                     }
@@ -144,21 +146,19 @@ export function ExamsSection() {
                     <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
                   </AuthoringIconAction>
                 ) : null}
-                {exam.status !== "retired" ? (
+                {/* Only a published exam can be retired; a draft is simply not offered. */}
+                {exam.status === "published" ? (
                   <AuthoringIconAction
                     variant="warning"
                     label="Retire"
-                    busy={retireBusy}
-                    busyLabel="Retiring…"
                     disabled={action.busy !== null}
-                    onClick={() =>
-                      void action.run(`retire:${exam.id}`, () => retireExam(scope, exam.id))
-                    }
+                    onClick={() => setRetiring(exam)}
                   >
                     <HiOutlineNoSymbol className="h-4 w-4" aria-hidden />
                   </AuthoringIconAction>
                 ) : null}
-                {locked ? null : (
+                {/* The platform catalogue has no delete: retire is its only exit. */}
+                {locked || scope.kind === "platform" ? null : (
                   <AuthoringIconAction
                     variant="danger"
                     label="Delete"
@@ -246,6 +246,23 @@ export function ExamsSection() {
         confirmText="Delete exam"
         error={action.error}
         message="Only a draft nothing was ever built on can be deleted this way. Anything with a station, a sitting or an attempt against it cannot be deleted. Retire it instead."
+      />
+
+      <ConfirmModal
+        isOpen={retiring !== null}
+        onCancel={() => setRetiring(null)}
+        onConfirm={() => {
+          if (!retiring) return;
+          void action.run(`retire:${retiring.id}`, () => retireExam(scope, retiring.id)).then((ok) => {
+            if (ok) setRetiring(null);
+          });
+        }}
+        isLoading={retiring !== null && action.busy === `retire:${retiring.id}`}
+        tone="danger"
+        title={retiring ? `Retire "${retiring.name}"?` : "Confirm"}
+        confirmText="Retire exam"
+        error={action.error}
+        message="It stops being offered for new practice and sittings, and cannot be published again. What was already attempted against it stays as it is."
       />
     </div>
   );

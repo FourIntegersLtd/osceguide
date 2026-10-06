@@ -19,7 +19,15 @@ ask what the queue holds for the thing it is about without growing its own SQL.
 | GET | `/api/v1/platform/machinery/stream?status=` | platform admin (stream ticket) | SSE: health, voice capacity and one status of the queue as one `Machinery` snapshot; re-sent every 5s and at once when a voice seat frees |
 
 ## Jobs
-None.
+- `reclaim_stalled_jobs` (queue `health`, every 5 min): a job left `doing` by a
+  worker that died (its row pruned, so `worker_id` is null, or no heartbeat for
+  `STALLED_AFTER_SECONDS`) is requeued once, then failed. procrastinate never
+  does this itself: a pruned worker's jobs stay `doing` for ever.
+
+`JobRead.events` is the job's procrastinate event log (type and time). A retry
+logs `scheduled` before `deferred_for_retry`. procrastinate stores no exception
+text, so the error itself is only in the worker log; keeping it needs a table
+(and a migration) of its own.
 
 ## Cross-slice dependencies
 None. Uses `core.db` and `core.redis` only. `service_jobs` is called from

@@ -3,120 +3,35 @@
 import Markdown from "react-markdown";
 import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { readAttemptBrief, type AttemptBrief } from "@/capabilities/attempt-runner";
 import { StationBrief } from "@/capabilities/attempt-runner/material/StationBrief";
-import { listOrgStations, type MySlot, type OrgStation } from "@/domains/assess/trainee/api";
-import { readingBrief } from "@/domains/assess/trainee/support";
+import { readSlotBrief, type MySlot, type SlotBrief } from "@/domains/assess/trainee/api";
 
 /**
- * The reading brief for one slot, during the reading phase.
+ * The reading brief for one slot, during the reading phase and after.
  *
- * Two sources, decided by whether the backend has created an attempt yet:
- *
- * - **Before dispatch** (`attempt_id` is null): the candidate reads the org
- *   station's `reading_brief` (or `candidate_brief` fallback). The org station
- *   list gives a trainee caller a candidate-scoped projection server-side, and
- *   `readingBrief()` picks the field to show. Matched by `station_id`.
- *
- * - **After dispatch** (`attempt_id` is populated): the candidate reads their
- *   own attempt brief via `GET /attempts/{id}/brief`, which is the entitlement-
- *   checked path. Rendered through `StationBrief` for the exam-specific layout.
- *
- * The supervisor console uses the same org station list but matches by
- * `station_version_id` and sees the full content — see `CircuitRunner`.
+ * One read, keyed on the slot: the circuit's attempt is created when the
+ * patient is dispatched, after reading, and the station may be the org's own
+ * or the platform library's. The server decides what a candidate may see
+ * (`GET /me/slots/{id}/brief`); a templated station answers sections, an
+ * older one a Markdown text.
  */
-export function SlotReadingBrief({
-  slot,
-  orgSlug,
-}: {
-  slot: MySlot;
-  orgSlug: string | null;
-}) {
-  if (slot.attempt_id) {
-    return <AttemptBriefView attemptId={slot.attempt_id} />;
-  }
-
-  if (!orgSlug) return null;
-
-  return <OrgStationBriefView orgSlug={orgSlug} slot={slot} />;
-}
-
-/** After dispatch: the attempt's own brief, entitlement-checked. */
-function AttemptBriefView({ attemptId }: { attemptId: string }) {
-  const state = useAsync(
-    (signal) => readAttemptBrief(attemptId, signal),
-    [attemptId],
-  );
+export function SlotReadingBrief({ slot }: { slot: MySlot }) {
+  const state = useAsync((signal) => readSlotBrief(slot.id, signal), [slot.id]);
 
   return (
     <AsyncBoundary state={state}>
-      {(brief: AttemptBrief) => (
-        <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
-          <h3 className="text-osce-body font-semibold text-b2b-headline mb-3">
-            Reading brief
-          </h3>
+      {(brief: SlotBrief) =>
+        brief.sections.length > 0 ? (
           <StationBrief brief={brief} />
-        </div>
-      )}
-    </AsyncBoundary>
-  );
-}
-
-/**
- * Before dispatch: the org station's reading brief.
- *
- * Fetches the org's station list and matches the slot to a station. The
- * backend is adding `station_id` to `MySlot`; until then the match falls back
- * to `station_title`.
- */
-function OrgStationBriefView({
-  orgSlug,
-  slot,
-}: {
-  orgSlug: string;
-  slot: MySlot;
-}) {
-  const state = useAsync(
-    (signal) => listOrgStations(orgSlug, signal),
-    [orgSlug],
-  );
-
-  return (
-    <AsyncBoundary state={state}>
-      {(stations: OrgStation[]) => {
-        const station = matchStation(stations, slot);
-        if (!station) return null;
-
-        const brief = readingBrief(station);
-        if (!brief) return null;
-
-        return (
+        ) : brief.text ? (
           <div className="rounded-panel border border-b2b-border bg-b2b-surface p-4 sm:p-5">
-            <h3 className="text-osce-body font-semibold text-b2b-headline mb-3">
-              Reading brief
-            </h3>
+            <h3 className="text-osce-body font-semibold text-b2b-headline mb-3">Reading brief</h3>
             <div className="max-w-3xl text-sm leading-6 text-ink">
-              <Markdown>{brief}</Markdown>
+              <Markdown>{brief.text}</Markdown>
             </div>
           </div>
-        );
-      }}
+        ) : null
+      }
     </AsyncBoundary>
   );
-}
-
-/**
- * Match a slot to its station in the org list.
- *
- * `MySlot.station_id` makes the match exact. The title fallback stays only
- * for rows served by a backend that predates the field.
- */
-function matchStation(stations: OrgStation[], slot: MySlot): OrgStation | null {
-  if (slot.station_id) {
-    return stations.find((s) => s.id === slot.station_id) ?? null;
-  }
-  if (slot.station_title) {
-    return stations.find((s) => s.title === slot.station_title) ?? null;
-  }
-  return null;
 }

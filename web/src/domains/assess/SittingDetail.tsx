@@ -17,6 +17,8 @@ import { useSurface } from "@/capabilities";
 import { useSession } from "@/foundation/session";
 import { readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
 import { SittingEditForm } from "@/domains/assess/SittingEditForm";
+import { sittingModeLabel, sittingStatusLabel } from "@/domains/assess/support";
+import { formatShortDateTime } from "@/foundation/format";
 
 /** One sitting and its circuits, with the way into each console. */
 export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sittingId: string }) {
@@ -33,17 +35,15 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
           <>
             <B2CPageHeader
               back={{ href: hrefFor("/sittings"), label: "Sittings" }}
-              eyebrow={sitting.mode}
+              eyebrow={sittingModeLabel(sitting.mode)}
               title={sitting.name}
               subtitle={
-                sitting.scheduled_for
-                  ? new Date(sitting.scheduled_for).toLocaleString()
-                  : "Not scheduled"
+                sitting.scheduled_for ? formatShortDateTime(sitting.scheduled_for) : "Not scheduled"
               }
               action={
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={sitting.status === "live" ? "success" : "neutral"} dot>
-                    {sitting.status}
+                    {sittingStatusLabel(sitting.status)}
                   </Badge>
                   <Button themeType="b2b" size="sm" variant="secondary" onClick={() => setEditing(true)}>
                     Edit

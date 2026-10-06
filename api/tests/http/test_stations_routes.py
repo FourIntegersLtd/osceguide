@@ -159,6 +159,20 @@ async def test_a_draft_may_be_edited(client: AsyncClient, make_actor) -> None:  
     assert response.status_code == 200
 
 
+async def test_a_draft_may_be_renamed(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    org_id = await seed_org(client, make_actor)
+    token = await member(make_actor, org_id, "kings", "owner")
+    station = await make_station(client, token)
+    response = await client.patch(
+        f"/api/v1/orgs/kings/stations/{station['id']}/versions/1",
+        json={"content": CONTENT, "title": "  Crushing chest pain "},
+        headers=bearer(token),
+    )
+    assert response.status_code == 200
+    listed = await client.get("/api/v1/orgs/kings/stations", headers=bearer(token))
+    assert [s["title"] for s in listed.json()["items"]] == ["Crushing chest pain"]
+
+
 async def test_a_new_version_is_seeded_from_the_published_one(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id = await seed_org(client, make_actor)
     token = await member(make_actor, org_id, "kings", "owner")
@@ -574,8 +588,9 @@ async def test_a_draft_version_can_be_deleted(client: AsyncClient, make_actor) -
         json={"content": CONTENT},
         headers=bearer(admin),
     )
+    # Its only version was the draft, so the station went with it.
     assert gone.status_code == 404
-    assert gone.json()["code"] == "version_not_found"
+    assert gone.json()["code"] == "station_not_found"
 
 
 async def test_a_published_version_cannot_be_deleted(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

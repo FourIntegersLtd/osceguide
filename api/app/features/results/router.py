@@ -25,15 +25,16 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 # Read the result decision for one candidate in a sitting.
 @router.get(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision",
-    response_model=schemas.DecisionRead,
-    responses=error_responses(Forbidden, errors.ResultNotFound),
+    response_model=schemas.DecisionRead | None,
+    responses=error_responses(Forbidden),
 )
 async def read_decision(
     sitting_id: uuid.UUID,
     trainee_id: uuid.UUID,
     workspace: OrgInstitutionAdmin,
     session: Session,
-) -> schemas.DecisionRead:
+) -> schemas.DecisionRead | None:
+    """Null until somebody records one: no decision yet is an ordinary state, not an error."""
     return await service.read_decision(session, workspace.org_id, sitting_id, trainee_id)
 
 
@@ -43,7 +44,9 @@ async def read_decision(
     responses=error_responses(
         Forbidden,
         errors.TraineeNotFound,
+        errors.SittingNotFound,
         errors.IncompatibleOutcomesError,
+        errors.RecruitmentOutsideExamError,
         errors.InvalidWorkflowError,
         errors.DecisionRevisedError,
     ),
@@ -211,13 +214,13 @@ async def read_my_result_pdf(
 
 @router.get(
     "/me/results/{sitting_id}",
-    response_model=schemas.TraineeResultRead,
-    responses=error_responses(Unauthenticated, errors.NotReleased),
+    response_model=schemas.TraineeResultRead | None,
+    responses=error_responses(Unauthenticated),
 )
 async def read_my_result(
     sitting_id: uuid.UUID, principal: CurrentPrincipal, session: Session
-) -> schemas.TraineeResultRead:
-    """Released revisions only, and narrower than the internal record."""
+) -> schemas.TraineeResultRead | None:
+    """Released revisions only, and narrower than the internal record. Null until one is released."""
     return await service_candidate.read_my_result(session, sitting_id, principal.user_id)
 
 

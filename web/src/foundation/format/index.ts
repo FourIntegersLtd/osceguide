@@ -56,3 +56,16 @@ export function formatLongDateTime(iso: string | null | undefined): string {
     minute: "2-digit",
   });
 }
+
+/** "20 Nov 2026, 09:00", in the reader's own time zone. */
+export function formatShortDateTime(iso: string | null | undefined): string {
+  const date = parseApiDate(iso);
+  if (!date) return NO_DATE;
+  return date.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

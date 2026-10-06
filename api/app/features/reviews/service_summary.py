@@ -33,28 +33,25 @@ class SlotOutcome:
 
 async def read_my_slot_review(
     session: AsyncSession, *, slot_id: uuid.UUID, user_id: uuid.UUID
-) -> MySlotReviewRead:
+) -> MySlotReviewRead | None:
     """A candidate's own read of their slot's review, once their result for the
-    sitting is released and the GP lead has completed a review. Refused, as
-    "not found" rather than "forbidden", if the slot is not this person's own
-    or either is missing — the same privacy posture `SlotNotFound` uses."""
+    sitting is released and the GP lead has completed a review; `None` before.
+    Refused as "not found" rather than "forbidden" if the slot is not this
+    person's own."""
     # `results` imports this module, so its import has to wait until call time.
-    from app.features.results import errors as results_errors
     from app.features.results import service_candidate as results_candidate
 
     pair = await sittings.slot_and_circuit_for_owner(session, slot_id, user_id)
     if pair is None:
-        raise errors.ReviewNotFound()
+        raise errors.SlotNotFound()
     slot, circuit = pair
     # The review feeds the decision, so it stays hidden until the decision is released.
-    try:
-        await results_candidate.read_my_result(session, circuit.sitting_id, user_id)
-    except results_errors.NotReleased as not_released:
-        raise errors.ReviewNotFound() from not_released
+    if await results_candidate.read_my_result(session, circuit.sitting_id, user_id) is None:
+        return None
 
     lead_review = await repository.gp_lead_review(session, slot.org_id, slot_id)
     if lead_review is None or lead_review.status != "completed":
-        raise errors.ReviewNotFound()
+        return None
 
     reviews = await repository.slot_reviews(session, slot.org_id, slot_id)
     completed = [review for review in reviews if review.status == "completed"]

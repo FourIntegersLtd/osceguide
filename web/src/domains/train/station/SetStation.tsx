@@ -55,8 +55,10 @@ export function SetStation({
 
   const create = useCallback(async () => {
     const started = await startSetAttempt(setId, entryId);
+    // The counter moved on the server; re-read it so the Attempts pill follows.
+    context.reload();
     return { id: started.attempt_id };
-  }, [setId, entryId]);
+  }, [setId, entryId, context]);
 
   return (
     <AsyncBoundary state={context}>
@@ -86,6 +88,7 @@ export function SetStation({
               : null
           }
           createAttempt={create}
+          backHref={hrefFor(`/mocks/${setId}`)}
           nextHref={next ? hrefFor(`/mocks/${setId}/stations/${next.id}`) : null}
           completeHref={hrefFor(`/mocks/${setId}/complete`)}
         />

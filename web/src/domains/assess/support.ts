@@ -144,3 +144,20 @@ function sameInstant(a: Date | null, b: Date | null): boolean {
   if (a === null || b === null) return a === b;
   return a.getTime() === b.getTime();
 }
+
+const SITTING_MODE_LABEL: Record<SittingMode, string> = { training: "Training", exam: "Exam" };
+
+/** "Training" or "Exam", never the raw enum. */
+export function sittingModeLabel(mode: string): string {
+  return SITTING_MODE_LABEL[mode as SittingMode] ?? sentenceCase(mode);
+}
+
+/** "Scheduled", "In progress": a sitting's status as a person reads it. */
+export function sittingStatusLabel(status: string): string {
+  return sentenceCase(status);
+}
+
+function sentenceCase(value: string): string {
+  const text = value.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}

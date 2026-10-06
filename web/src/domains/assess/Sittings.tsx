@@ -14,6 +14,7 @@ import {
 import Table, { type Column } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { useCursorPages } from "@/foundation/hooks";
+import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { listSittings, type Sitting } from "@/domains/assess/api";
 
@@ -89,6 +90,7 @@ function matches(sitting: Sitting, term: string): boolean {
 /** Scheduled examinations and training sessions. */
 export function Sittings({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
+  const { session } = useSession();
   // A server page at a time. The endpoint takes no search, so the mode filter
   // and the search box narrow what has been loaded so far.
   const pages = useCursorPages<Sitting>(
@@ -104,9 +106,11 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
       <B2CPageHeader
         title="Sittings"
         action={
-          <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
-            Schedule a sitting
-          </ButtonLink>
+          can(session, "schedule_sittings") ? (
+            <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
+              Schedule a sitting
+            </ButtonLink>
+          ) : null
         }
       />
 

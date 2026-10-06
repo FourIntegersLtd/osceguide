@@ -78,6 +78,14 @@ class UpdateVersion(BaseModel):
     # The fact check with the reader's rulings on it, saved with the corrections they made. Platform
     # stations only; the org route ignores it.
     facts: dict[str, Any] | None = None
+    # The station's name, not the version's. Absent leaves it. It travels with a draft's content,
+    # so a station is renamed only while it has an open draft: a published version is sealed.
+    title: str | None = Field(default=None, min_length=1, max_length=300)
+
+    @field_validator("title")
+    @classmethod
+    def title_is_visible(cls, title: str | None) -> str | None:
+        return _visible_title(title)
 
 
 class UpdateBrief(BaseModel):
@@ -121,16 +129,20 @@ class UpdateStationTemplateVersion(BaseModel):
     # accepts a rename and then drops it is how an author "saves" the old title.
     title: str | None = Field(default=None, min_length=1, max_length=200)
 
-    # Refuse a title that is empty once whitespace is trimmed off.
     @field_validator("title")
     @classmethod
     def title_is_visible(cls, title: str | None) -> str | None:
-        if title is None:
-            return None
-        cleaned = title.strip()
-        if not cleaned:
-            raise ValueError("A title needs at least one character.")
-        return cleaned
+        return _visible_title(title)
+
+
+def _visible_title(title: str | None) -> str | None:
+    """Refuses a title that is empty once whitespace is trimmed off."""
+    if title is None:
+        return None
+    cleaned = title.strip()
+    if not cleaned:
+        raise ValueError("A title needs at least one character.")
+    return cleaned
 
 
 class AutogenerateStationDraft(BaseModel):

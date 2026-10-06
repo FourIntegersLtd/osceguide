@@ -83,7 +83,7 @@ export function DirectoryUsersTable({
               )}>
               {user.name || "No name"} · joined {formatDay(user.created_at)}
               {user.last_login_at
-                ? ` · last sign-in ${formatDay(user.last_login_at)}`
+                ? ` · last signed in ${formatDay(user.last_login_at)}`
                 : " · never signed in"}
               {user.attempt_count > 0
                 ? ` · ${user.attempt_count} attempt${user.attempt_count === 1 ? "" : "s"}`
@@ -108,7 +108,7 @@ export function DirectoryUsersTable({
                 </Badge>
               ) : null}
               <Badge tone={user.signed_in ? "success" : "neutral"}>
-                {user.signed_in ? "Signed in" : "Signed out"}
+                {user.signed_in ? "Session open" : "No open session"}
               </Badge>
               <Badge tone={accessTone(access)}>{accessLabel(access)}</Badge>
               {user.has_paid ? (

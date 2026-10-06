@@ -142,12 +142,25 @@ async def autogenerate_platform_station_draft(
     "/platform/stations/{station_id}/versions",
     response_model=schemas.StationVersionRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(*_AUTH, *_STATION),
+    responses=error_responses(*_AUTH, *_STATION, errors.DraftExistsError),
 )
 async def add_platform_station_version(
     station_id: uuid.UUID, admin: PlatformAdmin, session: Session
 ) -> schemas.StationVersionRead:
     return await service_versions.add_version(session, None, station_id)
+
+
+# Throw away a draft; a station whose only version it was goes too.
+@router.delete(
+    "/platform/stations/{station_id}/versions/{version}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(*_AUTH, *_STATION, errors.NotDeletableError),
+)
+async def delete_platform_station_version(
+    station_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session
+) -> None:
+    """Only a draft: a published version is what an attempt was assessed against, so it is archived."""
+    await service_versions.delete_version(session, None, station_id, version)
 
 
 # Edit the content of one version of a platform station.
@@ -164,7 +177,7 @@ async def edit_platform_station_version(
     session: Session,
 ) -> schemas.StationVersionRead:
     return await service_versions.edit_version(
-        session, None, station_id, version, content=body.content, facts=body.facts
+        session, None, station_id, version, content=body.content, facts=body.facts, title=body.title
     )
 
 

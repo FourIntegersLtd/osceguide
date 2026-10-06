@@ -103,6 +103,15 @@ async def version_by_number(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def set_station_title(
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, *, title: str
+) -> None:
+    """Rename a station."""
+    await session.execute(
+        update(Station).where(owned_by(Station, org_id), Station.id == station_id).values(title=title)
+    )
+
+
 async def set_version_content(
     session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID, *, content: dict[str, Any]
 ) -> None:
@@ -154,6 +163,11 @@ async def set_current_version(
         .where(owned_by(Station, org_id), Station.id == station_id)
         .values(current_version_id=version_id, status="published")
     )
+
+
+async def delete_station(session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID) -> None:
+    """Remove a station, and its versions with it. The caller has checked none is in use."""
+    await session.execute(delete(Station).where(owned_by(Station, org_id), Station.id == station_id))
 
 
 async def retire_station(session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID) -> None:

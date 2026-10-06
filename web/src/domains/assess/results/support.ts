@@ -38,6 +38,24 @@ export const OUTCOME_HINT: Record<AssessmentOutcome, string> = {
   withheld: "Decided, but held back, for example during an investigation or an appeal.",
 };
 
+/** Whether the employer is taking the candidate on. Recorded only on an exam-mode sitting (hire). */
+export const RECRUITMENT_OUTCOMES = ["pending", "hired", "reserve", "not_hired", "withdrawn"] as const;
+export type RecruitmentOutcome = (typeof RECRUITMENT_OUTCOMES)[number];
+
+export const RECRUITMENT_LABEL: Record<RecruitmentOutcome, string> = {
+  pending: "Pending",
+  hired: "Hired",
+  reserve: "Reserve list",
+  not_hired: "Not hired",
+  withdrawn: "Withdrawn",
+};
+
+/** The words for a stored recruitment outcome; an unknown value is shown as it came. */
+export function recruitmentLabel(value: string): string {
+  const known = RECRUITMENT_OUTCOMES.find((outcome) => outcome === value);
+  return known ? RECRUITMENT_LABEL[known] : value;
+}
+
 export function outcomeTone(
   outcome: string | null | undefined,
 ): "success" | "danger" | "warning" | "neutral" {

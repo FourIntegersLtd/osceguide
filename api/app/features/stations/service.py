@@ -354,6 +354,38 @@ async def staff_sections(
     )
 
 
+@dataclass(frozen=True)
+class ReadingBrief:
+    """What a candidate reads before the patient is called, for one station version."""
+
+    title: str
+    sections: list[AudienceSectionRead]
+    # The flat brief (`reading_brief`, or the older `candidate_brief`) a station
+    # bound to no template carries instead of candidate sections.
+    text: str | None
+
+
+async def reading_brief(
+    session: AsyncSession, org_id: uuid.UUID | None, version_id: uuid.UUID
+) -> ReadingBrief | None:
+    """The candidate's brief for a version this org may run: its own, or the platform library's."""
+    found = await repository.version_for_attempt(session, org_id, version_id)
+    if found is None:
+        return None
+    version, station = found
+    content = dict(version.content or {})
+    sections = await audience_sections(session, version.template_version_id, content, ("candidate",))
+    text = next(
+        (
+            value
+            for key in domain_content.BRIEF_KEYS
+            if isinstance(value := content.get(key), str) and value.strip()
+        ),
+        None,
+    )
+    return ReadingBrief(title=station.title, sections=sections, text=text)
+
+
 def candidate_brief_text(sections: list[domain_audience.AudienceSection]) -> str | None:
     """A `RunnableStation`'s candidate sections, rendered to the plain text the worker's
     `candidate_brief` contract carries — `None` for a station with no template."""

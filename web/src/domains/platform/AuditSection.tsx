@@ -6,7 +6,7 @@ import {
   listOrgAuditForSupport,
   type AuditEntry,
 } from "@/domains/platform/api";
-import { formatDay } from "@/domains/platform/support";
+import { formatDay, humanise } from "@/domains/platform/support";
 
 export function AuditSection({ slug }: { slug: string }) {
   const state = useAsync(
@@ -45,7 +45,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
   return (
     <Row className="flex-col items-stretch sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
-        <p className="text-osce-data font-medium text-ink">{entry.action}</p>
+        <p className="text-osce-data font-medium text-ink">{humanise(entry.action)}</p>
         <p className="text-osce-meta text-ink-subtle">
           {entry.actor_email ?? "Unknown actor"} · {formatDay(entry.at)}
         </p>

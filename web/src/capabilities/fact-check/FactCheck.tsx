@@ -17,6 +17,7 @@ import {
 } from "@/foundation/ui";
 import { cn } from "@/foundation/ui/cn";
 import {
+  isRemoval,
   needsRuling,
   placeOf,
   type Evidence,
@@ -235,13 +236,22 @@ function Correction({
       )}
       <div className="flex flex-wrap gap-2">
         {from ? (
-          <Button
-            size="sm"
-            disabled={!to.trim() || to.trim() === from}
-            onClick={() => onAccept(claim, { from, to: to.trim() })}
-          >
-            Make this change
-          </Button>
+          <>
+            <Button
+              size="sm"
+              disabled={!to.trim() || to.trim() === from}
+              onClick={() => onAccept(claim, { from, to: to.trim() })}
+            >
+              Make this change
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onAccept(claim, { from, to: "" })}
+            >
+              Remove it
+            </Button>
+          </>
         ) : (
           <Button size="sm" onClick={() => onAccept(claim, null)}>
             Mark as fixed
@@ -262,19 +272,22 @@ function Reopen({
   claim: FactClaim;
   onReopen: Rulings["onReopen"];
 }) {
-  // Corrections swapped in before the swap was recorded cannot be swapped back.
+  // Corrections swapped in before the swap was recorded, and removed words, cannot be swapped back.
+  const removed = isRemoval(claim.swap);
   const stuck =
     claim.decision === "accepted" &&
     Boolean(claim.suggestion?.old) &&
-    !claim.swap;
+    (!claim.swap || removed);
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button size="sm" variant="outline" onClick={() => onReopen(claim)}>
-        {claim.swap ? "Undo correction" : "Reopen"}
+        {claim.swap && !removed ? "Undo correction" : "Reopen"}
       </Button>
       {stuck ? (
         <span className="text-osce-caption text-ink-subtle">
-          The corrected words stay; edit them back yourself if needed.
+          {removed
+            ? "The removed words stay out; add them back yourself if needed."
+            : "The corrected words stay; edit them back yourself if needed."}
         </span>
       ) : null}
     </div>
@@ -320,7 +333,9 @@ function ClaimRow({
                 {claim.decision === "accepted"
                   ? claim.by === "agent"
                     ? "Corrected by the agent"
-                    : "Correction made"
+                    : isRemoval(claim.swap)
+                      ? "Removed"
+                      : "Correction made"
                   : "Kept as written"}
               </Badge>
             ) : null}

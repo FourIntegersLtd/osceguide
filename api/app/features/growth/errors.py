@@ -55,13 +55,6 @@ class ReferralNotRedeemed(Conflict):
     default_message = "That referral has not been redeemed, so it has no payout"
 
 
-class PayoutDetailsNotFound(NotFound):
-    """This person has never saved bank details for their referral payouts."""
-
-    code = "payout_details_not_found"
-    default_message = "No payout details are on file"
-
-
 class PayoutAccountNumberRequired(InvalidInput):
     """A first-time save of payout details must include an account number.
 

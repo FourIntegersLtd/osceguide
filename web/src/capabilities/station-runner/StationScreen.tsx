@@ -52,7 +52,7 @@ import {
   type StationAction,
 } from "@/capabilities/station-runner/useStationAttempt";
 import { useOptionalPendingFeedback } from "@/capabilities/pending-feedback";
-import { useLeaveGuard } from "@/capabilities/station-runner/useLeaveGuard";
+import { useLeaveGuard } from "@/foundation/hooks";
 import {
   feedbackPathFor,
   stationKeyFor,
@@ -73,6 +73,8 @@ export interface StationScreenProps {
   attemptsUsed: number | null;
   attemptLimit: number | null;
   createAttempt: () => Promise<{ id: string }>;
+  /** Where Back goes. Without it Back steps through the browser history. */
+  backHref?: string;
   nextHref: string | null;
   completeHref: string | null;
   /** For reporting a problem — library station id when known. */
@@ -97,6 +99,7 @@ export function StationScreen(props: StationScreenProps) {
     attemptsUsed,
     attemptLimit,
     createAttempt,
+    backHref,
     nextHref,
     completeHref,
     flagStationId,
@@ -352,6 +355,7 @@ export function StationScreen(props: StationScreenProps) {
         attemptLimit={attemptLimit}
         flagStationId={flagStationId}
         comeBack={comeBack}
+        backHref={backHref}
         aside={
           <>
             {timer}

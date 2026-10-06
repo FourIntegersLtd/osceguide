@@ -275,7 +275,11 @@ async def test_a_review_completes_once_every_domain_is_scored(
     )
     assert partial.status_code == 409, partial.text
     assert partial.json()["code"] == "review_incomplete"
-    assert "data_gathering" in partial.json()["message"]
+    # B55: the rubric's own title, never the id a reader would have to decode.
+    assert (
+        partial.json()["message"]
+        == "Score every domain before completing the review; still missing: Data Gathering"
+    )
 
     complete = await client.put(
         url,
@@ -321,6 +325,10 @@ async def test_a_gp_lead_review_needs_every_domain_too(
     )
     assert partial.status_code == 409, partial.text
     assert partial.json()["code"] == "review_incomplete"
+    assert (
+        partial.json()["message"]
+        == "Score every domain before completing the review; still missing: Communication"
+    )
 
     complete = await client.put(
         url,
@@ -431,14 +439,20 @@ async def test_an_examiner_reads_back_only_their_own_review(
     assert mine.json()["status"] == "draft"
 
 
-async def test_no_review_of_my_own_yet_is_not_found(
+async def test_reads_before_any_review_exists_answer_null_not_404(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
+    """B51: no review yet is an ordinary state, so the console logs no 404 for it."""
     org_id, admin = await org_with_admin(client, make_actor)
     slot_id = await a_slot(db_session, org_id)
-    missing = await client.get(f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine", headers=bearer(admin))
-    assert missing.status_code == 404, missing.text
-    assert missing.json()["code"] == "review_not_found"
+    for path in (f"slots/{slot_id}/reviews/mine", f"slots/{slot_id}/gp-lead-review"):
+        missing = await client.get(f"/api/v1/orgs/kings/{path}", headers=bearer(admin))
+        assert missing.status_code == 200, missing.text
+        assert missing.json() is None
+    # A slot that does not exist is still a wrong id, not an empty answer.
+    wrong = await client.get(f"/api/v1/orgs/kings/slots/{uuid.uuid4()}/reviews/mine", headers=bearer(admin))
+    assert wrong.status_code == 404
+    assert wrong.json()["code"] == "slot_not_found"
 
 
 async def test_my_review_of_another_orgs_slot_cannot_be_read(
@@ -468,7 +482,7 @@ async def _circuit_of(db_session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID
 async def test_whether_a_circuit_review_was_published_can_be_read(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    """Not found until finalised; then who finalised it and when."""
+    """Null until finalised; then who finalised it and when."""
     org_id, admin = await org_with_admin(client, make_actor)
     circuit_id = await _circuit_of(db_session, await a_slot(db_session, org_id))
     url = f"/api/v1/orgs/kings/circuits/{circuit_id}/review"
@@ -484,7 +498,7 @@ async def test_whether_a_circuit_review_was_published_can_be_read(
     assert read.json()["finalized_by"] == finalized.json()["finalized_by"]
 
 
-async def test_an_unpublished_circuit_review_is_not_found(
+async def test_a_circuit_review_reads_as_null_until_it_is_published(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
@@ -497,5 +511,5 @@ async def test_an_unpublished_circuit_review_is_not_found(
     unpublished = await client.get(
         f"/api/v1/orgs/guys/circuits/{circuit_id}/review", headers=bearer(guys_admin)
     )
-    assert unpublished.status_code == 404, unpublished.text
-    assert unpublished.json()["code"] == "review_not_found"
+    assert unpublished.status_code == 200, unpublished.text
+    assert unpublished.json() is None

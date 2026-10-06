@@ -56,6 +56,13 @@ class NotDeletableError(Conflict):
     default_message = "Only a draft can be deleted"
 
 
+class DraftExistsError(Conflict):
+    """The station already has an open draft; a second would leave one's edits behind."""
+
+    code = "draft_exists"
+    default_message = "The station already has a draft. Publish or delete it first"
+
+
 class AlreadyPublishedError(Conflict):
     """Publishing a version that is already published."""
 

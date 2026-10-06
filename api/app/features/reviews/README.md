@@ -33,6 +33,11 @@ Each kind is its own root, keyed to the slot or circuit it concerns.
 - A rating is R, A or G. Combining several takes the **worst**: when two
   reviewers disagree about a candidate, the lower rating is the one that should
   prompt a conversation.
+- No review yet is an ordinary state, so every read of one answers 200 `null`, never a
+  404 the browser logs as an error (B51). A 404 is kept for a slot that is not there
+  or not the caller's.
+- `review_incomplete` names the missing domains by the rubric's own titles, in the
+  rubric's order ("still missing: Global skills, Tasks"), never by id (B55).
 - A conflict is a 409 with `review_conflict`. b2b's client detects this today by
   matching the words "another user" in an error string.
 
@@ -40,8 +45,9 @@ Each kind is its own root, keyed to the slot or circuit it concerns.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/orgs/{org_slug}/slots/{id}/reviews` | org member | every review of the slot, plus the combined rating per domain (worst wins) |
-| PUT | `/api/v1/orgs/{org_slug}/slots/{id}/reviews/mine` | org member | `review_incomplete` (409) |
-| GET/PUT | `/api/v1/orgs/{org_slug}/slots/{id}/gp-lead-review` | institution admin | `review_conflict` (409) |
+| GET/PUT | `/api/v1/orgs/{org_slug}/slots/{id}/reviews/mine` | org member | GET is 200 `null` before a first save; PUT `review_incomplete` (409) |
+| GET/PUT | `/api/v1/orgs/{org_slug}/slots/{id}/gp-lead-review` | institution admin | GET is 200 `null` before a first save; PUT `review_conflict` (409) |
+| GET | `/api/v1/me/slots/{id}/review` | bearer; the slot is theirs | 200 `null` until the result is released and the lead review completed; `slot_not_found` for someone else's slot |
 | POST | `/api/v1/orgs/{org_slug}/circuits/{id}/review/finalize` | org member | |
 
 ## Jobs

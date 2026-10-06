@@ -4,20 +4,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 /**
- * Stops a person walking out of a live consultation by accident.
+ * Stops a person walking away from work they would lose by accident.
  *
- * While the consultation is live, closing the tab shows the browser's own
- * warning, and a click on any link inside the app is held back so the screen
- * can ask first. `asking` is true while that question is open.
+ * While `guarded` is true (a live consultation, an unsaved draft), closing the
+ * tab shows the browser's own warning, and a click on any link inside the app
+ * is held back so the screen can ask first. `asking` is true while that
+ * question is open.
  */
-export function useLeaveGuard(live: boolean) {
+export function useLeaveGuard(guarded: boolean) {
   const router = useRouter();
   const [asking, setAsking] = useState(false);
   // Where the person was heading when the question was raised.
   const pendingHref = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!live) return;
+    if (!guarded) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
@@ -41,19 +42,19 @@ export function useLeaveGuard(live: boolean) {
       window.removeEventListener("beforeunload", warn);
       document.removeEventListener("click", interceptLink, true);
     };
-  }, [live]);
+  }, [guarded]);
 
-  /** Go to a page, asking first when a consultation is live. */
+  /** Go to a page, asking first while guarded. */
   const leaveTo = useCallback(
     (href: string) => {
-      if (live) {
+      if (guarded) {
         pendingHref.current = href;
         setAsking(true);
         return;
       }
       router.push(href);
     },
-    [live, router],
+    [guarded, router],
   );
 
   /** The person chose to stay: forget where they were going. */

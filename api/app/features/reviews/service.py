@@ -87,9 +87,13 @@ async def slot_rubric(
     return await rubrics.scoring_rubric_for_version(session, org_id, version_id)
 
 
-def _required_domains(scoring_rubric: rubrics.ScoringRubric | None) -> set[str]:
-    """Which domains a completed review must have rated (R-1): every scoring domain."""
-    return set(rubric_scoring.scoring_domain_ids(scoring_rubric.structure)) if scoring_rubric else set()
+def _required_domains(scoring_rubric: rubrics.ScoringRubric | None) -> dict[str, str]:
+    """Which domains a completed review must have rated (R-1): every scoring domain, id to title."""
+    if scoring_rubric is None:
+        return {}
+    structure = scoring_rubric.structure
+    scoring = rubric_scoring.scoring_domain_ids(structure)
+    return {section.id: section.title or section.id for section in structure.domains if section.id in scoring}
 
 
 def review_form(scoring_rubric: rubrics.ScoringRubric | None) -> ReviewFormRead | None:
@@ -186,11 +190,11 @@ async def save_gp_lead_review(
 
 async def read_gp_lead_review(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
-) -> GpLeadReviewRead:
-    """The GP-lead review for this slot, or a refusal if none has been started."""
+) -> GpLeadReviewRead | None:
+    """The GP-lead review for this slot, or `None` before anybody has started one."""
     review = await repository.gp_lead_review(session, org_id, slot_id)
     if review is None:
-        raise errors.ReviewNotFound()
+        return None
     return _gp_read(review, form=review_form(await slot_rubric(session, org_id, slot_id)))
 
 
@@ -218,28 +222,27 @@ async def finalize_circuit(
 
 async def read_circuit_review(
     session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID
-) -> CircuitReviewRead:
+) -> CircuitReviewRead | None:
     """Whether a circuit's merged review has been finalised, by whom and when.
 
-    Refuses with `review_not_found` until somebody finalises it, so a screen can
-    tell "not yet published" apart from a published review with no notes.
+    `None` until somebody finalises it: "no review yet" is an ordinary state of
+    a circuit, not an error, and it lets a screen tell "not yet published" apart
+    from a published review with no notes without a 404 in every console.
     """
     review = await repository.circuit_review(session, org_id, circuit_id)
-    if review is None:
-        raise errors.ReviewNotFound()
-    return _circuit_read(review)
+    return None if review is None else _circuit_read(review)
 
 
 async def read_my_slot_review(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, *, submitted_by: uuid.UUID
-) -> SlotReviewRead:
+) -> SlotReviewRead | None:
     """The caller's own review of this slot, so an examiner can pick up a draft
-    where they left it. Refuses when they have not started one.
+    where they left it. `None` when they have not started one; the slot itself must exist.
     """
     await _require_slot(session, org_id, slot_id)
     review = await repository.slot_review_for(session, org_id, slot_id, submitted_by)
     if review is None:
-        raise errors.ReviewNotFound()
+        return None
     return _slot_read(review, form=review_form(await slot_rubric(session, org_id, slot_id)))
 
 

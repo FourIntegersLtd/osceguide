@@ -21,6 +21,10 @@ class TraineeRead(BaseModel):
     user_id: uuid.UUID | None
     access_revoked: bool
     anonymised: bool = False
+    # Filled by the list read: true while the person's account was made by an
+    # invitation and nobody has used it, so "Resend invitation" has something
+    # to resend.
+    invitation_pending: bool = False
     # Filled by the list read: the programmes of the sittings this trainee is
     # rostered on (exam names, sorted) and how many stations they have sat.
     programme_names: list[str] = Field(default_factory=list)

@@ -125,7 +125,7 @@ function Groups({
         <UserGroup
           key={exam.code}
           title={groupTitle(exam.code, exam.name, exam.users)}
-          description={`${exam.paid} paid · ${exam.trial} on trial · ${exam.not_started} not started`}
+          description={`Of everyone on this exam: ${exam.paid} paid · ${exam.trial} on trial · ${exam.not_started} not started`}
           filters={{ ...filters, examCode: exam.code }}
           hrefFor={hrefFor}
           totalCount={directoryListingTotal(summary, {
@@ -136,8 +136,8 @@ function Groups({
         />
       ))}
       <UserGroup
-        title={`No exam chosen · ${summary.unassigned}`}
-        description="Accounts with no exam chosen and no current access. Staff accounts appear here too."
+        title={`No exam set on the account · ${summary.unassigned}`}
+        description={`${summary.unassigned_paid} paid · ${summary.unassigned_trial} on trial. Staff accounts appear here too.`}
         filters={{ ...filters, examCode: null, unassigned: true }}
         hrefFor={hrefFor}
         totalCount={directoryListingTotal(summary, {
@@ -159,13 +159,11 @@ function Groups({
 }
 
 function SummaryStrip({ summary }: { summary: DirectorySummary }) {
-  const paid = summary.exams.reduce((sum, exam) => sum + exam.paid, 0);
-  const trial = summary.exams.reduce((sum, exam) => sum + exam.trial, 0);
   return (
     <StatGrid>
       <StatTile label="Accounts" value={summary.total} icon={LuUsers} />
-      <StatTile label="Paid" value={paid} icon={LuCreditCard} />
-      <StatTile label="On trial" value={trial} icon={LuUserRound} />
+      <StatTile label="Paid" value={summary.paid} icon={LuCreditCard} />
+      <StatTile label="On trial" value={summary.trial} icon={LuUserRound} />
     </StatGrid>
   );
 }

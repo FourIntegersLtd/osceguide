@@ -109,6 +109,7 @@ examination.
 | GET | `/api/v1/orgs/{org_slug}/circuits/{id}/interventions` | who did what to this examination |
 | POST | `/api/v1/orgs/{org_slug}/circuits/{id}/observer-token` | an examiner's subscribe-only way in |
 | POST | `/api/v1/me/circuits/{id}/join-token` | bearer; being rostered on is the permission |
+| GET | `/api/v1/me/slots/{id}/brief` | bearer; the slot is theirs | the candidate's reading brief (sections, or Markdown `text`), keyed on the slot because the attempt only exists after dispatch; one read for org and library stations (B50). `circuit_not_started` (409) until the circuit reaches the slot |
 
 Overriding (`router_overrides.py`), org staff:
 
@@ -137,6 +138,14 @@ it were, every transition would be up to a minute late. It exists for what the
 scheduled job cannot cover: the worker was down when a phase ended, a transition
 rolled back, or a deploy landed mid-examination. It also ends circuits left live
 for twelve hours, which is the reaper this README promised and b2b already did.
+Each circuit is its own transaction and its own try/except: one that raises (a
+LiveKit dispatch failing) is logged with its id and counted in `failed`, never
+allowed to stop the sweep, so the job succeeds and the rest still advance.
+
+Taking the patient out of the room (`clear_patient`) is best-effort: ending or
+advancing a circuit records the change even when LiveKit is down or
+unconfigured, and an agent left behind goes when its room closes (LiveKit's
+empty-room timeout). Starting a consultation still fails when the dispatch does.
 
 A scheduled transition is found by polling, not by notification, so
 `worker_fetch_job_polling_seconds` (default 1.0) matters here in a way it does

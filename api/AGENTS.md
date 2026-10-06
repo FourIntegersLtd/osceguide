@@ -35,6 +35,8 @@ make guards                                    # tests/guards only, fast
 
 ## Traps
 
+- **One open draft per station.** `add_version` refuses a second (`draft_exists`), and deleting
+  the last version deletes the station, so a screen must not assume the station survives a delete.
 - **A migrated database is empty.** Until it is seeded, every attempt is
   refused `unknown_exam`, which looks like a worker or frontend bug. The exam
   must also be published with a rubric version.

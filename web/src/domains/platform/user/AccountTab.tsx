@@ -21,7 +21,7 @@ import {
   type DirectoryUser,
   type PlatformUserDetail,
 } from "@/domains/platform/api";
-import { formatDay } from "@/domains/platform/support";
+import { formatDay, formatSince } from "@/domains/platform/support";
 import {
   accessLabel,
   accessOf,
@@ -163,8 +163,10 @@ export function AccountTab({
                         : "No live access",
                   },
                   {
-                    label: "Signed in",
-                    value: facts ? (facts.signed_in ? "Now" : "No") : "-",
+                    // When they last signed in, not whether a session is open:
+                    // "Now" for any unexpired refresh chain read as "online".
+                    label: "Last signed in",
+                    value: facts ? formatSince(facts.last_login_at) : "-",
                   },
                 ]}
               />

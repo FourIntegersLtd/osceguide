@@ -114,3 +114,12 @@ def test_a_circuit_may_only_reference_a_published_station() -> None:
     domain.ensure_usable_in_circuit(version(Status.PUBLISHED))
     with pytest.raises(domain.StationNotPublished):
         domain.ensure_usable_in_circuit(version(Status.DRAFT))
+
+
+def test_a_new_draft_is_refused_while_a_draft_is_open() -> None:
+    with pytest.raises(domain.DraftExists, match="v2 is still a draft"):
+        domain.ensure_no_open_draft([version(Status.PUBLISHED, 1), version(Status.DRAFT, 2)])
+
+
+def test_a_new_draft_is_allowed_when_every_version_is_published_or_archived() -> None:
+    domain.ensure_no_open_draft([version(Status.PUBLISHED, 1), version(Status.ARCHIVED, 2)])

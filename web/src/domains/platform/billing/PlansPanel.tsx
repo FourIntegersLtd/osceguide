@@ -6,6 +6,7 @@ import {
   AsyncBoundary,
   Badge,
   Button,
+  ConfirmModal,
   Input,
   Modal,
   Panel,
@@ -35,6 +36,8 @@ export function PlansPanel() {
   const [creating, setCreating] = useState(false);
   const [busyCode, setBusyCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Retiring stops new sales, so it asks first; putting a plan back on sale does not.
+  const [retiring, setRetiring] = useState<PlatformPlan | null>(null);
 
   const toggle = async (plan: PlatformPlan) => {
     setBusyCode(plan.code);
@@ -49,6 +52,7 @@ export function PlansPanel() {
       setError(errorMessage(cause));
     } finally {
       setBusyCode(null);
+      setRetiring(null);
     }
   };
 
@@ -102,7 +106,7 @@ export function PlansPanel() {
                     size="sm"
                     variant="secondary"
                     disabled={busyCode !== null}
-                    onClick={() => toggle(plan)}
+                    onClick={() => (plan.active ? setRetiring(plan) : toggle(plan))}
                   >
                     {busyCode === plan.code
                       ? "Saving…"
@@ -116,6 +120,19 @@ export function PlansPanel() {
           </RowList>
         )}
       </AsyncBoundary>
+      <ConfirmModal
+        isOpen={retiring !== null}
+        title="Take this price off sale?"
+        message={
+          retiring
+            ? `Take ${retiring.code} (${retiring.exam_code} · ${pounds(retiring.amount_pence)}) off sale? New buyers can no longer choose it. Existing subscribers keep their access.`
+            : ""
+        }
+        confirmText="Retire"
+        tone="danger"
+        onCancel={() => setRetiring(null)}
+        onConfirm={() => (retiring ? toggle(retiring) : undefined)}
+      />
       {creating ? (
         <NewPlanModal
           onClose={() => setCreating(false)}
@@ -235,7 +252,7 @@ function NewPlanModal({
           value={code}
           onChange={(event) => setCode(event.target.value.toLowerCase())}
           disabled={busy}
-          hint="A short internal name using lowercase letters, numbers and underscores, such as sca_1m. It cannot be reused."
+          hint="A short internal name using lowercase letters, numbers and underscores, such as sca_one_month. It cannot be reused."
           autoComplete="off"
         />
         <div className="flex justify-end gap-2 pt-1">

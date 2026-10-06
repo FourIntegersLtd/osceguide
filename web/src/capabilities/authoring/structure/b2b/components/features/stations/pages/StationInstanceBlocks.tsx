@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { Checkbox, Select, Textarea } from "@/foundation/ui";
 import type { MediaUploads } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/MediaBlockEditor";
 import { RichBlockEditor } from "@/capabilities/authoring/structure/b2b/components/features/stations/pages/RichBlockEditors";
@@ -29,18 +30,35 @@ export function StationInstanceBlocks({
   media?: MediaUploads;
 }) {
   const ro = !!readOnly;
+  const scope = useId();
+  /** The id a block's control carries, so its label names it. */
+  const controlId = (blockId: string) => `${scope}-${blockId}`;
+  /** A group of buttons has no single control to point at; the group is named by its label. */
+  const groupProps = (blockId: string) =>
+    ({ role: "group", "aria-labelledby": `${controlId(blockId)}-label` }) as const;
 
   function patch(key: string, value: unknown) {
     onChange({ ...content, [key]: value });
   }
 
-  function fieldLabel(label: string, required: boolean, blockId: string) {
+  function fieldLabel(label: string, required: boolean, blockId: string, grouped = false) {
+    const text = (
+      <>
+        {label}
+        {required ? <span className="text-osce-danger-text"> *</span> : null}
+      </>
+    );
     return (
       <div className="flex items-center justify-between gap-3">
-        <label className="block text-osce-body font-medium text-ink">
-          {label}
-          {required ? <span className="text-osce-danger-text"> *</span> : null}
-        </label>
+        {grouped ? (
+          <p id={`${controlId(blockId)}-label`} className="block text-osce-body font-medium text-ink">
+            {text}
+          </p>
+        ) : (
+          <label htmlFor={controlId(blockId)} className="block text-osce-body font-medium text-ink">
+            {text}
+          </label>
+        )}
         {showBlockIds ? (
           <span className="text-osce-caption font-semibold text-ink-muted">ID: {blockId}</span>
         ) : null}
@@ -73,6 +91,7 @@ export function StationInstanceBlocks({
             <div key={b.id} className="min-w-0">
               {fieldLabel(label, required, key)}
               <input
+                id={controlId(key)}
                 readOnly={ro}
                 disabled={ro}
                 value={typeof content[key] === "string" ? content[key] : ""}
@@ -87,6 +106,7 @@ export function StationInstanceBlocks({
             <div key={b.id} className="min-w-0 md:col-span-2">
               {fieldLabel(label, required, key)}
               <Textarea
+                id={controlId(key)}
                 readOnly={ro}
                 disabled={ro}
                 value={typeof content[key] === "string" ? content[key] : ""}
@@ -117,6 +137,7 @@ export function StationInstanceBlocks({
             <div key={b.id} className="min-w-0 md:col-span-2">
               {fieldLabel(label, required, key)}
               <Textarea
+                id={controlId(key)}
                 readOnly={ro}
                 disabled={ro}
                 value={items.join("\n")}
@@ -134,6 +155,7 @@ export function StationInstanceBlocks({
             <div key={b.id} className="min-w-0">
               {fieldLabel(label, required, key)}
               <Select
+                id={controlId(key)}
                 disabled={ro}
                 value={typeof content[key] === "string" ? content[key] : ""}
                 onChange={(e) => patch(key, e.target.value)}
@@ -152,8 +174,8 @@ export function StationInstanceBlocks({
           const selected: string[] = Array.isArray(content[key]) ? (content[key] as string[]) : [];
           return (
             <div key={b.id} className="min-w-0 md:col-span-2">
-              {fieldLabel(label, required, key)}
-              <div className="mt-2 flex flex-wrap gap-2">
+              {fieldLabel(label, required, key, true)}
+              <div className="mt-2 flex flex-wrap gap-2" {...groupProps(key)}>
                 {opts.map((o: string) => {
                   const on = selected.includes(o);
                   return (
@@ -186,8 +208,8 @@ export function StationInstanceBlocks({
           const selected: string[] = Array.isArray(content[key]) ? (content[key] as string[]) : [];
           return (
             <div key={b.id} className="min-w-0 md:col-span-2">
-              {fieldLabel(label, required, key)}
-              <div className="mt-2 space-y-2">
+              {fieldLabel(label, required, key, true)}
+              <div className="mt-2 space-y-2" {...groupProps(key)}>
                 {checklistItems.map((it) => (
                   <Checkbox
                     key={it.id}
@@ -215,8 +237,8 @@ export function StationInstanceBlocks({
           const val = typeof content[key] === "number" ? content[key] : null;
           return (
             <div key={b.id} className="min-w-0">
-              {fieldLabel(label, required, key)}
-              <div className="mt-2 flex flex-wrap gap-2">
+              {fieldLabel(label, required, key, true)}
+              <div className="mt-2 flex flex-wrap gap-2" {...groupProps(key)}>
                 {Array.from({ length: max - min + 1 }, (_, i) => min + i).map((n) => (
                   <button
                     key={n}

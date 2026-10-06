@@ -47,8 +47,18 @@ export function joinCircuit(circuitId: string, signal?: AbortSignal): Promise<Ro
   );
 }
 
-export function readMyResult(sittingId: string, signal?: AbortSignal): Promise<TraineeResult> {
-  return platformRequest<TraineeResult>(`/api/v1/me/results/${encodeURIComponent(sittingId)}`, {
+export type SlotBrief = components["schemas"]["SlotBriefRead"];
+
+/** What this candidate reads for one of their slots once the circuit reaches it (B50). */
+export function readSlotBrief(slotId: string, signal?: AbortSignal): Promise<SlotBrief> {
+  return platformRequest<SlotBrief>(`/api/v1/me/slots/${encodeURIComponent(slotId)}/brief`, {
+    signal,
+  });
+}
+
+/** This candidate's released result, or `null` until it is released. */
+export function readMyResult(sittingId: string, signal?: AbortSignal): Promise<TraineeResult | null> {
+  return platformRequest<TraineeResult | null>(`/api/v1/me/results/${encodeURIComponent(sittingId)}`, {
     signal,
   });
 }
@@ -65,10 +75,10 @@ export function acknowledgeResult(sittingId: string): Promise<void> {
   );
 }
 
-/** This candidate's own review of one of their slots, once a GP lead has
- * completed one — not before. */
-export function readMyReview(slotId: string, signal?: AbortSignal): Promise<MySlotReview> {
-  return platformRequest<MySlotReview>(`/api/v1/me/slots/${encodeURIComponent(slotId)}/review`, {
+/** This candidate's own review of one of their slots once a GP lead has
+ * completed it and the result is released; `null` before. */
+export function readMyReview(slotId: string, signal?: AbortSignal): Promise<MySlotReview | null> {
+  return platformRequest<MySlotReview | null>(`/api/v1/me/slots/${encodeURIComponent(slotId)}/review`, {
     signal,
   });
 }

@@ -4647,19 +4647,39 @@
             "title": "Exams",
             "type": "array"
           },
+          "paid": {
+            "title": "Paid",
+            "type": "integer"
+          },
           "total": {
             "title": "Total",
             "type": "integer"
           },
+          "trial": {
+            "title": "Trial",
+            "type": "integer"
+          },
           "unassigned": {
             "title": "Unassigned",
+            "type": "integer"
+          },
+          "unassigned_paid": {
+            "title": "Unassigned Paid",
+            "type": "integer"
+          },
+          "unassigned_trial": {
+            "title": "Unassigned Trial",
             "type": "integer"
           }
         },
         "required": [
           "exams",
           "unassigned",
-          "total"
+          "unassigned_paid",
+          "unassigned_trial",
+          "total",
+          "paid",
+          "trial"
         ],
         "title": "DirectorySummary",
         "type": "object"
@@ -5337,9 +5357,11 @@
               "cohort_not_found",
               "conflict",
               "content_too_long",
+              "contract_dates_out_of_order",
               "cv_not_found",
               "debrief_not_found",
               "decision_revised",
+              "draft_exists",
               "email_taken",
               "empty_content",
               "empty_query",
@@ -5399,6 +5421,7 @@
               "invoice_not_editable",
               "invoice_not_found",
               "knowledge_unavailable",
+              "last_admin",
               "legacy_account_not_imported",
               "legacy_exchange_unavailable",
               "marker_unavailable",
@@ -5439,7 +5462,6 @@
               "payment_already_recorded",
               "payment_not_found",
               "payout_account_number_required",
-              "payout_details_not_found",
               "peer_session_not_found",
               "peer_session_not_open",
               "photo_not_on_station",
@@ -5462,6 +5484,7 @@
               "programme_required",
               "queue_entry_not_found",
               "receipt_not_found",
+              "recruitment_outside_exam",
               "referral_code_taken",
               "referral_discount_unavailable",
               "referral_not_found",
@@ -5471,7 +5494,6 @@
               "result_not_released",
               "review_conflict",
               "review_incomplete",
-              "review_not_found",
               "rubric_not_found",
               "rubric_version_not_found",
               "rubric_version_not_published",
@@ -7376,6 +7398,26 @@
         "title": "IssueScimToken",
         "type": "object"
       },
+      "JobEventRead": {
+        "description": "One step of a job's history: `deferred`, `started`, `deferred_for_retry`, `failed`, \u2026",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "at"
+        ],
+        "title": "JobEventRead",
+        "type": "object"
+      },
       "JobRead": {
         "description": "One queued job as procrastinate holds it.",
         "properties": {
@@ -7387,6 +7429,14 @@
           "attempts": {
             "title": "Attempts",
             "type": "integer"
+          },
+          "events": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/JobEventRead"
+            },
+            "title": "Events",
+            "type": "array"
           },
           "id": {
             "title": "Id",
@@ -16550,6 +16600,45 @@
         "title": "SkippedTrainee",
         "type": "object"
       },
+      "SlotBriefRead": {
+        "description": "A candidate's reading brief for one of their slots, during reading time and after.",
+        "properties": {
+          "sections": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AudienceSectionRead"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          },
+          "station_title": {
+            "title": "Station Title",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "slot_id",
+          "station_title"
+        ],
+        "title": "SlotBriefRead",
+        "type": "object"
+      },
       "SlotRagSummary": {
         "description": "What several reviewers of one slot agreed, or did not, in the rubric's own rating.\n\nPer domain, every completed review's ratings in it combine as one\n(`rubrics.scoring.combine_reviewers`: the majority, ties to the worse).\nThe overall is the worst domain: one weak domain is what a reader must see.\nThe name keeps `rag` until the web app reads the rubric's own rating fields.",
         "properties": {
@@ -18723,6 +18812,11 @@
             "title": "Id",
             "type": "string"
           },
+          "invitation_pending": {
+            "default": false,
+            "title": "Invitation Pending",
+            "type": "boolean"
+          },
           "last_name": {
             "anyOf": [
               {
@@ -20048,6 +20142,19 @@
               }
             ],
             "title": "Facts"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           }
         },
         "required": [
@@ -32208,14 +32315,22 @@
     },
     "/api/v1/me/referral-payout-details": {
       "get": {
-        "description": "This person's own bank details for referral payouts, sort code in full, account number masked.",
+        "description": "This person's own bank details for referral payouts, sort code in full, account number masked;\nnull when none are saved yet.",
         "operationId": "growth_read_my_payout_details",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PayoutDetailsRead"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PayoutDetailsRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Growth Read My Payout Details"
                 }
               }
             },
@@ -32233,19 +32348,6 @@
             "x-codes": [
               "unauthenticated",
               "account_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "payout_details_not_found",
-            "x-codes": [
-              "payout_details_not_found"
             ]
           }
         },
@@ -32467,7 +32569,7 @@
     },
     "/api/v1/me/results/{sitting_id}": {
       "get": {
-        "description": "Released revisions only, and narrower than the internal record.",
+        "description": "Released revisions only, and narrower than the internal record. Null until one is released.",
         "operationId": "results_read_my_result",
         "parameters": [
           {
@@ -32486,7 +32588,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TraineeResultRead"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TraineeResultRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Results Read My Result"
                 }
               }
             },
@@ -32504,19 +32614,6 @@
             "x-codes": [
               "unauthenticated",
               "account_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "result_not_released",
-            "x-codes": [
-              "result_not_released"
             ]
           },
           "422": {
@@ -32816,10 +32913,10 @@
         ]
       }
     },
-    "/api/v1/me/slots/{slot_id}/review": {
+    "/api/v1/me/slots/{slot_id}/brief": {
       "get": {
-        "description": "A candidate's own review of one of their slots, once their result is\nreleased and the GP lead has completed one. Never for a slot not theirs.",
-        "operationId": "reviews_read_my_slot_review",
+        "description": "The reading brief for one of the caller's slots, once the circuit has reached it.\n\nWhatever the station's source (the org's own or the platform library), and\nbefore the patient is dispatched \u2014 the attempt's brief exists only after.",
+        "operationId": "sittings_read_slot_brief",
         "parameters": [
           {
             "in": "path",
@@ -32837,7 +32934,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MySlotReviewRead"
+                  "$ref": "#/components/schemas/SlotBriefRead"
                 }
               }
             },
@@ -32865,9 +32962,106 @@
                 }
               }
             },
-            "description": "review_not_found",
+            "description": "slot_not_found",
             "x-codes": [
-              "review_not_found"
+              "slot_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_started",
+            "x-codes": [
+              "circuit_not_started"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Slot Brief",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/me/slots/{slot_id}/review": {
+      "get": {
+        "description": "A candidate's own review of one of their slots, once their result is\nreleased and the GP lead has completed one; null before. Never for a slot not theirs (404).",
+        "operationId": "reviews_read_my_slot_review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MySlotReviewRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Reviews Read My Slot Review"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "slot_not_found",
+            "x-codes": [
+              "slot_not_found"
             ]
           },
           "422": {
@@ -37860,7 +38054,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CircuitReviewRead"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CircuitReviewRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Reviews Read Circuit Review"
                 }
               }
             },
@@ -37878,19 +38080,6 @@
             "x-codes": [
               "forbidden",
               "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "review_not_found",
-            "x-codes": [
-              "review_not_found"
             ]
           },
           "422": {
@@ -40503,6 +40692,19 @@
               "organization_suspended"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "last_admin",
+            "x-codes": [
+              "last_admin"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -40597,6 +40799,19 @@
             "description": "membership_not_found",
             "x-codes": [
               "membership_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "last_admin",
+            "x-codes": [
+              "last_admin"
             ]
           },
           "422": {
@@ -40883,6 +41098,19 @@
             "description": "membership_not_found",
             "x-codes": [
               "membership_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "last_admin",
+            "x-codes": [
+              "last_admin"
             ]
           },
           "422": {
@@ -45124,6 +45352,7 @@
     },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision": {
       "get": {
+        "description": "Null until somebody records one: no decision yet is an ordinary state, not an error.",
         "operationId": "results_read_decision",
         "parameters": [
           {
@@ -45163,7 +45392,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DecisionRead"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DecisionRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Results Read Decision"
                 }
               }
             },
@@ -45181,19 +45418,6 @@
             "x-codes": [
               "forbidden",
               "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "result_not_found",
-            "x-codes": [
-              "result_not_found"
             ]
           },
           "422": {
@@ -45296,9 +45520,10 @@
                 }
               }
             },
-            "description": "trainee_not_found",
+            "description": "trainee_not_found, sitting_not_found",
             "x-codes": [
-              "trainee_not_found"
+              "trainee_not_found",
+              "sitting_not_found"
             ]
           },
           "409": {
@@ -45323,9 +45548,10 @@
                 }
               }
             },
-            "description": "incompatible_outcomes",
+            "description": "incompatible_outcomes, recruitment_outside_exam",
             "x-codes": [
-              "incompatible_outcomes"
+              "incompatible_outcomes",
+              "recruitment_outside_exam"
             ]
           }
         },
@@ -46251,7 +46477,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GpLeadReviewRead"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/GpLeadReviewRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Reviews Read Gp Lead Review"
                 }
               }
             },
@@ -46269,19 +46503,6 @@
             "x-codes": [
               "forbidden",
               "organization_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "review_not_found",
-            "x-codes": [
-              "review_not_found"
             ]
           },
           "422": {
@@ -46524,7 +46745,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SlotReviewRead"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SlotReviewRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Reviews Read My Review"
                 }
               }
             },
@@ -46552,10 +46781,9 @@
                 }
               }
             },
-            "description": "slot_not_found, review_not_found",
+            "description": "slot_not_found",
             "x-codes": [
-              "slot_not_found",
-              "review_not_found"
+              "slot_not_found"
             ]
           },
           "422": {
@@ -48611,9 +48839,10 @@
                 }
               }
             },
-            "description": "version_not_found",
+            "description": "version_not_found, station_not_found",
             "x-codes": [
-              "version_not_found"
+              "version_not_found",
+              "station_not_found"
             ]
           },
           "409": {
@@ -54443,11 +54672,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "contract_dates_out_of_order",
+            "x-codes": [
+              "contract_dates_out_of_order"
+            ]
           }
         },
         "security": [
@@ -54636,11 +54868,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "contract_dates_out_of_order",
+            "x-codes": [
+              "contract_dates_out_of_order"
+            ]
           }
         },
         "security": [
@@ -55021,6 +55256,19 @@
               "membership_not_found"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "last_admin",
+            "x-codes": [
+              "last_admin"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -55195,6 +55443,19 @@
             "x-codes": [
               "org_not_found",
               "membership_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "last_admin",
+            "x-codes": [
+              "last_admin"
             ]
           },
           "422": {
@@ -55374,7 +55635,7 @@
     },
     "/api/v1/platform/orgs/{org_slug}/sso": {
       "get": {
-        "description": "The whole arrangement, including the issuer and every binding.",
+        "description": "The whole arrangement, including the issuer and every binding. `null` when\nthe organisation has none yet; an unknown organisation is a 404.",
         "operationId": "sso_read_config",
         "parameters": [
           {
@@ -55392,7 +55653,15 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SsoConfigRead"
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SsoConfigRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Sso Read Config"
                 }
               }
             },
@@ -55433,9 +55702,9 @@
                 }
               }
             },
-            "description": "sso_not_configured",
+            "description": "org_not_found",
             "x-codes": [
-              "sso_not_configured"
+              "org_not_found"
             ]
           },
           "422": {
@@ -55529,9 +55798,9 @@
                 }
               }
             },
-            "description": "sso_not_configured",
+            "description": "org_not_found",
             "x-codes": [
-              "sso_not_configured"
+              "org_not_found"
             ]
           },
           "409": {
@@ -59284,6 +59553,19 @@
               "version_not_found"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "draft_exists",
+            "x-codes": [
+              "draft_exists"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -59307,6 +59589,109 @@
       }
     },
     "/api/v1/platform/stations/{station_id}/versions/{version}": {
+      "delete": {
+        "description": "Only a draft: a published version is what an attempt was assessed against, so it is archived.",
+        "operationId": "stations_delete_platform_station_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "station_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Station Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "station_not_found, version_not_found",
+            "x-codes": [
+              "station_not_found",
+              "version_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_deletable",
+            "x-codes": [
+              "not_deletable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Platform Station Version",
+        "tags": [
+          "stations"
+        ]
+      },
       "patch": {
         "operationId": "stations_edit_platform_station_version",
         "parameters": [

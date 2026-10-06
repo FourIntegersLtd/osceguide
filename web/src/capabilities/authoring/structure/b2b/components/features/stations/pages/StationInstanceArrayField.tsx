@@ -1,7 +1,7 @@
 "use client";
 
 import { Textarea } from "@/foundation/ui";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { HiOutlinePencilSquare, HiOutlineXMark } from "react-icons/hi2";
 import { B2BButton } from "@/capabilities/authoring/structure/b2b/components/ui/B2BButton";
 
@@ -19,6 +19,7 @@ export function StationInstanceArrayField({
   readOnly?: boolean;
   onChange: (next: string[]) => void;
 }) {
+  const labelId = useId();
   const [newItem, setNewItem] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -31,28 +32,42 @@ export function StationInstanceArrayField({
     setEditValue("");
   }
 
+  /*
+    What is typed in the add box is already the list's last item, so the form counts as edited and
+    Save stores it whether or not Add was pressed. Add (or leaving the box) tidies it and empties
+    the box for the next one. `items` is checked rather than a flag, so a list replaced from
+    outside never has its last item mistaken for the box.
+  */
+  const pending = newItem !== "" && items[items.length - 1] === newItem;
+  const listed = pending ? items.slice(0, -1) : items;
+
+  function typeItem(text: string) {
+    setNewItem(text);
+    if (pending) onChange(text.trim() ? [...listed, text] : listed);
+    else if (text.trim()) onChange([...items, text]);
+  }
+
   function addItem() {
-    const trimmed = newItem.trim();
-    if (!trimmed) return;
-    onChange([...items, trimmed]);
+    if (!pending) return;
+    onChange([...listed, newItem.trim()]);
     setNewItem("");
   }
 
   const ro = !!readOnly;
 
   return (
-    <div className="min-w-0 md:col-span-2 space-y-1.5">
-      <label className="block text-osce-body font-medium text-ink">
+    <div className="min-w-0 md:col-span-2 space-y-1.5" role="group" aria-labelledby={labelId}>
+      <p id={labelId} className="block text-osce-body font-medium text-ink">
         {label}
         {required ? <span className="text-osce-danger-text"> *</span> : null}
-      </label>
+      </p>
       <div className="space-y-1.5">
-        {items.length === 0 && !ro ? (
+        {listed.length === 0 && !ro ? (
           <p className="rounded-osce-md border border-border px-3 py-2 text-osce-body text-ink-muted">
             None
           </p>
         ) : null}
-        {items.map((item, index) => (
+        {listed.map((item, index) => (
           <div key={`${index}-${item.slice(0, 24)}`} className="group flex gap-1.5">
             {editingIndex === index ? (
               <Textarea
@@ -65,6 +80,7 @@ export function StationInstanceArrayField({
                     commitEdit(index);
                   }
                 }}
+                aria-label={`Edit ${label} item ${index + 1}`}
                 rows={Math.max(3, Math.min(8, editValue.split("\n").length + 1))}
                 className="min-h-[4.5rem] flex-1 resize-y"
                 // Opened by the Edit action, so focus moves into what it opened.
@@ -96,7 +112,7 @@ export function StationInstanceArrayField({
                       ? "text-accent hover:bg-surface-raised"
                       : "text-accent hover:bg-surface-raised"
                   }`}
-                  aria-label="Edit item"
+                  aria-label={`Edit ${label} item ${index + 1}`}
                 >
                   <HiOutlinePencilSquare className="h-3.5 w-3.5" />
                 </button>
@@ -104,7 +120,7 @@ export function StationInstanceArrayField({
                   type="button"
                   onClick={() => onChange(items.filter((_, i) => i !== index))}
                   className="rounded-osce-md p-1.5 text-danger transition-colors hover:bg-osce-danger-bg"
-                  aria-label="Remove item"
+                  aria-label={`Remove ${label} item ${index + 1}`}
                 >
                   <HiOutlineXMark className="h-3.5 w-3.5" />
                 </button>
@@ -116,7 +132,9 @@ export function StationInstanceArrayField({
           <div className="flex gap-1.5">
             <Textarea
               value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
+              onChange={(e) => typeItem(e.target.value)}
+              onBlur={addItem}
+              aria-label={`${label}: add new item`}
               rows={3}
               className="min-h-[4.5rem] flex-1 resize-y"
               placeholder="Add new item"

@@ -68,3 +68,29 @@ requests is still broken. Then run `node scripts/smoke.mjs` if you touched an `a
 - Adding a candidate to a live exam circuit is refused `not_permitted_in_mode` (D7). That is intended.
 - `/authoring` redirects to `/authoring/stations`; `<main>` is empty until the
   tablist appears. It is not a broken page.
+- Local has no LiveKit credentials: starting a consultation fails (dispatch), but ending a circuit or
+  leaving a consultation must still succeed (best-effort room removal). A stuck circuit in reading
+  time is a fixture for the sweep: `sweep_circuits` must still succeed and log `sweep: advancing
+  circuit failed` for it. Run the job worker (`poetry run python -m app.worker.main`) to see it.
+- `GET /orgs/{slug}/circuits/{id}/review` answers 200 `null` until feedback is published, not 404.
+- A roster/team row offers "Resend invitation" only while the server says the account is still waiting
+  (`invitation_pending` on trainees, `invited` on the member list).
+- Browser runs against :3200 should route `/api/v1` straight to :8013 (`.verify/fix-common.mjs` `viaApi8013`).
+- An organisation's last administrator cannot be revoked or demoted (`last_admin`, 409). Never revoke
+  walkthrough's own st-marys membership to test it without a second admin; `.verify/fix-inst2.mjs`
+  proves it on a throwaway org first.
+- The recruitment outcome field shows only on an exam-mode sitting's decision; a training sitting
+  refuses one (`recruitment_outside_exam`). `.verify/fix-inst2-fixture.mjs` makes an exam sitting in st-marys.
+- A proof script that routes through `viaApi8013` must end with `process.exit(...)`, not `process.exitCode`: a left-open
+  stream keeps node alive, and the next `uvicorn --reload` on :8013 then hangs at "Waiting for connections to close".
+- Absent-by-design reads answer 200 `null`, not 404: a decision before its first draft, a lead or own
+  review before its first save, and a candidate's `/me/results/{id}` and `/me/slots/{id}/review` before
+  release. A 404 in a proof run on those is a regression, not an expected refusal (B51).
+- A candidate's reading brief is `GET /me/slots/{id}/brief` (409 `circuit_not_started` before the circuit
+  reaches the slot), for org and library stations alike (B50).
+- A rostered trainee holds no membership, so `/app/<org>/trainee/...` is "Page not found" for them and
+  `/me/sittings` answers `org_slug: null` (B57, open). `.verify/fix-W1.mjs` seats the candidate as a
+  `trainee` member to walk on; it is the end-to-end hire walk (exam sitting, circuit, lead review,
+  decision with a recruitment outcome, release, candidate view).
+- Seed SCA stations link images on a made-up host; a station copied from one logs
+  `ERR_NAME_NOT_RESOLVED` unless the links are stripped (fix-W1 does).

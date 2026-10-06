@@ -27,7 +27,10 @@ two outcomes, and an outbox rather than an inline email.
   matched the database, and the revision that reached sign-off was whichever
   request landed last. The same rule already guarded the GP lead's review.
 - `draft → signed_off → released`. A draft cannot be released directly, and a
-  released decision is final.
+  released decision is final. A signed-off decision goes back to draft by saving
+  a draft over it (a new revision); there is no separate reopen route.
+- `recruitment_outcome` is recorded only on an **exam-mode** sitting (hire is exam
+  mode). A training sitting refuses one with `recruitment_outside_exam` (422).
 - Sign-off requires an assessment outcome **and** a rationale — somebody has to
   be able to say why, later, to a candidate or an appeal. Capped at 4000 characters.
 - The two outcomes are checked against each other, so a failed candidate cannot
@@ -43,15 +46,16 @@ two outcomes, and an outbox rather than an inline email.
 ## Routes
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET/PUT | `.../sittings/{id}/candidates/{trainee_id}/decision` | institution admin | each save is a revision |
+| GET/PUT | `.../sittings/{id}/candidates/{trainee_id}/decision` | institution admin | each save is a revision; GET is 200 `null` before the first draft |
 | POST | `.../decision/sign-off` | institution admin | `not_signable` (422) |
 | POST | `.../decision/release` | institution admin | `evidence_changed` (409) |
-| GET | `/api/v1/me/results/{sitting_id}` | bearer | released only, with `acknowledged_at` |
+| GET | `/api/v1/me/results/{sitting_id}` | bearer | released only, with `acknowledged_at`; 200 `null` until released (the PDF and acknowledge still answer `result_not_released`) |
 | POST | `/api/v1/me/results/{sitting_id}/acknowledge` | bearer | one event per revision; repeating returns the first answer |
 
 ## Jobs
 Delivering the outbox is not yet written; the rows accumulate safely until it is.
 
 ## Cross-slice dependencies
-None outward. Readiness — which sittings and scores count as evidence — is
+`sittings.service_reads.sitting_ref`, to learn a sitting's mode: a recruitment outcome is
+only saved on an exam-mode sitting. Readiness — which sittings and scores count as evidence — is
 assembled by the caller and hashed here.

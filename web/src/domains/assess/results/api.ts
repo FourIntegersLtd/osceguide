@@ -115,8 +115,9 @@ export function readDecision(
   sittingId: string,
   traineeId: string,
   signal?: AbortSignal,
-): Promise<Decision> {
-  return platformRequest<Decision>(decisionPath(slug, sittingId, traineeId), { signal });
+): Promise<Decision | null> {
+  // `null` until a draft is recorded: the ordinary state, not an error.
+  return platformRequest<Decision | null>(decisionPath(slug, sittingId, traineeId), { signal });
 }
 
 /**
@@ -138,6 +139,8 @@ export function saveDecision(
   traineeId: string,
   input: {
     assessmentOutcome: string | null;
+    /** Only an exam-mode sitting takes one; the server refuses it on a training sitting. */
+    recruitmentOutcome: string | null;
     rationale: string | null;
     evidence: Evidence;
     expectedRevision: number;
@@ -147,6 +150,7 @@ export function saveDecision(
     method: "PUT",
     body: {
       assessment_outcome: input.assessmentOutcome,
+      recruitment_outcome: input.recruitmentOutcome,
       rationale: input.rationale,
       evidence: input.evidence,
       expected_revision: input.expectedRevision,
@@ -219,8 +223,9 @@ export function readGpLeadReview(
   slug: string,
   slotId: string,
   signal?: AbortSignal,
-): Promise<GpLeadReview> {
-  return platformRequest<GpLeadReview>(
+): Promise<GpLeadReview | null> {
+  // `null` until the lead's first save.
+  return platformRequest<GpLeadReview | null>(
     `${orgPath(slug)}/slots/${encodeURIComponent(slotId)}/gp-lead-review`,
     { signal },
   );

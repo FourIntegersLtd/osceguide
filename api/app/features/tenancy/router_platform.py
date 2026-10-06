@@ -50,7 +50,7 @@ async def list_organizations(
 @router.patch(
     "/platform/organizations/{org_slug}",
     response_model=schemas.OrganizationRead,
-    responses=error_responses(Forbidden, errors.OrgNotFound),
+    responses=error_responses(Forbidden, errors.OrgNotFound, errors.ContractDatesOutOfOrder),
 )
 async def update_organization(
     body: schemas.UpdateOrganization,
@@ -94,7 +94,7 @@ async def read_overview(admin: PlatformAdmin, session: Session, clock: ClockDep)
 @router.post(
     "/platform/organizations/{org_slug}/contract",
     response_model=schemas.OrganizationRead,
-    responses=error_responses(Forbidden, errors.OrgNotFound),
+    responses=error_responses(Forbidden, errors.OrgNotFound, errors.ContractDatesOutOfOrder),
 )
 async def renew_contract(
     body: schemas.RenewContract,

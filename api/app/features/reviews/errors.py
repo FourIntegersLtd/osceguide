@@ -5,13 +5,6 @@ from __future__ import annotations
 from app.core.errors import Conflict, InvalidInput, NotFound
 
 
-class ReviewNotFound(NotFound):
-    """No slot or GP-lead review recorded yet for what was asked for."""
-
-    code = "review_not_found"
-    default_message = "No such review"
-
-
 class InvalidRatingError(InvalidInput):
     """A rating was not one the sitting's rubric allows, or a GP lead's verdict was not G, A or R."""
 

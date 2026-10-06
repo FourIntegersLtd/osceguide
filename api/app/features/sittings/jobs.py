@@ -14,7 +14,10 @@ dead, and the first anybody knows is a candidate sitting in silence.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from functools import partial
+from typing import Any, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +26,8 @@ from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings, get_settings
 from app.features.sittings import repository_run, service_clock, service_run
+
+T = TypeVar("T")
 
 log = get_logger(__name__)
 
@@ -67,14 +72,17 @@ async def sweep_now(
     settings: Settings,
     now: datetime,
     open_session: object = None,
-) -> tuple[int, int]:
+) -> tuple[int, int, int]:
     """Catch up every circuit the clock has got ahead of, and close the abandoned.
 
     One transaction per circuit, deliberately: a circuit whose dispatch fails
     must not roll back the eleven that were fine, and a lock held across every
-    live examination in the deployment would serialise exam day.
+    live examination in the deployment would serialise exam day. For the same
+    reason one circuit that raises is logged and skipped, never allowed to end
+    the sweep: the job succeeds, the failing circuit is found in the logs by
+    its id and tried again next minute.
 
-    Returns `(advanced, reaped)`.
+    Returns `(advanced, ended, failed)`.
     """
     from app.core.db import job_session
 
@@ -85,34 +93,51 @@ async def sweep_now(
         stale = await repository_run.stale_circuits(session, started_before=now - service_run.STALE_AFTER)
 
     advanced = 0
+    ended = 0
+    failed = 0
     for overdue_circuit in due:
-        async with opener() as session:  # type: ignore[operator]
-            moved = await advance_one(
-                session,
+        completed, moved = await _one_circuit(
+            "advancing circuit",
+            overdue_circuit.circuit_id,
+            partial(
+                advance_one,
                 org_id=overdue_circuit.org_id,
                 circuit_id=overdue_circuit.circuit_id,
                 expected_seq=overdue_circuit.phase_seq,
                 agents=agents,
                 settings=settings,
                 now=now,
-            )
-        if moved:
+            ),
+            opener=opener,
+        )
+        if not completed:
+            failed += 1
+        elif moved:
             advanced += 1
             log.info("swept an overdue circuit forward", circuit_id=str(overdue_circuit.circuit_id))
 
-    reaped = 0
-    stale_ids = {stale_circuit.circuit_id for stale_circuit in stale}
     for stale_circuit in stale:
-        async with opener() as session:  # type: ignore[operator]
-            await service_run.end_circuit(
-                session, stale_circuit.org_id, stale_circuit.circuit_id, agents=agents, now=now
-            )
-        reaped += 1
-        log.info("ended a circuit left running overnight", circuit_id=str(stale_circuit.circuit_id))
+        completed, _ = await _one_circuit(
+            "ending circuit",
+            stale_circuit.circuit_id,
+            partial(
+                service_run.end_circuit,
+                org_id=stale_circuit.org_id,
+                circuit_id=stale_circuit.circuit_id,
+                agents=agents,
+                now=now,
+            ),
+            opener=opener,
+        )
+        if not completed:
+            failed += 1
+        else:
+            ended += 1
+            log.info("ended a circuit left running overnight", circuit_id=str(stale_circuit.circuit_id))
 
-    if advanced or stale_ids:
-        log.info("circuits swept", advanced=advanced, reaped=reaped)
-    return advanced, reaped
+    if advanced or ended or failed:
+        log.info("circuits swept", advanced=advanced, ended=ended, failed=failed)
+    return advanced, ended, failed
 
 
 def register() -> None:
@@ -147,3 +172,23 @@ def register() -> None:
         from app.features.voice.service import get_room_agents
 
         await sweep_now(agents=get_room_agents(), settings=get_settings(), now=datetime.now(UTC))
+
+
+async def _one_circuit(
+    label: str,
+    circuit_id: uuid.UUID,
+    step: Callable[[Any], Awaitable[T]],
+    *,
+    opener: Any,
+) -> tuple[bool, T | None]:
+    """Run `step` for one circuit in its own transaction.
+
+    Answers `(True, result)`, or `(False, None)` when the step raised: the
+    failure is logged with the circuit id and the sweep carries on with the next.
+    """
+    try:
+        async with opener() as session:
+            return True, await step(session)
+    except Exception:
+        log.exception(f"sweep: {label} failed", circuit_id=str(circuit_id))
+        return False, None

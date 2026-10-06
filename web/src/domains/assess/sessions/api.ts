@@ -1,4 +1,4 @@
-import { hasCode, platformRequest, type components } from "@/foundation/platform-client";
+import { platformRequest, type components } from "@/foundation/platform-client";
 import type { RoomGrant } from "@/foundation/livekit";
 import { orgPath } from "@/domains/assess/api";
 
@@ -170,7 +170,7 @@ export type CircuitReview = components["schemas"]["CircuitReviewRead"];
  * Whether this circuit's feedback has been published, as the server has it.
  *
  * `GET …/review` is the read beside `…/review/finalize`, answering the same
- * `CircuitReviewRead`; `review_not_found` means nothing has been published.
+ * `CircuitReviewRead`, or `null` when nothing has been published.
  */
 export type CircuitReviewState =
   | { state: "published"; review: CircuitReview }
@@ -181,15 +181,11 @@ export async function readCircuitReview(
   circuitId: string,
   signal?: AbortSignal,
 ): Promise<CircuitReviewState> {
-  try {
-    const review = await platformRequest<CircuitReview>(`${circuit(slug, circuitId)}/review`, {
-      signal,
-    });
-    return review.finalized_at ? { state: "published", review } : { state: "unpublished", review };
-  } catch (error) {
-    if (hasCode(error, "review_not_found")) return { state: "unpublished", review: null };
-    throw error;
-  }
+  const review = await platformRequest<CircuitReview | null>(`${circuit(slug, circuitId)}/review`, {
+    signal,
+  });
+  if (review === null) return { state: "unpublished", review: null };
+  return review.finalized_at ? { state: "published", review } : { state: "unpublished", review };
 }
 
 /** A room-admin token, so an examiner can listen in without being heard. */

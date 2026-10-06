@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { HiOutlineArrowLeft, HiOutlineArrowRight } from "react-icons/hi2";
+import { useEffect, useState } from "react";
+import { HiOutlineArrowLeft, HiOutlineArrowRight, HiOutlinePlay } from "react-icons/hi2";
 import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalSection, cn, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
@@ -40,15 +40,11 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const [sceneIndex, setSceneIndex] = useState(0);
   const scene: OnboardingScene | undefined = voice.scenes[sceneIndex];
 
-  const { start, announce } = voice;
-  // Once per visit. `start` changes identity when the microphone status does,
-  // and each call opens a billed voice session; retrying is the button's job.
-  const started = useRef(false);
-  useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-    void start();
-  }, [start]);
+  const { announce } = voice;
+  // Voice starts on a press, never on mount: each start opens a billed voice
+  // session and asks for the microphone, and opening this screen (or having
+  // it opened for you on the dashboard) is not asking to hear Athena.
+  const canPlay = step !== "invitation" && !voice.grant && !voice.error;
 
   useEffect(() => {
     if (step !== "demo" || !scene) return;
@@ -86,9 +82,17 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
         <MeetAthena
           assistantName={voice.assistantName}
           userName={session?.user.name ?? ""}
-          connecting={voice.starting}
           onNext={() => setStep("demo")}
         />
+      )}
+
+      {canPlay && (
+        <div className="flex justify-center">
+          <Button variant="secondary" onClick={() => void voice.start()} isLoading={voice.starting}>
+            <HiOutlinePlay className="h-4 w-4" aria-hidden />
+            {step === "meet" ? `Play ${voice.assistantName}'s introduction` : `Turn on ${voice.assistantName}'s voice`}
+          </Button>
+        </div>
       )}
 
       {step === "demo" && voice.loadingScenes && (
@@ -173,26 +177,24 @@ function AthenaVoice({ assistantName }: { assistantName: string }) {
 function MeetAthena({
   assistantName,
   userName,
-  connecting,
   onNext,
 }: {
   assistantName: string;
   userName: string;
-  connecting: boolean;
   onNext: () => void;
 }) {
   return (
     <div className={`${b2cCard} ${b2cCardPadding} space-y-6 text-center`}>
       <AthenaIdentity
         title={assistantName}
-        description={`Listen to ${assistantName} introduce herself${userName ? `, ${userName}` : ""}, then continue when you are ready.`}
+        description={`Press play to hear ${assistantName} introduce herself${userName ? `, ${userName}` : ""}, or continue when you are ready.`}
       />
       <AthenaVoice assistantName={assistantName} />
       {/* No microphone card here: it opened the microphone a second time while
           the session start was already asking, and on an installed iOS app the
           two requests left each other unanswered. A blocked microphone is
           reported by the alert under the steps. */}
-      <Button onClick={onNext} isLoading={connecting}>
+      <Button onClick={onNext}>
         Show me how it works <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
       </Button>
     </div>

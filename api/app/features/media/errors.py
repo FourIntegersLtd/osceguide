@@ -27,10 +27,10 @@ class BeingProduced(Conflict):
 
 
 class NotEditableError(Conflict):
-    """Raised when someone tries to edit a published item in place, rather than replacing it."""
+    """Raised when someone tries to change a published item's content in place, rather than replacing it."""
 
     code = "media_not_editable"
-    default_message = "Published material is replaced, not edited in place"
+    default_message = "A published item's content is replaced, not edited in place"
 
 
 class AlreadyPublishedError(Conflict):

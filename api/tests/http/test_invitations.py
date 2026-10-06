@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from app.features.notifications.models import OutboundMessage
+from tests.support.people import mark_signed_in
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -38,10 +39,14 @@ async def queued_invitations(db_session: AsyncSession) -> list[OutboundMessage]:
     return list((await db_session.execute(stmt)).scalars())
 
 
-async def test_the_console_seats_the_first_owner(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+async def test_the_console_seats_the_first_owner(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
     """The organisation has no admin yet, so the platform admin does it."""
     root, org_id = await provisioned(client, make_actor)
+    # `invited` means "still waiting on their invitation": the dean has an account and has signed in.
     await make_actor("dean@ashford.ac.uk")
+    await mark_signed_in(db_session, email="dean@ashford.ac.uk")
 
     seated = await client.post(
         "/api/v1/platform/organizations/ashford/memberships",
@@ -135,6 +140,54 @@ async def test_an_org_admin_invites_a_tutor_who_has_not_registered(
     assert again.status_code == 409
     assert again.json()["code"] == "membership_exists"
     assert len(await queued_invitations(db_session)) == 1
+
+
+async def test_an_invited_person_has_no_display_name_until_they_set_one(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    """The address is not a name: storing it made the dashboard greet "Good morning, tutor@ashford.ac.uk."."""
+    from app.features.identity.models import User
+
+    root, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    added = await client.post(
+        "/api/v1/orgs/ashford/memberships",
+        json={"email": "tutor@ashford.ac.uk", "role": "supervisor"},
+        headers=bearer(owner),
+    )
+    assert added.status_code == 201, added.text
+    name = (
+        await db_session.execute(select(User.name).where(User.email == "tutor@ashford.ac.uk"))
+    ).scalar_one()
+    assert name == ""
+
+
+async def test_only_an_org_admin_may_schedule_a_sitting(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """`schedule_sittings` is what the dashboard's "Schedule a sitting" reads.
+
+    It matches the create route's own guard.
+    """
+    _, org_id = await provisioned(client, make_actor)
+    supervisor = await make_actor(
+        "sup@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="supervisor"),),
+        active_org_slug="ashford",
+    )
+    admin = await make_actor(
+        "admin@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="institution_admin"),),
+        active_org_slug="ashford",
+    )
+    assert (await client.get("/api/v1/me/capabilities", headers=bearer(supervisor))).json()["can"][
+        "schedule_sittings"
+    ] is False
+    assert (await client.get("/api/v1/me/capabilities", headers=bearer(admin))).json()["can"][
+        "schedule_sittings"
+    ] is True
 
 
 async def test_an_invitation_shows_in_the_audit_log(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

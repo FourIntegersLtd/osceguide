@@ -14,6 +14,7 @@ REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.NotEditable: errors.NotEditableError,
     domain.NotDeletable: errors.NotDeletableError,
     domain.AlreadyPublished: errors.AlreadyPublishedError,
+    domain.DraftExists: errors.DraftExistsError,
     domain.NotArchivable: errors.NotArchivableError,
     domain.TemplateNotPublished: errors.TemplateNotPublishedError,
     domain.StationNotPublished: errors.StationNotPublishedError,

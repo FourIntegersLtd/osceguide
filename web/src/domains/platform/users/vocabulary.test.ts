@@ -69,7 +69,11 @@ describe("groupTitle", () => {
 describe("directoryListingTotal", () => {
   const summary = {
     total: 1000,
-    unassigned: 12,
+    paid: 436,
+    trial: 302,
+    unassigned: 50,
+    unassigned_paid: 36,
+    unassigned_trial: 2,
     exams: [
       { code: "sca", name: "SCA", users: 923, paid: 400, trial: 300, not_started: 223 },
     ],
@@ -84,6 +88,12 @@ describe("directoryListingTotal", () => {
       directoryListingTotal(summary, { examCode: "sca", access: "paid" }),
       400,
     );
+  });
+
+  it("counts payers across the whole directory as the Paid tile does, exam or none", () => {
+    assert.equal(directoryListingTotal(summary, { access: "paid" }), 436);
+    assert.equal(directoryListingTotal(summary, { access: "trial" }), 302);
+    assert.equal(directoryListingTotal(summary, { unassigned: true, access: "paid" }), 36);
   });
 
   it("returns nothing when a search would change the count", () => {

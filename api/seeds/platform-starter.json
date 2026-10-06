@@ -166,7 +166,7 @@
                 },
                 {
                   "id": "discovers_ice",
-                  "label": "Discovers ice",
+                  "label": "Discovers ICE",
                   "instructions": "G: Explicitly explores all three: ideas, concerns, AND expectations. Shows comprehensive understanding.\n        A: Explores two ICE elements but misses opportunities.\n        R: Explores one or no ICE elements.\n        Key aspects:\n        - Understand what patients think is happening\n        - Explore specific worries and fears\n        - Clarify what they hope to achieve\n        - Use ICE to shape diagnosis and management",
                   "descriptors": {
                     "G": "Explicitly explores all three: ideas, concerns, AND expectations. Shows comprehensive understanding.",
@@ -352,7 +352,7 @@
                 },
                 {
                   "id": "shares_ice_plan",
-                  "label": "Shares ice plan",
+                  "label": "Shares ICE plan",
                   "instructions": "G: Explicitly addresses ALL: ideas, concerns, AND expectations in management plan. Links choices to patient's perspective.\n        A: Addresses 2 ICE elements in plan but may miss some connections.\n        R: Addresses \u22641 ICE element OR ignores patient perspective.\n        Key aspects:\n        - Link management options to patient's ICE\n        - Share choices in small 'chunks' and invite feedback\n        - Check understanding regularly\n        - Maintain collaborative approach throughout",
                   "descriptors": {
                     "G": "Explicitly addresses ALL: ideas, concerns, AND expectations in management plan. Links choices to patient's perspective.",
@@ -1810,7 +1810,7 @@
               "competencies": [
                 {
                   "id": "person_specifications_cv_articulation",
-                  "label": "Person specifications cv articulation",
+                  "label": "Person specifications CV articulation",
                   "instructions": "Assessment of:\n        - Articulating fit to person specifications\n        - Clear presentation of experience, education, and achievements\n        - Justifying why they should be given a registrar post\n        - Use of CV evidence (research, audits, teaching, leadership)\n        - Structure and clarity of 'tell me about yourself'",
                   "descriptors": {}
                 },

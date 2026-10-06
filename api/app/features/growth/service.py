@@ -263,16 +263,15 @@ async def credit_referral_purchase(
 ACCOUNT_NUMBER_VISIBLE_DIGITS = 4
 
 
-async def read_my_payout_details(session: AsyncSession, *, user_id: uuid.UUID) -> PayoutDetailsRead:
+async def read_my_payout_details(session: AsyncSession, *, user_id: uuid.UUID) -> PayoutDetailsRead | None:
     """This person's own bank details, sort code in full and account number masked.
 
-    Raises `PayoutDetailsNotFound` when nothing has ever been saved — the
-    router turns that into a 404 the settings screen reads as "nothing on
-    file yet" rather than an error.
+    None when nothing has ever been saved: "nothing on file yet" is an answer,
+    not a missing resource, so the settings screen no longer logs a 404 for it.
     """
     stored = await repository.payout_details_by_user(session, user_id)
     if stored is None:
-        raise errors.PayoutDetailsNotFound()
+        return None
     account_number = decrypt_text(stored.account_number_ciphertext, key=get_settings().payout_details_key)
     return PayoutDetailsRead(
         bank_name=stored.bank_name,

@@ -14,6 +14,7 @@ export {
   PlatformTransportError,
   isPlatformError,
   hasCode,
+  validationFields,
   type PlatformErrorCode,
   type PlatformErrorBody,
 } from "@/foundation/platform-client/errors";

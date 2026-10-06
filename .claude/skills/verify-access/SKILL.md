@@ -90,6 +90,17 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
 - `/login` asks `GET /api/v1/auth/sso/sign-in?host=<host>`; a host with no SSO
   answers 200 `null` (since 2026-10-03; before that a 404 showed in `problems`
   on every run). A 404 there now is a stale api.
+- `GET /api/v1/me/referral-payout-details` answers 200 `null` when nothing is
+  saved (since 2026-10-06; it was a 404 in `problems` on staff settings).
+- Staff settings (`/staff/settings`) are Account / Security / Data; consumer
+  settings (`/app/me/settings`) keep Profile / Preferences / Exam / Payments /
+  Memory. Prove both when touching `capabilities/account/Settings.tsx`.
+- Onboarding voice starts only on "Play Athena's introduction". Prove it with a
+  fresh `@example.com` account registered with `exam_code` (lands on the
+  onboarding dialog) and count `POST /assistant/sessions` before play: 0
+  (`web/.verify/fix-B16.mjs`). Never press play in a proof: it is billed.
+- Directory tiles (`paid`, `trial`) are whole-directory counts and match the
+  Paid / On trial filters; the per-exam cards miss payers with no exam set.
 - Hydrate `/login` before submitting (the harness's `signIn` does). Submitting
   the server HTML posts as a GET and looks exactly like a session bug.
 - Checkout grants nothing; only the webhook does. A paid user with no access
@@ -102,3 +113,12 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   `growth.repository.upsert_payout_details`'s update branch (2026-09-26): the
   create branch refreshed, the update branch didn't, and only a real PUT-then-PUT
   test caught it — the round-trip GET test alone did not.
+- **A set-password refusal is not always about the link.** `password-reset/confirm`
+  checks the password before the token, so a weak password on a good link answers
+  `weak_password`, and a sixth try in five minutes `too_many_requests`. The reset
+  and invitation screens once said "that link is no longer valid" for every error,
+  sending people for a new link that failed the same way (B37). Only
+  `invalid_reset_token` is a dead link: `mapResetPasswordError` in
+  `capabilities/account/support/mapAuthApiError.ts`. The browser walk of both
+  journeys, including spent and expired links, is in the platform-web `verify`
+  skill's `features/session.md`.

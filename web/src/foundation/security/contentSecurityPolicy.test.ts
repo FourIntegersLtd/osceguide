@@ -20,7 +20,7 @@ import {
 describe("content-security-policy", () => {
   it("binds script execution to a per-request nonce, never to unsafe-inline", () => {
     const nonce = generateNonce();
-    const value = contentSecurityPolicyValue(nonce, { isDev: false });
+    const value = contentSecurityPolicyValue(nonce, { isDev: false, enforce: true });
 
     const scriptSrc = directive(value, "script-src");
     assert.match(scriptSrc, new RegExp(`'nonce-${escapeForRegExp(nonce)}'`));
@@ -33,7 +33,7 @@ describe("content-security-policy", () => {
   });
 
   it("locks down the framing and object vectors X-Frame-Options only half-covered", () => {
-    const value = contentSecurityPolicyValue(generateNonce(), { isDev: false });
+    const value = contentSecurityPolicyValue(generateNonce(), { isDev: false, enforce: true });
     assert.equal(directive(value, "frame-ancestors"), "'none'");
     assert.equal(directive(value, "object-src"), "'none'");
     assert.equal(directive(value, "base-uri"), "'self'");
@@ -41,7 +41,7 @@ describe("content-security-policy", () => {
   });
 
   it("keeps the app's real backends reachable so enforcing does not black out the page", () => {
-    const value = contentSecurityPolicyValue(generateNonce(), { isDev: false });
+    const value = contentSecurityPolicyValue(generateNonce(), { isDev: false, enforce: true });
     // LiveKit Cloud websockets and https APIs (S3 images, analytics) are on
     // per-session or per-tenant hosts, so these stay scheme-broad by design.
     assert.ok(directive(value, "connect-src").includes("wss:"), "LiveKit needs websockets");
@@ -50,8 +50,8 @@ describe("content-security-policy", () => {
   });
 
   it("only allows eval, and only upgrades insecure requests, where each is right", () => {
-    const dev = contentSecurityPolicyValue("n", { isDev: true });
-    const prod = contentSecurityPolicyValue("n", { isDev: false });
+    const dev = contentSecurityPolicyValue("n", { isDev: true, enforce: true });
+    const prod = contentSecurityPolicyValue("n", { isDev: false, enforce: true });
 
     // React's dev runtime needs eval; a production build never does.
     assert.ok(directive(dev, "script-src").includes("'unsafe-eval'"));
@@ -61,6 +61,17 @@ describe("content-security-policy", () => {
     // plain-HTTP localhost, where it would rewrite dev requests to nowhere.
     assert.ok(prod.includes("upgrade-insecure-requests"));
     assert.ok(!dev.includes("upgrade-insecure-requests"));
+  });
+
+  it("leaves upgrade-insecure-requests out of a Report-Only policy, where browsers ignore it", () => {
+    // Every page on staging logged "'upgrade-insecure-requests' is ignored when
+    // delivered in a report-only policy" (B56), failing every verify run.
+    const reportOnly = buildCspHeader({ isDev: false, enforce: false });
+    assert.equal(reportOnly.name, "Content-Security-Policy-Report-Only");
+    assert.ok(!reportOnly.value.includes("upgrade-insecure-requests"));
+
+    const enforced = buildCspHeader({ isDev: false, enforce: true });
+    assert.ok(enforced.value.split("; ").includes("upgrade-insecure-requests"));
   });
 
   it("ships Report-Only until the enforce flag is explicitly set", () => {

@@ -175,3 +175,47 @@ async def test_org_support_is_refused_to_anybody_but_a_platform_admin(
         )
     ).status_code == 403
     assert (await client.get("/api/v1/platform/overview", headers=bearer(admin))).status_code == 403
+
+
+async def test_contract_dates_out_of_order_are_refused_with_a_code_and_change_nothing(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await an_org(client, root, "kings")
+    url = "/api/v1/platform/organizations/kings"
+
+    refused = await client.patch(
+        url,
+        json={"contract_starts_at": "2027-10-01T00:00:00Z", "contract_ends_at": "2027-01-01T00:00:00Z"},
+        headers=bearer(root),
+    )
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["code"] == "contract_dates_out_of_order"
+    stored = (await client.get("/api/v1/orgs/kings", headers=bearer(root))).json()
+    assert stored["contract_starts_at"] is None and stored["contract_ends_at"] is None
+
+    ok = await client.patch(
+        url,
+        json={"contract_starts_at": "2027-01-01T00:00:00Z", "contract_ends_at": "2027-09-30T00:00:00Z"},
+        headers=bearer(root),
+    )
+    assert ok.status_code == 200, ok.text
+
+    # One date alone is checked against the stored other one.
+    late_start = await client.patch(
+        url, json={"contract_starts_at": "2028-01-01T00:00:00Z"}, headers=bearer(root)
+    )
+    assert late_start.status_code == 422
+    assert late_start.json()["code"] == "contract_dates_out_of_order"
+
+    # Renewing sets dates too, so the same rule applies.
+    renewal = await client.post(
+        f"{url}/contract",
+        json={"contract_starts_at": "2028-01-01T00:00:00Z", "contract_ends_at": "2027-12-01T00:00:00Z"},
+        headers=bearer(root),
+    )
+    assert renewal.status_code == 422
+    assert renewal.json()["code"] == "contract_dates_out_of_order"
+    stored = (await client.get("/api/v1/orgs/kings", headers=bearer(root))).json()
+    assert stored["contract_starts_at"].startswith("2027-01-01")
+    assert stored["contract_ends_at"].startswith("2027-09-30")

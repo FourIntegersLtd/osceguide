@@ -9,7 +9,7 @@ import {
   RowList,
   Select,
 } from "@/foundation/ui";
-import { useAsync, useToast } from "@/foundation/hooks";
+import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   listOrgMembershipsForSupport,
   type Membership,
@@ -19,9 +19,9 @@ import {
   restoreMembership,
   revokeMembership,
 } from "@/domains/platform/support/api";
-import { SEAT_ROLES } from "@/domains/platform/support";
+import { MEMBER_ROLES, humanise, roleLabel, rolesForOrgType } from "@/domains/platform/support";
 
-export function MembersSection({ slug }: { slug: string }) {
+export function MembersSection({ slug, orgType }: { slug: string; orgType: string }) {
   const state = useAsync(
     (signal) => listOrgMembershipsForSupport(slug, { limit: 50 }, signal),
     [slug],
@@ -49,6 +49,7 @@ export function MembersSection({ slug }: { slug: string }) {
                 key={membership.id}
                 membership={membership}
                 slug={slug}
+                orgType={orgType}
                 onChanged={state.reload}
               />
             ))}
@@ -62,20 +63,26 @@ export function MembersSection({ slug }: { slug: string }) {
 function MemberRow({
   membership,
   slug,
+  orgType,
   onChanged,
 }: {
   membership: Membership;
   slug: string;
+  orgType: string;
   onChanged: () => void;
 }) {
+  // The member's own role stays in the menu even where it does not fit the type.
+  const roles = rolesForOrgType(MEMBER_ROLES, orgType);
+  if (!roles.includes(membership.role)) roles.push(membership.role);
   const toast = useToast();
   const run = async (work: () => Promise<unknown>, done: string) => {
     try {
       await work();
       toast.success(done);
       onChanged();
-    } catch {
-      toast.error("That did not work");
+    } catch (cause) {
+      // The server's reason, e.g. that this is the organisation's last administrator.
+      toast.error(errorMessage(cause));
     }
   };
   const revoked = membership.status === "revoked";
@@ -86,13 +93,13 @@ function MemberRow({
           {membership.email ?? membership.user_id}
         </p>
         <p className="truncate text-osce-meta text-ink-subtle">
-          {membership.role}
-          {membership.product_surface ? ` · ${membership.product_surface}` : ""}
+          {roleLabel(membership.role)}
+          {membership.product_surface ? ` · ${humanise(membership.product_surface)}` : ""}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={revoked ? "neutral" : "success"}>
-          {membership.status}
+          {humanise(membership.status)}
         </Badge>
         <Select
           aria-label="Role"
@@ -106,17 +113,11 @@ function MemberRow({
             )
           }
         >
-          {[...SEAT_ROLES.map((r) => r.value), "supervisor", "trainee"]
-            .filter((v, i, a) => a.indexOf(v) === i)
-            .map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          {SEAT_ROLES.every((r) => r.value !== membership.role) &&
-          !["supervisor", "trainee"].includes(membership.role) ? (
-            <option value={membership.role}>{membership.role}</option>
-          ) : null}
+          {roles.map((value) => (
+            <option key={value} value={value}>
+              {roleLabel(value)}
+            </option>
+          ))}
         </Select>
         <Button
           variant={revoked ? "primary" : "danger"}

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import {
+  Alert,
   AsyncBoundary,
   B2CGroupedRow,
   B2CGroupedSection,
@@ -36,6 +37,11 @@ export function MyReview({ slotId }: { slotId: string }) {
         title="Station feedback"
       />
 
+      {!state.loading && !state.error && state.data === null ? (
+        <Alert tone="info" title="Not ready yet">
+          This station&apos;s feedback appears once your result is released.
+        </Alert>
+      ) : null}
       <AsyncBoundary state={state}>
         {(review) => {
           const rating = review.summary.rating ?? null;

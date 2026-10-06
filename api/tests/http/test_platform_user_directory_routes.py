@@ -203,6 +203,42 @@ async def test_the_summary_counts_each_exam_the_way_the_old_filter_did(
     }
 
 
+async def test_the_summary_counts_payers_and_trialists_whatever_exam_they_name(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """B27: the Paid tile summed the exams, so a payer naming no exam whose grant
+    had lapsed counted nowhere, and the tile read 1 while the Paid filter listed 37."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_plan(db_session)
+    lapsed = await a_person(db_session, "lapsed@example.com")
+    assert (await post_event(client, checkout_event("evt_lapsed", "lapsed@example.com"))).status_code == 200
+    for grant in await ent_repo.for_user(db_session, lapsed):
+        await ent_repo.revoke(db_session, grant.id, at=datetime.now(UTC) - timedelta(days=1))
+    await db_session.flush()
+    trialist = await a_learner(client, db_session, make_actor, "trial@example.com")
+    version = await a_station_version(db_session)
+    created = (
+        await client.post(
+            "/api/v1/me/station-sets",
+            json={"name": "W", "exam_code": "sca", "station_version_ids": [str(version)]},
+            headers=bearer(trialist),
+        )
+    ).json()
+    entry = created["entries"][0]["id"]
+    assert (
+        await client.post(
+            f"/api/v1/me/station-sets/{created['id']}/entries/{entry}/attempts", headers=bearer(trialist)
+        )
+    ).status_code == 201
+
+    body = (await client.get(f"{DIRECTORY}/summary", headers=bearer(root))).json()
+
+    assert body["paid"] == len(await rows_by_email(client, root, "access=paid")) == 1
+    assert body["trial"] == len(await rows_by_email(client, root, "access=trial")) == 1
+    assert body["unassigned_paid"] == 1
+    assert sum(exam["paid"] for exam in body["exams"]) == 0
+
+
 async def test_the_detail_now_says_which_state_the_account_is_in_and_takes_the_two_new_fields(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

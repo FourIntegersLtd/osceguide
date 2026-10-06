@@ -9,6 +9,7 @@ import { confirmPasswordReset } from "@/foundation/platform-client";
 import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
 import AuthFormField from "@/capabilities/account/AuthFormField";
+import { mapResetPasswordError } from "@/capabilities/account/support/mapAuthApiError";
 import {
   PASSWORD_HINT,
   resetPasswordSchema,
@@ -24,7 +25,8 @@ type ResetField = "password" | "confirmPassword";
  * A missing or refused token is the same screen either way: expired, already
  * used, or never valid are indistinguishable to the person holding it, and
  * distinguishing them out loud would tell somebody testing tokens which of
- * their guesses were real.
+ * their guesses were real. Any other refusal (a weak password, a rate limit)
+ * is said as itself: the link is still good (`mapResetPasswordError`).
  *
  * `invitation` is the same act for somebody new: an invitation's token is a
  * reset token, so `/accept-invitation` is this screen with its own wording.
@@ -41,6 +43,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<ResetField>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [linkSpent, setLinkSpent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -60,12 +63,11 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
     try {
       await confirmPasswordReset(token, result.data.password);
       setDone(true);
-    } catch {
-      setFormError(
-        invitation
-          ? "That invitation is no longer valid. Ask the person who invited you to send it again."
-          : "That link is no longer valid. Ask for a new one and use the most recent email.",
-      );
+    } catch (cause) {
+      const refused = mapResetPasswordError(cause, invitation);
+      setFormError(refused.formError);
+      setFieldErrors(refused.fieldErrors);
+      setLinkSpent(refused.linkSpent);
       setIsSubmitting(false);
     }
   };
@@ -160,6 +162,13 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
         {formError ? (
           <p role="alert" className="text-center text-osce-meta text-osce-danger">
             {formError}
+          </p>
+        ) : null}
+        {linkSpent ? (
+          <p className={authFooterLink}>
+            <Link href={invitation ? "/login" : "/forgot-password"} className={authLink}>
+              {invitation ? "Sign in" : "Send a new link"}
+            </Link>
           </p>
         ) : null}
         <Button

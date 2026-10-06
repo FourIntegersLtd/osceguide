@@ -9,6 +9,7 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
+from app.core.tenancy import OrgNotFound
 from app.features.sso import domain, errors, repository, schemas
 from app.features.sso.models import OrganizationSso
 from app.features.tenancy import service as tenancy
@@ -75,15 +76,16 @@ async def _sign_in(
     )
 
 
-async def read_config(session: AsyncSession, org_slug: str) -> schemas.SsoConfigRead:
-    """The whole arrangement for the platform console, or refuse
-    `sso_not_configured` for an unknown org or one with no arrangement yet."""
+async def read_config(session: AsyncSession, org_slug: str) -> schemas.SsoConfigRead | None:
+    """The whole arrangement for the platform console. `None` for an organisation
+    with no arrangement yet (the ordinary case, not an error); an unknown org
+    is refused `org_not_found`."""
     org = await tenancy.org_ref_by_slug(session, org_slug)
     if org is None:
-        raise errors.SsoNotConfigured()
+        raise OrgNotFound()
     config = await repository.config_for_org(session, org.id)
     if config is None:
-        raise errors.SsoNotConfigured()
+        return None
     return await _read(session, config, org_slug=org.slug)
 
 
@@ -99,7 +101,7 @@ async def save_config(
     """
     org = await tenancy.org_ref_by_slug(session, org_slug)
     if org is None:
-        raise errors.SsoNotConfigured()
+        raise OrgNotFound()
 
     try:
         provider = domain.normalise_provider(body.provider)

@@ -62,6 +62,10 @@ class StaleDecision(Exception):
     """A save that named a revision older than the one now on record."""
 
 
+class RecruitmentOutsideExam(Exception):
+    """A recruitment outcome on a training sitting, where nobody is being hired."""
+
+
 # Oracle: `_OUTCOME_MATRIX`. A failed candidate cannot be hired or held in
 # reserve, and an unresolved assessment cannot resolve recruitment either way.
 _COMPATIBLE: Mapping[Assessment, frozenset[Recruitment]] = {
@@ -141,3 +145,13 @@ def ensure_evidence_unchanged(*, signed: str, current: str) -> None:
         raise EvidenceChanged(
             "The evidence has changed since this was signed off. Review and sign off again."
         )
+
+
+def ensure_recruitment_allowed(sitting_mode: str, recruitment: Recruitment | None) -> None:
+    """Refuse a recruitment outcome outside exam mode.
+
+    Hire is exam mode: a training sitting is practice, and a "hired" on it would be
+    read by an employer as a decision nobody made.
+    """
+    if recruitment is not None and sitting_mode != "exam":
+        raise RecruitmentOutsideExam

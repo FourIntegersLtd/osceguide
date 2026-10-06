@@ -219,7 +219,25 @@ export function MediaDetailScreen({
 
   const contentForm = () => {
     if (!isMediaKind(kind)) return null;
-    switch (kind) {
+    // The server replaces a published item's content rather than editing it in place,
+    // so its form is read only; title, summary and exam still save.
+    if (load.data?.status === "published") {
+      return (
+        <div className="flex flex-col gap-3">
+          <p className="text-osce-meta text-ink-subtle">
+            Published items can&apos;t be edited. The title, summary and exam can still change.
+          </p>
+          <fieldset disabled className="contents">
+            {editableForm(kind)}
+          </fieldset>
+        </div>
+      );
+    }
+    return editableForm(kind);
+  };
+
+  const editableForm = (of: MediaKind) => {
+    switch (of) {
       case "summary":
         return (
           <SummaryContentForm
@@ -386,9 +404,11 @@ export function MediaDetailScreen({
               <HiOutlineEye className="h-4 w-4" aria-hidden />
             </AuthoringIconAction>
           ) : null}
-          <AuthoringIconAction variant="ghost" label="Edit as JSON" onClick={() => setJsonOpen(true)}>
-            <HiOutlineCodeBracket className="h-4 w-4" aria-hidden />
-          </AuthoringIconAction>
+          {isDraft ? (
+            <AuthoringIconAction variant="ghost" label="Edit as JSON" onClick={() => setJsonOpen(true)}>
+              <HiOutlineCodeBracket className="h-4 w-4" aria-hidden />
+            </AuthoringIconAction>
+          ) : null}
           {isDraft ? (
             <AuthoringIconAction
               variant="danger"
@@ -406,15 +426,17 @@ export function MediaDetailScreen({
               {unsaved ? (
                 <span className="text-osce-meta text-ink-subtle">Unsaved changes</span>
               ) : null}
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={!title.trim() || action.busy !== null}
-                isLoading={action.busy === "save-publish"}
-                onClick={() => save(true)}
-              >
-                {action.busy === "save-publish" ? "Publishing…" : "Save and publish"}
-              </Button>
+              {isDraft ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!title.trim() || action.busy !== null}
+                  isLoading={action.busy === "save-publish"}
+                  onClick={() => save(true)}
+                >
+                  {action.busy === "save-publish" ? "Publishing…" : "Save and publish"}
+                </Button>
+              ) : null}
               <Button
                 size="sm"
                 disabled={!title.trim() || action.busy !== null}
@@ -435,6 +457,7 @@ export function MediaDetailScreen({
         message={`"${title.trim() || kindLabel}" will be removed. This cannot be undone.`}
         confirmText="Delete draft"
         isLoading={action.busy === "delete"}
+        error={action.error}
         onCancel={() => setDeleteOpen(false)}
         onConfirm={() =>
           void action.run("delete", async () => {
@@ -459,6 +482,7 @@ export function MediaDetailScreen({
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           {details(true)}
 
+          {isDraft ? (
           <Panel title="Rewrite the draft from a brief" padding="sm">
             <div className="flex flex-col gap-3">
               <Textarea
@@ -479,6 +503,7 @@ export function MediaDetailScreen({
               </Button>
             </div>
           </Panel>
+          ) : null}
         </div>
 
         <Panel title="Content">{contentForm()}</Panel>
@@ -532,12 +557,17 @@ export function MediaDetailScreen({
             <Panel title="Check the facts">
               <FactCheck
                 facts={review.facts}
-                rulings={{
-                  onAccept: (claim, swap) =>
-                    setContent(acceptSuggestion(content, claim, swap)),
-                  onDismiss: (claim) => setContent(dismissSuggestion(content, claim)),
-                  onReopen: (claim) => setContent(reopenSuggestion(content, claim)),
-                }}
+                rulings={
+                  // A ruling made while the agent or a job runs would be overwritten when it settles.
+                  isAvRunning(status)
+                    ? undefined
+                    : {
+                        onAccept: (claim, swap) =>
+                          setContent(acceptSuggestion(content, claim, swap)),
+                        onDismiss: (claim) => setContent(dismissSuggestion(content, claim)),
+                        onReopen: (claim) => setContent(reopenSuggestion(content, claim)),
+                      }
+                }
                 locked={locked}
                 working={working.facts}
                 onCheck={() =>

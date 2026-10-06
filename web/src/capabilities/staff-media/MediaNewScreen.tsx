@@ -55,10 +55,8 @@ export function MediaNewForm({
   // A spoken kind is produced by the agent after the item exists; a blog is drafted inline first,
   // so a failed write leaves nothing behind.
   const produced = isSpokenKind(kind);
-  // Without a title the draft names the item, so there must be a brief to draft from.
-  const ready =
-    Boolean(title.trim() || brief.trim()) &&
-    (!produced || !brief.trim() || brief.trim().length >= 8);
+  // Nothing typed starts a blank "Untitled …" item; a brief for the agent needs enough to go on.
+  const ready = !produced || !brief.trim() || brief.trim().length >= 8;
 
   const create = () =>
     action.run("create", async () => {
@@ -69,7 +67,14 @@ export function MediaNewForm({
       const named =
         title.trim() ||
         generatedTitle(written) ||
-        `Untitled ${kindLabel.toLowerCase()}`;
+        // Stamped, since the slug comes from the title and a second "Untitled summary" would clash.
+        `Untitled ${kindLabel.toLowerCase()} ${new Date().toLocaleString("en-GB", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })}`;
       const content = mergeContent(emptyContentForKind(kind), rest);
       if (kind === "slide_deck" && !content.topic) content.topic = named;
       const item = await createMedia({

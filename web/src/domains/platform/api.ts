@@ -160,12 +160,11 @@ export type SaveSsoConfigInput = S["SaveSsoConfig"];
 /**
  * One organisation's SSO arrangement.
  *
- * `GET /platform/orgs/{slug}/sso` answers `sso_not_configured` when nothing
- * has been set up yet — the caller decides whether that is an empty form or
- * an error.
+ * `GET /platform/orgs/{slug}/sso` answers 200 `null` when nothing has been set
+ * up yet, which is an empty form; an unknown organisation is a 404.
  */
-export function readSsoConfig(slug: string, signal?: AbortSignal): Promise<SsoConfig> {
-  return platformRequest<SsoConfig>(
+export function readSsoConfig(slug: string, signal?: AbortSignal): Promise<SsoConfig | null> {
+  return platformRequest<SsoConfig | null>(
     `${PLATFORM}/orgs/${encodeURIComponent(slug)}/sso`,
     { signal },
   );
@@ -268,11 +267,12 @@ export function updateOrganization(
 /**
  * Whether this organisation's staff must sign in with a second factor (E-11).
  *
- * Its own route rather than a field on the PATCH: requiring MFA changes who
+ * Its own org-scoped route (`/orgs/{slug}/mfa-policy`, which admits a platform
+ * admin who is not a member), not a `/platform/…` one: requiring MFA changes who
  * can sign in at their next password login, so it is audited as its own act.
  */
 export function setStaffMfaPolicy(slug: string, required: boolean): Promise<Organization> {
-  return platformRequest<Organization>(`${orgs(slug)}/mfa-policy`, {
+  return platformRequest<Organization>(`/api/v1/orgs/${encodeURIComponent(slug)}/mfa-policy`, {
     method: "PATCH",
     body: { require_staff_mfa: required },
   });

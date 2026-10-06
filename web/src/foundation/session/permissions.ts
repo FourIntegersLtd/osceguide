@@ -10,6 +10,7 @@ export const PERMISSIONS = [
   "read_org",
   "manage_team",
   "run_circuits",
+  "schedule_sittings",
   "sign_off_results",
   "administer_platform",
 ] as const;

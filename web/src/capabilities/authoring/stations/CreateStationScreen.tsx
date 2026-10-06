@@ -1,20 +1,22 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Checkbox, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
+import { Alert, Button, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
 import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { useSurface } from "@/capabilities";
-import { listStationTemplates } from "@/capabilities/authoring/api";
+import { listStationTemplates, type Station } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { supportsPromptGeneration } from "@/capabilities/authoring/api/scope";
 import { useAsync } from "@/foundation/hooks";
 import { hasPublishedVersion } from "@/capabilities/authoring/sections/StationsSection";
+import { StationDetail } from "@/capabilities/authoring/sections/StationDetail";
 import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
 import { useCreateStationForm } from "@/capabilities/authoring/hooks/useCreateStationForm";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/PlatformTemplateWizardStepStrip";
 import { stationsListPath } from "@/capabilities/authoring/stations/paths";
+import { stationListUrl } from "@/capabilities/authoring/parts/stationListUrl";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 
 export function CreateStationScreen() {
@@ -32,12 +34,15 @@ export function CreateStationScreen() {
     [templates.data],
   );
 
+  // Once saved, the draft opens on its steps (draft, check facts, publish), as a new deck does.
+  const [created, setCreated] = useState<Station | null>(null);
   const form = useCreateStationForm({
     scope,
     templates: published,
-    onCreated: () => {
-      router.push(listHref);
-      router.refresh();
+    onCreated: (station) => {
+      setCreated(station);
+      // Its own address, replacing /new so Back never returns to a blank form.
+      router.replace(stationListUrl(listHref, { status: "active", station: station.id }));
     },
   });
 
@@ -69,14 +74,20 @@ export function CreateStationScreen() {
     Boolean(form.title.trim()) &&
     Boolean(form.examCode || form.templateVersionId) &&
     !form.busy;
-  // A template form is the draft. Generated text with no template is the draft
-  // only once it is on screen — publishing before that shipped unseen content.
-  const publishAllowed = Boolean(form.structure) || hasDraftContent(form.content);
+  if (created) {
+    return (
+      <StationDetail
+        station={created}
+        templates={templates.data?.items ?? []}
+        onBack={() => router.push(listHref)}
+      />
+    );
+  }
 
   return (
     <PlatformTemplateWizardPageLayout
       title="New station"
-      subtitle="Choose a published template, fill in content manually or with AI, then save as draft or publish."
+      subtitle="Choose a published template and fill in content manually or with AI. Saving opens the draft to check its facts and publish."
       backHref={listHref}
       backLabel="Stations"
     >
@@ -284,18 +295,6 @@ export function CreateStationScreen() {
           </div>
         )}
 
-        <Checkbox
-          checked={publishAllowed && form.publishNow}
-          disabled={!publishAllowed || form.generating}
-          onChange={(e) => form.setPublishNow(e.target.checked)}
-          label="Publish immediately (makes station selectable in circuits)"
-          className="items-center"
-        />
-        {!publishAllowed ? (
-          <p className="text-osce-meta text-ink-muted">
-            Generate a draft, or pick a template, before publishing. The text has to be on screen first.
-          </p>
-        ) : null}
       </div>
 
       <div className={platformTemplateWizardFooterClass}>
@@ -308,13 +307,7 @@ export function CreateStationScreen() {
           disabled={!canSave}
           onClick={() => form.handleCreate()}
         >
-          {form.saving
-            ? form.publishNow
-              ? "Creating…"
-              : "Saving…"
-            : form.publishNow
-              ? "Create and publish"
-              : "Save as draft"}
+          {form.saving ? "Saving…" : "Save draft"}
         </Button>
       </div>
     </PlatformTemplateWizardPageLayout>

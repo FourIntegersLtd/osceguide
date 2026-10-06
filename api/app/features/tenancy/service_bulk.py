@@ -94,8 +94,8 @@ async def revoke_memberships(
     would happily re-stamp an already-revoked row with a fresh timestamp and a second
     audit entry, so an already-revoked id is left untouched rather than re-written.
 
-    Neither a "last admin" nor a "self-revoke" refusal exists on the single-row route
-    today, so this batch does not invent one either: see the PR notes for that gap.
+    The single-row route refuses revoking the last administrator (`last_admin`), so a
+    batch that would do that is refused whole, like any other failed request.
     """
     results: list[BulkMembershipRevokeResult] = []
     for membership_id in _dedupe_ids(membership_ids):

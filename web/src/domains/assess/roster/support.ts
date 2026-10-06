@@ -29,16 +29,18 @@ export function accessActive(trainee: Trainee): boolean {
 /**
  * Whether the screen may offer to re-send this person's invitation.
  *
- * It is not an acceptance test — `TraineeRead` carries no such field, because
- * an invitation is a row on the *account*, not on the roster entry, and the
- * roster slice does not read the identity table. So this only filters out the
- * rows where re-sending is plainly wrong (a revoked trainee, an entry with no
- * address to send to). The real answer comes back as `invitation_not_pending`
- * and `TraineesPanel` then retires the control for that row — the backend
- * decides, exactly as it does for every other permission here.
+ * The server says whether the account behind the row is still waiting on its
+ * first use (`invitation_pending`), so an Active row that has signed in is not
+ * offered a resend. A row with no account at all is offered a first invitation.
+ * The backend still decides: a stale list gets `invitation_not_pending` back and
+ * `TraineesPanel` retires the control for that row.
  */
 export function invitationResendable(trainee: Trainee): boolean {
-  return accessActive(trainee) && trainee.email.trim().includes("@");
+  return (
+    accessActive(trainee) &&
+    trainee.email.trim().includes("@") &&
+    (trainee.invitation_pending || invitationNotAccepted(trainee))
+  );
 }
 
 /**

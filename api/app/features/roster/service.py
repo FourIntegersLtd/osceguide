@@ -95,9 +95,14 @@ async def list_trainees(
     names = await catalog.programme_names(
         session, org_id, sorted({pid for pids in programme_ids.values() for pid in pids}, key=str)
     )
+    people = await identity.user_refs_by_ids(
+        session, [trainee.user_id for trainee in trainees if trainee.user_id is not None]
+    )
     for read in reads:
         if read.user_id is None:
             continue
+        person = people.get(read.user_id)
+        read.invitation_pending = person is not None and person.invitation_pending
         read.stations_sat = sat.get(read.user_id, 0)
         read.programme_names = sorted(
             {names[pid] for pid in programme_ids.get(read.user_id, set()) if pid in names}

@@ -31,7 +31,7 @@ class UnknownMediaKind(ValueError):
 
 
 class NotEditable(Exception):
-    """Raised when someone tries to edit a published item in place, rather than replacing it."""
+    """Raised when someone tries to change a published item's content in place, rather than replacing it."""
 
 
 class AlreadyPublished(Exception):
@@ -77,9 +77,9 @@ def is_editable(*, status: str) -> bool:
 
 
 def ensure_editable(*, status: str) -> None:
-    """Refuses to let a published item be edited in place; it must be replaced instead."""
+    """Refuses to change a published item's content in place; it must be replaced instead."""
     if not is_editable(status=status):
-        raise NotEditable("Published material is edited by replacing it, not in place.")
+        raise NotEditable("A published item's content is replaced, not edited in place.")
 
 
 def ensure_deletable(*, status: str) -> None:

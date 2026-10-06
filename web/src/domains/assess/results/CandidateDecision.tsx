@@ -11,6 +11,7 @@ import {
   saveDecision,
   signOffDecision,
   type CandidateReport,
+  type Decision,
 } from "@/domains/assess/results/api";
 import {
   ASSESSMENT_OUTCOMES,
@@ -22,6 +23,7 @@ import {
   workflowTone,
   type AssessmentOutcome,
 } from "@/domains/assess/results/support";
+import { RecruitmentField, ReleasedDecision, ReopenButton } from "@/domains/assess/results/DecisionParts";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -35,24 +37,21 @@ export function CandidateDecision({
   orgSlug,
   sittingId,
   candidate,
+  hire,
   onChanged,
 }: {
   orgSlug: string;
   sittingId: string;
   candidate: CandidateReport;
+  /** An exam-mode sitting (hire): the decision also records whether the candidate is taken on. */
+  hire: boolean;
   onChanged: () => void;
 }) {
   const traineeId = candidate.trainee_id;
 
   const stored = useAsync(async (signal) => {
     if (!traineeId) return null;
-    try {
-      return await readDecision(orgSlug, sittingId, traineeId, signal);
-    } catch (cause) {
-      // Nothing recorded yet is the ordinary case, not a failure.
-      if (hasCode(cause, "result_not_found")) return null;
-      throw cause;
-    }
+    return readDecision(orgSlug, sittingId, traineeId, signal);
   }, [orgSlug, sittingId, traineeId]);
 
   if (!traineeId) {
@@ -73,6 +72,7 @@ export function CandidateDecision({
       sittingId={sittingId}
       traineeId={traineeId}
       candidate={candidate}
+      hire={hire}
       decision={stored.data}
       onChanged={() => {
         stored.reload();
@@ -82,13 +82,12 @@ export function CandidateDecision({
   );
 }
 
-type Decision = Awaited<ReturnType<typeof readDecision>>;
-
 function Form({
   orgSlug,
   sittingId,
   traineeId,
   candidate,
+  hire,
   decision,
   onChanged,
 }: {
@@ -96,10 +95,12 @@ function Form({
   sittingId: string;
   traineeId: string;
   candidate: CandidateReport;
+  hire: boolean;
   decision: Decision | null;
   onChanged: () => void;
 }) {
   const [outcome, setOutcome] = useState(decision?.assessment_outcome ?? "");
+  const [recruitment, setRecruitment] = useState(decision?.recruitment_outcome ?? "");
   const [rationale, setRationale] = useState(decision?.rationale ?? "");
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -112,6 +113,7 @@ function Form({
   const expectedRevision = decision?.revision ?? 0;
   const draft = {
     assessmentOutcome: outcome || null,
+    recruitmentOutcome: hire ? recruitment || null : null,
     rationale: rationale.trim() || null,
     evidence: evidenceFor(candidate),
     expectedRevision,
@@ -143,20 +145,7 @@ function Form({
     }
   }, [onChanged]);
 
-  if (released) {
-    return (
-      <div className="space-y-2">
-        <Badge variant="success" dot>Released</Badge>
-        <p className="text-osce-caption text-b2b-mid">
-          {decision?.released_at ? `Released ${new Date(decision.released_at).toLocaleString()}.` : "Released."}{" "}
-          Once released, a decision cannot be edited. Any correction is saved as a new version.
-        </p>
-        {decision?.rationale ? (
-          <p className="text-osce-body text-b2b-graphite">{decision.rationale}</p>
-        ) : null}
-      </div>
-    );
-  }
+  if (released) return <ReleasedDecision decision={decision} />;
 
   return (
     <div className="space-y-4">
@@ -209,6 +198,8 @@ function Form({
           ))}
         </div>
       </fieldset>
+
+      {hire ? <RecruitmentField value={recruitment} disabled={signedOff} onChange={setRecruitment} /> : null}
 
       <label className="block">
         <span className="text-osce-meta font-medium text-b2b-headline">Rationale</span>
@@ -269,24 +260,40 @@ function Form({
             </Button>
           </>
         ) : (
-          <Button
-            themeType="b2b"
-            variant="commit"
-            isLoading={busy === "release"}
-            disabled={busy !== null}
-            onClick={() =>
-              run(
-                "release",
-                () => releaseDecision(orgSlug, sittingId, traineeId, evidenceFor(candidate)),
-                "Released. The candidate can read it now.",
-              )
-            }
-          >
-            <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden /> Release to the
-            candidate
-          </Button>
+          <>
+            <ReopenButton
+              busy={busy === "reopen"}
+              disabled={busy !== null}
+              onConfirm={() =>
+                // Saving a signed-off decision records a new draft revision; the
+                // server refuses it only once the decision is released.
+                void run(
+                  "reopen",
+                  () => saveDecision(orgSlug, sittingId, traineeId, draft),
+                  "Back to draft. Change what you need, then sign off again.",
+                )
+              }
+            />
+            <Button
+              themeType="b2b"
+              variant="commit"
+              isLoading={busy === "release"}
+              disabled={busy !== null}
+              onClick={() =>
+                run(
+                  "release",
+                  () => releaseDecision(orgSlug, sittingId, traineeId, evidenceFor(candidate)),
+                  "Released. The candidate can read it now.",
+                )
+              }
+            >
+              <HiOutlinePaperAirplane className="h-4 w-4 shrink-0" aria-hidden /> Release to the
+              candidate
+            </Button>
+          </>
         )}
       </div>
+
 
       {signedOff ? (
         <p className="text-osce-caption text-b2b-mid">

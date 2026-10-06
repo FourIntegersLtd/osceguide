@@ -26,6 +26,11 @@ Chart text lives in SVG: read `main svg text` as well as `main`'s innerText.
   - Set `users.exam_code` to the exam you are checking, or `/app/me/**` shows the exam picker. Reset it to
     NULL afterwards.
   - The dashboard follows that one exam.
+- **No marked attempts locally (2026-10-06).** `feedback-fixture.sql`'s attempt ids no longer exist. Use
+  `marked-slot-fixture.sql` (self-contained, walkthrough@example.com, org `verify-b53`): one marked SCA
+  practice attempt and one marked exam-slot attempt; `marked-slot-teardown.sql` removes it.
+- **Whose mark.** `RubricFeedback` heads the learner's view "Your mark" and the examiner's review
+  "Automatic marking" (`heading` prop, B53).
 - **Institution screens.** They need an org whose slots carry marked `exam_slot` attempts.
   `feedback-fixture.sql` builds one (`verify-rubrics`), and `feedback-teardown.sql` removes it. Run both
   with `docker exec -i platform-api-postgres-1 psql -U postgres -d osce_platform < file`.

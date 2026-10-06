@@ -39,6 +39,10 @@ async def add_version(
         domain.VersionRef(number=version.version, status=domain.Status(version.status))
         for version in existing
     ]
+    try:
+        domain.ensure_no_open_draft(refs)
+    except domain.LifecycleError as exc:
+        raise_mapped(exc, _REFUSALS)
     seed = domain.seed_version(refs)
     content: dict[str, Any] = {}
     if seed is not None:
@@ -62,8 +66,10 @@ async def edit_version(
     *,
     content: dict[str, Any],
     facts: dict[str, Any] | None = None,
+    title: str | None = None,
 ) -> StationVersionRead:
-    """Overwrite a draft version's content, and with it the rulings on its fact check if given."""
+    """Overwrite a draft version's content, and with it the rulings on its fact check and the
+    station's title if given."""
     station_version = await _version(session, org_id, station_id, version)
     try:
         domain.ensure_editable(
@@ -72,6 +78,8 @@ async def edit_version(
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     refuse_while_produced(station_version.review)
+    if title is not None:
+        await repository.set_station_title(session, org_id, station_id, title=title)
     await repository.set_version_content(session, org_id, station_version.id, content=content)
     if facts is not None:
         await repository.set_version_review(
@@ -265,6 +273,11 @@ async def delete_version(
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
     await repository.delete_version(session, org_id, station_version.id)
+    # A station with no version left is nothing to open or publish: it goes with its last draft.
+    # Only drafts can be deleted, so a station emptied this way was never published and no
+    # circuit, template or attempt can refer to it; that is the check delete_station relies on.
+    if not await repository.versions_for_station(session, org_id, station_id):
+        await repository.delete_station(session, org_id, station_id)
 
 
 async def edit_brief(

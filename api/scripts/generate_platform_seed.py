@@ -125,7 +125,8 @@ def rubric_from_model(schema: Mapping[str, Any], hints: Mapping[str, Any]) -> di
     """One legacy model's JSON schema as a version 2 rubric structure.
 
     `hints` supplies only what the schema cannot: the rating field, roles a
-    field's name does not tell, the platform-written fields, and the display.
+    field's name does not tell, the platform-written fields, the domains marked
+    live during the consultation, and the display.
     Refuses (SystemExit) a model whose competencies disagree on the rating or
     on what they answer, rather than guessing.
     """
@@ -133,6 +134,7 @@ def rubric_from_model(schema: Mapping[str, Any], hints: Mapping[str, Any]) -> di
     rating_field = str(hints["ratingField"])
     roles: dict[str, str] = dict(hints.get("roles") or {})
     system_fields = frozenset(hints.get("systemFields") or ())
+    live_domains = frozenset(hints.get("liveDomains") or ())
     top_level = [
         (name, node, required) for name, node, required in ordered_children(model) if name not in META
     ]
@@ -199,9 +201,9 @@ def rubric_from_model(schema: Mapping[str, Any], hints: Mapping[str, Any]) -> di
         competency_ids = {child_id for child_id, _ in competencies}
         section.update(
             kind="domain",
-            # Nothing starts live: legacy marked everything after the
-            # consultation, and turning that on is a decision, not a default.
-            live=False,
+            # Legacy marked everything after the consultation, so a domain is
+            # live only where the exam's hints decide it (`liveDomains`).
+            live=section["id"] in live_domains,
             competencies=[
                 {
                     "id": child_id,

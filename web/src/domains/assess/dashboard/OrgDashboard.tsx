@@ -32,6 +32,7 @@ import {
   setupProgress,
   setupSteps,
 } from "@/domains/assess/dashboard/support";
+import { greetingFor } from "@/domains/assess/trainee/support";
 
 /**
  * The institution's home screen.
@@ -79,9 +80,9 @@ function Body({
       <B2CPageHeader
         className="!mb-0"
         eyebrow={data.name}
-        title={greeting(firstName(session?.user.name))}
+        title={greetingFor(session?.user.name, new Date())}
         action={
-          data.setup.ready_to_run ? (
+          !can(session, "schedule_sittings") ? null : data.setup.ready_to_run ? (
             <ButtonLink href={hrefFor("/sittings/new")} themeType="b2b" variant="commit">
               <LuPlus className="h-4 w-4" aria-hidden />
               Schedule a sitting
@@ -142,16 +143,6 @@ function Body({
       </div>
     </>
   );
-}
-
-function greeting(name: string | null): string {
-  const hour = new Date().getHours();
-  const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  return name ? `${hello}, ${name}.` : `${hello}.`;
-}
-
-function firstName(name: string | null | undefined): string | null {
-  return (name ?? "").trim().split(/\s+/)[0] || null;
 }
 
 function sentenceCase(status: string): string {

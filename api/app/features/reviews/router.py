@@ -23,14 +23,14 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 
 @router.get(
     "/me/slots/{slot_id}/review",
-    response_model=schemas.MySlotReviewRead,
-    responses=error_responses(Unauthenticated, errors.ReviewNotFound),
+    response_model=schemas.MySlotReviewRead | None,
+    responses=error_responses(Unauthenticated, errors.SlotNotFound),
 )
 async def read_my_slot_review(
     slot_id: uuid.UUID, principal: CurrentPrincipal, session: Session
-) -> schemas.MySlotReviewRead:
+) -> schemas.MySlotReviewRead | None:
     """A candidate's own review of one of their slots, once their result is
-    released and the GP lead has completed one. Never for a slot not theirs."""
+    released and the GP lead has completed one; null before. Never for a slot not theirs (404)."""
     return await service_summary.read_my_slot_review(session, slot_id=slot_id, user_id=principal.user_id)
 
 
@@ -52,12 +52,12 @@ async def list_slot_reviews(
 # The caller's own review of this slot, draft or complete.
 @router.get(
     "/orgs/{org_slug}/slots/{slot_id}/reviews/mine",
-    response_model=schemas.SlotReviewRead,
-    responses=error_responses(Forbidden, errors.SlotNotFound, errors.ReviewNotFound),
+    response_model=schemas.SlotReviewRead | None,
+    responses=error_responses(Forbidden, errors.SlotNotFound),
 )
 async def read_my_review(
     slot_id: uuid.UUID, workspace: OrgReader, session: Session
-) -> schemas.SlotReviewRead:
+) -> schemas.SlotReviewRead | None:
     return await service.read_my_slot_review(
         session, workspace.org_id, slot_id, submitted_by=workspace.principal.user_id
     )
@@ -98,12 +98,12 @@ async def submit_my_review(
 # Read the GP lead's review of one sitting slot.
 @router.get(
     "/orgs/{org_slug}/slots/{slot_id}/gp-lead-review",
-    response_model=schemas.GpLeadReviewRead,
-    responses=error_responses(Forbidden, errors.ReviewNotFound),
+    response_model=schemas.GpLeadReviewRead | None,
+    responses=error_responses(Forbidden),
 )
 async def read_gp_lead_review(
     slot_id: uuid.UUID, workspace: OrgInstitutionAdmin, session: Session
-) -> schemas.GpLeadReviewRead:
+) -> schemas.GpLeadReviewRead | None:
     return await service.read_gp_lead_review(session, workspace.org_id, slot_id)
 
 
@@ -165,13 +165,13 @@ async def finalize_circuit_review(
     )
 
 
-# Whether a circuit's merged review has been finalised, and by whom.
+# Whether a circuit's merged review has been finalised, and by whom. Null until it is.
 @router.get(
     "/orgs/{org_slug}/circuits/{circuit_id}/review",
-    response_model=schemas.CircuitReviewRead,
-    responses=error_responses(Forbidden, errors.ReviewNotFound),
+    response_model=schemas.CircuitReviewRead | None,
+    responses=error_responses(Forbidden),
 )
 async def read_circuit_review(
     circuit_id: uuid.UUID, workspace: OrgReader, session: Session
-) -> schemas.CircuitReviewRead:
+) -> schemas.CircuitReviewRead | None:
     return await service.read_circuit_review(session, workspace.org_id, circuit_id)

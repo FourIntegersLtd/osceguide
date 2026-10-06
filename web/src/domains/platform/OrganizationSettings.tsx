@@ -9,8 +9,14 @@ import {
   type Organization,
   type OrganizationChanges,
 } from "@/domains/platform/api";
+import { hasCode } from "@/foundation/platform-client";
 import { WriteOnlyNote } from "@/domains/platform/chrome";
-import { ORG_TYPES, asContractDate } from "@/domains/platform/support";
+import {
+  CONTRACT_DATES_OUT_OF_ORDER,
+  ORG_TYPES,
+  asContractDate,
+  contractDatesError,
+} from "@/domains/platform/support";
 
 /**
  * What a platform administrator may change about an organisation.
@@ -110,11 +116,7 @@ export function OrganizationSettings({
         </div>
       </Panel>
 
-      <ContractDates
-        organization={organization}
-        busy={busy}
-        onCommit={commit}
-      />
+      <ContractDates organization={organization} onChanged={onChanged} />
       <StaffMfaPolicy organization={organization} onChanged={onChanged} />
     </div>
   );
@@ -201,26 +203,47 @@ function contractInputValue(iso: string | null | undefined): string {
 
 function ContractDates({
   organization,
-  busy,
-  onCommit,
+  onChanged,
 }: {
   organization: Organization;
-  busy: boolean;
-  onCommit: (changes: OrganizationChanges, done: string) => Promise<void>;
+  onChanged: (updated: Organization) => void;
 }) {
-  const [startsAt, setStartsAt] = useState(() =>
-    contractInputValue(organization.contract_starts_at),
-  );
-  const [endsAt, setEndsAt] = useState(() =>
-    contractInputValue(organization.contract_ends_at),
-  );
+  const toast = useToast();
+  const stored = {
+    startsAt: contractInputValue(organization.contract_starts_at),
+    endsAt: contractInputValue(organization.contract_ends_at),
+  };
+  const [startsAt, setStartsAt] = useState(stored.startsAt);
+  const [endsAt, setEndsAt] = useState(stored.endsAt);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [refusedOrder, setRefusedOrder] = useState(false);
+  const orderError =
+    contractDatesError(startsAt, endsAt, stored) ??
+    (refusedOrder ? CONTRACT_DATES_OUT_OF_ORDER : null);
+
+  const commit = async (changes: OrganizationChanges, done: string) => {
+    setBusy(true);
+    setError(null);
+    setRefusedOrder(false);
+    try {
+      onChanged(await updateOrganization(organization.slug, changes));
+      toast.success(done);
+    } catch (cause) {
+      // The API's code, never its message, says which field to blame.
+      if (hasCode(cause, "contract_dates_out_of_order")) setRefusedOrder(true);
+      else setError(cause instanceof Error ? cause : new Error(String(cause)));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const save = () => {
     const changes: OrganizationChanges = {};
     if (startsAt) changes.contract_starts_at = asContractDate(startsAt);
     if (endsAt) changes.contract_ends_at = asContractDate(endsAt);
     if (Object.keys(changes).length === 0) return;
-    void onCommit(changes, "Contract dates saved");
+    void commit(changes, "Contract dates saved");
   };
 
   return (
@@ -229,6 +252,7 @@ function ContractDates({
       description="When this organisation's access starts, and when it lapses."
     >
       <div className="flex max-w-lg flex-col gap-3">
+        {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
         {!organization.contract_starts_at && !organization.contract_ends_at ? (
           <WriteOnlyNote>
             No contract dates have been set yet. Any field you leave blank stays as it is when you save.
@@ -249,6 +273,7 @@ function ContractDates({
           value={endsAt}
           onChange={(event) => setEndsAt(event.target.value)}
           disabled={busy}
+          error={orderError}
           hint="Access ends at midnight as this day begins. When the contract ends, the organisation is suspended."
         />
 
@@ -258,7 +283,7 @@ function ContractDates({
             size="sm"
             disabled={busy}
             onClick={() =>
-              onCommit(
+              commit(
                 { contract_starts_at: null, contract_ends_at: null },
                 "Contract dates cleared",
               )
@@ -266,7 +291,10 @@ function ContractDates({
           >
             Clear both dates
           </Button>
-          <Button disabled={busy || (!startsAt && !endsAt)} onClick={save}>
+          <Button
+            disabled={busy || (!startsAt && !endsAt) || orderError !== null}
+            onClick={save}
+          >
             {busy ? "Saving…" : "Save dates"}
           </Button>
         </div>

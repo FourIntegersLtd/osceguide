@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Principal
 from app.features.identity import service as identity
 from app.features.tenancy import domain, repository, repository_platform
-from app.features.tenancy.errors import OrgNotFound
+from app.features.tenancy.errors import ContractDatesOutOfOrder, OrgNotFound
 from app.features.tenancy.models import AuditEntry
 from app.features.tenancy.schemas import (
     OrganizationRead,
@@ -73,6 +73,11 @@ async def update_organization(
         raise OrgNotFound()
 
     values = changes.model_dump(exclude_unset=True)
+    if not domain.contract_dates_in_order(
+        values.get("contract_starts_at", org.contract_starts_at),
+        values.get("contract_ends_at", org.contract_ends_at),
+    ):
+        raise ContractDatesOutOfOrder()
     if "require_staff_mfa" in values:
         required = bool(values.pop("require_staff_mfa"))
         await set_require_staff_mfa(session, org_id, required=required, actor=actor, now=now)
@@ -169,6 +174,10 @@ async def renew_contract(
     values: dict[str, Any] = {"contract_ends_at": terms.contract_ends_at}
     if terms.contract_starts_at is not None:
         values["contract_starts_at"] = terms.contract_starts_at
+    if not domain.contract_dates_in_order(
+        values.get("contract_starts_at", org.contract_starts_at), terms.contract_ends_at
+    ):
+        raise ContractDatesOutOfOrder()
     await repository.update_organization(session, org_id, **values)
     restored = terms.restore and org.status == "suspended"
     if restored:

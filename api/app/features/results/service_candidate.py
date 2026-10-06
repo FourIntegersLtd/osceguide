@@ -32,13 +32,26 @@ def _acknowledgement_key(revision_id: uuid.UUID, user_id: uuid.UUID) -> str:
 
 async def read_my_result(
     session: AsyncSession, sitting_id: uuid.UUID, user_id: uuid.UUID
-) -> TraineeResultRead:
-    """What the candidate sees: released revisions only, and less of it.
+) -> TraineeResultRead | None:
+    """What the candidate sees: released revisions only, and less of it. `None` until one is released.
 
     Moderation notes and the evidence snapshot stay internal.
     """
-    revision_row = await _released_for(session, sitting_id, user_id)
+    revision_row = await released_revision_for_user(session, sitting_id, user_id)
+    if revision_row is None:
+        return None
     return await project_released_result(session, revision_row, user_id)
+
+
+async def require_released_revision(
+    session: AsyncSession, sitting_id: uuid.UUID, user_id: uuid.UUID
+) -> CandidateResultRevision:
+    """The candidate's released revision, or `result_not_released`: for the writes
+    and downloads that have nothing to answer before a release."""
+    revision_row = await released_revision_for_user(session, sitting_id, user_id)
+    if revision_row is None:
+        raise errors.NotReleased()
+    return revision_row
 
 
 async def project_released_result(
@@ -78,7 +91,7 @@ async def acknowledge_my_result(
     by trigger. Repeating the request returns the first answer rather than
     failing on the unique index.
     """
-    revision = await _released_for(session, sitting_id, user_id)
+    revision = await require_released_revision(session, sitting_id, user_id)
     key = _acknowledgement_key(revision.id, user_id)
 
     existing = await repository.event_by_idempotency_key(session, key)
@@ -115,18 +128,15 @@ async def _assessment_score(
     return round(sum(marked) / len(marked), 1)
 
 
-async def _released_for(
+async def released_revision_for_user(
     session: AsyncSession, sitting_id: uuid.UUID, user_id: uuid.UUID
-) -> CandidateResultRevision:
-    """The released revision this signed-in person may see, or a refusal.
+) -> CandidateResultRevision | None:
+    """The released revision this signed-in person may see, if there is one.
 
     A result is keyed by `trainees.id`, but the token carries a `users.id`.
     """
     trainee_ids = await roster.trainee_ids_for_user(session, user_id)
-    revision_row = await repository.released_revision(session, sitting_id, trainee_ids)
-    if revision_row is None:
-        raise errors.NotReleased()
-    return revision_row
+    return await repository.released_revision(session, sitting_id, trainee_ids)
 
 
 async def _acknowledged_at(

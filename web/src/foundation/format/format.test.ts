@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatLongDate, formatMoney, parseApiDate } from "@/foundation/format";
+import { formatLongDate, formatMoney, formatShortDateTime, parseApiDate } from "@/foundation/format";
 
 describe("formatMoney", () => {
   it("writes pence as pounds by default", () => {
@@ -23,5 +23,14 @@ describe("parseApiDate", () => {
     assert.equal(parseApiDate(null), null);
     assert.equal(parseApiDate("soon"), null);
     assert.equal(formatLongDate("soon"), "-");
+  });
+});
+
+describe("formatShortDateTime", () => {
+  it("writes a short date and the time without seconds", () => {
+    assert.equal(formatShortDateTime(new Date(2026, 10, 20, 9, 0, 30).toISOString()), "20 Nov 2026, 09:00");
+  });
+  it("shows a dash for a missing date", () => {
+    assert.equal(formatShortDateTime(null), "-");
   });
 });

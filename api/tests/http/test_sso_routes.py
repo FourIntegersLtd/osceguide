@@ -184,3 +184,19 @@ async def test_asking_with_neither_a_host_nor_an_address_is_a_refusal(client: As
     empty = await client.get(SIGN_IN)
     assert empty.status_code == 422, empty.text
     assert empty.json()["code"] == "invalid_sso_binding"
+
+
+async def test_an_organisation_with_no_sso_reads_as_null_and_an_unknown_one_is_a_404(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+) -> None:
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await an_org(client, root, "bmj")
+
+    unconfigured = await client.get("/api/v1/platform/orgs/bmj/sso", headers=bearer(root))
+    assert unconfigured.status_code == 200, unconfigured.text
+    assert unconfigured.json() is None
+
+    unknown = await client.get("/api/v1/platform/orgs/nope/sso", headers=bearer(root))
+    assert unknown.status_code == 404
+    assert unknown.json()["code"] == "org_not_found"

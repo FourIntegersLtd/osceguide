@@ -7,3 +7,4 @@ service-key
 
 # Local design mock, not part of the repository
 native mock.pdf
+__pycache__/

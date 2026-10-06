@@ -184,18 +184,24 @@ export function runnerSteps(data: CircuitConsole): RunnerStep[] {
 export function observerSubtitle(data: CircuitConsole): string {
   const slots = orderedSlots(data);
   const circuit = data.circuit;
-  const candidate = slots[0] ? personLabel(slots[0]) : null;
+  const trainees = new Set(slots.map((slot) => slot.trainee.user_id));
+  // One trainee is named; more than one is counted, since naming only the
+  // first would read as if the circuit were theirs alone.
+  const candidate = trainees.size === 1 && slots[0] ? personLabel(slots[0]) : null;
   const total = slots.length;
   const completed = slots.filter((slot) => slotProgress(slot) === "completed").length;
   const parts: string[] = [];
   if (candidate) parts.push(candidate);
+  const crowd = trainees.size > 1 ? `${trainees.size} trainees` : null;
 
   if (circuit.ended_at) {
     parts.push(total > 0 ? `Ended · ${completed} of ${total} stations sat` : "Ended");
+    if (crowd) parts.push(crowd);
     return parts.join(" · ");
   }
   if (!circuit.started_at) {
     parts.push("Not started");
+    if (crowd) parts.push(crowd);
     return parts.join(" · ");
   }
 
@@ -208,12 +214,18 @@ export function observerSubtitle(data: CircuitConsole): string {
     parts.push(circuit.phase === "break" ? "Between stations" : "Running");
   }
   if (circuit.paused) parts.push("Paused");
+  if (crowd) parts.push(crowd);
   return parts.join(" · ");
 }
 
-/** A station may be marked once it has actually been sat. */
+/**
+ * A station may be marked once its consultation has started, or when it
+ * already has a review. Reading time is not a consultation: a rubric filled in
+ * then is for a candidate who has not spoken yet.
+ */
 export function markable(slot: ConsoleSlot): boolean {
-  return slot.started_at !== null;
+  const progress = slotProgress(slot);
+  return progress === "in_consultation" || progress === "completed" || slot.has_review;
 }
 
 export const EDIT_BLOCK_COPY: Record<string, string> = {

@@ -185,11 +185,14 @@ async def read_my_referral_history(
 
 @router.get(
     "/me/referral-payout-details",
-    response_model=schemas.PayoutDetailsRead,
-    responses=error_responses(Unauthenticated, errors.PayoutDetailsNotFound),
+    response_model=schemas.PayoutDetailsRead | None,
+    responses=error_responses(Unauthenticated),
 )
-async def read_my_payout_details(principal: CurrentPrincipal, session: Session) -> schemas.PayoutDetailsRead:
-    """This person's own bank details for referral payouts, sort code in full, account number masked."""
+async def read_my_payout_details(
+    principal: CurrentPrincipal, session: Session
+) -> schemas.PayoutDetailsRead | None:
+    """This person's own bank details for referral payouts, sort code in full, account number masked;
+    null when none are saved yet."""
     return await service.read_my_payout_details(session, user_id=principal.user_id)
 
 

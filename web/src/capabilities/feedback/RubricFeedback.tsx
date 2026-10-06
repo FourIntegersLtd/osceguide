@@ -41,6 +41,9 @@ const { b2cMonoEyebrow } = productTokens;
  * or admin the machine's view of a candidate's; nothing here asks who is
  * looking.
  *
+ * `heading` names whose marking it is: the learner's own ("Your mark", the
+ * default) or, on an examiner's review, the machine's ("Automatic marking").
+ *
  * `narrow` is for a half-width column (an examiner's review page puts it
  * beside the form): domain cards then stack one per row instead of being
  * squeezed into a three-column grid sized for the whole page.
@@ -48,13 +51,15 @@ const { b2cMonoEyebrow } = productTokens;
 export function RubricFeedback({
   rubric,
   result,
+  heading,
   narrow = false,
 }: {
   rubric: MarkingRubric;
   result: MarkedResult;
+  heading?: string;
   narrow?: boolean;
 }) {
-  const model = useMemo(() => feedbackModel(rubric, result), [rubric, result]);
+  const model = useMemo(() => feedbackModel(rubric, result, heading), [rubric, result, heading]);
 
   if (model.blocks.length === 0) {
     return (
@@ -82,7 +87,7 @@ export function RubricFeedback({
     <section className="space-y-6">
       <div className="flex flex-col gap-4 rounded-osce-2xl bg-b2c-surface-muted p-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
-          <p className={b2cMonoEyebrow}>Your mark</p>
+          <p className={b2cMonoEyebrow}>{model.header.heading}</p>
           {model.header.total ? (
             <p className="mt-1.5 text-osce-title font-semibold text-osce-ink-900">
               <span className="font-mono tabular-nums">{model.header.total}</span>{" "}

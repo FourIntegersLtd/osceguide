@@ -516,17 +516,15 @@ async def test_only_staff_may_read_the_payout_queue(client: AsyncClient, make_ac
 PAYOUT_DETAILS = "/api/v1/me/referral-payout-details"
 
 
-async def test_reading_bank_details_before_any_are_saved_is_a_named_404(
-    client: AsyncClient, make_actor
-) -> None:  # type: ignore[no-untyped-def]
-    """The legacy card had nothing to show on a fresh account either; the
-    frontend tells that apart from a real failure by this stable code."""
+async def test_reading_bank_details_before_any_are_saved_is_200_null(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """Nothing on file yet is an answer, not a missing resource: the settings
+    screen logged a 404 on every visit while it was one (B33)."""
     token = await make_actor("no-bank-yet@example.com")
 
     response = await client.get(PAYOUT_DETAILS, headers=bearer(token))
 
-    assert response.status_code == 404, response.text
-    assert response.json()["code"] == "payout_details_not_found"
+    assert response.status_code == 200, response.text
+    assert response.json() is None
 
 
 async def test_saving_bank_details_masks_the_account_number_on_read_back(

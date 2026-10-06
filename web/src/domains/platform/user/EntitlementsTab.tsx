@@ -11,8 +11,10 @@ import {
   Panel,
   Row,
   RowList,
+  Select,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { listExams } from "@/capabilities/stations";
 import {
   extendEntitlement,
   grantEntitlement,
@@ -165,6 +167,10 @@ function GrantPanel({
 }) {
   const toast = useToast();
   const [code, setCode] = useState(examCode ?? "");
+  // The exams that exist, so a typo cannot grant access to nothing. The
+  // account's own exam stays a choice even when it is not in the catalogue.
+  const exams = useAsync((signal) => listExams(signal), []);
+  const examChoices = exams.data?.items ?? [];
   const [endsAt, setEndsAt] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -201,13 +207,26 @@ function GrantPanel({
     >
       <form onSubmit={submit} className="flex flex-col gap-3">
         {error ? <Alert tone="danger">{error}</Alert> : null}
-        <Input
-          label="Exam code"
+        {exams.error ? (
+          <Alert tone="danger">Could not load the exams: {errorMessage(exams.error)}</Alert>
+        ) : null}
+        <Select
+          label="Exam"
           value={code}
           onChange={(event) => setCode(event.target.value)}
-          disabled={busy}
+          disabled={busy || exams.loading}
           required
-        />
+        >
+          <option value="">{exams.loading ? "Loading exams…" : "Choose an exam"}</option>
+          {examCode && !examChoices.some((exam) => exam.code === examCode) ? (
+            <option value={examCode}>{examCode.toUpperCase()}</option>
+          ) : null}
+          {examChoices.map((exam) => (
+            <option key={exam.code} value={exam.code}>
+              {`${exam.name} (${exam.code})`}
+            </option>
+          ))}
+        </Select>
         <Input
           type="date"
           label="Access ends"

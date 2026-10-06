@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 # Roles that may administer an organisation. `platform_admin` is deliberately
 # absent: a console admin manages organisations from the outside and inherits
@@ -83,6 +83,16 @@ def is_org_admin(role: str | None) -> bool:
     return normalize_role(role) in ORG_ADMIN_ROLES
 
 
+def an_admin_remains(*, role: str | None, other_admins: int) -> bool:
+    """Whether revoking or demoting this member leaves a live administrator.
+
+    `role` is the membership's role before the change and `other_admins` counts
+    the live administrators besides it. Without this, an organisation could be
+    left with nobody able to seat anyone, and only staff could let them back in.
+    """
+    return not is_org_admin(role) or other_admins >= 1
+
+
 def is_institution_admin(role: str | None) -> bool:
     return normalize_role(role) in INSTITUTION_ADMIN_ROLES
 
@@ -108,6 +118,21 @@ def may_run_circuit(role: str | None) -> bool:
     `supervisor` role rather than a role of its own.
     """
     return is_org_admin(role) or is_assigned_staff(role)
+
+
+def contract_dates_in_order(starts_at: datetime | None, ends_at: datetime | None) -> bool:
+    """Whether a contract starts no later than it ends.
+
+    Either date may be open (`None`), and the same day is allowed. A naive
+    datetime is read as UTC, so a stored value and a posted one always compare.
+    """
+    if starts_at is None or ends_at is None:
+        return True
+    if starts_at.tzinfo is None:
+        starts_at = starts_at.replace(tzinfo=UTC)
+    if ends_at.tzinfo is None:
+        ends_at = ends_at.replace(tzinfo=UTC)
+    return starts_at <= ends_at
 
 
 def contract_lapsed(contract_ends_at: datetime | None, *, now: datetime) -> bool:

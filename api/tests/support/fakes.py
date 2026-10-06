@@ -185,10 +185,15 @@ class FakeRoomAgents:
     dispatched: list[dict[str, object]] = field(default_factory=list)
     agents_in_room: int = 0
     fail_dispatch: bool = False
+    fail_remove: bool = False
     closed: list[str] = field(default_factory=list)
 
     async def remove_agents(self, room: str) -> int:
         self.calls.append(("remove", room))
+        if self.fail_remove:
+            from app.features.voice.errors import VoiceUnavailable
+
+            raise VoiceUnavailable("LiveKit credentials are not configured")
         removed, self.agents_in_room = self.agents_in_room, 0
         return removed
 

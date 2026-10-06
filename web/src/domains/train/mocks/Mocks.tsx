@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AsyncBoundary, B2CPageHeader, B2CSegmentedTabs, ButtonLink } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
@@ -33,13 +32,14 @@ function tabFromParam(value: string | null): MockTab {
 export function Mocks() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<MockTab>(tabFromParam(searchParams.get("tab")));
+  // The address is the one source of truth, so a link, Back, or a button that
+  // only changes ?tab= (Combine into a session) all move the screen.
+  const activeTab = tabFromParam(searchParams.get("tab"));
   const workspace = useMockWorkspace();
   const { settings } = useCurrentExam();
   const { hrefFor } = useSurface();
 
   const handleTabChange = (tab: MockTab) => {
-    setActiveTab(tab);
     router.push(`?tab=${tab}`);
   };
 

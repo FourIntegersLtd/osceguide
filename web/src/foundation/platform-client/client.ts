@@ -117,13 +117,17 @@ function asErrorBody(status: number, payload: unknown): PlatformErrorBody {
   if (unreachable) {
     return { code: "internal_error", message: unreachable };
   }
-  // A proxy, a gateway or a crash before the app's error handler ran. Shaped
-  // like an `ErrorResponse` so callers have one thing to handle, and given a
-  // code that exists so the union stays honest.
-  return {
-    code: "internal_error",
-    message: `Request failed (${status})`,
-  };
+  // A proxy, a gateway, the framework's own 404/405 or a crash before the app's
+  // error handler ran. Shaped like an `ErrorResponse` so callers have one thing
+  // to handle, and given a code that exists so the union stays honest. The
+  // message is read by people, so it says what happened, not the status code.
+  return { code: "internal_error", message: fallbackMessage(status) };
+}
+
+function fallbackMessage(status: number): string {
+  if (status === 404 || status === 405) return "That action isn't available here.";
+  if (status >= 500) return "Something went wrong on our side. Try again.";
+  return "Something went wrong. Try again.";
 }
 
 export interface PlatformDownload {

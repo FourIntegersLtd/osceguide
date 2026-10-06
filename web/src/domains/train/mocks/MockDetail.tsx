@@ -6,8 +6,8 @@ import {
   AsyncBoundary,
   B2CEmptyState,
   B2CPageHeader,
+  Button,
   ButtonLink,
-  cn,
   productTokens,
 } from "@/foundation/ui";
 import { useSurface } from "@/capabilities";
@@ -131,19 +131,19 @@ export function MockDetail({ setId }: { setId: string }) {
                 }
                 action={
                   startsHere ? (
-                    <ButtonLink
-                      href={
-                        first
-                          ? `${hrefFor(`/mocks/${set.id}/stations/${first.id}`)}?action=attempt`
-                          : hrefFor(`/mocks/${set.id}`)
-                      }
-                      variant="primary"
-                      size="md"
-                      aria-disabled={!canStart}
-                      className={cn(!canStart && "pointer-events-none opacity-60")}
-                    >
-                      {micReady ? "Start session" : "Allow your microphone to start"}
-                    </ButtonLink>
+                    first && canStart ? (
+                      <ButtonLink
+                        href={`${hrefFor(`/mocks/${set.id}/stations/${first.id}`)}?action=attempt`}
+                        variant="primary"
+                        size="md"
+                      >
+                        Start session
+                      </ButtonLink>
+                    ) : (
+                      <Button variant="primary" size="md" disabled>
+                        {micReady ? "Start session" : "Allow your microphone to start"}
+                      </Button>
+                    )
                   ) : undefined
                 }
               >

@@ -261,6 +261,13 @@ class ExamDirectorySummary(BaseModel):
 
 class DirectorySummary(BaseModel):
     exams: list[ExamDirectorySummary]
-    # Accounts naming no exam and holding no live grant.
+    # Accounts naming no exam and holding no live grant, and how many of them
+    # paid (a payment whose grant has lapsed) or are on trial.
     unassigned: int
+    unassigned_paid: int
+    unassigned_trial: int
     total: int
+    # Every account with a payment / every unpaid one that has started, whatever
+    # exam it names: the same people the `access=paid` / `access=trial` facet lists.
+    paid: int
+    trial: int

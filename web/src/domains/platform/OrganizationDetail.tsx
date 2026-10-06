@@ -36,6 +36,7 @@ import {
   ORG_TYPES,
   STATUS_HELP,
   asContractDate,
+  contractDatesError,
   formatDay,
   permitsSignIn,
 } from "@/domains/platform/support";
@@ -63,6 +64,8 @@ export function OrganizationDetail({ slug }: { slug: string }) {
   const [tab, setTab] = useState<Tab>("overview");
   const state = useAsync((signal) => readOrganization(slug, signal), [slug]);
   const [fresh, setFresh] = useState<Organization | null>(null);
+  // Bumped when someone is seated, so the members list below reloads with them in it.
+  const [seated, setSeated] = useState(0);
 
   const organization = fresh ?? state.data;
   const changedAndReload = (updated: Organization) => {
@@ -117,8 +120,8 @@ export function OrganizationDetail({ slug }: { slug: string }) {
               ) : null}
               {tab === "members" ? (
                 <div className="flex flex-col gap-6">
-                  <SeatMemberPanel slug={current.slug} />
-                  <MembersSection slug={current.slug} />
+                  <SeatMemberPanel slug={current.slug} orgType={current.org_type} onSeated={() => setSeated((n) => n + 1)} />
+                  <MembersSection key={seated} slug={current.slug} orgType={current.org_type} />
                 </div>
               ) : null}
               {tab === "sso" ? <SsoSection slug={current.slug} /> : null}
@@ -244,6 +247,11 @@ function OrganizationActions({
   const [busy, setBusy] = useState<"renew" | "access" | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const suspended = !permitsSignIn(organization.status);
+  // Renewing sets the end date, so it may not fall before the stored start.
+  const orderError = contractDatesError("", endsAt, {
+    startsAt: organization.contract_starts_at?.slice(0, 10) ?? "",
+    endsAt: "",
+  });
 
   const run = useCallback(
     async (
@@ -317,9 +325,10 @@ function OrganizationActions({
         value={endsAt}
         onChange={(event) => setEndsAt(event.target.value)}
         disabled={busy !== null}
+        error={orderError}
         hint="Sets the new end date and lifts any suspension in one step."
       />
-      <Button disabled={busy !== null || !endsAt} onClick={renew}>
+      <Button disabled={busy !== null || !endsAt || orderError !== null} onClick={renew}>
         {busy === "renew" ? "Renewing…" : "Renew contract"}
       </Button>
     </ActionRail>

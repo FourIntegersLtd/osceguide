@@ -1,7 +1,7 @@
 "use client";
 
 import { FoldSection, Textarea } from "@/foundation/ui";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { HiOutlinePlus, HiOutlineXMark } from "react-icons/hi2";
 import {
   MediaBlockEditor,
@@ -88,9 +88,10 @@ export function RichBlockEditor({
 }
 
 function Field({ label, required, children }: { label: string; required: boolean; children: ReactNode }) {
+  const labelId = useId();
   return (
-    <div className="min-w-0 space-y-2 md:col-span-2">
-      <p className="text-osce-body font-medium text-ink">
+    <div className="min-w-0 space-y-2 md:col-span-2" role="group" aria-labelledby={labelId}>
+      <p id={labelId} className="text-osce-body font-medium text-ink">
         {label}
         {required ? <span className="text-osce-danger-text"> *</span> : null}
       </p>

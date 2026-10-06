@@ -16,7 +16,7 @@ import {
   scriptStatus,
   stageOf,
 } from "@/capabilities/staff-media/content/steps";
-import type { FactClaim } from "@/capabilities/fact-check/facts";
+import { corrected, type FactClaim } from "@/capabilities/fact-check/facts";
 
 const DECK_LINES = [
   "Here is the reading that matters.",
@@ -118,6 +118,56 @@ describe("the staff review of a spoken item", () => {
     assert.equal(slide.source_notes, "Clinic 160/100.");
     assert.deepEqual(slide.narration, { intro: DECK_LINES[0], items: [DECK_LINES[1]] });
     assert.equal(reviewOf(accepted).facts?.claims[0]?.decision, "accepted");
+  });
+
+  it("removing a claim takes its bullet off the slide, cannot be undone, and leaves what was spoken", () => {
+    const content = {
+      ...deck(),
+      review: { facts: { checked_at: "t", claims: [CLAIM] } },
+    };
+    const removed = acceptSuggestion(content, CLAIM, { from: CLAIM.claim, to: "" });
+    const slide = (removed.slides as Record<string, unknown>[])[0]!;
+    assert.deepEqual(slide.bullets, []);
+    assert.deepEqual(slide.narration, { intro: DECK_LINES[0], items: [DECK_LINES[1]] });
+    const claim = reviewOf(removed).facts!.claims[0]!;
+    assert.equal(claim.decision, "accepted");
+    assert.deepEqual(reopenSuggestion(removed, claim).slides, removed.slides);
+  });
+
+  it("removing a line from a station's field drops the line and keeps the rest", () => {
+    const station = {
+      immediate_actions: "- Call 999\n- Insert IV line, take baseline bloods if time allows\n- Stay with the patient",
+    };
+    const claim: FactClaim = { ...CLAIM, slide: null, field: "immediate_actions" };
+    const from = "Insert IV line, take baseline bloods if time allows";
+    assert.deepEqual(corrected(station, claim, { from, to: "" }), {
+      immediate_actions: "- Call 999\n- Stay with the patient",
+    });
+  });
+
+  it("removing a claim from a summary drops its list entry", () => {
+    const claim: FactClaim = { ...CLAIM, slide: null };
+    const from = "Bloods before transfer if time allows";
+    const summary = {
+      brief_management: ["Call 999", from],
+      review: { facts: { checked_at: "t", claims: [claim] } },
+    };
+    const removed = acceptSuggestion(summary, claim, { from, to: "" });
+    assert.deepEqual(removed.brief_management, ["Call 999"]);
+    assert.equal(reviewOf(removed).facts?.claims[0]?.decision, "accepted");
+  });
+
+  it("removing a claim from a podcast drops its line from the notes and the script", () => {
+    const claim: FactClaim = { ...CLAIM, slide: null };
+    const from = "Take bloods before transfer if time allows.";
+    const podcast = {
+      body_md: `**Plan**\n\n- Call 999\n- ${from}`,
+      script: `HOST: Call 999.\nGUEST: ${from}\nHOST: Then wait with them.`,
+      review: { facts: { checked_at: "t", claims: [claim] } },
+    };
+    const removed = acceptSuggestion(podcast, claim, { from, to: "" });
+    assert.equal(removed.body_md, "**Plan**\n\n- Call 999");
+    assert.equal(removed.script, "HOST: Call 999.\nHOST: Then wait with them.");
   });
 
   it("dismissing a correction changes nothing but the decision", () => {

@@ -21,7 +21,7 @@ import {
   markMessageHandled,
   type SiteMessage,
 } from "@/domains/platform/api";
-import { formatDay } from "@/domains/platform/support";
+import { formatDay, messageSourceLabel } from "@/domains/platform/support";
 
 /** A page at a time from the server. */
 const MESSAGES_PAGE_LIMIT = 25;
@@ -158,7 +158,7 @@ function MessageRow({
         </p>
         <p className="mt-0.5 text-osce-meta text-ink-subtle">
           {kindLabel} · {sender} · {formatDay(message.created_at)}
-          {message.source ? ` · ${message.source}` : ""}
+          {message.source ? ` · ${messageSourceLabel(message.source)}` : ""}
         </p>
         <p className="mt-2 whitespace-pre-wrap text-osce-body text-ink-muted">
           {message.body}

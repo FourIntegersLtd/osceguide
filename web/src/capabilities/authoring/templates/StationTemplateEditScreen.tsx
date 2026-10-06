@@ -57,7 +57,11 @@ export function StationTemplateEditScreen({
   return (
     <PlatformTemplateWizardPageLayout
       title={match?.title || "Edit draft"}
-      subtitle={`Version ${version}. Published versions cannot be edited. Make a new draft from the list first.`}
+      subtitle={
+        match && match.status !== "draft"
+          ? `Version ${version} is ${match.status}, so it is read only. Make a new draft from the list to change it.`
+          : `Version ${version}. Published versions cannot be edited. Make a new draft from the list first.`
+      }
       backHref={listHref}
       backLabel="Station templates"
     >
@@ -81,7 +85,10 @@ export function StationTemplateEditScreen({
                 aria-label="Template title"
               />
             </label>
-            <StructureBuilder value={structure} onChange={setStructure} allowCustomGenerationPrompt />
+            {/* A disabled fieldset makes every control inside read only. */}
+            <fieldset disabled={match?.status !== "draft"} className="min-w-0 border-0 p-0">
+              <StructureBuilder value={structure} onChange={setStructure} allowCustomGenerationPrompt />
+            </fieldset>
             {error ? (
               <Alert tone="danger" className="mt-4">
                 {error}
@@ -90,10 +97,11 @@ export function StationTemplateEditScreen({
           </div>
           <div className={platformTemplateWizardFooterEndClass}>
             <Button variant="secondary" onClick={() => router.push(listHref)}>
-              Cancel
+              {match?.status === "draft" ? "Cancel" : "Back"}
             </Button>
             <Button
               variant="commit"
+              className={match?.status === "draft" ? undefined : "hidden"}
               disabled={saving || match?.status !== "draft"}
               onClick={async () => {
                 setError(null);

@@ -4,9 +4,20 @@
 - Dashboard: setup checklist ("Before your first examination", n/4 done), "At a glance" counts, recent sittings.
 - Sittings list and "Schedule a sitting".
 - Authoring: tabs Stations, Station templates, Rubrics, Exams, Programmes.
+- Programmes (nav, `/programmes`): the real list, same as Authoring → Programmes. Button "New programme",
+  dialog "Add programme" (input "Exam code"). Row action: "Activate" (draft), "Retire" (active), "Reactivate" (retired).
+- Results → "Open <name>" → "The decision": Pass/Fail buttons, rationale, "Sign off"; once signed off,
+  "Back to draft" (confirm dialog, same label) and "Release". Exam-mode sittings add select "Recruitment outcome";
+  released shows "Recruitment outcome: <label>" (options include "Pending", "Reserve list"; "Not recorded" is the blank).
+- Slot review (`/slots/<slotId>/review?sitting=<id>`): panel "The lead's review", buttons "Save draft" and
+  "Complete review"; completing with domains unrated shows "...still missing: <domain titles>".
+- Candidate (needs a `trainee` membership, see B57): `/trainee/sittings/<id>` shows the reading brief during
+  reading and "Read your result" once released; `/trainee/results/<id>`, `/trainee/reviews/<slotId>`.
+- Circuit runner (`/circuits/<id>`): "Start circuit"; "End circuit" then dialog "End the circuit".
+- A supervisor sees no "Schedule a sitting" on the dashboard or the sittings list (`schedule_sittings`).
 
 ## How to get to it (user POV)
-Switch to Kings College → Overview. Sittings and Authoring are in the
+Switch to St Mary's (`st-marys`; `kings` may not exist locally) → Overview. Sittings and Authoring are in the
 institution nav.
 
 ## Driving it with playwright-core

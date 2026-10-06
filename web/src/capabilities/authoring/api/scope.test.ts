@@ -6,7 +6,6 @@ import {
   supportsBrief,
   supportsProgrammes,
   supportsPromptGeneration,
-  supportsVersionDelete,
 } from "@/capabilities/authoring/api/scope";
 
 /**
@@ -41,10 +40,10 @@ describe("authoring scope", () => {
     assert.throws(() => authoringScope("train", null));
   });
 
-  it("names the three things only an organisation's scope serves", () => {
+  it("names the two things only an organisation's scope serves", () => {
     const org = authoringScope("assess", "kings");
     const platform = authoringScope("platform", null);
-    for (const supports of [supportsProgrammes, supportsBrief, supportsVersionDelete]) {
+    for (const supports of [supportsProgrammes, supportsBrief]) {
       assert.equal(supports(org), true);
       assert.equal(supports(platform), false);
     }

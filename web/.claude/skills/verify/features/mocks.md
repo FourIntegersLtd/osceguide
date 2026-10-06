@@ -54,3 +54,17 @@ Handles: `getByRole("button", { name: "Edit <name>" | "Delete <name>" })`,
   compiles; rerun once.
 - The login page's `GET /api/v1/auth/sso/sign-in?host=localhost` 404 makes
   `finish()` exit 1 on every run; it is not a mocks problem.
+- Free stations run out after three created sessions on an account ("You do
+  not have access to this exam" plus the plan modal); reuse a session by URL
+  (`.verify/fix-web1-consumer.mjs` takes `SET_URL`). Repeated sign-ins as
+  walkthrough@example.com also hit "Too many attempts": wait a minute.
+- The Attempts X/Y pill only moves when the voice worker bootstraps the
+  attempt (consultation actually starts), not when the station page opens it;
+  `SetStation` re-reads the session when the room goes live. Without a local
+  worker the pill stays 0/N.
+- Flagged stations shows its "Combine into a session" button only when a
+  station is flagged. Flag one from the station header
+  (`Flag this station to come back to`, a toggle).
+- The Start session button is a link only when the mic is ready and the
+  session has a station; otherwise a disabled button (block the mic with an
+  `addInitScript` rejecting `getUserMedia` and a denied `permissions.query`).
