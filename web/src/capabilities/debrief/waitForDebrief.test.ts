@@ -28,4 +28,17 @@ describe("waitForDebrief", () => {
     assert.equal(found, false);
     assert.ok(asked >= 2);
   });
+
+  it("throws once the polls keep failing, so the screen can say it cannot tell", async () => {
+    await assert.rejects(
+      waitForDebrief(
+        async () => {
+          throw new Error("502");
+        },
+        "mine",
+        { signal: new AbortController().signal, intervalMs: 1, maxFailures: 3 },
+      ),
+      /502/,
+    );
+  });
 });

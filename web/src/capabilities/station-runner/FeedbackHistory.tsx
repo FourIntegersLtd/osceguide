@@ -9,9 +9,10 @@ import { AsyncBoundary, B2CEmptyState, ButtonLink } from "@/foundation/ui";
 import Table, { type Column } from "@/foundation/table/Table";
 import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
+import { feedbackRows } from "@/capabilities/station-runner/feedbackRows";
 import { listMyAttempts, type AttemptHistoryItem } from "@/capabilities/attempt-runner";
 
-type FeedbackRow = AttemptHistoryItem & { position: number };
+type FeedbackRow = ReturnType<typeof feedbackRows<AttemptHistoryItem>>[number];
 
 export function FeedbackHistory({ stationVersionId, entryId, stationName }: {
   stationVersionId: string | null;
@@ -45,7 +46,6 @@ export function FeedbackHistory({ stationVersionId, entryId, stationName }: {
           new Date(item.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
         priority: "primary",
       },
-      { header: "Evaluator", key: () => "system" },
       {
         header: "Action",
         key: (item) => (
@@ -60,9 +60,7 @@ export function FeedbackHistory({ stationVersionId, entryId, stationName }: {
   );
 
   return <AsyncBoundary state={pages.state}>{(attempts) => {
-    const rows = attempts
-      .filter((item) => item.has_result && item.kind !== "debrief")
-      .map((item, index) => ({ ...item, position: index + 1 }));
+    const rows = feedbackRows(attempts);
     // Nothing marked on the pages read so far is only "no feedback" once the server has no more.
     return rows.length === 0 && !pages.hasMore ? (
       <div className="rounded-lg bg-b2c-surface-muted p-10 text-center">

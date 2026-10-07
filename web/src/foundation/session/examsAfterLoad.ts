@@ -13,15 +13,10 @@ export interface HeldExams {
 export const NO_EXAMS: HeldExams = { codes: [], serverCurrent: null, dashboardExam: null };
 
 /**
- * The exams to show once `/me/dashboard` has answered, or failed.
- *
- * A failure keeps what was last known: the switcher and the exam-filtered navigation are built
- * from these, and emptying them on a flaky request made them vanish until a reload. An exam
- * nobody can name is still never invented: with nothing known before, nothing is shown.
+ * The exams `/me/dashboard` describes. A failed request never reaches this: the hook keeps the
+ * last answer it held, so the switcher and exam-filtered navigation do not empty on a flaky call.
  */
-export function examsAfterLoad(previous: HeldExams, outcome: { dashboard: Dashboard } | { failed: true }): HeldExams {
-  if ("failed" in outcome) return previous;
-  const { dashboard } = outcome;
+export function heldFromDashboard(dashboard: Dashboard): HeldExams {
   return {
     codes: dashboard.exam_codes ?? [],
     serverCurrent: dashboard.current_exam_code ?? null,

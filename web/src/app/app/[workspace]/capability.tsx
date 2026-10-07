@@ -1,8 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { notFound, useParams } from "next/navigation";
-import { useSession } from "@/foundation/session";
+import { useEffect, type ReactNode } from "react";
+import { notFound, useParams, useRouter } from "next/navigation";
+import { useCurrentExam, useSession } from "@/foundation/session";
 import { capabilitiesFor } from "@/capabilities";
 import { resolveWorkspace, surfaceForWorkspace } from "@/surfaces";
 
@@ -18,8 +18,19 @@ import { resolveWorkspace, surfaceForWorkspace } from "@/surfaces";
  * It reads the same registry the navigation reads, so a page can never be
  * reachable by URL while absent from the menu, or the reverse.
  */
-export function Capability({ id, children }: { id: string; children: ReactNode }) {
+export function Capability({
+  id,
+  children,
+  redirectTo,
+}: {
+  id: string;
+  children: ReactNode;
+  /** Where an arm that does not mount this goes, instead of a 404 (a path inside the workspace). */
+  redirectTo?: string;
+}) {
+  const router = useRouter();
   const { session } = useSession();
+  const { code: examCode, loading: examLoading } = useCurrentExam();
   const { workspace: slug } = useParams<{ workspace: string }>();
 
   const workspace = resolveWorkspace(slug ?? "", session?.user ?? null);
@@ -28,8 +39,19 @@ export function Capability({ id, children }: { id: string; children: ReactNode }
   const mounted = capabilitiesFor(surfaceForWorkspace(workspace).id, {
     can: session?.capabilities.can ?? {},
     includeHidden: true,
+    // Same exam filter as the menu, so a URL cannot reach what the menu hides for this exam.
+    examCode,
   });
-  if (!mounted.some((capability) => capability.id === id)) notFound();
+  const allowed = mounted.some((capability) => capability.id === id);
+  const bounce = !allowed && redirectTo ? `/app/${slug}${redirectTo}` : null;
+
+  useEffect(() => {
+    if (bounce && !examLoading) router.replace(bounce);
+  }, [bounce, examLoading, router]);
+
+  // The exam is unknown until the dashboard answers; deciding sooner would 404 a page the person may open.
+  if (examLoading || bounce) return null;
+  if (!allowed) notFound();
 
   return <>{children}</>;
 }

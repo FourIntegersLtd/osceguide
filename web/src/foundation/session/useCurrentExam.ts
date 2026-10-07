@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { platformRequest } from "@/foundation/platform-client";
 import type { components } from "@/foundation/platform-client";
 import { EXAM_SELECTION_EVENT, readExamSelection, rememberExamSelection, normalizeExamCode } from "./examSelection";
-import { examsAfterLoad, NO_EXAMS, type HeldExams } from "@/foundation/session/examsAfterLoad";
+import { heldFromDashboard, NO_EXAMS, type HeldExams } from "@/foundation/session/examsAfterLoad";
 import { useSession } from "@/foundation/session/SessionProvider";
 
 type Dashboard = components["schemas"]["Dashboard"];
@@ -121,15 +121,14 @@ export function useCurrentExam(): CurrentExam {
     loadDashboardOnce(userId)
       .then((dashboard) => {
         if (!live) return;
-        setHeld((previous) => examsAfterLoad(previous, { dashboard }));
+        setHeld(heldFromDashboard(dashboard));
         setError(null);
         setChosen(readExamSelection(userId));
       })
       .catch((cause) => {
-        // Keep what was known (see `examsAfterLoad`) and say so, rather than
-        // emptying the switcher and the exam-filtered navigation.
+        // Keep what was known and say so, rather than emptying the switcher
+        // and the exam-filtered navigation.
         if (!live) return;
-        setHeld((previous) => examsAfterLoad(previous, { failed: true }));
         setError(cause instanceof Error ? cause : new Error(String(cause)));
       })
       .finally(() => {

@@ -35,9 +35,11 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
 } = {}) {
   const { hrefFor } = useSurface();
   const [arrived, setArrived] = useState<string | null>(null);
+  const [waitFailed, setWaitFailed] = useState(false);
   const waiting = Boolean(awaitingAttemptId) && arrived !== awaitingAttemptId;
   useEffect(() => {
     if (!awaitingAttemptId) return;
+    setWaitFailed(false);
     const controller = new AbortController();
     void waitForDebrief(
       async (signal) =>
@@ -49,10 +51,14 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
         ).items.map((item) => item.attempt_id),
       awaitingAttemptId,
       { signal: controller.signal },
-    ).then(() => {
-      // Found or timed out, the list is read again and the notice goes.
-      if (!controller.signal.aborted) setArrived(awaitingAttemptId);
-    });
+    )
+      .then(() => {
+        // Found or timed out, the list is read again and the notice goes.
+        if (!controller.signal.aborted) setArrived(awaitingAttemptId);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setWaitFailed(true);
+      });
     return () => controller.abort();
   }, [awaitingAttemptId, attemptId, stationVersionId, entryId]);
   const pages = useCursorPages(
@@ -76,6 +82,11 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
       {waiting ? (
         <Alert tone="info" className="mb-4">
           Your debrief has ended. Athena is writing its summary, and it will appear here in a minute.
+        </Alert>
+      ) : null}
+      {waitFailed ? (
+        <Alert tone="warning" className="mb-4">
+          We could not check whether your debrief summary is ready. Reload this page in a minute to look again.
         </Alert>
       ) : null}
       <AsyncBoundary

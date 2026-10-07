@@ -12,6 +12,7 @@ import { useSurface } from "@/capabilities";
 import { holdsPaidAccess } from "@/capabilities/account/access";
 import { listEntitlements } from "@/capabilities/account/api";
 import { useAsync } from "@/foundation/hooks";
+import { examSwitcherView } from "@/surfaces/examSwitcher";
 
 /**
  * The foot of the workspace sidebar (canvas `train-dashboard`): who you are
@@ -31,7 +32,7 @@ export function WorkspaceNavFooter({
   const { session, signOut } = useSession();
   const [signingOut, setSigningOut] = useState(false);
   const { hrefFor } = useSurface();
-  const { codes, code, setCode } = useCurrentExam();
+  const { codes, code, setCode, error: examError, reload: reloadExams } = useCurrentExam();
   const userId = session?.user.id ?? null;
   // Not a gate, so a failed read hides the button rather than an error.
   const entitlements = useAsync(
@@ -39,6 +40,7 @@ export function WorkspaceNavFooter({
     [consumer, userId],
   );
 
+  const examView = examSwitcherView({ consumer, codes, error: examError });
   const name = session?.user.name || session?.user.email || "Account";
   const email = session?.user.name ? session.user.email : null;
   // Only a countdown earns a line; the bare exam code is noise in the foot.
@@ -95,7 +97,7 @@ export function WorkspaceNavFooter({
     <div className="mt-auto shrink-0 px-3 pb-3.5">
       {upgrade ? <div className="mb-3">{upgrade}</div> : null}
 
-      {consumer && codes.length > 1 ? (
+      {examView === "switcher" ? (
         <label className="block px-3 py-2">
           <span className="sr-only">Exam</span>
           <select
@@ -110,6 +112,13 @@ export function WorkspaceNavFooter({
             ))}
           </select>
         </label>
+      ) : examView === "failed" ? (
+        <p role="alert" className="px-3 py-2 text-osce-meta text-osce-ink-900">
+          Your exams did not load.{" "}
+          <button type="button" onClick={reloadExams} className="font-medium text-osce-accent hover:text-osce-accent-hover">
+            Try again
+          </button>
+        </p>
       ) : meta ? (
         <p className="px-3 py-2 text-osce-meta font-medium text-osce-ink-900">{meta}</p>
       ) : null}

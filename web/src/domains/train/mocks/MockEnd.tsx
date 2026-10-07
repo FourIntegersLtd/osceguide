@@ -9,7 +9,7 @@ import { MilestoneCelebration } from "@/domains/train/mocks/MilestoneCelebration
 import { StationOutcomes } from "@/domains/train/mocks/StationOutcomes";
 import { useCurrentExam, offersPatientPractice } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { listMyAttempts, type AttemptHistoryItem } from "@/capabilities/attempt-runner";
+import { listMyAttempts } from "@/capabilities/attempt-runner";
 import { PracticeOptionCards } from "@/capabilities/peer-practice/PracticeOptions";
 import { usePeerPractice } from "@/capabilities/peer-practice/PeerPracticeProvider";
 import { loadStationCatalogue, readDashboard, readSet } from "@/domains/train/api";
@@ -50,11 +50,7 @@ export function MockEnd({ setId }: { setId: string }) {
       const [library, dashboard, ...perEntry] = await Promise.all([
         loadStationCatalogue(set.exam_code, signal),
         readDashboard(signal),
-        ...entries.map((entry) =>
-          listMyAttempts({ setEntryId: entry.id, limit: 5 }, signal).catch(() => ({
-            items: [] as AttemptHistoryItem[],
-          })),
-        ),
+        ...entries.map((entry) => listMyAttempts({ setEntryId: entry.id, limit: 5 }, signal)),
       ]);
       const titles = new Map(library.map((station) => [station.version_id, station.title]));
       const rows = entries.map((entry, index) => {

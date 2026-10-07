@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PlatformError } from "@/foundation/platform-client";
-import { describeRefusal } from "@/foundation/platform-client/refusal";
+import { describeRefusal } from "@/capabilities/stations/refusal";
 
-const describeStartFailure = (cause: unknown) => describeRefusal(cause, "We could not start this station. Please try again.");
+const START_FALLBACK = "We could not start this station. Please try again.";
+const describeStartFailure = (cause: unknown) => describeRefusal(cause, START_FALLBACK);
 
 type Body = ConstructorParameters<typeof PlatformError>[1];
 const refusal = (status: number, code: string, details?: Record<string, unknown>) =>

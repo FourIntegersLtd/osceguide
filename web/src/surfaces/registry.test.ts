@@ -201,6 +201,7 @@ describe("surface registry", () => {
       "Organisations",
       "Users",
       "Messages",
+      "Announcements",
     ]);
     assert.deepEqual(bySection("revenue"), [
       "Billing",
@@ -255,10 +256,13 @@ describe("surface registry", () => {
       "Slides",
       "Podcast",
       "Articles",
+      "Debrief",
+      "Transcripts",
     ]);
     // Contact & Feedback leads Connect: the retiring sidebar carried it too,
     // ahead of the community, and a capability mounts it on this arm only.
     assert.deepEqual(bySection("connect"), [
+      "Inbox",
       "Contact & Feedback",
       "Community",
       "Marketplace",

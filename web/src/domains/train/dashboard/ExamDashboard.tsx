@@ -151,20 +151,20 @@ function DashboardBody({ data }: { data: DashboardData }) {
 
       {attempts === 0 ? (
         <>
-        <div className="flex flex-col items-center gap-2.5 rounded-osce-lg border border-dashed border-b2c-border bg-osce-surface px-6 py-10 text-center">
-          <span className="flex h-10 w-10 items-center justify-center rounded-osce-md bg-b2c-surface-muted text-osce-ink-700">
-            <HiOutlineChartBar className="h-5 w-5" aria-hidden />
-          </span>
-          <h2 className={productTokens.b2cSectionTitle}>No assessments yet</h2>
-          <p className="max-w-[360px] text-b2c-text-muted">
-            Complete stations and your competency mix will appear here.
-          </p>
-        </div>
-        <RecentStations
-          recent={data.recent_attempts ?? []}
-          attemptHref={(id) => hrefFor(`/attempts/${id}`)}
-          sessionsHref={hrefFor("/transcripts")}
-        />
+          <div className="flex flex-col items-center gap-2.5 rounded-osce-lg border border-dashed border-b2c-border bg-osce-surface px-6 py-10 text-center">
+            <span className="flex h-10 w-10 items-center justify-center rounded-osce-md bg-b2c-surface-muted text-osce-ink-700">
+              <HiOutlineChartBar className="h-5 w-5" aria-hidden />
+            </span>
+            <h2 className={productTokens.b2cSectionTitle}>No assessments yet</h2>
+            <p className="max-w-[360px] text-b2c-text-muted">
+              Complete stations and your competency mix will appear here.
+            </p>
+          </div>
+          <RecentStations
+            recent={data.recent_attempts ?? []}
+            attemptHref={(id) => hrefFor(`/attempts/${id}`)}
+            sessionsHref={hrefFor("/transcripts")}
+          />
         </>
       ) : (
       <AsyncBoundary state={performanceState}>

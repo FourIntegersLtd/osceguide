@@ -8,10 +8,9 @@ import type { CapabilityModule } from "@/capabilities/contract";
  * own back; an examiner reads a candidate's while marking. Same screen, and
  * the API decides which transcripts a person may open.
  *
- * Not in the navigation, because in the product it is not a destination: the
- * transcript is the consultation screen's right-hand panel once the
- * consultation is over, and "Load previous" there is what reaches this list.
- * A sidebar entry made it look like a section of its own.
+ * It is in the navigation under Practice: the consultation screen's right-hand
+ * panel is not the only way people look for a past transcript, and without an
+ * entry here the list was reachable only from links.
  */
 export const transcriptsCapability: CapabilityModule = {
   id: "transcripts",
@@ -19,7 +18,7 @@ export const transcriptsCapability: CapabilityModule = {
   description: "Read back what was said in a consultation.",
   surfaces: ["train", "assess"],
   permission: null,
+  section: "practice",
   path: "/transcripts",
   icon: LuFileText,
-  hidden: true,
 };

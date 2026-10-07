@@ -9,14 +9,23 @@
 export async function waitForDebrief(
   newestAttemptIds: (signal: AbortSignal) => Promise<readonly string[]>,
   debriefAttemptId: string,
-  { signal, intervalMs = 4000, timeoutMs = 180_000 }: { signal: AbortSignal; intervalMs?: number; timeoutMs?: number },
+  {
+    signal,
+    intervalMs = 4000,
+    timeoutMs = 180_000,
+    maxFailures = 3,
+  }: { signal: AbortSignal; intervalMs?: number; timeoutMs?: number; maxFailures?: number },
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
+  let failures = 0;
   while (!signal.aborted) {
     try {
       if ((await newestAttemptIds(signal)).includes(debriefAttemptId)) return true;
-    } catch {
-      // A failed poll is retried; the history's own load reports real failures.
+      failures = 0;
+    } catch (cause) {
+      // One failed poll is retried; a run of them is a failure the caller must show.
+      failures += 1;
+      if (failures >= maxFailures && !signal.aborted) throw cause;
     }
     if (signal.aborted || Date.now() + intervalMs > deadline) return false;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));

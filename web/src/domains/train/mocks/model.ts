@@ -1,6 +1,6 @@
 import type { SetEntry, StationSet } from "@/domains/train/api";
 import type { AttemptHistoryItem } from "@/capabilities/attempt-runner";
-import { describeRefusal } from "@/foundation/platform-client";
+import { describeRefusal } from "@/capabilities/stations/refusal";
 
 /**
  * The arithmetic the mocks screens do, kept out of the components.

@@ -41,21 +41,15 @@ export function LibraryBrowse() {
 
       <AsyncBoundary
         state={state}
-        failure={(error, retry) => {
-          const { paywall, text } = libraryFailure(error);
-          return paywall ? (
-            <Alert tone="warning" title="This exam's stations are not open to you">
-              <p>{text}</p>
-            </Alert>
-          ) : (
-            <Alert tone="danger" title="That did not load">
-              <p>{text}</p>
-              <Button variant="secondary" size="sm" className="mt-3" onClick={retry}>
-                Try again
-              </Button>
-            </Alert>
-          );
-        }}
+        failure={
+          state.error && libraryFailure(state.error).paywall
+            ? (error) => (
+                <Alert tone="warning" title="This exam's stations are not open to you">
+                  <p>{libraryFailure(error).text}</p>
+                </Alert>
+              )
+            : undefined
+        }
         isEmpty={(rows) => rows.length === 0}
         empty={
           library.applied

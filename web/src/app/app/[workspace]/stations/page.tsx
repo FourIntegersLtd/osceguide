@@ -15,5 +15,5 @@ import { StationLibrary } from "@/capabilities/stations";
 export const metadata: Metadata = { title: "Stations" };
 
 export default function Page() {
-  return <Capability id="stations"><StationLibrary /></Capability>;
+  return <Capability id="stations" redirectTo="/mocks"><StationLibrary /></Capability>;
 }

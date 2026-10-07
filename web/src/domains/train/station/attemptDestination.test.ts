@@ -1,3 +1,5 @@
+import type { LibraryStation } from "@/capabilities/stations";
+import type { SetEntry } from "@/domains/train/api";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { attemptDestination, setStationState } from "@/domains/train/station/attemptDestination";
@@ -18,11 +20,14 @@ describe("attemptDestination", () => {
   });
 });
 
+const ENTRY = {} as SetEntry;
+const STATION = {} as LibraryStation;
+
 describe("setStationState", () => {
   it("names an entry the session does not have and a station that was retired", () => {
-    assert.equal(setStationState({ entry: null, station: null, action: "attempt" }), "unknown_entry");
-    assert.equal(setStationState({ entry: {}, station: undefined, action: "attempt" }), "retired");
-    assert.equal(setStationState({ entry: {}, station: undefined, action: "review" }), "ok");
-    assert.equal(setStationState({ entry: {}, station: {}, action: "attempt" }), "ok");
+    assert.equal(setStationState({ entry: null, station: undefined, action: "attempt" }), "unknown_entry");
+    assert.equal(setStationState({ entry: ENTRY, station: undefined, action: "attempt" }), "retired");
+    assert.equal(setStationState({ entry: ENTRY, station: undefined, action: "review" }), "ok");
+    assert.equal(setStationState({ entry: ENTRY, station: STATION, action: "attempt" }), "ok");
   });
 });

@@ -66,15 +66,19 @@ export function AttemptLanding({ attemptId }: { attemptId: string }) {
   );
 }
 
+/** How many pages of sessions are read before giving up on finding one. */
+const MAX_SET_PAGES = 20;
+
 /** The session holding this entry, walking the person's sessions a page at a time. */
 async function setHolding(entryId: string, signal: AbortSignal): Promise<string | null> {
   let cursor: string | null = null;
-  for (let pages = 0; pages < 20; pages += 1) {
+  for (let pages = 0; pages < MAX_SET_PAGES; pages += 1) {
     const page = await listSets(signal, cursor);
     const set = page.items.find((candidate) => (candidate.entries ?? []).some((entry) => entry.id === entryId));
     if (set) return set.id;
     cursor = page.next_cursor ?? null;
     if (!cursor) return null;
   }
-  return null;
+  // Not finding it in the pages read does not mean it was removed.
+  throw new Error("We could not find the session this attempt belongs to. Please try again.");
 }

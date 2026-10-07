@@ -1,4 +1,5 @@
-import { describeRefusal, isNotEntitled } from "@/foundation/platform-client";
+import { hasCode } from "@/foundation/platform-client";
+import { describeRefusal } from "@/capabilities/stations/refusal";
 import type { LibraryPage, LibraryStation } from "@/capabilities/stations/api";
 
 export const PLATFORM_PREFIX = "platform:";
@@ -45,5 +46,5 @@ export function uniqueById(stations: readonly LibraryStation[]): LibraryStation[
 
 /** What the library says when a page could not be had: a paywall for a refused exam, else the failure. */
 export function libraryFailure(error: Error): { paywall: boolean; text: string } {
-  return { paywall: isNotEntitled(error), text: describeRefusal(error, "Please try again.") };
+  return { paywall: hasCode(error, "not_entitled"), text: describeRefusal(error, "Please try again.") };
 }

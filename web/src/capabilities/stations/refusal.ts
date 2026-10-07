@@ -1,10 +1,5 @@
 import { hasCode, isPlatformError } from "@/foundation/platform-client/errors";
 
-/** Whether the API refused because the caller has no (or no more) access to an exam. */
-export function isNotEntitled(cause: unknown): boolean {
-  return hasCode(cause, "not_entitled");
-}
-
 /**
  * What to tell somebody the API refused, by the code (and, for access, the reason) it answered with.
  *

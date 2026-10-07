@@ -1,3 +1,6 @@
+import type { LibraryStation } from "@/capabilities/stations";
+import type { SetEntry } from "@/domains/train/api";
+
 /** The part of an attempt's brief that says where it was sat. */
 export interface SatAt {
   station_id?: string | null;
@@ -23,8 +26,8 @@ export function attemptDestination(brief: SatAt, setId: string | null): AttemptD
 
 /** Whether a session's station can be sat, read back, or neither, by what the catalogue still holds. */
 export function setStationState(input: {
-  entry: unknown;
-  station: unknown;
+  entry: SetEntry | null | undefined;
+  station: LibraryStation | undefined;
   action: "attempt" | "review";
 }): "ok" | "unknown_entry" | "retired" {
   if (!input.entry) return "unknown_entry";

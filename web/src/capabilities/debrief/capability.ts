@@ -9,9 +9,9 @@ import type { CapabilityModule } from "@/capabilities/contract";
  * so an institution reviewing a cohort's stations wants it for the same reason
  * a consumer does.
  *
- * `hidden`: reached from an attempt, never from the navigation. There is no
- * useful list of "all my debriefs" that the attempt history does not answer
- * better.
+ * Listed in the navigation under Practice, as well as reached from an attempt:
+ * the list of every debrief the person has had is its own screen, and without
+ * an entry it was only reachable from links.
  */
 export const debriefCapability: CapabilityModule = {
   id: "debrief",
@@ -19,7 +19,7 @@ export const debriefCapability: CapabilityModule = {
   description: "Work back through a station you have already sat.",
   surfaces: ["train", "assess"],
   permission: null,
+  section: "practice",
   path: "/debriefs",
   icon: LuMessageSquareQuote,
-  hidden: true,
 };

@@ -20,6 +20,18 @@ describe("capability registry", () => {
     assert.ok(!train.includes("media"), "combined library is hidden from nav");
   });
 
+  it("puts transcripts and debriefs in the consumer navigation", () => {
+    const train = capabilitiesFor("train", { basePath: "/app/me" }).map((c) => c.href);
+    assert.ok(train.includes("/app/me/transcripts"));
+    assert.ok(train.includes("/app/me/debriefs"));
+  });
+
+  it("hides the marketplace from an exam that does not offer it", () => {
+    const ids = (examCode: string) => capabilitiesFor("train", { examCode, includeHidden: true }).map((c) => c.id);
+    assert.ok(ids("sca").includes("peer-practice"));
+    assert.ok(!ids("plab").includes("peer-practice"));
+  });
+
   it("prefixes hrefs with the base path the shell hands it", () => {
     // Same capability, same path, two workspaces. It never learns which.
     const [consumer] = capabilitiesFor("train", { basePath: "/app/me" }).filter(
