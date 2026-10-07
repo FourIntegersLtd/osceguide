@@ -40,6 +40,15 @@ class ReviewConflictError(Conflict):
     default_message = "Someone else has changed this review since you opened it"
 
 
+class ReviewLockedError(Conflict):
+    """The candidate's decision has been signed off or released, so the reviews behind it are fixed."""
+
+    code = "review_locked"
+    default_message = (
+        "This candidate's result has been signed off or released, so its reviews can no longer be changed"
+    )
+
+
 class SlotNotFound(NotFound):
     """No such slot in this organisation.
 

@@ -99,9 +99,11 @@ def test_appending_trainees_is_training_only() -> None:
 
 
 def test_a_circuit_can_only_start_once() -> None:
-    domain.ensure_startable(domain.CircuitState(active_slot_id=None, has_feedback=False))
+    assert domain.should_start(domain.CircuitState(active_slot_id=None, has_feedback=False)) is True
+    running = domain.CircuitState(active_slot_id="slot", has_feedback=False, started=True)
+    assert domain.should_start(running) is False
     with pytest.raises(domain.CircuitAlreadyEnded):
-        domain.ensure_startable(domain.CircuitState(active_slot_id=None, has_feedback=False, ended=True))
+        domain.should_start(domain.CircuitState(active_slot_id=None, has_feedback=False, ended=True))
 
 
 def test_only_one_slot_is_active_at_a_time() -> None:

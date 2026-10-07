@@ -666,3 +666,22 @@ async def test_the_clock_moves_between_stations_without_anybody_switching_it(
 
     ended = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/end", headers=bearer(admin))
     assert all(s["phase"] is None for s in ended.json()["slots"])
+
+
+async def test_a_draft_programme_does_not_count_as_ready(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """B-3: setup ticked "programme ready" for a draft nobody can sit; activating it ticks it."""
+    _, admin = await org_with_admin(client, make_actor)
+    programme_id = await add_programme(client, admin, org_slug="kings", active=False)
+
+    draft = (await client.get("/api/v1/orgs/kings/dashboard", headers=bearer(admin))).json()
+    assert draft["counts"]["programmes_with_markable_exam"] == 0
+    assert draft["setup"]["programme_exam_rubric_ready"] is False
+
+    await client.patch(
+        f"/api/v1/orgs/kings/programmes/{programme_id}", json={"status": "active"}, headers=bearer(admin)
+    )
+    active = (await client.get("/api/v1/orgs/kings/dashboard", headers=bearer(admin))).json()
+    assert active["counts"]["programmes_with_markable_exam"] == 1
+    assert active["setup"]["programme_exam_rubric_ready"] is True

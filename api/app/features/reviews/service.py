@@ -21,6 +21,7 @@ from app.features.reviews.schemas import (
 from app.features.rubrics import service_marking as rubrics
 from app.features.rubrics import service_scoring as rubric_scoring
 from app.features.sittings import service as sittings
+from app.features.sittings import service_reads as sittings_reads
 
 _REFUSALS: dict[type[Exception], type[AppError]] = {
     rubric_scoring.InvalidRating: errors.InvalidRatingError,
@@ -77,6 +78,25 @@ async def _require_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.
         raise errors.SlotNotFound()
 
 
+async def _require_open_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> None:
+    """A slot whose reviews may still change: refused once the candidate's decision for the
+    sitting is signed off or released, since that decision (and what the candidate reads)
+    was made on these reviews. Redrafting a signed-off decision reopens them (R-4).
+    """
+    await _require_slot(session, org_id, slot_id)
+    # `results` imports this slice, so its import has to wait until call time.
+    from app.features.results import service as results
+
+    found = await sittings_reads.slot_and_sitting(session, org_id, slot_id)
+    if found is None:
+        return
+    slot, sitting = found
+    if await results.decision_settled(
+        session, org_id, sitting_id=sitting.id, trainee_user_id=slot.trainee_id
+    ):
+        raise errors.ReviewLockedError()
+
+
 async def slot_rubric(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
 ) -> rubrics.ScoringRubric | None:
@@ -114,7 +134,7 @@ async def submit_slot_review(
     now: datetime,
 ) -> SlotReviewRead:
     """Submit or update one reviewer's own review of a slot."""
-    await _require_slot(session, org_id, slot_id)
+    await _require_open_slot(session, org_id, slot_id)
     scoring_rubric = await slot_rubric(session, org_id, slot_id)
     structure = scoring_rubric.structure if scoring_rubric else None
     try:
@@ -156,7 +176,7 @@ async def save_gp_lead_review(
     now: datetime,
 ) -> GpLeadReviewRead:
     """Save the GP-lead review for a slot, refusing a save against a stale revision."""
-    await _require_slot(session, org_id, slot_id)
+    await _require_open_slot(session, org_id, slot_id)
     scoring_rubric = await slot_rubric(session, org_id, slot_id)
     structure = scoring_rubric.structure if scoring_rubric else None
     existing = await repository.gp_lead_review(session, org_id, slot_id)

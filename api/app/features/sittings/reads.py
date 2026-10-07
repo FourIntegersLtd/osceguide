@@ -15,6 +15,7 @@ def state(circuit: Circuit, *, has_feedback: bool) -> domain.CircuitState:
         active_slot_id=str(circuit.active_slot_id) if circuit.active_slot_id else None,
         has_feedback=has_feedback,
         ended=circuit.ended_at is not None,
+        started=circuit.started_at is not None,
     )
 
 

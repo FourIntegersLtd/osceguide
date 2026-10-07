@@ -72,14 +72,19 @@ async def an_examiner(db_session: AsyncSession, org_id: uuid.UUID, email: str) -
 
 
 async def a_consultation(
-    client: AsyncClient, db_session: AsyncSession, admin: str, *, examiner: uuid.UUID | None
+    client: AsyncClient,
+    db_session: AsyncSession,
+    admin: str,
+    *,
+    examiner: uuid.UUID | None,
+    mode: str = "exam",
 ) -> tuple[str, str, str]:
     """One candidate mid-consultation: returns their id, the circuit's, the attempt's."""
     template = await a_template_version(client, admin)
     sitting = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json={"name": "Finals", "programme_id": str(template), "mode": "exam"},
+            json={"name": "Finals", "programme_id": str(template), "mode": mode},
             headers=bearer(admin),
         )
     ).json()
@@ -313,10 +318,12 @@ async def test_the_candidate_still_reads_their_own_transcript(
     db_session: AsyncSession,
     agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
 ) -> None:
-    """Nothing here narrows what the person who spoke the words may see."""
+    """A training slot is practice: the person who spoke the words reads them at once."""
     org_id, admin = await org_with_admin(client, make_actor)
     examiner, _ = await an_examiner(db_session, org_id, "watched@kings.example")
-    candidate, _, attempt_id = await a_consultation(client, db_session, admin, examiner=examiner)
+    candidate, _, attempt_id = await a_consultation(
+        client, db_session, admin, examiner=examiner, mode="training"
+    )
     await a_delivered_transcript(db_session, attempt_id)
 
     response = await client.get(
@@ -324,6 +331,56 @@ async def test_the_candidate_still_reads_their_own_transcript(
         headers=bearer(mint_token(user_id=uuid.UUID(candidate), email="candidate@example.com")),
     )
 
+    assert response.status_code == 200, response.text
+    assert len(response.json()["messages"]) == 2
+
+
+async def test_an_exam_candidate_reads_nothing_of_their_slot_until_release(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """R-1: the transcript and marks feed the decision, so the candidate sees them with it.
+
+    Before release the portal links no attempt and each read is refused; once the
+    decision is released, both open.
+    """
+    from app.features.roster import repository as roster_repo
+    from tests.http.test_results_routes import EVIDENCE
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    candidate, _, attempt_id = await a_consultation(client, db_session, admin, examiner=None)
+    await a_delivered_transcript(db_session, attempt_id)
+    as_candidate = bearer(mint_token(user_id=uuid.UUID(candidate), email="candidate@example.com"))
+
+    portal = (await client.get("/api/v1/me/sittings", headers=as_candidate)).json()
+    assert portal["items"][0]["slots"][0]["attempt_id"] is None
+    for read in ("transcript", "result", "feedback"):
+        refused = await client.get(f"/api/v1/attempts/{attempt_id}/{read}", headers=as_candidate)
+        assert refused.status_code == 404, (read, refused.text)
+        assert refused.json()["code"] == "result_not_released"
+
+    trainee_id = (await roster_repo.trainee_ids_for_user(db_session, uuid.UUID(candidate)))[0]
+    sitting_id = portal["items"][0]["id"]
+    decision = f"/api/v1/orgs/kings/sittings/{sitting_id}/candidates/{trainee_id}/decision"
+    await client.put(
+        decision,
+        json={
+            "assessment_outcome": "pass",
+            "rationale": "Met the standard.",
+            "evidence": EVIDENCE,
+            "expected_revision": 0,
+        },
+        headers=bearer(admin),
+    )
+    await client.post(f"{decision}/sign-off", headers=bearer(admin))
+    released = await client.post(f"{decision}/release", json={"evidence": EVIDENCE}, headers=bearer(admin))
+    assert released.status_code == 200, released.text
+
+    portal = (await client.get("/api/v1/me/sittings", headers=as_candidate)).json()
+    assert portal["items"][0]["slots"][0]["attempt_id"] == attempt_id
+    response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=as_candidate)
     assert response.status_code == 200, response.text
     assert len(response.json()["messages"]) == 2
 

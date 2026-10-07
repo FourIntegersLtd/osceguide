@@ -403,3 +403,29 @@ async def test_the_attempt_stream_refuses_somebody_elses_attempt(
         "GET", f"/api/v1/attempts/{attempt_id}/stream?ticket={ticket}"
     ) as response:
         assert response.status_code == 403
+
+
+async def test_a_trainee_cannot_open_the_console_stream(client: AsyncClient, make_actor, db_session) -> None:  # type: ignore[no-untyped-def]
+    """R-2: the console stream carried every candidate's slot to any member, trainees included."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings", mode="training")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(await a_user(db_session, "cand@example.com"))],
+        station_version_ids=[station],
+    )
+    trainee = await make_actor(
+        "member@example.com",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="trainee"),),
+        active_org_slug="kings",
+    )
+
+    response = await client.get(
+        f"/api/v1/orgs/kings/circuits/{circuit['id']}/console/stream", headers=bearer(trainee)
+    )
+
+    assert response.status_code == 403, response.text

@@ -803,3 +803,22 @@ async def test_leaving_a_consultation_succeeds_when_livekit_cannot_remove_the_pa
 
     assert response.status_code == 200, response.text
     assert response.json()["ended_at"] is not None
+
+
+async def test_pressing_start_again_leaves_a_running_circuit_where_it_is(
+    client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
+) -> None:  # type: ignore[no-untyped-def]
+    """R-3: a second Start (another tab, a double click) rewound a live consultation to reading."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, _ = await a_started_circuit(client, db_session, org_id, admin)
+    advanced = (
+        await client.post(f"/api/v1/orgs/kings/circuits/{circuit_id}/advance", json={}, headers=bearer(admin))
+    ).json()
+    assert advanced["phase"] == "simulation"
+
+    again = await client.post(f"/api/v1/orgs/kings/circuits/{circuit_id}/start", headers=bearer(admin))
+
+    assert again.status_code == 200, again.text
+    assert again.json()["phase"] == "simulation"
+    assert again.json()["started_at"] == advanced["started_at"]
+    assert again.json()["phase_ends_at"] == advanced["phase_ends_at"]

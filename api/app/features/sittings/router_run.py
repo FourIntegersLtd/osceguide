@@ -19,7 +19,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep, RoomAgents, VoiceTokens
 from app.core.settings import SettingsDep
-from app.core.tenancy import OrgStaff
+from app.core.tenancy import OrgStaff, OrgSuspended
 from app.features.sittings import errors, schemas, service_brief, service_circuit, service_join, service_run
 from app.features.sittings import service_control as control
 from app.features.sittings import service_overrides as overrides
@@ -138,7 +138,13 @@ async def observer_token(
     "/me/circuits/{circuit_id}/join-token",
     response_model=schemas.RoomGrant,
     responses=error_responses(
-        Unauthenticated, errors.CircuitNotFound, errors.CircuitNotLive, errors.VoiceUnavailable
+        Unauthenticated,
+        errors.CircuitNotFound,
+        errors.CircuitNotLive,
+        errors.VoiceUnavailable,
+        OrgSuspended,
+        errors.TraineeRevokedError,
+        errors.TraineeNotOnRosterError,
     ),
 )
 async def join_token(

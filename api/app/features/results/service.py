@@ -264,6 +264,23 @@ async def release_many(
     return outcome
 
 
+async def decision_settled(
+    session: AsyncSession, org_id: uuid.UUID, *, sitting_id: uuid.UUID, trainee_user_id: uuid.UUID | None
+) -> bool:
+    """Whether this candidate's current decision is signed off or released.
+
+    Asked by `reviews` before a review changes: the decision was made on those
+    reviews. Takes the slot's `users.id` and finds the `trainees.id` itself.
+    """
+    if trainee_user_id is None:
+        return False
+    trainee = (await roster.trainees_by_user_id(session, org_id, [trainee_user_id])).get(trainee_user_id)
+    if trainee is None:
+        return False
+    latest = await repository.latest_revision(session, org_id, sitting_id, trainee.id)
+    return latest is not None and latest.workflow_state != domain.Workflow.DRAFT
+
+
 async def read_decision(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
 ) -> DecisionRead | None:

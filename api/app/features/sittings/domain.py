@@ -86,6 +86,7 @@ class CircuitState:
     active_slot_id: str | None
     has_feedback: bool
     ended: bool = False
+    started: bool = False
 
 
 @dataclass(frozen=True)
@@ -167,16 +168,22 @@ def edit_block(state: CircuitState) -> str | None:
     return None
 
 
-def ensure_startable(state: CircuitState) -> None:
-    """Refuse to start a circuit that has already finished."""
+def should_start(state: CircuitState) -> bool:
+    """Whether a Start should do anything; refuses a circuit that has already finished.
+
+    A running circuit answers False: a second Start (a double click, a second
+    tab) is not a restart, which would reset the clock to reading time on the
+    first station with the patient still in the room (R-3).
+    """
     if state.ended:
         raise CircuitAlreadyEnded("That circuit has already finished.")
+    return not state.started
 
 
 def ensure_live(state: CircuitState) -> None:
     """Nothing may act on a circuit that is over.
 
-    Separate from `ensure_startable`: guards "is this still running", not "may
+    Separate from `should_start`: guards "is this still running", not "may
     this begin". Without it, an ended circuit can keep showing a candidate
     consulting in a room that no longer exists.
     """

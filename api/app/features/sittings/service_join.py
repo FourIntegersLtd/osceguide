@@ -18,9 +18,13 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ports import VoiceTokens
+from app.core.role_policy import org_permits_access
 from app.core.settings import Settings
+from app.core.tenancy import OrgSuspended
+from app.features.roster import service as roster
 from app.features.sittings import errors, repository_run, service_run
 from app.features.sittings.schemas import RoomGrant
+from app.features.tenancy import service as tenancy
 from app.features.voice import service as voice
 
 # Re-exported so the router wires the dependency without importing another
@@ -58,6 +62,12 @@ async def join_token_for_trainee(
         # 404 rather than 403: whether a circuit exists is not something to
         # confirm to somebody who is not on it.
         raise errors.CircuitNotFound()
+    # A slot on the circuit is not enough: the organisation may have been
+    # suspended, or this person's access revoked, since they were scheduled (S-1).
+    org = await tenancy.org_ref_by_id(session, circuit.org_id)
+    if org is None or not org_permits_access(org.status):
+        raise OrgSuspended()
+    await roster.ensure_rosterable(session, circuit.org_id, [user_id])
     if circuit.started_at is None or circuit.ended_at is not None or not circuit.room_name:
         raise errors.CircuitNotLive()
 

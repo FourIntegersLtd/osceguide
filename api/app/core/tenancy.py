@@ -189,15 +189,6 @@ PlatformAdmin = Annotated[Principal, Depends(require_platform_admin)]
 
 # Declared after the factory so slices can depend on access without importing
 # one another: `workspace: OrgAdmin` is the whole of it.
-def may_read_org_policy() -> RolePredicate:
-    """The predicate behind `OrgReader`, for a caller that cannot use a dependency.
-
-    A stream resolves its own workspace (see `resolve_workspace`) and needs
-    the same rule, not a second spelling of it.
-    """
-    return policy("may_read_org")
-
-
 def may_run_circuit_policy() -> RolePredicate:
     """The predicate behind `OrgStaff`, for a stream that resolves its own workspace."""
     return policy("may_run_circuit")

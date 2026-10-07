@@ -17,7 +17,7 @@ from app.core.openapi import sse_responses
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.core.tenancy import OrgAdmin, OrgStaff, may_read_org_policy, resolve_workspace
+from app.core.tenancy import OrgAdmin, OrgStaff, may_run_circuit_policy, resolve_workspace
 from app.features.dashboard import (
     errors,
     schemas,
@@ -206,10 +206,11 @@ async def stream_circuit_console(
     stream and a poll with the same code.
 
     Access is resolved against a short session of its own, not the request session, so the
-    transaction does not stay open for as long as the client's connection does.
+    transaction does not stay open for as long as the client's connection does. Staff only, as
+    the REST console is: every frame names each candidate on the circuit.
     """
     async with open_session() as session:
-        workspace = await resolve_workspace(session, principal, org_slug, predicate=may_read_org_policy())
+        workspace = await resolve_workspace(session, principal, org_slug, predicate=may_run_circuit_policy())
     return StreamingResponse(
         service_streams.console_stream(
             workspace.org_id, circuit_id, bus=bus, open_session=open_session, clock=clock

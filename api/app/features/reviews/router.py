@@ -72,6 +72,7 @@ async def read_my_review(
         errors.InvalidRatingError,
         errors.ReviewIncompleteError,
         errors.NothingToReviewError,
+        errors.ReviewLockedError,
     ),
 )
 async def submit_my_review(
@@ -117,6 +118,7 @@ async def read_gp_lead_review(
         errors.InvalidRatingError,
         errors.ReviewIncompleteError,
         errors.NothingToReviewError,
+        errors.ReviewLockedError,
     ),
 )
 async def save_gp_lead_review(

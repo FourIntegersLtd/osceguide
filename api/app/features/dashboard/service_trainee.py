@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import service_reads as attempts
 from app.features.dashboard.schemas import MySitting, MySittings, MySlot
+from app.features.results import service_candidate as results
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 
@@ -44,6 +45,7 @@ async def my_sittings(
     live = await attempts.live_attempts_for_slots(
         session, [trainee_slot.slot.id for trainee_slot in trainee_slots]
     )
+    sealed = await _sealed_sittings(session, trainee_slots, user_id)
 
     grouped: dict[uuid.UUID, MySitting] = {}
     for trainee_slot in trainee_slots:
@@ -94,7 +96,9 @@ async def my_sittings(
                     trainee_slot.slot.exam_completed_at is not None,
                     circuit_live,
                 ),
-                attempt_id=live[trainee_slot.slot.id].id if trainee_slot.slot.id in live else None,
+                attempt_id=live[trainee_slot.slot.id].id
+                if trainee_slot.slot.id in live and trainee_slot.sitting.id not in sealed
+                else None,
                 is_active=is_active,
                 phase=trainee_slot.circuit.phase if is_active else None,
                 phase_started_at=trainee_slot.circuit.phase_started_at if is_active else None,
@@ -102,6 +106,22 @@ async def my_sittings(
             )
         )
     return MySittings(items=list(grouped.values()))
+
+
+async def _sealed_sittings(
+    session: AsyncSession, trainee_slots: list[sittings.TraineeSlot], user_id: uuid.UUID
+) -> set[uuid.UUID]:
+    """Exam sittings whose result is not yet released to this person.
+
+    Their attempts are not linked: the transcript and marks are refused until
+    release (`attempts.service_access`), so a link would only lead to a refusal (R-1).
+    """
+    exam_sittings = {slot.sitting.id for slot in trainee_slots if slot.sitting.mode == "exam"}
+    return {
+        sitting_id
+        for sitting_id in exam_sittings
+        if await results.released_revision_for_user(session, sitting_id, user_id) is None
+    }
 
 
 def _circuit_live(circuit: sittings.CircuitRef) -> bool:

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ownership import visible_to
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
-from app.features.catalog.domain import ExamStatus
+from app.features.catalog.domain import OFFERABLE_PROGRAMME_STATUSES, ExamStatus
 from app.features.catalog.models import Exam, Programme
 
 
@@ -274,13 +274,18 @@ async def exams_by_ids(session: AsyncSession, exam_ids: Sequence[uuid.UUID]) -> 
 
 
 async def count_programmes_with_markable_exam(session: AsyncSession, org_id: uuid.UUID) -> int:
-    """Programmes whose exam is published and names a rubric version."""
+    """Active programmes whose exam is published and names a rubric version.
+
+    Only an active programme can be scheduled (the new-sitting screen offers no
+    other), so a draft one must not tick the setup checklist (B-3).
+    """
     stmt = (
         select(func.count())
         .select_from(Programme)
         .join(Exam, Exam.id == Programme.exam_id)
         .where(
             Programme.org_id == org_id,
+            Programme.status.in_(OFFERABLE_PROGRAMME_STATUSES),
             Exam.status == ExamStatus.PUBLISHED,
             Exam.rubric_version_id.isnot(None),
         )

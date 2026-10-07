@@ -37,7 +37,10 @@ async def ensure_readable(
     without this slice reading another's tables. A caller who brings none (a job,
     or another slice reading on a candidate's own behalf) gets owner-or-admin only.
     """
-    if attempt.user_id == requester_id or is_admin:
+    if is_admin:
+        return
+    if attempt.user_id == requester_id:
+        await _ensure_released_to_candidate(session, attempt)
         return
     if not memberships or attempt.slot_id is None or attempt.org_id is None:
         # Not a slot's attempt at all: a practice run, a peer session, a
@@ -50,6 +53,25 @@ async def ensure_readable(
     supervisor = await sittings.supervisor_for_slot(session, attempt.org_id, attempt.slot_id)
     if supervisor != requester_id:
         raise errors.AttemptNotYours()
+
+
+async def _ensure_released_to_candidate(session: AsyncSession, attempt: Attempt) -> None:
+    """An exam slot's transcript and marks feed a decision, so its candidate reads them only once
+    that decision is released (`result_not_released` before). A training slot, and any attempt
+    that is not a slot's, is the candidate's own at once (R-1).
+    """
+    if attempt.slot_id is None or attempt.org_id is None:
+        return
+    found = await sittings.slot_and_sitting(session, attempt.org_id, attempt.slot_id)
+    if found is not None and found[1].mode != "exam":
+        return
+    # `results` reaches `attempts` through `reviews`, so its import waits until call time.
+    from app.features.results import service_candidate as results
+
+    if found is None:
+        raise errors.AttemptNotYours()
+    if await results.released_revision_for_user(session, found[1].id, attempt.user_id) is None:
+        raise errors.AttemptNotReleased()
 
 
 def _runs_circuits_in(memberships: Sequence[Membership], *, org_id: uuid.UUID) -> bool:

@@ -241,3 +241,38 @@ async def test_a_candidate_cannot_take_an_examiners_token(
     )
 
     assert response.status_code == 403
+
+
+async def test_a_suspended_organisation_lets_nobody_into_the_room(
+    client: AsyncClient, make_actor, db_session: AsyncSession, tokens: FakeVoiceTokens
+) -> None:  # type: ignore[no-untyped-def]
+    """S-1: a candidate still joined a live circuit after the platform suspended the org."""
+    _, candidate, circuit_id, _ = await a_live_circuit(client, make_actor, db_session)
+    root = await make_actor("root2@osceguide.com", platform_admin=True)
+    suspended = await client.post("/api/v1/platform/organizations/kings/suspend", headers=bearer(root))
+    assert suspended.status_code == 200, suspended.text
+
+    response = await client.post(f"/api/v1/me/circuits/{circuit_id}/join-token", headers=bearer(candidate))
+
+    assert response.status_code == 403, response.text
+    assert response.json()["code"] == "organization_suspended"
+    assert tokens.issued == []
+
+
+async def test_a_revoked_trainee_cannot_join_their_circuit(
+    client: AsyncClient, make_actor, db_session: AsyncSession, tokens: FakeVoiceTokens
+) -> None:  # type: ignore[no-untyped-def]
+    """S-1: revoking a trainee's access left their slot's room open to them."""
+    from app.features.roster import repository as roster_repo
+
+    admin, candidate, circuit_id, user_id = await a_live_circuit(client, make_actor, db_session)
+    trainee_id = (await roster_repo.trainee_ids_for_user(db_session, user_id))[0]
+    revoked = await client.post(
+        f"/api/v1/orgs/kings/trainees/{trainee_id}/access", json={"revoked": True}, headers=bearer(admin)
+    )
+    assert revoked.status_code == 200, revoked.text
+
+    response = await client.post(f"/api/v1/me/circuits/{circuit_id}/join-token", headers=bearer(candidate))
+
+    assert response.json()["code"] == "trainee_revoked", response.text
+    assert tokens.issued == []

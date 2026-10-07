@@ -53,7 +53,8 @@ async def start_circuit(
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     try:
-        domain.ensure_startable(state(circuit, has_feedback=False))
+        if not domain.should_start(state(circuit, has_feedback=False)):
+            return await read_circuit(session, org_id, circuit_id)
     except domain.CircuitAlreadyEnded as exc:
         raise_mapped(exc, _REFUSALS)
 

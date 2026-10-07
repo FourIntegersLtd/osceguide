@@ -513,3 +513,58 @@ async def test_a_circuit_review_reads_as_null_until_it_is_published(
     )
     assert unpublished.status_code == 200, unpublished.text
     assert unpublished.json() is None
+
+
+async def test_a_signed_off_result_locks_the_reviews_behind_it(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-4: a GP lead could rewrite a review after the decision built on it was signed off."""
+    from sqlalchemy import select
+
+    from app.features.roster import repository as roster_repo
+    from app.features.sittings.models import Circuit, Slot
+    from tests.http.test_results_routes import EVIDENCE
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+    slot = (await db_session.execute(select(Slot).where(Slot.id == slot_id))).scalar_one()
+    user_id = slot.trainee_id
+    sitting_id = (
+        await db_session.execute(select(Circuit.sitting_id).where(Circuit.id == slot.circuit_id))
+    ).scalar_one()
+    trainee = await roster_repo.create_trainee(
+        db_session,
+        org_id,
+        email=f"r4-{uuid.uuid4().hex[:6]}@example.com",
+        first_name="T",
+        last_name=None,
+        cohort_id=None,
+    )
+    trainee_id = trainee.id
+    await roster_repo.link_trainee_to_user(db_session, org_id, trainee_id, user_id=user_id)
+    await db_session.commit()
+
+    review = f"/api/v1/orgs/kings/slots/{slot_id}/gp-lead-review"
+    saved = await client.put(review, json={"revision": 0, "notes": "Before"}, headers=bearer(admin))
+    assert saved.status_code == 200, saved.text
+    decision = f"/api/v1/orgs/kings/sittings/{sitting_id}/candidates/{trainee_id}/decision"
+    drafted = await client.put(
+        decision,
+        json={
+            "assessment_outcome": "pass",
+            "rationale": "Met it.",
+            "evidence": EVIDENCE,
+            "expected_revision": 0,
+        },
+        headers=bearer(admin),
+    )
+    assert drafted.status_code == 200, drafted.text
+    signed = await client.post(f"{decision}/sign-off", headers=bearer(admin))
+    assert signed.status_code == 200, signed.text
+
+    response = await client.put(review, json={"revision": 1, "notes": "After"}, headers=bearer(admin))
+
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "review_locked"
+    stored = await client.get(review, headers=bearer(admin))
+    assert stored.json()["notes"] == "Before"

@@ -184,6 +184,23 @@ async def sitting_ref(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid
     return None if sitting is None else _sitting_ref(sitting)
 
 
+async def slot_and_sitting(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
+) -> tuple[SlotRef, SittingRef] | None:
+    """A slot and the sitting it belongs to, or None if the slot is not this org's.
+
+    For the slices whose rule depends on the sitting's mode or its candidate's
+    decision: a candidate reading their marks (`attempts`), a review being
+    edited after sign-off (`reviews`).
+    """
+    slot = await repository.slot_by_id(session, org_id, slot_id)
+    if slot is None:
+        return None
+    circuit = await repository.circuit_by_id(session, org_id, slot.circuit_id)
+    sitting = None if circuit is None else await repository.sitting_by_id(session, org_id, circuit.sitting_id)
+    return None if sitting is None else (_slot_ref(slot), _sitting_ref(sitting))
+
+
 async def supervisor_for_slot(
     session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
 ) -> uuid.UUID | None:
