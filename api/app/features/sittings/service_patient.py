@@ -16,6 +16,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.jobs import defer_in_transaction
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings
@@ -26,6 +27,9 @@ from app.features.sittings.models import Circuit, Slot
 from app.features.voice import service as voice
 
 log = get_logger(__name__)
+
+CLEAR_ROOM_QUEUE = "circuits"
+CLEAR_ROOM_TASK = "clear_room_agents"
 
 
 async def dispatch_patient(
@@ -79,28 +83,49 @@ async def clear_patient(
     *,
     agents: RoomAgents,
     now: datetime,
-) -> None:
+    station_sat: bool = True,
+) -> bool:
     """Take the patient out, and close off the station it was in.
 
     The room stays up and the candidate stays in it: only the patient leaves.
+    `station_sat` says what happened to the station: the bell went and it was
+    sat (`completed`), or a human moved the circuit elsewhere (redo, jump) and
+    it was abandoned part-way, so it goes back to `scheduled` and its partial
+    recording is failed rather than marked as if it were a whole station (R-12).
 
-    Taking the agent out is best-effort. LiveKit being down or unconfigured must
-    not stop a circuit ending or moving on: the end is recorded either way. An
-    agent left behind goes when the room does, because the worker ends on the
-    room closing and LiveKit closes an empty room on its own timeout once the
-    candidate leaves.
+    Taking the agent out is best-effort, so LiveKit being down never stops a
+    circuit moving on. Returns whether it was taken out; a caller with nothing
+    following it (ending the circuit) must arrange a retry, because no next
+    dispatch will clear the room for it (R-13).
     """
+    removed = True
     if circuit.room_name:
         try:
             await voice.clear_agents_from_room(agents=agents, room=circuit.room_name)
         except Exception:
+            removed = False
             log.warning(
                 "could not remove the patient from the room",
                 circuit_id=str(circuit.id),
                 room=circuit.room_name,
                 exc_info=True,
             )
-    if circuit.active_slot_id is not None and circuit.phase == domain_run.RunPhase.SIMULATION:
+    if circuit.active_slot_id is None:
+        return removed
+    if not station_sat:
+        await attempts_service.fail_live_for_slot(
+            session, slot_id=circuit.active_slot_id, now=now, reason="interrupted"
+        )
+        for status in (domain.SlotStatus.READING, domain.SlotStatus.IN_CONSULTATION):
+            await repository.update_slot(
+                session,
+                org_id,
+                circuit.active_slot_id,
+                only_if_status=status,
+                status=domain.SlotStatus.SCHEDULED,
+                ended_at=None,
+            )
+    elif circuit.phase == domain_run.RunPhase.SIMULATION:
         # Only a station that was sat: one skipped for a revoked candidate stays skipped.
         await repository.update_slot(
             session,
@@ -111,3 +136,24 @@ async def clear_patient(
             ended_at=now,
             exam_completed_at=now,
         )
+    return removed
+
+
+async def clear_patient_later(session: AsyncSession, circuit: Circuit) -> None:
+    """Owe another go at taking the patient out of a room nothing else will clear (R-13).
+
+    For an ended circuit only: a retry during a running one could remove the
+    next station's patient. Written in the ending's transaction, and retried by
+    the job until LiveKit answers, so "the circuit shows ended" and "the agent
+    has left" stop being two different facts for longer than an outage.
+    """
+    if not circuit.room_name:
+        return
+    await defer_in_transaction(
+        session,
+        queue=CLEAR_ROOM_QUEUE,
+        task=CLEAR_ROOM_TASK,
+        args={"room": circuit.room_name, "circuit_id": str(circuit.id)},
+        queueing_lock=f"clear_room:{circuit.room_name}",
+        ignore_lock_conflict=True,
+    )

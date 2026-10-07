@@ -274,3 +274,5 @@ alerts_for = domain_alerts.alerts_for
 elapsed_seconds = domain_run.elapsed_seconds
 remaining_seconds = domain_run.remaining_seconds
 FINISHED_SLOT_STATUSES = frozenset(str(status) for status in domain.FINISHED_SLOT_STATUSES)
+# A station the candidate actually sat (or is sitting), as opposed to one the circuit moved past.
+SAT_SLOT_STATUSES = frozenset({str(domain.SlotStatus.IN_CONSULTATION), str(domain.SlotStatus.COMPLETED)})

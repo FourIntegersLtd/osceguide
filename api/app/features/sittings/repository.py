@@ -7,7 +7,7 @@ from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select, union, update
+from sqlalchemy import delete, func, select, union, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -81,6 +81,11 @@ async def update_sitting(
 
 
 # --- circuits --------------------------------------------------------------
+
+
+async def delete_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> None:
+    """Remove the circuit row; the service has already cleared its structure."""
+    await session.execute(delete(Circuit).where(Circuit.org_id == org_id, Circuit.id == circuit_id))
 
 
 async def create_circuit(

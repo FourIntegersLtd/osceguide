@@ -1,6 +1,5 @@
 "use client";
 
-import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useState } from "react";
 import { HiOutlineChevronRight, HiOutlinePlusCircle } from "react-icons/hi2";
 import { useRouter } from "next/navigation";
@@ -48,7 +47,12 @@ export function RubricsSection() {
     (cursor, signal) =>
       listRubrics(
         scope,
-        { cursor, limit: STATION_PAGE_LIMIT, search: query, exam_code: examFilter || undefined },
+        {
+          cursor,
+          limit: STATION_PAGE_LIMIT,
+          search: query,
+          exam_code: examFilter || undefined,
+        },
         signal,
       ),
     [scope.base, query, examFilter],
@@ -57,7 +61,6 @@ export function RubricsSection() {
   const action = useAction(rubrics.reload);
   const items = rubrics.data ?? [];
 
-  const canAuthor = useCanAuthor();
   const [open, setOpen] = useState<string | null>(null);
 
   if (open) {
@@ -76,7 +79,6 @@ export function RubricsSection() {
     <div className="space-y-4">
       <AuthoringSectionLead
         action={
-          canAuthor ? (
           <AuthoringButton
             variant="commit"
             size="sm"
@@ -86,7 +88,6 @@ export function RubricsSection() {
             <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
             Create marking scheme
           </AuthoringButton>
-          ) : null
         }
       >
         The marking structure a station is assessed against.
@@ -111,20 +112,23 @@ export function RubricsSection() {
         onDismissError={rubrics.reload}
         empty={{
           title: "No marking schemes",
-          description: !canAuthor
-            ? "Nothing here yet."
-            : "Create a marking scheme, publish a version, then build exams and templates on it.",
+          description:
+            "Create a marking scheme, publish a version, then build exams and templates on it.",
         }}
       >
         {items.map((rubric) => {
-          const { published, draft, archivedOnly } = latestOf(rubric.versions ?? []);
+          const { published, draft, archivedOnly } = latestOf(
+            rubric.versions ?? [],
+          );
           return (
             <AuthoringListRow
               key={rubric.id}
               title={rubric.title}
               detail={
                 <PublishStatusLine
-                  kindLabel={rubric.owner_kind === "platform" ? "OSCE Guide" : null}
+                  kindLabel={
+                    rubric.owner_kind === "platform" ? "OSCE Guide" : null
+                  }
                   published={published}
                   draft={draft}
                   archivedOnly={archivedOnly}
@@ -163,7 +167,6 @@ export function RubricsSection() {
           </AuthoringButton>
         </div>
       ) : null}
-
     </div>
   );
 }

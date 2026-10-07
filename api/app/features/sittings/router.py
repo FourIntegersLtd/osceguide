@@ -103,6 +103,17 @@ async def update_sitting(
     return await service_edit.update_sitting(session, workspace.org_id, sitting_id, body=body)
 
 
+# Call off a sitting nobody has sat. Kept as `cancelled`, never deleted.
+@router.post(
+    "/orgs/{org_slug}/sittings/{sitting_id}/cancel",
+    response_model=schemas.SittingRead,
+    responses=error_responses(Forbidden, errors.SittingNotFound, errors.SittingLockedError),
+)
+async def cancel_sitting(sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> schemas.SittingRead:
+    """Refused with `sitting_locked` once any circuit has started: end those circuits instead."""
+    return await service_edit.cancel_sitting(session, workspace.org_id, sitting_id)
+
+
 # Build a new circuit inside this sitting, from a roster and a station list.
 @router.post(
     "/orgs/{org_slug}/sittings/{sitting_id}/circuits",
@@ -111,6 +122,7 @@ async def update_sitting(
     responses=error_responses(
         Forbidden,
         errors.SittingNotFound,
+        errors.SittingLockedError,
         errors.InvalidCircuitError,
         errors.TraineeRevokedError,
         errors.TraineeNotOnRosterError,
@@ -165,6 +177,16 @@ async def rebuild_circuit(
     )
 
 
+# Remove a circuit nobody has run. A started one is kept as the record; end it instead.
+@router.delete(
+    "/orgs/{org_slug}/circuits/{circuit_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, errors.CircuitNotFound, errors.CircuitLockedError),
+)
+async def delete_circuit(circuit_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> None:
+    await service_structure.delete_circuit(session, workspace.org_id, circuit_id)
+
+
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/append-trainees",
     response_model=schemas.CircuitRead,
@@ -176,6 +198,7 @@ async def rebuild_circuit(
         errors.InvalidCircuitError,
         errors.TraineeAlreadyOnCircuitError,
         errors.StationNotOnCircuitError,
+        errors.SittingLockedError,
         errors.TraineeRevokedError,
         errors.TraineeNotOnRosterError,
     ),

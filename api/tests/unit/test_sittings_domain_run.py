@@ -55,6 +55,14 @@ def test_the_circuit_finishes_after_the_last_consultation() -> None:
     assert step == domain_run.Finished()
 
 
+def test_a_redone_station_hands_on_to_the_first_station_not_yet_sat() -> None:
+    """R-12: redoing station 0 from station 2 goes back to 2, not through 1 again."""
+    step = domain_run.next_step(
+        at(domain_run.RunPhase.SIMULATION, 0), slot_count=3, timing=PLAIN, done=frozenset({0, 1})
+    )
+    assert step == domain_run.Reading(slot_index=2)
+
+
 # --------------------------------------------------------------------------
 # Breaks
 # --------------------------------------------------------------------------
@@ -204,6 +212,7 @@ def test_a_consultation_with_no_patient_in_it_alerts() -> None:
         phase_ends_at=NOW + timedelta(minutes=10),
         paused_at=None,
         attempt_status="created",
+        auto_advance=True,
         now=NOW + timedelta(seconds=45),
     )
     assert domain_alerts.NO_RUNNING_ATTEMPT in alerts
@@ -216,6 +225,7 @@ def test_a_consultation_that_has_only_just_started_is_given_a_moment() -> None:
         phase_ends_at=NOW + timedelta(minutes=10),
         paused_at=None,
         attempt_status="created",
+        auto_advance=True,
         now=NOW + timedelta(seconds=5),
     )
     assert domain_alerts.NO_RUNNING_ATTEMPT not in alerts
@@ -228,6 +238,7 @@ def test_a_failed_attempt_alerts() -> None:
         phase_ends_at=NOW + timedelta(minutes=10),
         paused_at=None,
         attempt_status="failed",
+        auto_advance=True,
         now=NOW + timedelta(seconds=5),
     )
     assert domain_alerts.ATTEMPT_FAILED in alerts
@@ -241,9 +252,24 @@ def test_an_overdue_phase_alerts() -> None:
         phase_ends_at=NOW + timedelta(minutes=3),
         paused_at=None,
         attempt_status=None,
+        auto_advance=True,
         now=NOW + timedelta(minutes=5),
     )
     assert domain_alerts.CLOCK_OVERDUE in alerts
+
+
+def test_a_circuit_run_by_hand_is_never_overdue() -> None:
+    """R-14: with auto-advance off the clock running out is the cue to advance, not a fault."""
+    alerts = domain_alerts.alerts_for(
+        phase=domain_run.RunPhase.READING,
+        phase_started_at=NOW,
+        phase_ends_at=NOW + timedelta(minutes=3),
+        paused_at=None,
+        attempt_status=None,
+        auto_advance=False,
+        now=NOW + timedelta(minutes=30),
+    )
+    assert alerts == []
 
 
 def test_a_paused_circuit_is_not_overdue() -> None:
@@ -253,6 +279,7 @@ def test_a_paused_circuit_is_not_overdue() -> None:
         phase_ends_at=NOW + timedelta(minutes=3),
         paused_at=NOW + timedelta(minutes=1),
         attempt_status=None,
+        auto_advance=True,
         now=NOW + timedelta(hours=1),
     )
     assert alerts == []
@@ -265,6 +292,7 @@ def test_a_reading_period_is_not_expected_to_have_a_patient() -> None:
         phase_ends_at=NOW + timedelta(minutes=3),
         paused_at=None,
         attempt_status=None,
+        auto_advance=True,
         now=NOW + timedelta(minutes=1),
     )
     assert alerts == []

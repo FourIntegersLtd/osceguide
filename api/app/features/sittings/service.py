@@ -120,6 +120,7 @@ async def add_circuit(
 ) -> CircuitRead:
     """Build a new circuit inside a sitting: check the roster, build its slots, write it."""
     sitting = await _require_sitting(session, org_id, sitting_id)
+    await ensure_sitting_open(session, org_id, sitting)
     mode = domain.Mode(sitting.mode)
     # R3: a revoked trainee is not scheduled into an examination.
     await roster.ensure_rosterable(session, org_id, trainee_ids)
@@ -180,6 +181,18 @@ async def _require_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id:
     if sitting is None:
         raise errors.SittingNotFound()
     return sitting
+
+
+async def ensure_sitting_open(session: AsyncSession, org_id: uuid.UUID, sitting: Sitting) -> None:
+    """Refuse to put anybody new into a cancelled sitting, or one with a settled result (R-7)."""
+    # `results` imports this slice, so its import has to wait until call time.
+    from app.features.results import service as results
+
+    settled = await results.sitting_has_settled_decision(session, org_id, sitting.id)
+    try:
+        domain_edit.ensure_sitting_open(cancelled=sitting.status == domain_edit.CANCELLED, settled=settled)
+    except domain_edit.SittingLocked as exc:
+        raise_mapped(exc, _REFUSALS)
 
 
 async def _require_circuit(

@@ -1,14 +1,26 @@
 "use client";
 
-import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
-import { CannotAuthor } from "@/capabilities/authoring/parts/CannotAuthor";
+import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Alert, Button, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
-import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
+import {
+  Alert,
+  Button,
+  getInputClassName,
+  Select,
+  Textarea,
+  FoldSection,
+} from "@/foundation/ui";
+import {
+  b2bWizardTabActive,
+  b2bWizardTabInactive,
+} from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { useSurface } from "@/capabilities";
-import { listStationTemplates, type Station } from "@/capabilities/authoring/api";
+import {
+  listStationTemplates,
+  type Station,
+} from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { supportsPromptGeneration } from "@/capabilities/authoring/api/scope";
 import { useAsync } from "@/foundation/hooks";
@@ -32,7 +44,10 @@ function CreateStationScreenForm() {
   const router = useRouter();
   const listHref = stationsListPath(hrefFor);
 
-  const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
+  const templates = useAsync(
+    (signal) => listStationTemplates(scope, signal),
+    [scope.base],
+  );
   const published = useMemo(
     () => (templates.data?.items ?? []).filter(hasPublishedVersion),
     [templates.data],
@@ -46,7 +61,9 @@ function CreateStationScreenForm() {
     onCreated: (station) => {
       setCreated(station);
       // Its own address, replacing /new so Back never returns to a blank form.
-      router.replace(stationListUrl(listHref, { status: "active", station: station.id }));
+      router.replace(
+        stationListUrl(listHref, { status: "active", station: station.id }),
+      );
     },
   });
 
@@ -56,8 +73,8 @@ function CreateStationScreenForm() {
   const examCatalog = useAuthoringExamCatalog();
   const stationSubtypes = useMemo(
     () =>
-      examCatalog.exams.find((exam) => exam.code === form.examCode)?.settings?.station_subtypes ??
-      [],
+      examCatalog.exams.find((exam) => exam.code === form.examCode)?.settings
+        ?.station_subtypes ?? [],
     [examCatalog.exams, form.examCode],
   );
 
@@ -146,93 +163,109 @@ function CreateStationScreenForm() {
         </div>
 
         <FoldSection title="Station details">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="create-station-screen-station-title" className="block text-osce-body font-semibold text-ink">
-              Station title
-            </label>
-            <input
-              id="create-station-screen-station-title"
-              value={form.title}
-              onChange={(e) => form.setTitle(e.target.value)}
-              className={`mt-1 ${getInputClassName()}`}
-              placeholder="e.g. Chest pain counselling"
-            />
-          </div>
-          <div>
-            <label htmlFor="create-station-screen-template" className="block text-osce-body font-semibold text-ink">Template</label>
-            <Select
-              id="create-station-screen-template"
-              value={form.templateVersionId}
-              onChange={(e) => form.handleTemplateSelect(e.target.value)}
-              disabled={templates.loading}
-              className="mt-1"
-            >
-              <option value="">No template: write it from a prompt</option>
-              {choices.map((choice) => (
-                <option key={choice.id} value={choice.id}>
-                  {choice.label}
-                </option>
-              ))}
-            </Select>
-            <p className="mt-1 text-osce-caption text-ink-muted">
-              Only published templates can be used for stations. A station with no template is
-              still a real station. It just borrows the exam&apos;s own shape rather than a reusable
-              one.
-            </p>
-          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="create-station-screen-station-title"
+                className="block text-osce-body font-semibold text-ink"
+              >
+                Station title
+              </label>
+              <input
+                id="create-station-screen-station-title"
+                value={form.title}
+                onChange={(e) => form.setTitle(e.target.value)}
+                className={`mt-1 ${getInputClassName()}`}
+                placeholder="e.g. Chest pain counselling"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="create-station-screen-template"
+                className="block text-osce-body font-semibold text-ink"
+              >
+                Template
+              </label>
+              <Select
+                id="create-station-screen-template"
+                value={form.templateVersionId}
+                onChange={(e) => form.handleTemplateSelect(e.target.value)}
+                disabled={templates.loading}
+                className="mt-1"
+              >
+                <option value="">No template: write it from a prompt</option>
+                {choices.map((choice) => (
+                  <option key={choice.id} value={choice.id}>
+                    {choice.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-osce-caption text-ink-muted">
+                Only published templates can be used for stations. A station
+                with no template is still a real station. It just borrows the
+                exam&apos;s own shape rather than a reusable one.
+              </p>
+            </div>
 
-          {/*
+            {/*
             Which exam, when the template is not saying. A chosen template already
             carries its exam, so this asks only in the template-less case — and
             `ortho` is the one exam whose generation route takes a further
             discriminator, because an orthopaedic station is a type as much as a
             topic.
           */}
-          {!form.templateVersionId ? (
-            <div>
-              <label htmlFor="create-station-screen-exam" className="block text-osce-body font-semibold text-ink">Exam</label>
-              <Select
-                id="create-station-screen-exam"
-                value={form.examCode}
-                onChange={(e) => form.setExamCode(e.target.value)}
-                className="mt-1"
-              >
-                <option value="">Select an exam…</option>
-                {examCatalog.exams.map((exam) => (
-                  <option key={exam.code} value={exam.code}>
-                    {exam.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          ) : null}
+            {!form.templateVersionId ? (
+              <div>
+                <label
+                  htmlFor="create-station-screen-exam"
+                  className="block text-osce-body font-semibold text-ink"
+                >
+                  Exam
+                </label>
+                <Select
+                  id="create-station-screen-exam"
+                  value={form.examCode}
+                  onChange={(e) => form.setExamCode(e.target.value)}
+                  className="mt-1"
+                >
+                  <option value="">Select an exam…</option>
+                  {examCatalog.exams.map((exam) => (
+                    <option key={exam.code} value={exam.code}>
+                      {exam.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
 
-          {!form.templateVersionId && stationSubtypes.length > 0 ? (
-            <div>
-              <label htmlFor="create-station-screen-station-type" className="block text-osce-body font-semibold text-ink">
-                Station type
-              </label>
-              <Select
-                id="create-station-screen-station-type"
-                value={form.stationSubtype}
-                onChange={(e) => form.setStationSubtype(e.target.value)}
-                className="mt-1"
-              >
-                <option value="">Choose the kind of station…</option>
-                {stationSubtypes.map((subtype) => (
-                  <option key={subtype.key} value={subtype.key}>
-                    {subtype.label}
-                  </option>
-                ))}
-              </Select>
-              <p className="mt-1 text-osce-caption text-ink-muted">
-                These stations are scored differently, so the prompt is steered by the type rather
-                than left to guess.
-              </p>
-            </div>
-          ) : null}
-        </div>
+            {!form.templateVersionId && stationSubtypes.length > 0 ? (
+              <div>
+                <label
+                  htmlFor="create-station-screen-station-type"
+                  className="block text-osce-body font-semibold text-ink"
+                >
+                  Station type
+                </label>
+                <Select
+                  id="create-station-screen-station-type"
+                  value={form.stationSubtype}
+                  onChange={(e) => form.setStationSubtype(e.target.value)}
+                  className="mt-1"
+                >
+                  <option value="">Choose the kind of station…</option>
+                  {stationSubtypes.map((subtype) => (
+                    <option key={subtype.key} value={subtype.key}>
+                      {subtype.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="mt-1 text-osce-caption text-ink-muted">
+                  These stations are scored differently, so the prompt is
+                  steered by the type rather than left to guess.
+                </p>
+              </div>
+            ) : null}
+          </div>
         </FoldSection>
 
         {/*
@@ -243,13 +276,14 @@ function CreateStationScreenForm() {
         */}
         {form.mode === "ai" && !form.structure && !promptGeneration ? (
           <Alert tone="info">
-            Generating a draft needs a published template to generate against. Choose one above, or
-            switch to Manual and write the station yourself. A station with no template is still a
-            real station.
+            Generating a draft needs a published template to generate against.
+            Choose one above, or switch to Manual and write the station
+            yourself. A station with no template is still a real station.
           </Alert>
         ) : null}
 
-        {form.mode === "ai" && (form.structure || (form.examCode && promptGeneration)) ? (
+        {form.mode === "ai" &&
+        (form.structure || (form.examCode && promptGeneration)) ? (
           <FoldSection
             title="Generate draft"
             description="Paste a short prompt (a few lines). We’ll auto-fill the template fields below; you can edit anything afterward."
@@ -267,7 +301,9 @@ function CreateStationScreenForm() {
                 disabled={
                   form.generating ||
                   (!form.templateVersionId && !form.examCode) ||
-                  (!form.templateVersionId && stationSubtypes.length > 0 && !form.stationSubtype) ||
+                  (!form.templateVersionId &&
+                    stationSubtypes.length > 0 &&
+                    !form.stationSubtype) ||
                   !form.prompt.trim() ||
                   form.saving
                 }
@@ -290,26 +326,38 @@ function CreateStationScreenForm() {
         ) : (
           <div className="rounded-osce-lg border border-dashed border-border bg-surface-raised/40 px-4 py-8 text-center">
             <p className="text-osce-body font-medium text-ink">
-              {form.needsTemplateForLayout ? "This exam needs a template" : "Choose a template or an exam"}
+              {form.needsTemplateForLayout
+                ? "This exam needs a template"
+                : "Choose a template or an exam"}
             </p>
             <p className="mt-1 text-osce-body text-ink-muted">
               {form.needsTemplateForLayout ? (
                 <>
-                  This exam has no built-in station layout. Create a station template for this exam
-                  first, publish it from the templates list, then pick it here. The exam is filled in for you.{" "}
-                  <Link href={stationTemplateNewPath(hrefFor, form.examCode)} className="font-semibold text-accent underline">
+                  This exam has no built-in station layout. Create a station
+                  template for this exam first, publish it from the templates
+                  list, then pick it here. The exam is filled in for you.{" "}
+                  <Link
+                    href={stationTemplateNewPath(hrefFor, form.examCode)}
+                    className="font-semibold text-accent underline"
+                  >
                     Create a station template
                   </Link>
                 </>
-              ) : "The full station form appears here as soon as you pick a published template, or say which exam this station is for."}
+              ) : (
+                "The full station form appears here as soon as you pick a published template, or say which exam this station is for."
+              )}
             </p>
           </div>
         )}
-
       </div>
 
       <div className={platformTemplateWizardFooterClass}>
-        <Button type="button" variant="secondary" onClick={() => router.push(listHref)} disabled={form.saving}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => router.push(listHref)}
+          disabled={form.saving}
+        >
           Cancel
         </Button>
         <Button
@@ -353,5 +401,9 @@ function GeneratedDraft({ content }: { content: Record<string, unknown> }) {
 }
 
 export function CreateStationScreen() {
-  return useCanAuthor() ? <CreateStationScreenForm /> : <CannotAuthor />;
+  return (
+    <RequireAuthor>
+      <CreateStationScreenForm />
+    </RequireAuthor>
+  );
 }

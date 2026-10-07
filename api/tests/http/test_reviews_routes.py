@@ -94,6 +94,8 @@ async def a_slot(
         slot_index=0,
         trainee_id=trainee.id,
         station_version_id=station_version.id,
+        # Sat, as a reviewed station is, so a decision may be recorded on it (R-11).
+        status="completed",
     )
     db_session.add(slot)
     # Committed (releasing the test's savepoint) rather than flushed: a request

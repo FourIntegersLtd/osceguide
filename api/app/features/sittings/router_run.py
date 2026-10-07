@@ -36,7 +36,9 @@ _LIVE = (Forbidden, *errors.LIVE_CIRCUIT_REFUSALS)
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/start",
     response_model=schemas.CircuitRead,
-    responses=error_responses(Forbidden, errors.CircuitNotFound, errors.CircuitAlreadyEndedError),
+    responses=error_responses(
+        Forbidden, errors.CircuitNotFound, errors.CircuitAlreadyEndedError, errors.SittingLockedError
+    ),
 )
 async def start_circuit(
     circuit_id: uuid.UUID, workspace: OrgStaff, session: Session, clock: ClockDep

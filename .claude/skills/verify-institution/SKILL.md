@@ -37,7 +37,8 @@ LIVEKIT_AGENT_NAMESPACE= poetry run pytest -q \
   tests/http/test_reviews_routes.py tests/http/test_live_board.py \
   tests/http/test_org_read_models.py tests/http/test_sitting_report.py \
   tests/http/test_sitting_readout_routes.py tests/http/test_exam_import_routes.py \
-  tests/http/test_results_export.py tests/security/test_membership_role_escalation.py
+  tests/http/test_results_export.py tests/http/test_sitting_cancel_routes.py \
+  tests/security/test_membership_role_escalation.py
 ```
 
 457 passed on 2026-09-25. Empty `LIVEKIT_AGENT_NAMESPACE` because a local
@@ -64,6 +65,13 @@ requests is still broken. Then run `node scripts/smoke.mjs` if you touched an `a
   readout) stay `OrgAdmin` and the web gates them on `export_results`; record, sign off,
   release and the result PDF stay institution admin (`sign_off_results`).
 - A training sitting stops at Mark in `sittingSteps` (no Decide or Release); its slot review reaches the trainee as soon as the reviewer completes it (R-36). A revoked trainee's slot is skipped at dispatch, so no attempt exists for it (R-8).
+- A decision is refused on a training sitting (`decision_outside_exam`) and for a candidate with no
+  slot `in_consultation` or `completed` (`candidate_did_not_sit`) (R-11). Decision test fixtures
+  seat the candidate with `tests.support.decisions.seat_candidate`.
+- In an HTTP test a refused request rolls back the shared `db_session`, fixtures included: one
+  refusal per test, and last.
+- `has_published_exam`/rubric/template count platform rows (`visible_to`), so a setup-checklist
+  test retires them in its own transaction rather than assuming none exist.
 - `trainee_id` means two things: circuit slots use `users.id`, result decisions use `trainees.id`.
 - A platform admin reads any organisation for support but holds none of its
   powers (`OrgAdmin` is `allow_platform_admin=False`). A 403 from the staff

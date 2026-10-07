@@ -27,7 +27,7 @@ from app.features.sittings.models import Circuit, Slot
 from app.features.sittings.reads import state as _state
 from app.features.sittings.reads import timing_json
 from app.features.sittings.schemas import CircuitRead, TimingIn
-from app.features.sittings.service import _REFUSALS, _require_circuit, _require_sitting
+from app.features.sittings.service import _REFUSALS, _require_circuit, _require_sitting, ensure_sitting_open
 from app.features.sittings.service_circuit import _any_slot_reviewed
 
 
@@ -55,6 +55,7 @@ async def append_trainees(
         domain.ensure_can_append_trainees(domain.Mode(sitting.mode))
     except (domain.CircuitAlreadyEnded, domain.NotPermittedInMode) as exc:
         raise_mapped(exc, _REFUSALS)
+    await ensure_sitting_open(session, org_id, sitting)
 
     await roster.ensure_rosterable(session, org_id, trainee_ids)
 
@@ -95,6 +96,19 @@ async def append_trainees(
     )
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.TRAINEES_APPENDED)
     return await service.read_circuit(session, org_id, circuit_id)
+
+
+async def delete_circuit(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> None:
+    """Remove a circuit nobody has run (R-7): built by mistake, or for a day that was called off.
+
+    A started circuit is kept, whatever happened in it: its run is the record
+    of the examination. End it instead.
+    """
+    circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
+    if circuit.started_at is not None:
+        raise errors.CircuitLockedError("This circuit has been started, so it is kept. End it instead.")
+    await repository_reads.delete_circuit_structure(session, org_id, circuit_id)
+    await repository.delete_circuit(session, org_id, circuit_id)
 
 
 def _standing_station(circuit: Circuit, slots: list[Slot], stations: list[uuid.UUID]) -> uuid.UUID | None:

@@ -62,6 +62,14 @@ class StaleDecision(Exception):
     """A save that named a revision older than the one now on record."""
 
 
+class DecisionOutsideExam(Exception):
+    """A training sitting stops at marking: nobody records an outcome on practice."""
+
+
+class CandidateDidNotSit(Exception):
+    """The candidate sat no station on this sitting, so there is no evidence to decide on."""
+
+
 class RecruitmentOutsideExam(Exception):
     """A recruitment outcome on a training sitting, where nobody is being hired."""
 
@@ -155,3 +163,16 @@ def ensure_recruitment_allowed(sitting_mode: str, recruitment: Recruitment | Non
     """
     if recruitment is not None and sitting_mode != "exam":
         raise RecruitmentOutsideExam
+
+
+def ensure_decidable(*, sitting_mode: str, sat_a_station: bool) -> None:
+    """Refuse a decision for a training sitting, or for somebody who sat nothing on it (R-11).
+
+    A training sitting ends at Mark; a decision there would read as a verdict on
+    practice. And an outcome for a candidate with no station sat is an outcome
+    with no evidence behind it.
+    """
+    if sitting_mode != "exam":
+        raise DecisionOutsideExam("Decisions are recorded for exam-mode sittings only.")
+    if not sat_a_station:
+        raise CandidateDidNotSit("This candidate did not sit any station on this sitting.")

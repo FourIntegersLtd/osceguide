@@ -47,6 +47,8 @@ async def read_decision(
         errors.SittingNotFound,
         errors.IncompatibleOutcomesError,
         errors.RecruitmentOutsideExamError,
+        errors.DecisionOutsideExamError,
+        errors.CandidateDidNotSitError,
         errors.InvalidWorkflowError,
         errors.DecisionRevisedError,
     ),

@@ -1,12 +1,23 @@
 "use client";
 
-import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, B2CPageHeader, cn, getInputClassName } from "@/foundation/ui";
+import {
+  Alert,
+  AsyncBoundary,
+  B2CPageHeader,
+  cn,
+  getInputClassName,
+} from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { addRubricVersion, copyRubric, readRubric, renameRubric, type Rubric } from "@/capabilities/authoring/api";
+import {
+  addRubricVersion,
+  copyRubric,
+  readRubric,
+  renameRubric,
+  type Rubric,
+} from "@/capabilities/authoring/api";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import { nextRubricTitle } from "@/capabilities/authoring/rubrics/rubricTitle";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
@@ -14,7 +25,11 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import type { RubricDashboardPreview } from "@/capabilities/authoring/rubrics/dashboardSlot";
 import { RubricBuilder } from "@/capabilities/authoring/rubrics/RubricBuilder";
-import { rubricEditPath, rubricsListPath } from "@/capabilities/authoring/templates/paths";
+import {
+  rubricEditPath,
+  rubricsListPath,
+} from "@/capabilities/authoring/templates/paths";
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
 /**
  * The rubric builder's page: loads the rubric, finds the version in the URL
@@ -35,23 +50,50 @@ export function RubricBuilderScreen({
 }) {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
-  const rubric = useAsync((signal) => readRubric(scope, rubricId, signal), [scope.base, rubricId]);
+  const rubric = useAsync(
+    (signal) => readRubric(scope, rubricId, signal),
+    [scope.base, rubricId],
+  );
   const canAuthor = useCanAuthor();
 
   return (
     <div className="flex w-full flex-col gap-4 pb-8">
       <AsyncBoundary state={rubric}>
         {(data: Rubric) => {
-          const found = (data.versions ?? []).find((candidate) => candidate.version === version);
+          const found = (data.versions ?? []).find(
+            (candidate) => candidate.version === version,
+          );
           // An organisation lists the platform's rubrics too, but may only copy them.
-          const owned = !(scope.kind === "org" && data.owner_kind === "platform");
+          const owned = !(
+            scope.kind === "org" && data.owner_kind === "platform"
+          );
+          /** Only an author, on a rubric the workspace owns, changes it. */
+          const editable = owned && canAuthor;
           return (
             <>
               <B2CPageHeader
-                title={owned && canAuthor ? <RubricTitle rubric={data} onRenamed={rubric.reload} /> : data.title}
+                title={
+                  editable ? (
+                    <RubricTitle rubric={data} onRenamed={rubric.reload} />
+                  ) : (
+                    data.title
+                  )
+                }
                 subtitle={`Marking scheme · version ${version}${owned ? "" : " · OSCE Guide catalogue"}`}
-                back={{ href: rubricsListPath(hrefFor), label: "Marking schemes" }}
-                action={found ? <VersionActions rubric={data} version={version} status={found.status} owned={owned} /> : undefined}
+                back={{
+                  href: rubricsListPath(hrefFor),
+                  label: "Marking schemes",
+                }}
+                action={
+                  found ? (
+                    <VersionActions
+                      rubric={data}
+                      version={version}
+                      status={found.status}
+                      owned={owned}
+                    />
+                  ) : undefined
+                }
                 className="mb-0"
               />
               {found ? (
@@ -61,12 +103,14 @@ export function RubricBuilderScreen({
                   scope={scope}
                   rubric={data}
                   version={found}
-                  readOnly={!owned || !canAuthor || found.status !== "draft"}
+                  readOnly={!editable || found.status !== "draft"}
                   dashboardPreview={dashboardPreview}
                   onPublished={rubric.reload}
                 />
               ) : (
-                <Alert tone="warning">This marking scheme has no version {version}.</Alert>
+                <Alert tone="warning">
+                  This marking scheme has no version {version}.
+                </Alert>
               )}
             </>
           );
@@ -81,7 +125,13 @@ export function RubricBuilderScreen({
  * (R-7). A rubric's title is set once at creation and kept across every
  * version, so renaming it here does not touch the version being edited.
  */
-function RubricTitle({ rubric, onRenamed }: { rubric: Rubric; onRenamed: () => void }) {
+function RubricTitle({
+  rubric,
+  onRenamed,
+}: {
+  rubric: Rubric;
+  onRenamed: () => void;
+}) {
   const inputId = useId();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(rubric.title);
@@ -136,25 +186,41 @@ function RubricTitle({ rubric, onRenamed }: { rubric: Rubric; onRenamed: () => v
         className={cn(getInputClassName({ size: "sm" }), "max-w-sm")}
         disabled={action.busy === "rename"}
       />
-      {action.error ? <span className="text-osce-caption text-osce-danger">{action.error}</span> : null}
+      {action.error ? (
+        <span className="text-osce-caption text-osce-danger">
+          {action.error}
+        </span>
+      ) : null}
     </div>
   );
 }
 
 /** The status, and the way to change a version that can no longer be edited. */
-function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; version: number; status: string; owned: boolean }) {
+function VersionActions({
+  rubric,
+  version,
+  status,
+  owned,
+}: {
+  rubric: Rubric;
+  version: number;
+  status: string;
+  owned: boolean;
+}) {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const router = useRouter();
   const action = useAction();
-  const canAuthor = useCanAuthor();
-  const draft = (rubric.versions ?? []).find((candidate) => candidate.status === "draft");
+  const draft = (rubric.versions ?? []).find(
+    (candidate) => candidate.status === "draft",
+  );
   const hasDraft = draft !== undefined;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <StatusBadge status={status} />
-      {canAuthor && owned && status !== "draft" && !hasDraft ? (
+      {owned && status !== "draft" && !hasDraft ? (
         <AuthoringButton
+          write
           variant="secondary"
           size="sm"
           isLoading={action.busy === "add"}
@@ -168,28 +234,45 @@ function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; ve
           New draft version
         </AuthoringButton>
       ) : null}
-      {canAuthor && owned && draft && draft.version !== version ? (
-        <AuthoringButton variant="secondary" size="sm" onClick={() => router.push(rubricEditPath(hrefFor, rubric.id, draft.version))}>
+      {owned && draft && draft.version !== version ? (
+        <AuthoringButton
+          write
+          variant="secondary"
+          size="sm"
+          onClick={() =>
+            router.push(rubricEditPath(hrefFor, rubric.id, draft.version))
+          }
+        >
           Open draft version {draft.version}
         </AuthoringButton>
       ) : null}
-      {canAuthor && !owned ? (
+      {!owned ? (
         <AuthoringButton
+          write
           variant="secondary"
           size="sm"
           isLoading={action.busy === "copy"}
           onClick={() =>
             action.run("copy", async () => {
-              const copy = await copyRubric(scope, { source_rubric_id: rubric.id, source_version: version });
+              const copy = await copyRubric(scope, {
+                source_rubric_id: rubric.id,
+                source_version: version,
+              });
               const first = (copy.versions ?? [])[0];
-              router.push(rubricEditPath(hrefFor, copy.id, first?.version ?? 1));
+              router.push(
+                rubricEditPath(hrefFor, copy.id, first?.version ?? 1),
+              );
             })
           }
         >
           Copy to my marking schemes
         </AuthoringButton>
       ) : null}
-      {action.error ? <span className="text-osce-caption text-osce-danger">{action.error}</span> : null}
+      {action.error ? (
+        <span className="text-osce-caption text-osce-danger">
+          {action.error}
+        </span>
+      ) : null}
     </div>
   );
 }

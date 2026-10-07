@@ -32,6 +32,20 @@ class RecruitmentOutsideExamError(InvalidInput):
     default_message = "A recruitment outcome is recorded only for an exam-mode sitting"
 
 
+class DecisionOutsideExamError(Conflict):
+    """A decision was asked for on a training sitting, which stops at marking."""
+
+    code = "decision_outside_exam"
+    default_message = "Decisions are recorded for exam-mode sittings only"
+
+
+class CandidateDidNotSitError(Conflict):
+    """A decision was asked for somebody who sat no station on this sitting."""
+
+    code = "candidate_did_not_sit"
+    default_message = "This candidate did not sit any station on this sitting"
+
+
 class NotSignableError(InvalidInput):
     """The decision is missing an outcome or a rationale, so it cannot be signed off."""
 

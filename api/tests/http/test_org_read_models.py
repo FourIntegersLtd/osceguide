@@ -229,6 +229,23 @@ async def test_an_empty_org_is_told_what_it_is_missing(client: AsyncClient, make
     }
 
 
+async def _without_platform_catalogue(db_session: AsyncSession) -> None:
+    """Take the platform's published exams, rubrics and templates out of view, until rollback."""
+    from sqlalchemy import update
+
+    from app.features.catalog.models import Exam
+    from app.features.rubrics.models import RubricVersion
+    from app.features.stations.models import StationTemplateVersion
+
+    await db_session.execute(
+        update(Exam).where(Exam.org_id.is_(None), Exam.status == "published").values(status="retired")
+    )
+    for model in (RubricVersion, StationTemplateVersion):
+        await db_session.execute(
+            update(model).where(model.org_id.is_(None), model.status == "published").values(status="archived")
+        )
+
+
 async def test_each_setup_step_turns_true_when_it_is_done(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
@@ -245,7 +262,10 @@ async def test_each_setup_step_turns_true_when_it_is_done(
         assert response.status_code == 200, response.text
         return response.json()["setup"]
 
-    # No platform catalogue here either, so nothing is done.
+    # No platform catalogue here either, so nothing is done. Retired inside this
+    # test's transaction rather than assumed absent: platform rows another test
+    # committed would tick three steps before the organisation did anything.
+    await _without_platform_catalogue(db_session)
     assert await setup() == {
         "rubric_published": False,
         "exam_published": False,

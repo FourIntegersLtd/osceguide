@@ -35,6 +35,7 @@ def alerts_for(
     phase_ends_at: datetime | None,
     paused_at: datetime | None,
     attempt_status: str | None,
+    auto_advance: bool,
     now: datetime,
     grace_seconds: int = ALERT_GRACE_SECONDS,
 ) -> list[str]:
@@ -55,8 +56,10 @@ def alerts_for(
             if started is not None and (now - started).total_seconds() > grace_seconds:
                 alerts.append(NO_RUNNING_ATTEMPT)
 
+    # Only a circuit meant to move on by itself is overdue: with auto-advance
+    # off, the clock running out is a human's cue to advance, not a fault (R-14).
     overdue = phase_ends_at is not None and (now - phase_ends_at).total_seconds() > grace_seconds
-    if phase is not None and overdue:
+    if phase is not None and auto_advance and overdue:
         alerts.append(CLOCK_OVERDUE)
 
     return alerts

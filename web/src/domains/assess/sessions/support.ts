@@ -37,7 +37,7 @@ export const ALERT_COPY: Record<string, string> = {
   attempt_failed:
     "This station's consultation failed. Resend the patient, or redo the station once it is safe to.",
   clock_overdue:
-    "The clock has run past this phase and the circuit has not moved on. Advance it, or check auto-advance.",
+    "The clock has run past this phase and the circuit has not moved on by itself. Advance it by hand.",
 };
 
 export function alertCopy(code: string): string {

@@ -1,6 +1,5 @@
 "use client";
 
-import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -75,6 +74,7 @@ import Link from "next/link";
 import { useSurface } from "@/capabilities";
 import { stationTemplateNewPath } from "@/capabilities/authoring/templates/paths";
 import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
 function structureForTemplateVersion(
   templates: StationTemplate[],
@@ -117,7 +117,9 @@ export function StationDetail({
   const [savedTitle, setSavedTitle] = useState(station.title);
   const [title, setTitle] = useState(station.title);
   const renamed = renamedTitle(title, savedTitle);
-  const [confirming, setConfirming] = useState<"archive" | "delete" | null>(null);
+  const [confirming, setConfirming] = useState<"archive" | "delete" | null>(
+    null,
+  );
   /** The step on screen; null until the review has loaded and says where to open. */
   const [step, setStep] = useState<StationStepId | null>(null);
   /** A fresh draft opens on the Draft step: it starts as a copy, so the reader edits it first. */
@@ -132,14 +134,29 @@ export function StationDetail({
   const templateVersionId = station.template_version_id ?? null;
 
   const structure = useMemo(() => {
-    const fromTemplate = structureForTemplateVersion(templates, templateVersionId);
+    const fromTemplate = structureForTemplateVersion(
+      templates,
+      templateVersionId,
+    );
     if (fromTemplate) return fromTemplate;
-    const src = (working?.content ?? station.content ?? {}) as Record<string, unknown>;
+    const src = (working?.content ?? station.content ?? {}) as Record<
+      string,
+      unknown
+    >;
     return legacyB2cStationStructure(station.exam_code, src);
-  }, [templates, templateVersionId, station.exam_code, station.content, working?.content]);
+  }, [
+    templates,
+    templateVersionId,
+    station.exam_code,
+    station.content,
+    working?.content,
+  ]);
 
   useEffect(() => {
-    const src = (working?.content ?? station.content ?? {}) as Record<string, unknown>;
+    const src = (working?.content ?? station.content ?? {}) as Record<
+      string,
+      unknown
+    >;
     setEditContent({ ...src });
     setRuledFacts(null);
     setStep(openOnDraft.current ? "draft" : null);
@@ -157,12 +174,25 @@ export function StationDetail({
       ? undefined
       : {
           upload: async (blockId: string, files: File[]) => {
-            const result = await uploadStationPhotos(scope, station.id, version, blockId, files);
-            setEditContent((result.version.content ?? {}) as Record<string, unknown>);
+            const result = await uploadStationPhotos(
+              scope,
+              station.id,
+              version,
+              blockId,
+              files,
+            );
+            setEditContent(
+              (result.version.content ?? {}) as Record<string, unknown>,
+            );
             return { uploaded: result.uploaded, failed: result.failed };
           },
           remove: async (url: string) => {
-            const updated = await removeStationPhoto(scope, station.id, version, url);
+            const updated = await removeStationPhoto(
+              scope,
+              station.id,
+              version,
+              url,
+            );
             setEditContent((updated.content ?? {}) as Record<string, unknown>);
           },
         };
@@ -173,21 +203,35 @@ export function StationDetail({
       const produced = versions.find((entry) => entry.version === version);
       if (!produced) return;
       setWorking(produced);
-      setEditContent({ ...((produced.content ?? {}) as Record<string, unknown>) });
+      setEditContent({
+        ...((produced.content ?? {}) as Record<string, unknown>),
+      });
       setRuledFacts(null);
     });
   }, [station.id, version]);
 
   const factCheck = supportsFactCheck(scope) && status !== "archived";
-  const reviewState = useStationReview(scope, station.id, version, factCheck, reloadProduced);
+  const reviewState = useStationReview(
+    scope,
+    station.id,
+    version,
+    factCheck,
+    reloadProduced,
+  );
   const { facts, checking, producing } = reviewState;
   const review = reviewState.review;
 
   const contentChanged =
-    JSON.stringify(editContent) !== JSON.stringify(working?.content ?? station.content ?? {});
-  const validation = structure ? validateStationContentScoped(structure, editContent) : null;
-  const contentValid = validation ? validation.ok : Object.keys(editContent).length > 0;
-  const unsaved = ruledFacts !== null || contentChanged || renamed !== undefined;
+    JSON.stringify(editContent) !==
+    JSON.stringify(working?.content ?? station.content ?? {});
+  const validation = structure
+    ? validateStationContentScoped(structure, editContent)
+    : null;
+  const contentValid = validation
+    ? validation.ok
+    : Object.keys(editContent).length > 0;
+  const unsaved =
+    ruledFacts !== null || contentChanged || renamed !== undefined;
   const leaveGuard = useLeaveGuard(unsaved);
   // A rename alone saves even while the content is still incomplete.
   const saveBlocker = !title.trim()
@@ -236,7 +280,9 @@ export function StationDetail({
   const publish = () =>
     void action.run("publish", async () => {
       if (validation && !validation.ok) {
-        throw new Error(validation.errors[0] ?? "Please fill all required fields.");
+        throw new Error(
+          validation.errors[0] ?? "Please fill all required fields.",
+        );
       }
       setWorking(await publishStationVersion(scope, station.id, version));
     });
@@ -262,27 +308,39 @@ export function StationDetail({
 
   const nextButton = () => {
     if (!canAuthor) return null;
-    const run = (label: string, key: string, onClick: () => void, disabled = locked) => (
-      <Button size="sm" disabled={disabled} isLoading={action.busy === key} onClick={onClick}>
+    const run = (
+      label: string,
+      key: string,
+      onClick: () => void,
+      disabled = locked,
+    ) => (
+      <Button
+        size="sm"
+        disabled={disabled}
+        isLoading={action.busy === key}
+        onClick={onClick}
+      >
         {label}
       </Button>
     );
     switch (next.id) {
       case "save":
-        return run("Save", "save", save, saveBlocker !== null || action.busy !== null);
+        return run(
+          "Save",
+          "save",
+          save,
+          saveBlocker !== null || action.busy !== null,
+        );
       case "check-facts":
         return run("Check facts", "check", checkFacts);
       case "rule":
-        return current === "facts" ? null : run("Review claims", "", () => setStep("facts"));
+        return current === "facts"
+          ? null
+          : run("Review claims", "", () => setStep("facts"));
       case "publish":
         return run("Publish", "publish", publish);
       case "new-version":
-        return run(
-          "New draft version",
-          "add",
-          newDraft,
-          action.busy !== null,
-        );
+        return run("New draft version", "add", newDraft, action.busy !== null);
       default:
         return null;
     }
@@ -324,7 +382,9 @@ export function StationDetail({
                 className="font-semibold"
               />
             ) : (
-              <h2 className="text-osce-body font-semibold text-ink">{savedTitle}</h2>
+              <h2 className="text-osce-body font-semibold text-ink">
+                {savedTitle}
+              </h2>
             )}
             <p className="mt-0.5 text-osce-caption text-ink-muted">
               {station.exam_code} · version {version}
@@ -332,19 +392,22 @@ export function StationDetail({
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={status} />
-            {canAuthor ? (
-            <AuthoringRowActions>
+            <AuthoringRowActions write>
               {/* A draft is the version being worked on: a second draft is not offered. */}
               {isDraft ? null : (
-              <AuthoringIconAction
-                label={status === "archived" ? "New draft from this" : "New draft version"}
-                busy={action.busy === "add"}
-                busyLabel="Creating…"
-                disabled={action.busy !== null}
-                onClick={newDraft}
-              >
-                <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
-              </AuthoringIconAction>
+                <AuthoringIconAction
+                  label={
+                    status === "archived"
+                      ? "New draft from this"
+                      : "New draft version"
+                  }
+                  busy={action.busy === "add"}
+                  busyLabel="Creating…"
+                  disabled={action.busy !== null}
+                  onClick={newDraft}
+                >
+                  <HiOutlineDocumentDuplicate className="h-4 w-4" aria-hidden />
+                </AuthoringIconAction>
               )}
               {status === "published" ? (
                 <AuthoringIconAction
@@ -371,20 +434,23 @@ export function StationDetail({
                 </AuthoringIconAction>
               ) : null}
             </AuthoringRowActions>
-            ) : null}
           </div>
         </div>
 
         {!structure && templateVersionId ? (
           <p className="mt-3 text-osce-caption text-ink-muted">
-            Template structure is not available in the catalogue. Reload templates or edit from the template list.
+            Template structure is not available in the catalogue. Reload
+            templates or edit from the template list.
           </p>
         ) : null}
         {!structure && !templateVersionId ? (
           <p className="mt-3 text-osce-caption text-ink-muted">
-            No layout is defined for exam {station.exam_code}. Create a station template for this exam
-            first.{" "}
-            <Link href={stationTemplateNewPath(hrefFor)} className="font-semibold text-accent underline">
+            No layout is defined for exam {station.exam_code}. Create a station
+            template for this exam first.{" "}
+            <Link
+              href={stationTemplateNewPath(hrefFor)}
+              className="font-semibold text-accent underline"
+            >
               Create a station template
             </Link>
           </p>
@@ -421,7 +487,9 @@ export function StationDetail({
                 await deleteStationVersion(scope, station.id, version);
                 onBack();
               } else {
-                setWorking(await archiveStationVersion(scope, station.id, version));
+                setWorking(
+                  await archiveStationVersion(scope, station.id, version),
+                );
               }
             })
             .then((ok) => {
@@ -437,7 +505,9 @@ export function StationDetail({
         confirmText={confirming === "delete" ? "Delete" : "Archive"}
         message={
           <>
-            {confirming !== null ? <StationUsedBy stationId={station.id} version={version} /> : null}
+            {confirming !== null ? (
+              <StationUsedBy stationId={station.id} version={version} />
+            ) : null}
             <span className="mt-1 block">
               {confirming === "delete"
                 ? "The draft is removed. Published versions are untouched."
@@ -447,14 +517,22 @@ export function StationDetail({
         }
       />
 
-      <StepGuide steps={steps} current={current} onSelect={setStep} line={next.line} working={next.id === "wait"}>
+      <StepGuide
+        steps={steps}
+        current={current}
+        onSelect={setStep}
+        line={next.line}
+        working={next.id === "wait"}
+      >
         {nextButton()}
       </StepGuide>
-      {action.error && confirming === null ? <Alert tone="danger">{action.error}</Alert> : null}
+      {action.error && confirming === null ? (
+        <Alert tone="danger">{action.error}</Alert>
+      ) : null}
       {review?.error && !busy ? (
         <Alert tone="danger">
-          The last {ERROR_STEPS[String(review.error.step)] ?? "fact check"} failed:{" "}
-          {String(review.error.message ?? "")}
+          The last {ERROR_STEPS[String(review.error.step)] ?? "fact check"}{" "}
+          failed: {String(review.error.message ?? "")}
         </Alert>
       ) : null}
       {run ? (
@@ -487,7 +565,10 @@ export function StationDetail({
                   ? " Edit the sections below; Save in the bar above stores them."
                   : " Published, so it is read only. Create a new draft version to edit."}
               </p>
-              <LegacyStationMeta content={editContent} stationTitle={savedTitle} />
+              <LegacyStationMeta
+                content={editContent}
+                stationTitle={savedTitle}
+              />
               <StationInstanceContentPanel
                 structure={structure}
                 content={editContent}
@@ -507,7 +588,11 @@ export function StationDetail({
             />
           ) : null}
           {factCheck && editable && drafted ? (
-            <Panel title="Produce again from a brief" padding="sm" defaultOpen={false}>
+            <Panel
+              title="Produce again from a brief"
+              padding="sm"
+              defaultOpen={false}
+            >
               {produceForm}
             </Panel>
           ) : null}
@@ -528,10 +613,19 @@ export function StationDetail({
                   editable && facts && !busy
                     ? {
                         onAccept: (claim, swap) => {
-                          if (swap) setEditContent(corrected(editContent, claim, swap));
-                          rule(ruled(facts, claim.id, "accepted", swap ?? undefined));
+                          if (swap)
+                            setEditContent(corrected(editContent, claim, swap));
+                          rule(
+                            ruled(
+                              facts,
+                              claim.id,
+                              "accepted",
+                              swap ?? undefined,
+                            ),
+                          );
                         },
-                        onDismiss: (claim) => rule(ruled(facts, claim.id, "dismissed")),
+                        onDismiss: (claim) =>
+                          rule(ruled(facts, claim.id, "dismissed")),
                         onReopen: (claim) => {
                           setEditContent(uncorrected(editContent, claim));
                           rule(reopened(facts, claim.id));
@@ -549,24 +643,28 @@ export function StationDetail({
         <Panel title="Publish">
           <div className="flex flex-col gap-3 text-osce-body text-ink-muted">
             <p>
-              Publishing makes v{version} the version candidates are assessed against. A published
-              version is what an attempt was marked against, so it is archived rather than deleted.
+              Publishing makes v{version} the version candidates are assessed
+              against. A published version is what an attempt was marked
+              against, so it is archived rather than deleted.
             </p>
-            {isDraft && !readBrief(working?.content ?? station.content).trim() ? (
+            {isDraft &&
+            !readBrief(working?.content ?? station.content).trim() ? (
               <Alert tone="warning">
-                This station has no candidate brief, so candidates see nothing during reading time.
-                You can still publish.
+                This station has no candidate brief, so candidates see nothing
+                during reading time. You can still publish.
               </Alert>
             ) : null}
             {steps
-              .filter((entry) => entry.id !== "publish" && entry.state !== "done")
+              .filter(
+                (entry) => entry.id !== "publish" && entry.state !== "done",
+              )
               .map((entry) => (
                 <Alert key={entry.id} tone="warning">
                   {entry.label}: {entry.note}.
                 </Alert>
               ))}
             {/* Ready, the bar holds Publish; before then it stays possible from here. */}
-            {canAuthor && isDraft && next.id !== "publish" ? (
+            {editable && next.id !== "publish" ? (
               <Button
                 size="sm"
                 variant="secondary"
@@ -589,8 +687,10 @@ export function StationDetail({
 
 function readBrief(content: unknown): string {
   if (!content || typeof content !== "object") return "";
-  const { reading_brief: reading, candidate_brief: candidate } = content as Record<string, unknown>;
-  const brief = typeof reading === "string" && reading.trim() ? reading : candidate;
+  const { reading_brief: reading, candidate_brief: candidate } =
+    content as Record<string, unknown>;
+  const brief =
+    typeof reading === "string" && reading.trim() ? reading : candidate;
   return typeof brief === "string" ? brief : "";
 }
 
@@ -601,7 +701,8 @@ function LegacyStationMeta({
   content: Record<string, unknown>;
   stationTitle: string;
 }) {
-  const legacyId = typeof content.station_id === "string" ? content.station_id : "";
+  const legacyId =
+    typeof content.station_id === "string" ? content.station_id : "";
   const name =
     typeof content.station_name === "string" && content.station_name.trim()
       ? content.station_name
@@ -611,12 +712,16 @@ function LegacyStationMeta({
     <div className="mb-6 grid grid-cols-1 gap-4 rounded-osce-lg border border-border bg-surface-raised/40 p-4 md:grid-cols-2">
       {legacyId ? (
         <div>
-          <p className="text-osce-caption font-medium text-ink-muted">Station ID</p>
+          <p className="text-osce-caption font-medium text-ink-muted">
+            Station ID
+          </p>
           <p className="mt-1 font-mono text-osce-body text-ink">{legacyId}</p>
         </div>
       ) : null}
       <div>
-        <p className="text-osce-caption font-medium text-ink-muted">Station name</p>
+        <p className="text-osce-caption font-medium text-ink-muted">
+          Station name
+        </p>
         <p className="mt-1 text-osce-body text-ink">{name}</p>
       </div>
     </div>

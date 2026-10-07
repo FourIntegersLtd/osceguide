@@ -30,6 +30,8 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.InvalidWorkflow: errors.InvalidWorkflowError,
     domain.EvidenceChanged: errors.EvidenceChangedError,
     domain.RecruitmentOutsideExam: errors.RecruitmentOutsideExamError,
+    domain.DecisionOutsideExam: errors.DecisionOutsideExamError,
+    domain.CandidateDidNotSit: errors.CandidateDidNotSitError,
 }
 
 
@@ -43,6 +45,27 @@ async def _ensure_recruitment_allowed(
     try:
         domain.ensure_recruitment_allowed(sitting.mode, recruitment)
     except domain.RecruitmentOutsideExam as exc:
+        raise_mapped(exc, _REFUSALS)
+
+
+async def _ensure_decidable(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, user_id: uuid.UUID | None
+) -> None:
+    """An exam sitting, and a candidate who sat at least one station on it (R-11).
+
+    A slot names its candidate by `users.id`, so a roster entry nobody has
+    signed in as yet has sat nothing.
+    """
+    sitting = await sittings.sitting_ref(session, org_id, sitting_id)
+    if sitting is None:
+        raise errors.SittingNotFound()
+    slots = await sittings.slots_for_sitting(session, org_id, sitting_id)
+    sat = user_id is not None and any(
+        slot.trainee_id == user_id and slot.status in sittings.SAT_SLOT_STATUSES for slot in slots
+    )
+    try:
+        domain.ensure_decidable(sitting_mode=sitting.mode, sat_a_station=sat)
+    except (domain.DecisionOutsideExam, domain.CandidateDidNotSit) as exc:
         raise_mapped(exc, _REFUSALS)
 
 
@@ -67,7 +90,8 @@ async def save_draft(
     """
     # Before anything is written: the foreign key would catch a bad id, but as
     # an unhandled integrity error rather than a refusal the caller can read.
-    await roster.ensure_trainee(session, org_id, trainee_id)
+    trainee = await roster.read_trainee(session, org_id, trainee_id)
+    await _ensure_decidable(session, org_id, sitting_id, trainee.user_id)
 
     latest = await repository.latest_revision(session, org_id, sitting_id, trainee_id)
     if latest and latest.workflow_state == "released":
@@ -263,6 +287,17 @@ async def release_many(
             continue
         outcome.released.append(ReleasedCandidate(trainee_id=candidate.trainee_id, decision=decision))
     return outcome
+
+
+async def sitting_has_settled_decision(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID
+) -> bool:
+    """Whether any candidate's current decision on this sitting is signed off or released.
+
+    Asked by `sittings` before it puts anybody new into the sitting (R-7).
+    """
+    latest = await repository.latest_revisions_for_sitting(session, org_id, sitting_id)
+    return any(row.workflow_state != domain.Workflow.DRAFT for row in latest)
 
 
 async def decision_settled(

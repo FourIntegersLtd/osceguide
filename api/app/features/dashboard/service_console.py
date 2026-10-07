@@ -113,6 +113,7 @@ async def build_console(
             phase_ends_at=detail.circuit.phase_ends_at,
             paused_at=detail.circuit.paused_at,
             attempt_status=_active_attempt_status(detail, live),
+            auto_advance=detail.circuit.auto_advance,
             now=now,
         ),
     )

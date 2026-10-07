@@ -45,6 +45,8 @@ async def update_sitting(
     changing = {field for field in sent if _requested(body, sitting, field)}
 
     try:
+        # A cancelled sitting is a record of what was called off, not a draft (R-7).
+        domain_edit.ensure_sitting_open(cancelled=sitting.status == domain_edit.CANCELLED, settled=False)
         if "mode" in changing:
             # Asked before the freeze below, and refused for a sitting with any
             # circuits at all: the mode is what a circuit's slots are composed
@@ -69,6 +71,20 @@ async def update_sitting(
 
     if values:
         await repository.update_sitting(session, org_id, sitting_id, **values)
+    return await service.read_sitting(session, org_id, sitting_id)
+
+
+async def cancel_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRead:
+    """Call off a sitting nobody has sat (R-7). Kept as `cancelled`, not deleted; asking twice is a no-op."""
+    sitting = await _require_sitting(session, org_id, sitting_id)
+    if sitting.status != domain_edit.CANCELLED:
+        try:
+            domain_edit.ensure_cancellable(
+                begun=await repository_reads.sitting_has_begun(session, org_id, sitting_id)
+            )
+        except domain_edit.SittingLocked as exc:
+            raise_mapped(exc, _REFUSALS)
+        await repository.set_sitting_status(session, org_id, sitting_id, status=domain_edit.CANCELLED)
     return await service.read_sitting(session, org_id, sitting_id)
 
 

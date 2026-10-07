@@ -31,6 +31,8 @@ REDO_STATION = "redo_station"
 JUMP_TO = "jump_to"
 ADVANCE = "advance"
 AUTO_ADVANCE = "auto_advance"
+# The reaper ending a circuit nobody closed: no human, so the record is the only notice (R-15).
+AUTO_END = "auto_end"
 
 
 @dataclass(frozen=True)

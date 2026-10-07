@@ -118,8 +118,9 @@ async def redo_station(
         raise errors.SlotNotFound()
 
     before = circuit.phase_seq
-    await service_steps.clear_patient(session, org_id, circuit, agents=agents, now=now)
+    # The redone station's recording first, so it is filed as a redo rather than an interruption.
     await attempts_service.fail_live_for_slot(session, slot_id=slot_id, now=now, reason="redo")
+    await service_steps.clear_patient(session, org_id, circuit, agents=agents, now=now, station_sat=False)
     await repository.update_slot(
         session,
         org_id,
@@ -182,7 +183,7 @@ async def jump_to(
         raise_mapped(exc, _REFUSALS)
 
     before = circuit.phase_seq
-    await service_steps.clear_patient(session, org_id, circuit, agents=agents, now=now)
+    await service_steps.clear_patient(session, org_id, circuit, agents=agents, now=now, station_sat=False)
     await repository_run.mark_slots_skipped(
         session,
         org_id,

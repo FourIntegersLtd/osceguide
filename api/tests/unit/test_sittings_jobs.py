@@ -82,7 +82,7 @@ async def test_one_stale_circuit_failing_to_end_does_not_stop_the_others(
 
     monkeypatch.setattr(repository_run, "overdue_circuits", overdue)
     monkeypatch.setattr(repository_run, "stale_circuits", stale)
-    monkeypatch.setattr(service_run, "end_circuit", end_circuit)
+    monkeypatch.setattr(service_run, "end_abandoned", end_circuit)
 
     result = await jobs.sweep_now(
         agents=FakeRoomAgents(), settings=Settings(), now=NOW, open_session=fake_session

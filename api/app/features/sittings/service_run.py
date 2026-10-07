@@ -24,11 +24,20 @@ from app.core.errors import raise_mapped
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings
-from app.features.sittings import announcements, domain, domain_run, errors, repository, service_steps
+from app.features.sittings import (
+    announcements,
+    domain,
+    domain_edit,
+    domain_run,
+    errors,
+    repository,
+    service_steps,
+)
 from app.features.sittings.models import Circuit
+from app.features.sittings.overrides import AUTO_END, Actor, write_intervention
 from app.features.sittings.reads import position_of, state, timing_domain
 from app.features.sittings.schemas import CircuitRead
-from app.features.sittings.service import _REFUSALS, _require_circuit, read_circuit
+from app.features.sittings.service import _REFUSALS, _require_circuit, _require_sitting, read_circuit
 from app.features.voice import service as voice
 
 log = get_logger(__name__)
@@ -37,7 +46,7 @@ log = get_logger(__name__)
 # slice: the service is this slice's public face.
 get_room_agents = voice.get_room_agents
 
-# How long a circuit may sit live before the reaper closes it.
+# How long a running circuit's clock may sit with nothing to count before the reaper closes it.
 STALE_AFTER = timedelta(hours=12)
 
 
@@ -59,6 +68,11 @@ async def start_circuit(
         raise_mapped(exc, _REFUSALS)
     if current.started:
         return await read_circuit(session, org_id, circuit_id)
+    sitting = await _require_sitting(session, org_id, circuit.sitting_id)
+    try:
+        domain_edit.ensure_sitting_open(cancelled=sitting.status == domain_edit.CANCELLED, settled=False)
+    except domain_edit.SittingLocked as exc:
+        raise_mapped(exc, _REFUSALS)
 
     room = f"circuit_{circuit.id}"
     await repository.update_circuit(
@@ -139,13 +153,45 @@ async def end_circuit(
 
     The patient is removed here — previously ending a circuit only nulled the
     room name, leaving the agent stuck in a LiveKit room nobody returned to.
+    With LiveKit down the end still lands, and the removal is owed as a
+    retried job rather than dropped (R-13).
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     if circuit.ended_at is None:
-        await service_steps.clear_patient(session, org_id, circuit, agents=agents, now=now)
+        if not await service_steps.clear_patient(session, org_id, circuit, agents=agents, now=now):
+            await service_steps.clear_patient_later(session, circuit)
         await service_steps.finish(session, org_id, circuit, now=now)
         await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ENDED)
     return await read_circuit(session, org_id, circuit_id)
+
+
+async def end_abandoned(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    circuit_id: uuid.UUID,
+    *,
+    agents: RoomAgents,
+    now: datetime,
+) -> CircuitRead:
+    """The reaper's end: the same as a human's, plus a record saying nobody pressed it (R-15).
+
+    Without the record the console's history shows a circuit that simply
+    stopped, and the supervisor has no way to tell a crash from the reaper.
+    """
+    circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
+    if circuit.ended_at is None:
+        await write_intervention(
+            session,
+            org_id,
+            circuit,
+            action=AUTO_END,
+            actor=Actor(
+                user_id=None, reason="Ended automatically: the clock had nothing to count for 12 hours"
+            ),
+            before=circuit.phase_seq,
+            now=now,
+        )
+    return await end_circuit(session, org_id, circuit_id, agents=agents, now=now)
 
 
 async def _step_forward(
@@ -160,7 +206,10 @@ async def _step_forward(
     """Work out the next step from where the circuit is now, and put it there."""
     slots = await repository.slots_for_circuit(session, org_id, circuit.id)
     step = domain_run.next_step(
-        position_of(circuit, slots), slot_count=len(slots), timing=timing_domain(circuit.timing)
+        position_of(circuit, slots),
+        slot_count=len(slots),
+        timing=timing_domain(circuit.timing),
+        done={slot.slot_index for slot in slots if slot.status in domain.FINISHED_SLOT_STATUSES},
     )
     await service_steps.apply_step(
         session,

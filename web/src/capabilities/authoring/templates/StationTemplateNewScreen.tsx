@@ -1,7 +1,6 @@
 "use client";
 
-import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
-import { CannotAuthor } from "@/capabilities/authoring/parts/CannotAuthor";
+import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { structureFromStartPoint } from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplatePresets";
@@ -74,7 +73,11 @@ function CreateStationTemplateWizardBody({
   examCode: string | null;
   onCancel: () => void;
   onCreated: () => void;
-  onSave: (title: string, structure: StationStructure, examCode: string) => Promise<void>;
+  onSave: (
+    title: string,
+    structure: StationStructure,
+    examCode: string,
+  ) => Promise<void>;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedExamCode, setSelectedExamCode] = useState(examCode ?? "");
@@ -97,7 +100,8 @@ function CreateStationTemplateWizardBody({
     () => startOptionsForExam(selectedExamCode, STATION_TEMPLATE_START_OPTIONS),
     [selectedExamCode],
   );
-  const [structure, setStructure] = useState<StationStructure>(initialStructure);
+  const [structure, setStructure] =
+    useState<StationStructure>(initialStructure);
 
   const [structureResetKey, setStructureResetKey] = useState({
     initialStructure,
@@ -121,7 +125,10 @@ function CreateStationTemplateWizardBody({
     <>
       <div className="px-5 py-3 sm:px-6">
         <StepRail
-          steps={wizardSteps(current, selectedExamCode !== "" && title.trim() !== "")}
+          steps={wizardSteps(
+            current,
+            selectedExamCode !== "" && title.trim() !== "",
+          )}
           current={current}
           // Only back: the sections need the exam and name from the first screen.
           onSelect={(id) => {
@@ -225,7 +232,9 @@ function CreateStationTemplateWizardBody({
                   onCreated();
                 } catch (e: unknown) {
                   setError(
-                    e instanceof Error ? e.message : "Failed to create template.",
+                    e instanceof Error
+                      ? e.message
+                      : "Failed to create template.",
                   );
                 } finally {
                   setSaving(false);
@@ -242,5 +251,9 @@ function CreateStationTemplateWizardBody({
 }
 
 export function StationTemplateNewScreen() {
-  return useCanAuthor() ? <StationTemplateNewScreenForm /> : <CannotAuthor />;
+  return (
+    <RequireAuthor>
+      <StationTemplateNewScreenForm />
+    </RequireAuthor>
+  );
 }

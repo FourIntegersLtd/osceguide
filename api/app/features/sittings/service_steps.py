@@ -22,6 +22,7 @@ from app.features.sittings.models import Circuit, Slot
 from app.features.sittings.service_clock import schedule_next as schedule_next
 from app.features.sittings.service_clock import set_phase
 from app.features.sittings.service_patient import clear_patient as clear_patient
+from app.features.sittings.service_patient import clear_patient_later as clear_patient_later
 from app.features.sittings.service_patient import dispatch_patient as dispatch_patient
 
 # Larger than any circuit: an exam circuit is capped at twelve stations and a
@@ -114,10 +115,7 @@ async def begin_consultation(
     try:
         await dispatch_patient(session, org_id, circuit, slot, agents=agents, settings=settings, now=now)
     except errors.TraineeRevokedError:
-        # R-8: the candidate's access was revoked after the circuit was built. The clock
-        # carries on for everyone else; this station is skipped, with no patient and no
-        # recording to mark.
-        await repository.update_slot(session, org_id, slot.id, status=domain.SlotStatus.SKIPPED, ended_at=now)
+        await _skip_revoked_slot(session, org_id, slot, now=now)
         dispatched_at = None
     else:
         await repository.update_slot(session, org_id, slot.id, status=domain.SlotStatus.IN_CONSULTATION)
@@ -132,6 +130,15 @@ async def begin_consultation(
         active_slot_id=slot.id,
         agent_dispatched_at=dispatched_at,
     )
+
+
+async def _skip_revoked_slot(session: AsyncSession, org_id: uuid.UUID, slot: Slot, *, now: datetime) -> None:
+    """R-8: the candidate's access was revoked after the circuit was built.
+
+    The clock carries on for everyone else; this station is skipped, with no
+    patient and no recording to mark.
+    """
+    await repository.update_slot(session, org_id, slot.id, status=domain.SlotStatus.SKIPPED, ended_at=now)
 
 
 async def begin_break(

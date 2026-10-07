@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.sittings.models import (
@@ -94,14 +94,19 @@ async def overdue_circuits(session: AsyncSession, *, now: datetime, grace_second
     ]
 
 
-async def stale_circuits(session: AsyncSession, *, started_before: datetime) -> list[DueCircuit]:
+async def stale_circuits(session: AsyncSession, *, quiet_since: datetime) -> list[DueCircuit]:
     """Circuits left running long after anybody went home.
 
     Without this, a morning nobody closed keeps a room open and a candidate's
-    portal offering a join button forever.
+    portal offering a join button forever. Judged by when the clock last had
+    something to count, not by when the circuit started, so a long exam day is
+    not cut off mid-station; and never a paused circuit, which a human stopped
+    on purpose and only a human may end (R-15).
     """
     stmt = select(Circuit.org_id, Circuit.id, Circuit.phase_seq).where(
-        _live(), Circuit.started_at < started_before
+        _live(),
+        Circuit.paused_at.is_(None),
+        func.coalesce(Circuit.phase_ends_at, Circuit.started_at) < quiet_since,
     )
     return [
         DueCircuit(org_id=org_id, circuit_id=circuit_id, phase_seq=seq)

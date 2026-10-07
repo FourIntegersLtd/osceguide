@@ -18,6 +18,10 @@ from app.features.sittings.domain import InvalidCircuit
 # sitting is marked against is resolved through its programme.
 ASSESSMENT_BEARING = frozenset({"mode", "programme_id", "sitting_type"})
 
+# A sitting called off before anybody sat it (R-7). A status rather than a
+# delete, so the record of what was scheduled, and by whom, stays.
+CANCELLED = "cancelled"
+
 
 @dataclass(frozen=True)
 class SittingEditState:
@@ -58,6 +62,27 @@ def ensure_sitting_editable(state: SittingEditState, *, changing: set[str]) -> N
             f"{' and '.join(frozen)} cannot change once this sitting has begun. "
             "Change the circuits themselves, or schedule another sitting."
         )
+
+
+def ensure_sitting_open(*, cancelled: bool, settled: bool) -> None:
+    """Nobody new is put into a sitting that was called off, or whose results are being signed (R-7).
+
+    A candidate added after a decision is signed off would sit an examination
+    whose outcomes are already being released around them.
+    """
+    if cancelled:
+        raise SittingLocked("This sitting was cancelled. Schedule another one.")
+    if settled:
+        raise SittingLocked(
+            "A result on this sitting has been signed off or released, so nobody new can be examined in it. "
+            "Schedule another sitting."
+        )
+
+
+def ensure_cancellable(*, begun: bool) -> None:
+    """Only a sitting nobody has sat may be called off; one that has begun is ended circuit by circuit."""
+    if begun:
+        raise SittingLocked("This sitting has begun, so it cannot be cancelled. End its circuits instead.")
 
 
 def ensure_mode_changeable(*, circuit_count: int) -> None:

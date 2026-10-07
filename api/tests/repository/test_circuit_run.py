@@ -447,19 +447,109 @@ async def test_the_sweeper_leaves_a_paused_circuit_alone(db_session: AsyncSessio
 
 
 async def test_a_circuit_left_running_overnight_is_found(db_session: AsyncSession) -> None:
-    """The reaper the slice README has promised since it was written."""
+    """The reaper the slice README has promised since it was written.
+
+    Quiet is measured from when the clock last had something to count, not
+    from the start: a long day of stations is not an abandoned circuit (R-15).
+    """
     from app.features.sittings import repository_run
 
     org_id, circuit_id = await a_circuit(db_session)
     await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+    reading_ends = NOW + timedelta(minutes=3)
 
-    stale = await repository_run.stale_circuits(
-        db_session, started_before=NOW + service_run.STALE_AFTER + timedelta(minutes=1)
-    )
-    not_yet = await repository_run.stale_circuits(db_session, started_before=NOW)
+    stale = await repository_run.stale_circuits(db_session, quiet_since=reading_ends + timedelta(minutes=1))
+    not_yet = await repository_run.stale_circuits(db_session, quiet_since=reading_ends)
 
     assert circuit_id in {row.circuit_id for row in stale}
     assert circuit_id not in {row.circuit_id for row in not_yet}
+
+
+async def test_a_paused_circuit_is_never_reaped(db_session: AsyncSession) -> None:
+    """R-15: a pause is somebody's decision, however long it lasts."""
+    from app.features.sittings import repository_run
+
+    org_id, circuit_id = await a_circuit(db_session)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+    await repository.update_circuit(db_session, org_id, circuit_id, paused_at=NOW)
+
+    stale = await repository_run.stale_circuits(db_session, quiet_since=NOW + timedelta(days=2))
+
+    assert circuit_id not in {row.circuit_id for row in stale}
+
+
+async def test_the_reaper_says_it_was_the_reaper(db_session: AsyncSession) -> None:
+    """R-15: an automatic end leaves a record, so it does not read as a crash."""
+    from app.features.sittings.models import CircuitIntervention
+
+    org_id, circuit_id = await a_circuit(db_session)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+
+    await service_run.end_abandoned(
+        db_session, org_id, circuit_id, agents=FakeRoomAgents(), now=NOW + timedelta(hours=13)
+    )
+
+    actions = (
+        await db_session.scalars(
+            select(CircuitIntervention.action).where(CircuitIntervention.circuit_id == circuit_id)
+        )
+    ).all()
+    assert actions == ["auto_end"]
+    circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
+    assert circuit is not None and circuit.ended_at == NOW + timedelta(hours=13)
+
+
+async def test_ending_with_livekit_down_owes_the_patient_removal(db_session: AsyncSession) -> None:
+    """R-13: the end lands, and taking the agent out is a retried job, not a swallowed error."""
+    org_id, circuit_id = await a_circuit(db_session)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+
+    await service_run.end_circuit(
+        db_session, org_id, circuit_id, agents=FakeRoomAgents(fail_remove=True), now=NOW
+    )
+
+    circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
+    assert circuit is not None and circuit.ended_at == NOW
+    owed = [job for job in await scheduled_jobs(db_session, circuit_id) if job["task"] == "clear_room_agents"]
+    assert [job["args"] for job in owed] == [{"room": f"circuit_{circuit_id}", "circuit_id": str(circuit_id)}]
+
+
+async def test_redoing_an_earlier_station_does_not_replay_the_later_ones(db_session: AsyncSession) -> None:
+    """R-12: redo station 0 from station 2, and station 2 is next, not station 1 again.
+
+    The interrupted station goes back to scheduled; it was never sat.
+    """
+    from app.features.sittings import service_rescue
+    from app.features.sittings.overrides import Actor
+
+    agents = FakeRoomAgents()
+    org_id, circuit_id = await a_circuit(db_session, stations=3)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+    # Reading 0 → consultation 0 → reading 1 → consultation 1 → reading 2 → consultation 2.
+    for seq, minutes in enumerate((3, 13, 16, 26, 29), start=1):
+        assert await _advance(
+            db_session, org_id, circuit_id, agents, seq=seq, at=NOW + timedelta(minutes=minutes)
+        )
+    slots = await repository.slots_for_circuit(db_session, org_id, circuit_id)
+
+    await service_rescue.redo_station(
+        db_session,
+        org_id,
+        circuit_id,
+        slot_id=slots[0].id,
+        agents=agents,
+        settings=_settings(),
+        actor=Actor(user_id=None, reason="Fire alarm"),
+        now=NOW + timedelta(minutes=30),
+    )
+    interrupted = await repository.slot_by_id(db_session, org_id, slots[2].id)
+    assert interrupted is not None and interrupted.status == "scheduled"
+    assert await _advance(db_session, org_id, circuit_id, agents, seq=7, at=NOW + timedelta(minutes=33))
+    assert await _advance(db_session, org_id, circuit_id, agents, seq=8, at=NOW + timedelta(minutes=43))
+
+    circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
+    assert circuit is not None
+    assert (circuit.phase, circuit.active_slot_id) == ("reading", slots[2].id)
 
 
 # --------------------------------------------------------------------------

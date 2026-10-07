@@ -92,9 +92,11 @@ Scheduling (`router.py`):
 | GET/POST | `/api/v1/orgs/{org_slug}/sittings` | org admin | |
 | GET | `/api/v1/orgs/{org_slug}/sittings/{id}` | org member | includes circuits and slots |
 | PUT | `/api/v1/orgs/{org_slug}/sittings/{id}` | org admin | partial: only what was sent is written. `sitting_locked` (409) once a circuit has started and an assessment-bearing field changed, `invalid_circuit` (409) for a mode change over existing circuits |
-| POST | `/api/v1/orgs/{org_slug}/sittings/{id}/circuits` | org admin | `circuit_locked` (409), `trainee_revoked` (409) |
+| POST | `/api/v1/orgs/{org_slug}/sittings/{id}/cancel` | org admin | status `cancelled`, kept not deleted; idempotent. `sitting_locked` (409) once a circuit has started (R-7) |
+| POST | `/api/v1/orgs/{org_slug}/sittings/{id}/circuits` | org admin | `circuit_locked` (409), `trainee_revoked` (409); `sitting_locked` (409) on a cancelled sitting or once any decision on it is signed off or released (R-7) |
+| DELETE | `/api/v1/orgs/{org_slug}/circuits/{id}` | org admin | a circuit never started; `circuit_locked` (409) once it has been (R-7) |
 | PUT | `/api/v1/orgs/{org_slug}/circuits/{id}` | org admin | structural edit (C3); `circuit_locked` (409) once a station has been run |
-| POST | `/api/v1/orgs/{org_slug}/circuits/{id}/append-trainees` | org staff | training only; each arrival may name its station. `trainee_already_on_circuit`, `station_not_on_circuit`, `invalid_circuit` (409) |
+| POST | `/api/v1/orgs/{org_slug}/circuits/{id}/append-trainees` | org staff | training only; each arrival may name its station. `trainee_already_on_circuit`, `station_not_on_circuit`, `invalid_circuit` (409); `sitting_locked` as for adding a circuit |
 
 Running (`router_run.py`), all **org staff** — an admin, or the supervisor
 assigned to it. Deliberately not `OrgReader`, which admits the candidate sitting
@@ -136,16 +138,21 @@ phase ends, carrying the `phase_seq` it was scheduled against.
 `sweep_circuits` runs every minute and is the safety net, not the mechanism — if
 it were, every transition would be up to a minute late. It exists for what the
 scheduled job cannot cover: the worker was down when a phase ended, a transition
-rolled back, or a deploy landed mid-examination. It also ends circuits left live
-for twelve hours, which is the reaper this README promised and b2b already did.
+rolled back, or a deploy landed mid-examination. It also ends circuits whose clock has
+had nothing to count for twelve hours (measured from `phase_ends_at`, so a long
+day is not abandoned), never a paused one, and writes an `auto_end`
+intervention so the history says the reaper did it (R-15).
 Each circuit is its own transaction and its own try/except: one that raises (a
 LiveKit dispatch failing) is logged with its id and counted in `failed`, never
 allowed to stop the sweep, so the job succeeds and the rest still advance.
 
 Taking the patient out of the room (`clear_patient`) is best-effort: ending or
 advancing a circuit records the change even when LiveKit is down or
-unconfigured, and an agent left behind goes when its room closes (LiveKit's
-empty-room timeout). Starting a consultation still fails when the dispatch does.
+unconfigured. Ending then owes a `clear_room_agents` job (queue `circuits`,
+retried) so the agent is taken out once LiveKit answers (R-13). An interrupted
+station (redo, jump) goes back to `scheduled`, not `completed`, and the clock
+moves on to the first station not yet sat (R-12). `clock_overdue` is raised only
+with auto-advance on (R-14). Starting a consultation still fails when the dispatch does.
 
 A scheduled transition is found by polling, not by notification, so
 `worker_fetch_job_polling_seconds` (default 1.0) matters here in a way it does

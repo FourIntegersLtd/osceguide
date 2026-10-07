@@ -19,13 +19,14 @@ from datetime import UTC, datetime
 from functools import partial
 from typing import Any, TypeVar
 
+from procrastinate import RetryStrategy
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.jobs import get_jobs_app
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings, get_settings
-from app.features.sittings import repository_run, service_clock, service_run
+from app.features.sittings import repository_run, service_clock, service_patient, service_run
 
 T = TypeVar("T")
 
@@ -90,7 +91,7 @@ async def sweep_now(
 
     async with opener() as session:  # type: ignore[operator]
         due = await repository_run.overdue_circuits(session, now=now, grace_seconds=SWEEP_GRACE_SECONDS)
-        stale = await repository_run.stale_circuits(session, started_before=now - service_run.STALE_AFTER)
+        stale = await repository_run.stale_circuits(session, quiet_since=now - service_run.STALE_AFTER)
 
     advanced = 0
     ended = 0
@@ -121,7 +122,7 @@ async def sweep_now(
             "ending circuit",
             stale_circuit.circuit_id,
             partial(
-                service_run.end_circuit,
+                service_run.end_abandoned,
                 org_id=stale_circuit.org_id,
                 circuit_id=stale_circuit.circuit_id,
                 agents=agents,
@@ -164,6 +165,17 @@ def register() -> None:
                 settings=get_settings(),
                 now=datetime.now(UTC),
             )
+
+    @app.task(
+        name=service_patient.CLEAR_ROOM_TASK,
+        queue=service_patient.CLEAR_ROOM_QUEUE,
+        retry=RetryStrategy(max_attempts=12, exponential_wait=2),
+    )
+    async def clear_room_agents(room: str, circuit_id: str) -> None:
+        """Take the patient out of an ended circuit's room; raises, and so retries, while LiveKit is down."""
+        from app.features.voice.service import clear_agents_from_room, get_room_agents
+
+        await clear_agents_from_room(agents=get_room_agents(), room=room)
 
     @app.periodic(cron="* * * * *")
     @app.task(name=SWEEP_TASK, queue=SWEEP_QUEUE)

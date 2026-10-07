@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+import uuid
 from io import BytesIO
 
 import pytest
 from httpx import AsyncClient
 from pypdf import PdfReader
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from app.features.sittings.models import Slot
 from app.features.tenancy.models import AuditEntry
 from tests.http.test_org_read_models import a_circuit, a_sitting
 from tests.http.test_results_routes import EVIDENCE, a_sitting_and_trainee, org_with_admin, url
 from tests.http.test_sittings_routes import published_station
+from tests.support.decisions import seat_candidate
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -96,6 +99,7 @@ async def _draft(client: AsyncClient, make_actor, db_session: AsyncSession, emai
     assert user is not None
     await roster_repo.link_trainee_to_user(db_session, org_id, trainee, user_id=user.id)
     await db_session.flush()
+    await seat_candidate(db_session, org_id, sitting, trainee)
     saved = await client.put(
         url(sitting, trainee),
         json={"assessment_outcome": "pass", "rationale": "Draft.", "evidence": EVIDENCE},
@@ -144,6 +148,7 @@ async def test_a_released_result_pdf_names_the_candidate_and_another_org_is_refu
     user.name = "Łukasz Żółć"
     await roster_repo.link_trainee_to_user(db_session, org_id, trainee, user_id=user.id)
     await db_session.flush()
+    await seat_candidate(db_session, org_id, sitting, trainee)
     await client.put(
         url(sitting, trainee),
         json={
@@ -205,7 +210,9 @@ async def test_a_released_result_pdf_names_the_candidate_and_another_org_is_refu
     assert refused.json()["code"] == "forbidden"
 
 
-async def test_a_released_decision_is_a_row_of_the_csv(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+async def test_a_released_decision_is_a_row_of_the_csv(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
     _org_id, admin = await org_with_admin(client, make_actor)
     sitting = await a_sitting(client, admin, "kings", mode="exam")
     station = await published_station(client, admin, "kings", "Chest pain")
@@ -224,6 +231,10 @@ async def test_a_released_decision_is_a_row_of_the_csv(client: AsyncClient, make
         sitting_id=sitting["id"],
         trainee_ids=[user_id],
         station_version_ids=[station],
+    )
+    # Ada sat her one station (R-11): only a candidate who sat is decided on.
+    await db_session.execute(
+        update(Slot).where(Slot.trainee_id == uuid.UUID(user_id)).values(status="completed")
     )
     saved = await client.put(
         url(sitting["id"], trainee_id),

@@ -3,7 +3,9 @@
 import type { ReactNode } from "react";
 import { Alert, B2CSkeleton, Button, EmptyState, Panel } from "@/foundation/ui";
 import { cn } from "@/foundation/ui/cn";
+import { READER_EMPTY_TEXT } from "@/capabilities/authoring/parts/CannotAuthor";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
 /**
  * A section's list: a header strip, an action error, and one of
@@ -25,10 +27,17 @@ export function ListCard({
   loading?: boolean;
   error?: string | null;
   onDismissError?: () => void;
-  empty: { title: string; description: string; action?: ReactNode };
+  /** `description` guides an author; a reader sees "Nothing here yet." unless `sameForReaders`. */
+  empty: {
+    title: string;
+    description: string;
+    sameForReaders?: boolean;
+    action?: ReactNode;
+  };
   children: ReactNode;
 }) {
   const chrome = useAuthoringChrome();
+  const canAuthor = useCanAuthor();
 
   return (
     <Panel padding="none" className="overflow-hidden">
@@ -42,7 +51,9 @@ export function ListCard({
           {countLabel} <span className={chrome.captionMuted}>{count}</span>
         </span>
         {meta ? (
-          <span className={`text-osce-caption ${chrome.iconMuted}`}>{meta}</span>
+          <span className={`text-osce-caption ${chrome.iconMuted}`}>
+            {meta}
+          </span>
         ) : null}
       </div>
       {error ? (
@@ -67,7 +78,11 @@ export function ListCard({
         <div className="p-6">
           <EmptyState
             title={empty.title}
-            description={empty.description}
+            description={
+              canAuthor || empty.sameForReaders
+                ? empty.description
+                : READER_EMPTY_TEXT
+            }
             action={empty.action}
           />
         </div>

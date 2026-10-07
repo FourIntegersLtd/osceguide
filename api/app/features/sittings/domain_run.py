@@ -12,7 +12,7 @@ slots.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -77,43 +77,53 @@ class CircuitNotPaused(Exception):
     """The clock is running, so there is nothing to resume."""
 
 
-def next_step(position: Position, *, slot_count: int, timing: Timing) -> Step:
+def next_step(
+    position: Position, *, slot_count: int, timing: Timing, done: Collection[int] = frozenset()
+) -> Step:
     """What follows where the circuit is now.
 
     The whole sequence, in one place, so the scheduled job and every override
     agree about what "next" means. Reading and its consultation belong to the
     same station; a break falls between two stations and never after the last,
     because there would be nothing to come back to.
+
+    `done` is the stations already sat or skipped, which the walk passes over:
+    a station given back after the circuit has moved on (redo) returns the
+    circuit to the first station still owed, rather than replaying every one
+    after it (R-12). A break is taken only on the walk's ordinary path.
     """
     if slot_count <= 0:
         return Finished()
 
-    breaks = {entry.after_station for entry in timing.breaks}
-
     if position.phase is None or position.slot_index is None:
-        return Reading(slot_index=0)
+        return _reading_or_finished(_next_open(-1, slot_count, done))
 
     index = position.slot_index
 
     if position.phase is RunPhase.READING:
         return Simulation(slot_index=index)
 
+    upcoming = _next_open(index, slot_count, done)
     if position.phase is RunPhase.BREAK:
         # A break is named by the station it follows, which is `index + 1`
-        # in 1-based terms; the station it returns to is the next slot.
-        return _reading_or_finished(index + 1, slot_count)
+        # in 1-based terms; the station it returns to is the next one owed.
+        return _reading_or_finished(upcoming)
 
     # A consultation has ended.
     finished_station = index + 1
-    if finished_station >= slot_count:
-        return Finished()
-    if finished_station in breaks:
+    breaks = {entry.after_station for entry in timing.breaks}
+    if upcoming == finished_station and finished_station in breaks:
         return BreakStep(after_station=finished_station)
-    return Reading(slot_index=finished_station)
+    return _reading_or_finished(upcoming)
 
 
-def _reading_or_finished(index: int, slot_count: int) -> Step:
-    return Reading(slot_index=index) if index < slot_count else Finished()
+def _next_open(after: int, slot_count: int, done: Collection[int]) -> int | None:
+    """The first station after `after` that has not been sat or skipped, or None."""
+    return next((index for index in range(after + 1, slot_count) if index not in done), None)
+
+
+def _reading_or_finished(index: int | None) -> Step:
+    return Reading(slot_index=index) if index is not None else Finished()
 
 
 def step_window(step: Step, *, timing: Timing, now: datetime) -> tuple[datetime, datetime]:

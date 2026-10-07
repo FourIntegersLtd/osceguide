@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership
 from app.features.notifications import service as notifications
 from tests.support.catalog import create_exam
+from tests.support.decisions import seat_candidate
 from tests.support.rubrics import published_feedback_version
 from tests.support.tokens import bearer
 
@@ -60,6 +61,7 @@ async def a_sitting_and_named_trainee(
     trainee = Trainee(org_id=org_id, email=email)
     db_session.add_all([sitting, trainee])
     await db_session.flush()
+    await seat_candidate(db_session, org_id, sitting.id, trainee.id)
     return sitting.id, trainee.id, email
 
 
@@ -234,6 +236,7 @@ async def test_a_candidate_reads_their_released_result(
     assert user is not None
     await roster_repo.link_trainee_to_user(db_session, org_id, trainee, user_id=user.id)
     await db_session.flush()
+    await seat_candidate(db_session, org_id, sitting, trainee)
 
     await client.put(
         url(sitting, trainee),
@@ -332,6 +335,7 @@ async def a_released_result(client: AsyncClient, make_actor, db_session: AsyncSe
     assert user is not None
     await roster_repo.link_trainee_to_user(db_session, org_id, trainee, user_id=user.id)
     await db_session.flush()
+    await seat_candidate(db_session, org_id, sitting, trainee)
 
     await client.put(
         url(sitting, trainee),
@@ -502,6 +506,8 @@ async def test_a_bulk_release_emails_each_candidate_and_skips_the_unready(
     db_session.add_all([second_row, draft_row])
     await db_session.flush()
     second, draft = second_row.id, draft_row.id
+    for seated in (second, draft):
+        await seat_candidate(db_session, org_id, sitting, seated)
 
     decision = {"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE}
     for trainee in (first, second, draft):
@@ -563,9 +569,10 @@ async def test_a_released_exam_decision_carries_the_recruitment_outcome(
     assert released.json()["recruitment_outcome"] == "reserve"
 
 
-async def test_a_training_sitting_refuses_a_recruitment_outcome(
+async def test_a_training_sitting_takes_no_decision_at_all(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
+    """R-11: a training sitting stops at Mark, so no outcome is recorded on it, recruitment or not."""
     from app.features.sittings.models import Sitting
 
     org_id, admin = await org_with_admin(client, make_actor)
@@ -577,14 +584,38 @@ async def test_a_training_sitting_refuses_a_recruitment_outcome(
     )
     db_session.add(practice)
     await db_session.flush()
+    await seat_candidate(db_session, org_id, practice.id, trainee)
 
+    # An assessment outcome alone, not just a recruitment one. One request only:
+    # a refusal rolls back the shared test session, and the fixtures with it.
     response = await client.put(
         url(practice.id, trainee),
-        json={"assessment_outcome": "pass", "recruitment_outcome": "hired", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "evidence": EVIDENCE},
         headers=bearer(admin),
     )
 
-    assert (response.status_code, response.json()["code"]) == (422, "recruitment_outside_exam")
+    assert (response.status_code, response.json()["code"]) == (409, "decision_outside_exam")
+
+
+async def test_a_candidate_who_sat_nothing_takes_no_decision(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-11: on the roster but absent, or on the circuit but skipped, is no evidence to decide on."""
+    from app.features.roster.models import Trainee
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, _ = await a_sitting_and_trainee(db_session, org_id)
+    absent = Trainee(org_id=org_id, email=f"absent{uuid.uuid4().hex[:6]}@example.com")
+    db_session.add(absent)
+    await db_session.flush()
+
+    response = await client.put(
+        url(sitting, absent.id),
+        json={"assessment_outcome": "fail", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+
+    assert (response.status_code, response.json()["code"]) == (409, "candidate_did_not_sit")
 
 
 async def test_a_signed_off_decision_goes_back_to_draft_until_it_is_released(

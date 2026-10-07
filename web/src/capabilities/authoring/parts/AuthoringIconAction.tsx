@@ -10,6 +10,7 @@ import {
   b2bIconTooltipChipBase,
 } from "@/foundation/ui/b2bTokens";
 import { useAuthoringChrome } from "@/capabilities/authoring/parts/useAuthoringChrome";
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 
 const iconFocus =
   "focus:outline-none focus:ring-2 focus:ring-osce-accent/20 focus:ring-offset-1";
@@ -21,11 +22,7 @@ const b2cTooltipChip =
   "pointer-events-none z-[200] w-max max-w-[220px] rounded-osce-md bg-ink px-3 py-1.5 text-osce-caption text-white";
 
 export type AuthoringIconActionVariant =
-  | "default"
-  | "primary"
-  | "danger"
-  | "warning"
-  | "ghost";
+  "default" | "primary" | "danger" | "warning" | "ghost";
 
 type SharedProps = {
   label: string;
@@ -33,16 +30,18 @@ type SharedProps = {
   busyLabel?: string;
   disabled?: boolean;
   variant?: AuthoringIconActionVariant;
+  /** A write: hidden from anyone who cannot author. */
+  write?: boolean;
   children: ReactNode;
 };
 
 type Props = SharedProps &
-  (
-    | { href: string; onClick?: never }
-    | { href?: never; onClick: () => void }
-  );
+  ({ href: string; onClick?: never } | { href?: never; onClick: () => void });
 
-function variantClass(variant: AuthoringIconActionVariant, b2c: boolean): string {
+function variantClass(
+  variant: AuthoringIconActionVariant,
+  b2c: boolean,
+): string {
   if (b2c) {
     switch (variant) {
       case "primary":
@@ -91,11 +90,14 @@ export function AuthoringIconAction({
   busyLabel,
   disabled,
   variant = "default",
+  write = false,
   children,
   href,
   onClick,
 }: Props) {
   const chrome = useAuthoringChrome();
+  const canAuthor = useCanAuthor();
+  if (write && !canAuthor) return null;
   const tooltip = busy ? (busyLabel ?? label) : label;
   const classes = variantClass(variant, chrome.b2c);
   const icon = busy ? <ActionSpinner /> : children;
@@ -128,6 +130,15 @@ export function AuthoringIconAction({
   );
 }
 
-export function AuthoringRowActions({ children }: { children: ReactNode }) {
+/** `write` marks a group made only of writes: it is hidden from anyone who cannot author. */
+export function AuthoringRowActions({
+  children,
+  write = false,
+}: {
+  children: ReactNode;
+  write?: boolean;
+}) {
+  const canAuthor = useCanAuthor();
+  if (write && !canAuthor) return null;
   return <div className="flex shrink-0 items-center gap-1">{children}</div>;
 }

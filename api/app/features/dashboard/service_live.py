@@ -99,6 +99,7 @@ async def build_live_board(session: AsyncSession, org_id: uuid.UUID, *, now: dat
                     phase_ends_at=circuit.phase_ends_at,
                     paused_at=circuit.paused_at,
                     attempt_status=attempt.status if attempt else None,
+                    auto_advance=circuit.auto_advance,
                     now=now,
                 ),
             )
