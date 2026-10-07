@@ -16,6 +16,7 @@ import procrastinate
 from app.core.db import import_all_models
 from app.core.jobs import get_jobs_app
 from app.core.logging import configure_logging, get_logger
+from app.core.observability import configure_sentry
 from app.core.settings import get_settings
 
 
@@ -38,6 +39,8 @@ def main() -> None:
     """Start the worker: take jobs from the queue and run them until the process is stopped."""
     settings = get_settings()
     configure_logging(settings)
+    if configure_sentry(settings):
+        get_logger(__name__).info("error reporting on", environment=settings.app_env.value)
     app = build_worker_app()
     get_logger(__name__).info(
         "worker starting", concurrency=settings.worker_concurrency, tasks=list(app.tasks)
