@@ -18,7 +18,7 @@ import { useCurrentExam } from "@/foundation/session";
 import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
 import { createSet } from "@/domains/train/api";
-import { incompleteVersionIds } from "@/domains/train/mocks/model";
+import { describeCreateSetFailure, incompleteVersionIds } from "@/domains/train/mocks/model";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 import {
   defaultExamCode,
@@ -114,8 +114,8 @@ export function CombineStations({ workspace }: { workspace: MockWorkspace }) {
       window.setTimeout(() => {
         router.push(hrefFor("/mocks/list"));
       }, 700);
-    } catch {
-      setErrorText("Error creating mock");
+    } catch (cause) {
+      setErrorText(describeCreateSetFailure(cause));
     } finally {
       setIsCreating(false);
     }

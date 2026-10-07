@@ -4,22 +4,19 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineArrowPath, HiOutlineCheck } from "react-icons/hi2";
 import { Alert, Button, Modal, StationCompletionProgressBar, cn, productTokens, Panel } from "@/foundation/ui";
-import { errorMessage } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { createSet } from "@/domains/train/api";
 import { AddExamDate } from "@/domains/train/dashboard/AddExamDate";
 import { UpgradePlans } from "@/domains/train/mocks/SetupPrompts";
-import { attemptedVersionIds, chooseStations } from "@/domains/train/mocks/model";
+import { attemptedVersionIds, chooseStations, describeCreateSetFailure, nothingPickableMessage } from "@/domains/train/mocks/model";
 import {
   accessState,
   defaultExamCode,
   useExamStations,
   type MockWorkspace,
 } from "@/domains/train/mocks/useMockWorkspace";
-
-const FREE_STATION_LIMIT = 3;
 
 /** Remembered per session so the exam-date prompt doesn't reopen on every visit. */
 const EXAM_DATE_SKIP_KEY = "exam_date_prompt_skipped";
@@ -76,6 +73,8 @@ export function MockSetup({
   const attempted = useMemo(() => attemptedVersionIds(examSets), [examSets]);
   const hasLockedSets = examSets.some((set) => set.locked);
   const access = accessState(workspace, examCode);
+  // `chooseStations` falls back to attempted stations, so it is empty only when the exam shows none.
+  const nothingPickable = stations.length === 0;
   const missingExamDate = session !== null && !session.user.exam_date;
   const showExamDateModal = missingExamDate && !examDateSkipped;
 
@@ -97,7 +96,7 @@ export function MockSetup({
         excludeVersionIds: includePreviouslyAttempted ? undefined : attempted,
       });
       if (picked.length === 0) {
-        setError("An error occurred");
+        setError("Enter how many stations you want, at least 1.");
         return;
       }
       const set = await createSet({
@@ -109,7 +108,7 @@ export function MockSetup({
       onCreated();
       router.push(hrefFor(`/mocks/${set.id}`));
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(describeCreateSetFailure(cause));
       // The old backend flagged this refusal with `show_upgrade_modal`.
       setShowUpgradeModal(hasCode(cause, "not_entitled"));
     } finally {
@@ -124,14 +123,30 @@ export function MockSetup({
         completedCount={attempted.size}
         totalCount={stations.length}
         hasPaid={access.hasPaid}
-        freeLimit={FREE_STATION_LIMIT}
+        freeLimit={workspace.trial.stations}
       />
+
+      {access.hasPaid === false && !access.subscriptionExpired ? (
+        <p className="text-osce-body text-ink-muted">
+          Free trial: {workspace.trial.stations} stations, each up to {workspace.trial.attempts_per_station} times,
+          within {workspace.trial.days} days of signing up.
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Panel title="Session setup">
             <div className="flex flex-col gap-4">
               {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
               {error ? <Alert tone="danger">{error}</Alert> : null}
+              {nothingPickable ? (
+                <Alert tone="info" title="No stations to build a session from">
+                  {nothingPickableMessage({
+                    hasPaid: access.hasPaid,
+                    subscriptionExpired: access.subscriptionExpired,
+                    trial: workspace.trial,
+                  })}
+                </Alert>
+              ) : null}
 
               <label htmlFor="name" className="flex flex-col gap-1.5">
                 <span className={productTokens.b2cFieldLabel}>Session name</span>
@@ -181,7 +196,7 @@ export function MockSetup({
               ) : null}
 
               <div>
-                <Button type="button" variant="primary" size="md" onClick={submit} disabled={isSubmitting}>
+                <Button type="button" variant="primary" size="md" onClick={submit} disabled={isSubmitting || nothingPickable}>
                   {isSubmitting ? <HiOutlineArrowPath className="h-4 w-4 animate-spin" aria-hidden /> : null}
                   {isSubmitting ? "Creating" : "Create session"}
                 </Button>

@@ -134,9 +134,19 @@ export function startSetAttempt(setId: string, entryId: string): Promise<Started
   );
 }
 
-/** What this person may practise. The mocks screens gate on it. */
+/**
+ * What the free trial allows. Declared here until the generated schema carries the new `trial`
+ * field of `GET /me/entitlements`; swap for the generated type then.
+ */
+export interface TrialLimits {
+  stations: number;
+  days: number;
+  attempts_per_station: number;
+}
+
+/** What this person may practise, and what the free trial allows. The mocks screens gate on it. */
 export function listEntitlements(signal?: AbortSignal) {
-  return platformRequest<{ items: Entitlement[] }>("/api/v1/me/entitlements", { signal });
+  return platformRequest<{ items: Entitlement[]; trial: TrialLimits }>("/api/v1/me/entitlements", { signal });
 }
 
 /*

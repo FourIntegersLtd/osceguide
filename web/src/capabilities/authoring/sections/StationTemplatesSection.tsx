@@ -39,7 +39,7 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { PublishStatusLine } from "@/capabilities/authoring/parts/StatusPills";
 import { ImportStationDialog } from "@/capabilities/authoring/imports/ImportStationDialog";
-import { latestOf } from "@/capabilities/authoring/sections/versions";
+import { canManageTemplate, latestOf } from "@/capabilities/authoring/sections/versions";
 import {
   stationTemplateEditPath,
   stationTemplateNewPath,
@@ -95,10 +95,7 @@ export function StationTemplatesSection() {
   const action = useAction(templates.reload);
   const items = templates.data ?? [];
 
-  const newHref =
-    examFilter !== AUTHORING_ALL_EXAMS
-      ? `${stationTemplateNewPath(hrefFor)}?exam=${encodeURIComponent(examFilter)}`
-      : stationTemplateNewPath(hrefFor);
+  const newHref = stationTemplateNewPath(hrefFor, examFilter !== AUTHORING_ALL_EXAMS ? examFilter : null);
 
   return (
     <div className="space-y-4">
@@ -155,8 +152,9 @@ export function StationTemplatesSection() {
       >
         {items.map((template) => {
           const { published, draft } = latestOf(template.versions);
+          const manageable = canManageTemplate(scope.kind, template.owner_kind);
           const editHref =
-            draft
+            draft && manageable
               ? stationTemplateEditPath(hrefFor, template.id, draft.version)
               : null;
           return (
@@ -187,13 +185,16 @@ export function StationTemplatesSection() {
                       addStationTemplateVersion(scope, template.id),
                     )
             }
-            onPublish={() =>
-              void action.run(`publish:${template.id}`, () =>
-                publishStationTemplate(scope, template.id),
-              )
+            onPublish={
+              manageable
+                ? () =>
+                    void action.run(`publish:${template.id}`, () =>
+                      publishStationTemplate(scope, template.id),
+                    )
+                : undefined
             }
             onDeleteDraft={
-              draft
+              draft && manageable
                 ? () =>
                     setPendingConfirm({
                       kind: "delete-draft",
@@ -205,7 +206,7 @@ export function StationTemplatesSection() {
                 : undefined
             }
             onArchivePublished={
-              published
+              published && manageable
                 ? () =>
                     setPendingConfirm({
                       kind: "archive-live",
@@ -333,7 +334,8 @@ function TemplateRow({
   onCopy?: () => void;
   /** Absent on a platform template seen from an organisation. */
   onAddVersion?: () => void;
-  onPublish: () => void;
+  /** Absent on a platform template seen from an organisation. */
+  onPublish?: () => void;
   onDeleteDraft?: () => void;
   onArchivePublished?: () => void;
 }) {
@@ -351,7 +353,7 @@ function TemplateRow({
       onOpen={viewHref ? () => router.push(viewHref) : undefined}
       detail={
         <PublishStatusLine
-          kindLabel={onCopy ? [template.exam_code, "OSCE Guide"].filter(Boolean).join(" · ") : template.exam_code}
+          kindLabel={onCopy ? [template.exam_code, "Platform template"].filter(Boolean).join(" · ") : template.exam_code}
           published={published}
           draft={draft}
           archivedOnly={archivedOnly}
@@ -386,7 +388,7 @@ function TemplateRow({
             <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
           </AuthoringIconAction>
         ) : null}
-        {draft ? (
+        {draft && onPublish ? (
           <AuthoringIconAction
             variant="primary"
             label="Publish draft"

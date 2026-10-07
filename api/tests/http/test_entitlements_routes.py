@@ -54,6 +54,8 @@ async def test_an_institution_grants_and_the_student_sees_it(client: AsyncClient
         ("plab", "org_grant", True)
     ]
 
+    assert mine.json()["trial"] == {"stations": 3, "days": 14, "attempts_per_station": 3}
+
     listed = await client.get("/api/v1/orgs/kings/entitlements", headers=bearer(admin))
     assert [e["id"] for e in listed.json()["items"]] == [granted.json()["id"]]
 

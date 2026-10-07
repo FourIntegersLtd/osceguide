@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { PlatformError } from "@/foundation/platform-client";
 import type { StationSet } from "@/domains/train/api";
 import {
   anyStationMarking,
@@ -15,6 +16,8 @@ import {
   sessionState,
   stationFeedbackState,
   type AttemptStatusRecord,
+  describeCreateSetFailure,
+  nothingPickableMessage,
 } from "@/domains/train/mocks/model";
 
 function set(over: Partial<StationSet> = {}): StationSet {
@@ -243,5 +246,46 @@ describe("checkMilestone", () => {
 describe("flaggedEntryPath", () => {
   it("reopens the session entry a station was flagged in", () => {
     assert.equal(flaggedEntryPath({ set_id: "set1", entry_id: "e2" }), "/mocks/set1/stations/e2");
+  });
+});
+
+describe("nothingPickableMessage", () => {
+  const trial = { stations: 5, days: 21, attempts_per_station: 2 };
+
+  it("quotes the trial limits the server sent when the free trial is used up", () => {
+    assert.equal(
+      nothingPickableMessage({ hasPaid: false, subscriptionExpired: false, trial }),
+      "Your free trial is used up. It covers 5 stations, each sat up to 2 times, within 21 days of signing up. Subscribe to keep practising.",
+    );
+  });
+
+  it("tells a lapsed subscriber their access has ended", () => {
+    assert.match(
+      nothingPickableMessage({ hasPaid: false, subscriptionExpired: true, trial }),
+      /access to this exam has ended/,
+    );
+  });
+
+  it("says the exam is empty for someone with access", () => {
+    assert.match(
+      nothingPickableMessage({ hasPaid: true, subscriptionExpired: false, trial }),
+      /no stations for this exam yet/,
+    );
+  });
+});
+
+describe("describeCreateSetFailure", () => {
+  const refusal = (status: number, code: string, details?: Record<string, unknown>) =>
+    new PlatformError(status, { code, message: "server wording", details } as ConstructorParameters<typeof PlatformError>[1]);
+
+  it("gives each refusal its own sentence, never 'Error creating mock'", () => {
+    assert.match(describeCreateSetFailure(refusal(403, "not_entitled", { reason: "trial_exhausted" })), /used up/);
+    assert.match(describeCreateSetFailure(refusal(409, "set_locked")), /locked/);
+    assert.match(describeCreateSetFailure(refusal(409, "station_not_published")), /not available/);
+  });
+
+  it("falls back to the server's message, then a generic sentence", () => {
+    assert.equal(describeCreateSetFailure(refusal(500, "internal_error")), "server wording");
+    assert.equal(describeCreateSetFailure(undefined), "We could not create this session. Please try again.");
   });
 });

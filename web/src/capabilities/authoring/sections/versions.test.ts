@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { latestOf } from "@/capabilities/authoring/sections/versions";
+import { canManageTemplate, latestOf } from "@/capabilities/authoring/sections/versions";
 
 const v = (version: number, status: string) => ({ version, status });
 
@@ -25,5 +25,16 @@ describe("latestOf", () => {
 
   it("does not call an empty template archived", () => {
     assert.equal(latestOf([]).archivedOnly, false);
+  });
+});
+
+describe("canManageTemplate", () => {
+  it("lets an organisation manage its own templates and the platform manage its own", () => {
+    assert.equal(canManageTemplate("org", "organization"), true);
+    assert.equal(canManageTemplate("platform", "platform"), true);
+  });
+
+  it("offers an organisation no publish, archive or delete on a platform template", () => {
+    assert.equal(canManageTemplate("org", "platform"), false);
   });
 });

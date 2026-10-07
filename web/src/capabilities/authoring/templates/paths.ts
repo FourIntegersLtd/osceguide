@@ -4,8 +4,10 @@ export function stationTemplatesListPath(hrefFor: (path: string) => string): str
   return `${hrefFor("/authoring")}/station-templates`;
 }
 
-export function stationTemplateNewPath(hrefFor: (path: string) => string): string {
-  return `${stationTemplatesListPath(hrefFor)}/new`;
+/** The new-template wizard, with the exam already chosen when the caller knows it. */
+export function stationTemplateNewPath(hrefFor: (path: string) => string, examCode?: string | null): string {
+  const base = `${stationTemplatesListPath(hrefFor)}/new`;
+  return examCode ? `${base}?exam=${encodeURIComponent(examCode)}` : base;
 }
 
 export function stationTemplateEditPath(

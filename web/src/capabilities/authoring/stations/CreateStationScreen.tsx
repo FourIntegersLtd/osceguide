@@ -294,8 +294,8 @@ export function CreateStationScreen() {
               {form.needsTemplateForLayout ? (
                 <>
                   This exam has no built-in station layout. Create a station template for this exam
-                  first, then publish it and pick it here.{" "}
-                  <Link href={stationTemplateNewPath(hrefFor)} className="font-semibold text-accent underline">
+                  first, publish it from the templates list, then pick it here. The exam is filled in for you.{" "}
+                  <Link href={stationTemplateNewPath(hrefFor, form.examCode)} className="font-semibold text-accent underline">
                     Create a station template
                   </Link>
                 </>

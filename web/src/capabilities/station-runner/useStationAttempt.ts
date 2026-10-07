@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hasCode } from "@/foundation/platform-client";
+import { rememberedVerdict } from "@/capabilities/station-runner/rememberedAttempt";
 import {
   listMyAttempts,
+  readAttempt,
   readAttemptBrief,
   readAttemptReview,
   type AttemptBrief,
@@ -12,7 +14,16 @@ import {
 
 export type StationAction = "attempt" | "review";
 
+/** What the person is asked before an attempt exists. */
+export type StartGate = { kind: "start" } | { kind: "resume"; attemptId: string };
+
 export interface StationAttempt {
+  /** Set while nothing has been created: press `start` (or `startAgain`) to begin. */
+  gate: StartGate | null;
+  /** Begin, picking up this tab's unstarted or running attempt if there is one. */
+  start: () => void;
+  /** Abandon this tab's running attempt and create a new one. */
+  startAgain: () => void;
   attemptId: string | null;
   brief: AttemptBrief | null;
   review: AttemptReview | null;
@@ -33,17 +44,15 @@ export interface StationAttempt {
 /**
  * The attempt this station screen is showing, and the station behind it.
  *
- * The attempt is created when the screen opens rather than when the patient is
- * called, because the reading period reads *its* brief: the library's own read
- * carries no station content on purpose, so there is nothing to show until an
- * attempt exists to ask about.
+ * The attempt is created when the person presses Start, not when the screen opens: the reading
+ * period reads *its* brief (the library's own read carries no station content on purpose), but
+ * an attempt made on open piled up as "Not started" for everyone who only looked.
  *
- * The backend counts an attempt against the exam's limit only once the
- * consultation starts, not at creation, but a reload should still not leave a
- * pile of unused attempts behind. So the id is kept in `sessionStorage` under the
- * station being sat, and a reload picks the same one back up. Session storage
- * rather than local: it belongs to this tab's sitting of this station, and a
- * second tab is a second attempt, which is the truth.
+ * The id is kept in `sessionStorage` under the station being sat. On open it is checked against
+ * the server: a running consultation is offered back as Resume, an unstarted one is reused by
+ * Start, and a finished or missing one is forgotten, so a stale id is never handed to the next
+ * sitting. Session storage rather than local: it belongs to this tab's sitting of this
+ * station, and a second tab is a second attempt, which is the truth.
  */
 export function useStationAttempt({
   key,
@@ -70,6 +79,9 @@ export function useStationAttempt({
   const [error, setError] = useState<Error | null>(null);
   const [exhausted, setExhausted] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [gate, setGate] = useState<StartGate | null>(null);
+  /** Set once Start is pressed; `fresh` abandons the remembered attempt. */
+  const [go, setGo] = useState<{ fresh: boolean } | null>(null);
   /*
    * One creation per station, however many times the effect runs.
    *
@@ -83,6 +95,13 @@ export function useStationAttempt({
   const createdFor = useRef<string | null>(null);
 
   const reload = useCallback(() => setReloadKey((n) => n + 1), []);
+  const start = useCallback(() => setGo({ fresh: false }), []);
+  const startAgain = useCallback(() => {
+    forgetStationAttempt(key);
+    createdFor.current = null;
+    creating.current = null;
+    setGo({ fresh: true });
+  }, [key]);
 
   useEffect(() => {
     let live = true;
@@ -99,6 +118,28 @@ export function useStationAttempt({
           id = attemptIdFromUrl ?? (await latestFinished({ stationVersionId, setEntryId }));
         } else {
           id = remembered(key);
+          if (id) {
+            const status = await readAttempt(id).then(
+              (found) => found.status,
+              () => null,
+            );
+            const verdict = rememberedVerdict(status);
+            if (verdict === "discard") {
+              forgetStationAttempt(key);
+              id = null;
+            } else if (!go) {
+              if (!live) return;
+              setGate(verdict === "resume" ? { kind: "resume", attemptId: id } : { kind: "start" });
+              setAttemptId(null);
+              return;
+            }
+          } else if (!go) {
+            if (!live) return;
+            setGate({ kind: "start" });
+            setAttemptId(null);
+            return;
+          }
+          setGate(null);
           if (!id) {
             if (createdFor.current !== key) {
               createdFor.current = key;
@@ -160,9 +201,9 @@ export function useStationAttempt({
     // `create` is a new closure every render in most callers; the station key
     // is what actually identifies the work.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, action, attemptIdFromUrl, stationVersionId, setEntryId, reloadKey]);
+  }, [key, action, attemptIdFromUrl, stationVersionId, setEntryId, reloadKey, go]);
 
-  return { attemptId, brief, review, loading, error, exhausted, reload };
+  return { attemptId, brief, review, loading, error, exhausted, reload, gate, start, startAgain };
 }
 
 /**

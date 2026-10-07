@@ -72,3 +72,55 @@ async def test_a_version_in_a_practice_set_cannot_be_archived(
     assert response.status_code == 409, response.text
     assert response.json()["code"] == "not_archivable"
     assert response.json()["details"] == {"reason": "in_use", "circuits": 0, "sets": 1}
+
+
+async def _publish_and_put_on_a_circuit(
+    client: AsyncClient, make_actor, db_session: AsyncSession, *, ended: bool
+):  # type: ignore[no-untyped-def]
+    """An org's published station on a circuit, finished or not; returns (headers, archive url)."""
+    from datetime import UTC, datetime
+
+    from app.features.sittings.models import Circuit, CircuitStation, Sitting
+    from tests.support.rubrics import published_feedback_version
+
+    org_id = await seed_org(client, make_actor)
+    owner = await member(make_actor, org_id, "kings", "owner")
+    station = await make_station(client, owner)
+    base = f"/api/v1/orgs/kings/stations/{station['id']}/versions/1"
+    assert (await client.post(f"{base}/publish", headers=bearer(owner))).status_code == 200
+    version_id = (
+        await db_session.execute(select(StationVersion.id).where(StationVersion.station_id == station["id"]))
+    ).scalar_one()
+    rubric_version = await published_feedback_version(db_session, org_id)
+    sitting = Sitting(org_id=org_id, name="S", mode="exam", rubric_version_id=rubric_version.id)
+    db_session.add(sitting)
+    await db_session.flush()
+    circuit = Circuit(
+        org_id=org_id, sitting_id=sitting.id, name="C", ended_at=datetime.now(UTC) if ended else None
+    )
+    db_session.add(circuit)
+    await db_session.flush()
+    db_session.add(CircuitStation(circuit_id=circuit.id, position=0, station_version_id=version_id))
+    await db_session.commit()
+    return bearer(owner), f"{base}/archive"
+
+
+async def test_a_version_on_an_unfinished_circuit_cannot_be_archived(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    headers, url = await _publish_and_put_on_a_circuit(client, make_actor, db_session, ended=False)
+
+    response = await client.post(url, headers=headers)
+
+    assert response.status_code == 409, response.text
+    assert response.json()["details"] == {"reason": "in_use", "circuits": 1, "sets": 0}
+
+
+async def test_a_version_only_on_an_ended_circuit_can_be_archived(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    headers, url = await _publish_and_put_on_a_circuit(client, make_actor, db_session, ended=True)
+
+    response = await client.post(url, headers=headers)
+
+    assert response.status_code == 200, response.text

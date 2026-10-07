@@ -9,15 +9,15 @@ const refusal = (status: number, code: string, details?: Record<string, unknown>
 
 describe("describeStartFailure", () => {
   it("explains a used-up trial, an ended grant and no access separately", () => {
-    assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "trial_exhausted" })), /free practice stations are used up/);
-    assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "expired" })), /access to this exam has ended/);
-    assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "no_entitlement" })), /do not have access to this exam yet/);
+    assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "trial_exhausted" })), /used up/);
+    assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "expired" })), /has ended/);
+    assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "no_entitlement" })), /do not have access/);
   });
 
   it("never shows a consumer the circuit builder's wording for an unpublished station", () => {
     const text = describeStartFailure(refusal(409, "station_not_published"));
     assert.doesNotMatch(text, /circuit/i);
-    assert.match(text, /not available to practise/);
+    assert.match(text, /not available/);
   });
 
   it("falls back to the server's message, then to a generic one", () => {

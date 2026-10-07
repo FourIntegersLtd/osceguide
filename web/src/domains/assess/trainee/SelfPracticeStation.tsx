@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Button, Card, CardContent } from "@/foundation/ui";
+import { useCallback } from "react";
+import { Alert, AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createAttempt } from "@/capabilities/attempt-runner";
@@ -30,10 +30,7 @@ export function SelfPracticeStation({
   attemptId?: string | null;
 }) {
   const { hrefFor } = useSurface();
-  // Opening the page only offers the station; the attempt (which the reading period
-  // reads its brief from) is created by this explicit Start. A link to a review, or
-  // back into an attempt in progress, goes straight through.
-  const [started, setStarted] = useState(false);
+  const practiceHref = hrefFor("/trainee/practice");
 
   const context = useAsync(
     async (signal) => {
@@ -62,21 +59,7 @@ export function SelfPracticeStation({
   return (
     <AsyncBoundary state={context}>
       {({ station, exam }) =>
-        station && action === "attempt" && !attemptId && !started ? (
-          <Card>
-            <CardContent className="space-y-3 py-6">
-              <h1 className="text-osce-title font-semibold text-ink">{station.title}</h1>
-              <p className="text-osce-body text-ink-muted">
-                {Math.round((exam?.default_reading_seconds ?? 0) / 60)} min reading,{" "}
-                {Math.round((exam?.default_simulation_seconds ?? 600) / 60)} min station. Nothing here is
-                marked for the record. Starting begins your attempt.
-              </p>
-              <Button variant="commit" onClick={() => setStarted(true)}>
-                Start
-              </Button>
-            </CardContent>
-          </Card>
-        ) : station ? (
+        station ? (
           <StationScreen
             source={{ kind: "self_practice", orgSlug, stationId }}
             action={action}
@@ -92,15 +75,15 @@ export function SelfPracticeStation({
             attemptLimit={null}
             createAttempt={create}
             nextHref={null}
-            completeHref={hrefFor("/trainee/practice")}
-            backHref={hrefFor("/trainee/practice")}
+            completeHref={practiceHref}
+            backHref={practiceHref}
           />
         ) : (
           <Alert tone="warning" title="This station is not available">
             <p>
               It may have been withdrawn, is not published yet, or belongs to another organisation.
             </p>
-            <Link href={hrefFor("/trainee/practice")} className="mt-3 inline-block font-semibold underline">
+            <Link href={practiceHref} className="mt-3 inline-block font-semibold underline">
               Back to practice
             </Link>
           </Alert>

@@ -8,6 +8,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.pagination import Page
+
 # What a practice-access row says about the person: invited (the account is waiting for them
 # to choose a password), active, or revoked (no longer grants anything).
 PracticeAccessStatus = Literal["invited", "active", "revoked"]
@@ -94,6 +96,20 @@ class EntitlementRead(BaseModel):
     ends_at: datetime | None
     revoked_at: datetime | None
     live: bool
+
+
+class TrialLimits(BaseModel):
+    """What the free trial allows, so a screen never hard-codes it."""
+
+    stations: int
+    days: int
+    attempts_per_station: int
+
+
+class MyEntitlements(Page[EntitlementRead]):
+    """A person's grants, with the limits of the free trial they fall back on."""
+
+    trial: TrialLimits
 
 
 class GrantEntitlement(BaseModel):

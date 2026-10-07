@@ -22,6 +22,8 @@ import {
 } from "@/foundation/ui";
 import { b2cRoomOverlay } from "@/foundation/ui/productTokens";
 import { useSurface } from "@/capabilities";
+import { StartFailureAlert } from "@/capabilities/station-runner/StartFailureAlert";
+import { StartGate } from "@/capabilities/station-runner/StartGate";
 import {
   ConsultationPanel,
   ConsultationScreen,
@@ -32,7 +34,6 @@ import {
   usePracticeTimers,
 } from "@/capabilities/attempt-runner";
 import { readResults } from "@/capabilities/attempt-runner";
-import { describeStartFailure } from "@/capabilities/station-runner/startFailure";
 import { MarkingModal } from "@/capabilities/station-runner/MarkingModal";
 import { FeedbackStep } from "@/capabilities/station-runner/FeedbackStep";
 import { TranscriptStep } from "@/capabilities/station-runner/TranscriptStep";
@@ -305,23 +306,26 @@ export function StationScreen(props: StationScreenProps) {
     );
   }
 
+  const leaveHref = backHref ?? completeHref;
   if (attempt.error) {
     return (
-      <Alert tone="danger" title="This station could not be started">
-        <p>{describeStartFailure(attempt.error)}</p>
-        <div className="mt-3 flex gap-2">
-          <Button variant="secondary" size="sm" onClick={attempt.reload}>
-            Try again
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => (backHref ?? completeHref ? router.push((backHref ?? completeHref)!) : router.back())}
-          >
-            Go back
-          </Button>
-        </div>
-      </Alert>
+      <StartFailureAlert
+        cause={attempt.error}
+        onRetry={attempt.reload}
+        onBack={() => (leaveHref ? router.push(leaveHref) : router.back())}
+      />
+    );
+  }
+
+  if (attempt.gate) {
+    return (
+      <StartGate
+        gate={attempt.gate}
+        readingSeconds={effectiveReadingSeconds}
+        simulationSeconds={simulationSeconds}
+        onStart={attempt.start}
+        onStartAgain={attempt.startAgain}
+      />
     );
   }
 

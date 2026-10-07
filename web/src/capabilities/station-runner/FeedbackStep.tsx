@@ -3,14 +3,12 @@
 import { useState } from "react";
 import {
   HiOutlineClock,
-  HiOutlineInformationCircle,
   HiOutlinePresentationChartLine,
 } from "react-icons/hi2";
 import { HiMicrophone } from "react-icons/hi";
 import {
   Alert,
   B2CSegmentedTabs,
-  Button,
   Modal,
   ModalContent,
   type B2CSegmentedTabItem,
@@ -21,6 +19,7 @@ import { DebriefHistory, DebriefChooseModal } from "@/capabilities/debrief";
 import { DebriefTips } from "@/capabilities/debrief/DebriefInformation";
 import { type AttemptBrief, type AttemptReview } from "@/capabilities/attempt-runner";
 import { FeedbackHistory } from "./FeedbackHistory";
+import { DebriefActions } from "./DebriefActions";
 
 type FeedbackTab = "latest" | "history" | "debriefs";
 
@@ -118,28 +117,12 @@ export function FeedbackStep({
 
   return (
     <div className="space-y-4">
-      {marked && (
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setExplaining(true)}
-            className="gap-2"
-          >
-            <HiOutlineInformationCircle className="h-4 w-4" aria-hidden />
-            How debrief works
-          </Button>
-          <Button
-            type="button"
-            onClick={() => openDebrief()}
-            isLoading={loadingDebrief}
-            className="gap-2"
-          >
-            <HiMicrophone className="h-4 w-4" aria-hidden />
-            Start debrief
-          </Button>
-        </div>
-      )}
+      <DebriefActions
+        state={hasFeedback}
+        loadingDebrief={loadingDebrief}
+        onExplain={() => setExplaining(true)}
+        onStart={() => openDebrief()}
+      />
 
       <B2CSegmentedTabs
         className="mb-4"

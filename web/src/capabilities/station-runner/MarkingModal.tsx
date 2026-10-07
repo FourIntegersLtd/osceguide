@@ -43,8 +43,9 @@ function OpenMarkingModal({
   onSkip: () => void;
 }) {
   const { settings } = useCurrentExam();
-  const [slow, setSlow] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [phase, setPhase] = useState<"waiting" | "slow" | "failed">("waiting");
+  const slow = phase === "slow";
+  const failed = phase === "failed";
   const [attempts, setAttempts] = useState(0);
   const waitRef = useRef<MarkingWait | null>(null);
   const onReadyRef = useRef(onReady);
@@ -57,9 +58,11 @@ function OpenMarkingModal({
     const wait = watchMarking({
       isMarked: async () => (await readResults(attemptId)).length > 0,
       onReady: () => onReadyRef.current(),
-      isFailed: async () => (await readAttempt(attemptId)).status === "failed",
-      onSlow: () => setSlow(true),
-      onFailed: () => setFailed(true),
+      failure: {
+        check: async () => (await readAttempt(attemptId)).status === "failed",
+        onFailed: () => setPhase("failed"),
+      },
+      onSlow: () => setPhase((now) => (now === "failed" ? now : "slow")),
     });
     waitRef.current = wait;
     return () => {
@@ -110,8 +113,7 @@ function OpenMarkingModal({
             <Button
               variant="secondary"
               onClick={() => {
-                setFailed(false);
-                setSlow(false);
+                setPhase("waiting");
                 setAttempts((n) => n + 1);
               }}
             >

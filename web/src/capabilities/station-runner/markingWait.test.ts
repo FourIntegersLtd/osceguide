@@ -125,10 +125,12 @@ describe("watchMarking on a failed attempt", () => {
     const events: string[] = [];
     watchMarking({
       isMarked: async () => false,
-      isFailed: async () => clock.timers.now() >= 6_000,
+      failure: {
+        check: async () => clock.timers.now() >= 6_000,
+        onFailed: () => events.push("failed"),
+        },
       onReady: () => events.push("ready"),
       onSlow: () => events.push("slow"),
-      onFailed: () => events.push("failed"),
       timers: clock.timers,
     });
     await clock.advance(10 * 60 * 1000);

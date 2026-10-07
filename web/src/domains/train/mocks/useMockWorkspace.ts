@@ -8,6 +8,7 @@ import {
   listSets,
   loadStationCatalogue,
   type Entitlement,
+  type TrialLimits,
   type StationSet,
 } from "@/domains/train/api";
 
@@ -16,6 +17,7 @@ export interface MockWorkspace {
   exams: Exam[];
   stations: LibraryStation[];
   entitlements: Entitlement[];
+  trial: TrialLimits;
   /** Station version id to title. Entries carry a version id and no title. */
   titles: Map<string, string>;
 }
@@ -42,6 +44,7 @@ export function useMockWorkspace(): AsyncState<MockWorkspace> {
       exams: exams.items,
       stations: library,
       entitlements: entitlements.items,
+      trial: entitlements.trial,
       titles: new Map(library.map((station) => [station.version_id, station.title])),
     };
   }, []);

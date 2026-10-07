@@ -14,7 +14,7 @@ from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin
-from app.features.entitlements import errors, schemas, service, service_org, service_practice_access
+from app.features.entitlements import domain, errors, schemas, service, service_org, service_practice_access
 
 router = APIRouter(tags=["entitlements"])
 
@@ -23,16 +23,24 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 
 @router.get(
     "/me/entitlements",
-    response_model=Page[schemas.EntitlementRead],
+    response_model=schemas.MyEntitlements,
     responses=error_responses(Unauthenticated),
 )
 async def list_my_entitlements(
     principal: CurrentPrincipal, session: Session, clock: ClockDep
-) -> Page[schemas.EntitlementRead]:
+) -> schemas.MyEntitlements:
     """Expired grants are included with `live` computed, because "your access
     ended on the 3rd" is a more useful answer than an empty list."""
     entitlements = await service.list_for_user(session, principal.user_id, now=clock.now())
-    return Page(items=entitlements, next_cursor=None)
+    return schemas.MyEntitlements(
+        items=entitlements,
+        next_cursor=None,
+        trial=schemas.TrialLimits(
+            stations=domain.ALLOWED_TRIAL_STATIONS,
+            days=domain.TRIAL_DAYS,
+            attempts_per_station=domain.TRIAL_ATTEMPTS_PER_STATION,
+        ),
+    )
 
 
 @router.get(

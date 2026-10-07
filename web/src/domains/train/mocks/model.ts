@@ -1,5 +1,7 @@
 import type { SetEntry, StationSet } from "@/domains/train/api";
 import type { AttemptHistoryItem } from "@/capabilities/attempt-runner";
+import { describeStartFailure } from "@/capabilities/station-runner/startFailure";
+import { hasCode, isPlatformError } from "@/foundation/platform-client";
 
 /**
  * The arithmetic the mocks screens do, kept out of the components.
@@ -251,4 +253,36 @@ export function checkMilestone(currentCount: number, previousCount: number): Mil
 /** Where a flagged station reopens: inside the session it was flagged in. */
 export function flaggedEntryPath(flag: { set_id: string; entry_id: string }): string {
   return `/mocks/${encodeURIComponent(flag.set_id)}/stations/${encodeURIComponent(flag.entry_id)}`;
+}
+
+/**
+ * Why a new session cannot be built because the exam shows no stations, in words. The limits are the server's,
+ * never numbers written here.
+ */
+export function nothingPickableMessage(input: {
+  hasPaid: boolean | undefined;
+  subscriptionExpired: boolean;
+  trial: { stations: number; days: number; attempts_per_station: number };
+}): string {
+  const { trial } = input;
+  if (input.subscriptionExpired) {
+    return "Your access to this exam has ended, so there is nothing new to practise. Subscribe or ask your organisation to renew it.";
+  }
+  if (input.hasPaid === false) {
+    return `Your free trial is used up. It covers ${trial.stations} stations, each sat up to ${trial.attempts_per_station} times, within ${trial.days} days of signing up. Subscribe to keep practising.`;
+  }
+  return "There are no stations for this exam yet.";
+}
+
+/**
+ * What to tell somebody whose new session was refused, by the code the API answered with.
+ * Access and unpublished stations read the same as when starting a station.
+ */
+export function describeCreateSetFailure(cause: unknown): string {
+  if (hasCode(cause, "set_locked")) {
+    return "This session is locked because your access has ended. You can still review it.";
+  }
+  if (hasCode(cause, "not_entitled", "station_not_published")) return describeStartFailure(cause);
+  if (isPlatformError(cause)) return cause.message;
+  return "We could not create this session. Please try again.";
 }

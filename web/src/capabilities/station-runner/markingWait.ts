@@ -45,21 +45,28 @@ export function delayBefore(tries: number): number {
   return Math.min(CEILING_MS, FIRST_DELAY_MS * (tries + 1));
 }
 
+/** A check that rejects (a 502 during a restart) has simply not found anything yet. */
+async function orFalse(check: () => Promise<boolean>): Promise<boolean> {
+  try {
+    return await check();
+  } catch {
+    return false;
+  }
+}
+
 export function watchMarking({
   isMarked,
-  isFailed,
+  failure,
   onReady,
   onSlow,
-  onFailed,
   timers = browserTimers,
 }: {
   /** Whether a result is stored. A rejection (a 502 during a restart) counts as "not yet". */
   isMarked: () => Promise<boolean>;
-  /** Whether the attempt is one that will never be marked. A rejection counts as "not yet". */
-  isFailed?: () => Promise<boolean>;
+  /** Whether the attempt will never be marked, and what to do then. A rejection counts as "not yet". */
+  failure?: { check: () => Promise<boolean>; onFailed: () => void };
   onReady: () => void;
   onSlow: () => void;
-  onFailed?: () => void;
   timers?: MarkingWaitTimers;
 }): MarkingWait {
   const startedAt = timers.now();
@@ -86,12 +93,7 @@ export function watchMarking({
       return;
     }
     checking = true;
-    let marked = false;
-    try {
-      marked = await isMarked();
-    } catch {
-      marked = false;
-    }
+    const marked = await orFalse(isMarked);
     checking = false;
     if (stopped) return;
     if (marked) {
@@ -100,18 +102,13 @@ export function watchMarking({
       onReady();
       return;
     }
-    if (isFailed) {
-      let failed = false;
-      try {
-        failed = await isFailed();
-      } catch {
-        failed = false;
-      }
+    if (failure) {
+      const failed = await orFalse(failure.check);
       if (stopped) return;
       if (failed) {
         stopped = true;
         if (timer !== null) timers.clearTimeout(timer);
-        onFailed?.();
+        failure.onFailed();
         return;
       }
     }

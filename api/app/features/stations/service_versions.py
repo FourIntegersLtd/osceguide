@@ -148,15 +148,11 @@ async def _refuse_while_in_use(session: AsyncSession, version_id: uuid.UUID) -> 
 
     Both pin this exact version, so archiving it would leave the slot or the set entry refused
     `station_not_published` the moment somebody opens it. Finished circuits do not count: their
-    history keeps reading an archived version. Imported inside, as `used_by_counts` does.
+    history keeps reading an archived version.
     """
-    from app.features.sittings import service as sittings
-    from app.features.station_sets import service as station_sets
-
-    circuits = (await sittings.circuit_counts_by_station_version(session, [version_id], open_only=True)).get(
-        version_id, 0
-    )
-    sets = (await station_sets.set_counts_by_station_version(session, [version_id])).get(version_id, 0)
+    counts = await _use_counts(session, [version_id], open_circuits_only=True)
+    circuits = counts["circuits"].get(version_id, 0)
+    sets = counts["sets"].get(version_id, 0)
     if circuits or sets:
         raise errors.NotArchivableError(
             "This version is on a circuit that has not finished or in a practice set. "
@@ -250,21 +246,34 @@ async def used_by_counts(session: AsyncSession, station_version_ids: list[uuid.U
     status alone (T6). Imported inside because every one of those slices reads
     stations at module load.
     """
+    counts = await _use_counts(session, station_version_ids)
+    totals: dict[uuid.UUID, int] = dict.fromkeys(station_version_ids, 0)
+    for per_slice in counts.values():
+        for version_id, count in per_slice.items():
+            totals[version_id] = totals.get(version_id, 0) + count
+    return totals
+
+
+async def _use_counts(
+    session: AsyncSession, station_version_ids: list[uuid.UUID], *, open_circuits_only: bool = False
+) -> dict[str, dict[uuid.UUID, int]]:
+    """Per slice, how many things name each station version. The one place the four lookups live.
+
+    Imported inside because every one of those slices reads stations at module load.
+    """
     from app.features.attempts import service as attempts
     from app.features.peer_practice import service as peer_practice
     from app.features.sittings import service as sittings
     from app.features.station_sets import service as station_sets
 
-    totals: dict[uuid.UUID, int] = dict.fromkeys(station_version_ids, 0)
-    for counts in (
-        await sittings.circuit_counts_by_station_version(session, station_version_ids),
-        await attempts.attempt_counts_by_station_version(session, station_version_ids),
-        await peer_practice.session_counts_by_station_version(session, station_version_ids),
-        await station_sets.set_counts_by_station_version(session, station_version_ids),
-    ):
-        for version_id, count in counts.items():
-            totals[version_id] = totals.get(version_id, 0) + count
-    return totals
+    return {
+        "circuits": await sittings.circuit_counts_by_station_version(
+            session, station_version_ids, open_only=open_circuits_only
+        ),
+        "attempts": await attempts.attempt_counts_by_station_version(session, station_version_ids),
+        "peer_sessions": await peer_practice.session_counts_by_station_version(session, station_version_ids),
+        "sets": await station_sets.set_counts_by_station_version(session, station_version_ids),
+    }
 
 
 def _version_read(station_version: StationVersion) -> StationVersionRead:

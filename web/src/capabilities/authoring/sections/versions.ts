@@ -27,3 +27,12 @@ export function latestOf<T extends VersionLike>(versions: readonly T[]): {
 
   return { published, draft, archivedOnly };
 }
+
+/**
+ * Whether the viewer may publish, archive or delete a template. A platform template seen from
+ * an organisation is theirs to copy, not to manage: every such call answers
+ * `station_template_not_found`, so the row offers none of them.
+ */
+export function canManageTemplate(scopeKind: "org" | "platform", ownerKind: string): boolean {
+  return !(scopeKind === "org" && ownerKind === "platform");
+}
