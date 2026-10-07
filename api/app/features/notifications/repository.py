@@ -132,3 +132,29 @@ async def mark_failed(session: AsyncSession, message_id: uuid.UUID, *, attempts:
         .where(OutboundMessage.id == message_id)
         .values(status="failed", attempts=attempts, claimed_at=None, last_error=error)
     )
+
+
+async def failed_messages(session: AsyncSession, *, limit: int) -> list[OutboundMessage]:
+    """Messages the worker gave up on, most recently abandoned first."""
+    stmt = (
+        select(OutboundMessage)
+        .where(OutboundMessage.status == "failed")
+        .order_by(OutboundMessage.updated_at.desc())
+        .limit(limit)
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
+async def requeue_failed(session: AsyncSession, message_id: uuid.UUID, *, now: datetime) -> bool:
+    """Put an abandoned message back in the queue with a fresh set of attempts.
+
+    Only a `failed` row moves, so a message that was sent or is already queued
+    again is never sent twice by a second press. False when nothing moved.
+    """
+    moved = await session.execute(
+        update(OutboundMessage)
+        .where(OutboundMessage.id == message_id, OutboundMessage.status == "failed")
+        .values(status="pending", attempts=0, available_at=now, claimed_at=None)
+        .returning(OutboundMessage.id)
+    )
+    return moved.scalar_one_or_none() is not None

@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 
 import {
+  changePassword,
   clearPlatformSession,
+  register,
   exchangeLegacyToken,
   hasStoredSession,
   login,
@@ -230,4 +232,31 @@ test("a legacy exchange that needs a second factor stays on the old session", as
   const calls = respond(() => json(CHALLENGE));
   assert.equal(await exchangeLegacyToken("institution", "legacy-token"), null);
   assert.equal(calls().some((call) => call.url.includes("/api/session")), false);
+});
+
+test("an account created but not stored says to sign in, not to try again", async () => {
+  respond((call) => {
+    if (call.url.includes("/api/session")) return new Response(null, { status: 500 });
+    return json({ ...PAIR, status: "signed_in" }, 201);
+  });
+  await assert.rejects(register({ email: "new@example.com", password: "correct horse", name: "New" }), {
+    name: "AccountCreatedNotSignedIn",
+    message:
+      "Your account was created, but we couldn't sign you in. Sign in with the email and password you just chose.",
+  });
+});
+
+test("changing the password adopts the fresh pair, so this tab stays signed in", async () => {
+  const calls = respond((call) => {
+    if (call.url.includes("/api/session/token")) return json({ access_token: "access-1", expires_at: Date.now() + 900_000 });
+    if (call.url.includes("/api/session")) {
+      serverSetsMarker();
+      return new Response(null, { status: 204 });
+    }
+    return json({ access_token: "access-2", refresh_token: "refresh-2", token_type: "bearer", expires_in: 900 });
+  });
+  await changePassword("old password", "new password here");
+  assert.ok(calls().some((call) => call.url.endsWith("/api/v1/auth/change-password")));
+  assert.ok(calls().some((call) => call.method === "POST" && call.url.endsWith("/api/session")));
+  assert.equal(await platformAccessToken(), "access-2");
 });

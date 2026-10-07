@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { platformApiUrl } from "@/foundation/platform-client/client";
+import { refreshTokenPair, type RefreshedPair } from "@/foundation/platform-client/refreshTokenPair";
 import {
   REFRESH_MARGIN_MS,
   clearSessionCookies,
@@ -38,13 +39,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   if (!refreshToken) return noSession();
 
-  let response: Response;
+  let pair: RefreshedPair | null;
   try {
-    response = await fetch(`${platformApiUrl()}/api/v1/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
+    pair = await refreshTokenPair(platformApiUrl(), refreshToken);
   } catch {
     // platform-api unreachable. The chain is probably fine, so the cookies
     // stay and the caller can try again rather than being signed out by a
@@ -55,18 +52,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  if (!response.ok) {
+  if (!pair) {
     // A refused refresh means the chain is spent or revoked. Dropping it sends
     // the next call back through sign-in rather than retrying a token that
     // will never work again.
     return clearSessionCookies(noSession());
   }
 
-  const pair = (await response.json()) as {
-    access_token: string;
-    refresh_token: string;
-    expires_in: number;
-  };
   const next = {
     accessToken: pair.access_token,
     refreshToken: pair.refresh_token,

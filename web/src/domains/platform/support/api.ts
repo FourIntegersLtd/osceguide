@@ -360,3 +360,33 @@ export function reindexTutorMemory(signal?: AbortSignal): Promise<TutorMemoryRei
     signal,
   });
 }
+
+/* ------------------------------------------------------- Undelivered mail */
+
+/**
+ * An email the outbox gave up on after twelve tries (about five hours of
+ * a provider outage). Declared here until the generated types catch up with
+ * `GET /platform/outbox/undelivered`.
+ */
+export interface UndeliveredMessage {
+  id: string;
+  recipient: string;
+  subject: string;
+  template_key: string;
+  attempts: number;
+  last_error: string | null;
+  abandoned_at: string;
+}
+
+/** Every email the outbox stopped trying, most recently abandoned first. */
+export function listUndeliveredMail(signal?: AbortSignal): Promise<UndeliveredMessage[]> {
+  return platformRequest<UndeliveredMessage[]>(`${PLATFORM}/outbox/undelivered`, { signal });
+}
+
+/** Put one abandoned email back in the queue with a fresh set of tries.
+ *  Refused with `message_not_retryable` when it is no longer abandoned. */
+export function retryUndeliveredMail(messageId: string): Promise<void> {
+  return platformRequest<void>(`${PLATFORM}/outbox/${encodeURIComponent(messageId)}/retry`, {
+    method: "POST",
+  });
+}

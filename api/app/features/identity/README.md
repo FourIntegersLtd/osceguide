@@ -45,6 +45,10 @@ live inside it and are never addressed independently.
 - An access token lives 15 minutes; a refresh token is single-use and rotates —
   presenting a rotated token revokes the whole chain (reuse detection).
 - `must_change_password` gates every route except reading yourself and changing it.
+- Changing the password revokes every refresh chain and answers a fresh
+  `TokenPair`, so the device that changed it stays signed in. An SSO-only
+  account is refused `password_login_disabled` and one with no hash yet
+  `password_not_set`, never an `invalid_credentials` no guess could pass.
 - Platform admin is a column on `users`, not an email list and not a membership in
   a reserved org.
 - Registering never grants an org membership. Access comes from `entitlements`.

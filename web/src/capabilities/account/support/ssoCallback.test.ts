@@ -24,3 +24,19 @@ test("a cancelled Entra sign-in says so instead of posting nothing", () => {
     message: "Your organisation's sign-in did not complete. Please try again.",
   });
 });
+
+test("a SAML response the backend refused points at the set-up, not a generic retry", () => {
+  const params = new URLSearchParams("org_slug=riverside&error=sso_verification_failed");
+  assert.deepEqual(readSsoCallback(params), {
+    ok: false,
+    message:
+      "Your organisation's sign-in could not be confirmed. Try again, and if it keeps happening, ask your IT team to check the single sign-on set-up.",
+  });
+});
+
+test("a reload after the token was stripped says the link was used", () => {
+  assert.deepEqual(readSsoCallback(new URLSearchParams("")), {
+    ok: false,
+    message: "This sign-in link has already been used or is incomplete. Start again from the sign-in page.",
+  });
+});

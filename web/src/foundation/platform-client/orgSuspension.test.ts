@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { platformRequest } from "@/foundation/platform-client/client";
-import { isOrgSuspended, subscribeOrgSuspension } from "@/foundation/platform-client/orgSuspension";
+import { switchWorkspace } from "@/foundation/platform-client/auth";
+import {
+  isOrgSuspended,
+  resetOrgSuspension,
+  subscribeOrgSuspension,
+} from "@/foundation/platform-client/orgSuspension";
 
 const realFetch = globalThis.fetch;
 
 afterEach(() => {
   globalThis.fetch = realFetch;
+  resetOrgSuspension();
 });
 
 function refuse(code: string): void {
@@ -31,4 +37,10 @@ test("an ordinary 403 is not a suspension", async () => {
   refuse("forbidden");
   await platformRequest("/api/v1/orgs/elsewhere/sittings").catch(() => undefined);
   assert.equal(isOrgSuspended("elsewhere"), false);
+});
+
+test("switching into a suspended organisation marks it by name", async () => {
+  refuse("organization_suspended");
+  await switchWorkspace("kings").catch(() => undefined);
+  assert.equal(isOrgSuspended("kings"), true);
 });

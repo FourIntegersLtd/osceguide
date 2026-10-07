@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Any, Literal
 
@@ -84,3 +85,15 @@ class Machinery(BaseModel):
     # Which status `jobs` holds, so a page that just switched tabs can tell a
     # frame for the old tab from one for the new.
     job_status: str | None
+
+
+class UndeliveredMessage(BaseModel):
+    """An email the outbox gave up on after its last attempt, as the console lists it."""
+
+    id: uuid.UUID
+    recipient: str
+    subject: str
+    template_key: str
+    attempts: int
+    last_error: str | None
+    abandoned_at: datetime

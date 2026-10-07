@@ -25,19 +25,30 @@ import { readSsoCallback } from "@/capabilities/account/support/ssoCallback";
  *
  * Strict mode runs an effect twice, and the second run would post a token the
  * backend has already spent. The ref is what keeps it to one.
+ *
+ * It waits for the session check first. Somebody already signed in goes
+ * on to `/app` with their session untouched rather than having it silently
+ * replaced by whoever the token names. And the single-use token is taken out
+ * of the address bar as soon as it is read, so it is not left in history and
+ * a reload says the link was used instead of failing on a spent token.
  */
 export function SsoCallback() {
   const params = useSearchParams();
   const router = useRouter();
-  const { refresh } = useSession();
+  const { refresh, ready, status } = useSession();
   const started = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (started.current) return;
+    if (!ready || status === "loading" || started.current) return;
     started.current = true;
 
+    if (status === "authenticated") {
+      router.replace(`/app`);
+      return;
+    }
     const callback = readSsoCallback(params);
+    window.history.replaceState(null, "", window.location.pathname);
     if (!callback.ok) {
       setError(callback.message);
       return;
@@ -58,7 +69,7 @@ export function SsoCallback() {
             : "We could not finish signing you in with your organisation.",
         );
       });
-  }, [params, refresh, router]);
+  }, [params, ready, status, refresh, router]);
 
   return (
     <AuthShell title="Signing you in" subtitle="Finishing with your organisation." variant="card">

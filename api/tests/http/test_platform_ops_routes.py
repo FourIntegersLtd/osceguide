@@ -177,3 +177,56 @@ async def test_a_job_its_worker_died_on_is_requeued_once_then_failed_with_its_hi
         "started",
         "failed",
     ]
+
+
+async def test_mail_abandoned_in_an_outage_is_listed_and_sent_again_on_retry(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-5: a provider outage used to abandon a message after a quarter of an
+    hour with only a log line. Now it keeps trying for hours, and once it does
+    give up support sees it on System health and sends it again."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.features.notifications import domain
+    from app.features.notifications import repository as outbox
+    from app.features.notifications import service as notifications
+    from tests.support.fakes import RecordingEmailSender
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await notifications.enqueue_email(
+        db_session,
+        recipient="invitee@example.com",
+        subject="You are invited",
+        template_key="invitation",
+        payload={"token": "t", "invited_to": "Riverside"},
+        idempotency_key="s5-invite",
+    )
+    await db_session.flush()
+    down = RecordingEmailSender(fail_times=domain.MAX_ATTEMPTS)
+    at = datetime.now(UTC) + timedelta(seconds=1)
+    for attempt in range(1, domain.MAX_ATTEMPTS + 1):
+        await notifications.deliver_due(db_session, sender=down, now=at)
+        await db_session.flush()
+        if attempt == 6:
+            still = await outbox.by_idempotency_key(db_session, "s5-invite")
+            assert still is not None and still.status == "pending", (
+                "a 15-minute outage no longer abandons mail"
+            )
+        at += timedelta(seconds=domain.retry_delay(attempt) + 1)
+    assert at - datetime.now(UTC) > timedelta(hours=4)
+
+    listed = await client.get("/api/v1/platform/outbox/undelivered", headers=bearer(root))
+    assert listed.status_code == 200, listed.text
+    [row] = [item for item in listed.json() if item["recipient"] == "invitee@example.com"]
+    assert (row["subject"], row["attempts"]) == ("You are invited", domain.MAX_ATTEMPTS)
+
+    retried = await client.post(f"/api/v1/platform/outbox/{row['id']}/retry", headers=bearer(root))
+    assert retried.status_code == 204, retried.text
+    again = await client.post(f"/api/v1/platform/outbox/{row['id']}/retry", headers=bearer(root))
+    assert again.json()["code"] == "message_not_retryable"
+
+    back_up = RecordingEmailSender()
+    await notifications.deliver_due(db_session, sender=back_up, now=datetime.now(UTC) + timedelta(seconds=1))
+    assert [mail.to for mail in back_up.sent] == ["invitee@example.com"]
+    listed_after = await client.get("/api/v1/platform/outbox/undelivered", headers=bearer(root))
+    assert all(item["id"] != row["id"] for item in listed_after.json())

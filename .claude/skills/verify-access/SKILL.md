@@ -38,7 +38,7 @@ poetry run pytest -q \
   tests/http/test_platform_entitlement_routes.py tests/http/test_billing_routes.py \
   tests/http/test_platform_billing_routes.py tests/http/test_growth_routes.py \
   tests/http/test_legacy_exchange_routes.py tests/http/test_invitations.py \
-  tests/security
+  tests/security tests/http/test_platform_ops_routes.py tests/unit/test_rate_limit.py
 ```
 
 390 passed on 2026-09-26 (was 354 on 2026-09-25; the growth and identity suites
@@ -63,6 +63,18 @@ For email: trigger the flow, then read the `notifications` outbox row it
 queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
 
 ## Traps
+
+- **A password change or reset revokes every chain, the current one too.**
+  Change-password answers a fresh pair that the web adopts (A-13); a reset
+  answers none, so `/reset-password` signs the browser out before showing
+  done (A-10). A screen that skips either leaves cookies the backend refuses:
+  `/login` bounces to `/app` and every call there answers 401.
+- **SSO discovery throws.** `readSsoSignIn` no longer folds a failure into
+  `null` (A-5); a caller that can tolerate a miss catches it itself.
+- **Abandoned mail is on the System health page** (S-5): `GET
+  /platform/outbox/undelivered` lists outbox rows that failed twelve tries and
+  `POST /platform/outbox/{id}/retry` re-queues one. Prove it with the stored
+  row, not the panel alone.
 
 - **Erasure and export must reach other slices only through `service*`
   modules.** `identity/service_erasure.py` and `identity/service_export.py`

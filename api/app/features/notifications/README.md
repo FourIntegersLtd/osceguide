@@ -20,13 +20,18 @@ transaction that justified it; a worker drains the queue.
 - Delivery claims rows with `FOR UPDATE SKIP LOCKED`, so two workers never send
   the same message and neither waits on the other.
 - Failures back off exponentially, capped at an hour, and are **abandoned** after
-  six attempts rather than retried forever — a queue that never gives up hides
-  the fact that something needs a person.
+  twelve attempts (about five hours) rather than retried forever — a queue that
+  never gives up hides the fact that something needs a person. Six attempts
+  gave up after fifteen minutes, so one provider outage lost every invitation
+  and reset queued during it.
+- An abandoned message is logged as an error (Sentry) and stays `failed`; the
+  console's System health page lists it and can queue it again with fresh
+  attempts (`list_undelivered`, `retry_undelivered`, served by `health`).
 - Each message is attempted independently: one bad address does not stop the queue.
 
 ## Routes
-None. This slice is queue and worker only; nothing outside asks it for anything
-over HTTP.
+None of its own. The console's undelivered-mail list and retry are served by
+`health` (`/platform/outbox/...`), which calls this slice's service.
 
 ## Jobs
 `deliver_outbound_messages` — periodic, every minute.

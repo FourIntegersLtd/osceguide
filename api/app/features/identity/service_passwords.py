@@ -10,13 +10,18 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.identity import repository
+from app.core.memberships import MembershipLookup
+from app.core.settings import Settings
+from app.features.identity import repository, service_sessions
 from app.features.identity.domain import WeakPassword, validate_password
 from app.features.identity.errors import (
     InvalidCredentials,
     InvalidResetToken,
+    PasswordLoginDisabled,
+    PasswordNotSet,
     WeakPasswordError,
 )
+from app.features.identity.schemas import TokenPair
 from app.features.identity.tokens import hash_password, hash_token, new_token, verify_password
 from app.features.notifications import service as notifications
 
@@ -88,18 +93,42 @@ async def confirm_password_reset(session: AsyncSession, *, token: str, password:
 
 
 async def change_password(
-    session: AsyncSession, *, user_id: uuid.UUID, current: str, new: str, now: datetime
-) -> None:
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    current: str,
+    new: str,
+    memberships_for: MembershipLookup,
+    settings: Settings,
+    now: datetime,
+) -> TokenPair:
     """Set a new password once the current one is proved, refusing
     `invalid_credentials` for an unknown account or a wrong current
-    password. Ends every other session, so a credential a thief also
-    knows does not survive the owner locking them out."""
+    password. Ends every session, so a credential a thief also knows does
+    not survive the owner locking them out, and answers with a fresh pair so
+    the device that made the change stays signed in.
+
+    An account whose organisation signs it in is refused
+    `password_login_disabled`, and one with no password yet
+    `password_not_set`, rather than an `invalid_credentials` no current
+    password could ever pass."""
     try:
         validate_password(new)
     except WeakPassword as exc:
         raise WeakPasswordError(str(exc)) from exc
     user = await repository.user_by_id(session, user_id)
-    if user is None or not verify_password(user.password_hash, current):
+    if user is None:
+        raise InvalidCredentials()
+    if user.password_login_disabled:
+        raise PasswordLoginDisabled()
+    if user.password_hash is None:
+        raise PasswordNotSet()
+    if not verify_password(user.password_hash, current):
         raise InvalidCredentials()
     await repository.set_password_hash(session, user_id, hash_password(new))
     await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason="password_change")
+    # `set_password_hash` also cleared `must_change_password`; the new token is
+    # minted from the row as it now stands.
+    await session.refresh(user)
+    memberships = await memberships_for(session, user.id)
+    return await service_sessions.issue(session, user, settings=settings, now=now, memberships=memberships)

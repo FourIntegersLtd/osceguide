@@ -233,27 +233,36 @@ async def confirm_password_reset(
     return schemas.PasswordResetDone(email=email)
 
 
-# Change the password when the current one still works. Ends every other
-# session, so a stolen credential does not survive the owner locking it out.
+# Change the password when the current one still works. Ends every session,
+# so a stolen credential does not survive the owner locking it out, and
+# answers with a fresh pair for the device that made the change.
 @router.post(
     "/auth/change-password",
-    response_model=schemas.Accepted,
-    responses=error_responses(errors.InvalidCredentials, errors.WeakPasswordError),
+    response_model=schemas.TokenPair,
+    responses=error_responses(
+        errors.InvalidCredentials,
+        errors.WeakPasswordError,
+        errors.PasswordLoginDisabled,
+        errors.PasswordNotSet,
+    ),
 )
 async def change_password(
     body: schemas.ChangePasswordRequest,
     principal: CurrentPrincipal,
     session: Annotated[AsyncSession, Depends(get_session)],
+    memberships_for: MembershipsFor,
+    settings: SettingsDep,
     clock: ClockDep,
-) -> schemas.Accepted:
-    await service_passwords.change_password(
+) -> schemas.TokenPair:
+    return await service_passwords.change_password(
         session,
         user_id=principal.user_id,
         current=body.current_password,
         new=body.new_password,
+        memberships_for=memberships_for,
+        settings=settings,
         now=clock.now(),
     )
-    return schemas.Accepted()
 
 
 # Redeem a sign-in challenge with an authenticator code or a one-time recovery code.

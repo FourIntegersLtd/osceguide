@@ -1,6 +1,8 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { Button, EmptyState } from "@/foundation/ui";
+import { isOrgSuspended, subscribeOrgSuspension } from "@/foundation/platform-client/orgSuspension";
 import { useSession } from "@/foundation/session/SessionProvider";
 
 /**
@@ -28,4 +30,10 @@ export function OrganisationSuspended({ name }: { name: string }) {
       </div>
     </main>
   );
+}
+
+/** Whether platform-api has refused this organisation as suspended this page
+ *  load; the first refusal from any panel re-renders whoever asks. */
+export function useOrgSuspended(slug: string): boolean {
+  return useSyncExternalStore(subscribeOrgSuspension, () => isOrgSuspended(slug), () => false);
 }

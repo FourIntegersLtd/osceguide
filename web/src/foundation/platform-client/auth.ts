@@ -1,6 +1,6 @@
 import { platformRequest, setPlatformTokenSource } from "@/foundation/platform-client/client";
 import { hasCode, isPlatformError } from "@/foundation/platform-client/errors";
-import { noteOrgRefusal } from "@/foundation/platform-client/orgSuspension";
+import { markOrgSuspended } from "@/foundation/platform-client/orgSuspension";
 import {
   REFRESH_MARGIN_MS,
   SESSION_MARKER_COOKIE,
@@ -355,6 +355,18 @@ export async function confirmMfaEnrolmentAtSignIn(
  * pages carry it into this form instead. Optional, because somebody arriving
  * at the site root has not said yet.
  */
+/**
+ * The account exists but this browser holds no session for it, because
+ * storing the pair failed or the account owes a second factor. Retrying the
+ * form would only answer `email_taken`; the way on is to sign in.
+ */
+export class AccountCreatedNotSignedIn extends Error {
+  constructor() {
+    super("Your account was created, but we couldn't sign you in. Sign in with the email and password you just chose.");
+    this.name = "AccountCreatedNotSignedIn";
+  }
+}
+
 export async function register(input: {
   email: string;
   password: string;
@@ -373,10 +385,12 @@ export async function register(input: {
   // A new consumer account belongs to no organisation that could require a
   // second factor. The route shares sign-in's answer shape, so say so rather
   // than store a challenge as a session.
-  if (result.status !== "signed_in") {
-    throw new Error("This account needs two-factor sign-in. Sign in to finish setting it up.");
+  if (result.status !== "signed_in") throw new AccountCreatedNotSignedIn();
+  try {
+    await remember(result);
+  } catch {
+    throw new AccountCreatedNotSignedIn();
   }
-  await remember(result);
   return result;
 }
 
@@ -413,7 +427,9 @@ export async function switchWorkspace(orgSlug: string | null): Promise<AuthResul
     });
   } catch (error) {
     // The org is not in this path, so the suspension is noted by name.
-    if (isPlatformError(error)) noteOrgRefusal("", error.code, orgSlug);
+    if (orgSlug && isPlatformError(error) && error.code === "organization_suspended") {
+      markOrgSuspended(orgSlug);
+    }
     throw error;
   }
   // The new token *is* the switch; keeping the old one would leave every later
@@ -422,11 +438,19 @@ export async function switchWorkspace(orgSlug: string | null): Promise<AuthResul
   return result;
 }
 
+/**
+ * Change the signed-in person's password.
+ *
+ * The backend ends every refresh chain the account holds, which signs
+ * out every other device, and answers with a fresh pair for this one. Adopting
+ * it is what keeps this tab signed in; the old chain is already revoked.
+ */
 export async function changePassword(current: string, next: string): Promise<void> {
-  await platformRequest<void>("/api/v1/auth/change-password", {
-    method: "POST",
-    body: { current_password: current, new_password: next },
-  });
+  const pair = await platformRequest<Pick<AuthResult, "access_token" | "refresh_token" | "expires_in">>(
+    "/api/v1/auth/change-password",
+    { method: "POST", body: { current_password: current, new_password: next } },
+  );
+  await remember(pair);
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {

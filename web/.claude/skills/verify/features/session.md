@@ -40,6 +40,22 @@ Handles: `getByLabel("Email")`, `getByLabel("Password", { exact: true })`,
   the client, then shows "We could not check your session" with "Try again"
   rather than the "Checking your session" spinner.
 - Signing in as a real imported user is never acceptable, even read-only.
+- **Check where `/api/v1` really goes.** The dev server proxies it to
+  `PLATFORM_API_URL`, which `.env.local` can point at a remote api (2026-10-07
+  it answered from Cloudflare). Then the browser signs in against another
+  database while your SQL reads the local one: a disabled-password flag "does
+  nothing", a reset token is "no longer valid", a web sign-up has no row.
+  Probe with `curl -s localhost:3100/api/v1/health -D - | grep server`
+  (uvicorn is local). If it is remote, route the browser to this checkout:
+  `context.route("**/api/v1/**", r => r.request().url().includes("/stream") ? r.abort() : r.fulfill({ response: await r.fetch({ url: r.request().url().replace(WEB, API) }) }))`.
+  Abort the event streams: a fetched stream never ends and hangs the route.
+- SSO callback: `/auth/sso/callback?org_slug=x&error=sso_verification_failed`
+  shows the refused-SSO copy; any `token=` is stripped from the address once
+  read, so a reload says "already been used". Signed in, it goes to `/app`
+  with no POST.
+- Undelivered email on `/staff/ops`: mark a row `status='failed', attempts=12`
+  in `outbound_messages`; each row is a `listitem` with a "Retry" button, and
+  the retry is audited in `audit_log` as `notifications.message_retried`.
 
 ## Forgot password and invitations
 Handles: `/forgot-password` → `getByLabel("Email")`, button **Send reset link**, then

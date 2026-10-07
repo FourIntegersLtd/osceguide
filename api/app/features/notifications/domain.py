@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-MAX_ATTEMPTS = 6
+# Twelve tries span about five hours (30s doubling to the one-hour cap). Six
+# gave up after a quarter of an hour, so any provider outage longer than a
+# coffee break lost every invitation, reset and receipt queued during it.
+MAX_ATTEMPTS = 12
 # How long a claimed message may stay claimed before another worker may take
 # it. Comfortably longer than any send should take, so a slow provider is not
 # mistaken for a dead worker.
@@ -31,6 +34,8 @@ def should_retry(*, attempts: int) -> bool:
     """After enough tries a message is abandoned rather than retried forever.
 
     A queue that never gives up hides the fact that something needs a person.
+    An abandoned message is not lost: the console's System health page lists it
+    and sends it again (`service.retry_undelivered`).
     """
     return attempts < MAX_ATTEMPTS
 

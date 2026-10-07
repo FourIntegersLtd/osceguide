@@ -12,9 +12,9 @@ counting every click would only find the people using the product hardest.
 call and says so in the log: turning the limiter off is a deployment choice,
 and a cache outage must not stop the whole product working. Two exceptions,
 for when Redis is reachable but *errors mid-check* — exactly the moment a
-password spray would be running (SEC-003): a `fail_closed` limit (password
-reset, the second factor) refuses the call, and a `local_fallback` limit
-(sign-in) keeps counting in this process instead, so a Redis blip at the start
+password spray would be running (SEC-003): a limit with
+`on_redis_error="refuse"` (password reset, the second factor) refuses the call,
+and one with `on_redis_error="count_locally"` (sign-in) keeps counting in this process instead, so a Redis blip at the start
 of an exam neither locks a whole cohort out nor switches the brake off. A limit
 was never the only defence; it raises the cost of a spraying run from free to
 inconvenient.
@@ -30,6 +30,7 @@ import hashlib
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Literal
 
 from fastapi import Request
 
@@ -52,25 +53,28 @@ class TooManyRequests(AppError):
     default_message = "Too many attempts. Wait a moment and try again."
 
 
+RedisErrorPolicy = Literal["allow", "refuse", "count_locally"]
+
+
 @dataclass(frozen=True)
 class Limit:
     """`allowance` calls per `window_seconds`, per caller.
 
-    `fail_closed` decides what happens when Redis is *reachable but errors* mid
-    check: a credential-guessing route (sign-in, password reset) refuses the
-    call rather than let the limiter silently switch off under load, which is
-    exactly when a spray would be running. `local_fallback` counts in this
-    process instead, for a route where refusing everybody is itself the outage
-    (sign-in at the start of an exam). A Redis that is switched off or absent
-    (`get_redis` returns None) still allows the call — turning the limiter off
-    is a deployment choice, not a failure to fail closed against.
+    `on_redis_error` decides what happens when Redis is *reachable but errors*
+    mid check. `"allow"` lets the call through, so a cache blip does not lock
+    the product. `"refuse"` is for a credential-guessing route (password reset,
+    the second factor): the limiter must not silently switch off under load,
+    which is exactly when a spray would be running. `"count_locally"` counts in
+    this process instead, for a route where refusing everybody is itself the
+    outage (sign-in at the start of an exam). A Redis that is switched off or
+    absent (`get_redis` returns None) still allows the call — turning the
+    limiter off is a deployment choice, not a failure to fail closed against.
     """
 
     name: str
     allowance: int
     window_seconds: int
-    fail_closed: bool = False
-    local_fallback: bool = False
+    on_redis_error: RedisErrorPolicy = "allow"
 
 
 # Sign-in is counted twice (S-6). Per account, sized against what a real person
@@ -78,11 +82,13 @@ class Limit:
 # one account is a guess. Per address, sized for a whole cohort signing in from
 # one hospital NAT in the same minute at exam start, which a per-address limit
 # of ten used to lock out; it still stops one machine spraying many accounts.
-SIGN_IN = Limit(name="sign-in", allowance=10, window_seconds=60, local_fallback=True)
-SIGN_IN_ADDRESS = Limit(name="sign-in-address", allowance=300, window_seconds=60, local_fallback=True)
+SIGN_IN = Limit(name="sign-in", allowance=10, window_seconds=60, on_redis_error="count_locally")
+SIGN_IN_ADDRESS = Limit(
+    name="sign-in-address", allowance=300, window_seconds=60, on_redis_error="count_locally"
+)
 # Deliberately tighter, because the cost of the request is an email to
 # somebody else's inbox: the address is the attacker's choice, not theirs.
-PASSWORD_RESET = Limit(name="password-reset", allowance=5, window_seconds=300, fail_closed=True)
+PASSWORD_RESET = Limit(name="password-reset", allowance=5, window_seconds=300, on_redis_error="refuse")
 # SEC-004: registration reaches the user table and sends a welcome email, and
 # it is unauthenticated. Sized like sign-in — a person makes one account, not ten.
 REGISTER = Limit(name="register", allowance=10, window_seconds=60)
@@ -103,7 +109,7 @@ SAML_ACS = Limit(name="saml-acs", allowance=20, window_seconds=60)
 CV_UPLOAD = Limit(name="cv-upload", allowance=5, window_seconds=3600)
 # Guessing a six-digit code or a recovery code. Fails closed: a Redis error
 # mid-check must not turn the second factor into an unlimited spray.
-MFA_VERIFY = Limit(name="mfa-verify", allowance=5, window_seconds=60, fail_closed=True)
+MFA_VERIFY = Limit(name="mfa-verify", allowance=5, window_seconds=60, on_redis_error="refuse")
 
 # --- per signed-in person (E-23) ----------------------------------------------
 #
@@ -171,18 +177,30 @@ async def check_sign_in(request: Request, email: str) -> None:
     await check(SIGN_IN_ADDRESS, caller_key(request))
 
 
-# Process-local windows for a `local_fallback` limit while Redis is erroring:
-# key -> (window start, calls). Pruned when it grows, so a spray of fresh keys
-# cannot grow it without end.
+# Process-local windows for a `count_locally` limit while Redis is erroring:
+# key -> (window start, calls). Hard-capped at `_LOCAL_MAX_KEYS`: past it the
+# expired windows go first, then the oldest, so a spray of fresh keys cannot
+# grow it without end. Evicting a live window forgives at most one window of
+# that caller's count, which only a spray large enough to fill the cap can do.
 _local_windows: dict[str, tuple[float, int]] = {}
 _LOCAL_MAX_KEYS = 10_000
 
 
 def _count_locally(limit: Limit, key: str) -> None:
+    """Keep counting sign-in attempts in this process while Redis errors, so a
+    guessed account is still stopped and the cohort is not locked out."""
     now = time.monotonic()
-    if len(_local_windows) > _LOCAL_MAX_KEYS:
-        for stale in [k for k, (start, _) in _local_windows.items() if now - start >= limit.window_seconds]:
-            del _local_windows[stale]
+    if len(_local_windows) >= _LOCAL_MAX_KEYS:
+        expired = [
+            counted_key
+            for counted_key, (start, _) in _local_windows.items()
+            if now - start >= limit.window_seconds
+        ]
+        for counted_key in expired:
+            del _local_windows[counted_key]
+        # Dicts keep insertion order, so the first keys are the oldest windows.
+        while len(_local_windows) >= _LOCAL_MAX_KEYS:
+            del _local_windows[next(iter(_local_windows))]
     start, used = _local_windows.get(key, (now, 0))
     if now - start >= limit.window_seconds:
         start, used = now, 0
@@ -216,9 +234,9 @@ async def check(limit: Limit, caller: str) -> None:
         # this process (refusing everyone would be the outage S-6 describes);
         # a fail-closed limit refuses the call; everything else fails open so a
         # Redis blip does not lock people out of the whole product.
-        if limit.local_fallback:
+        if limit.on_redis_error == "count_locally":
             _count_locally(limit, key)
-        elif limit.fail_closed:
+        elif limit.on_redis_error == "refuse":
             raise TooManyRequests(details={"retry_after": limit.window_seconds, "limit": limit.name}) from exc
 
 

@@ -11,9 +11,22 @@ export type SsoCallback =
   | { ok: true; orgSlug: string; token: string; state: string | null }
   | { ok: false; message: string };
 
+/** The SAML assertion consumer's code when the IdP's response failed its checks. */
+const SAML_REFUSED = "sso_verification_failed";
+
 export function readSsoCallback(params: URLSearchParams): SsoCallback {
+  const error = params.get("error");
+  if (error === SAML_REFUSED) {
+    // The response arrived but its signature, audience or timing failed,
+    // which retrying alone rarely fixes; that is the IdP's configuration.
+    return {
+      ok: false,
+      message:
+        "Your organisation's sign-in could not be confirmed. Try again, and if it keeps happening, ask your IT team to check the single sign-on set-up.",
+    };
+  }
   // Entra says why it sent somebody back without a code, e.g. they cancelled.
-  if (params.get("error")) {
+  if (error) {
     return {
       ok: false,
       message: "Your organisation's sign-in did not complete. Please try again.",
@@ -22,7 +35,12 @@ export function readSsoCallback(params: URLSearchParams): SsoCallback {
   const orgSlug = params.get("org_slug");
   const token = params.get("__clerk_session_token") ?? params.get("code") ?? params.get("token");
   if (!orgSlug || !token) {
-    return { ok: false, message: "This sign-in link is incomplete. Please try again." };
+    // Also what a reload sees: the page strips the single-use token from the
+    // address bar as soon as it has read it.
+    return {
+      ok: false,
+      message: "This sign-in link has already been used or is incomplete. Start again from the sign-in page.",
+    };
   }
   return { ok: true, orgSlug, token, state: params.get("state") };
 }

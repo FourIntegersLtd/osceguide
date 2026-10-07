@@ -23,6 +23,7 @@ import {
   type Machinery,
   type TutorMemoryReindex,
 } from "@/domains/platform/support/api";
+import { UndeliveredMail } from "@/domains/platform/UndeliveredMail";
 import { formatDetail, formatMoment, humanise, jobStatusTone, jobTaskLabel } from "@/domains/platform/support";
 
 type JobStatus = "failed" | "todo" | "doing" | "succeeded";
@@ -206,6 +207,8 @@ export function Ops() {
           )}
         </AsyncBoundary>
       </Panel>
+
+      <UndeliveredMail />
 
       <TutorIndex />
     </div>

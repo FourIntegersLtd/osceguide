@@ -1,3 +1,4 @@
+import { refreshTokenPair } from "@/foundation/platform-client/refreshTokenPair";
 import { REFRESH_MARGIN_MS, type TokenPair } from "@/foundation/platform-client/sessionCookies";
 
 /**
@@ -15,11 +16,6 @@ import { REFRESH_MARGIN_MS, type TokenPair } from "@/foundation/platform-client/
  * revoked, which the caller logs rather than treating as success.
  */
 export type RevokeOutcome = "revoked" | "refused" | "unreachable";
-
-interface RefreshedPair {
-  access_token: string;
-  refresh_token: string;
-}
 
 export async function revokeSession(
   apiUrl: string,
@@ -39,13 +35,8 @@ export async function revokeSession(
       if (first.ok) return "revoked";
       if (first.status !== 401) return "refused";
     }
-    const renewed = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    if (!renewed.ok) return "refused";
-    const pair = (await renewed.json()) as RefreshedPair;
+    const pair = await refreshTokenPair(apiUrl, refreshToken);
+    if (!pair) return "refused";
     const second = await postLogout(apiUrl, pair.access_token, pair.refresh_token);
     return second.ok ? "revoked" : "refused";
   } catch {

@@ -21,7 +21,7 @@ from app.features.peer_practice import service_privacy as peer_practice_privacy
 from tests.http.test_attempt_material_routes import _entitled_attempt
 from tests.support.catalog import ensure_exam
 from tests.support.finished_consultation import finish_consultation
-from tests.support.tokens import bearer
+from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
 
@@ -507,3 +507,58 @@ async def test_the_export_route_returns_only_the_callers_own_data(
     assert body["attempts"][0]["id"] == str(sat.attempt_id)
     assert body["attempts"][0]["transcript"]["messages"][0]["message"] == "What brought you in today?"
     assert body["payments"] == []
+
+
+async def test_changing_the_password_keeps_this_device_signed_in_and_ends_the_others(
+    client: AsyncClient,
+) -> None:
+    """A-13: every chain the account held is revoked, and the answer is a fresh
+    pair, so the page that made the change is not signed out with them."""
+    signed_up = (await register(client)).json()
+    other_device = (
+        await client.post(
+            "/api/v1/auth/login", json={"email": "new@example.com", "password": REGISTER["password"]}
+        )
+    ).json()
+
+    changed = await client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": REGISTER["password"], "new_password": "a different horse battery"},
+        headers=bearer(signed_up["access_token"]),
+    )
+    assert changed.status_code == 200
+    pair = changed.json()
+
+    kept = await client.post("/api/v1/auth/refresh", json={"refresh_token": pair["refresh_token"]})
+    assert kept.status_code == 200
+    for ended in (signed_up["refresh_token"], other_device["refresh_token"]):
+        refused = await client.post("/api/v1/auth/refresh", json={"refresh_token": ended})
+        assert refused.json()["code"] == "invalid_refresh_token"
+    signed_in = await client.post(
+        "/api/v1/auth/login", json={"email": "new@example.com", "password": "a different horse battery"}
+    )
+    assert signed_in.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("sso_only", "code"), [(False, "password_not_set"), (True, "password_login_disabled")]
+)
+async def test_an_account_with_no_password_to_prove_is_told_why(
+    client: AsyncClient, db_session: AsyncSession, sso_only: bool, code: str
+) -> None:
+    """A-13: an invited or SSO account has no current password, so it is told
+    so rather than refused `invalid_credentials` for every guess."""
+    user = await identity_repo.create_user(
+        db_session,
+        email="invited@example.com",
+        name="Invited",
+        password_hash=None,
+        password_login_disabled=sso_only,
+    )
+    await db_session.flush()
+    response = await client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "anything at all", "new_password": "a different horse battery"},
+        headers=bearer(mint_token(user_id=user.id, email="invited@example.com")),
+    )
+    assert response.json()["code"] == code

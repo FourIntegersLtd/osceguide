@@ -2,7 +2,7 @@
 
 Three properties, all deliberate: it refuses a caller who is over the limit;
 an ordinary limit *allows* the call when Redis cannot answer, so a cache
-outage does not lock the product; and a `fail_closed` limit (the credential
+outage does not lock the product; and a refusing limit (the credential
 routes) refuses the call when Redis errors mid-check, since that is when a
 spray would run. A switched-off Redis allows every call regardless.
 """
@@ -103,7 +103,7 @@ async def test_a_fail_closed_limit_refuses_when_redis_errors(monkeypatch: pytest
     """SEC-003: a credential route does not silently stop being limited the
     moment Redis breaks under load — that is when a spray would be running."""
     monkeypatch.setattr(rate_limit, "get_redis", lambda: FakeRedis(broken=True))
-    strict = Limit(name="password-reset", allowance=2, window_seconds=60, fail_closed=True)
+    strict = Limit(name="password-reset", allowance=2, window_seconds=60, on_redis_error="refuse")
     with pytest.raises(TooManyRequests) as raised:
         await check(strict, "caller")
     assert raised.value.details == {"retry_after": 60, "limit": "password-reset"}
@@ -113,7 +113,7 @@ async def test_a_fail_closed_limit_still_allows_when_redis_is_off(monkeypatch: p
     """A switched-off Redis is a deployment choice, not a failure to guard
     against, so even a fail-closed limit lets the call through."""
     monkeypatch.setattr(rate_limit, "get_redis", lambda: None)
-    strict = Limit(name="password-reset", allowance=2, window_seconds=60, fail_closed=True)
+    strict = Limit(name="password-reset", allowance=2, window_seconds=60, on_redis_error="refuse")
     for _ in range(50):
         await check(strict, "caller")
 
@@ -189,7 +189,7 @@ async def test_a_cohort_behind_one_address_can_all_sign_in(redis: FakeRedis) -> 
         await check_sign_in(ward, "Trainee0@Example.com ")  # type: ignore[arg-type]
     with pytest.raises(TooManyRequests) as raised:
         await check_sign_in(ward, "trainee0@example.com")  # type: ignore[arg-type]
-    assert raised.value.details == {"retry_after": 42, "limit": "sign-in"}
+    assert raised.value.details["limit"] == "sign-in", "the account ran out, not the address"
     assert not any("trainee0@example.com" in key for key in redis.counts), "no address in Redis keys"
 
 
@@ -204,3 +204,30 @@ async def test_sign_in_keeps_counting_in_process_when_redis_errors(monkeypatch: 
     with pytest.raises(TooManyRequests):
         await check_sign_in(ward, "guessed@example.com")  # type: ignore[arg-type]
     await check_sign_in(ward, "someone-else@example.com")  # type: ignore[arg-type]
+
+
+async def test_one_address_spraying_many_accounts_is_stopped_at_its_ceiling(
+    redis: FakeRedis, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S-6 keeps the per-address brake: one machine trying a different account
+    each time runs out of the address allowance, not any account's."""
+    monkeypatch.setattr(
+        rate_limit, "SIGN_IN_ADDRESS", Limit(name="sign-in-address", allowance=3, window_seconds=60)
+    )
+    sprayer = Request(host="203.0.113.66")
+    for n in range(3):
+        await check_sign_in(sprayer, f"victim{n}@example.com")  # type: ignore[arg-type]
+    with pytest.raises(TooManyRequests) as raised:
+        await check_sign_in(sprayer, "victim99@example.com")  # type: ignore[arg-type]
+    assert raised.value.details["limit"] == "sign-in-address"
+
+
+async def test_the_local_count_never_holds_more_than_its_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A spray of fresh addresses during a Redis outage cannot grow memory without end."""
+    monkeypatch.setattr(rate_limit, "get_redis", lambda: FakeRedis(broken=True))
+    monkeypatch.setattr(rate_limit, "_local_windows", {})
+    monkeypatch.setattr(rate_limit, "_LOCAL_MAX_KEYS", 5)
+    counted = Limit(name="sign-in", allowance=10, window_seconds=60, on_redis_error="count_locally")
+    for n in range(20):
+        await check(counted, f"caller{n}")
+    assert len(rate_limit._local_windows) == 5

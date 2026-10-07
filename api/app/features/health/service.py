@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import AsyncIterator
+from datetime import datetime
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import __version__
+from app.core.auth import Principal
 from app.core.db import SessionOpener
 from app.core.events import voice_queue_topic
 from app.core.logging import get_logger
@@ -26,7 +29,10 @@ from app.features.health.schemas import (
     Machinery,
     MachineryCapacity,
     PlatformHealth,
+    UndeliveredMessage,
 )
+from app.features.notifications import service as notifications
+from app.features.tenancy import service_audit
 from app.features.voice import service as voice_service
 
 log = get_logger(__name__)
@@ -187,4 +193,39 @@ def _read(job: JobRef, events: list[JobEventRef]) -> JobRead:
         args=job.args,
         queueing_lock=job.queueing_lock,
         events=[JobEventRead(type=event.type, at=event.at) for event in events],
+    )
+
+
+# --- Mail the outbox gave up on. The queue is `notifications`'; this is
+# the console's view of it and its one action, recorded like every platform act.
+
+
+async def undelivered_mail(session: AsyncSession) -> list[UndeliveredMessage]:
+    """Every email abandoned after its last attempt, most recent first."""
+    return [
+        UndeliveredMessage(
+            id=message.id,
+            recipient=message.recipient,
+            subject=message.subject,
+            template_key=message.template_key,
+            attempts=message.attempts,
+            last_error=message.last_error,
+            abandoned_at=message.updated_at,
+        )
+        for message in await notifications.list_undelivered(session)
+    ]
+
+
+async def retry_mail(
+    session: AsyncSession, message_id: uuid.UUID, *, actor: Principal, now: datetime
+) -> None:
+    """Queue an abandoned email again with a fresh set of attempts, and record who did."""
+    await notifications.retry_undelivered(session, message_id, now=now)
+    await service_audit.record(
+        session,
+        actor=actor,
+        action="notifications.message_retried",
+        target_type="outbound_message",
+        target_id=str(message_id),
+        at=now,
     )

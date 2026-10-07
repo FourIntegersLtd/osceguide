@@ -4,7 +4,8 @@ import { useState } from "react";
 import { HiOutlineArrowPath, HiOutlineLockClosed } from "react-icons/hi2";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { z } from "zod";
-import { changePassword, hasCode } from "@/foundation/platform-client";
+import { changePassword, hasCode, isPlatformError, requestPasswordReset } from "@/foundation/platform-client";
+import { useSession } from "@/foundation/session";
 import {
   B2CInlineError,
   ModalContent,
@@ -38,6 +39,10 @@ const updatePasswordSchema = z
   });
 
 type PasswordField = "currentPassword" | "newPassword" | "confirmPassword";
+
+/** An account with no password to prove (an invitation finished through
+ *  SSO). Not in the generated codes until `openapi.json` is regenerated. */
+const PASSWORD_NOT_SET = "password_not_set";
 
 const FIELDS: { name: PasswordField; label: string; hint?: string }[] = [
   { name: "currentPassword", label: "Current Password" },
@@ -73,6 +78,20 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<PasswordField>>({});
+  const [noPassword, setNoPassword] = useState(false);
+  const email = useSession().session?.user.email ?? null;
+
+  const sendSetPasswordLink = async () => {
+    if (!email) return;
+    setFormError(null);
+    try {
+      await requestPasswordReset(email);
+      setNoPassword(false);
+      setSuccessMessage(`We've emailed ${email} a link to set a password.`);
+    } catch (error) {
+      setFormError(errorMessage(error));
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -90,7 +109,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
     setIsSubmitting(true);
     try {
       await changePassword(values.currentPassword, values.newPassword);
-      setSuccessMessage("Password updated. Use it next time you sign in.");
+      setSuccessMessage("Password updated. Your other devices have been signed out; this one stays signed in.");
       setValues({ currentPassword: "", newPassword: "", confirmPassword: "" });
       if (onChanged) await onChanged();
     } catch (error) {
@@ -103,6 +122,9 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
         setFieldErrors({ currentPassword: "That's not your current password." });
       } else if (hasCode(error, "weak_password")) {
         setFieldErrors({ newPassword: errorMessage(error) });
+      } else if (isPlatformError(error) && (error.code as string) === PASSWORD_NOT_SET) {
+        setNoPassword(true);
+        setFormError("This account has no password yet, so there is none to change. We can email you a link to set one.");
       } else {
         setFormError(errorMessage(error));
       }
@@ -120,6 +142,11 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
       />
       {successMessage ? <Alert message={successMessage} type="success" /> : null}
       {formError ? <Alert message={formError} type="error" /> : null}
+      {noPassword && email ? (
+        <ModalPrimaryButton type="button" onClick={() => void sendSetPasswordLink()}>
+          Email me a link
+        </ModalPrimaryButton>
+      ) : null}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-7">
         <ModalSection title="Password details">

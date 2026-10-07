@@ -7,9 +7,10 @@ jobs failed — the row a support question about a missing feedback ends at.
 
 from __future__ import annotations
 
+import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,13 +18,14 @@ from app.core.db import SessionOpenerDep, get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
-from app.core.ports import EventBus
+from app.core.ports import ClockDep, EventBus
 from app.core.redis import get_redis
 from app.core.settings import SettingsDep
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
 from app.core.tenancy import PlatformAdmin
 from app.features.health import schemas, service
+from app.features.health.errors import MessageNotRetryable
 
 router = APIRouter(tags=["health"])
 
@@ -108,3 +110,29 @@ async def stream_machinery(
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )
+
+
+@router.get(
+    "/platform/outbox/undelivered",
+    response_model=list[schemas.UndeliveredMessage],
+    responses=error_responses(Forbidden),
+)
+async def list_undelivered_mail(admin: PlatformAdmin, session: Session) -> list[schemas.UndeliveredMessage]:
+    """Email the outbox abandoned after its last attempt: an invitation,
+    a reset or a receipt that never left. Newest first."""
+    _ = admin
+    return await service.undelivered_mail(session)
+
+
+@router.post(
+    "/platform/outbox/{message_id}/retry",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, MessageNotRetryable),
+)
+async def retry_undelivered_mail(
+    message_id: uuid.UUID, admin: PlatformAdmin, session: Session, clock: ClockDep
+) -> None:
+    """Queue an abandoned email again with a fresh set of attempts.
+    `message_not_retryable` when it is no longer abandoned, so a second press
+    never sends it twice."""
+    await service.retry_mail(session, message_id, actor=admin, now=clock.now())

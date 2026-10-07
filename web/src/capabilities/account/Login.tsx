@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Alert, Button } from "@/foundation/ui";
-import { useHydrated } from "@/foundation/hooks";
-import { login, type components, type MfaChallenge } from "@/foundation/platform-client";
+import { login, PlatformError, type components, type MfaChallenge } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
@@ -16,6 +15,7 @@ import {
   authLink,
 } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
+import AuthSubmitButton from "@/capabilities/account/AuthSubmitButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { readSsoSignIn, startSsoSignIn, type SsoSignIn } from "@/capabilities/account/api";
@@ -29,6 +29,7 @@ import {
 import { mapAuthApiError } from "@/capabilities/account/support/mapAuthApiError";
 import { readAuthNotice, type AuthNoticeTone } from "@/capabilities/account/support/authNotices";
 import { MfaSignIn } from "@/capabilities/account/mfa/MfaSignIn";
+import { ssoForRefusedPassword } from "@/capabilities/account/support/ssoDiscovery";
 
 type AuthResult = components["schemas"]["AuthResult"];
 
@@ -65,8 +66,6 @@ function noticeTone(tone: AuthNoticeTone): "info" | "success" | "danger" {
  * served and called by nothing).
  */
 export default function Login() {
-  // Until hydrated the submit is inert: a native submit would put the password in the URL.
-  const hydrated = useHydrated();
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -86,6 +85,8 @@ export default function Login() {
   // be unconfigured, or the arrangement switched off since discovery answered.
   const [ssoNotice, setSsoNotice] = useState<string | null>(null);
   const [ssoBusy, setSsoBusy] = useState(false);
+  // Why the password form gave way to the organisation's button.
+  const [ssoReason, setSsoReason] = useState<string | null>(null);
   // The second step an account owes after a right password (E-11). While it
   // is set the page is that step, not the password form.
   const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
@@ -94,16 +95,19 @@ export default function Login() {
   /*
    * Discovery, once, on the host the visitor actually arrived at. It is a
    * display concern and must never block or delay the password form, so a
-   * `null` answer (no SSO here, or the request failed) simply leaves the
-   * ordinary sign-in standing. See `readSsoSignIn`.
+   * `null` answer or a failed request simply leaves the ordinary sign-in
+   * standing. A member it missed is caught on submit instead: see
+   * `ssoForRefusedPassword`.
    */
   useEffect(() => {
     let cancelled = false;
     const host = typeof window === "undefined" ? undefined : window.location.hostname;
     if (!host) return;
-    void readSsoSignIn({ host }).then((result) => {
-      if (!cancelled) setSso(result);
-    });
+    readSsoSignIn({ host })
+      .then((result) => {
+        if (!cancelled) setSso(result);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -133,6 +137,18 @@ export default function Login() {
       }
       await land(outcome);
     } catch (error) {
+      if (error instanceof PlatformError && error.code === "password_login_disabled") {
+        const found = await ssoForRefusedPassword(result.data.email, readSsoSignIn);
+        if (found.sso) {
+          setSso(found.sso);
+          setSsoReason(found.notice);
+          setFormError(null);
+        } else {
+          setFormError(found.notice);
+        }
+        setIsSubmitting(false);
+        return;
+      }
       const mapped = mapAuthApiError<LoginField>(
         error,
         "We couldn't sign you in. Check your details and try again.",
@@ -247,18 +263,9 @@ export default function Login() {
               {formError}
             </p>
           ) : null}
-          <Button
-            type="submit"
-            variant="commit"
-            themeType="b2c"
-            fullWidth
-            size="lg"
-            isLoading={isSubmitting}
-            disabled={!hydrated}
-            className={authButtonPrimary}
-          >
+          <AuthSubmitButton isLoading={isSubmitting}>
             {isSubmitting ? "Signing you in…" : "Sign in"}
-          </Button>
+          </AuthSubmitButton>
         </form>
       )}
 
@@ -281,6 +288,7 @@ export default function Login() {
 
       {sso ? (
         <div className="space-y-3">
+          {ssoReason ? <Alert tone="info">{ssoReason}</Alert> : null}
           {/*
            * The organisation's own wording, from the discovery answer.
            *

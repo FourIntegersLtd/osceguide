@@ -19,7 +19,7 @@ from app.features.identity import service as identity
 log = get_logger(__name__)
 
 
-NO_ACCOUNT_FOR_PAYER = "No account for that email address."
+_NO_ACCOUNT_FOR_PAYER = "No account for that email address."
 
 
 def plan_label(plan_code: str) -> str:
@@ -92,7 +92,7 @@ async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: dat
         # Stripe retry it for three days and then give up. It is acknowledged
         # and left in the reconcile queue (`failed_only`), where support finds
         # it by address and replays it, or records it against the right account.
-        await repository.mark_event_failed(session, event_id=event_id, reason=NO_ACCOUNT_FOR_PAYER)
+        await repository.mark_event_failed(session, event_id=event_id, reason=_NO_ACCOUNT_FOR_PAYER)
         return {"status": "needs_attention"}
     await repository.mark_event_processed(session, event_id=event_id, at=now)
     return {"status": "applied"}

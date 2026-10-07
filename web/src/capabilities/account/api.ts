@@ -279,24 +279,21 @@ export type SsoSession = components["schemas"]["SsoSession"];
  * it is what a sign-in page asks before anybody has signed in. It replaced the
  * retiring client's hostname allow-list compiled into the bundle.
  *
- * `null` is the ordinary answer — "sign in here, with a password" — and any
- * failure resolves to `null` too: this is a *display* rule for whether to draw the
- * password form, and a discovery failure must never lock somebody out of the
- * password sign-in that is the default. Callers branch on `null`, not on a
- * message.
+ * `null` is the ordinary answer — "sign in here, with a password". A failure
+ * is thrown, not folded into `null`: the caller decides what it means.
+ * On arrival it leaves the password form standing, since discovery must never
+ * lock somebody out of the default sign-in; after `password_login_disabled`
+ * it means the organisation's door could not be found, which the person must
+ * be told rather than handed the same refused form again.
  */
-export async function readSsoSignIn(
+export function readSsoSignIn(
   query: { host?: string; email?: string },
   signal?: AbortSignal,
 ): Promise<SsoSignIn | null> {
-  try {
-    return await platformRequest<SsoSignIn | null>("/api/v1/auth/sso/sign-in", {
-      query: { host: query.host, email: query.email },
-      signal,
-    });
-  } catch {
-    return null;
-  }
+  return platformRequest<SsoSignIn | null>("/api/v1/auth/sso/sign-in", {
+    query: { host: query.host, email: query.email },
+    signal,
+  });
 }
 
 /**

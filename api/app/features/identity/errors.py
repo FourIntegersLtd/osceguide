@@ -71,6 +71,14 @@ class PasswordLoginDisabled(Unauthenticated):
     )
 
 
+class PasswordNotSet(Conflict):
+    """A signed-in account with no password to prove (an invitation
+    accepted through SSO, or a magic link): it sets one through a reset link."""
+
+    code = "password_not_set"
+    default_message = "This account has no password yet. Ask for a reset link to set one."
+
+
 class ExamAlreadyChosen(Conflict):
     """The account already has an exam, and it cannot be changed from the account itself.
 

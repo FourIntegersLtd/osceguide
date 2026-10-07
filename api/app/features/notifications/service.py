@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 from datetime import datetime
 from html import escape
@@ -12,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.logging import get_logger
 from app.core.ports import EmailDeliveryFailed, EmailSender
 from app.core.settings import get_settings
-from app.features.notifications import domain, repository
+from app.features.notifications import domain, errors, repository
+from app.features.notifications.models import OutboundMessage
 
 log = get_logger(__name__)
 
@@ -75,13 +77,26 @@ async def deliver_due(
                 deferred += 1
             else:
                 # Abandoned rather than retried forever, so somebody can see
-                # that this one needs a person.
-                log.warning("message abandoned", message_id=str(message.id), attempts=attempts)
+                # that this one needs a person: an error, so it reaches Sentry,
+                # and a `failed` row, which the console lists with a retry.
+                log.error("message abandoned", message_id=str(message.id), attempts=attempts)
                 await repository.mark_failed(session, message.id, attempts=attempts, error=str(exc))
             continue
         await repository.mark_sent(session, message.id, at=now)
         sent += 1
     return sent, deferred
+
+
+async def list_undelivered(session: AsyncSession, *, limit: int = 100) -> list[OutboundMessage]:
+    """What the worker gave up on, for the console: newest first."""
+    return await repository.failed_messages(session, limit=limit)
+
+
+async def retry_undelivered(session: AsyncSession, message_id: uuid.UUID, *, now: datetime) -> None:
+    """Send an abandoned message again, refusing `message_not_retryable` when it
+    is not (or no longer) abandoned: unknown, sent, or already queued again."""
+    if not await repository.requeue_failed(session, message_id, now=now):
+        raise errors.MessageNotRetryable()
 
 
 def _render(template_key: str, payload: dict[str, Any] | None) -> str:

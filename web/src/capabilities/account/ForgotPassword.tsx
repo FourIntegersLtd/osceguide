@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { useState, type ChangeEvent } from "react";
-import { Button } from "@/foundation/ui";
-import { useHydrated } from "@/foundation/hooks";
 import { requestPasswordReset } from "@/foundation/platform-client";
-import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
+import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
+import AuthSubmitButton from "@/capabilities/account/AuthSubmitButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import { mapAuthApiError } from "@/capabilities/account/support/mapAuthApiError";
 import {
@@ -31,8 +30,6 @@ export default function ForgotPassword() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<"email">>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Until hydrated the submit is inert: a native submit would put the form in the URL.
-  const hydrated = useHydrated();
   const [sent, setSent] = useState(false);
 
   const handleFormSubmission = async (event: React.FormEvent) => {
@@ -105,18 +102,9 @@ export default function ForgotPassword() {
             {formError}
           </p>
         ) : null}
-        <Button
-          type="submit"
-          variant="commit"
-          themeType="b2c"
-          fullWidth
-          size="lg"
-          isLoading={isSubmitting}
-          disabled={!hydrated}
-          className={authButtonPrimary}
-        >
+        <AuthSubmitButton isLoading={isSubmitting}>
           {isSubmitting ? "Sending…" : "Send reset link"}
-        </Button>
+        </AuthSubmitButton>
       </form>
 
       <p className={authFooterLink}>

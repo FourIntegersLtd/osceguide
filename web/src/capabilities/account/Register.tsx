@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
-import { Button } from "@/foundation/ui";
-import { useHydrated } from "@/foundation/hooks";
-import { register } from "@/foundation/platform-client";
+import { AccountCreatedNotSignedIn, register } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
-import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
+import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
+import AuthSubmitButton from "@/capabilities/account/AuthSubmitButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import {
@@ -57,8 +56,9 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<RegisterField>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Until hydrated the submit is inert: a native submit would put the form in the URL.
-  const hydrated = useHydrated();
+  // The account exists but this browser is not signed in to it. The form
+  // is spent (another submit would answer `email_taken`); signing in is next.
+  const [accountCreated, setAccountCreated] = useState(false);
 
   const handleFormSubmission = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -85,7 +85,10 @@ export default function Register() {
         name: result.data.username,
         examCode,
       });
-      rememberExamSelection(authenticated.user.id, examCode);
+      // The backend's answer, not the link's: an exam it does not know is
+      // dropped there, and the person then picks one on `/app`.
+      const chosenExam = authenticated.user.exam_code ?? null;
+      rememberExamSelection(authenticated.user.id, chosenExam);
       await refresh();
       /*
        * Credit the partner who sent them, if anybody did. This is the spend for
@@ -95,8 +98,14 @@ export default function Register() {
        * request survives the navigation that follows.
        */
       await creditThisSignup();
-      router.replace(examCode ? `/app/${PERSONAL_SLUG}` : "/app");
+      router.replace(chosenExam ? `/app/${PERSONAL_SLUG}` : "/app");
     } catch (error) {
+      if (error instanceof AccountCreatedNotSignedIn) {
+        setAccountCreated(true);
+        setFormError(error.message);
+        setIsSubmitting(false);
+        return;
+      }
       const mapped = mapAuthApiError<RegisterField>(
         error,
         "We couldn't create your account. Please try again.",
@@ -180,20 +189,19 @@ export default function Register() {
         {formError ? (
           <p role="alert" className="text-center text-osce-meta text-osce-danger">
             {formError}
+            {accountCreated ? (
+              <>
+                {" "}
+                <Link href={examAuthHref("/login", examCode)} className={authLink}>
+                  Sign in
+                </Link>
+              </>
+            ) : null}
           </p>
         ) : null}
-        <Button
-          type="submit"
-          variant="commit"
-          themeType="b2c"
-          fullWidth
-          size="lg"
-          isLoading={isSubmitting}
-          disabled={!hydrated}
-          className={authButtonPrimary}
-        >
+        <AuthSubmitButton isLoading={isSubmitting} disabled={accountCreated}>
           {isSubmitting ? "Creating your account…" : "Create account"}
-        </Button>
+        </AuthSubmitButton>
       </form>
 
       <p className={authFooterLink}>
