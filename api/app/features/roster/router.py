@@ -78,7 +78,7 @@ async def add_trainee(
     "/orgs/{org_slug}/trainees/bulk",
     response_model=schemas.BulkTraineesResult,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(TooManyRequests, Forbidden),
+    responses=error_responses(TooManyRequests, Forbidden, errors.TooManyTrainees),
     dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def add_trainees(

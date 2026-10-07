@@ -99,7 +99,7 @@ function AssessSlotReview(props: ScreenProps) {
   );
 }
 
-const AssessProgrammes = () => <Programmes />;
+const AssessProgrammes = (props: ScreenProps) => <Programmes orgSlug={slugOf(props)} />;
 
 function AssessSharedReview({ params }: ScreenProps) {
   return <SharedReview reviewId={params?.reviewId ?? ""} />;

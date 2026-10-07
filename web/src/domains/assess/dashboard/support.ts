@@ -35,7 +35,7 @@ const SETUP: {
   path: string;
 }[] = [
   { id: "rubric", label: "Marking scheme", todo: "Publish one", done: (s) => s.rubric_published, line: "Start with a marking scheme: what candidates are marked against.", action: "Write a marking scheme", path: "/authoring/rubrics" },
-  { id: "exam", label: "Exam", todo: "Publish one", done: (s) => s.exam_published, line: "Next, an exam that uses the marking scheme.", action: "Write an exam", path: "/authoring/exams" },
+  { id: "exam", label: "Exam", todo: "Publish one", done: (s) => s.exam_published, line: "Next, an exam: adopt one the platform publishes, or write your own on the marking scheme.", action: "Adopt or write an exam", path: "/programmes" },
   { id: "programme", label: "Programme", todo: "Add one", done: (s) => s.programme_exam_rubric_ready, line: "Every sitting belongs to a programme, which offers an exam.", action: "Add a programme", path: "/programmes" },
   { id: "template", label: "Station template", todo: "Publish one", done: (s) => s.template_published, line: "Next, a station template: the shape your stations take.", action: "Make a template", path: "/authoring/station-templates" },
   { id: "stations", label: "Stations", todo: "None to run", done: (s) => s.stations_available, line: "Your own cases count, and so does the platform library for an exam you offer.", action: "Add stations", path: "/authoring/stations" },

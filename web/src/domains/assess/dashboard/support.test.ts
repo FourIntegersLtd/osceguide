@@ -57,7 +57,7 @@ test("a fresh organisation sees the eight steps in build order, all to do", () =
     setupSteps(setup()).map((step) => [step.id, step.label, step.state, step.note, step.path]),
     [
       ["rubric", "Marking scheme", "todo", "Publish one", "/authoring/rubrics"],
-      ["exam", "Exam", "todo", "Publish one", "/authoring/exams"],
+      ["exam", "Exam", "todo", "Publish one", "/programmes"],
       ["programme", "Programme", "todo", "Add one", "/programmes"],
       ["template", "Station template", "todo", "Publish one", "/authoring/station-templates"],
       ["stations", "Stations", "todo", "None to run", "/authoring/stations"],

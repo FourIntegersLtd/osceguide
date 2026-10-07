@@ -57,11 +57,13 @@ MAX_BULK_TRAINEES = 500
 class BulkCreateTrainees(BaseModel):
     """A spreadsheet's worth of trainees in one request.
 
-    The browser parses the file; the API takes rows. Capped so one request
-    cannot invite a whole university at once by accident.
+    The browser parses the file and sends it in chunks of `MAX_BULK_TRAINEES`.
+    More than that in one request is refused `too_many_trainees` by the service,
+    whose message names the limit (a schema `max_length` answered a bare
+    "The request was not valid").
     """
 
-    trainees: list[CreateTrainee] = Field(min_length=1, max_length=MAX_BULK_TRAINEES)
+    trainees: list[CreateTrainee] = Field(min_length=1)
 
 
 class SkippedTrainee(BaseModel):

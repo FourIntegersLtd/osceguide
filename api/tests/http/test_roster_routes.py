@@ -373,6 +373,18 @@ async def test_an_empty_upload_is_invalid(client: AsyncClient, make_actor) -> No
     assert response.status_code == 422
 
 
+async def test_an_import_over_the_limit_names_the_limit(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """B-7: 501 rows answered "The request was not valid"; the refusal now says 500."""
+    _, admin = await org_with_admin(client, make_actor)
+    rows = [{"email": f"t{index}@example.com"} for index in range(501)]
+    response = await client.post("/api/v1/orgs/kings/trainees/bulk", json={"trainees": rows}, headers=bearer(admin))
+    assert response.status_code == 422
+    assert response.json()["code"] == "too_many_trainees"
+    assert response.json()["message"] == (
+        "An import takes at most 500 trainees at a time; this one had 501. Send the rest in another import."
+    )
+
+
 async def test_the_roster_filters_on_revoked_access(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     _, admin = await org_with_admin(client, make_actor)
     revoked_id = await add_trainee(client, admin, "gone@example.com")

@@ -7,6 +7,8 @@
 - People (nav, `/trainees`): tabs Trainees and Team (Team only with `manage_team`).
 - Programmes (no nav entry; `/programmes` still works): the real list, same as Build → Programmes. Button "New programme",
   dialog "Add programme" (input "Exam code"). Row action: "Activate" (draft), "Retire" (active), "Reactivate" (retired).
+  Above it, section "Exams the platform publishes": rows with button "Adopt" (org admin) or badge "Adopted";
+  the setup guide's Exam step ("Adopt or write an exam") links here.
 - Results → "Open <name>" → "The decision": Pass/Fail buttons, rationale, "Sign off"; once signed off,
   "Back to draft" (confirm dialog, same label) and "Release". Exam-mode sittings add select "Recruitment outcome";
   released shows "Recruitment outcome: <label>" (options include "Pending", "Reserve list"; "Not recorded" is the blank).

@@ -19,6 +19,7 @@ from app.features.identity import service_invitations as invitations
 from app.features.roster import domain, errors, repository, repository_groups
 from app.features.roster.models import Trainee
 from app.features.roster.schemas import (
+    MAX_BULK_TRAINEES,
     BulkTraineesResult,
     CreateTrainee,
     SkippedTrainee,
@@ -260,6 +261,11 @@ async def add_trainees(
     Duplicates within the upload are skipped after the first, by normalised
     address, so a spreadsheet with the same person twice does not fail on the second.
     """
+    if len(entries) > MAX_BULK_TRAINEES:
+        raise errors.TooManyTrainees(
+            f"An import takes at most {MAX_BULK_TRAINEES} trainees at a time; this one had "
+            f"{len(entries)}. Send the rest in another import."
+        )
     outcome = BulkTraineesResult()
     seen: set[str] = set()
     for entry in entries:

@@ -36,8 +36,8 @@ LIVEKIT_AGENT_NAMESPACE= poetry run pytest -q \
   tests/http/test_invitations.py tests/http/test_results_routes.py \
   tests/http/test_reviews_routes.py tests/http/test_live_board.py \
   tests/http/test_org_read_models.py tests/http/test_sitting_report.py \
-  tests/http/test_sitting_readout_routes.py \
-  tests/security/test_membership_role_escalation.py
+  tests/http/test_sitting_readout_routes.py tests/http/test_exam_import_routes.py \
+  tests/http/test_results_export.py tests/security/test_membership_role_escalation.py
 ```
 
 457 passed on 2026-09-25. Empty `LIVEKIT_AGENT_NAMESPACE` because a local
@@ -59,6 +59,11 @@ requests is still broken. Then run `node scripts/smoke.mjs` if you touched an `a
 
 ## Traps
 
+- The sitting report (`GET .../sittings/{id}/report`) is `OrgStaff`: a supervisor reads it,
+  since review navigation and the step guide need it. Its exports (`report.csv`, the
+  readout) stay `OrgAdmin` and the web gates them on `export_results`; record, sign off,
+  release and the result PDF stay institution admin (`sign_off_results`).
+- A training sitting stops at Mark in `sittingSteps` (no Decide or Release; R-36 adds sharing).
 - `trainee_id` means two things: circuit slots use `users.id`, result decisions use `trainees.id`.
 - A platform admin reads any organisation for support but holds none of its
   powers (`OrgAdmin` is `allow_platform_admin=False`). A 403 from the staff

@@ -20,13 +20,14 @@ import { readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
 import { SittingEditForm } from "@/domains/assess/SittingEditForm";
 import { readSittingReport } from "@/domains/assess/results/api";
 import {
+  circuitToOpen,
   countsFromReport,
   sittingNext,
   sittingSteps,
   type SittingNextId,
   type SittingStepsInput,
 } from "@/domains/assess/sittingSteps";
-import { sittingModeLabel, sittingStatusLabel } from "@/domains/assess/support";
+import { sittingModeLabel, sittingRunning, sittingStatusLabel } from "@/domains/assess/support";
 import { formatShortDateTime } from "@/foundation/format";
 
 /** One sitting and its circuits, with the way into each console. */
@@ -36,24 +37,15 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
   const userId = session?.user.id ?? null;
   const state = useAsync((signal) => readSitting(orgSlug, sittingId, signal), [orgSlug, sittingId]);
   const [editing, setEditing] = useState(false);
-  // The report's counts feed the steps; someone who cannot read it sees the steps up to Run.
-  const mayReadReport = can(session, "sign_off_results");
-  const report = useAsync(
-    (signal) => (mayReadReport ? readSittingReport(orgSlug, sittingId, signal).catch(() => null) : Promise.resolve(null)),
-    [orgSlug, sittingId, mayReadReport],
-  );
+  // The report's counts feed the steps. Every staff role reads it; a failure shows as one,
+  // never as "0 marked, 0 decided".
+  const report = useAsync((signal) => readSittingReport(orgSlug, sittingId, signal), [orgSlug, sittingId]);
 
   return (
     <div className="flex flex-col gap-6">
       <AsyncBoundary state={state}>
         {(sitting) => {
-          const input: SittingStepsInput = {
-            scheduledFor: sitting.scheduled_for,
-            circuits: sitting.circuits ?? [],
-            counts: report.data ? countsFromReport(report.data) : null,
-            can: { schedule: can(session, "schedule_sittings"), signOff: mayReadReport },
-          };
-          const next = sittingNext(input);
+          const runCircuit = circuitToOpen(sitting.circuits ?? []);
           const actions: Partial<Record<SittingNextId, ReactNode>> = {
             schedule: (
               <Button themeType="b2b" size="sm" variant="commit" onClick={() => setEditing(true)}>
@@ -65,6 +57,11 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                 Add a circuit
               </ButtonLink>
             ),
+            run: runCircuit ? (
+              <ButtonLink themeType="b2b" size="sm" variant="commit" href={hrefFor(`/circuits/${runCircuit.id}`)}>
+                Open the console
+              </ButtonLink>
+            ) : null,
             mark: <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />,
             decide: <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />,
             release: <OpenResults href={hrefFor(`/sittings/${sitting.id}/results`)} />,
@@ -80,7 +77,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               }
               action={
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={sitting.status === "live" ? "success" : "neutral"} dot>
+                  <Badge variant={sittingRunning(sitting.status) ? "success" : "neutral"} dot>
                     {sittingStatusLabel(sitting.status)}
                   </Badge>
                   {can(session, "schedule_sittings") ? (
@@ -88,16 +85,14 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                       Edit
                     </Button>
                   ) : null}
-                  {can(session, "sign_off_results") ? (
-                    <ButtonLink
-                      themeType="b2b"
-                      size="sm"
-                      variant="secondary"
-                      href={hrefFor(`/sittings/${sitting.id}/results`)}
-                    >
-                      Results
-                    </ButtonLink>
-                  ) : null}
+                  <ButtonLink
+                    themeType="b2b"
+                    size="sm"
+                    variant="secondary"
+                    href={hrefFor(`/sittings/${sitting.id}/results`)}
+                  >
+                    Results
+                  </ButtonLink>
                   {can(session, "schedule_sittings") ? (
                     <ButtonLink
                       themeType="b2b"
@@ -112,9 +107,23 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               }
             />
 
-            <StepGuide steps={sittingSteps(input)} line={next.line}>
-              {next.actionable ? actions[next.id] : null}
-            </StepGuide>
+            <AsyncBoundary state={report}>
+              {(data) => {
+                const input: SittingStepsInput = {
+                  scheduledFor: sitting.scheduled_for,
+                  circuits: sitting.circuits ?? [],
+                  counts: countsFromReport(data),
+                  training: sitting.mode !== "exam",
+                  can: { schedule: can(session, "schedule_sittings"), signOff: can(session, "sign_off_results") },
+                };
+                const next = sittingNext(input);
+                return (
+                  <StepGuide steps={sittingSteps(input)} line={next.line}>
+                    {next.actionable ? actions[next.id] : null}
+                  </StepGuide>
+                );
+              }}
+            </AsyncBoundary>
 
             {editing ? (
               <SittingEditForm

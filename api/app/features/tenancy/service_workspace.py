@@ -107,6 +107,8 @@ def capabilities_for(principal: Principal) -> Capabilities:
             # The create-sitting route is OrgAdmin; the screens offer "Schedule a sitting" from this.
             "schedule_sittings": domain.is_org_admin(role),
             "sign_off_results": domain.is_institution_admin(role),
+            # The CSV and readout exports are OrgAdmin; the report itself is OrgStaff.
+            "export_results": domain.is_org_admin(role),
             "administer_platform": principal.is_platform_admin,
         },
     )

@@ -6,7 +6,7 @@ import { AsyncBoundary, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import type { StationLibraryScope } from "@/capabilities/stations";
 import { useSurface } from "@/capabilities";
-import { createCircuit, listMemberships, listTrainees, readSitting, sittingLibraryScope } from "@/domains/assess/api";
+import { createCircuit, listActiveMembers, listActiveTrainees, readSitting, sittingLibraryScope } from "@/domains/assess/api";
 import {
   CircuitBuilder,
   type StaffRow,
@@ -34,14 +34,14 @@ export function NewCircuit({ orgSlug, sittingId }: { orgSlug: string; sittingId:
     async (signal) => {
       const [sitting, trainees, staff] = await Promise.all([
         readSitting(orgSlug, sittingId, signal),
-        listTrainees(orgSlug, signal, { accessRevoked: false }),
-        listMemberships(orgSlug, signal, { status: "active" }),
+        listActiveTrainees(orgSlug, signal),
+        listActiveMembers(orgSlug, signal),
       ]);
       return {
         sitting,
         scope: await sittingLibraryScope(orgSlug, sitting, signal),
-        trainees: trainees.items,
-        staff: staff.items.map((member) => ({
+        trainees,
+        staff: staff.map((member) => ({
           user_id: member.user_id,
           email: member.email,
           role: member.role,

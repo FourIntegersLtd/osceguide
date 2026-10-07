@@ -5,8 +5,8 @@ import { Alert, AsyncBoundary, B2CPageHeader } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
-  listMemberships,
-  listTrainees,
+  listActiveMembers,
+  listActiveTrainees,
   readSitting,
   sittingLibraryScope,
   rebuildCircuit,
@@ -48,16 +48,16 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
     async (signal) => {
       const [console_, trainees, staff] = await Promise.all([
         readConsole(orgSlug, circuitId, signal),
-        listTrainees(orgSlug, signal, { accessRevoked: false }),
-        listMemberships(orgSlug, signal, { status: "active" }),
+        listActiveTrainees(orgSlug, signal),
+        listActiveMembers(orgSlug, signal),
       ]);
       // The console's sitting carries no exam; the sitting read does.
       const sitting = await readSitting(orgSlug, console_.sitting.id, signal);
       return {
         scope: await sittingLibraryScope(orgSlug, sitting, signal),
         console: console_,
-        trainees: trainees.items,
-        staff: staff.items.map((member) => ({
+        trainees,
+        staff: staff.map((member) => ({
           user_id: member.user_id,
           email: member.email,
           role: member.role,

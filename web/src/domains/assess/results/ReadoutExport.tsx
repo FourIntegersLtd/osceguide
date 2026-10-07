@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert, Button } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { hasCode, saveBlob } from "@/foundation/platform-client";
+import { can, useSession } from "@/foundation/session";
 import { readSittingReadout } from "@/domains/assess/results/api";
 import { readoutAsMarkdown, readoutFilename } from "@/domains/assess/results/support";
 
@@ -22,6 +23,7 @@ import { readoutAsMarkdown, readoutFilename } from "@/domains/assess/results/sup
  * state to render until somebody asks for the file.
  */
 export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sittingId: string }) {
+  const { session } = useSession();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -47,6 +49,9 @@ export function ReadoutExport({ orgSlug, sittingId }: { orgSlug: string; sitting
       setBusy(false);
     }
   }
+
+  // The readout route is org admin: a supervisor reads the ranking on screen, not as a file.
+  if (!can(session, "export_results")) return null;
 
   return (
     <div className="flex flex-col items-end gap-2">

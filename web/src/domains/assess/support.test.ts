@@ -8,6 +8,7 @@ import {
   programmeChoices,
   sittingChanges,
   sittingEditLock,
+  sittingRunning,
 } from "@/domains/assess/support";
 
 /** The smallest thing `sittingEditLock` can be asked about. */
@@ -153,3 +154,10 @@ function form(
     scheduledFor: fieldDateTime(sitting.scheduled_for),
   };
 }
+
+// R-21: the sitting page's badge read only "live" as running, and the backend writes in_progress.
+test("a sitting the backend marks in_progress is running", () => {
+  assert.equal(sittingRunning("in_progress"), true);
+  assert.equal(sittingRunning("scheduled"), false);
+  assert.equal(sittingRunning("completed"), false);
+});

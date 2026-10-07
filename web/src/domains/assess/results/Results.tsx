@@ -61,10 +61,12 @@ function Report({
     scheduledFor: report.sitting.scheduled_for ?? null,
     circuits: null,
     counts: countsFromReport(report),
+    training: report.sitting.mode !== "exam",
     can: { schedule: can(session, "schedule_sittings"), signOff: can(session, "sign_off_results") },
   };
   const candidates = report.candidates ?? [];
-  const waiting = candidates.filter(releasable);
+  // Only someone who may release is offered the list to release from; everyone else reads the steps.
+  const waiting = progress.can.signOff && !progress.training ? candidates.filter(releasable) : [];
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -89,15 +91,17 @@ function Report({
         title="Results"
         subtitle={`${report.totals.stations_marked} of ${report.totals.stations} stations marked · ${report.totals.decisions_released} of ${report.totals.candidates} released`}
         action={
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            isLoading={downloading}
-            disabled={downloading}
-            onClick={() => downloadCsv()}
-          >
-            Download CSV
-          </Button>
+          can(session, "export_results") ? (
+            <Button
+              themeType="b2b"
+              variant="secondary"
+              isLoading={downloading}
+              disabled={downloading}
+              onClick={() => downloadCsv()}
+            >
+              Download CSV
+            </Button>
+          ) : undefined
         }
       />
       {downloadError ? <Alert tone="danger">{downloadError}</Alert> : null}

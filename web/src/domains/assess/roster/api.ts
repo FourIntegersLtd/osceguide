@@ -8,7 +8,7 @@
  * across instead. Both spellings are live in the same API and the schema is
  * the only place that says which is which.
  */
-import { platformRequest, type components } from "@/foundation/platform-client";
+import { PlatformError, platformRequest, type components } from "@/foundation/platform-client";
 import {
   collectPages,
   orgPath,
@@ -67,19 +67,40 @@ export function addTrainee(slug: string, input: TraineeInput): Promise<Trainee> 
   });
 }
 
+/** Rows one import request takes; the server refuses more (`too_many_trainees`). */
+export const IMPORT_CHUNK = 500;
+
 /**
- * A spreadsheet's worth of trainees in one request.
+ * A spreadsheet's worth of trainees, sent `IMPORT_CHUNK` rows at a time and
+ * answered as one result.
  *
  * The browser parses the file and the API takes rows, so an import is an
  * ordinary JSON call rather than a multipart upload the server re-parses.
  * Duplicates come back in `skipped` rather than failing the batch, which is
- * what makes a half-recognised file useful instead of a mystery.
+ * what makes a half-recognised file useful instead of a mystery. A chunk that
+ * is refused stops the import: its rows and every later one come back in
+ * `skipped` under the refusal's code, so the rows already added still read as
+ * added. A refusal before anything was added is thrown.
  */
-export function bulkAddTrainees(slug: string, rows: TraineeInput[]): Promise<BulkTraineesResult> {
-  return platformRequest<BulkTraineesResult>(`${orgPath(slug)}/trainees/bulk`, {
-    method: "POST",
-    body: { trainees: rows.map(traineeBody) },
-  });
+export async function bulkAddTrainees(slug: string, rows: TraineeInput[]): Promise<BulkTraineesResult> {
+  const created: Trainee[] = [];
+  const skipped: NonNullable<BulkTraineesResult["skipped"]> = [];
+  for (let start = 0; start < rows.length; start += IMPORT_CHUNK) {
+    try {
+      const part = await platformRequest<BulkTraineesResult>(`${orgPath(slug)}/trainees/bulk`, {
+        method: "POST",
+        body: { trainees: rows.slice(start, start + IMPORT_CHUNK).map(traineeBody) },
+      });
+      created.push(...(part.created ?? []));
+      skipped.push(...(part.skipped ?? []));
+    } catch (cause) {
+      if (start === 0) throw cause;
+      const code = cause instanceof PlatformError ? cause.code : "import_failed";
+      skipped.push(...rows.slice(start).map((row) => ({ email: row.email, code })));
+      break;
+    }
+  }
+  return { created, skipped };
 }
 
 /**

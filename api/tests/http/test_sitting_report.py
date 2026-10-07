@@ -124,9 +124,11 @@ async def test_a_candidate_no_longer_on_the_roster_and_undecided_still_appears(
     assert row["overall_rag"] is None
 
 
-async def test_the_report_is_for_admins_and_this_organisation_only(
+async def test_the_report_is_for_staff_and_this_organisation_only(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
+    """R-6: a supervisor opening Results read a 403 page. Staff read the report; a
+    trainee member still cannot, and the CSV export stays an org admin's."""
     org_id, admin = await org_with_admin(client, make_actor)
     sitting = await a_sitting(client, admin, "kings", mode="exam")
     supervisor = await make_actor(
@@ -134,9 +136,17 @@ async def test_the_report_is_for_admins_and_this_organisation_only(
         memberships=(Membership(org_id=org_id, org_slug="kings", role="supervisor"),),
         active_org_slug="kings",
     )
-    assert (
-        await client.get(f"/api/v1/orgs/kings/sittings/{sitting['id']}/report", headers=bearer(supervisor))
-    ).status_code == 403
+    trainee = await make_actor(
+        "member-trainee@example.com",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="trainee"),),
+        active_org_slug="kings",
+    )
+    report = f"/api/v1/orgs/kings/sittings/{sitting['id']}/report"
+    read = await client.get(report, headers=bearer(supervisor))
+    assert read.status_code == 200, read.text
+    assert read.json()["sitting"]["name"] == sitting["name"]
+    assert (await client.get(report, headers=bearer(trainee))).status_code == 403
+    assert (await client.get(f"{report}.csv", headers=bearer(supervisor))).status_code == 403
 
     _, other = await org_with_admin(client, make_actor, slug="guys")
     elsewhere = await client.get(f"/api/v1/orgs/guys/sittings/{sitting['id']}/report", headers=bearer(other))

@@ -6,6 +6,7 @@ import { Alert, B2CGroupedRowLink, B2CGroupedSection, Badge, Button, b2bTokens, 
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
+import { can, useSession } from "@/foundation/session";
 import { reviewPath } from "@/domains/assess/results/candidateNeighbours";
 import { ratingLabel, type Rating } from "@/capabilities/feedback/rubric";
 import { ratingVariant } from "@/domains/assess/results/reviewForm";
@@ -45,6 +46,9 @@ export function CandidateCard({
   hire: boolean;
   onChanged: () => void;
 }) {
+  const { session } = useSession();
+  // Recording, signing off, releasing and the result PDF are institution admin routes.
+  const mayDecide = can(session, "sign_off_results");
   const [open, setOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -107,7 +111,7 @@ export function CandidateCard({
         </td>
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-2">
-            {resultReleased ? (
+            {resultReleased && mayDecide ? (
               <Button
                 themeType="b2b"
                 variant="ghost"
@@ -156,13 +160,20 @@ export function CandidateCard({
             </B2CGroupedSection>
 
             <FoldSection title="The decision">
-              <CandidateDecision
-                orgSlug={orgSlug}
-                sittingId={sittingId}
-                candidate={candidate}
-                hire={hire}
-                onChanged={onChanged}
-              />
+              {mayDecide ? (
+                <CandidateDecision
+                  orgSlug={orgSlug}
+                  sittingId={sittingId}
+                  candidate={candidate}
+                  hire={hire}
+                  onChanged={onChanged}
+                />
+              ) : (
+                <p className="text-osce-body text-b2b-mid">
+                  An institution administrator records, signs off and releases the decision. Its stage is shown in the
+                  row above.
+                </p>
+              )}
             </FoldSection>
           </td>
         </tr>

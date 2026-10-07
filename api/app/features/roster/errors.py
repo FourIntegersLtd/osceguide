@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.errors import AppError, Conflict, NotFound
+from app.core.errors import AppError, Conflict, InvalidInput, NotFound
 
 
 class TraineeNotFound(NotFound):
@@ -21,6 +21,13 @@ class TraineeExists(Conflict):
 
     code = "trainee_exists"
     default_message = "Someone with that email is already on this roster"
+
+
+class TooManyTrainees(InvalidInput):
+    """One bulk import carried more rows than one request takes."""
+
+    code = "too_many_trainees"
+    default_message = "An import takes at most 500 trainees at a time"
 
 
 class CohortNotFound(NotFound):

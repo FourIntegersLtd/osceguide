@@ -102,7 +102,7 @@ groups a circuit can be built from.
 |---|---|---|---|
 | GET | `/api/v1/orgs/{org_slug}/trainees` | org member | supervisors need names to run a circuit |
 | POST | `/api/v1/orgs/{org_slug}/trainees` | org admin | `trainee_exists` (409); an unknown address is invited and linked |
-| POST | `/api/v1/orgs/{org_slug}/trainees/bulk` | org admin | up to 500 rows; duplicates reported in `skipped`, never fatal |
+| POST | `/api/v1/orgs/{org_slug}/trainees/bulk` | org admin | up to 500 rows (more is `too_many_trainees`, 422, naming the limit); duplicates reported in `skipped`, never fatal |
 | PATCH | `/api/v1/orgs/{org_slug}/trainees/{id}` | org admin | name and intake; only what was sent is written. `trainee_not_found`, `cohort_not_found` (404) |
 | POST | `/api/v1/orgs/{org_slug}/trainees/{id}/resend-invitation` | org admin | a **new** set-password link, queued in this transaction; `invitation_not_pending` (409) once they have chosen one |
 | POST | `/api/v1/orgs/{org_slug}/trainees/{id}/access` | org admin | one route for revoke and restore |
@@ -130,7 +130,10 @@ which is the only thing `main.py` imports from this slice.
 ## Jobs
 The invitation is queued in the transaction that creates a roster row (and, on
 a re-send, in the transaction that mints the replacement token). The browser
-parses the spreadsheet and posts rows to `/trainees/bulk`.
+parses the spreadsheet and posts rows to `/trainees/bulk` in chunks of 500,
+merging the answers into one result (`bulkAddTrainees` in `domains/assess/roster/api.ts`).
+A chunk that fails after the first one lists its rows and the rest as skipped
+with the refusal's code, so a rate limit halfway through never loses track.
 
 ## Cross-slice dependencies
 `sittings` asks this slice whether the people a circuit names may be rostered

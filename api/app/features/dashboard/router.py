@@ -126,14 +126,17 @@ async def read_circuit_console(
     responses=error_responses(Forbidden, errors.SittingNotFound),
 )
 async def read_sitting_report(
-    sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session
+    sitting_id: uuid.UUID, workspace: OrgStaff, session: Session
 ) -> schemas_report.SittingReport:
     """The whole sitting, per candidate: stations sat, marking, reviewers' ratings and decision
-    status. Org admin only — carries decisions not yet released."""
+    status. Every staff role reads it: a supervisor reviews these slots and already reads the
+    cohort ranked by score, and the decision appears only as its outcome and stage (no
+    rationale or notes). Recording, signing off and releasing stay institution admin."""
     return await service_report.build_sitting_report(session, workspace.org_id, sitting_id)
 
 
-# The same report as a spreadsheet. Decisions not yet released are in it, so the access matches.
+# The same report as a spreadsheet, for an org admin only: a file is printed and circulated
+# (the same reason the readout is org admin), where the screen is read in place.
 @router.get(
     "/orgs/{org_slug}/sittings/{sitting_id}/report.csv",
     response_class=Response,

@@ -12,6 +12,7 @@ export const PERMISSIONS = [
   "run_circuits",
   "schedule_sittings",
   "sign_off_results",
+  "export_results",
   "administer_platform",
 ] as const;
 

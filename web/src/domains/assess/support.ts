@@ -153,6 +153,11 @@ export function sittingModeLabel(mode: string): string {
 }
 
 /** "Scheduled", "In progress": a sitting's status as a person reads it. */
+/** A sitting under way: the backend writes `in_progress`; `live` is the retiring label for the same. */
+export function sittingRunning(status: string): boolean {
+  return status === "in_progress" || status === "live";
+}
+
 export function sittingStatusLabel(status: string): string {
   return sentenceCase(status);
 }

@@ -17,15 +17,14 @@ import { useCursorPages } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { listSittings, type Sitting } from "@/domains/assess/api";
+import { sittingRunning } from "@/domains/assess/support";
 
 type ModeFilter = "all" | "exam" | "training";
-
-const RUNNING = new Set(["in_progress", "live"]);
 
 /** The sitting running now, else the soonest one still to come; finished ones are never next. */
 export function nextUp(sittings: Sitting[], now: number = Date.now()): Sitting | null {
   const open = sittings.filter((sitting) => sitting.status !== "completed");
-  const running = open.find((sitting) => RUNNING.has(sitting.status));
+  const running = open.find((sitting) => sittingRunning(sitting.status));
   if (running) return running;
   const upcoming = open
     .filter((sitting) => sitting.scheduled_for && new Date(sitting.scheduled_for).getTime() >= now)
@@ -75,7 +74,7 @@ const columnsFor = (hrefFor: (path: string) => string): Column<Sitting>[] => [
     header: "Status",
     key: "status" as keyof Sitting,
     render: (sitting: Sitting) => (
-      <Badge variant={RUNNING.has(sitting.status) ? "success" : "neutral"} dot>
+      <Badge variant={sittingRunning(sitting.status) ? "success" : "neutral"} dot>
         {sitting.status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}
       </Badge>
     ),
@@ -134,7 +133,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                 <B2CHero
                   eyebrow="Next up"
                   title={
-                    RUNNING.has(next.status) ? `${next.name} is running now` : next.name
+                    sittingRunning(next.status) ? `${next.name} is running now` : next.name
                   }
                   action={
                     <ButtonLink

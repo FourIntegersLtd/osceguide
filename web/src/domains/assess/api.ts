@@ -100,6 +100,19 @@ export function listMemberships(
   });
 }
 
+/**
+ * Everyone on the roster who still has access, every page of it. The circuit
+ * pickers read the first page only and dropped everyone past the hundredth.
+ */
+export function listActiveTrainees(slug: string, signal?: AbortSignal): Promise<Trainee[]> {
+  return collectPages((cursor) => listTrainees(slug, signal, { cursor, accessRevoked: false }));
+}
+
+/** The active team, every page of it, for the supervisor picker. */
+export function listActiveMembers(slug: string, signal?: AbortSignal): Promise<MembershipPage["items"]> {
+  return collectPages((cursor) => listMemberships(slug, signal, { cursor, status: "active" }));
+}
+
 export type Programme = components["schemas"]["ProgrammeRead"];
 
 export function listProgrammes(slug: string, signal?: AbortSignal) {

@@ -1,8 +1,12 @@
 /**
  * Where a sitting stands from a date to released results: six steps and the
  * one thing to do next. Pure, so the words can be tested.
+ *
+ * A training sitting stops at Mark: it has no decision to sign off or release
+ * (a trainee's review is shared slot by slot instead, R-36).
  */
 
+import { plural } from "@/foundation/format";
 import type { RailStep } from "@/foundation/ui";
 import { countNote } from "@/domains/assess/results/support";
 
@@ -27,8 +31,10 @@ export interface SittingStepsInput {
   scheduledFor: string | null;
   /** Null where the screen has only the report (the results page): candidates in it have sat. */
   circuits: { started_at: string | null; ended_at: string | null }[] | null;
-  /** Null while the report is unread (or this person cannot read it). */
+  /** Null while the report is unread. */
   counts: SittingCounts | null;
+  /** A training sitting has no Decide or Release step. */
+  training: boolean;
   can: { schedule: boolean; signOff: boolean };
 }
 
@@ -41,10 +47,6 @@ export interface SittingNext {
   actionable: boolean;
   /** Signed-off results waiting to be released, for the release step. */
   waiting: number;
-}
-
-function plural(count: number, one: string, many = `${one}s`): string {
-  return `${count} ${count === 1 ? one : many}`;
 }
 
 /** Run is judged by what was actually sat, not only by a circuit having ended. */
@@ -106,7 +108,7 @@ export function sittingSteps(input: SittingStepsInput): SittingStep[] {
     circuitCount: circuits.length,
   });
 
-  return [
+  const steps: SittingStep[] = [
     {
       id: "schedule",
       label: "Schedule",
@@ -121,6 +123,10 @@ export function sittingSteps(input: SittingStepsInput): SittingStep[] {
     },
     run,
     { id: "mark", label: "Mark", state: marked ? "done" : "todo", note: markNote },
+  ];
+  if (input.training) return steps;
+  return [
+    ...steps,
     { id: "decide", label: "Decide", state: decided ? "done" : "todo", note: decideNote },
     { id: "release", label: "Release", state: released ? "done" : "todo", note: releaseNote },
   ];
@@ -139,9 +145,13 @@ export function sittingNext(input: SittingStepsInput): SittingNext {
     waiting,
   });
 
+  const signOff = input.can.signOff;
+
   // Signed-off results can go out whatever else is still open.
-  if (waiting > 0) {
-    return next("release", `${plural(waiting, "result")} signed off and not yet released.`, input.can.signOff);
+  if (waiting > 0 && !input.training) {
+    return signOff
+      ? next("release", `${plural(waiting, "result")} signed off and not yet released.`, true)
+      : next("release", `${plural(waiting, "result")} signed off, waiting for an administrator to release them.`, false);
   }
 
   switch (open?.id) {
@@ -150,21 +160,47 @@ export function sittingNext(input: SittingStepsInput): SittingNext {
     case "circuits":
       return next("circuits", "Add a circuit so candidates can take this sitting.", input.can.schedule);
     case "run": {
+      // The results page has no circuits to link to; the sitting page links the console.
+      const openable = circuits.length > 0;
       if (open.state === "attention") {
-        return next("run", "The circuit ended and nobody sat. Start a new circuit when candidates are ready.", false);
+        return next("run", "The circuit ended and nobody sat. Open it to see what happened, or add another circuit.", openable);
       }
       const running = circuits.some((circuit) => circuit.started_at !== null && circuit.ended_at === null);
-      return next("run", running ? "A circuit is running." : "Start a circuit from its page when everyone is ready.", false);
+      return next(
+        "run",
+        running ? "A circuit is running. Follow it from its console." : "Start the circuit from its console when everyone is ready.",
+        openable,
+      );
     }
     case "mark":
-      return next("mark", "Marking is not finished. Review each station on the results page.", input.can.signOff);
+      // Every staff role reads the results page and reviews the stations on it.
+      return next("mark", "Marking is not finished. Review each station on the results page.", true);
     case "decide":
-      return next("decide", "Record and sign off each candidate's outcome.", input.can.signOff);
+      return signOff
+        ? next("decide", "Record and sign off each candidate's outcome.", true)
+        : next("decide", "Waiting for an administrator to record and sign off each outcome.", false);
     case "release":
-      return next("release", "Sign off the remaining outcomes, then release them.", input.can.signOff);
+      return signOff
+        ? next("release", "Sign off the remaining outcomes, then release them.", true)
+        : next("release", "Waiting for an administrator to sign off and release the results.", false);
     default:
-      return next("done", "Every result has been released.", false);
+      return next("done", input.training ? "Every station has been marked." : "Every result has been released.", false);
   }
+}
+
+/**
+ * The circuit the Run step opens: the one running, else the next to start, else
+ * the last to finish.
+ */
+export function circuitToOpen<T extends { id: string; started_at: string | null; ended_at: string | null }>(
+  circuits: T[],
+): T | null {
+  return (
+    circuits.find((circuit) => circuit.started_at !== null && circuit.ended_at === null) ??
+    circuits.find((circuit) => circuit.started_at === null) ??
+    circuits.at(-1) ??
+    null
+  );
 }
 
 /** The counts a sitting's report carries, in the shape the steps read. */
