@@ -103,11 +103,15 @@ async def add_membership(
     product_surface: str | None,
     actor: Principal,
     now: datetime,
+    temporary_password: str | None = None,
 ) -> MembershipRead:
     """Put somebody in an organisation, by email.
 
     An address with no account is invited rather than refused: the account is created
-    without a password and the person is emailed a link to choose one.
+    without a password and the person is emailed a link to choose one. With
+    `temporary_password` (the platform console only, for when that email cannot be
+    delivered) the new account gets that password instead and no email, and must change
+    it at first sign-in. An address that already has an account is never touched by it.
     """
     _guard_role_grant(actor, org_id, role)
     user = await identity.user_ref_by_email(session, email)
@@ -118,13 +122,19 @@ async def add_membership(
             raise OrgNotFound()
         # No display name until they set one: the address is not a name, and storing it
         # made every greeting and "led by" read "Good morning, someone@example.com".
-        user = await invitations.invite_user(session, email=email, name="", invited_to=org.name, now=now)
+        if temporary_password is not None:
+            user = await invitations.seat_user_with_temporary_password(
+                session, email=email, password=temporary_password
+            )
+        else:
+            user = await invitations.invite_user(session, email=email, name="", invited_to=org.name, now=now)
     user_id = user.id
     if await repository.membership_for_user_in_org(session, org_id, user_id, role=role) is not None:
         raise MembershipExists()
     membership = await repository.add_membership(
         session, org_id=org_id, user_id=user_id, role=role, product_surface=product_surface
     )
+    how = "" if not invited else " (temporary password)" if temporary_password is not None else " (invited)"
     await repository.write_audit(
         session,
         org_id=org_id,
@@ -133,7 +143,7 @@ async def add_membership(
         action="membership.added",
         target_type="membership",
         target_id=str(user_id),
-        summary=f"Granted {role} to {email}" + (" (invited)" if invited else ""),
+        summary=f"Granted {role} to {email}{how}",
     )
     return _membership_read(membership, person=user)
 

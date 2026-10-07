@@ -156,6 +156,17 @@ class CreateMembership(BaseModel):
     product_surface: str | None = None
 
 
+class SeatMembership(CreateMembership):
+    """The platform console's add, which may hand a new account a temporary password.
+
+    Only for an address with no account yet, and only because the invitation email
+    cannot always be delivered. The person must change it at first sign-in. Ignored for
+    an address that already has an account: the console never resets anyone's password.
+    """
+
+    temporary_password: str | None = Field(default=None, min_length=1, max_length=512)
+
+
 class UpdateMembership(BaseModel):
     role: str = Field(min_length=1, max_length=32)
 

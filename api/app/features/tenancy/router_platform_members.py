@@ -49,10 +49,12 @@ async def list_org_memberships_for_support(
     "/platform/organizations/{org_slug}/memberships",
     response_model=schemas.MembershipRead,
     status_code=201,
-    responses=error_responses(Forbidden, errors.OrgNotFound, errors.MembershipExists),
+    responses=error_responses(
+        Forbidden, errors.OrgNotFound, errors.MembershipExists, errors.WeakPasswordError
+    ),
 )
 async def seat_membership(
-    body: schemas.CreateMembership,
+    body: schemas.SeatMembership,
     workspace: OrgReader,
     admin: PlatformAdmin,
     session: Session,
@@ -63,7 +65,9 @@ async def seat_membership(
     Usually the first person: a freshly provisioned organisation has no admin
     to do it. Not only the first — the admin who left before naming a
     successor leaves the same gap, and an address with no account is invited
-    exactly as an org admin's invitation would.
+    exactly as an org admin's invitation would. `temporary_password` is the
+    fallback for when that email cannot be delivered: the new account gets it
+    instead and must change it at first sign-in.
     """
     return await service_memberships.add_membership(
         session,
@@ -73,6 +77,7 @@ async def seat_membership(
         product_surface=body.product_surface,
         actor=admin,
         now=clock.now(),
+        temporary_password=body.temporary_password,
     )
 
 

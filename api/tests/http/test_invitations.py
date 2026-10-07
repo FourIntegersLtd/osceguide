@@ -98,6 +98,73 @@ async def test_seating_invites_an_address_with_no_account(
     assert [m["role"] for m in login.json()["user"]["memberships"]] == ["owner"]
 
 
+async def test_the_console_may_hand_a_new_account_a_temporary_password(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """When the invitation email cannot be delivered, the console relays a password by
+    hand: no email is queued, the person can sign in at once, and that first sign-in
+    may only change the password."""
+    root, _ = await provisioned(client, make_actor)
+    seated = await client.post(
+        "/api/v1/platform/organizations/ashford/memberships",
+        json={"email": "hand.dean@ashford.ac.uk", "role": "owner", "temporary_password": "Temp-Passw0rd!"},
+        headers=bearer(root),
+    )
+    assert seated.status_code == 201, seated.text
+    assert seated.json()["invited"] is False
+    assert await queued_invitations(db_session) == []
+
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "hand.dean@ashford.ac.uk", "password": "Temp-Passw0rd!"}
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["user"]["must_change_password"] is True
+    assert [m["role"] for m in login.json()["user"]["memberships"]] == ["owner"]
+
+    audit = await client.get("/api/v1/platform/organizations/ashford/audit", headers=bearer(root))
+    assert audit.status_code == 200, audit.text
+    assert "Granted owner to hand.dean@ashford.ac.uk (temporary password)" in {
+        row["summary"] for row in audit.json()["items"]
+    }
+
+
+async def test_a_weak_temporary_password_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    root, _ = await provisioned(client, make_actor)
+    seated = await client.post(
+        "/api/v1/platform/organizations/ashford/memberships",
+        json={"email": "weak.dean@ashford.ac.uk", "role": "owner", "temporary_password": "short"},
+        headers=bearer(root),
+    )
+    assert seated.status_code == 422, seated.text
+    assert seated.json()["code"] == "weak_password"
+
+
+async def test_a_temporary_password_never_touches_an_existing_account(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root, _ = await provisioned(client, make_actor)
+    registered = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "already@ashford.ac.uk", "name": "Already Here", "password": "Their-0wn-Passw0rd"},
+    )
+    assert registered.status_code == 201, registered.text
+    seated = await client.post(
+        "/api/v1/platform/organizations/ashford/memberships",
+        json={"email": "already@ashford.ac.uk", "role": "owner", "temporary_password": "Temp-Passw0rd!"},
+        headers=bearer(root),
+    )
+    assert seated.status_code == 201, seated.text
+    assert seated.json()["invited"] is False
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "already@ashford.ac.uk", "password": "Temp-Passw0rd!"}
+    )
+    assert login.status_code == 401, login.text
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "already@ashford.ac.uk", "password": "Their-0wn-Passw0rd"}
+    )
+    assert login.status_code == 200, login.text
+
+
 async def test_only_the_console_may_seat(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     root, org_id = await provisioned(client, make_actor)
     owner = await make_actor(

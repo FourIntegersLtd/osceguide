@@ -6112,7 +6112,9 @@ export interface paths {
          *     Usually the first person: a freshly provisioned organisation has no admin
          *     to do it. Not only the first — the admin who left before naming a
          *     successor leaves the same gap, and an address with no account is invited
-         *     exactly as an org admin's invitation would.
+         *     exactly as an org admin's invitation would. `temporary_password` is the
+         *     fallback for when that email cannot be delivered: the new account gets it
+         *     instead and must change it at first sign-in.
          */
         post: operations["tenancy_seat_membership"];
         delete?: never;
@@ -13930,6 +13932,27 @@ export interface components {
             slug: string;
             /** Title */
             title: string;
+        };
+        /**
+         * SeatMembership
+         * @description The platform console's add, which may hand a new account a temporary password.
+         *
+         *     Only for an address with no account yet, and only because the invitation email
+         *     cannot always be delivered. The person must change it at first sign-in. Ignored for
+         *     an address that already has an account: the console never resets anyone's password.
+         */
+        SeatMembership: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Product Surface */
+            product_surface?: string | null;
+            /** Role */
+            role: string;
+            /** Temporary Password */
+            temporary_password?: string | null;
         };
         /** SendMessage */
         SendMessage: {
@@ -35657,7 +35680,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateMembership"];
+                "application/json": components["schemas"]["SeatMembership"];
             };
         };
         responses: {
@@ -35697,13 +35720,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description weak_password */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -9,6 +9,7 @@ from app.core.tenancy import OrgNotFound
 
 # The same class identity raises. The console route documents it; there is not a second one.
 from app.features.identity.errors import MfaNotEnrolled as MfaNotEnrolled
+from app.features.identity.errors import WeakPasswordError as WeakPasswordError
 
 # Re-exported, not redefined: `require_org` in core raises this and the routers
 # here document it, so both have to mean the same class.

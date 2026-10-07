@@ -295,17 +295,23 @@ export function restoreOrganization(slug: string): Promise<Organization> {
  * and suspend a tenant but not seat its owner. A platform admin holds no org
  * role, which is why this is a `/platform/…` route rather than the org one.
  *
- * No password passes through this app. An address with no account is invited
- * and the backend emails a link; the retiring console generated a temporary
- * password in the browser for an administrator to relay by hand.
+ * By default no password passes through this app: an address with no account
+ * is invited and the backend emails a link. `temporaryPassword` is the fallback
+ * for when that email cannot be delivered. The console admin types it and
+ * relays it by hand; the backend applies it only to a brand-new account, which
+ * must change it at first sign-in.
  */
 export function seatMembership(
   slug: string,
-  input: { email: string; role: string },
+  input: { email: string; role: string; temporaryPassword?: string },
 ): Promise<Membership> {
   return platformRequest<Membership>(`${orgs(slug)}/memberships`, {
     method: "POST",
-    body: { email: input.email, role: input.role },
+    body: {
+      email: input.email,
+      role: input.role,
+      ...(input.temporaryPassword ? { temporary_password: input.temporaryPassword } : {}),
+    },
   });
 }
 

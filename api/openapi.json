@@ -15993,6 +15993,52 @@
         "title": "SearchHit",
         "type": "object"
       },
+      "SeatMembership": {
+        "description": "The platform console's add, which may hand a new account a temporary password.\n\nOnly for an address with no account yet, and only because the invitation email\ncannot always be delivered. The person must change it at first sign-in. Ignored for\nan address that already has an account: the console never resets anyone's password.",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "product_surface": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Surface"
+          },
+          "role": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Role",
+            "type": "string"
+          },
+          "temporary_password": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporary Password"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "SeatMembership",
+        "type": "object"
+      },
       "SendMessage": {
         "properties": {
           "body": {
@@ -55144,7 +55190,7 @@
         ]
       },
       "post": {
-        "description": "Put somebody into an organisation from the console.\n\nUsually the first person: a freshly provisioned organisation has no admin\nto do it. Not only the first \u2014 the admin who left before naming a\nsuccessor leaves the same gap, and an address with no account is invited\nexactly as an org admin's invitation would.",
+        "description": "Put somebody into an organisation from the console.\n\nUsually the first person: a freshly provisioned organisation has no admin\nto do it. Not only the first \u2014 the admin who left before naming a\nsuccessor leaves the same gap, and an address with no account is invited\nexactly as an org admin's invitation would. `temporary_password` is the\nfallback for when that email cannot be delivered: the new account gets it\ninstead and must change it at first sign-in.",
         "operationId": "tenancy_seat_membership",
         "parameters": [
           {
@@ -55163,7 +55209,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateMembership"
+                "$ref": "#/components/schemas/SeatMembership"
               }
             }
           },
@@ -55224,11 +55270,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "weak_password",
+            "x-codes": [
+              "weak_password"
+            ]
           }
         },
         "security": [

@@ -15,9 +15,11 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import repository
+from app.features.identity.domain import WeakPassword, validate_password
+from app.features.identity.errors import WeakPasswordError
 from app.features.identity.models import User
 from app.features.identity.service import UserRef, _announce_registration, _ref
-from app.features.identity.tokens import new_token
+from app.features.identity.tokens import hash_password, new_token
 from app.features.notifications import service as notifications
 
 INVITATION_TTL_DAYS = 7
@@ -47,6 +49,26 @@ async def invite_user(
     )
     # The same hook registering runs: an invited person may already be on a
     # roster somewhere else, and those rows are waiting for this account.
+    await _announce_registration(session, user.id, user.email)
+    return _ref(user)
+
+
+async def seat_user_with_temporary_password(session: AsyncSession, *, email: str, password: str) -> UserRef:
+    """Create an account that can sign in now, with a password the console relays by hand.
+
+    The platform console's fallback for when the invitation email cannot reach anyone
+    (an unverified sender domain, a mailbox that is not watched). No email is queued: the
+    password is told to the person out of band. `must_change_password` is set, so the
+    first sign-in may only change it, and the relayed password stops working from then.
+    Raises `WeakPasswordError` for a password `validate_password` rejects, as registering does.
+    """
+    try:
+        validate_password(password)
+    except WeakPassword as exc:
+        raise WeakPasswordError(str(exc)) from exc
+    user = await repository.create_user(
+        session, email=email, name="", password_hash=hash_password(password), must_change_password=True
+    )
     await _announce_registration(session, user.id, user.email)
     return _ref(user)
 
