@@ -168,22 +168,22 @@ def edit_block(state: CircuitState) -> str | None:
     return None
 
 
-def should_start(state: CircuitState) -> bool:
-    """Whether a Start should do anything; refuses a circuit that has already finished.
+def ensure_startable(state: CircuitState) -> None:
+    """Refuse to start a circuit that has already finished.
 
-    A running circuit answers False: a second Start (a double click, a second
-    tab) is not a restart, which would reset the clock to reading time on the
-    first station with the patient still in the room (R-3).
+    A running circuit passes: whether a Start then does anything is
+    `state.started`, checked by the caller. A second Start (a double click, a
+    second tab) is not a restart, which would reset the clock to reading time
+    on the first station with the patient still in the room (R-3).
     """
     if state.ended:
         raise CircuitAlreadyEnded("That circuit has already finished.")
-    return not state.started
 
 
 def ensure_live(state: CircuitState) -> None:
     """Nothing may act on a circuit that is over.
 
-    Separate from `should_start`: guards "is this still running", not "may
+    Separate from `ensure_startable`: guards "is this still running", not "may
     this begin". Without it, an ended circuit can keep showing a candidate
     consulting in a room that no longer exists.
     """

@@ -377,7 +377,9 @@ async def test_an_import_over_the_limit_names_the_limit(client: AsyncClient, mak
     """B-7: 501 rows answered "The request was not valid"; the refusal now says 500."""
     _, admin = await org_with_admin(client, make_actor)
     rows = [{"email": f"t{index}@example.com"} for index in range(501)]
-    response = await client.post("/api/v1/orgs/kings/trainees/bulk", json={"trainees": rows}, headers=bearer(admin))
+    response = await client.post(
+        "/api/v1/orgs/kings/trainees/bulk", json={"trainees": rows}, headers=bearer(admin)
+    )
     assert response.status_code == 422
     assert response.json()["code"] == "too_many_trainees"
     assert response.json()["message"] == (

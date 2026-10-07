@@ -30,3 +30,9 @@ it("an organisation reads the platform's exams and adopting one already run says
   assert.equal(adoptRefusal(refused), "Your organisation already runs that exam. It is in your programmes below.");
   assert.deepEqual(calls, ["GET /api/v1/orgs/acme/exams/catalog ", 'POST /api/v1/orgs/acme/exams/import {"platform_exam_id":"e1"}']);
 });
+
+it("a refusal for an exam the platform no longer offers says the list was refreshed", async () => {
+  globalThis.fetch = answer(404, { code: "unknown_exam", message: "gone" });
+  const refused = await importPlatformExam("acme", "e1").then(() => null, (cause: unknown) => cause);
+  assert.equal(adoptRefusal(refused), "The platform no longer offers that exam. The list has been refreshed.");
+});

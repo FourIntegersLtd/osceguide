@@ -10,6 +10,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
+from app.core.role_policy import policy
 from app.core.schemas import ReviewFormRead
 from app.features.reviews import domain, errors, repository
 from app.features.reviews.models import CircuitReview, GpLeadReview, SlotReview
@@ -18,6 +19,7 @@ from app.features.reviews.schemas import (
     GpLeadReviewRead,
     SlotReviewRead,
 )
+from app.features.roster import service as roster
 from app.features.rubrics import service_marking as rubrics
 from app.features.rubrics import service_scoring as rubric_scoring
 from app.features.sittings import service as sittings
@@ -84,17 +86,35 @@ async def _require_open_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: 
     was made on these reviews. Redrafting a signed-off decision reopens them (R-4).
     """
     await _require_slot(session, org_id, slot_id)
-    # `results` imports this slice, so its import has to wait until call time.
-    from app.features.results import service as results
-
     found = await sittings_reads.slot_and_sitting(session, org_id, slot_id)
     if found is None:
         return
     slot, sitting = found
-    if await results.decision_settled(
-        session, org_id, sitting_id=sitting.id, trainee_user_id=slot.trainee_id
-    ):
+    await _ensure_unsettled(session, org_id, sitting, [slot])
+
+
+async def _ensure_unsettled(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    sitting: sittings_reads.SittingRef,
+    slots: Sequence[sittings_reads.SlotRef],
+) -> None:
+    """Refuse a change to reviews a signed-off or released decision was made on."""
+    # `results` imports this slice, so its import has to wait until call time.
+    from app.features.results import service as results
+
+    if await results.decision_settled(session, org_id, sitting=sitting, slots=slots):
         raise errors.ReviewLockedError()
+
+
+def _ensure_reviewer(*, reviewer_id: uuid.UUID, role: str | None, supervisor_id: uuid.UUID | None) -> None:
+    """An institution administrator reviews any slot of theirs; a supervisor only the circuits
+    they are named on (R-9). The same people who may read the transcript (`attempts.service_access`).
+    """
+    if policy("is_institution_admin")(role):
+        return
+    if supervisor_id is None or supervisor_id != reviewer_id:
+        raise errors.NotReviewerError()
 
 
 async def slot_rubric(
@@ -127,14 +147,25 @@ async def submit_slot_review(
     slot_id: uuid.UUID,
     *,
     submitted_by: uuid.UUID,
+    role: str | None,
     field_values: dict[str, Any],
     notes: str | None,
     status: str,
     observer_trainee_id: uuid.UUID | None,
     now: datetime,
 ) -> SlotReviewRead:
-    """Submit or update one reviewer's own review of a slot."""
+    """Submit or update one reviewer's own review of a slot.
+
+    `observer_trainee_id` (a peer who watched) must be one of this organisation's roster entries.
+    """
     await _require_open_slot(session, org_id, slot_id)
+    _ensure_reviewer(
+        reviewer_id=submitted_by,
+        role=role,
+        supervisor_id=await sittings_reads.supervisor_for_slot(session, org_id, slot_id),
+    )
+    if observer_trainee_id is not None:
+        await roster.ensure_trainee(session, org_id, observer_trainee_id)
     scoring_rubric = await slot_rubric(session, org_id, slot_id)
     structure = scoring_rubric.structure if scoring_rubric else None
     try:
@@ -225,9 +256,22 @@ async def finalize_circuit(
     *,
     merged_notes: str | None,
     finalized_by: uuid.UUID,
+    role: str | None,
     now: datetime,
 ) -> CircuitReviewRead:
-    """Finalise a supervisor's merged review for a whole circuit."""
+    """Finalise a supervisor's merged review for a whole circuit, once (R-10).
+
+    The circuit must be this organisation's, the caller its named supervisor or an
+    institution administrator, and no candidate on it may have a decision signed off
+    or released: that decision was made without these notes.
+    """
+    detail = await sittings_reads.circuit_detail(session, org_id, circuit_id)
+    if detail is None:
+        raise errors.CircuitNotFound()
+    _ensure_reviewer(reviewer_id=finalized_by, role=role, supervisor_id=detail.circuit.supervisor_user_id)
+    if await repository.circuit_review(session, org_id, circuit_id) is not None:
+        raise errors.CircuitReviewFinalizedError()
+    await _ensure_unsettled(session, org_id, detail.sitting, detail.slots)
     review = await repository.finalize_circuit_review(
         session,
         org_id,

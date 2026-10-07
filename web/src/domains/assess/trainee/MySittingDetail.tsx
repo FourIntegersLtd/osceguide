@@ -118,7 +118,7 @@ function Circuit({ sitting }: { sitting: MySitting }) {
       <Alert tone="info" title={exam ? "Before you start" : "How a practice circuit works"}>
         {exam
           ? "Your station opens when your supervisor starts it. Go in straight away: the patient joins when reading time ends, and you need to be in the room by then."
-          : "Your supervisor opens the room. Only the person whose turn it is speaks with the patient. Feedback appears here once your supervisor shares it."}
+          : "Your supervisor opens the room. Only the person whose turn it is speaks with the patient. Each station's review appears here as soon as your supervisor completes it."}
       </Alert>
       )}
 

@@ -122,13 +122,3 @@ class MarkerUnavailable(Unavailable):
 
     code = "marker_unavailable"
     default_message = "Marking is not available on this server."
-
-
-class AttemptNotReleased(NotFound):
-    """An exam slot's candidate asked for its transcript or marks before their result was released.
-
-    The same code as the results slice's refusal: to the candidate it is one rule (R-1).
-    """
-
-    code = "result_not_released"
-    default_message = "Your result has not been released yet"

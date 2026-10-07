@@ -179,33 +179,19 @@ async def finalize_circuit_review(
     finalized_by: uuid.UUID,
     at: datetime,
 ) -> CircuitReview:
-    """Create the finalised review for this circuit, or update it if it already exists."""
-    existing = await circuit_review(session, org_id, circuit_id)
-    if existing is None:
-        review = CircuitReview(
-            org_id=org_id,
-            circuit_id=circuit_id,
-            merged_notes=merged_notes,
-            contributions=contributions,
-            finalized_by=finalized_by,
-            finalized_at=at,
-        )
-        session.add(review)
-        await session.flush()
-        await session.refresh(review)
-        return review
-
-    await session.execute(
-        update(CircuitReview)
-        .where(CircuitReview.id == existing.id)
-        .values(
-            merged_notes=merged_notes,
-            contributions=contributions,
-            finalized_by=finalized_by,
-            finalized_at=at,
-        )
+    """Write the finalised review for this circuit. Once only: the service refuses a second."""
+    review = CircuitReview(
+        org_id=org_id,
+        circuit_id=circuit_id,
+        merged_notes=merged_notes,
+        contributions=contributions,
+        finalized_by=finalized_by,
+        finalized_at=at,
     )
-    return await circuit_review(session, org_id, circuit_id)  # type: ignore[return-value]
+    session.add(review)
+    await session.flush()
+    await session.refresh(review)
+    return review
 
 
 async def slot_has_any_review(session: AsyncSession, slot_id: uuid.UUID) -> bool:

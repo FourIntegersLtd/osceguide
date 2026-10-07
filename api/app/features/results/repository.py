@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
@@ -113,6 +114,24 @@ async def append_event(
     # cannot tell anybody when the event happened.
     await session.refresh(event)
     return event
+
+
+async def released_sitting_ids(
+    session: AsyncSession, sitting_ids: Collection[uuid.UUID], trainee_ids: list[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Of these sittings, the ones with a released revision for any of these roster entries."""
+    if not sitting_ids or not trainee_ids:
+        return set()
+    stmt = (
+        select(CandidateResultRevision.sitting_id)
+        .where(
+            CandidateResultRevision.sitting_id.in_(list(sitting_ids)),
+            CandidateResultRevision.trainee_id.in_(trainee_ids),
+            CandidateResultRevision.workflow_state == "released",
+        )
+        .distinct()
+    )
+    return set((await session.execute(stmt)).scalars())
 
 
 async def released_revision(

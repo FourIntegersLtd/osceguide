@@ -25,5 +25,6 @@ export function latecomerChoices(
   const choices = roster
     .filter((trainee) => !trainee.access_revoked && (trainee.user_id === null || !alreadyOn.has(trainee.user_id)))
     .map((trainee) => ({ trainee, refusal: trainee.user_id === null ? NOT_YET_JOINED : null }));
-  return [...choices.filter((choice) => !choice.refusal), ...choices.filter((choice) => choice.refusal)];
+  // Array.prototype.sort is stable, so each group keeps the roster order.
+  return choices.sort((a, b) => Number(a.refusal !== null) - Number(b.refusal !== null));
 }

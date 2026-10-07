@@ -151,7 +151,13 @@ async def set_auto_advance(
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/resend-patient",
     response_model=schemas.DispatchResult,
-    responses=error_responses(*_LIVE, errors.NoActiveStation, errors.SlotNotFound, errors.VoiceUnavailable),
+    responses=error_responses(
+        *_LIVE,
+        errors.NoActiveStation,
+        errors.SlotNotFound,
+        errors.VoiceUnavailable,
+        errors.TraineeRevokedError,
+    ),
 )
 async def resend_patient(
     circuit_id: uuid.UUID,

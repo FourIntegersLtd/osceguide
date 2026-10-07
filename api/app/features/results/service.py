@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
@@ -265,20 +266,24 @@ async def release_many(
 
 
 async def decision_settled(
-    session: AsyncSession, org_id: uuid.UUID, *, sitting_id: uuid.UUID, trainee_user_id: uuid.UUID | None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    sitting: sittings.SittingRef,
+    slots: Sequence[sittings.SlotRef],
 ) -> bool:
-    """Whether this candidate's current decision is signed off or released.
+    """Whether any of these slots' candidates has a current decision signed off or released.
 
-    Asked by `reviews` before a review changes: the decision was made on those
-    reviews. Takes the slot's `users.id` and finds the `trainees.id` itself.
+    Asked by `reviews` before a review changes, or a circuit's review is finalised: the
+    decision was made on those reviews. A slot names a `users.id`; the decision a `trainees.id`.
     """
-    if trainee_user_id is None:
-        return False
-    trainee = (await roster.trainees_by_user_id(session, org_id, [trainee_user_id])).get(trainee_user_id)
-    if trainee is None:
-        return False
-    latest = await repository.latest_revision(session, org_id, sitting_id, trainee.id)
-    return latest is not None and latest.workflow_state != domain.Workflow.DRAFT
+    user_ids = list({slot.trainee_id for slot in slots})
+    trainees = await roster.trainees_by_user_id(session, org_id, user_ids)
+    for trainee in trainees.values():
+        latest = await repository.latest_revision(session, org_id, sitting.id, trainee.id)
+        if latest is not None and latest.workflow_state != domain.Workflow.DRAFT:
+            return True
+    return False
 
 
 async def read_decision(

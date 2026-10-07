@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useState } from "react";
 import { HiOutlineAcademicCap, HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
 import { Alert, Select } from "@/foundation/ui";
@@ -39,6 +40,7 @@ export function ProgrammesSection() {
   const action = useAction(programmes.reload);
 
   const { session } = useSession();
+  const canAuthor = useCanAuthor();
   const [adding, setAdding] = useState(false);
   const [examCode, setExamCode] = useState("");
 
@@ -49,7 +51,7 @@ export function ProgrammesSection() {
     <div className="space-y-5">
       <AuthoringSectionLead
         action={
-          can(session, "schedule_sittings") ? (
+          canAuthor && can(session, "schedule_sittings") ? (
             <AuthoringButton
               variant="commit"
               size="sm"
@@ -75,7 +77,7 @@ export function ProgrammesSection() {
         onDismissError={programmes.reload}
         empty={{
           title: "No programmes yet",
-          description: "Add a programme for each exam you run sittings against.",
+          description: canAuthor ? "Add a programme for each exam you run sittings against." : "Nothing here yet.",
         }}
       >
         {items.map((programme) => {
@@ -98,6 +100,7 @@ export function ProgrammesSection() {
               meta={`${programme.exam_code} · ${programme.source}${programme.exam_owner_kind === "platform" ? " · OSCE Guide exam" : ""}`}
             >
               <StatusBadge status={programme.status} />
+              {canAuthor ? (
               <AuthoringRowActions>
                 <AuthoringIconAction
                   variant={active ? "warning" : "primary"}
@@ -118,6 +121,7 @@ export function ProgrammesSection() {
                   )}
                 </AuthoringIconAction>
               </AuthoringRowActions>
+              ) : null}
             </AuthoringListRow>
           );
         })}

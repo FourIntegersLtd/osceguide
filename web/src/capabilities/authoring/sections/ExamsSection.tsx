@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useState } from "react";
 import {
   HiOutlineArrowUpTray,
@@ -53,6 +54,7 @@ export function ExamsSection() {
 
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<ExamDraft>(blankExam);
+  const canAuthor = useCanAuthor();
   const [editing, setEditing] = useState<Exam | null>(null);
   const [deleting, setDeleting] = useState<Exam | null>(null);
   const [retiring, setRetiring] = useState<Exam | null>(null);
@@ -71,6 +73,7 @@ export function ExamsSection() {
           label="Drafts only"
           className="items-center"
         />
+        {canAuthor ? (
         <AuthoringButton
           variant="commit"
           size="sm"
@@ -83,6 +86,7 @@ export function ExamsSection() {
           <HiOutlinePlusCircle className="h-4 w-4 shrink-0" aria-hidden />
           Create exam
         </AuthoringButton>
+        ) : null}
       </div>
 
       {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
@@ -97,7 +101,9 @@ export function ExamsSection() {
           title: draftsOnly ? "No draft exams" : "No exams yet",
           description: draftsOnly
             ? "Everything here is published. Clear the filter to see the whole catalogue."
-            : "Create an exam, attach a marking scheme version, then publish it to run sittings against it.",
+            : !canAuthor
+              ? "Nothing here yet."
+              : "Create an exam, attach a marking scheme version, then publish it to run sittings against it.",
         }}
       >
         {items.map((exam) => {
@@ -110,6 +116,7 @@ export function ExamsSection() {
               meta={`${exam.code} · ${Math.round(exam.default_reading_seconds / 60)} min reading · ${Math.round(exam.default_simulation_seconds / 60)} min station${exam.owner_kind === "platform" ? " · OSCE Guide" : ""}${exam.partner_pilot ? " · partner pilot" : ""}`}
             >
               <StatusBadge status={exam.status} />
+              {canAuthor ? (
               <AuthoringRowActions>
                 <AuthoringIconAction
                   label={
@@ -173,6 +180,7 @@ export function ExamsSection() {
                   </AuthoringIconAction>
                 )}
               </AuthoringRowActions>
+              ) : null}
             </AuthoringListRow>
           );
         })}

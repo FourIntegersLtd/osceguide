@@ -230,9 +230,19 @@ async def update_slots_for_circuit(
     )
 
 
-async def update_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, **values: Any) -> None:
-    """Write the given fields onto one slot."""
-    await session.execute(update(Slot).where(Slot.org_id == org_id, Slot.id == slot_id).values(**values))
+async def update_slot(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    slot_id: uuid.UUID,
+    *,
+    only_if_status: str | None = None,
+    **values: Any,
+) -> None:
+    """Write the given fields onto one slot; with `only_if_status`, only while it has that status."""
+    stmt = update(Slot).where(Slot.org_id == org_id, Slot.id == slot_id)
+    if only_if_status is not None:
+        stmt = stmt.where(Slot.status == only_if_status)
+    await session.execute(stmt.values(**values))
 
 
 async def rubric_version_for_slot(

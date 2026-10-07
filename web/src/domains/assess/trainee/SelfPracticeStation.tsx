@@ -38,7 +38,7 @@ export function SelfPracticeStation({
       const station = practisableStation(stations, stationId);
       const exams = await listExams(signal);
       const exam = station
-        ? exams.items.find((item) => item.code === station.exam_code) ?? null
+        ? (exams.items.find((item) => item.code === station.exam_code) ?? null)
         : null;
       return { station, exam };
     },
@@ -60,30 +60,46 @@ export function SelfPracticeStation({
     <AsyncBoundary state={context}>
       {({ station, exam }) =>
         station ? (
-          <StationScreen
-            source={{ kind: "self_practice", orgSlug, stationId }}
-            action={action}
-            step={step}
-            attemptId={attemptId}
-            stationVersionId={station.current_version_id}
-            examCode={station.exam_code}
-            readingSeconds={exam?.default_reading_seconds ?? 0}
-            simulationSeconds={exam?.default_simulation_seconds ?? 600}
-            index={0}
-            total={1}
-            attemptsUsed={null}
-            attemptLimit={null}
-            createAttempt={create}
-            nextHref={null}
-            completeHref={practiceHref}
-            backHref={practiceHref}
-          />
+          <>
+            {action === "attempt" && !attemptId ? (
+              <header className="space-y-1">
+                <h1 className="text-osce-title font-semibold text-ink">
+                  {station.title}
+                </h1>
+                <p className="text-osce-body text-ink-muted">
+                  Nothing here is marked for the record.
+                </p>
+              </header>
+            ) : null}
+            <StationScreen
+              source={{ kind: "self_practice", orgSlug, stationId }}
+              action={action}
+              step={step}
+              attemptId={attemptId}
+              stationVersionId={station.current_version_id}
+              examCode={station.exam_code}
+              readingSeconds={exam?.default_reading_seconds ?? 0}
+              simulationSeconds={exam?.default_simulation_seconds ?? 600}
+              index={0}
+              total={1}
+              attemptsUsed={null}
+              attemptLimit={null}
+              createAttempt={create}
+              nextHref={null}
+              completeHref={practiceHref}
+              backHref={practiceHref}
+            />
+          </>
         ) : (
           <Alert tone="warning" title="This station is not available">
             <p>
-              It may have been withdrawn, is not published yet, or belongs to another organisation.
+              It may have been withdrawn, is not published yet, or belongs to
+              another organisation.
             </p>
-            <Link href={practiceHref} className="mt-3 inline-block font-semibold underline">
+            <Link
+              href={practiceHref}
+              className="mt-3 inline-block font-semibold underline"
+            >
               Back to practice
             </Link>
           </Alert>

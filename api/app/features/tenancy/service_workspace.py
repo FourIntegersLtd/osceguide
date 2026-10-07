@@ -109,6 +109,9 @@ def capabilities_for(principal: Principal) -> Capabilities:
             "sign_off_results": domain.is_institution_admin(role),
             # The CSV and readout exports are OrgAdmin; the report itself is OrgStaff.
             "export_results": domain.is_org_admin(role),
+            # Authoring writes are OrgAdmin inside an organisation (a supervisor reads, B-5) and
+            # the platform catalogue's on the staff console, where nobody holds an org role.
+            "author_content": domain.is_org_admin(role) if active else principal.is_platform_admin,
             "administer_platform": principal.is_platform_admin,
         },
     )

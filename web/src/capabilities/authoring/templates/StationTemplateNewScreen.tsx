@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
+import { CannotAuthor } from "@/capabilities/authoring/parts/CannotAuthor";
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { structureFromStartPoint } from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplatePresets";
@@ -28,7 +30,7 @@ import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templ
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
 import { wizardSteps } from "@/capabilities/authoring/templates/wizardSteps";
 
-export function StationTemplateNewScreen() {
+function StationTemplateNewScreenForm() {
   const scope = useAuthoringScope();
   const { orgSlug, hrefFor } = useSurface();
   const router = useRouter();
@@ -237,4 +239,8 @@ function CreateStationTemplateWizardBody({
       </div>
     </>
   );
+}
+
+export function StationTemplateNewScreen() {
+  return useCanAuthor() ? <StationTemplateNewScreenForm /> : <CannotAuthor />;
 }

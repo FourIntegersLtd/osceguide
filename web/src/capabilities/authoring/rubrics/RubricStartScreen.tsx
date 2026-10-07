@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
+import { CannotAuthor } from "@/capabilities/authoring/parts/CannotAuthor";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, AsyncBoundary, Badge, cn, getInputClassName, SectionSearchField } from "@/foundation/ui";
@@ -26,7 +28,7 @@ const KIND_WORDS: Record<RubricStartingPoint["kind"], string> = {
  * The backend lists the choices and does the copying; this screen names the
  * new rubric and picks one. The search runs on the server.
  */
-export function RubricStartScreen() {
+function RubricStartScreenForm() {
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const router = useRouter();
@@ -127,4 +129,8 @@ function StartCard({ point, selected, onSelect }: { point: RubricStartingPoint; 
       ) : null}
     </button>
   );
+}
+
+export function RubricStartScreen() {
+  return useCanAuthor() ? <RubricStartScreenForm /> : <CannotAuthor />;
 }

@@ -7,6 +7,7 @@ what they may see is decided by the revision being released, not by a role.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -137,6 +138,21 @@ async def released_revision_for_user(
     """
     trainee_ids = await roster.trainee_ids_for_user(session, user_id)
     return await repository.released_revision(session, sitting_id, trainee_ids)
+
+
+async def sealed_sittings(
+    session: AsyncSession, sitting_ids: Collection[uuid.UUID], user_id: uuid.UUID
+) -> set[uuid.UUID]:
+    """Which of these sittings have no result released to this person yet, in one query.
+
+    One rule for "sealed until release" (R-1): the attempts slice refuses an exam slot's
+    transcript and marks with it, and the trainee portal links no attempt with it.
+    """
+    wanted = set(sitting_ids)
+    if not wanted:
+        return set()
+    trainee_ids = await roster.trainee_ids_for_user(session, user_id)
+    return wanted - await repository.released_sitting_ids(session, wanted, trainee_ids)
 
 
 async def _acknowledged_at(

@@ -63,7 +63,7 @@ requests is still broken. Then run `node scripts/smoke.mjs` if you touched an `a
   since review navigation and the step guide need it. Its exports (`report.csv`, the
   readout) stay `OrgAdmin` and the web gates them on `export_results`; record, sign off,
   release and the result PDF stay institution admin (`sign_off_results`).
-- A training sitting stops at Mark in `sittingSteps` (no Decide or Release; R-36 adds sharing).
+- A training sitting stops at Mark in `sittingSteps` (no Decide or Release); its slot review reaches the trainee as soon as the reviewer completes it (R-36). A revoked trainee's slot is skipped at dispatch, so no attempt exists for it (R-8).
 - `trainee_id` means two things: circuit slots use `users.id`, result decisions use `trainees.id`.
 - A platform admin reads any organisation for support but holds none of its
   powers (`OrgAdmin` is `allow_platform_admin=False`). A 403 from the staff

@@ -250,6 +250,16 @@ async def ensure_rosterable(session: AsyncSession, org_id: uuid.UUID, user_ids: 
             raise errors.TraineeRevokedError(str(exc)) from exc
 
 
+async def is_revoked(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """Whether this person's roster entry here has had its access revoked.
+
+    Asked as the clock opens their consultation (R-8): `ensure_rosterable` runs when
+    a circuit is built, and a revocation after that must still stop the station.
+    """
+    trainee = (await trainees_by_user_id(session, org_id, [user_id])).get(user_id)
+    return trainee is not None and trainee.access_revoked
+
+
 # --- Rostering a cohort at once.
 
 

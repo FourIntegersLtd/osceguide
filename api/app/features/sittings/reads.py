@@ -31,9 +31,10 @@ def position_of(circuit: Circuit, slots: list[Slot]) -> domain_run.Position:
         index = next((slot.slot_index for slot in slots if slot.id == circuit.active_slot_id), None)
     if phase is domain_run.RunPhase.BREAK and index is None:
         # A break clears the active slot, so the position is carried by the
-        # station it follows: the last one whose consultation completed.
-        completed = [slot.slot_index for slot in slots if slot.status == domain.SlotStatus.COMPLETED]
-        index = max(completed) if completed else None
+        # station it follows: the last one finished, sat or skipped (a revoked
+        # candidate's station is skipped where it stands, R-8).
+        finished = [slot.slot_index for slot in slots if slot.status in domain.FINISHED_SLOT_STATUSES]
+        index = max(finished) if finished else None
     return domain_run.Position(phase=phase, slot_index=index)
 
 

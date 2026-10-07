@@ -51,6 +51,7 @@ class UpdateTrainee(BaseModel):
     cohort_id: uuid.UUID | None = None
 
 
+# The browser sends rows in chunks of IMPORT_CHUNK (web roster api.ts); keep the two equal.
 MAX_BULK_TRAINEES = 500
 
 

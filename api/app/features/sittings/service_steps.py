@@ -111,8 +111,17 @@ async def begin_consultation(
     slot = slot_at(slots, index)
     if agents is None or settings is None:
         raise RuntimeError("A consultation cannot start without a way to put the patient in the room.")
-    await dispatch_patient(session, org_id, circuit, slot, agents=agents, settings=settings, now=now)
-    await repository.update_slot(session, org_id, slot.id, status=domain.SlotStatus.IN_CONSULTATION)
+    try:
+        await dispatch_patient(session, org_id, circuit, slot, agents=agents, settings=settings, now=now)
+    except errors.TraineeRevokedError:
+        # R-8: the candidate's access was revoked after the circuit was built. The clock
+        # carries on for everyone else; this station is skipped, with no patient and no
+        # recording to mark.
+        await repository.update_slot(session, org_id, slot.id, status=domain.SlotStatus.SKIPPED, ended_at=now)
+        dispatched_at = None
+    else:
+        await repository.update_slot(session, org_id, slot.id, status=domain.SlotStatus.IN_CONSULTATION)
+        dispatched_at = now
     await set_phase(
         session,
         org_id,
@@ -121,7 +130,7 @@ async def begin_consultation(
         seq=seq,
         now=now,
         active_slot_id=slot.id,
-        agent_dispatched_at=now,
+        agent_dispatched_at=dispatched_at,
     )
 
 

@@ -73,6 +73,8 @@ async def read_my_review(
         errors.ReviewIncompleteError,
         errors.NothingToReviewError,
         errors.ReviewLockedError,
+        errors.NotReviewerError,
+        errors.TraineeNotFound,
     ),
 )
 async def submit_my_review(
@@ -88,6 +90,7 @@ async def submit_my_review(
         workspace.org_id,
         slot_id,
         submitted_by=workspace.principal.user_id,
+        role=workspace.role,
         field_values=body.field_values,
         notes=body.notes,
         status=body.status,
@@ -148,7 +151,13 @@ async def save_gp_lead_review(
 @router.post(
     "/orgs/{org_slug}/circuits/{circuit_id}/review/finalize",
     response_model=schemas.CircuitReviewRead,
-    responses=error_responses(Forbidden),
+    responses=error_responses(
+        Forbidden,
+        errors.CircuitNotFound,
+        errors.NotReviewerError,
+        errors.CircuitReviewFinalizedError,
+        errors.ReviewLockedError,
+    ),
 )
 async def finalize_circuit_review(
     circuit_id: uuid.UUID,
@@ -163,6 +172,7 @@ async def finalize_circuit_review(
         circuit_id,
         merged_notes=body.merged_notes,
         finalized_by=workspace.principal.user_id,
+        role=workspace.role,
         now=clock.now(),
     )
 

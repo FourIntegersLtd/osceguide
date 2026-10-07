@@ -20,6 +20,7 @@ from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings
 from app.features.attempts import service as attempts_service
+from app.features.roster import service as roster
 from app.features.sittings import domain, domain_run, errors, repository
 from app.features.sittings.models import Circuit, Slot
 from app.features.voice import service as voice
@@ -48,6 +49,9 @@ async def dispatch_patient(
     room = circuit.room_name
     if not room:
         raise errors.CircuitNotStarted()
+    if await roster.is_revoked(session, org_id, slot.trainee_id):
+        # R-8: revoked since the circuit was built. No recording, so nothing is marked.
+        raise errors.TraineeRevokedError()
 
     attempt = await attempts_service.restart_for_slot(
         session,
@@ -97,10 +101,12 @@ async def clear_patient(
                 exc_info=True,
             )
     if circuit.active_slot_id is not None and circuit.phase == domain_run.RunPhase.SIMULATION:
+        # Only a station that was sat: one skipped for a revoked candidate stays skipped.
         await repository.update_slot(
             session,
             org_id,
             circuit.active_slot_id,
+            only_if_status=domain.SlotStatus.IN_CONSULTATION,
             status=domain.SlotStatus.COMPLETED,
             ended_at=now,
             exam_completed_at=now,

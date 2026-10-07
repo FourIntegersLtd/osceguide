@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -93,6 +94,7 @@ export function StationTemplatesSection() {
   );
   const templates = pages.state;
   const action = useAction(templates.reload);
+  const canAuthor = useCanAuthor();
   const items = templates.data ?? [];
 
   const newHref = stationTemplateNewPath(hrefFor, examFilter !== AUTHORING_ALL_EXAMS ? examFilter : null);
@@ -101,6 +103,7 @@ export function StationTemplatesSection() {
     <div className="space-y-4">
       <AuthoringSectionLead
         action={
+          canAuthor ? (
           <div className="flex flex-wrap items-center gap-2">
             <AuthoringButton
               variant="secondary"
@@ -121,6 +124,7 @@ export function StationTemplatesSection() {
               Create station template
             </AuthoringButton>
           </div>
+          ) : null
         }
       >
         Define layout and fields for clinical stations. Saved drafts and published
@@ -147,12 +151,14 @@ export function StationTemplatesSection() {
         empty={{
           title: "No saved templates yet",
           description:
-            "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list.",
+            !canAuthor
+            ? "Nothing here yet."
+            : "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list.",
         }}
       >
         {items.map((template) => {
           const { published, draft } = latestOf(template.versions);
-          const manageable = canManageTemplate(scope.kind, template.owner_kind);
+          const manageable = canAuthor && canManageTemplate(scope.kind, template.owner_kind);
           const editHref =
             draft && manageable
               ? stationTemplateEditPath(hrefFor, template.id, draft.version)
@@ -165,6 +171,7 @@ export function StationTemplatesSection() {
             editHref={editHref}
             viewHref={published ? stationTemplateEditPath(hrefFor, template.id, published.version) : null}
             onCopy={
+              canAuthor &&
               scope.kind === "org" &&
               template.owner_kind === "platform" &&
               published &&
@@ -178,7 +185,7 @@ export function StationTemplatesSection() {
             }
             onAddVersion={
               // An organisation copies a platform template; only the platform edits it.
-              scope.kind === "org" && template.owner_kind === "platform"
+              !canAuthor || (scope.kind === "org" && template.owner_kind === "platform")
                 ? undefined
                 : () =>
                     void action.run(`add:${template.id}`, () =>

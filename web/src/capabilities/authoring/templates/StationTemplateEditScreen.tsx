@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { StructureBuilder } from "@/capabilities/authoring/structure/b2b/components/features/stations/templates/builder/StructureBuilder";
@@ -40,6 +41,7 @@ export function StationTemplateEditScreen({
     return { title: template.title, structure, status: row.status };
   }, [templates.data, templateId, version]);
 
+  const editable = useCanAuthor() && match?.status === "draft";
   const [structure, setStructure] = useState<StationStructure | null>(null);
   const [title, setTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -79,14 +81,14 @@ export function StationTemplateEditScreen({
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                disabled={match?.status !== "draft"}
+                disabled={!editable}
                 maxLength={200}
                 className={b2bInputBase}
                 aria-label="Template title"
               />
             </label>
             {/* A disabled fieldset makes every control inside read only. */}
-            <fieldset disabled={match?.status !== "draft"} className="min-w-0 border-0 p-0">
+            <fieldset disabled={!editable} className="min-w-0 border-0 p-0">
               <StructureBuilder value={structure} onChange={setStructure} allowCustomGenerationPrompt />
             </fieldset>
             {error ? (
@@ -97,15 +99,15 @@ export function StationTemplateEditScreen({
           </div>
           <div className={platformTemplateWizardFooterEndClass}>
             <Button variant="secondary" onClick={() => router.push(listHref)}>
-              {match?.status === "draft" ? "Cancel" : "Back"}
+              {editable ? "Cancel" : "Back"}
             </Button>
             <Button
               variant="commit"
-              className={match?.status === "draft" ? undefined : "hidden"}
-              disabled={saving || match?.status !== "draft"}
+              className={editable ? undefined : "hidden"}
+              disabled={saving || !editable}
               onClick={async () => {
                 setError(null);
-                if (match?.status !== "draft") {
+                if (!editable) {
                   setError("Only a draft version can be edited.");
                   return;
                 }

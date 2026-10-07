@@ -30,6 +30,12 @@ Each kind is its own root, keyed to the slot or circuit it concerns.
 - Completing a review requires every reviewable domain scored. A half-marked
   review shown to a candidate is worse than one openly still in progress, so it
   is refused rather than warned about.
+- Only the slot's named supervisor, or an institution administrator, writes a
+  slot review or finalises a circuit review (R-9, `not_slot_reviewer`). An
+  `observer_trainee_id` must be on this organisation's roster (`trainee_not_found`).
+- A circuit review is finalised once (`circuit_review_finalized`), only for a
+  circuit in this organisation (`circuit_not_found`), and, like every review,
+  not after the decision built on it was signed off (`review_locked`) (R-10).
 - A rating is R, A or G. Combining several takes the **worst**: when two
   reviewers disagree about a candidate, the lower rating is the one that should
   prompt a conversation.
@@ -45,10 +51,10 @@ Each kind is its own root, keyed to the slot or circuit it concerns.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/orgs/{org_slug}/slots/{id}/reviews` | org member | every review of the slot, plus the combined rating per domain (worst wins) |
-| GET/PUT | `/api/v1/orgs/{org_slug}/slots/{id}/reviews/mine` | org member | GET is 200 `null` before a first save; PUT `review_incomplete` (409) |
+| GET/PUT | `/api/v1/orgs/{org_slug}/slots/{id}/reviews/mine` | org member; PUT the named supervisor or an admin | GET is 200 `null` before a first save; PUT `review_incomplete` (409), `not_slot_reviewer` (403), `trainee_not_found` (404) |
 | GET/PUT | `/api/v1/orgs/{org_slug}/slots/{id}/gp-lead-review` | institution admin | GET is 200 `null` before a first save; PUT `review_conflict` (409) |
-| GET | `/api/v1/me/slots/{id}/review` | bearer; the slot is theirs | 200 `null` until the result is released and the lead review completed; `slot_not_found` for someone else's slot |
-| POST | `/api/v1/orgs/{org_slug}/circuits/{id}/review/finalize` | org member | |
+| GET | `/api/v1/me/slots/{id}/review` | bearer; the slot is theirs | exam: 200 `null` until the result is released and the lead review completed; training: the completed reviews' notes as soon as one is completed (R-36); `slot_not_found` for someone else's slot |
+| POST | `/api/v1/orgs/{org_slug}/circuits/{id}/review/finalize` | the named supervisor or an admin | `circuit_not_found`, `not_slot_reviewer`, `circuit_review_finalized`, `review_locked` |
 
 ## Jobs
 None.

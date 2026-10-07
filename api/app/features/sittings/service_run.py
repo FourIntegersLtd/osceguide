@@ -52,11 +52,13 @@ async def start_circuit(
     circuit.
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
+    current = state(circuit, has_feedback=False)
     try:
-        if not domain.should_start(state(circuit, has_feedback=False)):
-            return await read_circuit(session, org_id, circuit_id)
+        domain.ensure_startable(current)
     except domain.CircuitAlreadyEnded as exc:
         raise_mapped(exc, _REFUSALS)
+    if current.started:
+        return await read_circuit(session, org_id, circuit_id)
 
     room = f"circuit_{circuit.id}"
     await repository.update_circuit(

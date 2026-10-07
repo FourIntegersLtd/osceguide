@@ -68,6 +68,7 @@ export function addTrainee(slug: string, input: TraineeInput): Promise<Trainee> 
 }
 
 /** Rows one import request takes; the server refuses more (`too_many_trainees`). */
+// Must stay within MAX_BULK_TRAINEES in api/app/features/roster/schemas.py, the server limit.
 export const IMPORT_CHUNK = 500;
 
 /**

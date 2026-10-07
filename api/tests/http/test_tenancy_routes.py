@@ -351,6 +351,16 @@ async def test_an_admin_has_the_team_capability(client: AsyncClient, make_actor)
     assert response.json()["can"]["manage_team"] is True
 
 
+async def test_a_supervisor_is_not_offered_authoring_writes(client: AsyncClient, make_actor) -> None:
+    """B-5: every authoring write is OrgAdmin, so a supervisor who saw the buttons got a 403 from each."""
+    org_id = await seed_org(client, make_actor)
+    supervisor = await member_token(make_actor, org_id, "kings", "supervisor")
+    owner = await member_token(make_actor, org_id, "kings", "owner")
+    for token, expected in ((supervisor, False), (owner, True)):
+        body = (await client.get("/api/v1/me/capabilities", headers=bearer(token))).json()
+        assert body["can"]["author_content"] is expected
+
+
 # --------------------------------------------------------------------------
 # Inviting the whole team at once
 # --------------------------------------------------------------------------

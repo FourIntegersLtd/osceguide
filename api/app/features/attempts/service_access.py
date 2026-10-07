@@ -20,6 +20,7 @@ from app.core.auth import Membership
 from app.core.role_policy import policy
 from app.features.attempts import errors
 from app.features.attempts.models import Attempt
+from app.features.results.errors import NotReleased
 from app.features.sittings import service_reads as sittings
 
 
@@ -70,8 +71,8 @@ async def _ensure_released_to_candidate(session: AsyncSession, attempt: Attempt)
 
     if found is None:
         raise errors.AttemptNotYours()
-    if await results.released_revision_for_user(session, found[1].id, attempt.user_id) is None:
-        raise errors.AttemptNotReleased()
+    if await results.sealed_sittings(session, [found[1].id], attempt.user_id):
+        raise NotReleased()
 
 
 def _runs_circuits_in(memberships: Sequence[Membership], *, org_id: uuid.UUID) -> bool:

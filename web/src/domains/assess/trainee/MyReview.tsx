@@ -39,7 +39,7 @@ export function MyReview({ slotId }: { slotId: string }) {
 
       {!state.loading && !state.error && state.data === null ? (
         <Alert tone="info" title="Not ready yet">
-          This station&apos;s feedback appears once your result is released.
+          This station&apos;s feedback appears once it is shared with you: in practice when your supervisor completes their review, in an exam when your result is released.
         </Alert>
       ) : null}
       <AsyncBoundary state={state}>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -111,6 +112,7 @@ export function StationDetail({
   /** Fact-check rulings made since the last save; they are saved with the content. */
   const [ruledFacts, setRuledFacts] = useState<Facts | null>(null);
   const action = useAction();
+  const canAuthor = useCanAuthor();
   /** The station's name as last saved, and as typed; a draft saves a rename with its content. */
   const [savedTitle, setSavedTitle] = useState(station.title);
   const [title, setTitle] = useState(station.title);
@@ -125,6 +127,8 @@ export function StationDetail({
   const version = working?.version ?? station.version;
   const status = working?.status ?? station.status;
   const isDraft = status !== "published" && status !== "archived";
+  /** A reader sees the draft but changes none of it. */
+  const editable = isDraft && canAuthor;
   const templateVersionId = station.template_version_id ?? null;
 
   const structure = useMemo(() => {
@@ -257,6 +261,7 @@ export function StationDetail({
   }
 
   const nextButton = () => {
+    if (!canAuthor) return null;
     const run = (label: string, key: string, onClick: () => void, disabled = locked) => (
       <Button size="sm" disabled={disabled} isLoading={action.busy === key} onClick={onClick}>
         {label}
@@ -311,7 +316,7 @@ export function StationDetail({
       <Panel padding="md">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            {isDraft ? (
+            {editable ? (
               <Input
                 aria-label="Station name"
                 value={title}
@@ -327,6 +332,7 @@ export function StationDetail({
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={status} />
+            {canAuthor ? (
             <AuthoringRowActions>
               {/* A draft is the version being worked on: a second draft is not offered. */}
               {isDraft ? null : (
@@ -365,6 +371,7 @@ export function StationDetail({
                 </AuthoringIconAction>
               ) : null}
             </AuthoringRowActions>
+            ) : null}
           </div>
         </div>
 
@@ -467,7 +474,7 @@ export function StationDetail({
       {current === "draft" ? (
         // Remounted once a draft exists, so its panels open and fold the right way round.
         <div key={String(drafted)} className="space-y-4">
-          {factCheck && isDraft && !drafted ? (
+          {factCheck && editable && !drafted ? (
             <Panel title="What should it cover?" padding="sm">
               {produceForm}
             </Panel>
@@ -476,7 +483,7 @@ export function StationDetail({
             <Panel title="Station content" defaultOpen={drafted || !factCheck}>
               <p className="mb-4 text-osce-caption text-ink-muted">
                 Version {version}.
-                {isDraft
+                {editable
                   ? " Edit the sections below; Save in the bar above stores them."
                   : " Published, so it is read only. Create a new draft version to edit."}
               </p>
@@ -485,12 +492,12 @@ export function StationDetail({
                 structure={structure}
                 content={editContent}
                 onChange={setEditContent}
-                readOnly={!isDraft}
+                readOnly={!editable}
                 media={media}
               />
             </Panel>
           ) : null}
-          {supportsBrief(scope) ? (
+          {supportsBrief(scope) && canAuthor ? (
             <BriefEditor
               key={`${station.id}:${version}`}
               stationId={station.id}
@@ -499,7 +506,7 @@ export function StationDetail({
               onSaved={setWorking}
             />
           ) : null}
-          {factCheck && isDraft && drafted ? (
+          {factCheck && editable && drafted ? (
             <Panel title="Produce again from a brief" padding="sm" defaultOpen={false}>
               {produceForm}
             </Panel>
@@ -518,7 +525,7 @@ export function StationDetail({
                 onCheck={checkFacts}
                 rulings={
                   // A ruling made while the agent produces would be overwritten when it finishes.
-                  isDraft && facts && !busy
+                  editable && facts && !busy
                     ? {
                         onAccept: (claim, swap) => {
                           if (swap) setEditContent(corrected(editContent, claim, swap));
@@ -559,7 +566,7 @@ export function StationDetail({
                 </Alert>
               ))}
             {/* Ready, the bar holds Publish; before then it stays possible from here. */}
-            {isDraft && next.id !== "publish" ? (
+            {canAuthor && isDraft && next.id !== "publish" ? (
               <Button
                 size="sm"
                 variant="secondary"

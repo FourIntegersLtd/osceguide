@@ -1,5 +1,7 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
+import { CannotAuthor } from "@/capabilities/authoring/parts/CannotAuthor";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,7 +23,7 @@ import { stationsListPath } from "@/capabilities/authoring/stations/paths";
 import { stationListUrl } from "@/capabilities/authoring/parts/stationListUrl";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 
-export function CreateStationScreen() {
+function CreateStationScreenForm() {
   const scope = useAuthoringScope();
   // Drafting from a prompt with no template behind it is the catalogue's route;
   // an institution generates against a published template or writes by hand.
@@ -348,4 +350,8 @@ function GeneratedDraft({ content }: { content: Record<string, unknown> }) {
       </dl>
     </div>
   );
+}
+
+export function CreateStationScreen() {
+  return useCanAuthor() ? <CreateStationScreenForm /> : <CannotAuthor />;
 }

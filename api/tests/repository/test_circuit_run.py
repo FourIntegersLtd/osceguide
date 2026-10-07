@@ -209,6 +209,29 @@ async def test_the_patient_leaves_when_the_consultation_ends(db_session: AsyncSe
     assert circuit.active_slot_id == slots[1].id
 
 
+async def test_a_revoked_candidate_is_skipped_not_examined(db_session: AsyncSession) -> None:
+    """R-8: revoking a trainee stopped them joining, but the clock still sent their patient and marked it."""
+    from app.features.roster import repository as roster_repo
+
+    agents = FakeRoomAgents()
+    org_id, circuit_id = await a_circuit(db_session, stations=2)
+    slots = await repository.slots_for_circuit(db_session, org_id, circuit_id)
+    trainee = await roster_repo.create_trainee(
+        db_session, org_id, email="revoked@example.com", first_name="R", last_name=None, cohort_id=None
+    )
+    await roster_repo.link_trainee_to_user(db_session, org_id, trainee.id, user_id=slots[0].trainee_id)
+    await roster_repo.set_trainee_access(db_session, org_id, trainee.id, revoked_at=NOW)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+
+    await _advance(db_session, org_id, circuit_id, agents, seq=1, at=NOW + timedelta(minutes=3))
+    await _advance(db_session, org_id, circuit_id, agents, seq=2, at=NOW + timedelta(minutes=13))
+
+    assert "dispatch" not in [c[0] for c in agents.calls]
+    assert await db_session.scalar(select(func.count()).select_from(Attempt)) == 0
+    slots = await repository.slots_for_circuit(db_session, org_id, circuit_id)
+    assert slots[0].status == "skipped"
+
+
 async def test_a_break_falls_between_the_stations_that_asked_for_it(
     db_session: AsyncSession,
 ) -> None:

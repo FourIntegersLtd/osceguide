@@ -13,6 +13,9 @@ export const PERMISSIONS = [
   "schedule_sittings",
   "sign_off_results",
   "export_results",
+  // Writing stations, templates, rubrics, exams and programmes: the authoring write routes
+  // are OrgAdmin inside an organisation, and the platform admin's on the staff console.
+  "author_content",
   "administer_platform",
 ] as const;
 

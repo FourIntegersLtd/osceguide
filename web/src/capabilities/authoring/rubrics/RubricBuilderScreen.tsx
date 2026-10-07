@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, AsyncBoundary, B2CPageHeader, cn, getInputClassName } from "@/foundation/ui";
@@ -35,6 +36,7 @@ export function RubricBuilderScreen({
   const scope = useAuthoringScope();
   const { hrefFor } = useSurface();
   const rubric = useAsync((signal) => readRubric(scope, rubricId, signal), [scope.base, rubricId]);
+  const canAuthor = useCanAuthor();
 
   return (
     <div className="flex w-full flex-col gap-4 pb-8">
@@ -46,7 +48,7 @@ export function RubricBuilderScreen({
           return (
             <>
               <B2CPageHeader
-                title={owned ? <RubricTitle rubric={data} onRenamed={rubric.reload} /> : data.title}
+                title={owned && canAuthor ? <RubricTitle rubric={data} onRenamed={rubric.reload} /> : data.title}
                 subtitle={`Marking scheme · version ${version}${owned ? "" : " · OSCE Guide catalogue"}`}
                 back={{ href: rubricsListPath(hrefFor), label: "Marking schemes" }}
                 action={found ? <VersionActions rubric={data} version={version} status={found.status} owned={owned} /> : undefined}
@@ -59,7 +61,7 @@ export function RubricBuilderScreen({
                   scope={scope}
                   rubric={data}
                   version={found}
-                  readOnly={!owned || found.status !== "draft"}
+                  readOnly={!owned || !canAuthor || found.status !== "draft"}
                   dashboardPreview={dashboardPreview}
                   onPublished={rubric.reload}
                 />
@@ -145,12 +147,13 @@ function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; ve
   const { hrefFor } = useSurface();
   const router = useRouter();
   const action = useAction();
+  const canAuthor = useCanAuthor();
   const draft = (rubric.versions ?? []).find((candidate) => candidate.status === "draft");
   const hasDraft = draft !== undefined;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <StatusBadge status={status} />
-      {owned && status !== "draft" && !hasDraft ? (
+      {canAuthor && owned && status !== "draft" && !hasDraft ? (
         <AuthoringButton
           variant="secondary"
           size="sm"
@@ -165,12 +168,12 @@ function VersionActions({ rubric, version, status, owned }: { rubric: Rubric; ve
           New draft version
         </AuthoringButton>
       ) : null}
-      {owned && draft && draft.version !== version ? (
+      {canAuthor && owned && draft && draft.version !== version ? (
         <AuthoringButton variant="secondary" size="sm" onClick={() => router.push(rubricEditPath(hrefFor, rubric.id, draft.version))}>
           Open draft version {draft.version}
         </AuthoringButton>
       ) : null}
-      {!owned ? (
+      {canAuthor && !owned ? (
         <AuthoringButton
           variant="secondary"
           size="sm"

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from app.core.errors import Conflict, InvalidInput, NotFound
+from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound
+
+# Re-exported rather than restated, so there is one `circuit_not_found` and one
+# `trainee_not_found`, and the router imports only its own errors.
+from app.features.roster.errors import TraineeNotFound as TraineeNotFound
+from app.features.sittings.errors import CircuitNotFound as CircuitNotFound
 
 
 class InvalidRatingError(InvalidInput):
@@ -59,3 +64,17 @@ class SlotNotFound(NotFound):
 
     code = "slot_not_found"
     default_message = "No such slot"
+
+
+class NotReviewerError(Forbidden):
+    """Only an institution administrator, or the supervisor named on the slot's circuit, reviews it (R-9)."""
+
+    code = "not_slot_reviewer"
+    default_message = "Only the supervisor named on this circuit, or an administrator, can review it"
+
+
+class CircuitReviewFinalizedError(Conflict):
+    """The circuit's review has already been finalised; it is not finalised twice (R-10)."""
+
+    code = "circuit_review_finalized"
+    default_message = "This circuit's review has already been finalised"

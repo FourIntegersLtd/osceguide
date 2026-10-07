@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { HiOutlineCloudArrowUp, HiOutlinePlusCircle } from "react-icons/hi2";
@@ -94,6 +95,7 @@ export function StationsSection() {
   const stations = pages.state;
   const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
   const action = useAction(stations.reload);
+  const canAuthor = useCanAuthor();
 
   // The server already excludes archived stations and matches the exam
   // filter, so this is just the length of what came back.
@@ -127,6 +129,7 @@ export function StationsSection() {
     <div className="space-y-4">
       <AuthoringSectionLead
         action={
+          canAuthor ? (
           <div className="flex flex-wrap items-center gap-2">
             <AuthoringButton
               variant="secondary"
@@ -147,6 +150,7 @@ export function StationsSection() {
               New station
             </AuthoringButton>
           </div>
+          ) : null
         }
       >
         Published station cases for sessions and practice.
@@ -189,13 +193,14 @@ export function StationsSection() {
           search={query}
           busy={action.busy}
           onOpen={(station) => goTo({ status, station: station.id })}
-          onArchive={(station) =>
+          onArchive={canAuthor ? (station) =>
             setArchiveConfirm({
               id: station.id,
               title: station.title,
               version: station.version,
-            })
+            }) : undefined
           }
+          canAuthor={canAuthor}
         />
       )}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineArchiveBox,
@@ -34,6 +35,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
   const action = useAction(rubric.reload);
   const { hrefFor } = useSurface();
   const router = useRouter();
+  const canAuthor = useCanAuthor();
 
   return (
     <div className="space-y-4">
@@ -53,6 +55,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-osce-body font-semibold text-ink">{data.title}</h2>
+              {canAuthor ? (
               <AuthoringButton
                 variant="secondary"
                 size="sm"
@@ -61,12 +64,15 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
               >
                 {action.busy === "add" ? "Creating…" : "New draft version"}
               </AuthoringButton>
+              ) : null}
             </div>
 
             {(data.versions ?? []).length === 0 ? (
               <Panel padding="md">
                 <p className="text-osce-body text-ink-muted">
-                  This marking scheme has no versions yet. Cut a draft to start writing it.
+                  {canAuthor
+                    ? "This marking scheme has no versions yet. Cut a draft to start writing it."
+                    : "Nothing here yet."}
                 </p>
               </Panel>
             ) : null}
@@ -89,12 +95,12 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                   <div className="mt-3">
                     <AuthoringRowActions>
                       <AuthoringIconAction
-                        label={version.status === "draft" ? "Edit in the builder" : "Open in the builder"}
+                        label={version.status === "draft" && canAuthor ? "Edit in the builder" : "Open in the builder"}
                         onClick={() => router.push(rubricEditPath(hrefFor, data.id, version.version))}
                       >
                         <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
                       </AuthoringIconAction>
-                      {version.status !== "published" ? (
+                      {canAuthor && version.status !== "published" ? (
                         <AuthoringIconAction
                           variant="primary"
                           label="Publish"
@@ -110,7 +116,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                           <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
                         </AuthoringIconAction>
                       ) : null}
-                      {version.status !== "archived" ? (
+                      {canAuthor && version.status !== "archived" ? (
                         <AuthoringIconAction
                           variant="warning"
                           label="Archive"

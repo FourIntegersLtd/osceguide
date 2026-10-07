@@ -45,6 +45,7 @@ export function StationsTable({
   busy,
   onOpen,
   onArchive,
+  canAuthor,
 }: {
   stations: Station[];
   /** The "Load more" footer: the section's cursor pages. */
@@ -53,6 +54,8 @@ export function StationsTable({
   busy: string | null;
   onOpen: (station: Station) => void;
   onArchive?: (station: Station) => void;
+  /** False for a reader, who is not told to create anything. */
+  canAuthor: boolean;
 }) {
   const columns = useMemo(
     () => [
@@ -139,7 +142,9 @@ export function StationsTable({
       empty={
         search
           ? { title: "No matching stations", description: "Try a different name, or clear the exam filter." }
-          : { title: "No stations yet", description: "Create one with New station, from a template or straight from a prompt." }
+          : !canAuthor
+            ? { title: "No stations yet", description: "Nothing here yet." }
+            : { title: "No stations yet", description: "Create one with New station, from a template or straight from a prompt." }
       }
     />
   );

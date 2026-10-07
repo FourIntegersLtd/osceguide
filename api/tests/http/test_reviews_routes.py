@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.support.catalog import create_exam, ensure_exam
+from tests.support.decisions import settle_decision
 from tests.support.rubrics import published_feedback_version, rubric_with_domains
-from tests.support.tokens import bearer
+from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
 
@@ -36,7 +37,12 @@ async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"): 
 
 
 async def a_slot(
-    db_session: AsyncSession, org_id: uuid.UUID, domains: tuple[str, ...] = ("communication",)
+    db_session: AsyncSession,
+    org_id: uuid.UUID,
+    domains: tuple[str, ...] = ("communication",),
+    *,
+    mode: str = "exam",
+    supervisor: uuid.UUID | None = None,
 ) -> uuid.UUID:
     """A slot, built directly: reviewing does not care how it was scheduled.
 
@@ -71,12 +77,12 @@ async def a_slot(
     sitting = Sitting(
         org_id=org_id,
         name="S",
-        mode="exam",
+        mode=mode,
         rubric_version_id=template_version.id,
     )
     db_session.add(sitting)
     await db_session.flush()
-    circuit = Circuit(org_id=org_id, sitting_id=sitting.id, name="C")
+    circuit = Circuit(org_id=org_id, sitting_id=sitting.id, name="C", supervisor_user_id=supervisor)
     db_session.add(circuit)
     await db_session.flush()
     trainee = await identity_repo.create_user(
@@ -95,6 +101,49 @@ async def a_slot(
     # go with it. The fixture's outer transaction still discards everything.
     await db_session.commit()
     return slot.id
+
+
+async def a_supervisor(db_session: AsyncSession, org_id: uuid.UUID, email: str) -> tuple[uuid.UUID, str]:
+    """A real supervisor account and its token; the id is what a circuit names."""
+    from app.features.identity import repository as identity_repo
+    from app.features.tenancy import repository as tenancy_repo
+
+    user = await identity_repo.create_user(db_session, email=email, name=email, password_hash=None)
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=user.id, role="supervisor")
+    await db_session.commit()
+    token = mint_token(
+        user_id=user.id,
+        email=email,
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="supervisor"),),
+        active_org_slug="kings",
+    )
+    return user.id, token
+
+
+async def a_rostered_candidate(db_session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID):  # type: ignore[no-untyped-def]
+    """Put the slot's candidate on the roster: returns (their users.id, the sitting, their trainees.id)."""
+    from sqlalchemy import select
+
+    from app.features.roster import repository as roster_repo
+    from app.features.sittings.models import Circuit, Slot
+
+    slot = (await db_session.execute(select(Slot).where(Slot.id == slot_id))).scalar_one()
+    user_id = slot.trainee_id
+    sitting_id = (
+        await db_session.execute(select(Circuit.sitting_id).where(Circuit.id == slot.circuit_id))
+    ).scalar_one()
+    trainee = await roster_repo.create_trainee(
+        db_session,
+        org_id,
+        email=f"c-{uuid.uuid4().hex[:6]}@example.com",
+        first_name="T",
+        last_name=None,
+        cohort_id=None,
+    )
+    trainee_id = trainee.id
+    await roster_repo.link_trainee_to_user(db_session, org_id, trainee_id, user_id=user_id)
+    await db_session.commit()
+    return user_id, sitting_id, trainee_id
 
 
 async def test_a_review_is_saved_and_listed(
@@ -349,11 +398,9 @@ async def test_two_reviewers_who_disagree_are_combined_worst_first(
     candidate's rating differently.
     """
     org_id, admin = await org_with_admin(client, make_actor)
-    slot_id = await a_slot(db_session, org_id, domains=("communication", "management"))
-    second = await make_actor(
-        "observer@example.com",
-        memberships=(Membership(org_id=org_id, org_slug="kings", role="supervisor"),),
-        active_org_slug="kings",
+    supervisor_id, second = await a_supervisor(db_session, org_id, "observer@example.com")
+    slot_id = await a_slot(
+        db_session, org_id, domains=("communication", "management"), supervisor=supervisor_id
     )
 
     url = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine"
@@ -519,48 +566,14 @@ async def test_a_signed_off_result_locks_the_reviews_behind_it(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     """R-4: a GP lead could rewrite a review after the decision built on it was signed off."""
-    from sqlalchemy import select
-
-    from app.features.roster import repository as roster_repo
-    from app.features.sittings.models import Circuit, Slot
-    from tests.http.test_results_routes import EVIDENCE
-
     org_id, admin = await org_with_admin(client, make_actor)
     slot_id = await a_slot(db_session, org_id)
-    slot = (await db_session.execute(select(Slot).where(Slot.id == slot_id))).scalar_one()
-    user_id = slot.trainee_id
-    sitting_id = (
-        await db_session.execute(select(Circuit.sitting_id).where(Circuit.id == slot.circuit_id))
-    ).scalar_one()
-    trainee = await roster_repo.create_trainee(
-        db_session,
-        org_id,
-        email=f"r4-{uuid.uuid4().hex[:6]}@example.com",
-        first_name="T",
-        last_name=None,
-        cohort_id=None,
-    )
-    trainee_id = trainee.id
-    await roster_repo.link_trainee_to_user(db_session, org_id, trainee_id, user_id=user_id)
-    await db_session.commit()
+    _, sitting_id, trainee_id = await a_rostered_candidate(db_session, org_id, slot_id)
 
     review = f"/api/v1/orgs/kings/slots/{slot_id}/gp-lead-review"
     saved = await client.put(review, json={"revision": 0, "notes": "Before"}, headers=bearer(admin))
     assert saved.status_code == 200, saved.text
-    decision = f"/api/v1/orgs/kings/sittings/{sitting_id}/candidates/{trainee_id}/decision"
-    drafted = await client.put(
-        decision,
-        json={
-            "assessment_outcome": "pass",
-            "rationale": "Met it.",
-            "evidence": EVIDENCE,
-            "expected_revision": 0,
-        },
-        headers=bearer(admin),
-    )
-    assert drafted.status_code == 200, drafted.text
-    signed = await client.post(f"{decision}/sign-off", headers=bearer(admin))
-    assert signed.status_code == 200, signed.text
+    await settle_decision(client, admin, org_slug="kings", sitting_id=sitting_id, trainee_id=trainee_id)
 
     response = await client.put(review, json={"revision": 1, "notes": "After"}, headers=bearer(admin))
 
@@ -568,3 +581,103 @@ async def test_a_signed_off_result_locks_the_reviews_behind_it(
     assert response.json()["code"] == "review_locked"
     stored = await client.get(review, headers=bearer(admin))
     assert stored.json()["notes"] == "Before"
+
+
+async def test_only_the_named_supervisor_or_an_administrator_reviews_a_slot(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-9: any supervisor in the organisation could review any slot in it."""
+    org_id, _ = await org_with_admin(client, make_actor)
+    named_id, named = await a_supervisor(db_session, org_id, "named@example.com")
+    _, other = await a_supervisor(db_session, org_id, "other@example.com")
+    slot_id = await a_slot(db_session, org_id, supervisor=named_id)
+    url = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine"
+
+    refused = await client.put(url, json={"notes": "Not mine"}, headers=bearer(other))
+    assert refused.status_code == 403, refused.text
+    assert refused.json()["code"] == "not_slot_reviewer"
+    allowed = await client.put(url, json={"notes": "Mine"}, headers=bearer(named))
+    assert allowed.status_code == 200, allowed.text
+
+
+async def test_an_observer_must_be_on_the_organisations_roster(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-9: `observer_trainee_id` was stored unchecked, so it could name anybody's trainee."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+
+    response = await client.put(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
+        json={"notes": "Watched", "observer_trainee_id": str(uuid.uuid4())},
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 404, response.text
+    assert response.json()["code"] == "trainee_not_found"
+
+
+async def test_a_circuit_review_is_finalised_once_and_only_in_its_own_organisation(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-10: finalize had no org check, no circuit_not_found, and could be repeated."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id = await _circuit_of(db_session, await a_slot(db_session, org_id))
+    _, guys_admin = await org_with_admin(client, make_actor, "guys")
+
+    foreign = await client.post(
+        f"/api/v1/orgs/guys/circuits/{circuit_id}/review/finalize", json={}, headers=bearer(guys_admin)
+    )
+    assert foreign.status_code == 404, foreign.text
+    assert foreign.json()["code"] == "circuit_not_found"
+    url = f"/api/v1/orgs/kings/circuits/{circuit_id}/review/finalize"
+    first = await client.post(url, json={"merged_notes": "First"}, headers=bearer(admin))
+    assert first.status_code == 200, first.text
+    second = await client.post(url, json={"merged_notes": "Second"}, headers=bearer(admin))
+    assert second.status_code == 409, second.text
+    assert second.json()["code"] == "circuit_review_finalized"
+
+
+async def test_a_circuit_review_cannot_be_finalised_after_sign_off(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-10: notes finalised after the decision was signed off were never part of it."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+    _, sitting_id, trainee_id = await a_rostered_candidate(db_session, org_id, slot_id)
+    await settle_decision(client, admin, org_slug="kings", sitting_id=sitting_id, trainee_id=trainee_id)
+
+    response = await client.post(
+        f"/api/v1/orgs/kings/circuits/{await _circuit_of(db_session, slot_id)}/review/finalize",
+        json={"merged_notes": "Late"},
+        headers=bearer(admin),
+    )
+
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "review_locked"
+
+
+async def test_a_training_review_is_shared_with_the_trainee_once_completed(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-36: practice has no sign-off or release; the trainee reads a completed review at once."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id, mode="training")
+    user_id, _, _ = await a_rostered_candidate(db_session, org_id, slot_id)
+    as_trainee = bearer(mint_token(user_id=user_id, email="trainee@example.com"))
+    url = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine"
+
+    await client.put(
+        url, json={"field_values": {"communication.score": "G"}, "notes": "Draft"}, headers=bearer(admin)
+    )
+    assert (await client.get(f"/api/v1/me/slots/{slot_id}/review", headers=as_trainee)).json() is None
+    await client.put(
+        url,
+        json={"field_values": {"communication.score": "G"}, "notes": "Good rapport", "status": "completed"},
+        headers=bearer(admin),
+    )
+
+    shared = await client.get(f"/api/v1/me/slots/{slot_id}/review", headers=as_trainee)
+    assert shared.status_code == 200, shared.text
+    assert shared.json()["notes"] == "Good rapport"
+    assert shared.json()["summary"]["overall_rag"] == "G"

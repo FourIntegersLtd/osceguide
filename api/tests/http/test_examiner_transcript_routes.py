@@ -36,6 +36,7 @@ from tests.http.test_sittings_routes import (
     org_with_admin,
     published_station,
 )
+from tests.support.decisions import settle_decision
 from tests.support.fakes import FakeRoomAgents
 from tests.support.tokens import bearer, mint_token
 
@@ -347,7 +348,6 @@ async def test_an_exam_candidate_reads_nothing_of_their_slot_until_release(
     decision is released, both open.
     """
     from app.features.roster import repository as roster_repo
-    from tests.http.test_results_routes import EVIDENCE
 
     org_id, admin = await org_with_admin(client, make_actor)
     candidate, _, attempt_id = await a_consultation(client, db_session, admin, examiner=None)
@@ -362,21 +362,14 @@ async def test_an_exam_candidate_reads_nothing_of_their_slot_until_release(
         assert refused.json()["code"] == "result_not_released"
 
     trainee_id = (await roster_repo.trainee_ids_for_user(db_session, uuid.UUID(candidate)))[0]
-    sitting_id = portal["items"][0]["id"]
-    decision = f"/api/v1/orgs/kings/sittings/{sitting_id}/candidates/{trainee_id}/decision"
-    await client.put(
-        decision,
-        json={
-            "assessment_outcome": "pass",
-            "rationale": "Met the standard.",
-            "evidence": EVIDENCE,
-            "expected_revision": 0,
-        },
-        headers=bearer(admin),
+    await settle_decision(
+        client,
+        admin,
+        org_slug="kings",
+        sitting_id=portal["items"][0]["id"],
+        trainee_id=trainee_id,
+        release=True,
     )
-    await client.post(f"{decision}/sign-off", headers=bearer(admin))
-    released = await client.post(f"{decision}/release", json={"evidence": EVIDENCE}, headers=bearer(admin))
-    assert released.status_code == 200, released.text
 
     portal = (await client.get("/api/v1/me/sittings", headers=as_candidate)).json()
     assert portal["items"][0]["slots"][0]["attempt_id"] == attempt_id
