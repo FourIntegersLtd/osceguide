@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   AsyncBoundary,
   Button,
+  ButtonLink,
   ConfirmModal,
   QuietCard,
   B2CGroupedRow,
@@ -12,7 +13,6 @@ import {
   B2CPageHeader,
   LoadMore,
 } from "@/foundation/ui";
-import Link from "next/link";
 import { PERSONAL_SLUG } from "@/foundation/routing";
 import { stationHref } from "@/capabilities/stations";
 import { formatLongDate, plural } from "@/foundation/format";
@@ -98,11 +98,9 @@ export function ModerationHome() {
                 subtitle={`${open.author_name ?? "Someone"} · ${formatLongDate(open.created_at)}`}
                 actions={
                   <>
-                    <Link href={postHref(open)} target="_blank" rel="noreferrer" className="inline-flex">
-                      <Button variant="ghost" size="sm">
-                        Open in context
-                      </Button>
-                    </Link>
+                    <ButtonLink href={postHref(open)} target="_blank" rel="noreferrer" variant="ghost" size="sm">
+                      Open in context
+                    </ButtonLink>
                     <Button variant="ghost" size="sm" onClick={() => setTarget(open)}>
                       Delete
                     </Button>

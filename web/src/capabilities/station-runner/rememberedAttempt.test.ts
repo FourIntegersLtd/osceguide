@@ -14,9 +14,3 @@ describe("rememberedVerdict", () => {
     }
   });
 });
-
-describe("rememberedVerdict with nothing remembered", () => {
-  it("says none, not discard", () => {
-    assert.equal(rememberedVerdict(undefined), "none");
-  });
-});

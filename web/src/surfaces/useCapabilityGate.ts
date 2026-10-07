@@ -33,14 +33,15 @@ export function useCapabilityGate(id: string): CapabilityGate {
       }).some((entry) => entry.id === id)
     : false;
 
+  // A capability that names no exams is not filtered by exam, so its answer does not change when the exam arrives.
   const waiting = Boolean(capability?.exams) && examLoading;
-  const bounceTo = !waiting && !mounted && workspace && capability?.unmountedGoesTo ? `/app/${slug}${capability.unmountedGoesTo}` : null;
+  const bounceHref = !waiting && !mounted && workspace && capability?.unmountedGoesTo ? `/app/${slug}${capability.unmountedGoesTo}` : null;
 
   useEffect(() => {
-    if (bounceTo) router.replace(bounceTo);
-  }, [bounceTo, router]);
+    if (bounceHref) router.replace(bounceHref);
+  }, [bounceHref, router]);
 
   if (waiting) return "loading";
   if (mounted) return "allowed";
-  return bounceTo ? "bounce" : "missing";
+  return bounceHref ? "bounce" : "missing";
 }

@@ -33,6 +33,12 @@ export const FINAL_COUNTDOWN_SECONDS = 30;
  * Supports custom durations for users with accessibility needs and restores timer state
  * when the page is refreshed or user navigates away and returns.
  */
+/** Saved every second so a reload or navigation restores the time left. */
+function saveTimerState(timerType: string, stationId: string, timeRemaining: number): void {
+  localStorage.setItem(`timer-${timerType}-${stationId}`, timeRemaining.toString());
+  localStorage.setItem(`timer-timestamp-${timerType}-${stationId}`, Date.now().toString());
+}
+
 export default function Timer({
   duration: defaultDuration, // Default duration passed as prop (e.g., 600 seconds)
   stationId,
@@ -250,16 +256,7 @@ export default function Timer({
 
     // Save current timer state to localStorage every second
     // This allows timer to be restored if user refreshes or navigates away
-    if (!fromServer) {
-      localStorage.setItem(
-        `timer-${timerType}-${stationId}`,
-        timeRemaining.toString(),
-      );
-      localStorage.setItem(
-        `timer-timestamp-${timerType}-${stationId}`,
-        Date.now().toString(),
-      );
-    }
+    if (!fromServer) saveTimerState(timerType, stationId, timeRemaining);
 
     // Start countdown interval that decrements timer every second
     const countdownInterval = setInterval(() => {

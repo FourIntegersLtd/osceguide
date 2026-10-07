@@ -110,7 +110,8 @@ export function MediaDetailScreen({
   const [prompt, setPrompt] = useState("");
   const [jsonOpen, setJsonOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [confirm, setConfirm] = useState<"publish" | "save-publish" | "unpublish" | "unlock" | "hand-check" | null>(null);
+  const [confirm, setConfirm] = useState<"publish" | "save-publish" | "unpublish" | "unlock" | null>(null);
+  const [handCheck, setHandCheck] = useState(false);
   const [pollAv, setPollAv] = useState(false);
   const [step, setStep] = useState<StepId | null>(null);
 
@@ -316,23 +317,47 @@ export function MediaDetailScreen({
       load.reload();
     });
   // Nothing reaches learners, or is taken from them, without being asked twice.
+  const confirmations = {
+    publish: {
+      title: "Publish this?",
+      message: `"${title.trim() || kindLabel}" will be visible to learners straight away.`,
+      confirmText: "Publish",
+      tone: "default",
+      run: () => publish(),
+    },
+    "save-publish": {
+      title: "Publish this?",
+      message: `"${title.trim() || kindLabel}" will be visible to learners straight away.`,
+      confirmText: "Publish",
+      tone: "default",
+      run: () => save(true),
+    },
+    unpublish: {
+      title: "Unpublish this?",
+      message: "Learners lose it and it goes back to a draft you can edit or delete.",
+      confirmText: "Unpublish",
+      tone: "danger",
+      run: () =>
+        action.run("unpublish", async () => {
+          await unpublishMedia(itemId);
+          toast.success("Unpublished");
+        }),
+    },
+    unlock: {
+      title: "Release this job?",
+      message: "Only if the worker has died. The item is marked failed so you can start it again.",
+      confirmText: "Release",
+      tone: "danger",
+      run: () =>
+        action.run("unlock", async () => {
+          await unlockMedia(itemId);
+          toast.success("Released");
+        }),
+    },
+  } as const;
+  const pending = confirm ? confirmations[confirm] : null;
   const confirmed = async () => {
-    const verb = confirm;
-    if (!verb) return;
-    const ok = await (verb === "publish"
-      ? publish()
-      : verb === "save-publish"
-        ? save(true)
-        : verb === "unpublish"
-          ? action.run("unpublish", async () => {
-              await unpublishMedia(itemId);
-              toast.success("Unpublished");
-            })
-          : action.run("unlock", async () => {
-              await unlockMedia(itemId);
-              toast.success("Released");
-            }));
-    if (ok) setConfirm(null);
+    if (pending && (await pending.run())) setConfirm(null);
   };
   const writeScript = (rewrite: boolean) =>
     start("write-script", "Script check started", () => writeMediaScript(itemId, rewrite));
@@ -519,25 +544,11 @@ export function MediaDetailScreen({
       />
 
       <ConfirmModal
-        isOpen={confirm !== null && confirm !== "hand-check"}
-        tone={confirm === "unpublish" || confirm === "unlock" ? "danger" : "default"}
-        title={
-          confirm === "unpublish"
-            ? "Unpublish this?"
-            : confirm === "unlock"
-              ? "Release this job?"
-              : "Publish this?"
-        }
-        message={
-          confirm === "unpublish"
-            ? "Learners lose it and it goes back to a draft you can edit or delete."
-            : confirm === "unlock"
-              ? "Only if the worker has died. The item is marked failed so you can start it again."
-              : `"${title.trim() || kindLabel}" will be visible to learners straight away.`
-        }
-        confirmText={
-          confirm === "unpublish" ? "Unpublish" : confirm === "unlock" ? "Release" : "Publish"
-        }
+        isOpen={pending !== null}
+        tone={pending?.tone ?? "default"}
+        title={pending?.title ?? ""}
+        message={pending?.message ?? ""}
+        confirmText={pending?.confirmText ?? ""}
         isLoading={action.busy !== null}
         error={action.error}
         onCancel={() => {
@@ -547,11 +558,11 @@ export function MediaDetailScreen({
         onConfirm={() => void confirmed()}
       />
       <HandCheckModal
-        open={confirm === "hand-check"}
+        open={handCheck}
         busy={action.busy === "hand-check"}
         error={action.error}
         onClose={() => {
-          setConfirm(null);
+          setHandCheck(false);
           action.clearError();
         }}
         onSubmit={(claims) =>
@@ -561,12 +572,12 @@ export function MediaDetailScreen({
               toast.success("Check recorded");
             })
             .then((ok) => {
-              if (ok) setConfirm(null);
+              if (ok) setHandCheck(false);
             })
         }
       />
 
-      {action.error && confirm === null ? <Alert tone="danger">{action.error}</Alert> : null}
+      {action.error && confirm === null && !handCheck ? <Alert tone="danger">{action.error}</Alert> : null}
 
       <ContentJsonEditor
         open={jsonOpen}
@@ -673,7 +684,7 @@ export function MediaDetailScreen({
               />
               {isAvRunning(status) ? null : (
                 <div className="mt-4">
-                  <Button variant="ghost" size="sm" onClick={() => setConfirm("hand-check")}>
+                  <Button variant="ghost" size="sm" onClick={() => setHandCheck(true)}>
                     Record a check done by hand
                   </Button>
                 </div>

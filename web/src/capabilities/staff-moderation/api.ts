@@ -7,7 +7,7 @@ import { removePost, type Post, type PostPage } from "@/capabilities/community/a
  */
 export type ModerationPost = Post & { station_id?: string | null };
 
-export const MODERATION_PAGE_LIMIT = 25;
+const MODERATION_PAGE_LIMIT = 25;
 
 export function listModerationPosts(
   params: { days?: number; cursor?: string | null } = {},

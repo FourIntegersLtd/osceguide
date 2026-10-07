@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import {
   Alert,
@@ -12,12 +11,13 @@ import {
   B2CSegmentedTabs,
   Badge,
   Button,
+  ButtonLink,
   LoadMore,
   QuietCard,
   Textarea,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
-import { errorMessage, useAsync, useCursorPages } from "@/foundation/hooks";
+import { errorMessage, useCursorPages } from "@/foundation/hooks";
 import { PERSONAL_SLUG } from "@/foundation/routing";
 import { stationHref } from "@/capabilities/stations";
 import {
@@ -76,35 +76,30 @@ function AnswerCard({
       title={stationName(flag)}
       subtitle={`${reporter} reported ${formatMoment(flag.created_at)}`}
       actions={
-        open ? (
-          <>
-            <Link href={stationLink(flag)} target="_blank" rel="noreferrer" className="inline-flex">
-              <Button variant="ghost" size="sm">
-                Open station
+        <>
+          <ButtonLink href={stationLink(flag)} target="_blank" rel="noreferrer" variant="ghost" size="sm">
+            Open station
+          </ButtonLink>
+          {open ? (
+            <>
+              <Button variant="primary" size="sm" isLoading={busy} onClick={onAnswer}>
+                Send answer
               </Button>
-            </Link>
-            <Button variant="primary" size="sm" isLoading={busy} onClick={onAnswer}>
-              Send answer
-            </Button>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={onClose}>
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <>
-            <Link href={stationLink(flag)} target="_blank" rel="noreferrer" className="inline-flex">
-              <Button variant="ghost" size="sm">
-                Open station
+              <Button variant="ghost" size="sm" disabled={busy} onClick={onClose}>
+                Cancel
               </Button>
-            </Link>
-            <Button variant="ghost" size="sm" disabled={busy} onClick={onReopen}>
-              Reopen
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              Close
-            </Button>
-          </>
-        )
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" disabled={busy} onClick={onReopen}>
+                Reopen
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                Close
+              </Button>
+            </>
+          )}
+        </>
       }
     >
       {open ? (
@@ -133,12 +128,6 @@ export function StationFlags() {
     [status],
   );
   const queue = pages.state;
-  // The hero is about the open queue whichever tab is showing.
-  const openQueue = useAsync(
-    (signal) =>
-      status === "open" ? Promise.resolve(null) : listStationFlags({ status: "open" }, signal),
-    [status],
-  );
   const [editing, setEditing] = useState<StationFlag | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -159,7 +148,6 @@ export function StationFlags() {
       await decideStationFlag(flag.id, input);
       close();
       queue.reload();
-      openQueue.reload();
     } catch (cause) {
       setFailure(errorMessage(cause));
     } finally {
@@ -179,11 +167,10 @@ export function StationFlags() {
     <div className="flex flex-col gap-6">
       <B2CPageHeader title="Station reports" subtitle="Cases readers said were wrong." />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
+      {/* The headline counts the open queue, so it comes from the one read and only on that tab. */}
       {status === "open" ? (
         <AsyncBoundary state={queue}>{(flags) => hero(flags, pages.hasMore)}</AsyncBoundary>
-      ) : (
-        <AsyncBoundary state={openQueue}>{(page) => (page ? hero(page.items, page.next_cursor != null) : null)}</AsyncBoundary>
-      )}
+      ) : null}
       <B2CSegmentedTabs
         items={FILTERS}
         value={status}
