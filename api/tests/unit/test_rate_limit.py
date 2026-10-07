@@ -14,7 +14,7 @@ from contextlib import suppress
 import pytest
 
 from app.core import rate_limit
-from app.core.rate_limit import Limit, TooManyRequests, caller_key, check
+from app.core.rate_limit import Limit, TooManyRequests, caller_key, check, check_sign_in
 
 LIMIT = Limit(name="test", allowance=2, window_seconds=60)
 
@@ -103,17 +103,17 @@ async def test_a_fail_closed_limit_refuses_when_redis_errors(monkeypatch: pytest
     """SEC-003: a credential route does not silently stop being limited the
     moment Redis breaks under load — that is when a spray would be running."""
     monkeypatch.setattr(rate_limit, "get_redis", lambda: FakeRedis(broken=True))
-    strict = Limit(name="sign-in", allowance=2, window_seconds=60, fail_closed=True)
+    strict = Limit(name="password-reset", allowance=2, window_seconds=60, fail_closed=True)
     with pytest.raises(TooManyRequests) as raised:
         await check(strict, "caller")
-    assert raised.value.details == {"retry_after": 60, "limit": "sign-in"}
+    assert raised.value.details == {"retry_after": 60, "limit": "password-reset"}
 
 
 async def test_a_fail_closed_limit_still_allows_when_redis_is_off(monkeypatch: pytest.MonkeyPatch) -> None:
     """A switched-off Redis is a deployment choice, not a failure to guard
     against, so even a fail-closed limit lets the call through."""
     monkeypatch.setattr(rate_limit, "get_redis", lambda: None)
-    strict = Limit(name="sign-in", allowance=2, window_seconds=60, fail_closed=True)
+    strict = Limit(name="password-reset", allowance=2, window_seconds=60, fail_closed=True)
     for _ in range(50):
         await check(strict, "caller")
 
@@ -176,3 +176,31 @@ def test_the_per_user_limits_are_sized_for_what_each_call_costs() -> None:
     }
     assert per_minute["user-write"] > per_minute["ai-spend"] > per_minute["outbound-email"]
     assert per_minute["user-write"] > per_minute["publish"]
+
+
+async def test_a_cohort_behind_one_address_can_all_sign_in(redis: FakeRedis) -> None:
+    """S-6: forty trainees on one hospital NAT at exam start all get through,
+    while ten wrong tries at one account still stop the eleventh."""
+    ward = Request(host="198.51.100.9")
+    for n in range(40):
+        await check_sign_in(ward, f"trainee{n}@example.com")  # type: ignore[arg-type]
+
+    for _ in range(9):
+        await check_sign_in(ward, "Trainee0@Example.com ")  # type: ignore[arg-type]
+    with pytest.raises(TooManyRequests) as raised:
+        await check_sign_in(ward, "trainee0@example.com")  # type: ignore[arg-type]
+    assert raised.value.details == {"retry_after": 42, "limit": "sign-in"}
+    assert not any("trainee0@example.com" in key for key in redis.counts), "no address in Redis keys"
+
+
+async def test_sign_in_keeps_counting_in_process_when_redis_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    """S-6 without undoing SEC-003: a Redis error mid-check neither refuses
+    every sign-in nor stops limiting a guessed account."""
+    monkeypatch.setattr(rate_limit, "get_redis", lambda: FakeRedis(broken=True))
+    monkeypatch.setattr(rate_limit, "_local_windows", {})
+    ward = Request(host="198.51.100.9")
+    for _ in range(10):
+        await check_sign_in(ward, "guessed@example.com")  # type: ignore[arg-type]
+    with pytest.raises(TooManyRequests):
+        await check_sign_in(ward, "guessed@example.com")  # type: ignore[arg-type]
+    await check_sign_in(ward, "someone-else@example.com")  # type: ignore[arg-type]

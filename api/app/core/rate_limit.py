@@ -10,11 +10,14 @@ counting every click would only find the people using the product hardest.
 
 **Mostly it fails open.** An unconfigured or switched-off Redis allows the
 call and says so in the log: turning the limiter off is a deployment choice,
-and a cache outage must not stop the whole product working. The exception is a
-`fail_closed` limit — the credential routes — which refuses the call when
-Redis is reachable but *errors mid-check*, since that is exactly the moment a
-password spray would be running (SEC-003). A limit was never the only defence;
-it raises the cost of a spraying run from free to inconvenient.
+and a cache outage must not stop the whole product working. Two exceptions,
+for when Redis is reachable but *errors mid-check* — exactly the moment a
+password spray would be running (SEC-003): a `fail_closed` limit (password
+reset, the second factor) refuses the call, and a `local_fallback` limit
+(sign-in) keeps counting in this process instead, so a Redis blip at the start
+of an exam neither locks a whole cohort out nor switches the brake off. A limit
+was never the only defence; it raises the cost of a spraying run from free to
+inconvenient.
 
 The counter is a fixed window rather than a sliding one: two windows'
 allowance can land in one burst at the boundary, a distinction no attacker
@@ -23,6 +26,8 @@ profits from and a great deal less state to keep.
 
 from __future__ import annotations
 
+import hashlib
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
@@ -54,21 +59,27 @@ class Limit:
     `fail_closed` decides what happens when Redis is *reachable but errors* mid
     check: a credential-guessing route (sign-in, password reset) refuses the
     call rather than let the limiter silently switch off under load, which is
-    exactly when a spray would be running. A Redis that is switched off or
-    absent (`get_redis` returns None) still allows the call — turning the
-    limiter off is a deployment choice, not a failure to fail closed against.
+    exactly when a spray would be running. `local_fallback` counts in this
+    process instead, for a route where refusing everybody is itself the outage
+    (sign-in at the start of an exam). A Redis that is switched off or absent
+    (`get_redis` returns None) still allows the call — turning the limiter off
+    is a deployment choice, not a failure to fail closed against.
     """
 
     name: str
     allowance: int
     window_seconds: int
     fail_closed: bool = False
+    local_fallback: bool = False
 
 
-# Sized against what a real person does, not what feels safe. Somebody
-# mistyping a password three times in a row is ordinary; thirty attempts a
-# minute from one address is not a person.
-SIGN_IN = Limit(name="sign-in", allowance=10, window_seconds=60, fail_closed=True)
+# Sign-in is counted twice (S-6). Per account, sized against what a real person
+# does: mistyping a password three times in a row is ordinary, ten a minute at
+# one account is a guess. Per address, sized for a whole cohort signing in from
+# one hospital NAT in the same minute at exam start, which a per-address limit
+# of ten used to lock out; it still stops one machine spraying many accounts.
+SIGN_IN = Limit(name="sign-in", allowance=10, window_seconds=60, local_fallback=True)
+SIGN_IN_ADDRESS = Limit(name="sign-in-address", allowance=300, window_seconds=60, local_fallback=True)
 # Deliberately tighter, because the cost of the request is an email to
 # somebody else's inbox: the address is the attacker's choice, not theirs.
 PASSWORD_RESET = Limit(name="password-reset", allowance=5, window_seconds=300, fail_closed=True)
@@ -148,6 +159,40 @@ def caller_key(request: Request) -> str:
     return client.host if client else "unknown"
 
 
+def _account_bucket(email: str) -> str:
+    """The per-account caller for sign-in: hashed, so no address sits in Redis."""
+    normalised = email.strip().lower().encode()
+    return "account:" + hashlib.sha256(normalised).hexdigest()[:32]
+
+
+async def check_sign_in(request: Request, email: str) -> None:
+    """Count one sign-in attempt against the account and against the address."""
+    await check(SIGN_IN, _account_bucket(email))
+    await check(SIGN_IN_ADDRESS, caller_key(request))
+
+
+# Process-local windows for a `local_fallback` limit while Redis is erroring:
+# key -> (window start, calls). Pruned when it grows, so a spray of fresh keys
+# cannot grow it without end.
+_local_windows: dict[str, tuple[float, int]] = {}
+_LOCAL_MAX_KEYS = 10_000
+
+
+def _count_locally(limit: Limit, key: str) -> None:
+    now = time.monotonic()
+    if len(_local_windows) > _LOCAL_MAX_KEYS:
+        for stale in [k for k, (start, _) in _local_windows.items() if now - start >= limit.window_seconds]:
+            del _local_windows[stale]
+    start, used = _local_windows.get(key, (now, 0))
+    if now - start >= limit.window_seconds:
+        start, used = now, 0
+    used += 1
+    _local_windows[key] = (start, used)
+    if used > limit.allowance:
+        retry_after = max(int(limit.window_seconds - (now - start)), 1)
+        raise TooManyRequests(details={"retry_after": retry_after, "limit": limit.name})
+
+
 async def check(limit: Limit, caller: str) -> None:
     """Count this call, and refuse it if the window is full."""
     client = get_redis()
@@ -167,10 +212,13 @@ async def check(limit: Limit, caller: str) -> None:
         raise
     except Exception as exc:  # noqa: BLE001 - a Redis failure mid-check
         log.warning("rate limit unavailable", limit=limit.name, error=str(exc))
-        # SEC-003: a fail-closed limit (the credential routes) refuses the call
-        # when the counter cannot be trusted; everything else keeps failing open
-        # so a Redis blip does not lock people out of the whole product.
-        if limit.fail_closed:
+        # SEC-003: the credential routes never stop counting. Sign-in counts in
+        # this process (refusing everyone would be the outage S-6 describes);
+        # a fail-closed limit refuses the call; everything else fails open so a
+        # Redis blip does not lock people out of the whole product.
+        if limit.local_fallback:
+            _count_locally(limit, key)
+        elif limit.fail_closed:
             raise TooManyRequests(details={"retry_after": limit.window_seconds, "limit": limit.name}) from exc
 
 

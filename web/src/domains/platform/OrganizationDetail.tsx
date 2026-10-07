@@ -190,7 +190,7 @@ function OrganizationFacts({ organization }: { organization: Organization }) {
       <div className="flex flex-col gap-5">
         <p className="text-osce-body text-ink-muted">
           {STATUS_HELP[organization.status] ??
-            `Status "${organization.status}". Members cannot sign in.`}
+            `Status "${organization.status}". Members can sign in but cannot open the organisation.`}
         </p>
         <FactList items={items} columns={3} />
       </div>
@@ -315,7 +315,7 @@ function OrganizationActions({
           <p className="text-osce-meta text-ink-subtle">
             {suspended
               ? "Restoring makes the organisation active, even if it was on a trial before."
-              : "Blocks every member's sign-in. Nothing is deleted."}
+              : "Members can still sign in but cannot open the organisation. Nothing is deleted."}
           </p>
         </>
       }

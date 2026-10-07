@@ -1,10 +1,12 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { Spinner } from "@/foundation/ui";
 import { RequireSession, useSession } from "@/foundation/session";
+import { OrganisationSuspended } from "@/foundation/session/OrganisationSuspended";
+import { isOrgSuspended, subscribeOrgSuspension } from "@/foundation/platform-client/orgSuspension";
 import { rememberWorkspace, workspaceBasePath, type Workspace } from "@/foundation/routing";
 import { SurfaceShell, resolveWorkspace, surfaceForWorkspace } from "@/surfaces";
 
@@ -58,6 +60,13 @@ function Frame({ workspace, children }: { workspace: Workspace; children: ReactN
   useEffect(() => {
     rememberWorkspace(workspace.slug);
   }, [workspace.slug]);
+  // The first `organization_suspended` from any panel replaces the whole shell.
+  const suspended = useSyncExternalStore(
+    subscribeOrgSuspension,
+    () => isOrgSuspended(workspace.slug),
+    () => false,
+  );
+  if (suspended) return <OrganisationSuspended name={workspace.name} />;
 
   return (
     <SurfaceShell

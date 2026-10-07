@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { reportError } from "@/foundation/observability/reportError";
 import { platformApiUrl } from "@/foundation/platform-client/client";
+import { revokeSession } from "@/foundation/platform-client/revokeSession";
 import {
   clearSessionCookies,
   readSessionCookies,
@@ -60,19 +62,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  * it belonged anyway.
  *
  * A failed revoke still clears the cookies: the person asked to be signed out.
+ * It is reported, never swallowed: a refresh token that outlives sign-out is
+ * the bug this route exists to prevent (A-1).
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  const { refreshToken } = readSessionCookies(request);
-  if (refreshToken) {
-    try {
-      await fetch(`${platformApiUrl()}/api/v1/auth/logout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-    } catch {
-      // Best effort. The local session goes regardless.
-    }
+  const outcome = await revokeSession(platformApiUrl(), readSessionCookies(request));
+  if (outcome !== "revoked") {
+    reportError(new Error(`Sign-out could not revoke the refresh chain: ${outcome}`), { area: "session" });
   }
   return clearSessionCookies(new NextResponse(null, { status: 204 }));
 }

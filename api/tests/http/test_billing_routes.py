@@ -232,22 +232,22 @@ async def test_a_top_level_price_id_is_not_a_stripe_shape(
     assert response.json()["code"] == "invalid_webhook"
 
 
-async def test_a_payment_for_an_unknown_address_is_kept_and_applied_on_retry(
+async def test_a_payment_for_an_unknown_address_is_kept_for_support_not_refused(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    """The README's promise, which the transaction rollback used to break.
-
-    Stripe retries a non-2xx. Once the person registers, the retry applies.
+    """S-4: the customer has paid. A 4xx made Stripe retry for three days and
+    then drop the delivery, leaving them charged with no access; it is now
+    acknowledged and kept, unprocessed, until it is applied.
     """
     await a_plan(db_session)
     event = checkout_event("evt_stranger", "stranger@example.com")
 
-    refused = await post_event(client, event)
-    assert refused.status_code == 422
-    assert refused.json()["code"] == "invalid_webhook"
+    kept = await post_event(client, event)
+    assert kept.status_code == 200, kept.text
+    assert kept.json() == {"status": "needs_attention"}
 
     recorded = await billing_repo.event_by_id(db_session, "evt_stranger")
-    assert recorded is not None, "the ledger row must survive the refusal"
+    assert recorded is not None, "the ledger row must survive"
     assert recorded.processed_at is None
     assert recorded.failure and "No account" in recorded.failure
 

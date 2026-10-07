@@ -1,5 +1,6 @@
 import { platformRequest, setPlatformTokenSource } from "@/foundation/platform-client/client";
-import { hasCode } from "@/foundation/platform-client/errors";
+import { hasCode, isPlatformError } from "@/foundation/platform-client/errors";
+import { noteOrgRefusal } from "@/foundation/platform-client/orgSuspension";
 import {
   REFRESH_MARGIN_MS,
   SESSION_MARKER_COOKIE,
@@ -404,10 +405,17 @@ export async function logout(): Promise<void> {
  * attempts. Without it, joining an institution was a one-way door.
  */
 export async function switchWorkspace(orgSlug: string | null): Promise<AuthResult> {
-  const result = await platformRequest<AuthResult>("/api/v1/auth/switch-workspace", {
-    method: "POST",
-    body: { org_slug: orgSlug },
-  });
+  let result: AuthResult;
+  try {
+    result = await platformRequest<AuthResult>("/api/v1/auth/switch-workspace", {
+      method: "POST",
+      body: { org_slug: orgSlug },
+    });
+  } catch (error) {
+    // The org is not in this path, so the suspension is noted by name.
+    if (isPlatformError(error)) noteOrgRefusal("", error.code, orgSlug);
+    throw error;
+  }
   // The new token *is* the switch; keeping the old one would leave every later
   // request claiming the workspace the person just left.
   await remember(result);

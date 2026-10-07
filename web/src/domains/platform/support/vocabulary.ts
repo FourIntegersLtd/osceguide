@@ -33,9 +33,9 @@ export function statusTone(status: string | null | undefined): "success" | "warn
 export const STATUS_HELP: Record<string, string> = {
   trial: "Evaluation. Members can sign in.",
   active: "Normal operation. Members can sign in.",
-  inactive: "Dormant. Members cannot sign in.",
-  suspended: "Paused by us. Members cannot sign in.",
-  churned: "A former customer. Members cannot sign in.",
+  inactive: "Dormant. Members can sign in but cannot open the organisation.",
+  suspended: "Paused by us. Members can sign in but cannot open the organisation.",
+  churned: "A former customer. Members can sign in but cannot open the organisation.",
 };
 
 /**

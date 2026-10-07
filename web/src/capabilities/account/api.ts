@@ -332,10 +332,11 @@ export async function startSsoSignIn(orgSlug: string): Promise<string> {
 export async function completeSsoSignIn(
   orgSlug: string,
   token: string,
+  state: string | null,
 ): Promise<SsoSession> {
   const session = await platformRequest<SsoSession>("/api/v1/auth/sso/callback", {
     method: "POST",
-    body: { org_slug: orgSlug, token },
+    body: { org_slug: orgSlug, token, state },
   });
   await rememberPlatformSession({
     access_token: session.access_token,

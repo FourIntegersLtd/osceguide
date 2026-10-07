@@ -28,8 +28,11 @@ service and never grants access itself.
   asks Stripe to keep sending them.
 - Ledger row, payment and entitlement commit in one transaction, so a crash
   cannot leave someone charged without access or granted twice.
-- A payment for an unknown email fails loudly and leaves the event recorded and
-  unprocessed, so it can be reconciled rather than lost.
+- A payment whose address matches no account is acknowledged (200
+  `needs_attention`, never a 4xx: Stripe would retry for three days and then
+  drop it) and left unprocessed with a `failure`, in the reconcile queue
+  (`/platform/billing/events?failed_only=true`). Support replays it once the
+  person registers, or records it against the right account with the intent id.
 - `mode='payment'`, not Stripe Subscriptions: these are fixed-term purchases and
   the entitlement model already expresses that.
 - An invoice number is `INV-<year>-<n>` from a Postgres sequence: never shared by

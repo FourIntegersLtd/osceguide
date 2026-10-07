@@ -16,10 +16,10 @@ from app.core.rate_limit import (
     LEGACY_EXCHANGE,
     PASSWORD_RESET,
     REGISTER,
-    SIGN_IN,
     TooManyRequests,
     caller_key,
     check,
+    check_sign_in,
 )
 from app.core.settings import SettingsDep
 from app.features.identity import (
@@ -83,7 +83,7 @@ async def login(
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.SignInResult:
-    await check(SIGN_IN, caller_key(request))
+    await check_sign_in(request, body.email)
     return await service_sessions.login_with_memberships(
         session,
         email=body.email,

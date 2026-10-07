@@ -3,6 +3,7 @@ import {
   PlatformTransportError,
   type PlatformErrorBody,
 } from "@/foundation/platform-client/errors";
+import { noteOrgRefusal } from "@/foundation/platform-client/orgSuspension";
 import { createSseParser, type SseFrame } from "@/foundation/platform-client/sse";
 
 /**
@@ -202,6 +203,13 @@ function pause(ms: number, signal: AbortSignal | undefined): Promise<void> {
   });
 }
 
+/** The error a refused request throws; an organisation's suspension is noted on the way. */
+function refusal(path: string, status: number, payload: unknown): PlatformError {
+  const error = new PlatformError(status, asErrorBody(status, payload));
+  noteOrgRefusal(path, error.code);
+  return error;
+}
+
 async function readPayload(response: Response): Promise<unknown> {
   const raw = await response.text();
   if (!raw) return null;
@@ -220,7 +228,7 @@ export async function platformRequest<T>(
   if (response.status === 204) return undefined as T;
 
   const payload = await readPayload(response);
-  if (!response.ok) throw new PlatformError(response.status, asErrorBody(response.status, payload));
+  if (!response.ok) throw refusal(path, response.status, payload);
   return payload as T;
 }
 
@@ -236,7 +244,7 @@ export async function platformDownload(
   const response = await platformFetch(path, options, "*/*");
   if (!response.ok) {
     const payload = await readPayload(response);
-    throw new PlatformError(response.status, asErrorBody(response.status, payload));
+    throw refusal(path, response.status, payload);
   }
   return {
     blob: await response.blob(),
@@ -263,7 +271,7 @@ export async function platformStream(
   const response = await platformFetch(path, options, "text/event-stream");
   if (!response.ok) {
     const payload = await readPayload(response);
-    throw new PlatformError(response.status, asErrorBody(response.status, payload));
+    throw refusal(path, response.status, payload);
   }
   if (!response.body) return;
   const reader = response.body.getReader();

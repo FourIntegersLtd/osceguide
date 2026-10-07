@@ -19,6 +19,9 @@ from app.features.identity import service as identity
 log = get_logger(__name__)
 
 
+NO_ACCOUNT_FOR_PAYER = "No account for that email address."
+
+
 def plan_label(plan_code: str) -> str:
     """A plan code as a person reads it (`receipts.plan_label`), exposed here so
     another slice can ask for it without reaching past this service into
@@ -80,10 +83,17 @@ async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: dat
         return {"status": "ignored"}
 
     try:
-        await _apply_checkout(session, event=event, now=now)
+        applied = await _apply_checkout(session, event=event, now=now)
     except AppError as exc:
         await repository.mark_event_failed(session, event_id=event_id, reason=exc.message)
         raise
+    if not applied:
+        # S-4: the customer has paid; refusing the delivery would only have
+        # Stripe retry it for three days and then give up. It is acknowledged
+        # and left in the reconcile queue (`failed_only`), where support finds
+        # it by address and replays it, or records it against the right account.
+        await repository.mark_event_failed(session, event_id=event_id, reason=NO_ACCOUNT_FOR_PAYER)
+        return {"status": "needs_attention"}
     await repository.mark_event_processed(session, event_id=event_id, at=now)
     return {"status": "applied"}
 
@@ -106,12 +116,13 @@ def _price_id(checkout_payload: dict[str, Any]) -> str:
     return ""
 
 
-async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: datetime) -> None:
+async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: datetime) -> bool:
     """Turn one `checkout.session.completed` event into a settled payment and a grant.
 
-    Raises `InvalidWebhook` for a payload missing what settlement needs, `UnknownPlanError` for
-    a price with no matching plan row — both leave the ledger row in place for a retry once the
-    cause is fixed (see `errors.InvalidWebhook`).
+    False, and nothing settled, when the payer's address matches no account: that is a paid
+    session needing a person, not a bad delivery. Raises `InvalidWebhook` for a payload missing
+    a price or an intent, `UnknownPlanError` for a price with no matching plan row — both leave
+    the ledger row in place for a retry once the cause is fixed (see `errors.InvalidWebhook`).
     """
     checkout_payload = (event.get("data") or {}).get("object") or {}
     email = str(
@@ -122,16 +133,13 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
     price_id = _price_id(checkout_payload)
     intent_id = str(checkout_payload.get("payment_intent") or "").strip()
 
-    if not (email and price_id and intent_id):
-        raise errors.InvalidWebhook("The checkout payload lacks an email, a price or an intent.")
+    if not (price_id and intent_id):
+        raise errors.InvalidWebhook("The checkout payload lacks a price or an intent.")
 
-    user = await identity.user_ref_by_email(session, email)
+    user = await identity.user_ref_by_email(session, email) if email else None
     if user is None:
-        # A payment for an address we do not know. The ledger row survives this
-        # (see `errors.InvalidWebhook`), so it can be reconciled by hand or
-        # applied on Stripe's retry once the person has registered.
         log.warning("payment for an unknown address", event_id=event.get("id"))
-        raise errors.InvalidWebhook("No account for that email address.")
+        return False
 
     # Every plan, retired ones too: taking a plan off sale must not refuse a payment for it
     # that was already under way.
@@ -172,6 +180,7 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
             now=now,
             plan_code=plan_row.code,
         )
+    return True
 
 
 async def list_plans(session: AsyncSession) -> list[dict[str, Any]]:

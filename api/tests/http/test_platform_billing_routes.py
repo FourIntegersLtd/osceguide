@@ -49,8 +49,8 @@ async def test_a_payment_for_an_unknown_address_is_a_refused_delivery_the_consol
     at checkout, or registered afterwards. The ledger row is what remains."""
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await a_plan(db_session)
-    refused = await post_event(client, checkout_event("evt_lost", "Typo@Example.com"))
-    assert refused.status_code == 422
+    kept = await post_event(client, checkout_event("evt_lost", "Typo@Example.com"))
+    assert kept.json() == {"status": "needs_attention"}
 
     queue = await client.get("/api/v1/platform/billing/events?failed_only=true", headers=bearer(root))
     assert queue.status_code == 200, queue.text
@@ -105,11 +105,11 @@ async def test_a_refused_delivery_is_replayed_once_the_person_has_registered(
 ) -> None:  # type: ignore[no-untyped-def]
     root = await make_actor("root@osceguide.com", platform_admin=True)
     await a_plan(db_session)
-    assert (await post_event(client, checkout_event("evt_late", "late@example.com"))).status_code == 422
+    assert (await post_event(client, checkout_event("evt_late", "late@example.com"))).status_code == 200
 
     still = await client.post("/api/v1/platform/billing/events/evt_late/replay", headers=bearer(root))
-    assert still.status_code == 422, "nothing has changed, so the same refusal"
-    assert still.json()["code"] == "invalid_webhook"
+    assert still.status_code == 200, still.text
+    assert still.json() == {"status": "needs_attention"}, "nothing has changed, so still waiting"
 
     await a_customer(db_session, "late@example.com")
     replayed = await client.post("/api/v1/platform/billing/events/evt_late/replay", headers=bearer(root))
@@ -138,8 +138,8 @@ async def test_a_refused_delivery_is_replayed_once_the_person_has_registered(
     assert sorted(row["meta"]["outcome"] for row in audit.json()["items"]) == [
         "already_applied",
         "applied",
-        "invalid_webhook",
-    ], "the refused replay is on the record too"
+        "needs_attention",
+    ], "the replay that found no account is on the record too"
     assert (
         await client.post("/api/v1/platform/billing/events/nope/replay", headers=bearer(root))
     ).status_code == 404

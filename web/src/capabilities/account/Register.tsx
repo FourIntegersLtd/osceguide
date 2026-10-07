@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Button } from "@/foundation/ui";
+import { useHydrated } from "@/foundation/hooks";
 import { register } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
@@ -56,6 +57,8 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<RegisterField>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Until hydrated the submit is inert: a native submit would put the form in the URL.
+  const hydrated = useHydrated();
 
   const handleFormSubmission = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -132,7 +135,7 @@ export default function Register() {
       }
       sidePanel={<AuthQuotePanel />}
     >
-      <form className="space-y-5" onSubmit={handleFormSubmission} noValidate>
+      <form className="space-y-5" method="post" onSubmit={handleFormSubmission} noValidate>
         <AuthFormField
           label="Name"
           name="username"
@@ -186,6 +189,7 @@ export default function Register() {
           fullWidth
           size="lg"
           isLoading={isSubmitting}
+          disabled={!hydrated}
           className={authButtonPrimary}
         >
           {isSubmitting ? "Creating your account…" : "Create account"}
