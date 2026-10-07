@@ -54,7 +54,7 @@ async def apply_step(
     before the next station's clock starts, never after.
     """
     if circuit.phase == domain_run.RunPhase.SIMULATION and agents is not None:
-        await clear_patient(session, org_id, circuit, agents=agents, now=now)
+        await clear_patient(session, org_id, circuit, agents=agents, now=now, station_sat=True)
 
     match step:
         case domain_run.Reading(slot_index=index):

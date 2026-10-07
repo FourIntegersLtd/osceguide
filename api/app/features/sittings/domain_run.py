@@ -103,6 +103,7 @@ def next_step(
     if position.phase is RunPhase.READING:
         return Simulation(slot_index=index)
 
+    # Stations already sat are passed over, so a redone earlier one hands back to the first still owed (R-12).
     upcoming = _next_open(index, slot_count, done)
     if position.phase is RunPhase.BREAK:
         # A break is named by the station it follows, which is `index + 1`

@@ -65,7 +65,7 @@ async def _ensure_decidable(
     )
     try:
         domain.ensure_decidable(sitting_mode=sitting.mode, sat_a_station=sat)
-    except (domain.DecisionOutsideExam, domain.CandidateDidNotSit) as exc:
+    except domain.NotDecidable as exc:
         raise_mapped(exc, _REFUSALS)
 
 

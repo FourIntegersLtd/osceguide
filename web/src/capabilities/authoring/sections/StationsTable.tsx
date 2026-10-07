@@ -18,8 +18,7 @@ function stationCreatedAtLabel(station: Station): string {
   const raw = station.content?.created_at;
   const iso = typeof raw === "string" ? raw : null;
   if (!iso) return "-";
-  const normalized =
-    /[zZ]$/.test(iso) || /[+-]\d{2}/.test(iso) ? iso : `${iso}Z`;
+  const normalized = /[zZ]$/.test(iso) || /[+-]\d{2}/.test(iso) ? iso : `${iso}Z`;
   const date = new Date(normalized);
   if (!Number.isFinite(date.getTime())) return "-";
   return date.toLocaleString("en-GB");
@@ -33,9 +32,7 @@ function LegacyApprovalPill({ station }: { station: Station }) {
       className={cn(
         "rounded-full px-3 py-1 font-medium",
         b2cTableCellText,
-        approved
-          ? "bg-osce-success-bg text-osce-success-text"
-          : "bg-osce-warning-bg text-osce-warning-text",
+        approved ? "bg-osce-success-bg text-osce-success-text" : "bg-osce-warning-bg text-osce-warning-text",
       )}
     >
       {approved ? "Approved" : "Pending"}
@@ -70,10 +67,7 @@ export function StationsTable({
           <button
             type="button"
             onClick={() => onOpen(station)}
-            className={cn(
-              b2cTableCellText,
-              "text-left font-medium text-ink hover:text-osce-accent",
-            )}
+            className={cn(b2cTableCellText, "text-left font-medium text-ink hover:text-osce-accent")}
           >
             {station.title}
           </button>
@@ -83,12 +77,7 @@ export function StationsTable({
         header: "Exam",
         key: "exam_code" as keyof Station,
         render: (station: Station) => (
-          <span
-            className={cn(
-              b2cTableCellText,
-              "rounded-full bg-osce-accent-subtle px-3 py-1 text-osce-accent-hover",
-            )}
-          >
+          <span className={cn(b2cTableCellText, "rounded-full bg-osce-accent-subtle px-3 py-1 text-osce-accent-hover")}>
             {station.exam_code.toUpperCase()}
           </span>
         ),
@@ -109,9 +98,7 @@ export function StationsTable({
         className: "hidden lg:table-cell",
         priority: "detail" as const,
         render: (station: Station) => (
-          <span className={cn(b2cTableCellText, "text-ink-subtle")}>
-            {stationCreatedAtLabel(station)}
-          </span>
+          <span className={cn(b2cTableCellText, "text-ink-subtle")}>{stationCreatedAtLabel(station)}</span>
         ),
       },
       {
@@ -136,11 +123,7 @@ export function StationsTable({
                   <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
                 </AuthoringIconAction>
               ) : null}
-              <AuthoringIconAction
-                variant="ghost"
-                label="Open versions"
-                onClick={() => onOpen(station)}
-              >
+              <AuthoringIconAction variant="ghost" label="Open versions" onClick={() => onOpen(station)}>
                 <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
               </AuthoringIconAction>
             </AuthoringRowActions>
@@ -159,17 +142,10 @@ export function StationsTable({
       idField="id"
       empty={
         search
-          ? {
-              title: "No matching stations",
-              description: "Try a different name, or clear the exam filter.",
-            }
+          ? { title: "No matching stations", description: "Try a different name, or clear the exam filter." }
           : !canAuthor
             ? { title: "No stations yet", description: READER_EMPTY_TEXT }
-            : {
-                title: "No stations yet",
-                description:
-                  "Create one with New station, from a template or straight from a prompt.",
-              }
+            : { title: "No stations yet", description: "Create one with New station, from a template or straight from a prompt." }
       }
     />
   );

@@ -17,6 +17,9 @@
 - Candidate (needs a `trainee` membership, see B57): `/trainee/sittings/<id>` shows the reading brief during
   reading and "Read your result" once released; `/trainee/results/<id>`, `/trainee/reviews/<slotId>`.
 - Circuit runner (`/circuits/<id>`): "Start circuit"; "End circuit" then dialog "End the circuit".
+- Sitting detail (OrgAdmin, `schedule_sittings`): button "Cancel sitting" while no circuit has started (confirm
+  dialog: same-label button, "Keep it"); a "Delete" button beside each never-started circuit (confirm "Delete circuit").
+  A cancelled sitting shows badge "Cancelled" and no Edit, Cancel, "Add a circuit" or step guide.
 - A supervisor sees no "Schedule a sitting" on the dashboard or the sittings list (`schedule_sittings`).
 
 ## How to get to it (user POV)

@@ -62,11 +62,15 @@ class StaleDecision(Exception):
     """A save that named a revision older than the one now on record."""
 
 
-class DecisionOutsideExam(Exception):
+class NotDecidable(Exception):
+    """No outcome may be recorded for this candidate on this sitting (R-11)."""
+
+
+class DecisionOutsideExam(NotDecidable):
     """A training sitting stops at marking: nobody records an outcome on practice."""
 
 
-class CandidateDidNotSit(Exception):
+class CandidateDidNotSit(NotDecidable):
     """The candidate sat no station on this sitting, so there is no evidence to decide on."""
 
 

@@ -47,12 +47,7 @@ export function RubricsSection() {
     (cursor, signal) =>
       listRubrics(
         scope,
-        {
-          cursor,
-          limit: STATION_PAGE_LIMIT,
-          search: query,
-          exam_code: examFilter || undefined,
-        },
+        { cursor, limit: STATION_PAGE_LIMIT, search: query, exam_code: examFilter || undefined },
         signal,
       ),
     [scope.base, query, examFilter],
@@ -112,23 +107,18 @@ export function RubricsSection() {
         onDismissError={rubrics.reload}
         empty={{
           title: "No marking schemes",
-          description:
-            "Create a marking scheme, publish a version, then build exams and templates on it.",
+          description: "Create a marking scheme, publish a version, then build exams and templates on it.",
         }}
       >
         {items.map((rubric) => {
-          const { published, draft, archivedOnly } = latestOf(
-            rubric.versions ?? [],
-          );
+          const { published, draft, archivedOnly } = latestOf(rubric.versions ?? []);
           return (
             <AuthoringListRow
               key={rubric.id}
               title={rubric.title}
               detail={
                 <PublishStatusLine
-                  kindLabel={
-                    rubric.owner_kind === "platform" ? "OSCE Guide" : null
-                  }
+                  kindLabel={rubric.owner_kind === "platform" ? "OSCE Guide" : null}
                   published={published}
                   draft={draft}
                   archivedOnly={archivedOnly}
@@ -167,6 +157,7 @@ export function RubricsSection() {
           </AuthoringButton>
         </div>
       ) : null}
+
     </div>
   );
 }

@@ -30,15 +30,8 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog";
-import {
-  examNextAction,
-  examSteps,
-} from "@/capabilities/authoring/sections/examSteps";
-import {
-  ExamFields,
-  blankExam,
-  type ExamDraft,
-} from "@/capabilities/authoring/sections/ExamFields";
+import { examNextAction, examSteps } from "@/capabilities/authoring/sections/examSteps";
+import { ExamFields, blankExam, type ExamDraft } from "@/capabilities/authoring/sections/ExamFields";
 
 /**
  * Exams: what an organisation assesses against.
@@ -53,8 +46,7 @@ export function ExamsSection() {
   const scope = useAuthoringScope();
   const [draftsOnly, setDraftsOnly] = useState(false);
   const exams = useAsync(
-    (signal) =>
-      listExams(scope, { status: draftsOnly ? "draft" : "all" }, signal),
+    (signal) => listExams(scope, { status: draftsOnly ? "draft" : "all" }, signal),
     [scope.base, draftsOnly],
   );
   const action = useAction(exams.reload);
@@ -68,9 +60,7 @@ export function ExamsSection() {
   const items = exams.data?.items ?? [];
 
   // The form's scheme, not the stored one, so the rail follows the pick.
-  const editingExam = editing
-    ? { status: editing.status, rubric_version_id: form.rubricVersionId }
-    : null;
+  const editingExam = editing ? { status: editing.status, rubric_version_id: form.rubricVersionId } : null;
 
   return (
     <div className="space-y-4">
@@ -151,18 +141,12 @@ export function ExamsSection() {
                   <AuthoringIconAction
                     variant="primary"
                     // The server refuses to publish an exam that names no rubric.
-                    label={
-                      exam.rubric_version_id
-                        ? "Publish"
-                        : "Choose a marking scheme version first"
-                    }
+                    label={exam.rubric_version_id ? "Publish" : "Choose a marking scheme version first"}
                     busy={publishBusy}
                     busyLabel="Publishing…"
                     disabled={action.busy !== null || !exam.rubric_version_id}
                     onClick={() =>
-                      void action.run(`publish:${exam.id}`, () =>
-                        publishExam(scope, exam.id),
-                      )
+                      void action.run(`publish:${exam.id}`, () => publishExam(scope, exam.id))
                     }
                   >
                     <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
@@ -252,10 +236,7 @@ export function ExamsSection() {
       >
         {editingExam ? (
           <div className="mb-4 space-y-3">
-            <StepGuide
-              steps={examSteps(editingExam)}
-              line={examNextAction(editingExam).line}
-            />
+            <StepGuide steps={examSteps(editingExam)} line={examNextAction(editingExam).line} />
           </div>
         ) : null}
         <ExamFields value={form} onChange={setForm} codeDisabled />
@@ -266,11 +247,9 @@ export function ExamsSection() {
         onCancel={() => setDeleting(null)}
         onConfirm={() => {
           if (!deleting) return;
-          void action
-            .run(`delete:${deleting.id}`, () => deleteExam(scope, deleting.id))
-            .then((ok) => {
-              if (ok) setDeleting(null);
-            });
+          void action.run(`delete:${deleting.id}`, () => deleteExam(scope, deleting.id)).then((ok) => {
+            if (ok) setDeleting(null);
+          });
         }}
         isLoading={deleting !== null && action.busy === `delete:${deleting.id}`}
         tone="danger"
@@ -285,11 +264,9 @@ export function ExamsSection() {
         onCancel={() => setRetiring(null)}
         onConfirm={() => {
           if (!retiring) return;
-          void action
-            .run(`retire:${retiring.id}`, () => retireExam(scope, retiring.id))
-            .then((ok) => {
-              if (ok) setRetiring(null);
-            });
+          void action.run(`retire:${retiring.id}`, () => retireExam(scope, retiring.id)).then((ok) => {
+            if (ok) setRetiring(null);
+          });
         }}
         isLoading={retiring !== null && action.busy === `retire:${retiring.id}`}
         tone="danger"

@@ -83,7 +83,7 @@ async def clear_patient(
     *,
     agents: RoomAgents,
     now: datetime,
-    station_sat: bool = True,
+    station_sat: bool,
 ) -> bool:
     """Take the patient out, and close off the station it was in.
 

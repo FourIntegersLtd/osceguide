@@ -21,9 +21,7 @@ export function AuthoringSectionLead({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      {children ? (
-        <p className={`text-osce-body ${chrome.bodyMuted}`}>{children}</p>
-      ) : null}
+      {children ? <p className={`text-osce-body ${chrome.bodyMuted}`}>{children}</p> : null}
       {shown}
     </div>
   );

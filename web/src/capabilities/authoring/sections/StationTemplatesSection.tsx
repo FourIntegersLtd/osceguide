@@ -39,10 +39,7 @@ import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { PublishStatusLine } from "@/capabilities/authoring/parts/StatusPills";
 import { ImportStationDialog } from "@/capabilities/authoring/imports/ImportStationDialog";
-import {
-  canManageTemplate,
-  latestOf,
-} from "@/capabilities/authoring/sections/versions";
+import { canManageTemplate, latestOf } from "@/capabilities/authoring/sections/versions";
 import {
   stationTemplateEditPath,
   stationTemplateNewPath,
@@ -79,8 +76,7 @@ export function StationTemplatesSection() {
   const [search, setSearch] = useState("");
   // What the server is asked for: the box, once typing pauses.
   const query = useSearchQuery(search);
-  const [pendingConfirm, setPendingConfirm] =
-    useState<TemplateRowConfirm | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<TemplateRowConfirm | null>(null);
   const [importing, setImporting] = useState(false);
 
   // A page at a time, searched and exam-filtered in SQL — mirrors
@@ -90,12 +86,7 @@ export function StationTemplatesSection() {
     (cursor, signal) =>
       listStationTemplatesPage(
         scope,
-        {
-          cursor,
-          limit: STATION_PAGE_LIMIT,
-          search: query,
-          exam_code: examFilter || undefined,
-        },
+        { cursor, limit: STATION_PAGE_LIMIT, search: query, exam_code: examFilter || undefined },
         signal,
       ),
     [scope.base, query, examFilter],
@@ -104,10 +95,7 @@ export function StationTemplatesSection() {
   const action = useAction(templates.reload);
   const items = templates.data ?? [];
 
-  const newHref = stationTemplateNewPath(
-    hrefFor,
-    examFilter !== AUTHORING_ALL_EXAMS ? examFilter : null,
-  );
+  const newHref = stationTemplateNewPath(hrefFor, examFilter !== AUTHORING_ALL_EXAMS ? examFilter : null);
 
   return (
     <div className="space-y-4">
@@ -135,9 +123,8 @@ export function StationTemplatesSection() {
           </div>
         }
       >
-        Define layout and fields for clinical stations. Saved drafts and
-        published versions appear below, but not the starting layouts on the
-        new-template wizard.
+        Define layout and fields for clinical stations. Saved drafts and published
+        versions appear below, but not the starting layouts on the new-template wizard.
       </AuthoringSectionLead>
 
       <AuthoringCatalogFilterBar
@@ -149,9 +136,7 @@ export function StationTemplatesSection() {
         searchAriaLabel="Search station templates"
       />
 
-      {action.error && pendingConfirm === null ? (
-        <Alert tone="danger">{action.error}</Alert>
-      ) : null}
+      {action.error && pendingConfirm === null ? <Alert tone="danger">{action.error}</Alert> : null}
 
       <ListCard
         count={items.length}
@@ -161,8 +146,7 @@ export function StationTemplatesSection() {
         onDismissError={templates.reload}
         empty={{
           title: "No saved templates yet",
-          description:
-            "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list.",
+          description: "The layouts on New template are starting points only. They are not added here until you finish the wizard (Save draft), then Publish from this list.",
         }}
       >
         {items.map((template) => {
@@ -173,72 +157,64 @@ export function StationTemplatesSection() {
               ? stationTemplateEditPath(hrefFor, template.id, draft.version)
               : null;
           return (
-            <TemplateRow
-              key={template.id}
-              template={template}
-              busy={action.busy}
-              editHref={editHref}
-              viewHref={
-                published
-                  ? stationTemplateEditPath(
-                      hrefFor,
-                      template.id,
-                      published.version,
+          <TemplateRow
+            key={template.id}
+            template={template}
+            busy={action.busy}
+            editHref={editHref}
+            viewHref={published ? stationTemplateEditPath(hrefFor, template.id, published.version) : null}
+            onCopy={
+              scope.kind === "org" &&
+              template.owner_kind === "platform" &&
+              published &&
+              // Copied already: copying again would only give back the same copy.
+              !items.some((own) => own.copied_from_id === template.id)
+                ? () =>
+                    void action.run(`copy:${template.id}`, () =>
+                      copyStationTemplate(scope, template.id),
                     )
-                  : null
-              }
-              onCopy={
-                scope.kind === "org" &&
-                template.owner_kind === "platform" &&
-                published &&
-                // Copied already: copying again would only give back the same copy.
-                !items.some((own) => own.copied_from_id === template.id)
-                  ? () =>
-                      void action.run(`copy:${template.id}`, () =>
-                        copyStationTemplate(scope, template.id),
-                      )
-                  : undefined
-              }
-              onAddVersion={
-                // An organisation copies a platform template; only the platform edits it.
-                scope.kind === "org" && template.owner_kind === "platform"
-                  ? undefined
-                  : () =>
-                      void action.run(`add:${template.id}`, () =>
-                        addStationTemplateVersion(scope, template.id),
-                      )
-              }
-              onPublish={
-                manageable
-                  ? () =>
-                      void action.run(`publish:${template.id}`, () =>
-                        publishStationTemplate(scope, template.id),
-                      )
-                  : undefined
-              }
-              onDeleteDraft={
-                draft && manageable
-                  ? () =>
-                      setPendingConfirm({
-                        kind: "delete-draft",
-                        templateId: template.id,
-                        title: template.title,
-                        draftVersion: draft.version,
-                        liveVersion: published?.version ?? null,
-                      })
-                  : undefined
-              }
-              onArchivePublished={
-                published && manageable
-                  ? () =>
-                      setPendingConfirm({
-                        kind: "archive-live",
-                        templateId: template.id,
-                        liveVersion: published.version,
-                      })
-                  : undefined
-              }
-            />
+                : undefined
+            }
+            onAddVersion={
+              // An organisation copies a platform template; only the platform edits it.
+              scope.kind === "org" && template.owner_kind === "platform"
+                ? undefined
+                : () =>
+                    void action.run(`add:${template.id}`, () =>
+                      addStationTemplateVersion(scope, template.id),
+                    )
+            }
+            onPublish={
+              manageable
+                ? () =>
+                    void action.run(`publish:${template.id}`, () =>
+                      publishStationTemplate(scope, template.id),
+                    )
+                : undefined
+            }
+            onDeleteDraft={
+              draft && manageable
+                ? () =>
+                    setPendingConfirm({
+                      kind: "delete-draft",
+                      templateId: template.id,
+                      title: template.title,
+                      draftVersion: draft.version,
+                      liveVersion: published?.version ?? null,
+                    })
+                : undefined
+            }
+            onArchivePublished={
+              published && manageable
+                ? () =>
+                    setPendingConfirm({
+                      kind: "archive-live",
+                      templateId: template.id,
+                      liveVersion: published.version,
+                    })
+                : undefined
+            }
+          />
           );
         })}
       </ListCard>
@@ -278,29 +254,26 @@ export function StationTemplatesSection() {
         onConfirm={() => {
           if (!pendingConfirm) return;
           const confirm = pendingConfirm;
-          void action
-            .run(confirmActionKey(confirm), async () => {
-              if (confirm.kind === "delete-draft") {
-                await deleteStationTemplateVersion(
-                  scope,
-                  confirm.templateId,
-                  confirm.draftVersion,
-                );
-              } else {
-                await archiveStationTemplateVersion(
-                  scope,
-                  confirm.templateId,
-                  confirm.liveVersion,
-                );
-              }
-            })
-            .then((ok) => {
-              if (ok) setPendingConfirm(null);
-            });
+          void action.run(confirmActionKey(confirm), async () => {
+            if (confirm.kind === "delete-draft") {
+              await deleteStationTemplateVersion(
+                scope,
+                confirm.templateId,
+                confirm.draftVersion,
+              );
+            } else {
+              await archiveStationTemplateVersion(
+                scope,
+                confirm.templateId,
+                confirm.liveVersion,
+              );
+            }
+          }).then((ok) => {
+            if (ok) setPendingConfirm(null);
+          });
         }}
         isLoading={
-          pendingConfirm !== null &&
-          action.busy === confirmActionKey(pendingConfirm)
+          pendingConfirm !== null && action.busy === confirmActionKey(pendingConfirm)
         }
         tone={pendingConfirm?.kind === "delete-draft" ? "danger" : "default"}
         title={
@@ -325,8 +298,8 @@ export function StationTemplatesSection() {
           ) : pendingConfirm?.kind === "delete-draft" ? (
             pendingConfirm.liveVersion != null ? (
               <>
-                Draft v{pendingConfirm.draftVersion} will be removed
-                permanently. Live v{pendingConfirm.liveVersion} stays published.
+                Draft v{pendingConfirm.draftVersion} will be removed permanently. Live v
+                {pendingConfirm.liveVersion} stays published.
               </>
             ) : (
               "This removes the template entirely."
@@ -379,13 +352,7 @@ function TemplateRow({
       onOpen={viewHref ? () => router.push(viewHref) : undefined}
       detail={
         <PublishStatusLine
-          kindLabel={
-            onCopy
-              ? [template.exam_code, "Platform template"]
-                  .filter(Boolean)
-                  .join(" · ")
-              : template.exam_code
-          }
+          kindLabel={onCopy ? [template.exam_code, "Platform template"].filter(Boolean).join(" · ") : template.exam_code}
           published={published}
           draft={draft}
           archivedOnly={archivedOnly}

@@ -167,3 +167,9 @@ every rostered trainee's. See ADR 0015 and ADR 0018.
 Calls `catalog` for programmes, `stations` to bind station versions, `attempts`
 to start a slot's attempt, `voice` to put the patient into the room and to mint
 a room token, and `tenancy` for org access.
+
+Reads `results` in one place only: `service.ensure_sitting_open(..., check_settled=True)`
+asks whether any decision on the sitting is signed off or released before a circuit or
+trainee is added. The import is function-local because `results` imports `sittings`, and a
+router may not import another slice to pass the answer in. Edits and starting a circuit pass
+`check_settled=False`: they only refuse a cancelled sitting.

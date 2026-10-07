@@ -511,7 +511,10 @@ async def test_ending_with_livekit_down_owes_the_patient_removal(db_session: Asy
     circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
     assert circuit is not None and circuit.ended_at == NOW
     owed = [job for job in await scheduled_jobs(db_session, circuit_id) if job["task"] == "clear_room_agents"]
-    assert [job["args"] for job in owed] == [{"room": f"circuit_{circuit_id}", "circuit_id": str(circuit_id)}]
+    room = f"circuit_{circuit_id}"
+    assert [(job["args"], job["queueing_lock"]) for job in owed] == [
+        ({"room": room, "circuit_id": str(circuit_id)}, f"clear_room:{room}")
+    ]
 
 
 async def test_redoing_an_earlier_station_does_not_replay_the_later_ones(db_session: AsyncSession) -> None:

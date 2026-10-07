@@ -27,7 +27,6 @@ from app.core.settings import Settings
 from app.features.sittings import (
     announcements,
     domain,
-    domain_edit,
     domain_run,
     errors,
     repository,
@@ -37,7 +36,13 @@ from app.features.sittings.models import Circuit
 from app.features.sittings.overrides import AUTO_END, Actor, write_intervention
 from app.features.sittings.reads import position_of, state, timing_domain
 from app.features.sittings.schemas import CircuitRead
-from app.features.sittings.service import _REFUSALS, _require_circuit, _require_sitting, read_circuit
+from app.features.sittings.service import (
+    _REFUSALS,
+    _require_circuit,
+    _require_sitting,
+    ensure_sitting_open,
+    read_circuit,
+)
 from app.features.voice import service as voice
 
 log = get_logger(__name__)
@@ -48,6 +53,9 @@ get_room_agents = voice.get_room_agents
 
 # How long a running circuit's clock may sit with nothing to count before the reaper closes it.
 STALE_AFTER = timedelta(hours=12)
+_AUTO_END_REASON = (
+    f"Ended automatically: the clock had nothing to count for {STALE_AFTER.total_seconds() / 3600:g} hours"
+)
 
 
 async def start_circuit(
@@ -69,10 +77,7 @@ async def start_circuit(
     if current.started:
         return await read_circuit(session, org_id, circuit_id)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
-    try:
-        domain_edit.ensure_sitting_open(cancelled=sitting.status == domain_edit.CANCELLED, settled=False)
-    except domain_edit.SittingLocked as exc:
-        raise_mapped(exc, _REFUSALS)
+    await ensure_sitting_open(session, org_id, sitting, check_settled=False)
 
     room = f"circuit_{circuit.id}"
     await repository.update_circuit(
@@ -158,7 +163,9 @@ async def end_circuit(
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
     if circuit.ended_at is None:
-        if not await service_steps.clear_patient(session, org_id, circuit, agents=agents, now=now):
+        if not await service_steps.clear_patient(
+            session, org_id, circuit, agents=agents, now=now, station_sat=True
+        ):
             await service_steps.clear_patient_later(session, circuit)
         await service_steps.finish(session, org_id, circuit, now=now)
         await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ENDED)
@@ -185,9 +192,7 @@ async def end_abandoned(
             org_id,
             circuit,
             action=AUTO_END,
-            actor=Actor(
-                user_id=None, reason="Ended automatically: the clock had nothing to count for 12 hours"
-            ),
+            actor=Actor(user_id=None, reason=_AUTO_END_REASON),
             before=circuit.phase_seq,
             now=now,
         )

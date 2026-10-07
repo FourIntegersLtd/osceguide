@@ -28,12 +28,7 @@ export function ListCard({
   error?: string | null;
   onDismissError?: () => void;
   /** `description` guides an author; a reader sees "Nothing here yet." unless `sameForReaders`. */
-  empty: {
-    title: string;
-    description: string;
-    sameForReaders?: boolean;
-    action?: ReactNode;
-  };
+  empty: { title: string; description: string; sameForReaders?: boolean; action?: ReactNode };
   children: ReactNode;
 }) {
   const chrome = useAuthoringChrome();
@@ -51,9 +46,7 @@ export function ListCard({
           {countLabel} <span className={chrome.captionMuted}>{count}</span>
         </span>
         {meta ? (
-          <span className={`text-osce-caption ${chrome.iconMuted}`}>
-            {meta}
-          </span>
+          <span className={`text-osce-caption ${chrome.iconMuted}`}>{meta}</span>
         ) : null}
       </div>
       {error ? (
@@ -78,11 +71,7 @@ export function ListCard({
         <div className="p-6">
           <EmptyState
             title={empty.title}
-            description={
-              canAuthor || empty.sameForReaders
-                ? empty.description
-                : READER_EMPTY_TEXT
-            }
+            description={canAuthor || empty.sameForReaders ? empty.description : READER_EMPTY_TEXT}
             action={empty.action}
           />
         </div>

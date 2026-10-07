@@ -11,12 +11,14 @@ import {
   Badge,
   Button,
   ButtonLink,
+  ConfirmModal,
   StepGuide,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync } from "@/foundation/hooks";
+import { hasCode } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
 import { can, useSession } from "@/foundation/session";
-import { readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
+import { cancelSitting, deleteCircuit, readSitting, type Circuit, type Sitting } from "@/domains/assess/api";
 import { SittingEditForm } from "@/domains/assess/SittingEditForm";
 import { readSittingReport } from "@/domains/assess/results/api";
 import {
@@ -37,6 +39,9 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
   const userId = session?.user.id ?? null;
   const state = useAsync((signal) => readSitting(orgSlug, sittingId, signal), [orgSlug, sittingId]);
   const [editing, setEditing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState<Circuit | null>(null);
+  const [refused, setRefused] = useState<string | null>(null);
   // The report's counts feed the steps. Every staff role reads it; a failure shows as one,
   // never as "0 marked, 0 decided".
   const report = useAsync((signal) => readSittingReport(orgSlug, sittingId, signal), [orgSlug, sittingId]);
@@ -46,6 +51,10 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
       <AsyncBoundary state={state}>
         {(sitting) => {
           const runCircuit = circuitToOpen(sitting.circuits ?? []);
+          // The same permission as the cancel and delete routes (OrgAdmin). A cancelled
+          // sitting takes no more changes, so its controls go with it.
+          const manage = can(session, "schedule_sittings") && sitting.status !== "cancelled";
+          const begun = (sitting.circuits ?? []).some((circuit) => circuit.started_at);
           const actions: Partial<Record<SittingNextId, ReactNode>> = {
             schedule: (
               <Button themeType="b2b" size="sm" variant="commit" onClick={() => setEditing(true)}>
@@ -80,9 +89,14 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                   <Badge variant={sittingRunning(sitting.status) ? "success" : "neutral"} dot>
                     {sittingStatusLabel(sitting.status)}
                   </Badge>
-                  {can(session, "schedule_sittings") ? (
+                  {manage ? (
                     <Button themeType="b2b" size="sm" variant="secondary" onClick={() => setEditing(true)}>
                       Edit
+                    </Button>
+                  ) : null}
+                  {manage && !begun ? (
+                    <Button themeType="b2b" size="sm" variant="secondary" onClick={() => setCancelling(true)}>
+                      Cancel sitting
                     </Button>
                   ) : null}
                   <ButtonLink
@@ -93,7 +107,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                   >
                     Results
                   </ButtonLink>
-                  {can(session, "schedule_sittings") ? (
+                  {manage ? (
                     <ButtonLink
                       themeType="b2b"
                       size="sm"
@@ -107,6 +121,8 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               }
             />
 
+            {/* A cancelled sitting has no next step to point at. */}
+            {sitting.status === "cancelled" ? null : (
             <AsyncBoundary state={report}>
               {(data) => {
                 const input: SittingStepsInput = {
@@ -114,7 +130,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                   circuits: sitting.circuits ?? [],
                   counts: countsFromReport(data),
                   training: sitting.mode !== "exam",
-                  can: { schedule: can(session, "schedule_sittings"), signOff: can(session, "sign_off_results") },
+                  can: { schedule: manage, signOff: can(session, "sign_off_results") },
                 };
                 const next = sittingNext(input);
                 return (
@@ -124,6 +140,7 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                 );
               }}
             </AsyncBoundary>
+            )}
 
             {editing ? (
               <SittingEditForm
@@ -142,9 +159,10 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
               <B2CGroupedSection eyebrow="Circuits">
                 {orderedCircuits(sitting, userId).map((circuit) => {
                   const mine = userId !== null && circuit.supervisor_user_id === userId;
-                  return (
+                  const row = (
                     <B2CGroupedRowLink
                       key={circuit.id}
+                      className={manage && !circuit.started_at ? "min-w-0 flex-1" : undefined}
                       href={hrefFor(`/circuits/${circuit.id}`)}
                       icon={LuClipboardCheck}
                       title={circuit.name}
@@ -164,9 +182,66 @@ export function SittingDetail({ orgSlug, sittingId }: { orgSlug: string; sitting
                       }
                     />
                   );
+                  // Only a circuit that never started can go: a started one holds what was sat.
+                  if (!manage || circuit.started_at) return row;
+                  return (
+                    <div key={circuit.id} className="flex items-center gap-2 pr-3">
+                      {row}
+                      <Button themeType="b2b" size="sm" variant="secondary" onClick={() => setDeleting(circuit)}>
+                        Delete
+                      </Button>
+                    </div>
+                  );
                 })}
               </B2CGroupedSection>
             )}
+
+            <ConfirmModal
+              isOpen={cancelling}
+              title="Cancel this sitting?"
+              message="Nobody can sit it once it is cancelled. It stays in the list, marked cancelled."
+              confirmText="Cancel sitting"
+              cancelText="Keep it"
+              tone="danger"
+              error={refused}
+              onCancel={() => {
+                setCancelling(false);
+                setRefused(null);
+              }}
+              onConfirm={async () => {
+                try {
+                  await cancelSitting(orgSlug, sitting.id);
+                  setCancelling(false);
+                  setRefused(null);
+                  state.reload();
+                } catch (cause) {
+                  setRefused(refusal(cause));
+                }
+              }}
+            />
+            <ConfirmModal
+              isOpen={deleting !== null}
+              title={`Delete ${deleting?.name ?? "this circuit"}?`}
+              message="Its candidates and stations come off this sitting. Nothing has been sat on it yet."
+              confirmText="Delete circuit"
+              tone="danger"
+              error={refused}
+              onCancel={() => {
+                setDeleting(null);
+                setRefused(null);
+              }}
+              onConfirm={async () => {
+                if (!deleting) return;
+                try {
+                  await deleteCircuit(orgSlug, deleting.id);
+                  setDeleting(null);
+                  setRefused(null);
+                  state.reload();
+                } catch (cause) {
+                  setRefused(refusal(cause));
+                }
+              }}
+            />
           </>
           );
         }}
@@ -191,6 +266,17 @@ function circuitState(circuit: Circuit): string {
   if (circuit.ended_at) return "Finished";
   if (circuit.started_at) return `Running since ${new Date(circuit.started_at).toLocaleTimeString()}`;
   return "Not started";
+}
+
+/** A cancel or delete refusal, by its code: something started since the page loaded. */
+function refusal(cause: unknown): string {
+  if (hasCode(cause, "sitting_locked")) {
+    return "A circuit on this sitting has started, so it cannot be cancelled. End its circuits instead.";
+  }
+  if (hasCode(cause, "circuit_locked")) {
+    return "This circuit has started, so it holds what was sat and cannot be deleted.";
+  }
+  return errorMessage(cause);
 }
 
 function OpenResults({ href }: { href: string }) {

@@ -22,7 +22,11 @@ const b2cTooltipChip =
   "pointer-events-none z-[200] w-max max-w-[220px] rounded-osce-md bg-ink px-3 py-1.5 text-osce-caption text-white";
 
 export type AuthoringIconActionVariant =
-  "default" | "primary" | "danger" | "warning" | "ghost";
+  | "default"
+  | "primary"
+  | "danger"
+  | "warning"
+  | "ghost";
 
 type SharedProps = {
   label: string;
@@ -36,12 +40,12 @@ type SharedProps = {
 };
 
 type Props = SharedProps &
-  ({ href: string; onClick?: never } | { href?: never; onClick: () => void });
+  (
+    | { href: string; onClick?: never }
+    | { href?: never; onClick: () => void }
+  );
 
-function variantClass(
-  variant: AuthoringIconActionVariant,
-  b2c: boolean,
-): string {
+function variantClass(variant: AuthoringIconActionVariant, b2c: boolean): string {
   if (b2c) {
     switch (variant) {
       case "primary":
@@ -131,13 +135,7 @@ export function AuthoringIconAction({
 }
 
 /** `write` marks a group made only of writes: it is hidden from anyone who cannot author. */
-export function AuthoringRowActions({
-  children,
-  write = false,
-}: {
-  children: ReactNode;
-  write?: boolean;
-}) {
+export function AuthoringRowActions({ children, write = false }: { children: ReactNode; write?: boolean }) {
   const canAuthor = useCanAuthor();
   if (write && !canAuthor) return null;
   return <div className="flex shrink-0 items-center gap-1">{children}</div>;

@@ -40,6 +40,9 @@ SWEEP_TASK = "sweep_circuits"
 # transition gets its moment first and the two do not race for every phase.
 SWEEP_GRACE_SECONDS = 15
 
+# Doubling waits, 12 tries: about 2 hours of LiveKit outage before the job gives up.
+CLEAR_ROOM_RETRY = RetryStrategy(max_attempts=12, exponential_wait=2)
+
 
 async def advance_one(
     session: AsyncSession,
@@ -169,7 +172,7 @@ def register() -> None:
     @app.task(
         name=service_patient.CLEAR_ROOM_TASK,
         queue=service_patient.CLEAR_ROOM_QUEUE,
-        retry=RetryStrategy(max_attempts=12, exponential_wait=2),
+        retry=CLEAR_ROOM_RETRY,
     )
     async def clear_room_agents(room: str, circuit_id: str) -> None:
         """Take the patient out of an ended circuit's room; raises, and so retries, while LiveKit is down."""

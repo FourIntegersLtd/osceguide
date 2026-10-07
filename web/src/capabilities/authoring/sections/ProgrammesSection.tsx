@@ -1,12 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  HiOutlineAcademicCap,
-  HiOutlineArrowPath,
-  HiOutlineNoSymbol,
-  HiOutlinePlusCircle,
-} from "react-icons/hi2";
+import { HiOutlineAcademicCap, HiOutlineArrowPath, HiOutlineNoSymbol, HiOutlinePlusCircle } from "react-icons/hi2";
 import { Alert, Select } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
@@ -39,14 +34,8 @@ import { AuthoringDialog } from "@/capabilities/authoring/parts/AuthoringDialog"
  */
 export function ProgrammesSection() {
   const scope = useAuthoringScope();
-  const programmes = useAsync(
-    (signal) => listProgrammes(scope, signal),
-    [scope.base],
-  );
-  const exams = useAsync(
-    (signal) => listExams(scope, {}, signal),
-    [scope.base],
-  );
+  const programmes = useAsync((signal) => listProgrammes(scope, signal), [scope.base]);
+  const exams = useAsync((signal) => listExams(scope, {}, signal), [scope.base]);
   const action = useAction(programmes.reload);
 
   const { session } = useSession();
@@ -54,9 +43,7 @@ export function ProgrammesSection() {
   const [examCode, setExamCode] = useState("");
 
   const items = programmes.data?.items ?? [];
-  const publishedExams = (exams.data?.items ?? []).filter(
-    (exam) => exam.status === "published",
-  );
+  const publishedExams = (exams.data?.items ?? []).filter((exam) => exam.status === "published");
 
   return (
     <div className="space-y-5">
@@ -88,18 +75,13 @@ export function ProgrammesSection() {
         onDismissError={programmes.reload}
         empty={{
           title: "No programmes yet",
-          description:
-            "Add a programme for each exam you run sittings against.",
+          description: "Add a programme for each exam you run sittings against.",
         }}
       >
         {items.map((programme) => {
           const active = programme.status === "active";
           // A draft has never been active, so "Reactivate" would say something untrue.
-          const switchLabel = active
-            ? "Retire"
-            : programme.status === "draft"
-              ? "Activate"
-              : "Reactivate";
+          const switchLabel = active ? "Retire" : programme.status === "draft" ? "Activate" : "Reactivate";
           const statusBusy = action.busy === `status:${programme.id}`;
           return (
             <AuthoringListRow
@@ -125,11 +107,7 @@ export function ProgrammesSection() {
                   disabled={action.busy !== null}
                   onClick={() =>
                     void action.run(`status:${programme.id}`, () =>
-                      updateProgramme(
-                        scope,
-                        programme.id,
-                        active ? "retired" : "active",
-                      ),
+                      updateProgramme(scope, programme.id, active ? "retired" : "active"),
                     )
                   }
                 >
@@ -164,12 +142,7 @@ export function ProgrammesSection() {
         }
       >
         <div>
-          <label
-            htmlFor="programmes-section-exam"
-            className="block text-osce-body font-semibold text-ink"
-          >
-            Exam
-          </label>
+          <label htmlFor="programmes-section-exam" className="block text-osce-body font-semibold text-ink">Exam</label>
           <Select
             id="programmes-section-exam"
             value={examCode}
@@ -184,9 +157,7 @@ export function ProgrammesSection() {
             ))}
           </Select>
           {publishedExams.length === 0 ? (
-            <p className="mt-2 text-osce-caption text-ink-muted">
-              Publish an exam to use it here.
-            </p>
+            <p className="mt-2 text-osce-caption text-ink-muted">Publish an exam to use it here.</p>
           ) : null}
         </div>
       </AuthoringDialog>

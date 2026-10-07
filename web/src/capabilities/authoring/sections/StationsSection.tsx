@@ -59,10 +59,8 @@ export function StationsSection() {
   // Arriving on a station's own address, it may be an archived one; the filter alone would hide it.
   const [deepLinked] = useState(openId !== null);
   const includeArchived = status !== "active" || deepLinked;
-  const goTo = (next: {
-    status: StationStatusFilter;
-    station?: string | null;
-  }) => router.replace(stationListUrl(pathname, next), { scroll: false });
+  const goTo = (next: { status: StationStatusFilter; station?: string | null }) =>
+    router.replace(stationListUrl(pathname, next), { scroll: false });
   const [importing, setImporting] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState<{
     id: string;
@@ -89,37 +87,27 @@ export function StationsSection() {
         signal,
       ).then((page) => ({
         ...page,
-        items: page.items.filter(
-          (item) => deepLinked || matchesStatusFilter(item.status, status),
-        ),
+        items: page.items.filter((item) => deepLinked || matchesStatusFilter(item.status, status)),
       })),
     [scope.base, query, examFilter, status, deepLinked],
   );
   const stations = pages.state;
-  const templates = useAsync(
-    (signal) => listStationTemplates(scope, signal),
-    [scope.base],
-  );
+  const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
   const action = useAction(stations.reload);
 
   // The server already excludes archived stations and matches the exam
   // filter, so this is just the length of what came back.
-  const open = openId
-    ? (stations.data?.find((s) => s.id === openId) ?? null)
-    : null;
+  const open = openId ? (stations.data?.find((s) => s.id === openId) ?? null) : null;
   // The station is on a later page than the first: keep reading until it turns up.
   useEffect(() => {
-    if (openId && !open && pages.hasMore && !pages.loadingMore)
-      pages.loadMore();
+    if (openId && !open && pages.hasMore && !pages.loadingMore) pages.loadMore();
   }, [openId, open, pages]);
   const visibleCount = stations.data?.length ?? 0;
 
   const published = useMemo(() => {
     const all = (templates.data?.items ?? []).filter(hasPublishedVersion);
     if (!examFilter) return all;
-    return all.filter((t) =>
-      matchesExamFilter(t.exam_code, examFilter, { includeUnscoped: true }),
-    );
+    return all.filter((t) => matchesExamFilter(t.exam_code, examFilter, { includeUnscoped: true }));
   }, [templates.data, examFilter]);
 
   if (open) {
@@ -165,11 +153,8 @@ export function StationsSection() {
         {stations.data ? (
           <span className="block text-osce-data font-normal text-ink-muted">
             {visibleCount}
-            {pages.hasMore ? "+" : ""} station
-            {visibleCount === 1 && !pages.hasMore ? "" : "s"}
-            {published.length > 0
-              ? ` · ${published.length} template(s) available`
-              : ""}
+            {pages.hasMore ? "+" : ""} station{visibleCount === 1 && !pages.hasMore ? "" : "s"}
+            {published.length > 0 ? ` · ${published.length} template(s) available` : ""}
           </span>
         ) : null}
       </AuthoringSectionLead>
@@ -185,26 +170,18 @@ export function StationsSection() {
         searchAriaLabel="Search stations"
       />
 
-      {action.error && archiveConfirm === null ? (
-        <Alert tone="danger">{action.error}</Alert>
-      ) : null}
+      {action.error && archiveConfirm === null ? <Alert tone="danger">{action.error}</Alert> : null}
       {stations.error ? (
         <Alert tone="danger">
           {stations.error.message}
-          <button
-            type="button"
-            className="ml-2 underline"
-            onClick={() => stations.reload()}
-          >
+          <button type="button" className="ml-2 underline" onClick={() => stations.reload()}>
             Retry
           </button>
         </Alert>
       ) : null}
 
       {stations.loading && !stations.data ? (
-        <p className="text-osce-body text-ink-muted" role="status">
-          Loading stations…
-        </p>
+        <p className="text-osce-body text-ink-muted" role="status">Loading stations…</p>
       ) : (
         <StationsTable
           stations={stations.data ?? []}
@@ -243,17 +220,12 @@ export function StationsSection() {
           if (!archiveConfirm) return;
           const { id, version } = archiveConfirm;
           void action
-            .run(`archive:${id}`, () =>
-              archiveStationVersion(scope, id, version),
-            )
+            .run(`archive:${id}`, () => archiveStationVersion(scope, id, version))
             .then((ok) => {
               if (ok) setArchiveConfirm(null);
             });
         }}
-        isLoading={
-          archiveConfirm !== null &&
-          action.busy === `archive:${archiveConfirm.id}`
-        }
+        isLoading={archiveConfirm !== null && action.busy === `archive:${archiveConfirm.id}`}
         title={
           archiveConfirm
             ? `Archive "${archiveConfirm.title}" (v${archiveConfirm.version})?`
@@ -263,14 +235,10 @@ export function StationsSection() {
         message={
           <>
             {archiveConfirm ? (
-              <StationUsedBy
-                stationId={archiveConfirm.id}
-                version={archiveConfirm.version}
-              />
+              <StationUsedBy stationId={archiveConfirm.id} version={archiveConfirm.version} />
             ) : null}
             <span className="mt-1 block">
-              Past attempts stay intact. The station is removed from the live
-              library.
+              Past attempts stay intact. The station is removed from the live library.
             </span>
           </>
         }

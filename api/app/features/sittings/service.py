@@ -120,7 +120,7 @@ async def add_circuit(
 ) -> CircuitRead:
     """Build a new circuit inside a sitting: check the roster, build its slots, write it."""
     sitting = await _require_sitting(session, org_id, sitting_id)
-    await ensure_sitting_open(session, org_id, sitting)
+    await ensure_sitting_open(session, org_id, sitting, check_settled=True)
     mode = domain.Mode(sitting.mode)
     # R3: a revoked trainee is not scheduled into an examination.
     await roster.ensure_rosterable(session, org_id, trainee_ids)
@@ -183,12 +183,21 @@ async def _require_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id:
     return sitting
 
 
-async def ensure_sitting_open(session: AsyncSession, org_id: uuid.UUID, sitting: Sitting) -> None:
-    """Refuse to put anybody new into a cancelled sitting, or one with a settled result (R-7)."""
-    # `results` imports this slice, so its import has to wait until call time.
-    from app.features.results import service as results
+async def ensure_sitting_open(
+    session: AsyncSession, org_id: uuid.UUID, sitting: Sitting, *, check_settled: bool
+) -> None:
+    """Refuse a cancelled sitting; with `check_settled`, also one with a signed-off or released result (R-7).
 
-    settled = await results.sitting_has_settled_decision(session, org_id, sitting.id)
+    Adding people needs both. Editing or starting needs only the first: a
+    circuit built before sign-off may still run.
+    """
+    settled = False
+    if check_settled:
+        # `results` imports this slice, so its import has to wait until call time
+        # (the same as `reviews`); a router may not import another slice to pass it in.
+        from app.features.results import service as results
+
+        settled = await results.sitting_has_settled_decision(session, org_id, sitting.id)
     try:
         domain_edit.ensure_sitting_open(cancelled=sitting.status == domain_edit.CANCELLED, settled=settled)
     except domain_edit.SittingLocked as exc:
