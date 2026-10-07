@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { LuChevronRight, LuStethoscope } from "react-icons/lu";
-import { AsyncBoundary, Badge, Button, B2CPageHeader, Spinner } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, B2CPageHeader, Spinner } from "@/foundation/ui";
 import { useSurface } from "@/capabilities/SurfaceContext";
+import { libraryFailure } from "@/capabilities/stations/libraryPaging";
 import { StationFilters } from "@/capabilities/stations/StationFilters";
 import { stationHref } from "@/capabilities/stations/routes";
 import { useStationLibrary } from "@/capabilities/stations/useStationLibrary";
@@ -40,6 +41,21 @@ export function LibraryBrowse() {
 
       <AsyncBoundary
         state={state}
+        failure={(error, retry) => {
+          const { paywall, text } = libraryFailure(error);
+          return paywall ? (
+            <Alert tone="warning" title="This exam's stations are not open to you">
+              <p>{text}</p>
+            </Alert>
+          ) : (
+            <Alert tone="danger" title="That did not load">
+              <p>{text}</p>
+              <Button variant="secondary" size="sm" className="mt-3" onClick={retry}>
+                Try again
+              </Button>
+            </Alert>
+          );
+        }}
         isEmpty={(rows) => rows.length === 0}
         empty={
           library.applied
@@ -77,6 +93,11 @@ export function LibraryBrowse() {
               ))}
             </ul>
 
+            {library.moreError && (
+              <Alert tone="danger" title="More stations did not load">
+                <p>{libraryFailure(library.moreError).text}</p>
+              </Alert>
+            )}
             {library.hasMore && (
               <div className="flex justify-center">
                 <Button
@@ -84,7 +105,7 @@ export function LibraryBrowse() {
                   onClick={library.loadMore}
                   disabled={library.loadingMore}
                 >
-                  {library.loadingMore ? <Spinner /> : "Load more stations"}
+                  {library.loadingMore ? <Spinner /> : library.moreError ? "Try again" : "Load more stations"}
                 </Button>
               </div>
             )}

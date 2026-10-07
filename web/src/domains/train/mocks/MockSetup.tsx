@@ -10,7 +10,7 @@ import { useSurface } from "@/capabilities";
 import { createSet } from "@/domains/train/api";
 import { AddExamDate } from "@/domains/train/dashboard/AddExamDate";
 import { UpgradePlans } from "@/domains/train/mocks/SetupPrompts";
-import { attemptedVersionIds, chooseStations, describeCreateSetFailure, nothingPickableMessage } from "@/domains/train/mocks/model";
+import { attemptedVersionIds, chooseStations, describeCreateSetFailure, describeTrial, nothingPickableMessage } from "@/domains/train/mocks/model";
 import {
   accessState,
   defaultExamCode,
@@ -128,8 +128,7 @@ export function MockSetup({
 
       {access.hasPaid === false && !access.subscriptionExpired ? (
         <p className="text-osce-body text-ink-muted">
-          Free trial: {workspace.trial.stations} stations, each up to {workspace.trial.attempts_per_station} times,
-          within {workspace.trial.days} days of signing up.
+          Free trial: {describeTrial(workspace.trial)}
         </p>
       ) : null}
 

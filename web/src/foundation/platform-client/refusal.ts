@@ -1,0 +1,37 @@
+import { hasCode, isPlatformError } from "@/foundation/platform-client/errors";
+
+/** Whether the API refused because the caller has no (or no more) access to an exam. */
+export function isNotEntitled(cause: unknown): boolean {
+  return hasCode(cause, "not_entitled");
+}
+
+/**
+ * What to tell somebody the API refused, by the code (and, for access, the reason) it answered with.
+ *
+ * The one place every refusal is explained: starting a station, building a session, the library,
+ * a peer queue. `not_entitled` carries why only in `details.reason` (`trial_exhausted`,
+ * `expired`, `no_entitlement`), so a lapsed grant, a used-up trial and no access read differently.
+ * Never the server's own message for the coded refusals: `station_not_published` carries the
+ * circuit builder's wording, which means nothing to a person who only pressed Start.
+ * `fallback` is what an unknown, non-API failure says.
+ */
+export function describeRefusal(cause: unknown, fallback: string): string {
+  if (hasCode(cause, "not_entitled")) {
+    const reason = isPlatformError(cause) ? cause.details?.reason : null;
+    if (reason === "trial_exhausted") {
+      return "Your free practice stations are used up. Ask your organisation for access, or subscribe, to keep practising.";
+    }
+    if (reason === "expired") {
+      return "Your access to this exam has ended. Ask your organisation to renew it, or subscribe, to keep practising.";
+    }
+    return "You do not have access to this exam yet. Ask your organisation for access, or subscribe, to practise it.";
+  }
+  if (hasCode(cause, "set_locked")) {
+    return "This session is locked because your access has ended. You can still review it.";
+  }
+  if (hasCode(cause, "station_not_published")) {
+    return "This station is not available to practise right now. It may have been withdrawn or not finished yet.";
+  }
+  if (isPlatformError(cause)) return cause.message;
+  return fallback;
+}

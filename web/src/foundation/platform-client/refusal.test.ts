@@ -1,17 +1,23 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PlatformError } from "@/foundation/platform-client";
-import { describeStartFailure } from "@/capabilities/station-runner/startFailure";
+import { describeRefusal } from "@/foundation/platform-client/refusal";
+
+const describeStartFailure = (cause: unknown) => describeRefusal(cause, "We could not start this station. Please try again.");
 
 type Body = ConstructorParameters<typeof PlatformError>[1];
 const refusal = (status: number, code: string, details?: Record<string, unknown>) =>
   new PlatformError(status, { code, message: "server wording", details } as Body);
 
-describe("describeStartFailure", () => {
+describe("describeRefusal", () => {
   it("explains a used-up trial, an ended grant and no access separately", () => {
     assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "trial_exhausted" })), /used up/);
     assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "expired" })), /has ended/);
     assert.match(describeStartFailure(refusal(403, "not_entitled", { reason: "no_entitlement" })), /do not have access/);
+  });
+
+  it("explains a locked session", () => {
+    assert.match(describeRefusal(refusal(409, "set_locked"), "x"), /locked because your access has ended/);
   });
 
   it("never shows a consumer the circuit builder's wording for an unpublished station", () => {

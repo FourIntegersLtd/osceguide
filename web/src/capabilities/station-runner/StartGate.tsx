@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Card, CardContent } from "@/foundation/ui";
-import type { StartGate as Gate } from "@/capabilities/station-runner/useStationAttempt";
+import type { StartGateState as Gate } from "@/capabilities/station-runner/useStationAttempt";
 
 /**
  * Shown before any attempt exists. Opening a station only offers it: the attempt is created by

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { PlatformError } from "@/foundation/platform-client";
-import { pageAcrossLegs, uniqueById, type LibraryLegs } from "@/capabilities/stations/libraryPaging";
+import { libraryFailure, pageAcrossLegs, uniqueById, type LibraryLegs } from "@/capabilities/stations/libraryPaging";
 import type { LibraryPage, LibraryStation } from "@/capabilities/stations/api";
 
 const station = (id: string): LibraryStation => ({ id }) as LibraryStation;
@@ -70,5 +70,20 @@ describe("pageAcrossLegs", () => {
 describe("uniqueById", () => {
   it("shows a repeated station once, first seen first", () => {
     assert.deepEqual(uniqueById(["a", "b", "a", "c", "b"].map(station)).map((s) => s.id), ["a", "b", "c"]);
+  });
+});
+
+describe("libraryFailure", () => {
+  it("a refused exam is a paywall that says why, any other failure is plain", () => {
+    const lapsed = new PlatformError(403, {
+      code: "not_entitled",
+      message: "no",
+      details: { reason: "expired" },
+    } as ConstructorParameters<typeof PlatformError>[1]);
+    assert.deepEqual(libraryFailure(lapsed), {
+      paywall: true,
+      text: "Your access to this exam has ended. Ask your organisation to renew it, or subscribe, to keep practising.",
+    });
+    assert.deepEqual(libraryFailure(new Error("boom")), { paywall: false, text: "Please try again." });
   });
 });

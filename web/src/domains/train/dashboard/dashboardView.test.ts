@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { dashboardView, recentAttemptStatus, ticksFor, weakestDomains } from "@/domains/train/dashboard/dashboardView";
+import { dashboardView, nextStationCopy, recentAttemptStatus, ticksFor, weakestDomains } from "@/domains/train/dashboard/dashboardView";
 import type { Performance } from "@/domains/train/api";
 import {
   CASC,
@@ -222,5 +222,14 @@ describe("recentAttemptStatus", () => {
     assert.equal(recentAttemptStatus({ kind: "practice", status: "interaction_complete", has_result: false }), "Marking");
     assert.equal(recentAttemptStatus({ kind: "practice", status: "evaluated", has_result: true }), "Marked");
     assert.equal(recentAttemptStatus({ kind: "practice", status: "created", has_result: false }), "Not started");
+  });
+});
+
+describe("nextStationCopy", () => {
+  it("never promises a number of minutes, which is the exam's to say", () => {
+    assert.equal(
+      nextStationCopy({ firstStation: true, weakest: null }).sub,
+      "A timed consultation with an AI patient, then feedback by domain.",
+    );
   });
 });

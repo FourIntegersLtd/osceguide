@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { platformRequest } from "@/foundation/platform-client";
 import type { components } from "@/foundation/platform-client";
 import { EXAM_SELECTION_EVENT, readExamSelection, rememberExamSelection, normalizeExamCode } from "./examSelection";
+import { examsAfterLoad, NO_EXAMS, type HeldExams } from "@/foundation/session/examsAfterLoad";
 import { useSession } from "@/foundation/session/SessionProvider";
 
 type Dashboard = components["schemas"]["Dashboard"];
-type DashboardExam = components["schemas"]["DashboardExam"];
 export type ExamSettings = components["schemas"]["ExamSettings"];
 
 /**
@@ -70,6 +70,10 @@ export interface CurrentExam {
   settings: ExamSettings;
   /** True while it is still being fetched, so a screen can wait rather than guess. */
   loading: boolean;
+  /** Why the dashboard could not be read, if it could not. The last known exams are still returned. */
+  error: Error | null;
+  /** Ask the dashboard again. */
+  reload: () => void;
   /** Switch exams. Remembered per person, in this browser. */
   setCode: (code: string) => void;
 }
@@ -96,41 +100,37 @@ export function useCurrentExam(): CurrentExam {
   const { session, status } = useSession();
   const userId = session?.user.id ?? null;
 
-  const [codes, setCodes] = useState<string[]>([]);
-  const [serverCurrent, setServerCurrent] = useState<string | null>(null);
-  const [dashboardExam, setDashboardExam] = useState<DashboardExam | null>(null);
+  const [held, setHeld] = useState<HeldExams>(NO_EXAMS);
+  const { codes, serverCurrent, dashboardExam } = held;
+  const [error, setError] = useState<Error | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((n) => n + 1), []);
   const [chosen, setChosen] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (status !== "authenticated" || !userId) {
-      setCodes([]);
+      setHeld(NO_EXAMS);
       setChosen(null);
-      setServerCurrent(null);
-      setDashboardExam(null);
+      setError(null);
       setLoading(status === "loading");
       return;
     }
     let live = true;
     setLoading(true);
     loadDashboardOnce(userId)
-      .then((data) => {
+      .then((dashboard) => {
         if (!live) return;
-        setCodes(data.exam_codes ?? []);
-        setServerCurrent(data.current_exam_code ?? null);
-        setDashboardExam(data.current_exam ?? null);
+        setHeld((previous) => examsAfterLoad(previous, { dashboard }));
+        setError(null);
         setChosen(readExamSelection(userId));
       })
-      .catch(() => {
-        // An exam nobody can name is better than one invented: every screen
-        // below treats `null` as "nothing to show yet" rather than defaulting
-        // to SCA, which is how the retiring client marked CASC attempts
-        // against a GP rubric.
-        if (live) {
-          setCodes([]);
-          setServerCurrent(null);
-          setDashboardExam(null);
-        }
+      .catch((cause) => {
+        // Keep what was known (see `examsAfterLoad`) and say so, rather than
+        // emptying the switcher and the exam-filtered navigation.
+        if (!live) return;
+        setHeld((previous) => examsAfterLoad(previous, { failed: true }));
+        setError(cause instanceof Error ? cause : new Error(String(cause)));
       })
       .finally(() => {
         if (live) setLoading(false);
@@ -138,7 +138,7 @@ export function useCurrentExam(): CurrentExam {
     return () => {
       live = false;
     };
-  }, [status, userId]);
+  }, [status, userId, reloadKey]);
 
   useEffect(() => {
     if (!userId) return;
@@ -172,5 +172,5 @@ export function useCurrentExam(): CurrentExam {
   const name = onDashboardExam ? dashboardExam.name : null;
   const settings = onDashboardExam ? dashboardExam.settings : DEFAULT_EXAM_SETTINGS;
 
-  return { codes, code, name, settings, loading, setCode };
+  return { codes, code, name, settings, loading, error, reload, setCode };
 }

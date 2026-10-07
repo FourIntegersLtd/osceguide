@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback } from "react";
-import { AsyncBoundary } from "@/foundation/ui";
+import Link from "next/link";
+import { Alert, AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { listExams } from "@/capabilities/stations";
@@ -9,6 +10,7 @@ import { flagSetEntry, loadStationCatalogue, readSet, startSetAttempt } from "@/
 import { StationScreen } from "@/capabilities/station-runner/StationScreen";
 import type { StationStep } from "@/capabilities/station-runner/StationChrome";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
+import { setStationState } from "@/domains/train/station/attemptDestination";
 import { entriesInOrder } from "@/domains/train/mocks/model";
 
 /**
@@ -62,7 +64,26 @@ export function SetStation({
 
   return (
     <AsyncBoundary state={context}>
-      {({ set, entries, index, entry, station, exam, next }) => (
+      {({ set, entries, index, entry, station, exam, next }) => {
+        const state = setStationState({ entry, station, action });
+        if (state !== "ok") {
+          return (
+            <Alert
+              tone="warning"
+              title={state === "unknown_entry" ? "This station is not in that session" : "This station is no longer available"}
+            >
+              <p>
+                {state === "unknown_entry"
+                  ? "The link may be out of date. Open the session to see its stations."
+                  : "It has been withdrawn since this session was built. You can still review any attempt you already sat."}
+              </p>
+              <Link href={hrefFor(`/mocks/${setId}`)} className="mt-3 inline-block font-semibold underline">
+                Back to the session
+              </Link>
+            </Alert>
+          );
+        }
+        return (
         <StationScreen
           source={{ kind: "set", setId, entryId }}
           action={action}
@@ -92,7 +113,8 @@ export function SetStation({
           nextHref={next ? hrefFor(`/mocks/${setId}/stations/${next.id}`) : null}
           completeHref={hrefFor(`/mocks/${setId}/complete`)}
         />
-      )}
+        );
+      }}
     </AsyncBoundary>
   );
 }

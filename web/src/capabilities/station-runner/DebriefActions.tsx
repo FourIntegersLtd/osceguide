@@ -12,18 +12,18 @@ import type { AsyncState } from "@/foundation/hooks";
  * looked the same as "not marked yet" and the buttons simply never appeared.
  */
 export function DebriefActions({
-  state,
+  markedState,
   loadingDebrief,
   onExplain,
   onStart,
 }: {
-  state: AsyncState<unknown[]>;
+  markedState: AsyncState<unknown[]>;
   loadingDebrief: boolean;
   onExplain: () => void;
   onStart: () => void;
 }) {
   return (
-    <AsyncBoundary state={state} loading={null} isEmpty={() => false}>
+    <AsyncBoundary state={markedState} loading={null} isEmpty={() => false}>
       {(results) =>
         results.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">

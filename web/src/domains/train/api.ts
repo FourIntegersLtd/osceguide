@@ -1,4 +1,4 @@
-import { isPlatformError, platformRequest, type components } from "@/foundation/platform-client";
+import { platformRequest, type components } from "@/foundation/platform-client";
 
 import { browseLibrary, type LibraryStation } from "@/capabilities/stations";
 
@@ -15,8 +15,9 @@ export function readDashboard(signal?: AbortSignal): Promise<Dashboard> {
   return platformRequest<Dashboard>("/api/v1/me/dashboard", { signal });
 }
 
-export function listSets(signal?: AbortSignal): Promise<SetPage> {
-  return platformRequest<SetPage>("/api/v1/me/station-sets", { signal });
+export function listSets(signal?: AbortSignal, cursor?: string | null): Promise<SetPage> {
+  const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return platformRequest<SetPage>(`/api/v1/me/station-sets${query}`, { signal });
 }
 
 export function readSet(setId: string, signal?: AbortSignal): Promise<StationSet> {
@@ -180,27 +181,15 @@ export type PerformanceDomain = components["schemas"]["DomainScore"];
 export type PerformanceTrendPoint = components["schemas"]["TrendPoint"];
 
 /**
- * One exam's marked performance, or `null` while the endpoint does not exist.
- *
- * A 404 is treated as "nothing to draw yet" rather than a failure on purpose:
- * the charts have an empty state of their own, and a dashboard that renders
- * its error banner on every load until the backend ships would be worse than
- * one that shows the entitlements and attempts it can already serve. Every
- * other status still raises, so a real 500 is still a visible failure.
+ * One exam's marked performance. A failure of any kind, a 404 included, is raised: the endpoint
+ * exists, so "nothing came back" must reach the screen as a failure with a retry, never pass
+ * for an empty dashboard.
  */
-export async function readPerformance(
-  examCode: string,
-  signal?: AbortSignal,
-): Promise<Performance | null> {
-  try {
-    return await platformRequest<Performance>("/api/v1/me/performance", {
-      query: { exam_code: examCode },
-      signal,
-    });
-  } catch (error) {
-    if (isPlatformError(error) && error.status === 404) return null;
-    throw error;
-  }
+export function readPerformance(examCode: string, signal?: AbortSignal): Promise<Performance> {
+  return platformRequest<Performance>("/api/v1/me/performance", {
+    query: { exam_code: examCode },
+    signal,
+  });
 }
 
 /** The library's own page cap. Asking for more is a 422, not a longer page. */

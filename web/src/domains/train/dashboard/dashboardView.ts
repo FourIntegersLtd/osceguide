@@ -265,3 +265,24 @@ export function recentAttemptStatus(attempt: { kind: string; status: string; has
   if (attempt.status === "failed") return "Not completed";
   return attempt.kind === "debrief" ? "Finished" : "Marking";
 }
+
+/**
+ * The "next station" hero's wording. It states no minutes: how long a station runs is the exam's
+ * (a rubric's, set per exam), and this screen is every exam's.
+ */
+export function nextStationCopy(input: { firstStation: boolean; weakest: string | null }): { title: string; sub: string } {
+  const { firstStation, weakest } = input;
+  if (firstStation) {
+    return {
+      title: "Sit your first station",
+      sub: "A timed consultation with an AI patient, then feedback by domain.",
+    };
+  }
+  if (weakest) {
+    return {
+      title: `${weakest} is where marks are waiting`,
+      sub: `Your marked stations dropped the most marks in ${weakest.toLowerCase()}. Practise a station to work on it.`,
+    };
+  }
+  return { title: "Keep the streak going", sub: "Practise a station and your feedback lands here." };
+}

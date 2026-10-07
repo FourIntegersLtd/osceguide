@@ -7,6 +7,7 @@ import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { readAttemptBrief } from "@/capabilities/attempt-runner";
 import { listSets } from "@/domains/train/api";
+import { attemptDestination } from "@/domains/train/station/attemptDestination";
 
 /**
  * An attempt reached by its own id, sent on to where it is read.
@@ -27,27 +28,19 @@ export function AttemptLanding({ attemptId }: { attemptId: string }) {
   const state = useAsync(
     async (signal) => {
       const brief = await readAttemptBrief(attemptId, signal);
-      if (!brief.set_entry_id) return { href: null, brief };
-
-      const sets = await listSets(signal);
-      const set = sets.items.find((candidate) =>
-        (candidate.entries ?? []).some((entry) => entry.id === brief.set_entry_id),
-      );
-      return {
-        brief,
-        href: set
-          ? `${hrefFor(`/mocks/${set.id}/stations/${brief.set_entry_id}`)}?action=review&tab=feedback&attempt=${attemptId}`
-          : null,
-      };
+      return { brief, setId: brief.set_entry_id ? await setHolding(brief.set_entry_id, signal) : null };
     },
     [attemptId],
   );
 
+  const destination = state.data ? attemptDestination(state.data.brief, state.data.setId) : null;
+  const review = `?action=review&tab=feedback&attempt=${attemptId}`;
   const href =
-    state.data?.href ??
-    (state.data?.brief
-      ? `${hrefFor(`/stations/${state.data.brief.station_id}/practise`)}?action=review&tab=feedback&attempt=${attemptId}`
-      : null);
+    destination?.kind === "set_entry"
+      ? `${hrefFor(`/mocks/${destination.setId}/stations/${destination.entryId}`)}${review}`
+      : destination?.kind === "station"
+        ? `${hrefFor(`/stations/${destination.stationId}/practise`)}${review}`
+        : null;
 
   useEffect(() => {
     // `replace`, so Back goes where they came from rather than through here.
@@ -58,9 +51,30 @@ export function AttemptLanding({ attemptId }: { attemptId: string }) {
     return <Alert tone="danger">{errorMessage(state.error)}</Alert>;
   }
 
+  if (destination?.kind === "unknown") {
+    return (
+      <Alert tone="warning" title="We could not find where this attempt was sat">
+        <p>Its practice session or station may have been removed. Your other attempts are in your history.</p>
+      </Alert>
+    );
+  }
+
   return (
     <div className="flex justify-center py-16">
       <LoadingSpinner />
     </div>
   );
+}
+
+/** The session holding this entry, walking the person's sessions a page at a time. */
+async function setHolding(entryId: string, signal: AbortSignal): Promise<string | null> {
+  let cursor: string | null = null;
+  for (let pages = 0; pages < 20; pages += 1) {
+    const page = await listSets(signal, cursor);
+    const set = page.items.find((candidate) => (candidate.entries ?? []).some((entry) => entry.id === entryId));
+    if (set) return set.id;
+    cursor = page.next_cursor ?? null;
+    if (!cursor) return null;
+  }
+  return null;
 }

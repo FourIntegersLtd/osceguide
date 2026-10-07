@@ -118,7 +118,7 @@ export function FeedbackStep({
   return (
     <div className="space-y-4">
       <DebriefActions
-        state={hasFeedback}
+        markedState={hasFeedback}
         loadingDebrief={loadingDebrief}
         onExplain={() => setExplaining(true)}
         onStart={() => openDebrief()}

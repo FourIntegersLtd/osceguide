@@ -40,7 +40,7 @@ import CategoryVolumeList from "@/foundation/charts/CategoryVolumeList";
 import { PerformanceSummary } from "@/domains/train/dashboard/PerformanceSummary";
 import { TrendCard } from "@/domains/train/dashboard/TrendCard";
 import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
-import { dashboardView, recentAttemptStatus, type DashboardView } from "@/domains/train/dashboard/dashboardView";
+import { dashboardView, nextStationCopy, recentAttemptStatus, type DashboardView } from "@/domains/train/dashboard/dashboardView";
 import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
 import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
 import { examCountdownSubtitle, examMoment, isExamWeek } from "@/domains/train/dashboard/examDate";
@@ -78,16 +78,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
   const [showExamWishes, setShowExamWishes] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  /*
-   * Wrapped in an object so a 404 — the endpoint is not built yet — is a
-   * successful load of nothing rather than a null the boundary would read as
-   * "render nothing". A real failure still reaches the boundary and is shown
-   * with a retry, which is the rule that "no data" must never mean "it broke".
-   */
-  const performanceState = useAsync(
-    async (signal) => ({ performance: await readPerformance(examCode, signal) }),
-    [examCode],
-  );
+  const performanceState = useAsync((signal) => readPerformance(examCode, signal), [examCode]);
 
   const examDate = examMoment(session?.user.exam_date, session?.user.exam_time);
   const userId = session?.user.id ?? null;
@@ -140,7 +131,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
   const countdown = examCountdownSubtitle(examDate);
   const subtitle = countdown ? `${countdown} ${greeting}` : greeting;
   const eyebrow = `${attempts} station${attempts === 1 ? "" : "s"} attempted`;
-  const performance = performanceState.data?.performance ?? null;
+  const performance = performanceState.data;
   const view = dashboardView(performance);
 
   return (
@@ -159,6 +150,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
       />
 
       {attempts === 0 ? (
+        <>
         <div className="flex flex-col items-center gap-2.5 rounded-osce-lg border border-dashed border-b2c-border bg-osce-surface px-6 py-10 text-center">
           <span className="flex h-10 w-10 items-center justify-center rounded-osce-md bg-b2c-surface-muted text-osce-ink-700">
             <HiOutlineChartBar className="h-5 w-5" aria-hidden />
@@ -168,6 +160,12 @@ function DashboardBody({ data }: { data: DashboardData }) {
             Complete stations and your competency mix will appear here.
           </p>
         </div>
+        <RecentStations
+          recent={data.recent_attempts ?? []}
+          attemptHref={(id) => hrefFor(`/attempts/${id}`)}
+          sessionsHref={hrefFor("/transcripts")}
+        />
+        </>
       ) : (
       <AsyncBoundary state={performanceState}>
         {() => (
@@ -217,16 +215,7 @@ function NextStation({
   firstStation: boolean;
   weakest: string | null;
 }) {
-  const title = firstStation
-    ? "Sit your first station"
-    : weakest
-      ? `${weakest} is where marks are waiting`
-      : "Keep the streak going";
-  const sub = firstStation
-    ? "Twelve minutes with an AI patient, then feedback by domain. It takes about 15 minutes in total."
-    : weakest
-      ? `Your marked stations dropped the most marks in ${weakest.toLowerCase()}. Practise a station to work on it.`
-      : "Practise a station and your feedback lands here.";
+  const { title, sub } = nextStationCopy({ firstStation, weakest });
   return (
     <B2CHero
       lead

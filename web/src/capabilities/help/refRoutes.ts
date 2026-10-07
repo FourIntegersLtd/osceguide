@@ -1,5 +1,6 @@
 import type { CardLink, CardRef } from "@/foundation/livekit/guidance";
 import type { MediaKind } from "@/capabilities/media/api";
+import { libraryHref, stationHref } from "@/capabilities/stations/routes";
 import { STUDY_KIND_LABEL, studyTabPathForSlug } from "@/capabilities/media/studyPaths";
 
 /**
@@ -33,8 +34,8 @@ export function cardLinkFor(
 
   if (ref.kind === "station") {
     return slug
-      ? { eyebrow: "Station", label: "Open the station", href: hrefFor(`/stations/${encodeURIComponent(slug)}`) }
-      : { eyebrow: "Station", label: "Open the station library", href: hrefFor("/stations") };
+      ? { eyebrow: "Station", label: "Open the station", href: stationHref(hrefFor, slug) }
+      : { eyebrow: "Station", label: "Open the station library", href: libraryHref(hrefFor) };
   }
 
   if (ref.kind === "help") {

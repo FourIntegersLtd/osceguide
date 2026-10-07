@@ -44,8 +44,6 @@ function OpenMarkingModal({
 }) {
   const { settings } = useCurrentExam();
   const [phase, setPhase] = useState<"waiting" | "slow" | "failed">("waiting");
-  const slow = phase === "slow";
-  const failed = phase === "failed";
   const [attempts, setAttempts] = useState(0);
   const waitRef = useRef<MarkingWait | null>(null);
   const onReadyRef = useRef(onReady);
@@ -83,9 +81,9 @@ function OpenMarkingModal({
       onClose={onSkip}
       width="600px"
       height="fit-content"
-      title={slow ? undefined : "Marking your consultation"}
+      title={phase === "slow" ? undefined : "Marking your consultation"}
     >
-      {!failed && (
+      {phase !== "failed" && (
       <ModalCallout className="mb-4 mt-0">
         Marking usually takes one to three minutes. You don&apos;t have to wait here:{" "}
         <button
@@ -99,7 +97,7 @@ function OpenMarkingModal({
       </ModalCallout>
       )}
 
-      {failed ? (
+      {phase === "failed" ? (
         <div className="space-y-3 p-6 text-center">
           <h2 className="text-osce-h3 font-semibold text-osce-ink-900">
             We could not mark this consultation
@@ -124,7 +122,7 @@ function OpenMarkingModal({
             </Button>
           </div>
         </div>
-      ) : slow ? (
+      ) : phase === "slow" ? (
         <div className="space-y-3 p-6 text-center">
           <h2 className="text-osce-h3 font-semibold text-osce-ink-900">
             Marking is taking longer than usual

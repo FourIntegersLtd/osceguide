@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hasCode } from "@/foundation/platform-client";
-import { rememberedVerdict } from "@/capabilities/station-runner/rememberedAttempt";
+import { rememberedVerdict, type RememberedVerdict } from "@/capabilities/station-runner/rememberedAttempt";
 import {
   listMyAttempts,
   readAttempt,
@@ -15,11 +15,11 @@ import {
 export type StationAction = "attempt" | "review";
 
 /** What the person is asked before an attempt exists. */
-export type StartGate = { kind: "start" } | { kind: "resume"; attemptId: string };
+export type StartGateState = { kind: "start" } | { kind: "resume"; attemptId: string };
 
 export interface StationAttempt {
   /** Set while nothing has been created: press `start` (or `startAgain`) to begin. */
-  gate: StartGate | null;
+  gate: StartGateState | null;
   /** Begin, picking up this tab's unstarted or running attempt if there is one. */
   start: () => void;
   /** Abandon this tab's running attempt and create a new one. */
@@ -79,7 +79,7 @@ export function useStationAttempt({
   const [error, setError] = useState<Error | null>(null);
   const [exhausted, setExhausted] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [gate, setGate] = useState<StartGate | null>(null);
+  const [gate, setGate] = useState<StartGateState | null>(null);
   /** Set once Start is pressed; `fresh` abandons the remembered attempt. */
   const [go, setGo] = useState<{ fresh: boolean } | null>(null);
   /*
@@ -117,25 +117,11 @@ export function useStationAttempt({
         if (reviewing) {
           id = attemptIdFromUrl ?? (await latestFinished({ stationVersionId, setEntryId }));
         } else {
-          id = remembered(key);
-          if (id) {
-            const status = await readAttempt(id).then(
-              (found) => found.status,
-              () => null,
-            );
-            const verdict = rememberedVerdict(status);
-            if (verdict === "discard") {
-              forgetStationAttempt(key);
-              id = null;
-            } else if (!go) {
-              if (!live) return;
-              setGate(verdict === "resume" ? { kind: "resume", attemptId: id } : { kind: "start" });
-              setAttemptId(null);
-              return;
-            }
-          } else if (!go) {
+          const found = await resolveRemembered(key);
+          id = found && found.verdict !== "discard" ? found.id : null;
+          if (!go) {
             if (!live) return;
-            setGate({ kind: "start" });
+            setGate(found?.verdict === "resume" && id ? { kind: "resume", attemptId: id } : { kind: "start" });
             setAttemptId(null);
             return;
           }
@@ -227,6 +213,22 @@ async function latestFinished(params: {
   const consultations = page.items.filter((item) => item.kind !== "debrief");
   const finished = consultations.find((item) => FINISHED.has(item.status));
   return finished?.id ?? consultations[0]?.id ?? null;
+}
+
+/**
+ * The attempt this tab remembers for the station and what to do with it, or null when it
+ * remembers none. A discarded one is forgotten here, so it is never handed to the next sitting.
+ */
+async function resolveRemembered(key: string): Promise<{ id: string; verdict: RememberedVerdict } | null> {
+  const id = remembered(key);
+  if (!id) return null;
+  const status = await readAttempt(id).then(
+    (found) => found.status,
+    () => null,
+  );
+  const verdict = rememberedVerdict(status);
+  if (verdict === "discard") forgetStationAttempt(key);
+  return { id, verdict };
 }
 
 /** An attempt with something to review: the consultation is over, either way. */

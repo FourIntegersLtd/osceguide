@@ -1,7 +1,6 @@
 import type { SetEntry, StationSet } from "@/domains/train/api";
 import type { AttemptHistoryItem } from "@/capabilities/attempt-runner";
-import { describeStartFailure } from "@/capabilities/station-runner/startFailure";
-import { hasCode, isPlatformError } from "@/foundation/platform-client";
+import { describeRefusal } from "@/foundation/platform-client";
 
 /**
  * The arithmetic the mocks screens do, kept out of the components.
@@ -255,6 +254,17 @@ export function flaggedEntryPath(flag: { set_id: string; entry_id: string }): st
   return `/mocks/${encodeURIComponent(flag.set_id)}/stations/${encodeURIComponent(flag.entry_id)}`;
 }
 
+export interface TrialLimits {
+  stations: number;
+  days: number;
+  attempts_per_station: number;
+}
+
+/** The free trial's limits in words, as the server states them. */
+export function describeTrial(trial: TrialLimits): string {
+  return `It covers ${trial.stations} stations, each sat up to ${trial.attempts_per_station} times, within ${trial.days} days of signing up.`;
+}
+
 /**
  * Why a new session cannot be built because the exam shows no stations, in words. The limits are the server's,
  * never numbers written here.
@@ -262,14 +272,13 @@ export function flaggedEntryPath(flag: { set_id: string; entry_id: string }): st
 export function nothingPickableMessage(input: {
   hasPaid: boolean | undefined;
   subscriptionExpired: boolean;
-  trial: { stations: number; days: number; attempts_per_station: number };
+  trial: TrialLimits;
 }): string {
-  const { trial } = input;
   if (input.subscriptionExpired) {
     return "Your access to this exam has ended, so there is nothing new to practise. Subscribe or ask your organisation to renew it.";
   }
   if (input.hasPaid === false) {
-    return `Your free trial is used up. It covers ${trial.stations} stations, each sat up to ${trial.attempts_per_station} times, within ${trial.days} days of signing up. Subscribe to keep practising.`;
+    return `Your free trial is used up. ${describeTrial(input.trial)} Subscribe to keep practising.`;
   }
   return "There are no stations for this exam yet.";
 }
@@ -279,10 +288,5 @@ export function nothingPickableMessage(input: {
  * Access and unpublished stations read the same as when starting a station.
  */
 export function describeCreateSetFailure(cause: unknown): string {
-  if (hasCode(cause, "set_locked")) {
-    return "This session is locked because your access has ended. You can still review it.";
-  }
-  if (hasCode(cause, "not_entitled", "station_not_published")) return describeStartFailure(cause);
-  if (isPlatformError(cause)) return cause.message;
-  return "We could not create this session. Please try again.";
+  return describeRefusal(cause, "We could not create this session. Please try again.");
 }

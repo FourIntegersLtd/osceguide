@@ -9,7 +9,7 @@ describe("where a card Athena showed opens", () => {
     assert.deepEqual(cardLinkFor({ kind: "station", id: "version-1", slug: "station-1" }, { hrefFor }), {
       eyebrow: "Station",
       label: "Open the station",
-      href: "/app/me/stations/station-1",
+      href: "/app/me/stations?station=station-1",
     });
   });
 

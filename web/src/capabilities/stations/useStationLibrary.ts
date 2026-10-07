@@ -43,6 +43,8 @@ export interface StationLibraryState {
   clearSearch: () => void;
   hasMore: boolean;
   loadingMore: boolean;
+  /** Why the last "Load more" failed. The cursor is kept, so pressing it again retries. */
+  moreError: Error | null;
   loadMore: () => void;
 }
 
@@ -104,6 +106,7 @@ export function useStationLibrary(scope: StationLibraryScope = {}): StationLibra
   const [search, setSearchTerm] = useState("");
   const [applied, setApplied] = useState("");
   const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<Error | null>(null);
 
   const first = useAsync(
     // Nothing to browse until the exam is known. Asking without one would ask
@@ -121,7 +124,10 @@ export function useStationLibrary(scope: StationLibraryScope = {}): StationLibra
   // A different filter is a different list. Reset during render rather than in
   // an effect: an effect would paint one frame of the old exam's stations
   // under the new exam's chip.
-  if (paged.key !== key) setPaged({ key, items: [], cursor: null, started: false });
+  if (paged.key !== key) {
+    setPaged({ key, items: [], cursor: null, started: false });
+    setMoreError(null);
+  }
 
   const cursor = paged.started ? paged.cursor : (first.data?.next_cursor ?? null);
 
@@ -131,6 +137,7 @@ export function useStationLibrary(scope: StationLibraryScope = {}): StationLibra
     // out of the unfiltered list is not a cursor into the filtered one.
     if (!cursor || loadingMore || first.loading) return;
     setLoadingMore(true);
+    setMoreError(null);
     fetchPage({ orgSlug, examCode, orgOwnedExam, search: applied, cursor })
       .then((page) => {
         setPaged((current) =>
@@ -144,11 +151,10 @@ export function useStationLibrary(scope: StationLibraryScope = {}): StationLibra
               },
         );
       })
-      .catch(() => {
-        // The pages already on screen still stand. Stopping the cursor is the
-        // honest outcome: the button goes rather than offering a retry that
-        // would loop against the same failure.
-        setPaged((current) => ({ ...current, cursor: null, started: true }));
+      .catch((cause) => {
+        // The pages already on screen still stand and the cursor is kept: a failure is shown
+        // with a retry, never passed off as the end of the list.
+        setMoreError(cause instanceof Error ? cause : new Error(String(cause)));
       })
       .finally(() => setLoadingMore(false));
   }, [applied, cursor, examCode, first.loading, key, loadingMore, orgSlug]);
@@ -186,6 +192,7 @@ export function useStationLibrary(scope: StationLibraryScope = {}): StationLibra
     // reason `loadMore` refuses then.
     hasMore: cursor !== null && !first.loading,
     loadingMore,
+    moreError,
     loadMore,
   };
 }

@@ -18,6 +18,7 @@ export {
   type PlatformErrorCode,
   type PlatformErrorBody,
 } from "@/foundation/platform-client/errors";
+export { describeRefusal, isNotEntitled } from "@/foundation/platform-client/refusal";
 export {
   login,
   verifyMfaChallenge,
