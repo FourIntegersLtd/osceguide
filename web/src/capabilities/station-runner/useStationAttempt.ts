@@ -107,11 +107,12 @@ export function useStationAttempt({
             try {
               id = (await creating.current!).id;
             } catch (cause) {
+              // Forget the failed creation, or "Try again" would await the same rejection.
+              createdFor.current = null;
+              creating.current = null;
               // Out of goes. The station is still theirs to read back, so this
               // falls through to the review rather than refusing the screen.
               if (!hasCode(cause, "attempt_limit_reached", "set_locked")) throw cause;
-              createdFor.current = null;
-              creating.current = null;
               if (live) setExhausted(true);
               reviewing = true;
               id = await latestFinished({ stationVersionId, setEntryId });

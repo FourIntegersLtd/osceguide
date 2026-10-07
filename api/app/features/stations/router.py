@@ -68,6 +68,11 @@ async def browse_library(
         all_exams=principal.is_platform_admin,
         search=search,
         version_ids=version_ids,
+        staff_org_ids=[
+            membership.org_id
+            for membership in principal.memberships
+            if may_run_circuit_policy()(membership.role)
+        ],
     )
     return Page(items=items, next_cursor=next_cursor)
 

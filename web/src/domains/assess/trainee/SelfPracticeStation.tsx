@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState } from "react";
-import { AsyncBoundary, Button, Card, CardContent } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Button, Card, CardContent } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createAttempt } from "@/capabilities/attempt-runner";
@@ -10,6 +11,7 @@ import { StationScreen } from "@/capabilities/station-runner/StationScreen";
 import type { StationStep } from "@/capabilities/station-runner/StationChrome";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
 import { listOrgStations } from "@/domains/assess/trainee/api";
+import { practisableStation } from "@/domains/assess/trainee/practisableStation";
 
 /**
  * One org station sat with the same four-step runner as consumer practice.
@@ -36,7 +38,7 @@ export function SelfPracticeStation({
   const context = useAsync(
     async (signal) => {
       const stations = await listOrgStations(orgSlug, signal);
-      const station = stations.find((row) => row.id === stationId) ?? null;
+      const station = practisableStation(stations, stationId);
       const exams = await listExams(signal);
       const exam = station
         ? exams.items.find((item) => item.code === station.exam_code) ?? null
@@ -91,8 +93,18 @@ export function SelfPracticeStation({
             createAttempt={create}
             nextHref={null}
             completeHref={hrefFor("/trainee/practice")}
+            backHref={hrefFor("/trainee/practice")}
           />
-        ) : null
+        ) : (
+          <Alert tone="warning" title="This station is not available">
+            <p>
+              It may have been withdrawn, is not published yet, or belongs to another organisation.
+            </p>
+            <Link href={hrefFor("/trainee/practice")} className="mt-3 inline-block font-semibold underline">
+              Back to practice
+            </Link>
+          </Alert>
+        )
       }
     </AsyncBoundary>
   );

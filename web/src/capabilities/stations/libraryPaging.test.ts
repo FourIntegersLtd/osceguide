@@ -24,15 +24,15 @@ describe("pageAcrossLegs", () => {
     assert.equal(result.next_cursor, "platform:p2");
   });
 
-  it("an unentitled platform leg is an empty leg, not a failure", async () => {
+  it("an unentitled platform leg is a failure to show, never an empty list", async () => {
     const legs: LibraryLegs = {
       org: async () => page(["a"]),
       platform: async () => {
         throw refused(403);
       },
     };
-    assert.deepEqual(await pageAcrossLegs(legs, true, null), { items: [{ id: "a" }], next_cursor: null });
-    assert.deepEqual(await pageAcrossLegs(legs, true, "platform:x"), { items: [], next_cursor: null });
+    await assert.rejects(pageAcrossLegs(legs, true, null), { status: 403, code: "not_entitled" });
+    await assert.rejects(pageAcrossLegs(legs, true, "platform:x"), { status: 403 });
   });
 
   it("keeps the org cursor while the org leg has more, and skips the platform when told to", async () => {

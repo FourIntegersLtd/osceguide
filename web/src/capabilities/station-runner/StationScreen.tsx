@@ -21,7 +21,6 @@ import {
   cn,
 } from "@/foundation/ui";
 import { b2cRoomOverlay } from "@/foundation/ui/productTokens";
-import { errorMessage } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
   ConsultationPanel,
@@ -33,6 +32,7 @@ import {
   usePracticeTimers,
 } from "@/capabilities/attempt-runner";
 import { readResults } from "@/capabilities/attempt-runner";
+import { describeStartFailure } from "@/capabilities/station-runner/startFailure";
 import { MarkingModal } from "@/capabilities/station-runner/MarkingModal";
 import { FeedbackStep } from "@/capabilities/station-runner/FeedbackStep";
 import { TranscriptStep } from "@/capabilities/station-runner/TranscriptStep";
@@ -306,7 +306,23 @@ export function StationScreen(props: StationScreenProps) {
   }
 
   if (attempt.error) {
-    return <Alert tone="danger">{errorMessage(attempt.error)}</Alert>;
+    return (
+      <Alert tone="danger" title="This station could not be started">
+        <p>{describeStartFailure(attempt.error)}</p>
+        <div className="mt-3 flex gap-2">
+          <Button variant="secondary" size="sm" onClick={attempt.reload}>
+            Try again
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => (backHref ?? completeHref ? router.push((backHref ?? completeHref)!) : router.back())}
+          >
+            Go back
+          </Button>
+        </div>
+      </Alert>
+    );
   }
 
   const activeStep = steps.includes(step) ? step : steps[0]!;

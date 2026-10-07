@@ -264,9 +264,12 @@ async def rubric_versions_for_slots(
 
 
 async def circuit_counts_by_station_version(
-    session: AsyncSession, station_version_ids: Collection[uuid.UUID]
+    session: AsyncSession, station_version_ids: Collection[uuid.UUID], *, open_only: bool = False
 ) -> dict[uuid.UUID, int]:
     """How many circuits, in any organisation, name each station version.
+
+    `open_only` leaves out circuits that have ended: their history still reads the version, and
+    only a circuit yet to run (or running) is broken by its being withdrawn.
 
     A circuit names a version through its station list and through each slot,
     so both are read and a circuit is counted once.
@@ -283,4 +286,6 @@ async def circuit_counts_by_station_version(
     stmt = select(uses.c.station_version_id, func.count(uses.c.circuit_id.distinct())).group_by(
         uses.c.station_version_id
     )
+    if open_only:
+        stmt = stmt.join(Circuit, Circuit.id == uses.c.circuit_id).where(Circuit.ended_at.is_(None))
     return {version_id: int(count) for version_id, count in (await session.execute(stmt)).all()}

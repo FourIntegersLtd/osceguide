@@ -118,3 +118,21 @@ describe("watchMarking", () => {
     assert.equal(calls, 0);
   });
 });
+
+describe("watchMarking on a failed attempt", () => {
+  it("says so at the next check instead of waiting for ever, and stops checking", async () => {
+    const clock = fakeClock();
+    const events: string[] = [];
+    watchMarking({
+      isMarked: async () => false,
+      isFailed: async () => clock.timers.now() >= 6_000,
+      onReady: () => events.push("ready"),
+      onSlow: () => events.push("slow"),
+      onFailed: () => events.push("failed"),
+      timers: clock.timers,
+    });
+    await clock.advance(10 * 60 * 1000);
+    assert.deepEqual(events, ["failed"]);
+    assert.equal(clock.pendingCount(), 0);
+  });
+});

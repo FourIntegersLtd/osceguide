@@ -134,12 +134,35 @@ async def archive_version(
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
+    await _refuse_while_in_use(session, station_version.id)
     await repository.set_version_status(
         session, org_id, station_version.id, status=str(new_status), at=now, by=actor_id
     )
     await _repoint_after_archiving(session, org_id, station_id, archived_version_id=station_version.id)
     await _refresh_tutor_material(session, org_id)
     return _version_read(await _version(session, org_id, station_id, version))
+
+
+async def _refuse_while_in_use(session: AsyncSession, version_id: uuid.UUID) -> None:
+    """A version a circuit still has to run, or a practice set holds, is not withdrawn from under it.
+
+    Both pin this exact version, so archiving it would leave the slot or the set entry refused
+    `station_not_published` the moment somebody opens it. Finished circuits do not count: their
+    history keeps reading an archived version. Imported inside, as `used_by_counts` does.
+    """
+    from app.features.sittings import service as sittings
+    from app.features.station_sets import service as station_sets
+
+    circuits = (await sittings.circuit_counts_by_station_version(session, [version_id], open_only=True)).get(
+        version_id, 0
+    )
+    sets = (await station_sets.set_counts_by_station_version(session, [version_id])).get(version_id, 0)
+    if circuits or sets:
+        raise errors.NotArchivableError(
+            "This version is on a circuit that has not finished or in a practice set. "
+            "Take it off first, or publish a new version and move them across.",
+            details={"reason": "in_use", "circuits": circuits, "sets": sets},
+        )
 
 
 async def _refresh_tutor_material(session: AsyncSession, org_id: uuid.UUID | None) -> None:

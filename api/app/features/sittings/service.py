@@ -257,8 +257,10 @@ async def rubric_version_for_programme(
 
 
 async def circuit_counts_by_station_version(
-    session: AsyncSession, station_version_ids: list[uuid.UUID]
+    session: AsyncSession, station_version_ids: list[uuid.UUID], *, open_only: bool = False
 ) -> dict[uuid.UUID, int]:
     """How many circuits name each station version, for an author deciding
-    whether a version is safe to throw away."""
-    return await repository.circuit_counts_by_station_version(session, station_version_ids)
+    whether a version is safe to throw away (`open_only`: or to withdraw)."""
+    return await repository.circuit_counts_by_station_version(
+        session, station_version_ids, open_only=open_only
+    )

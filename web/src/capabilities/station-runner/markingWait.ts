@@ -11,6 +11,10 @@
  * It used to give up after ten polls (about three minutes); a marking that
  * took four left the modal saying "taking longer than usual" for good while
  * the feedback sat in the database. Being slow is now only a message.
+ *
+ * An attempt the scorer gave up on (`failed`) will never get a result, so each
+ * check that finds no result also asks whether the attempt failed, and says so
+ * instead of waiting for ever.
  */
 
 export const SLOW_AFTER_MS = 3 * 60 * 1000;
@@ -43,14 +47,19 @@ export function delayBefore(tries: number): number {
 
 export function watchMarking({
   isMarked,
+  isFailed,
   onReady,
   onSlow,
+  onFailed,
   timers = browserTimers,
 }: {
   /** Whether a result is stored. A rejection (a 502 during a restart) counts as "not yet". */
   isMarked: () => Promise<boolean>;
+  /** Whether the attempt is one that will never be marked. A rejection counts as "not yet". */
+  isFailed?: () => Promise<boolean>;
   onReady: () => void;
   onSlow: () => void;
+  onFailed?: () => void;
   timers?: MarkingWaitTimers;
 }): MarkingWait {
   const startedAt = timers.now();
@@ -90,6 +99,21 @@ export function watchMarking({
       if (timer !== null) timers.clearTimeout(timer);
       onReady();
       return;
+    }
+    if (isFailed) {
+      let failed = false;
+      try {
+        failed = await isFailed();
+      } catch {
+        failed = false;
+      }
+      if (stopped) return;
+      if (failed) {
+        stopped = true;
+        if (timer !== null) timers.clearTimeout(timer);
+        onFailed?.();
+        return;
+      }
     }
     tries += 1;
     if (!slow && timers.now() - startedAt >= SLOW_AFTER_MS) {

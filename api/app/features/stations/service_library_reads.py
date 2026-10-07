@@ -7,6 +7,7 @@ still browsing, and browsing is not reading the answers.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
@@ -30,19 +31,27 @@ async def browse_library(
     all_exams: bool = False,
     search: str | None = None,
     version_ids: list[uuid.UUID] | None = None,
+    staff_org_ids: Iterable[uuid.UUID] = (),
 ) -> tuple[list[LibraryStationRead], str | None]:
     """The published platform library, scoped to the exams the caller may open.
 
     An unpublished station is not in the library, and neither is any organisation's own — those are
     behind the org routes. A named `exam_code` must be one the caller may open; without one they get
     theirs. `all_exams` is the staff console, which curates the whole catalogue explicitly rather
-    than by omission. `search` matches a title fragment, answered in SQL.
+    than by omission. `search` matches a title fragment, answered in SQL. `staff_org_ids` are the
+    organisations the caller runs circuits for: an exam one of them offers is browsable for building
+    that organisation's circuit, whatever the staff member holds as a consumer.
     """
     exam_id = None
     if exam_code is not None:
-        if user_id is not None and now is not None and not all_exams:
-            await service_access.require_exam_access(session, user_id, exam_code=exam_code, now=now)
         exam_id = (await catalog.resolve_exam(session, exam_code)).id
+        if (
+            user_id is not None
+            and now is not None
+            and not all_exams
+            and not await _offered_by_any(session, staff_org_ids, exam_id)
+        ):
+            await service_access.require_exam_access(session, user_id, exam_code=exam_code, now=now)
     elif user_id is not None and now is not None and not all_exams:
         # No exam named: theirs, rather than everybody's.
         access = await service_access.exam_access_for(session, user_id, now=now)
@@ -79,6 +88,14 @@ async def browse_library(
             )
         )
     return library_reads, next_cursor
+
+
+async def _offered_by_any(session: AsyncSession, org_ids: Iterable[uuid.UUID], exam_id: uuid.UUID) -> bool:
+    """Whether one of these organisations offers the exam (a programme names it)."""
+    for org_id in org_ids:
+        if exam_id in await catalog.org_exam_ids(session, org_id):
+            return True
+    return False
 
 
 async def read_library_station(

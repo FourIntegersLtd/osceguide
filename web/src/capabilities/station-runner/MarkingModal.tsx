@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Modal, ModalCallout } from "@/foundation/ui";
+import { Alert, Button, Modal, ModalCallout } from "@/foundation/ui";
 import { useMeEvents } from "@/foundation/hooks";
-import { readResults } from "@/capabilities/attempt-runner";
+import { readAttempt, readResults } from "@/capabilities/attempt-runner";
 import { GeneratingFeedback } from "@/capabilities/station-runner/GeneratingFeedback";
 import { watchMarking, type MarkingWait } from "@/capabilities/station-runner/markingWait";
 import { useCurrentExam } from "@/foundation/session";
@@ -44,6 +44,8 @@ function OpenMarkingModal({
 }) {
   const { settings } = useCurrentExam();
   const [slow, setSlow] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [attempts, setAttempts] = useState(0);
   const waitRef = useRef<MarkingWait | null>(null);
   const onReadyRef = useRef(onReady);
   useEffect(() => {
@@ -55,14 +57,16 @@ function OpenMarkingModal({
     const wait = watchMarking({
       isMarked: async () => (await readResults(attemptId)).length > 0,
       onReady: () => onReadyRef.current(),
+      isFailed: async () => (await readAttempt(attemptId)).status === "failed",
       onSlow: () => setSlow(true),
+      onFailed: () => setFailed(true),
     });
     waitRef.current = wait;
     return () => {
       wait.stop();
       waitRef.current = null;
     };
-  }, [attemptId]);
+  }, [attemptId, attempts]);
 
   // The scoring job announces `attempt` when it stores a result; `resync` comes when the
   // stream (re)connects or the tab is shown again, which covers an event sent while no
@@ -78,6 +82,7 @@ function OpenMarkingModal({
       height="fit-content"
       title={slow ? undefined : "Marking your consultation"}
     >
+      {!failed && (
       <ModalCallout className="mb-4 mt-0">
         Marking usually takes one to three minutes. You don&apos;t have to wait here:{" "}
         <button
@@ -89,8 +94,35 @@ function OpenMarkingModal({
         </button>{" "}
         and we&apos;ll let you know the moment your feedback is ready.
       </ModalCallout>
+      )}
 
-      {slow ? (
+      {failed ? (
+        <div className="space-y-3 p-6 text-center">
+          <h2 className="text-osce-h3 font-semibold text-osce-ink-900">
+            We could not mark this consultation
+          </h2>
+          <Alert tone="danger">
+            Marking failed, so there is no feedback for this attempt. Check again in a moment, or
+            continue to your session summary and start the station again. If it keeps happening,
+            contact support and quote the station and the time.
+          </Alert>
+          <div className="flex justify-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFailed(false);
+                setSlow(false);
+                setAttempts((n) => n + 1);
+              }}
+            >
+              Check again
+            </Button>
+            <Button variant="commit" onClick={onSkip}>
+              Continue to session summary
+            </Button>
+          </div>
+        </div>
+      ) : slow ? (
         <div className="space-y-3 p-6 text-center">
           <h2 className="text-osce-h3 font-semibold text-osce-ink-900">
             Marking is taking longer than usual
