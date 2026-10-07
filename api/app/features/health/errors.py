@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
-# Re-exported: the console's mail retry is refused with notifications' own
-# error, and the router may only name this slice's errors.
-from app.features.notifications.errors import MessageNotRetryable as MessageNotRetryable
+from app.core.errors import NotFound
+
+
+class MessageNotRetryable(NotFound):
+    """No abandoned message with that id: it was never queued, was sent, or is queued again."""
+
+    code = "message_not_retryable"
+    default_message = "That message is not waiting for a retry. Reload the list."

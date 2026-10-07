@@ -68,7 +68,13 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   Change-password answers a fresh pair that the web adopts (A-13); a reset
   answers none, so `/reset-password` signs the browser out before showing
   done (A-10). A screen that skips either leaves cookies the backend refuses:
-  `/login` bounces to `/app` and every call there answers 401.
+  `/login` bounces to `/app` and every call there answers 401. Other devices
+  keep their access token, so they drop within 15 minutes, not at once.
+- **A refused refresh is checked back before the cookies go.**
+  `/api/session/token` answers `{access_token: null, refused: <fingerprint>}`
+  and clears only when the client's second ask still carries that token, so a
+  pair another tab stored meanwhile survives. Proof:
+  `src/app/api/session/token/route.test.ts` (the loader resolves `next/*`).
 - **SSO discovery throws.** `readSsoSignIn` no longer folds a failure into
   `null` (A-5); a caller that can tolerate a miss catches it itself.
 - **Abandoned mail is on the System health page** (S-5): `GET

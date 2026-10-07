@@ -25,6 +25,7 @@ export {
   confirmMfaEnrolmentAtSignIn,
   register,
   AccountCreatedNotSignedIn,
+  PasswordChangedNotStored,
   logout,
   switchWorkspace,
   changePassword,

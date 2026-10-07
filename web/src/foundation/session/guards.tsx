@@ -47,22 +47,22 @@ function Unavailable({ retry }: { retry: () => Promise<void> }) {
  * surface rather than sit unread on `/me` as it did in the first cut of this
  * port.
  *
- * `change-password` passes `passwordChangePage`, which is what stops the
+ * `change-password` passes `allowMustChange`, which is what stops the
  * redirect from looping: it is the one place a flagged account is allowed to
- * be. It is still behind the login (A-13): a signed-out visitor used to get
+ * be. It is still behind the login: a signed-out visitor used to get
  * the form and a refusal for a request that could never succeed.
  */
 export function RequireSession({
   children,
-  passwordChangePage = false,
+  allowMustChange = false,
 }: {
   children: ReactNode;
-  passwordChangePage?: boolean;
+  allowMustChange?: boolean;
 }) {
   const { status, ready, session, sessionExpired, unavailable, refresh } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const mustChange = !passwordChangePage && session?.user.must_change_password === true;
+  const mustChange = !allowMustChange && session?.user.must_change_password === true;
 
   useEffect(() => {
     if (!ready) return;

@@ -546,7 +546,7 @@ async def test_changing_the_password_keeps_this_device_signed_in_and_ends_the_ot
 async def test_an_account_with_no_password_to_prove_is_told_why(
     client: AsyncClient, db_session: AsyncSession, sso_only: bool, code: str
 ) -> None:
-    """A-13: an invited or SSO account has no current password, so it is told
+    """An invited or SSO account has no current password, so it is told
     so rather than refused `invalid_credentials` for every guess."""
     user = await identity_repo.create_user(
         db_session,
@@ -562,3 +562,27 @@ async def test_an_account_with_no_password_to_prove_is_told_why(
         headers=bearer(mint_token(user_id=user.id, email="invited@example.com")),
     )
     assert response.json()["code"] == code
+
+
+async def test_a_suspended_account_cannot_change_its_password_for_a_fresh_session(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Sign-in refuses a suspended account; change-password answers with a new
+    pair, so it refuses one too rather than handing an access token minted
+    before the suspension a session that outlives it."""
+    from app.features.identity.tokens import hash_password
+
+    user = await identity_repo.create_user(
+        db_session,
+        email="suspended@example.com",
+        name="Suspended",
+        password_hash=hash_password("the current horse battery"),
+    )
+    user.status = "suspended"
+    await db_session.flush()
+    response = await client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "the current horse battery", "new_password": "a different horse battery"},
+        headers=bearer(mint_token(user_id=user.id, email="suspended@example.com")),
+    )
+    assert response.json()["code"] == "account_suspended"

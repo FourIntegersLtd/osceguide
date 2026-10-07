@@ -9,7 +9,7 @@ export default function Page() {
   // Reads `?next`, so it needs a boundary; the form is the whole page.
   return (
     <Suspense fallback={null}>
-      <RequireSession passwordChangePage>
+      <RequireSession allowMustChange>
         <ChangePasswordRequired />
       </RequireSession>
     </Suspense>

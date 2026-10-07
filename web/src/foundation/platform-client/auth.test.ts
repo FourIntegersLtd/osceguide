@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test } from "node:test";
 
 import {
   changePassword,
+  PasswordChangedNotStored,
   clearPlatformSession,
   register,
   exchangeLegacyToken,
@@ -259,4 +260,19 @@ test("changing the password adopts the fresh pair, so this tab stays signed in",
   assert.ok(calls().some((call) => call.url.endsWith("/api/v1/auth/change-password")));
   assert.ok(calls().some((call) => call.method === "POST" && call.url.endsWith("/api/session")));
   assert.equal(await platformAccessToken(), "access-2");
+});
+
+test("a password changed but not stored says the change happened and to sign in with it", async () => {
+  respond((call) => {
+    if (call.url.includes("/api/session")) return new Response(null, { status: 500 });
+    return json({ access_token: "access-2", refresh_token: "refresh-2", token_type: "bearer", expires_in: 900 });
+  });
+  await assert.rejects(changePassword("old password", "new password here"), (error: unknown) => {
+    assert.ok(error instanceof PasswordChangedNotStored);
+    assert.equal(
+      error.message,
+      "Your password was changed, but we couldn't keep you signed in. Sign in with your new password.",
+    );
+    return true;
+  });
 });

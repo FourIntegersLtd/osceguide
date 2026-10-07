@@ -114,12 +114,13 @@ async def stream_machinery(
 
 @router.get(
     "/platform/outbox/undelivered",
-    response_model=list[schemas.UndeliveredMessage],
+    response_model=schemas.UndeliveredMail,
     responses=error_responses(Forbidden),
 )
-async def list_undelivered_mail(admin: PlatformAdmin, session: Session) -> list[schemas.UndeliveredMessage]:
+async def list_undelivered_mail(admin: PlatformAdmin, session: Session) -> schemas.UndeliveredMail:
     """Email the outbox abandoned after its last attempt: an invitation,
-    a reset or a receipt that never left. Newest first."""
+    a reset or a receipt that never left. Newest first, one page, with
+    `has_more` when older ones were left off."""
     _ = admin
     return await service.undelivered_mail(session)
 

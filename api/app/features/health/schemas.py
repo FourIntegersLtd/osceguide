@@ -97,3 +97,10 @@ class UndeliveredMessage(BaseModel):
     attempts: int
     last_error: str | None
     abandoned_at: datetime
+
+
+class UndeliveredMail(BaseModel):
+    """The newest abandoned emails, and whether older ones were left off."""
+
+    messages: list[UndeliveredMessage]
+    has_more: bool

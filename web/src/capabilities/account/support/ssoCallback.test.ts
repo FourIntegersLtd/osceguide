@@ -40,3 +40,13 @@ test("a reload after the token was stripped says the link was used", () => {
     message: "This sign-in link has already been used or is incomplete. Start again from the sign-in page.",
   });
 });
+
+test("someone already signed in is told the link was not used, whatever it carries", () => {
+  const callback = readSsoCallback(new URLSearchParams("org_slug=riverside&token=someone-elses"), { signedIn: true });
+  assert.deepEqual(callback, {
+    ok: false,
+    ignored: true,
+    message:
+      "You're already signed in, so this organisation sign-in link was not used. To sign in as someone else, sign out first.",
+  });
+});

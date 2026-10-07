@@ -23,14 +23,16 @@ import { readSsoCallback } from "@/capabilities/account/support/ssoCallback";
  * would be a way to sign in as anyone who can type a JWT; the backend checks
  * the signature against the configured issuer and provisions from *that*.
  *
- * Strict mode runs an effect twice, and the second run would post a token the
- * backend has already spent. The ref is what keeps it to one.
+ * It waits for the session check first. Somebody already signed in is told
+ * the link was not used and keeps their session, rather than having it
+ * silently replaced by whoever the token names. And the single-use token is
+ * taken out of the address bar as soon as it is read, so it is not left in
+ * history and a reload says the link was used instead of failing on a spent
+ * token.
  *
- * It waits for the session check first. Somebody already signed in goes
- * on to `/app` with their session untouched rather than having it silently
- * replaced by whoever the token names. And the single-use token is taken out
- * of the address bar as soon as it is read, so it is not left in history and
- * a reload says the link was used instead of failing on a spent token.
+ * The ref keeps the effect to one run: strict mode runs it twice, and the
+ * session status changing afterwards (the post signs somebody in) re-runs it
+ * too, and either would post a token the backend has already spent.
  */
 export function SsoCallback() {
   const params = useSearchParams();
@@ -38,18 +40,16 @@ export function SsoCallback() {
   const { refresh, ready, status } = useSession();
   const started = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [ignored, setIgnored] = useState(false);
 
   useEffect(() => {
     if (!ready || status === "loading" || started.current) return;
     started.current = true;
 
-    if (status === "authenticated") {
-      router.replace(`/app`);
-      return;
-    }
-    const callback = readSsoCallback(params);
+    const callback = readSsoCallback(params, { signedIn: status === "authenticated" });
     window.history.replaceState(null, "", window.location.pathname);
     if (!callback.ok) {
+      setIgnored(callback.ignored === true);
       setError(callback.message);
       return;
     }
@@ -60,7 +60,7 @@ export function SsoCallback() {
         // Into the workspace picker, which reads the memberships the callback
         // provisioned. `/app/<me>` would assume a personal account exists, and
         // an SSO person's first sign-in may have just created one.
-        router.replace(`/app`);
+        router.replace("/app");
       })
       .catch((cause: unknown) => {
         setError(
@@ -75,13 +75,13 @@ export function SsoCallback() {
     <AuthShell title="Signing you in" subtitle="Finishing with your organisation." variant="card">
       {error ? (
         <div className="space-y-4">
-          <Alert tone="danger">{error}</Alert>
+          <Alert tone={ignored ? "info" : "danger"}>{error}</Alert>
           <button
             type="button"
-            onClick={() => router.replace(`/login`)}
+            onClick={() => router.replace(ignored ? "/app" : "/login")}
             className="text-osce-data font-medium text-osce-accent underline"
           >
-            Back to sign in
+            {ignored ? "Continue to your account" : "Back to sign in"}
           </button>
         </div>
       ) : (

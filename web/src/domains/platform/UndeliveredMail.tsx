@@ -18,7 +18,7 @@ export function UndeliveredMail() {
     try {
       await retryUndeliveredMail(messageId);
     } catch (cause) {
-      setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
+      setFailure(errorMessage(cause));
     } finally {
       setRetrying(null);
       mail.reload();
@@ -34,10 +34,11 @@ export function UndeliveredMail() {
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
       <AsyncBoundary
         state={mail}
-        isEmpty={(messages) => messages.length === 0}
+        isEmpty={(page) => page.messages.length === 0}
         empty={{ title: "Nothing undelivered", description: "Every email went out.", bare: true }}
       >
-        {(messages) => (
+        {({ messages, has_more }) => (
+          <>
           <RowList flush>
             {messages.map((message) => (
               <Row key={message.id}>
@@ -66,6 +67,12 @@ export function UndeliveredMail() {
               </Row>
             ))}
           </RowList>
+          {has_more ? (
+            <p className="px-4 py-3 text-osce-meta text-ink-subtle">
+              Showing the newest {messages.length}. Retry these and the older ones appear here.
+            </p>
+          ) : null}
+          </>
         )}
       </AsyncBoundary>
     </Panel>

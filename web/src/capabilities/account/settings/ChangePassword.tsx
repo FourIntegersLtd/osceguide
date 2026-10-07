@@ -4,7 +4,7 @@ import { useState } from "react";
 import { HiOutlineArrowPath, HiOutlineLockClosed } from "react-icons/hi2";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { z } from "zod";
-import { changePassword, hasCode, isPlatformError, requestPasswordReset } from "@/foundation/platform-client";
+import { changePassword, hasCode, requestPasswordReset, type PlatformErrorCode } from "@/foundation/platform-client";
 import { useSession } from "@/foundation/session";
 import {
   B2CInlineError,
@@ -42,7 +42,7 @@ type PasswordField = "currentPassword" | "newPassword" | "confirmPassword";
 
 /** An account with no password to prove (an invitation finished through
  *  SSO). Not in the generated codes until `openapi.json` is regenerated. */
-const PASSWORD_NOT_SET = "password_not_set";
+const PASSWORD_NOT_SET = "password_not_set" as PlatformErrorCode;
 
 const FIELDS: { name: PasswordField; label: string; hint?: string }[] = [
   { name: "currentPassword", label: "Current Password" },
@@ -109,7 +109,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
     setIsSubmitting(true);
     try {
       await changePassword(values.currentPassword, values.newPassword);
-      setSuccessMessage("Password updated. Your other devices have been signed out; this one stays signed in.");
+      setSuccessMessage("Password updated. This device stays signed in; your other devices are signed out within 15 minutes.");
       setValues({ currentPassword: "", newPassword: "", confirmPassword: "" });
       if (onChanged) await onChanged();
     } catch (error) {
@@ -122,7 +122,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
         setFieldErrors({ currentPassword: "That's not your current password." });
       } else if (hasCode(error, "weak_password")) {
         setFieldErrors({ newPassword: errorMessage(error) });
-      } else if (isPlatformError(error) && (error.code as string) === PASSWORD_NOT_SET) {
+      } else if (hasCode(error, PASSWORD_NOT_SET)) {
         setNoPassword(true);
         setFormError("This account has no password yet, so there is none to change. We can email you a link to set one.");
       } else {

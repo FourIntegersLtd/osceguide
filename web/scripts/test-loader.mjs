@@ -33,5 +33,8 @@ export async function resolve(specifier, context, nextResolve) {
     const format = /\.(ts|mts|tsx)$/.test(target) ? "module-typescript" : "module";
     return { url: pathToFileURL(target).href, format, shortCircuit: true };
   }
+  // `next/server` and friends are CommonJS files with no `exports` map, so
+  // Node's ESM resolver needs the extension the bundler adds for the app.
+  if (/^next\/[\w-]+$/.test(specifier)) return nextResolve(`${specifier}.js`, context);
   return nextResolve(specifier, context);
 }

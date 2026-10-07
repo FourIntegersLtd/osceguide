@@ -37,8 +37,9 @@ export function isOrgSuspended(slug: string): boolean {
   return suspended.has(slug);
 }
 
-/** Forget every suspension, as a reload does. For tests. */
-export function resetOrgSuspension(): void {
+/** Forget every suspension, as a reload does. Tests only: the app never
+ *  forgets one before the reload the screen asks for. */
+export function resetOrgSuspensionForTests(): void {
   suspended.clear();
 }
 

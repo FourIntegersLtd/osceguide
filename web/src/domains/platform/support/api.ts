@@ -378,9 +378,15 @@ export interface UndeliveredMessage {
   abandoned_at: string;
 }
 
-/** Every email the outbox stopped trying, most recently abandoned first. */
-export function listUndeliveredMail(signal?: AbortSignal): Promise<UndeliveredMessage[]> {
-  return platformRequest<UndeliveredMessage[]>(`${PLATFORM}/outbox/undelivered`, { signal });
+/** The newest emails the outbox stopped trying, and whether older ones were left off. */
+export interface UndeliveredMailPage {
+  messages: UndeliveredMessage[];
+  has_more: boolean;
+}
+
+/** Abandoned email, most recently abandoned first, one page. */
+export function listUndeliveredMail(signal?: AbortSignal): Promise<UndeliveredMailPage> {
+  return platformRequest<UndeliveredMailPage>(`${PLATFORM}/outbox/undelivered`, { signal });
 }
 
 /** Put one abandoned email back in the queue with a fresh set of tries.

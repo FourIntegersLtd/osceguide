@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Alert, Button } from "@/foundation/ui";
-import { login, PlatformError, type components, type MfaChallenge } from "@/foundation/platform-client";
+import { hasCode, login, type components, type MfaChallenge } from "@/foundation/platform-client";
 import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
@@ -130,33 +130,30 @@ export default function Login() {
     setIsSubmitting(true);
     try {
       const outcome = await login(result.data.email, result.data.password);
-      if (outcome.status !== "signed_in") {
-        setChallenge(outcome);
-        setIsSubmitting(false);
+      if (outcome.status === "signed_in") {
+        // Leaves the button pending: `land` moves the page on.
+        await land(outcome);
         return;
       }
-      await land(outcome);
+      setChallenge(outcome);
     } catch (error) {
-      if (error instanceof PlatformError && error.code === "password_login_disabled") {
+      if (hasCode(error, "password_login_disabled")) {
+        // The account signs in through its organisation. Find that door by
+        // email, since the host lookup on arrival may have missed it.
         const found = await ssoForRefusedPassword(result.data.email, readSsoSignIn);
-        if (found.sso) {
-          setSso(found.sso);
-          setSsoReason(found.notice);
-          setFormError(null);
-        } else {
-          setFormError(found.notice);
-        }
-        setIsSubmitting(false);
-        return;
+        if (found.sso) setSso(found.sso);
+        setSsoReason(found.sso ? found.notice : null);
+        setFormError(found.sso ? null : found.notice);
+      } else {
+        const mapped = mapAuthApiError<LoginField>(
+          error,
+          "We couldn't sign you in. Check your details and try again.",
+        );
+        setFormError(mapped.formError);
+        setFieldErrors(mapped.fieldErrors);
       }
-      const mapped = mapAuthApiError<LoginField>(
-        error,
-        "We couldn't sign you in. Check your details and try again.",
-      );
-      setFormError(mapped.formError);
-      setFieldErrors(mapped.fieldErrors);
-      setIsSubmitting(false);
     }
+    setIsSubmitting(false);
   };
 
   // Keep the button pending; the page is about to change. Platform staff land

@@ -15,6 +15,7 @@ from app.core.settings import Settings
 from app.features.identity import repository, service_sessions
 from app.features.identity.domain import WeakPassword, validate_password
 from app.features.identity.errors import (
+    AccountSuspended,
     InvalidCredentials,
     InvalidResetToken,
     PasswordLoginDisabled,
@@ -111,7 +112,9 @@ async def change_password(
     An account whose organisation signs it in is refused
     `password_login_disabled`, and one with no password yet
     `password_not_set`, rather than an `invalid_credentials` no current
-    password could ever pass."""
+    password could ever pass. A suspended account is refused
+    `account_suspended` after the password, as sign-in refuses it, so a
+    token minted before the suspension cannot buy a fresh pair here."""
     try:
         validate_password(new)
     except WeakPassword as exc:
@@ -125,6 +128,8 @@ async def change_password(
         raise PasswordNotSet()
     if not verify_password(user.password_hash, current):
         raise InvalidCredentials()
+    if user.status != "active":
+        raise AccountSuspended()
     await repository.set_password_hash(session, user_id, hash_password(new))
     await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason="password_change")
     # `set_password_hash` also cleared `must_change_password`; the new token is

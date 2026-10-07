@@ -19,6 +19,7 @@ from app.core.ports import EventBus
 from app.core.settings import Settings, get_settings
 from app.core.sse import Snapshot, event_stream
 from app.features.health import repository, repository_jobs
+from app.features.health.errors import MessageNotRetryable
 from app.features.health.repository_jobs import JobEventRef, JobRef
 from app.features.health.schemas import (
     CheckState,
@@ -29,6 +30,7 @@ from app.features.health.schemas import (
     Machinery,
     MachineryCapacity,
     PlatformHealth,
+    UndeliveredMail,
     UndeliveredMessage,
 )
 from app.features.notifications import service as notifications
@@ -200,27 +202,38 @@ def _read(job: JobRef, events: list[JobEventRef]) -> JobRead:
 # the console's view of it and its one action, recorded like every platform act.
 
 
-async def undelivered_mail(session: AsyncSession) -> list[UndeliveredMessage]:
-    """Every email abandoned after its last attempt, most recent first."""
-    return [
-        UndeliveredMessage(
-            id=message.id,
-            recipient=message.recipient,
-            subject=message.subject,
-            template_key=message.template_key,
-            attempts=message.attempts,
-            last_error=message.last_error,
-            abandoned_at=message.updated_at,
-        )
-        for message in await notifications.list_undelivered(session)
-    ]
+# The console lists this many; a longer outage says so rather than scrolling.
+UNDELIVERED_PAGE = 100
+
+
+async def undelivered_mail(session: AsyncSession) -> UndeliveredMail:
+    """The newest abandoned emails, most recent first, and whether there are more."""
+    found = await notifications.list_undelivered(session, limit=UNDELIVERED_PAGE + 1)
+    return UndeliveredMail(
+        messages=[
+            UndeliveredMessage(
+                id=message.id,
+                recipient=message.recipient,
+                subject=message.subject,
+                template_key=message.template_key,
+                attempts=message.attempts,
+                last_error=message.last_error,
+                abandoned_at=message.updated_at,
+            )
+            for message in found[:UNDELIVERED_PAGE]
+        ],
+        has_more=len(found) > UNDELIVERED_PAGE,
+    )
 
 
 async def retry_mail(
     session: AsyncSession, message_id: uuid.UUID, *, actor: Principal, now: datetime
 ) -> None:
-    """Queue an abandoned email again with a fresh set of attempts, and record who did."""
-    await notifications.retry_undelivered(session, message_id, now=now)
+    """Queue an abandoned email again with a fresh set of attempts, and record
+    who did. Refuses `message_not_retryable` once it is not abandoned, so a
+    second press never sends it twice."""
+    if not await notifications.retry_undelivered(session, message_id, now=now):
+        raise MessageNotRetryable()
     await service_audit.record(
         session,
         actor=actor,

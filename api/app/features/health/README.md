@@ -15,7 +15,7 @@ ask what the queue holds for the thing it is about without growing its own SQL.
 | GET | `/health` | none | 200 `ok`/`degraded`, 503 `down` when the database fails |
 | GET | `/api/v1/platform/health` | platform admin | the same report plus the queue by status and the worker's last heartbeat |
 | GET | `/api/v1/platform/jobs` | platform admin | the queue, newest first; `?status=failed`, `?task=`, `?before_id=` to page. No retry route: re-queue through the thing the job was about |
-| GET | `/api/v1/platform/outbox/undelivered` | platform admin | email the outbox abandoned after its last attempt, newest first |
+| GET | `/api/v1/platform/outbox/undelivered` | platform admin | email the outbox abandoned after its last attempt, newest first: the newest 100 (`UNDELIVERED_PAGE`) and `has_more` |
 | POST | `/api/v1/platform/outbox/{message_id}/retry` | platform admin | queue an abandoned email again with fresh attempts; audited; `message_not_retryable` once it is not abandoned |
 | GET | `/api/v1/platform/machinery?status=` | platform admin | the machinery page in one read: `health`, `capacity` and `jobs` (one status, newest 100) |
 | GET | `/api/v1/platform/machinery/stream?status=` | platform admin (stream ticket) | SSE: health, voice capacity and one status of the queue as one `Machinery` snapshot; re-sent every 5s and at once when a voice seat frees |

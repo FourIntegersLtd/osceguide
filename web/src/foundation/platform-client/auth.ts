@@ -208,23 +208,38 @@ async function withSessionLock<T>(run: () => Promise<T>): Promise<T> {
   return locks.request("osce-platform-session", run);
 }
 
+interface TokenAnswer {
+  access_token: string | null;
+  expires_at?: number;
+  /** Set when the refresh was refused: which token, so the check-back can
+   *  tell whether the cookie changed meanwhile. */
+  refused?: string;
+}
+
+/** One ask of the token route; `null` when it could not be reached. */
+async function askForToken(refused?: string): Promise<TokenAnswer | null> {
+  try {
+    const response = await fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify(refused ? { refused } : {}),
+    });
+    return response.ok ? ((await response.json()) as TokenAnswer) : null;
+  } catch {
+    // Offline, or this app's own server is down. Not a reason to sign
+    // anybody out; the caller can try again.
+    return null;
+  }
+}
+
 async function fetchToken(): Promise<string | null> {
   return withSessionLock(async () => {
-    let response: Response;
-    try {
-      response = await fetch(TOKEN_ENDPOINT, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      });
-    } catch {
-      // Offline, or this app's own server is down. Not a reason to sign
-      // anybody out; the caller can try again.
-      return null;
-    }
-    if (!response.ok) return null;
-
-    const body = (await response.json()) as { access_token: string | null; expires_at?: number };
+    let body = await askForToken();
+    // A refused refresh is checked back once: a pair stored meanwhile (another
+    // tab signed in) is used rather than cleared.
+    if (body?.refused) body = await askForToken(body.refused);
+    if (!body) return null;
     if (!body.access_token) {
       // The server has already cleared the cookies: the chain was spent or
       // revoked, or there was never a session here.
@@ -348,14 +363,6 @@ export async function confirmMfaEnrolmentAtSignIn(
 }
 
 /**
- * Create a consumer account. Institutions provision their people instead.
- *
- * `examCode` is which exam they came to sit. The retiring client got it from
- * the hostname — `sca.osceguide.com` — and on one domain the per-exam landing
- * pages carry it into this form instead. Optional, because somebody arriving
- * at the site root has not said yet.
- */
-/**
  * The account exists but this browser holds no session for it, because
  * storing the pair failed or the account owes a second factor. Retrying the
  * form would only answer `email_taken`; the way on is to sign in.
@@ -367,6 +374,26 @@ export class AccountCreatedNotSignedIn extends Error {
   }
 }
 
+/**
+ * The server changed the password and ended every session, but this browser
+ * could not store the fresh pair, so it is signed out too. Saying "try again"
+ * would send the person to a current password that no longer works.
+ */
+export class PasswordChangedNotStored extends Error {
+  constructor() {
+    super("Your password was changed, but we couldn't keep you signed in. Sign in with your new password.");
+    this.name = "PasswordChangedNotStored";
+  }
+}
+
+/**
+ * Create a consumer account. Institutions provision their people instead.
+ *
+ * `examCode` is which exam they came to sit. The retiring client got it from
+ * the hostname — `sca.osceguide.com` — and on one domain the per-exam landing
+ * pages carry it into this form instead. Optional, because somebody arriving
+ * at the site root has not said yet.
+ */
 export async function register(input: {
   email: string;
   password: string;
@@ -450,7 +477,11 @@ export async function changePassword(current: string, next: string): Promise<voi
     "/api/v1/auth/change-password",
     { method: "POST", body: { current_password: current, new_password: next } },
   );
-  await remember(pair);
+  try {
+    await remember(pair);
+  } catch {
+    throw new PasswordChangedNotStored();
+  }
 }
 
 export async function requestPasswordReset(email: string): Promise<void> {

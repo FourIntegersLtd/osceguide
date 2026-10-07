@@ -4,7 +4,7 @@ import { platformRequest } from "@/foundation/platform-client/client";
 import { switchWorkspace } from "@/foundation/platform-client/auth";
 import {
   isOrgSuspended,
-  resetOrgSuspension,
+  resetOrgSuspensionForTests,
   subscribeOrgSuspension,
 } from "@/foundation/platform-client/orgSuspension";
 
@@ -12,7 +12,7 @@ const realFetch = globalThis.fetch;
 
 afterEach(() => {
   globalThis.fetch = realFetch;
-  resetOrgSuspension();
+  resetOrgSuspensionForTests();
 });
 
 function refuse(code: string): void {

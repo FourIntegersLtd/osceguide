@@ -9,12 +9,25 @@
  */
 export type SsoCallback =
   | { ok: true; orgSlug: string; token: string; state: string | null }
-  | { ok: false; message: string };
+  | { ok: false; message: string; ignored?: true };
 
 /** The SAML assertion consumer's code when the IdP's response failed its checks. */
 const SAML_REFUSED = "sso_verification_failed";
 
-export function readSsoCallback(params: URLSearchParams): SsoCallback {
+/**
+ * `signedIn`: this browser already holds a session. The link is ignored, and
+ * the person told so, rather than their session being swapped for whoever the
+ * token names or the link silently doing nothing.
+ */
+export function readSsoCallback(params: URLSearchParams, { signedIn = false } = {}): SsoCallback {
+  if (signedIn) {
+    return {
+      ok: false,
+      ignored: true,
+      message:
+        "You're already signed in, so this organisation sign-in link was not used. To sign in as someone else, sign out first.",
+    };
+  }
   const error = params.get("error");
   if (error === SAML_REFUSED) {
     // The response arrived but its signature, audience or timing failed,

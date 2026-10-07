@@ -51,8 +51,9 @@ Handles: `getByLabel("Email")`, `getByLabel("Password", { exact: true })`,
   Abort the event streams: a fetched stream never ends and hangs the route.
 - SSO callback: `/auth/sso/callback?org_slug=x&error=sso_verification_failed`
   shows the refused-SSO copy; any `token=` is stripped from the address once
-  read, so a reload says "already been used". Signed in, it goes to `/app`
-  with no POST.
+  read, so a reload says "already been used". Signed in, it posts nothing and
+  says "You're already signed in, so this organisation sign-in link was not
+  used", with a "Continue to your account" button.
 - Undelivered email on `/staff/ops`: mark a row `status='failed', attempts=12`
   in `outbound_messages`; each row is a `listitem` with a "Retry" button, and
   the retry is audited in `audit_log` as `notifications.message_retried`.

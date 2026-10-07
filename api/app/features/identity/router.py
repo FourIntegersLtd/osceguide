@@ -244,6 +244,7 @@ async def confirm_password_reset(
         errors.WeakPasswordError,
         errors.PasswordLoginDisabled,
         errors.PasswordNotSet,
+        errors.AccountSuspended,
     ),
 )
 async def change_password(

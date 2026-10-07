@@ -31,7 +31,8 @@ transaction that justified it; a worker drains the queue.
 
 ## Routes
 None of its own. The console's undelivered-mail list and retry are served by
-`health` (`/platform/outbox/...`), which calls this slice's service.
+`health` (`/platform/outbox/...`), which calls this slice's service and owns
+the `message_not_retryable` refusal (`retry_undelivered` answers a bool).
 
 ## Jobs
 `deliver_outbound_messages` — periodic, every minute.

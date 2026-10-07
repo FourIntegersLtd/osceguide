@@ -182,17 +182,21 @@ async def test_a_job_its_worker_died_on_is_requeued_once_then_failed_with_its_hi
 async def test_mail_abandoned_in_an_outage_is_listed_and_sent_again_on_retry(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    """S-5: a provider outage used to abandon a message after a quarter of an
+    """A provider outage used to abandon a message after a quarter of an
     hour with only a log line. Now it keeps trying for hours, and once it does
-    give up support sees it on System health and sends it again."""
+    give up support sees it on System health and sends it again, on the record."""
     from datetime import UTC, datetime, timedelta
 
+    from sqlalchemy import select
+
+    from app.features.tenancy.models import AuditEntry
     from app.features.notifications import domain
     from app.features.notifications import repository as outbox
     from app.features.notifications import service as notifications
     from tests.support.fakes import RecordingEmailSender
 
     root = await make_actor("root@osceguide.com", platform_admin=True)
+    member = await make_actor("member@example.com")
     await notifications.enqueue_email(
         db_session,
         recipient="invitee@example.com",
@@ -217,16 +221,28 @@ async def test_mail_abandoned_in_an_outage_is_listed_and_sent_again_on_retry(
 
     listed = await client.get("/api/v1/platform/outbox/undelivered", headers=bearer(root))
     assert listed.status_code == 200, listed.text
-    [row] = [item for item in listed.json() if item["recipient"] == "invitee@example.com"]
+    assert listed.json()["has_more"] is False
+    [row] = [item for item in listed.json()["messages"] if item["recipient"] == "invitee@example.com"]
     assert (row["subject"], row["attempts"]) == ("You are invited", domain.MAX_ATTEMPTS)
+
+    # Someone who is not platform staff can neither read the list nor send it.
+    peek = await client.get("/api/v1/platform/outbox/undelivered", headers=bearer(member))
+    push = await client.post(f"/api/v1/platform/outbox/{row['id']}/retry", headers=bearer(member))
+    assert (peek.status_code, push.status_code) == (403, 403)
 
     retried = await client.post(f"/api/v1/platform/outbox/{row['id']}/retry", headers=bearer(root))
     assert retried.status_code == 204, retried.text
     again = await client.post(f"/api/v1/platform/outbox/{row['id']}/retry", headers=bearer(root))
     assert again.json()["code"] == "message_not_retryable"
+    recorded = (
+        await db_session.execute(
+            select(AuditEntry.action, AuditEntry.actor_email).where(AuditEntry.target_id == row["id"])
+        )
+    ).all()
+    assert [tuple(entry) for entry in recorded] == [("notifications.message_retried", "root@osceguide.com")]
 
     back_up = RecordingEmailSender()
     await notifications.deliver_due(db_session, sender=back_up, now=datetime.now(UTC) + timedelta(seconds=1))
     assert [mail.to for mail in back_up.sent] == ["invitee@example.com"]
     listed_after = await client.get("/api/v1/platform/outbox/undelivered", headers=bearer(root))
-    assert all(item["id"] != row["id"] for item in listed_after.json())
+    assert all(item["id"] != row["id"] for item in listed_after.json()["messages"])

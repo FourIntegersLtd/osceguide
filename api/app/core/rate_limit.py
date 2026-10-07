@@ -10,14 +10,11 @@ counting every click would only find the people using the product hardest.
 
 **Mostly it fails open.** An unconfigured or switched-off Redis allows the
 call and says so in the log: turning the limiter off is a deployment choice,
-and a cache outage must not stop the whole product working. Two exceptions,
-for when Redis is reachable but *errors mid-check* — exactly the moment a
-password spray would be running (SEC-003): a limit with
-`on_redis_error="refuse"` (password reset, the second factor) refuses the call,
-and one with `on_redis_error="count_locally"` (sign-in) keeps counting in this process instead, so a Redis blip at the start
-of an exam neither locks a whole cohort out nor switches the brake off. A limit
-was never the only defence; it raises the cost of a spraying run from free to
-inconvenient.
+and a cache outage must not stop the whole product working. A Redis that is
+reachable but *errors mid-check* is the moment a password spray would be
+running (SEC-003), so each limit says what happens then: `Limit.on_redis_error`.
+A limit was never the only defence; it raises the cost of a spraying run from
+free to inconvenient.
 
 The counter is a fixed window rather than a sliding one: two windows'
 allowance can land in one burst at the boundary, a distinction no attacker
