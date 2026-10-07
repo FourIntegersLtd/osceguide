@@ -9,10 +9,10 @@ import { AsyncBoundary, B2CEmptyState, ButtonLink } from "@/foundation/ui";
 import Table, { type Column } from "@/foundation/table/Table";
 import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { feedbackRows } from "@/capabilities/station-runner/feedbackRows";
+import { feedbackRows, type FeedbackRow as Row } from "@/capabilities/station-runner/feedbackRows";
 import { listMyAttempts, type AttemptHistoryItem } from "@/capabilities/attempt-runner";
 
-type FeedbackRow = ReturnType<typeof feedbackRows<AttemptHistoryItem>>[number];
+type FeedbackRow = Row<AttemptHistoryItem>;
 
 export function FeedbackHistory({ stationVersionId, entryId, stationName }: {
   stationVersionId: string | null;

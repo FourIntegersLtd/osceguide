@@ -5,34 +5,52 @@ import {
   AsyncBoundary,
   Button,
   ConfirmModal,
-  Panel,
-  PlatformPageHeader,
-  Row,
-  RowList,
+  QuietCard,
+  B2CGroupedRow,
+  B2CGroupedSection,
+  B2CHero,
+  B2CPageHeader,
+  LoadMore,
 } from "@/foundation/ui";
-import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import Link from "next/link";
+import { PERSONAL_SLUG } from "@/foundation/routing";
+import { stationHref } from "@/capabilities/stations";
+import { formatLongDate, plural } from "@/foundation/format";
+import { errorMessage, useCursorPages, useToast } from "@/foundation/hooks";
 import {
   deleteModerationPost,
   listModerationPosts,
   type ModerationPost,
 } from "@/capabilities/staff-moderation/api";
 
-function formatDay(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+function postTitle(post: ModerationPost): string {
+  return "title" in post && typeof post.title === "string" && post.title
+    ? post.title
+    : post.kind === "reply"
+      ? "Reply"
+      : "Post";
+}
+
+/** Where a moderator reads the post in context: the station for a comment, else its thread. */
+function postHref(post: ModerationPost): string {
+  if (post.station_id) {
+    return stationHref((path) => `/app/${PERSONAL_SLUG}${path}`, post.station_id);
+  }
+  return `/app/${PERSONAL_SLUG}/discussion?question=${encodeURIComponent(post.parent_id ?? post.id)}`;
+}
+
+function firstLine(body: string): string {
+  return body.split("\n").find((line) => line.trim() !== "")?.trim() ?? "";
 }
 
 export function ModerationHome() {
-  const state = useAsync(
-    (signal) => listModerationPosts({ days: 7 }, signal),
+  const pages = useCursorPages(
+    (cursor, signal) => listModerationPosts({ days: 7, cursor }, signal),
     [],
   );
+  const state = pages.state;
   const toast = useToast();
+  const [open, setOpen] = useState<ModerationPost | null>(null);
   const [target, setTarget] = useState<ModerationPost | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +63,7 @@ export function ModerationHome() {
       await deleteModerationPost(target.id);
       toast.success("Post removed");
       setTarget(null);
+      setOpen(null);
       state.reload();
     } catch (cause) {
       setError(errorMessage(cause));
@@ -55,55 +74,67 @@ export function ModerationHome() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
+      <B2CPageHeader
         title="Moderation"
-        description="Recent community posts. Remove anything that should not stay public."
+        subtitle="Recent community posts. Remove anything that should not stay public."
       />
 
-      <Panel title="Last seven days" padding="none">
-        <AsyncBoundary
-          state={state}
-          isEmpty={(page) => page.items.length === 0}
-          empty={{
-            title: "Queue is empty",
-            description: "No posts in the last seven days.",
-            bare: true,
-          }}
-        >
-          {(page) => (
-            <RowList flush>
-              {page.items.map((post) => (
-                <Row key={post.id} className="items-start">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-osce-data font-medium text-ink">
-                      {"title" in post &&
-                      typeof post.title === "string" &&
-                      post.title
-                        ? post.title
-                        : post.kind === "reply"
-                          ? "Reply"
-                          : "Post"}
-                    </p>
-                    <p className="mt-0.5 text-osce-meta text-ink-subtle">
-                      {formatDay(post.created_at)}
-                    </p>
-                    <p className="mt-2 line-clamp-3 text-osce-body text-ink-muted">
-                      {post.body}
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setTarget(post)}
-                  >
-                    Delete
-                  </Button>
-                </Row>
+      <AsyncBoundary
+        state={state}
+        isEmpty={(posts) => posts.length === 0}
+        empty={{
+          title: "Queue is empty",
+          description: "No posts in the last seven days.",
+        }}
+      >
+        {(posts) => (
+          <>
+            <B2CHero
+              title={`${plural(posts.length, "post")}${pages.hasMore ? " so far" : ""} in the last seven days`}
+            />
+            {open ? (
+              <QuietCard
+                title={postTitle(open)}
+                subtitle={`${open.author_name ?? "Someone"} · ${formatLongDate(open.created_at)}`}
+                actions={
+                  <>
+                    <Link href={postHref(open)} target="_blank" rel="noreferrer" className="inline-flex">
+                      <Button variant="ghost" size="sm">
+                        Open in context
+                      </Button>
+                    </Link>
+                    <Button variant="ghost" size="sm" onClick={() => setTarget(open)}>
+                      Delete
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setOpen(null)}>
+                      Close
+                    </Button>
+                  </>
+                }
+              >
+                <p className="whitespace-pre-wrap text-osce-body text-ink">{open.body}</p>
+              </QuietCard>
+            ) : null}
+            <B2CGroupedSection eyebrow="Last seven days">
+              {posts.map((post) => (
+                <B2CGroupedRow
+                  key={post.id}
+                  active={open?.id === post.id}
+                  onClick={() => setOpen(post)}
+                  title={postTitle(post)}
+                  meta={`${post.author_name ?? "Someone"} · ${formatLongDate(post.created_at)} · ${firstLine(post.body)}`}
+                />
               ))}
-            </RowList>
-          )}
-        </AsyncBoundary>
-      </Panel>
+            </B2CGroupedSection>
+            <LoadMore
+              hasMore={pages.hasMore}
+              busy={pages.loadingMore}
+              onLoad={pages.loadMore}
+              error={pages.moreError}
+            />
+          </>
+        )}
+      </AsyncBoundary>
 
       <ConfirmModal
         isOpen={target !== null}

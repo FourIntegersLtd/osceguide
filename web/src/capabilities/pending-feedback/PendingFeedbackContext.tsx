@@ -226,11 +226,45 @@ export function PendingFeedbackProvider({ children }: { children: ReactNode }) {
     [commit, showReady],
   );
 
+  // Marking that errored is not marking that is slow: the first offers a retry, the second a link.
+  const handleFailed = useCallback(
+    (key: string) => {
+      const job = jobsRef.current.find((entry) => entry.key === key);
+      forget(key);
+      if (!job?.notify) return;
+      toast.show({
+        id: `feedback-failed-${key}`,
+        tone: "error",
+        title: "Marking did not finish",
+        message: `${job.stationLabel} could not be marked. You can check again.`,
+        persistent: true,
+        action: {
+          label: "Try again",
+          onClick: () => {
+            register({ key, attemptId: job.attemptId, stationLabel: job.stationLabel, reviewHref: job.reviewHref });
+            release(key);
+          },
+        },
+      });
+    },
+    [forget, toast, register, release],
+  );
+
   const handleExpired = useCallback(
     (key: string) => {
+      const job = jobsRef.current.find((entry) => entry.key === key);
       forget(key);
+      if (!job?.notify) return;
+      toast.show({
+        id: `feedback-slow-${key}`,
+        tone: "warning",
+        title: "Marking is taking longer than usual",
+        message: `${job.stationLabel} is not marked yet. Open it to see where it stands.`,
+        persistent: true,
+        action: { label: "Open", href: job.reviewHref },
+      });
     },
-    [forget],
+    [forget, toast],
   );
 
   return (
@@ -242,6 +276,7 @@ export function PendingFeedbackProvider({ children }: { children: ReactNode }) {
             job={job}
             onReady={handleReady}
             onExpired={handleExpired}
+            onFailed={handleFailed}
           />
         ))}
     </PendingFeedbackContext.Provider>

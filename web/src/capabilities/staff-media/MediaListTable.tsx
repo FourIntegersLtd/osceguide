@@ -2,7 +2,9 @@
 
 import { useMemo } from "react";
 import {
+  HiOutlineArrowDownTray,
   HiOutlineArrowUpTray,
+  HiOutlineLockOpen,
   HiOutlineChevronRight,
   HiOutlineTrash,
 } from "react-icons/hi2";
@@ -18,6 +20,7 @@ import type { MediaItem } from "@/capabilities/staff-media/api";
 import {
   isSpokenKind,
 } from "@/capabilities/staff-media/content/review";
+import { avStatus, isAvRunning } from "@/capabilities/staff-media/content/b2cMediaShapes";
 import {
   stageOf,
 } from "@/capabilities/staff-media/content/steps";
@@ -36,6 +39,8 @@ export function MediaListTable({
   onOpen,
   onPublish,
   onDelete,
+  onUnpublish,
+  onUnlock,
 }: {
   items: MediaItem[];
   /** The "Load more" footer: the screen's cursor pages. */
@@ -44,6 +49,8 @@ export function MediaListTable({
   onOpen: (item: MediaItem) => void;
   onPublish: (item: MediaItem) => void;
   onDelete: (item: MediaItem) => void;
+  onUnpublish: (item: MediaItem) => void;
+  onUnlock: (item: MediaItem) => void;
 }) {
   const columns = useMemo(
     () => [
@@ -106,6 +113,7 @@ export function MediaListTable({
         priority: "detail" as const,
         render: (item: MediaItem) => {
           const isDraft = item.status === "draft";
+          const running = isAvRunning(avStatus(item.content ?? {}));
           return (
             <AuthoringRowActions>
               {isDraft ? (
@@ -120,7 +128,31 @@ export function MediaListTable({
                   <HiOutlineTrash className="h-4 w-4" aria-hidden />
                 </AuthoringIconAction>
               ) : null}
-              {isDraft ? (
+              {running ? (
+                <AuthoringIconAction
+                  variant="ghost"
+                  label="Release stuck job"
+                  busy={busy === `unlock:${item.id}`}
+                  busyLabel="Releasing…"
+                  disabled={busy !== null}
+                  onClick={() => onUnlock(item)}
+                >
+                  <HiOutlineLockOpen className="h-4 w-4" aria-hidden />
+                </AuthoringIconAction>
+              ) : null}
+              {!isDraft ? (
+                <AuthoringIconAction
+                  variant="ghost"
+                  label="Unpublish"
+                  busy={busy === `unpublish:${item.id}`}
+                  busyLabel="Unpublishing…"
+                  disabled={busy !== null}
+                  onClick={() => onUnpublish(item)}
+                >
+                  <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
+                </AuthoringIconAction>
+              ) : null}
+              {isDraft && !running ? (
                 <AuthoringIconAction
                   variant="primary"
                   label="Publish"
@@ -144,7 +176,7 @@ export function MediaListTable({
         },
       },
     ],
-    [busy, onDelete, onOpen, onPublish],
+    [busy, onDelete, onOpen, onPublish, onUnlock, onUnpublish],
   );
 
   return (

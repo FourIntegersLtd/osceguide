@@ -15,6 +15,8 @@ class PostRead(BaseModel):
     kind: str
     parent_id: uuid.UUID | None
     author_id: uuid.UUID
+    # The station a comment is on; None for a question or a reply. Lets a moderator open it.
+    station_id: uuid.UUID | None
     # The author's name, joined from `identity` a page at a time rather than
     # stored twice. A display name is not a fact about the post, and copying it
     # in would leave every old post holding the name somebody stopped using.

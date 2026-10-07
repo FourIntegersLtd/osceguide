@@ -40,6 +40,13 @@ class AlreadyPublishedError(Conflict):
     default_message = "That is already published"
 
 
+class NotPublishedError(Conflict):
+    """Raised when someone tries to unpublish an item that is not published."""
+
+    code = "media_not_published"
+    default_message = "That is not published"
+
+
 class UnusableTitleError(InvalidInput):
     """Raised when a title has no characters a URL slug can be built from."""
 

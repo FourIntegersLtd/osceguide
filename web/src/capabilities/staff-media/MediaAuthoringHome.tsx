@@ -7,6 +7,7 @@ import {
   Alert,
   AsyncBoundary,
   Button,
+  ConfirmModal,
   PlatformTabbedScreen,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
@@ -23,6 +24,8 @@ import {
   deleteMedia,
   listMediaForAuthoring,
   publishMedia,
+  unlockMedia,
+  unpublishMedia,
   type MediaItem,
 } from "@/capabilities/staff-media/api";
 import { MediaListTable } from "@/capabilities/staff-media/MediaListTable";
@@ -39,6 +42,27 @@ const TABS: B2CSegmentedTabItem<MediaKind>[] = [
   { id: "blog", label: "Blog" },
   { id: "podcast", label: "Podcast" },
 ];
+
+const CONFIRM_COPY = {
+  publish: {
+    title: "Publish this?",
+    message: "Learners will see it straight away.",
+    confirm: "Publish",
+    done: "Published",
+  },
+  unpublish: {
+    title: "Unpublish this?",
+    message: "Learners lose it and it goes back to a draft you can edit or delete.",
+    confirm: "Unpublish",
+    done: "Unpublished",
+  },
+  unlock: {
+    title: "Release this job?",
+    message: "Only if the worker has died. The item is marked failed so you can start it again.",
+    confirm: "Release",
+    done: "Released",
+  },
+} as const;
 
 export function MediaAuthoringHome() {
   const router = useRouter();
@@ -88,6 +112,11 @@ export function MediaAuthoringHome() {
   };
   const action = useAction(list.reload);
   const toast = useToast();
+  // What the person is asked to confirm before anything reaches learners or is taken from them.
+  const [confirm, setConfirm] = useState<{
+    verb: "publish" | "unpublish" | "unlock";
+    item: MediaItem;
+  } | null>(null);
 
   const kindLabel = MEDIA_KIND_LABELS[kind].one;
 
@@ -158,12 +187,9 @@ export function MediaAuthoringHome() {
               onOpen={(item: MediaItem) =>
                 router.push(staffMediaDetailPath(item.id))
               }
-              onPublish={(item) =>
-                void action.run(`publish:${item.id}`, async () => {
-                  await publishMedia(item.id);
-                  toast.success("Published");
-                })
-              }
+              onPublish={(item) => setConfirm({ verb: "publish", item })}
+              onUnpublish={(item) => setConfirm({ verb: "unpublish", item })}
+              onUnlock={(item) => setConfirm({ verb: "unlock", item })}
               onDelete={(item) =>
                 void action.run(`delete:${item.id}`, async () => {
                   await deleteMedia(item.id);
@@ -174,6 +200,32 @@ export function MediaAuthoringHome() {
           </>
         )}
       </AsyncBoundary>
+      <ConfirmModal
+        isOpen={confirm !== null}
+        tone={confirm?.verb === "publish" ? "default" : "danger"}
+        title={CONFIRM_COPY[confirm?.verb ?? "publish"].title}
+        message={`"${confirm?.item.title ?? ""}": ${CONFIRM_COPY[confirm?.verb ?? "publish"].message}`}
+        confirmText={CONFIRM_COPY[confirm?.verb ?? "publish"].confirm}
+        isLoading={action.busy !== null}
+        error={action.error}
+        onCancel={() => {
+          setConfirm(null);
+          action.clearError();
+        }}
+        onConfirm={() => {
+          if (!confirm) return;
+          const { verb, item } = confirm;
+          const work = { publish: publishMedia, unpublish: unpublishMedia, unlock: unlockMedia }[verb];
+          void action
+            .run(`${verb}:${item.id}`, async () => {
+              await work(item.id);
+              toast.success(CONFIRM_COPY[verb].done);
+            })
+            .then((ok) => {
+              if (ok) setConfirm(null);
+            });
+        }}
+      />
     </PlatformTabbedScreen>
   );
 }

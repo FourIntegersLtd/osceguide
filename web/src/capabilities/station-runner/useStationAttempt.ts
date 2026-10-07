@@ -118,7 +118,7 @@ export function useStationAttempt({
           id = attemptIdFromUrl ?? (await latestFinished({ stationVersionId, setEntryId }));
         } else {
           const found = await resolveRemembered(key);
-          id = found.verdict === "discard" ? null : found.id;
+          id = found.id;
           if (!go) {
             if (!live) return;
             setGate(found.verdict === "resume" && id ? { kind: "resume", attemptId: id } : { kind: "start" });
@@ -216,18 +216,21 @@ async function latestFinished(params: {
 }
 
 /**
- * The attempt this tab remembers for the station and what to do with it, or null when it
- * remembers none (a "discard" with no id). A discarded one is forgotten here, so it is never handed to the next sitting.
+ * The attempt this tab remembers for the station and what to do with it, or no id when it
+ * remembers none or the one it remembered is discarded. A discarded one is forgotten here, so it is never handed to the next sitting.
  */
 async function resolveRemembered(key: string): Promise<{ id: string | null; verdict: RememberedVerdict }> {
   const id = remembered(key);
-  if (!id) return { id: null, verdict: "discard" };
+  if (!id) return { id: null, verdict: "none" };
   const status = await readAttempt(id).then(
     (found) => found.status,
     () => null,
   );
   const verdict = rememberedVerdict(status);
-  if (verdict === "discard") forgetStationAttempt(key);
+  if (verdict === "discard") {
+    forgetStationAttempt(key);
+    return { id: null, verdict };
+  }
   return { id, verdict };
 }
 

@@ -196,12 +196,11 @@ async def reply_counts(session: AsyncSession, post_ids: list[uuid.UUID]) -> dict
     return {count_row[0]: count_row[1] for count_row in count_rows}
 
 
-async def list_recent_for_moderation(session: AsyncSession, *, since: datetime, limit: int) -> list[Post]:
-    """The newest posts since a cutoff, for a moderator's review queue."""
-    stmt = (
-        select(Post)
-        .where(Post.removed_at.is_(None), Post.created_at >= since)
-        .order_by(Post.created_at.desc())
-        .limit(limit)
+async def list_recent_for_moderation(
+    session: AsyncSession, *, since: datetime, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[Post], str | None]:
+    """A page of the newest posts since a cutoff, for a moderator's review queue."""
+    stmt = select(Post).where(Post.removed_at.is_(None), Post.created_at >= since)
+    return await keyset_page(
+        session, stmt, sort_col=Post.created_at, id_col=Post.id, limit=limit, cursor=cursor
     )
-    return list((await session.execute(stmt)).scalars())

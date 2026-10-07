@@ -10,8 +10,7 @@ import type { CapabilityModule } from "@/capabilities/contract";
  * a consumer does.
  *
  * Listed in the navigation under Practice, as well as reached from an attempt:
- * the list of every debrief the person has had is its own screen, and without
- * an entry it was only reachable from links.
+ * the list of every debrief the person has had is its own screen.
  */
 export const debriefCapability: CapabilityModule = {
   id: "debrief",

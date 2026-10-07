@@ -24,7 +24,12 @@ from app.features.catalog import service as catalog
 from app.features.media import service as media_service
 from app.features.media.service import production_item, replace_content
 from app.features.media_production import domain, script_check, service_facts
-from app.features.media_production.errors import AvAlreadyRunning, ScriptNotChecked, WrongMediaKind
+from app.features.media_production.errors import (
+    AvAlreadyRunning,
+    NotRunning,
+    ScriptNotChecked,
+    WrongMediaKind,
+)
 from app.features.media_production.repository import defer_job, lock_for_media
 from app.features.media_production.s3 import delete_object, upload_fileobj
 from app.features.media_production.schemas import MediaRead
@@ -206,6 +211,21 @@ async def rewrite_script_if_out_of_date(
     item = await production_item(session, item_id)
     if item.kind in CHECKED_KINDS and script_check.script_out_of_date(item.kind, item.title, item.content):
         await enqueue_script_write(session, item_id, requested_by=requested_by, rewrite=False)
+
+
+async def release_stuck(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+    """Frees an item a dead worker left in a running status, which nothing else would ever clear.
+
+    The item goes to `failed` with a note in its review, so staff see what happened and can
+    start the job again. An item no job is working on is refused rather than rewritten."""
+    item = await production_item(session, item_id, lock=True)
+    if not domain.is_running(str(item.content.get("status"))):
+        raise NotRunning()
+    stopped = with_error(
+        item.content, "produce", RuntimeError("Released by staff: the worker never finished.")
+    )
+    await _set_status(session, item_id, stopped, domain.FAILED)
+    return await read_item(session, item_id)
 
 
 def is_running(content: dict[str, Any]) -> bool:

@@ -23,6 +23,7 @@ import {
 import { b2cRoomOverlay } from "@/foundation/ui/productTokens";
 import { useSurface } from "@/capabilities";
 import { StartFailureAlert } from "@/capabilities/station-runner/StartFailureAlert";
+import { phaseElapsedSeconds } from "@/capabilities/station-runner/stationClock";
 import { StartGate } from "@/capabilities/station-runner/StartGate";
 import {
   ConsultationPanel,
@@ -344,6 +345,7 @@ export function StationScreen(props: StationScreenProps) {
           duration={effectiveReadingSeconds}
           stationId={attempt.attemptId}
           timerType="doctor"
+          elapsedSeconds={phaseElapsedSeconds(attempt.brief, "reading")}
           onTimeUp={enterConsultation}
         />
       ) : activeStep === "simulation" ? (
@@ -351,6 +353,7 @@ export function StationScreen(props: StationScreenProps) {
           duration={simulationSeconds}
           stationId={attempt.attemptId}
           timerType="simulation"
+          elapsedSeconds={phaseElapsedSeconds(attempt.brief, "consultation")}
           {...consultationClock(session.phase, session.patientJoined)}
           onTimeUp={() => void handleSimulationTimeUp()}
           onFinalCountdown={session.warnTimeRemaining}

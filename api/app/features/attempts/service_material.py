@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,6 +69,9 @@ async def read_brief(
         station_version_id=material.version_id,
         station_title=material.title,
         set_entry_id=attempt.set_entry_id,
+        created_at=attempt.created_at,
+        started_at=attempt.started_at,
+        server_time=datetime.now(UTC),
         patient=_patient_identity(material.content, patient_sections),
         sections=candidate_sections,
     )

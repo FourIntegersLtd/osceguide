@@ -8,9 +8,8 @@ import type { CapabilityModule } from "@/capabilities/contract";
  * own back; an examiner reads a candidate's while marking. Same screen, and
  * the API decides which transcripts a person may open.
  *
- * It is in the navigation under Practice: the consultation screen's right-hand
- * panel is not the only way people look for a past transcript, and without an
- * entry here the list was reachable only from links.
+ * Listed in the navigation under Practice, beside the consultation screen's
+ * right-hand panel.
  */
 export const transcriptsCapability: CapabilityModule = {
   id: "transcripts",

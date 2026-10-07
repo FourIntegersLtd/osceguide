@@ -17,5 +17,6 @@ export const stationsCapability: CapabilityModule = {
   section: "practice",
   path: "/stations",
   staffHiddenOn: ["assess"],
+  unmountedGoesTo: "/mocks",
   icon: LuStethoscope,
 };

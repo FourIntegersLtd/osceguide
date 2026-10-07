@@ -18,6 +18,7 @@ from app.core.audience import (
     ensure_may_address,
 )
 from app.core.errors import AppError, raise_mapped
+from app.core.pagination import CursorParams, Page
 from app.features.catalog.service import resolve_exam
 from app.features.community import domain, errors, repository
 from app.features.community.models import Post
@@ -256,12 +257,14 @@ async def list_station_comments(
 
 
 async def list_moderation_queue(
-    session: AsyncSession, *, viewer_id: uuid.UUID, days: int = 7, limit: int = 100
-) -> list[PostRead]:
-    """Every post from the last few days, newest first, for a moderator to review."""
+    session: AsyncSession, *, viewer_id: uuid.UUID, params: CursorParams, days: int = 7
+) -> Page[PostRead]:
+    """Every post from the last few days, newest first, a page at a time, for a moderator to review."""
     since = datetime.now(tz=UTC) - timedelta(days=days)
-    posts = await repository.list_recent_for_moderation(session, since=since, limit=limit)
-    return await read_many(session, posts, viewer_id=viewer_id)
+    posts, next_cursor = await repository.list_recent_for_moderation(
+        session, since=since, limit=params.limit, cursor=params.cursor
+    )
+    return Page(items=await read_many(session, posts, viewer_id=viewer_id), next_cursor=next_cursor)
 
 
 # --- Turning `Post` posts into `PostRead`, for one post or a whole page.
@@ -283,6 +286,7 @@ async def read_many(session: AsyncSession, posts: list[Post], *, viewer_id: uuid
             kind=post.kind,
             parent_id=post.parent_id,
             author_id=post.author_id,
+            station_id=post.station_id,
             # Null when the account is gone. Falling back to the id prints a
             # uuid where a name belongs.
             author_name=people[post.author_id].name if post.author_id in people else None,

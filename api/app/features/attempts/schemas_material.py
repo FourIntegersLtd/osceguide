@@ -42,6 +42,12 @@ class AttemptBriefRead(BaseModel):
     station_version_id: uuid.UUID
     station_title: str
     set_entry_id: uuid.UUID | None = None
+    # The station clock derives from these, not from the browser: reading time runs from
+    # `created_at`, the consultation from `started_at` (None until it begins), and
+    # `server_time` is when this answer was written, so a skewed device clock cannot move either.
+    created_at: datetime
+    started_at: datetime | None = None
+    server_time: datetime
     patient: PatientIdentityRead
     sections: list[AudienceSectionRead] = []
 

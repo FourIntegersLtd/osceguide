@@ -65,6 +65,11 @@ export interface CapabilityModule {
    */
   exams?: readonly string[];
   /**
+   * Where an arm that does not mount this capability goes instead of a 404 (a path inside
+   * the workspace). Stations is `/mocks` on the trainee arm, which practises from mocks.
+   */
+  unmountedGoesTo?: string;
+  /**
    * Arms where somebody who runs circuits does not see it in navigation (the
    * trainee's study items, community, and Authoring where the arm lists its own
    * Build entry). The screen stays reachable by link.

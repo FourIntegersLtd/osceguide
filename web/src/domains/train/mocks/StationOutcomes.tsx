@@ -61,7 +61,11 @@ export function StationOutcomes({
                 <span className="text-osce-meta text-b2c-text-muted">
                   {/* The old client could not tell a failed marking from none;
                       saying "Not attempted" would be false. */}
-                  {row.feedback === "failed" ? "Could not be marked" : "Not attempted"}
+                  {row.feedback === "failed"
+                    ? "Could not be marked"
+                    : row.feedback === "unread"
+                      ? "Could not check feedback"
+                      : "Not attempted"}
                 </span>
               )
             }

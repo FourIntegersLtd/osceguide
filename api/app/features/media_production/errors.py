@@ -35,6 +35,13 @@ class ClaimOutsideItem(InvalidInput):
     default_message = "A claim names a slide this item does not have"
 
 
+class NotRunning(Conflict):
+    """Raised when staff release an item no job is working on."""
+
+    code = "av_not_running"
+    default_message = "Nothing is running on this item"
+
+
 class ScriptNotChecked(Conflict):
     """Raised when voicing is asked for words that have not been checked, or were edited since."""
 

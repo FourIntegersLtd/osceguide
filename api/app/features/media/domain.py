@@ -38,6 +38,10 @@ class AlreadyPublished(Exception):
     """Raised when someone tries to publish an item that is already published."""
 
 
+class NotPublished(Exception):
+    """Raised when someone tries to unpublish an item that is not published."""
+
+
 class UnusableTitle(ValueError):
     """Raised when a title has no characters a URL slug can be built from."""
 
@@ -105,6 +109,13 @@ def publish(*, status: str) -> str:
     if status == "published":
         raise AlreadyPublished("That is already published.")
     return "published"
+
+
+def unpublish(*, status: str) -> str:
+    """The `draft` status, refusing to withdraw an item that is not published."""
+    if status != "published":
+        raise NotPublished("That is not published.")
+    return "draft"
 
 
 def slugify(title: str) -> str:

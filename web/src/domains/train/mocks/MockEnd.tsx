@@ -50,7 +50,8 @@ export function MockEnd({ setId }: { setId: string }) {
       const [library, dashboard, ...perEntry] = await Promise.all([
         loadStationCatalogue(set.exam_code, signal),
         readDashboard(signal),
-        ...entries.map((entry) => listMyAttempts({ setEntryId: entry.id, limit: 5 }, signal)),
+        // One station's failed read must not take the whole end screen with it.
+        ...entries.map((entry) => listMyAttempts({ setEntryId: entry.id, limit: 5 }, signal).catch(() => null)),
       ]);
       const titles = new Map(library.map((station) => [station.version_id, station.title]));
       const rows = entries.map((entry, index) => {
@@ -58,7 +59,7 @@ export function MockEnd({ setId }: { setId: string }) {
         return {
           entryId: entry.id,
           label: title ? `Station ${index + 1}: ${title}` : `Station ${index + 1}`,
-          feedback: stationFeedbackState(perEntry[index]?.items ?? []),
+          feedback: perEntry[index] ? stationFeedbackState(perEntry[index].items) : ("unread" as const),
         };
       });
       const stationsCompleted = (dashboard.progress ?? []).reduce(

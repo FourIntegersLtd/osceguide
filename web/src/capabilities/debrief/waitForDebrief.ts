@@ -6,6 +6,9 @@
  * screen asks again until the summary for that debrief attempt is listed,
  * rather than saying "No debriefs yet" until someone reloads.
  */
+/** A run of this many failed polls is a failure the caller must show. */
+const MAX_FAILURES = 3;
+
 export async function waitForDebrief(
   newestAttemptIds: (signal: AbortSignal) => Promise<readonly string[]>,
   debriefAttemptId: string,
@@ -13,8 +16,7 @@ export async function waitForDebrief(
     signal,
     intervalMs = 4000,
     timeoutMs = 180_000,
-    maxFailures = 3,
-  }: { signal: AbortSignal; intervalMs?: number; timeoutMs?: number; maxFailures?: number },
+  }: { signal: AbortSignal; intervalMs?: number; timeoutMs?: number },
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   let failures = 0;
@@ -25,7 +27,7 @@ export async function waitForDebrief(
     } catch (cause) {
       // One failed poll is retried; a run of them is a failure the caller must show.
       failures += 1;
-      if (failures >= maxFailures && !signal.aborted) throw cause;
+      if (failures >= MAX_FAILURES && !signal.aborted) throw cause;
     }
     if (signal.aborted || Date.now() + intervalMs > deadline) return false;
     await new Promise((resolve) => setTimeout(resolve, intervalMs));

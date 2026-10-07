@@ -29,6 +29,34 @@ export function publishMedia(itemId: string): Promise<MediaItem> {
   });
 }
 
+/** Withdraws a published item to a draft, so it can be corrected or deleted. */
+export function unpublishMedia(itemId: string): Promise<MediaItem> {
+  return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/unpublish`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Frees an item a dead worker left locked in a running status. `/unlock` reaches the generated
+ * types once openapi.json is regenerated; the route is declared by hand until then.
+ */
+export function unlockMedia(itemId: string): Promise<MediaItem> {
+  return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/unlock`, {
+    method: "POST",
+  });
+}
+
+/** Stores a fact check a person did by hand, each claim with its source, in place of the platform's. */
+export function recordHandCheck(
+  itemId: string,
+  claims: { claim: string; source: string; slide?: number | null }[],
+): Promise<MediaItem> {
+  return platformRequest<MediaItem>(`/api/v1/media/${encodeURIComponent(itemId)}/hand-check`, {
+    method: "POST",
+    body: { claims },
+  });
+}
+
 export function readMediaById(itemId: string, signal?: AbortSignal): Promise<MediaItem> {
   return platformRequest<MediaItem>(`/api/v1/media/by-id/${encodeURIComponent(itemId)}`, { signal });
 }

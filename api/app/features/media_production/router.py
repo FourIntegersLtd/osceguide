@@ -185,3 +185,13 @@ async def generate_podcast_audio(
     item_id: uuid.UUID, admin: PlatformAdmin, session: Session
 ) -> schemas.MediaRead:
     return await service.enqueue_podcast_audio(session, item_id, requested_by=admin.user_id)
+
+
+# Frees an item a dead worker left locked in a running status; the way out when nothing reaps it.
+@router.post(
+    "/media/{item_id}/unlock",
+    response_model=schemas.MediaRead,
+    responses=error_responses(Forbidden, errors.ItemNotFound, errors.NotRunning),
+)
+async def unlock_media(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> schemas.MediaRead:
+    return await service.release_stuck(session, item_id)

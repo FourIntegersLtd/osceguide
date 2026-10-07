@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, Button } from "@/foundation/ui";
-import { describeRefusal } from "@/capabilities/stations/refusal";
+import { describeRefusal } from "@/capabilities/stations";
 
 /** The panel shown when a station's attempt could not be created. */
 export function StartFailureAlert({

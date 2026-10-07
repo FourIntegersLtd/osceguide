@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  HiOutlineArrowDownTray,
   HiOutlineArrowLeft,
   HiOutlineCodeBracket,
   HiOutlineEye,
+  HiOutlineLockOpen,
   HiOutlineTrash,
 } from "react-icons/hi2";
 import {
@@ -50,6 +52,7 @@ import {
   type StepId,
 } from "@/capabilities/staff-media/content/steps";
 import { ERROR_STEPS, ProduceForm, RunLog } from "@/capabilities/fact-check";
+import { HandCheckModal } from "@/capabilities/staff-media/parts/HandCheckModal";
 import { ContentJsonEditor } from "@/capabilities/staff-media/parts/ContentJsonEditor";
 import { FactCheck } from "@/capabilities/fact-check";
 import {
@@ -67,8 +70,11 @@ import {
   produceMedia,
   publishMedia,
   readMediaById,
+  recordHandCheck,
   regenerateSlideAv,
   stopProduce,
+  unlockMedia,
+  unpublishMedia,
   updateMedia,
   writeMediaScript,
   type MediaItem,
@@ -104,6 +110,7 @@ export function MediaDetailScreen({
   const [prompt, setPrompt] = useState("");
   const [jsonOpen, setJsonOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [confirm, setConfirm] = useState<"publish" | "save-publish" | "unpublish" | "unlock" | "hand-check" | null>(null);
   const [pollAv, setPollAv] = useState(false);
   const [step, setStep] = useState<StepId | null>(null);
 
@@ -273,6 +280,11 @@ export function MediaDetailScreen({
           Back
         </Button>
         <Alert tone="danger">{errorMessage(load.error)}</Alert>
+        <div>
+          <Button variant="secondary" size="sm" onClick={() => load.reload()}>
+            Try again
+          </Button>
+        </div>
       </div>
     );
   }
@@ -303,6 +315,25 @@ export function MediaDetailScreen({
       toast.success("Published");
       load.reload();
     });
+  // Nothing reaches learners, or is taken from them, without being asked twice.
+  const confirmed = async () => {
+    const verb = confirm;
+    if (!verb) return;
+    const ok = await (verb === "publish"
+      ? publish()
+      : verb === "save-publish"
+        ? save(true)
+        : verb === "unpublish"
+          ? action.run("unpublish", async () => {
+              await unpublishMedia(itemId);
+              toast.success("Unpublished");
+            })
+          : action.run("unlock", async () => {
+              await unlockMedia(itemId);
+              toast.success("Released");
+            }));
+    if (ok) setConfirm(null);
+  };
   const writeScript = (rewrite: boolean) =>
     start("write-script", "Script check started", () => writeMediaScript(itemId, rewrite));
 
@@ -333,7 +364,7 @@ export function MediaDetailScreen({
       case "voice":
         return run("Approve and voice", "voice", voice);
       case "publish":
-        return run("Publish", "publish", publish);
+        return run("Publish", "publish", () => setConfirm("publish"));
       case "preview":
         return previewHref ? (
           <Link href={previewHref} target="_blank" rel="noreferrer" className="inline-flex">
@@ -403,6 +434,26 @@ export function MediaDetailScreen({
               <HiOutlineEye className="h-4 w-4" aria-hidden />
             </AuthoringIconAction>
           ) : null}
+          {!isDraft ? (
+            <AuthoringIconAction
+              variant="ghost"
+              label="Unpublish"
+              disabled={action.busy !== null}
+              onClick={() => setConfirm("unpublish")}
+            >
+              <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
+            </AuthoringIconAction>
+          ) : null}
+          {isAvRunning(status) ? (
+            <AuthoringIconAction
+              variant="ghost"
+              label="Release stuck job"
+              disabled={action.busy !== null}
+              onClick={() => setConfirm("unlock")}
+            >
+              <HiOutlineLockOpen className="h-4 w-4" aria-hidden />
+            </AuthoringIconAction>
+          ) : null}
           {isDraft ? (
             <AuthoringIconAction variant="ghost" label="Edit as JSON" onClick={() => setJsonOpen(true)}>
               <HiOutlineCodeBracket className="h-4 w-4" aria-hidden />
@@ -431,7 +482,7 @@ export function MediaDetailScreen({
                   size="sm"
                   disabled={!title.trim() || action.busy !== null}
                   isLoading={action.busy === "save-publish"}
-                  onClick={() => save(true)}
+                  onClick={() => setConfirm("save-publish")}
                 >
                   {action.busy === "save-publish" ? "Publishing…" : "Save and publish"}
                 </Button>
@@ -467,7 +518,55 @@ export function MediaDetailScreen({
         }
       />
 
-      {action.error ? <Alert tone="danger">{action.error}</Alert> : null}
+      <ConfirmModal
+        isOpen={confirm !== null && confirm !== "hand-check"}
+        tone={confirm === "unpublish" || confirm === "unlock" ? "danger" : "default"}
+        title={
+          confirm === "unpublish"
+            ? "Unpublish this?"
+            : confirm === "unlock"
+              ? "Release this job?"
+              : "Publish this?"
+        }
+        message={
+          confirm === "unpublish"
+            ? "Learners lose it and it goes back to a draft you can edit or delete."
+            : confirm === "unlock"
+              ? "Only if the worker has died. The item is marked failed so you can start it again."
+              : `"${title.trim() || kindLabel}" will be visible to learners straight away.`
+        }
+        confirmText={
+          confirm === "unpublish" ? "Unpublish" : confirm === "unlock" ? "Release" : "Publish"
+        }
+        isLoading={action.busy !== null}
+        error={action.error}
+        onCancel={() => {
+          setConfirm(null);
+          action.clearError();
+        }}
+        onConfirm={() => void confirmed()}
+      />
+      <HandCheckModal
+        open={confirm === "hand-check"}
+        busy={action.busy === "hand-check"}
+        error={action.error}
+        onClose={() => {
+          setConfirm(null);
+          action.clearError();
+        }}
+        onSubmit={(claims) =>
+          void action
+            .run("hand-check", async () => {
+              await recordHandCheck(itemId, claims);
+              toast.success("Check recorded");
+            })
+            .then((ok) => {
+              if (ok) setConfirm(null);
+            })
+        }
+      />
+
+      {action.error && confirm === null ? <Alert tone="danger">{action.error}</Alert> : null}
 
       <ContentJsonEditor
         open={jsonOpen}
@@ -572,6 +671,13 @@ export function MediaDetailScreen({
                   start("check-facts", "Fact check started", () => checkMediaFacts(itemId))
                 }
               />
+              {isAvRunning(status) ? null : (
+                <div className="mt-4">
+                  <Button variant="ghost" size="sm" onClick={() => setConfirm("hand-check")}>
+                    Record a check done by hand
+                  </Button>
+                </div>
+              )}
             </Panel>
           ) : null}
           {current === "script" ? (

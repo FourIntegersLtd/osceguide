@@ -34,12 +34,10 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
   awaitingAttemptId?: string | null;
 } = {}) {
   const { hrefFor } = useSurface();
-  const [arrived, setArrived] = useState<string | null>(null);
-  const [waitFailed, setWaitFailed] = useState(false);
-  const waiting = Boolean(awaitingAttemptId) && arrived !== awaitingAttemptId;
+  const [settled, setSettled] = useState<{ attemptId: string; status: "arrived" | "failed" } | null>(null);
+  const wait = !awaitingAttemptId ? null : settled?.attemptId === awaitingAttemptId ? settled.status : "waiting";
   useEffect(() => {
     if (!awaitingAttemptId) return;
-    setWaitFailed(false);
     const controller = new AbortController();
     void waitForDebrief(
       async (signal) =>
@@ -54,10 +52,10 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
     )
       .then(() => {
         // Found or timed out, the list is read again and the notice goes.
-        if (!controller.signal.aborted) setArrived(awaitingAttemptId);
+        if (!controller.signal.aborted) setSettled({ attemptId: awaitingAttemptId, status: "arrived" });
       })
       .catch(() => {
-        if (!controller.signal.aborted) setWaitFailed(true);
+        if (!controller.signal.aborted) setSettled({ attemptId: awaitingAttemptId, status: "failed" });
       });
     return () => controller.abort();
   }, [awaitingAttemptId, attemptId, stationVersionId, entryId]);
@@ -73,18 +71,18 @@ export function DebriefHistory({ attemptId, stationVersionId, entryId, awaitingA
         },
         signal,
       ),
-    [attemptId, stationVersionId, entryId, arrived],
+    [attemptId, stationVersionId, entryId, wait === "arrived"],
   );
   const state = pages.state;
 
   return (
     <>
-      {waiting ? (
+      {wait === "waiting" ? (
         <Alert tone="info" className="mb-4">
           Your debrief has ended. Athena is writing its summary, and it will appear here in a minute.
         </Alert>
       ) : null}
-      {waitFailed ? (
+      {wait === "failed" ? (
         <Alert tone="warning" className="mb-4">
           We could not check whether your debrief summary is ready. Reload this page in a minute to look again.
         </Alert>

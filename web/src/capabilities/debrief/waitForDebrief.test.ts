@@ -36,7 +36,7 @@ describe("waitForDebrief", () => {
           throw new Error("502");
         },
         "mine",
-        { signal: new AbortController().signal, intervalMs: 1, maxFailures: 3 },
+        { signal: new AbortController().signal, intervalMs: 1 },
       ),
       /502/,
     );

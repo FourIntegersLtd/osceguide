@@ -427,3 +427,27 @@ async def test_asking_in_a_loop_is_refused_per_person(
     assert refused.json()["details"]["limit"] == "publish"
 
     await ask(client, await make_actor("someone-else@example.com"), title="Mine")
+
+
+async def test_the_moderation_queue_pages_past_one_page_and_names_the_author(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("c-mod@osceguide.com", platform_admin=True)
+    author = await make_actor("c-mod-author@example.com")
+    for number in range(3):
+        await ask(client, author, title=f"Question {number}")
+
+    first = (await client.get("/api/v1/platform/moderation/posts?limit=2", headers=bearer(admin))).json()
+    assert len(first["items"]) == 2
+    assert first["next_cursor"] is not None
+    assert first["items"][0]["author_name"] is not None or first["items"][0]["author_id"]
+
+    rest = (
+        await client.get(
+            f"/api/v1/platform/moderation/posts?limit=2&cursor={first['next_cursor']}", headers=bearer(admin)
+        )
+    ).json()
+    assert len(rest["items"]) == 1
+    assert rest["next_cursor"] is None
+    titles = {post["title"] for post in first["items"] + rest["items"]}
+    assert titles == {"Question 0", "Question 1", "Question 2"}

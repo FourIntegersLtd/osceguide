@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
-from app.core.pagination import Page
+from app.core.pagination import CursorParams, Page
 from app.core.tenancy import PlatformAdmin
 from app.features.community import schemas, service
 
@@ -28,10 +28,9 @@ async def list_moderation_posts(
     admin: PlatformAdmin,
     principal: CurrentPrincipal,
     session: Session,
+    params: Annotated[CursorParams, Depends()],
     days: Annotated[int, Query(ge=1, le=30)] = 7,
-    limit: Annotated[int, Query(ge=1, le=200)] = 100,
 ) -> Page[schemas.PostRead]:
     """Recent community and station posts for platform moderators."""
     _ = admin
-    posts = await service.list_moderation_queue(session, viewer_id=principal.user_id, days=days, limit=limit)
-    return Page(items=posts, next_cursor=None)
+    return await service.list_moderation_queue(session, viewer_id=principal.user_id, params=params, days=days)

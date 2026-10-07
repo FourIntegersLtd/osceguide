@@ -17,6 +17,12 @@ interface TimerProps {
   running?: boolean;
   /** What a held clock says; defaults to waiting for the patient. */
   stoppedLabel?: string;
+  /**
+   * Seconds of this phase the server says are already used. When given, the clock starts from
+   * `duration - elapsedSeconds` and never reads or writes the browser's storage, so a cleared
+   * storage, a second tab or a skewed device clock cannot move it.
+   */
+  elapsedSeconds?: number;
 }
 
 /** Last stretch of the countdown, shown in red so the user isn't cut off unawares. */
@@ -35,7 +41,9 @@ export default function Timer({
   onFinalCountdown,
   running = true,
   stoppedLabel = "Starts with the patient",
+  elapsedSeconds,
 }: TimerProps) {
+  const fromServer = elapsedSeconds !== undefined;
   // Parents pass inline callbacks; reading them through refs keeps the countdown
   // effect from re-registering (and restarting its interval) on every render.
   const onTimeUpRef = useRef(onTimeUp);
@@ -76,6 +84,11 @@ export default function Timer({
    * 3. If no valid saved state: Start with effective duration
    */
   useEffect(() => {
+    // The server knows how long this phase has run; the browser's storage is not asked.
+    if (elapsedSeconds !== undefined) {
+      setTimeRemaining(Math.max(defaultDuration - elapsedSeconds, 0));
+      return;
+    }
     // Case 1: User has custom duration - always reset to custom duration
     // This ensures custom timers always start fresh and don't use old default timer state
     if (effectiveDuration !== defaultDuration) {
@@ -133,7 +146,7 @@ export default function Timer({
 
     // Case 3: No valid saved state - start fresh with effective duration
     setTimeRemaining(effectiveDuration);
-  }, [effectiveDuration, timerType, stationId, defaultDuration]);
+  }, [effectiveDuration, timerType, stationId, defaultDuration, elapsedSeconds]);
 
   // Flag to show warning modal when timer reaches warning threshold
   const [showWarning, setShowWarning] = useState(false);
@@ -170,6 +183,7 @@ export default function Timer({
     setHasCalledTimeUp(false);
     hasCalledFinalCountdownRef.current = false;
 
+    if (fromServer) return;
     // Save reset time to localStorage
     localStorage.setItem(
       `timer-${timerType}-${stationId}`,
@@ -236,14 +250,16 @@ export default function Timer({
 
     // Save current timer state to localStorage every second
     // This allows timer to be restored if user refreshes or navigates away
-    localStorage.setItem(
-      `timer-${timerType}-${stationId}`,
-      timeRemaining.toString(),
-    );
-    localStorage.setItem(
-      `timer-timestamp-${timerType}-${stationId}`,
-      Date.now().toString(),
-    );
+    if (!fromServer) {
+      localStorage.setItem(
+        `timer-${timerType}-${stationId}`,
+        timeRemaining.toString(),
+      );
+      localStorage.setItem(
+        `timer-timestamp-${timerType}-${stationId}`,
+        Date.now().toString(),
+      );
+    }
 
     // Start countdown interval that decrements timer every second
     const countdownInterval = setInterval(() => {
@@ -263,7 +279,7 @@ export default function Timer({
 
     // Cleanup: clear interval when component unmounts or dependencies change
     return () => clearInterval(countdownInterval);
-  }, [timeRemaining, stationId, timerType, hasCalledTimeUp, running]);
+  }, [timeRemaining, stationId, timerType, hasCalledTimeUp, running, fromServer]);
 
   // Calculate minutes and seconds for display
   const minutes = Math.floor(timeRemaining / 60);

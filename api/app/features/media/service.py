@@ -27,6 +27,7 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.UnknownMediaKind: errors.UnknownMediaKindError,
     domain.NotEditable: errors.NotEditableError,
     domain.AlreadyPublished: errors.AlreadyPublishedError,
+    domain.NotPublished: errors.NotPublishedError,
     domain.UnusableTitle: errors.UnusableTitleError,
     domain.EmptyQuery: errors.EmptyQueryError,
     domain.QueryTooLong: errors.EmptyQueryError,
@@ -147,9 +148,32 @@ async def publish(
         status = domain.publish(status=item.status)
     except domain.AlreadyPublished as exc:
         raise_mapped(exc, _REFUSALS)
+    # Imported here, as in `update`: what counts as running is media_production's to say. A
+    # script still being written or a video still rendering is not ready to be served.
+    from app.features.media_production import service as production
+
+    if production.is_running(dict(item.content or {})):
+        raise errors.BeingProduced()
 
     await repository.update_item(session, item_id, status=status, published_at=now)
     await _reindex(session, item, title=item.title, summary=item.summary, index=index)
+    return await service_reads.read_one(
+        session, await _require(session, item_id), unlocked_exam_ids=None, with_review=True
+    )
+
+
+async def unpublish(session: AsyncSession, item_id: uuid.UUID) -> MediaRead:
+    """Withdraw a published item to a draft, so it can be corrected or deleted.
+
+    Search and the library read the status, so the item stops being served at once; its
+    vector is left, and a later publish replaces it.
+    """
+    item = await _require(session, item_id)
+    try:
+        status = domain.unpublish(status=item.status)
+    except domain.NotPublished as exc:
+        raise_mapped(exc, _REFUSALS)
+    await repository.update_item(session, item_id, status=status, published_at=None)
     return await service_reads.read_one(
         session, await _require(session, item_id), unlocked_exam_ids=None, with_review=True
     )

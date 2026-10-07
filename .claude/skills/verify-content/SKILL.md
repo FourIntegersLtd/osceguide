@@ -83,6 +83,13 @@ separately; one combined run was killed once.
   is not offered; a failed confirm shows its reason inside
   the dialog (`error={action.error}`). Screens for exams and staff media:
   platform-web `verify/features/content-authoring.md`.
+- **Media publish is gated on the pipeline**: publishing while `production.is_running` is
+  `media_being_produced` (409); `POST /media/{id}/unpublish` returns a published item to draft
+  (the only way to delete it); `POST /media/{id}/unlock` marks a stuck `running` item failed
+  (`av_not_running` if it is not running). Staff screens confirm each of these.
+- The moderation queue pages by cursor (`GET /platform/community/moderation?cursor=`); a test
+  must create more rows than the page limit to prove it. The brief carries `created_at`,
+  `started_at`, `server_time` so the station clock does not trust the browser.
 - A published media item's content is fixed (`media_not_editable`); only title, summary and
   exam save.
 - A migrated database is empty: seed it (`scripts/seed_platform.py`) before

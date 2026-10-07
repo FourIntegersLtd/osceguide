@@ -236,6 +236,20 @@ async def test_the_brief_is_readable_as_soon_as_the_attempt_exists(
     assert body["patient"]["gender"] == "male"
 
 
+async def test_the_brief_carries_the_attempts_own_clock(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The station clock is derived from the attempt's timestamps, not from the browser's storage."""
+    token = await make_actor("clock@example.com")
+    sat = await _entitled_attempt(db_session, "clock@example.com")
+
+    body = (await client.get(f"/api/v1/attempts/{sat.attempt_id}/brief", headers=bearer(token))).json()
+
+    created = datetime.fromisoformat(body["created_at"])
+    assert body["started_at"] is None
+    assert 0 <= (datetime.fromisoformat(body["server_time"]) - created).total_seconds() < 60
+
+
 async def test_the_brief_never_carries_the_patient_or_the_plan(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]

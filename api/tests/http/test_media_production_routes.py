@@ -546,3 +546,20 @@ async def test_a_hand_check_is_refused_for_a_slide_the_item_lacks(client: AsyncC
 
     assert response.status_code == 422
     assert response.json()["code"] == "claim_outside_item"
+
+
+async def test_staff_can_release_an_item_a_dead_worker_left_locked(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("av-unlock@osceguide.com", platform_admin=True)
+    created = await client.post(
+        "/api/v1/media",
+        json={"kind": "summary", "title": "Stuck", "content": {"status": "generating_podcast"}},
+        headers=bearer(admin),
+    )
+    item_id = created.json()["id"]
+    url = f"/api/v1/media/{item_id}/unlock"
+    released = await client.post(url, headers=bearer(admin))
+    assert released.status_code == 200
+    assert released.json()["content"]["status"] == "failed"
+    assert released.json()["content"]["review"]["error"]["step"] == "produce"
+    again = await client.post(url, headers=bearer(admin))
+    assert (again.status_code, again.json()["code"]) == (409, "av_not_running")

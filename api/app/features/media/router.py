@@ -238,7 +238,9 @@ async def delete_draft(item_id: uuid.UUID, admin: PlatformAdmin, session: Sessio
 @router.post(
     "/media/{item_id}/publish",
     response_model=schemas.MediaRead,
-    responses=error_responses(Forbidden, errors.ItemNotFound, errors.AlreadyPublishedError),
+    responses=error_responses(
+        Forbidden, errors.ItemNotFound, errors.AlreadyPublishedError, errors.BeingProduced
+    ),
 )
 async def publish(
     item_id: uuid.UUID,
@@ -249,3 +251,13 @@ async def publish(
 ) -> schemas.MediaRead:
     """Indexed on publish, so a draft nobody can read does not surface in search."""
     return await service.publish(session, item_id, index=index, now=clock.now())
+
+
+# Withdraws a published item to a draft, the way back from publishing; a draft can then be deleted.
+@router.post(
+    "/media/{item_id}/unpublish",
+    response_model=schemas.MediaRead,
+    responses=error_responses(Forbidden, errors.ItemNotFound, errors.NotPublishedError),
+)
+async def unpublish(item_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> schemas.MediaRead:
+    return await service.unpublish(session, item_id)

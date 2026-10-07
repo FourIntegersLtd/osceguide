@@ -160,8 +160,9 @@ export type AttemptStatusRecord = Pick<AttemptHistoryItem, "status" | "has_resul
  * - `not_attempted`: no relevant attempt, or the most recent one never got
  *   past `created`/`running` — the candidate opened the station and left
  *   before finishing it, so there is nothing to mark yet.
+ * - "unread": the attempts could not be read, which says nothing about the feedback.
  */
-export type StationFeedbackState = "review" | "marking" | "failed" | "not_attempted";
+export type StationFeedbackState = "review" | "marking" | "failed" | "not_attempted" | "unread";
 
 /** The one attempt, among several against the same entry, worth reading a state off. */
 function mostRecentAttempt<T extends { created_at: string }>(

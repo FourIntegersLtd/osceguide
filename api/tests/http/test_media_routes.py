@@ -745,3 +745,27 @@ async def test_a_drafts_exam_can_be_set_and_cleared(
 
     cleared = await client.patch(url, json={"exam_code": ""}, headers=bearer(admin))
     assert cleared.json()["exam_code"] is None
+
+
+async def test_publish_is_refused_while_the_pipeline_runs_and_unpublish_allows_delete(
+    client: AsyncClient, make_actor, index: FakeVectorIndex
+) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("m-gate@osceguide.com", platform_admin=True)
+    running = await client.post(
+        "/api/v1/media",
+        json={"kind": "summary", "title": "Gate running", "content": {"status": "writing_script"}},
+        headers=bearer(admin),
+    )
+    refused = await client.post(f"/api/v1/media/{running.json()['id']}/publish", headers=bearer(admin))
+    assert (refused.status_code, refused.json()["code"]) == (409, "media_being_produced")
+
+    item = await draft(client, admin)
+    await client.post(f"/api/v1/media/{item['id']}/publish", headers=bearer(admin))
+    assert (await client.delete(f"/api/v1/media/{item['id']}", headers=bearer(admin))).status_code == 409
+    withdrawn = await client.post(f"/api/v1/media/{item['id']}/unpublish", headers=bearer(admin))
+    assert (withdrawn.json()["status"], withdrawn.json()["published_at"]) == ("draft", None)
+    reader = await make_actor("m-gate-reader@example.com")
+    assert (await client.get(f"/api/v1/media/{item['slug']}", headers=bearer(reader))).status_code == 404
+    assert (await client.delete(f"/api/v1/media/{item['id']}", headers=bearer(admin))).status_code == 204
+    again = await client.post(f"/api/v1/media/{item['id']}/unpublish", headers=bearer(admin))
+    assert again.status_code == 404
