@@ -50,3 +50,16 @@ test("the next line names the form that is open and whether it is done", () => {
   assert.equal(slotNextLine("admin", [...steps("done", "todo")]), "Write the admin's review, then complete it.");
   assert.equal(slotNextLine("admin", [...steps("done", "done")]), "The admin's review is complete.");
 });
+
+test("marking that failed says so in the rail and in the panel, and is not 'not ready yet'", () => {
+  assert.equal(markingState({ attemptId: "a", hasResult: false, hasRubric: false, markingFailed: true }), "failed");
+  assert.equal(markingState({ attemptId: "a", hasResult: true, hasRubric: true, markingFailed: true }), "ready");
+  assert.deepEqual(
+    slotReviewSteps({ marking: "failed", mine: "none", admin: null }).map((step) => [step.id, step.state, step.note]),
+    [
+      ["auto", "attention", "Marking failed"],
+      ["mine", "todo", "Not started"],
+    ],
+  );
+  assert.match(markingNotice("failed") ?? "", /^Automatic marking failed\./);
+});

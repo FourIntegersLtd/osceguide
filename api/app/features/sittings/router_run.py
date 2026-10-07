@@ -146,6 +146,7 @@ async def observer_token(
         errors.VoiceUnavailable,
         OrgSuspended,
         errors.TraineeRevokedError,
+        errors.MarkingNotReady,
         errors.TraineeNotOnRosterError,
     ),
 )

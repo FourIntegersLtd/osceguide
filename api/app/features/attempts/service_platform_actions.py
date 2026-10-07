@@ -32,6 +32,20 @@ async def _require(session: AsyncSession, attempt_id: uuid.UUID) -> Attempt:
     return attempt
 
 
+async def rescore_slot_attempt(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, *, actor: Principal, now: datetime
+) -> RescoreResult:
+    """Queue the marking again for the attempt on one of this organisation's slots (R-5).
+
+    The org's staff reach it by slot, as everywhere in the review screens; an attempt of
+    another organisation is as absent as one that does not exist.
+    """
+    attempt = await repository.live_attempt_for_slot(session, slot_id)
+    if attempt is None or attempt.org_id != org_id:
+        raise errors.AttemptNotFound()
+    return await rescore(session, attempt.id, policy_version=None, actor=actor, now=now)
+
+
 async def rescore(
     session: AsyncSession,
     attempt_id: uuid.UUID,
@@ -64,6 +78,8 @@ async def rescore(
         if job.status == "todo" and job.args.get("policy_version") == version
     ]
     queued = not waiting
+    if jobs.marking_failed(attempt):
+        await repository.set_scoring_failure(session, attempt_id, reason=None)
     if queued:
         await jobs.enqueue_scoring(session, attempt, now=now, policy_version=version)
     await service_audit.record(

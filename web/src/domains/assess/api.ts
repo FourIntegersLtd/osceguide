@@ -326,9 +326,40 @@ export function rebuildCircuit(
   });
 }
 
+/**
+ * Call off a sitting nobody has sat. The row is kept as `cancelled`, never
+ * deleted. Refused with `sitting_locked` (409) once any circuit has started:
+ * those circuits are ended instead.
+ */
+export function cancelSitting(slug: string, sittingId: string): Promise<Sitting> {
+  return platformRequest<Sitting>(`${org(slug)}/sittings/${encodeURIComponent(sittingId)}/cancel`, {
+    method: "POST",
+  });
+}
+
+/**
+ * Remove a circuit set up by mistake. Refused with `circuit_locked` (409) once it
+ * has started, because then it holds a record of what was sat.
+ */
+export function deleteCircuit(slug: string, circuitId: string): Promise<void> {
+  return platformRequest<void>(`${org(slug)}/circuits/${encodeURIComponent(circuitId)}`, {
+    method: "DELETE",
+  });
+}
+
 /* ---------- marking ---------- */
 
 export type SlotReview = components["schemas"]["SlotReviewRead"];
+/** What queueing a marking again answered. Declared by hand until schema.d.ts is regenerated (R-5). */
+export type RetryMarkingResult = { queued: boolean; policy_version: string; reason: string | null };
+
+/** Queue this slot's automatic marking again after it failed. Twice is once. */
+export function retrySlotMarking(slug: string, slotId: string): Promise<RetryMarkingResult> {
+  return platformRequest<RetryMarkingResult>(`${org(slug)}/slots/${encodeURIComponent(slotId)}/marking/retry`, {
+    method: "POST",
+    body: {},
+  });
+}
 export type Transcript = components["schemas"]["TranscriptRead"];
 
 /**

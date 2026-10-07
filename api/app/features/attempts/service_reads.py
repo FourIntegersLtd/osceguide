@@ -14,7 +14,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
-from app.features.attempts import errors, repository, service_access
+from app.features.attempts import errors, jobs, repository, service_access
 from app.features.attempts import repository_transcript as transcripts
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
@@ -117,6 +117,7 @@ def _attempt_read(attempt: Attempt) -> AttemptRead:
         started_at=attempt.started_at,
         completed_at=attempt.completed_at,
         created_at=attempt.created_at,
+        marking_failed=jobs.marking_failed(attempt),
     )
 
 

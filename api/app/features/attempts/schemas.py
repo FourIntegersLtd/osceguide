@@ -111,6 +111,8 @@ class AttemptFeedbackRead(BaseModel):
     """
 
     attempt_id: uuid.UUID
+    # The scorer gave up on this attempt (after its retries); staff can queue the marking again.
+    marking_failed: bool = False
     # Null for an attempt no rubric can describe (nothing to draw it by).
     rubric: MarkingRubricRead | None
     results: list[MarkedResultRead] = Field(default_factory=list)
@@ -126,6 +128,8 @@ class AttemptRead(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
+    # Finished, but the scorer gave up on it: it will not be marked until staff retry.
+    marking_failed: bool = False
 
 
 class CreateAttempt(BaseModel):

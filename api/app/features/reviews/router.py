@@ -49,6 +49,22 @@ async def list_slot_reviews(
     return await service_summary.read_slot_reviews(session, workspace.org_id, slot_id)
 
 
+@router.post(
+    "/orgs/{org_slug}/slots/{slot_id}/marking/retry",
+    response_model=schemas.MarkingRetryRead,
+    responses=error_responses(
+        Forbidden, errors.SlotNotFound, errors.AttemptNotFound, errors.InvalidAttemptState
+    ),
+)
+async def retry_slot_marking(
+    slot_id: uuid.UUID, workspace: OrgStaff, session: Session, clock: ClockDep
+) -> schemas.MarkingRetryRead:
+    """Queue the automatic marking of this slot's attempt again, after it failed. Twice is once."""
+    return await service.retry_slot_marking(
+        session, workspace.org_id, slot_id, actor=workspace.principal, now=clock.now()
+    )
+
+
 # The caller's own review of this slot, draft or complete.
 @router.get(
     "/orgs/{org_slug}/slots/{slot_id}/reviews/mine",

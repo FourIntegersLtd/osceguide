@@ -6,6 +6,8 @@ from app.core.errors import Conflict, Forbidden, InvalidInput, NotFound
 
 # Re-exported rather than restated, so there is one `circuit_not_found` and one
 # `trainee_not_found`, and the router imports only its own errors.
+from app.features.attempts.errors import AttemptNotFound as AttemptNotFound
+from app.features.attempts.errors import InvalidAttemptState as InvalidAttemptState
 from app.features.roster.errors import TraineeNotFound as TraineeNotFound
 from app.features.sittings.errors import CircuitNotFound as CircuitNotFound
 

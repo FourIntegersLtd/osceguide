@@ -136,6 +136,15 @@ async def set_status(
     await session.execute(update(Attempt).where(Attempt.id == attempt_id).values(**updates))
 
 
+async def set_scoring_failure(session: AsyncSession, attempt_id: uuid.UUID, *, reason: str | None) -> None:
+    """Record, or clear, that marking gave up on an attempt that is still markable.
+
+    The status is left alone on purpose: `failed` is terminal and frees the slot for a new attempt,
+    but a transcript we still hold can be marked again, so the reason travels beside the status.
+    """
+    await session.execute(update(Attempt).where(Attempt.id == attempt_id).values(failed_reason=reason))
+
+
 async def freeze_definition(
     session: AsyncSession, attempt_id: uuid.UUID, *, definition: dict[str, Any], at: datetime
 ) -> None:

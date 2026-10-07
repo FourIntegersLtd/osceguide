@@ -9,14 +9,17 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.core.errors import AppError, raise_mapped
 from app.core.role_policy import policy
 from app.core.schemas import ReviewFormRead
+from app.features.attempts import service_platform_actions as attempts_actions
 from app.features.reviews import domain, errors, repository
 from app.features.reviews.models import CircuitReview, GpLeadReview, SlotReview
 from app.features.reviews.schemas import (
     CircuitReviewRead,
     GpLeadReviewRead,
+    MarkingRetryRead,
     SlotReviewRead,
 )
 from app.features.roster import service as roster
@@ -78,6 +81,15 @@ async def _require_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.
     """
     if not await sittings.slot_is_in_org(session, org_id, slot_id):
         raise errors.SlotNotFound()
+
+
+async def retry_slot_marking(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, *, actor: Principal, now: datetime
+) -> MarkingRetryRead:
+    """Queue the automatic marking of this slot's attempt again, after it failed."""
+    await _require_slot(session, org_id, slot_id)
+    queued = await attempts_actions.rescore_slot_attempt(session, org_id, slot_id, actor=actor, now=now)
+    return MarkingRetryRead(queued=queued.queued, policy_version=queued.policy_version, reason=queued.reason)
 
 
 async def _require_open_slot(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> None:

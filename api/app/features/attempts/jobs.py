@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+import procrastinate
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.events import publish_after_commit, user_topic
@@ -25,12 +26,25 @@ log = get_logger(__name__)
 PLATFORM_DEFAULT_POLICY = "platform-default@1"
 SCORING_QUEUE = "scoring"
 SCORING_TASK = "score_attempt"
+SCORING_FAILED = "scoring_failed"
+NO_MARKING_RUBRIC = "no_marking_rubric"
+
+# A model call fails for reasons that pass: a timeout, a rate limit, a malformed answer. The job is
+# retried this many times after its first run, 4 s, 16 s then 64 s apart, before marking is recorded
+# as failed on the attempt.
+SCORING_RETRIES = 3
+SCORING_BACKOFF_SECONDS = 4
 
 # An attempt can be marked once its interaction finished, and marked again
 # afterwards under a different policy — a new org rubric, or a model change we
 # want to compare against what a candidate was actually told. The second run
 # adds a result; it does not move the attempt's status anywhere.
 MARKABLE = frozenset({domain.Status.INTERACTION_COMPLETE, domain.Status.EVALUATED})
+
+
+def marking_failed(attempt: Attempt) -> bool:
+    """The scorer gave up on a finished attempt whose transcript is still held (R-5)."""
+    return attempt.status == domain.Status.INTERACTION_COMPLETE and attempt.failed_reason == SCORING_FAILED
 
 
 def policy_for(attempt: Attempt) -> tuple[str, str]:
@@ -69,6 +83,14 @@ async def enqueue_scoring(
             attempt_id=str(attempt.id),
             reason="attempt_not_rendered",
         )
+        if domain.Status(attempt.status) not in (domain.Status.EVALUATED, domain.Status.FAILED):
+            # Said on the attempt, not only in a log: staff and the candidate are waiting on it.
+            await repository.set_status(
+                session, attempt.id, status=domain.Status.FAILED, at=now, reason=NO_MARKING_RUBRIC
+            )
+            publish_after_commit(
+                session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt.id)}
+            )
         return
 
     await defer_in_transaction(
@@ -92,8 +114,12 @@ async def score_attempt_now(
     policy_version: str,
     framework_id: str,
     now: datetime,
+    last_try: bool = False,
 ) -> bool:
     """Score once per policy version. Returns whether anything was written.
+
+    On the last try a failed evaluation is recorded on the attempt (`scoring_failed`) instead of
+    raised, so the attempt says so; earlier tries raise and the queue retries.
 
     Idempotent by design: the queue may deliver a job more than once, and a
     retry after a partial failure must not produce a second result for the same
@@ -139,10 +165,14 @@ async def score_attempt_now(
             transcript=[{"role": turn.role, "message": turn.message, "seq": turn.seq} for turn in turns],
         )
     except EvaluationFailed as exc:
-        # The attempt is left at interaction_complete so a retry can mark it;
-        # failing the attempt here would discard a transcript we still hold.
-        log.warning("evaluation failed", attempt_id=str(attempt_id), error=str(exc))
-        raise
+        # The attempt stays at interaction_complete so a retry can mark it;
+        # failing it would discard a transcript we still hold.
+        log.warning("evaluation failed", attempt_id=str(attempt_id), error=str(exc), last_try=last_try)
+        if not last_try:
+            raise
+        await repository.set_scoring_failure(session, attempt_id, reason=SCORING_FAILED)
+        publish_after_commit(session, user_topic(attempt.user_id), "attempt", {"attempt_id": str(attempt_id)})
+        return False
 
     # The model is the row's own column, not a mark: left in the payload it is
     # a top-level key the rubric's derived schema forbids, so no stored result
@@ -160,6 +190,8 @@ async def score_attempt_now(
     )
     if status is domain.Status.INTERACTION_COMPLETE:
         await repository.set_status(session, attempt_id, status=domain.Status.EVALUATED, at=now)
+    if attempt.failed_reason == SCORING_FAILED:
+        await repository.set_scoring_failure(session, attempt_id, reason=None)
     # Marking takes a minute or two of model time, so the browser has to learn
     # it finished somehow. b2c polled; this says so once, after the commit,
     # and the poll goes.
@@ -178,8 +210,17 @@ def register() -> None:
     register_coverage()
     app = get_jobs_app()
 
-    @app.task(name=SCORING_TASK, queue=SCORING_QUEUE)
-    async def score_attempt(attempt_id: str, policy_version: str, framework_id: str) -> None:
+    @app.task(
+        name=SCORING_TASK,
+        queue=SCORING_QUEUE,
+        pass_context=True,
+        retry=procrastinate.RetryStrategy(
+            max_attempts=SCORING_RETRIES, exponential_wait=SCORING_BACKOFF_SECONDS
+        ),
+    )
+    async def score_attempt(
+        context: procrastinate.JobContext, attempt_id: str, policy_version: str, framework_id: str
+    ) -> None:
         """The queued job: build a fresh evaluator and score this attempt now."""
         from datetime import UTC
 
@@ -194,4 +235,5 @@ def register() -> None:
                 policy_version=policy_version,
                 framework_id=framework_id,
                 now=datetime.now(UTC),
+                last_try=context.job.attempts >= SCORING_RETRIES,
             )

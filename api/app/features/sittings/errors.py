@@ -8,6 +8,7 @@ here because this slice's routes are where a client actually meets them.
 from __future__ import annotations
 
 from app.core.errors import Conflict, NotFound
+from app.features.attempts.errors import MarkingNotReady
 from app.features.roster.errors import TraineeNotOnRosterError, TraineeRevokedError
 
 
@@ -105,6 +106,7 @@ from app.features.voice.errors import VoiceUnavailable  # noqa: E402
 
 __all__ = [
     "ExamRubricNotReady",
+    "MarkingNotReady",
     "ProgrammeNotFound",
     "ProgrammeRequired",
     "RubricVersionNotFound",

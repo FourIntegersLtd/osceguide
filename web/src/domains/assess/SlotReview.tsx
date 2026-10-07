@@ -7,7 +7,7 @@ import { isPlatformError } from "@/foundation/platform-client";
 import { readFeedback, RubricFeedback, type AttemptFeedbackRead } from "@/capabilities/feedback";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
-import { readMySlotReview, saveReview } from "@/domains/assess/api";
+import { readMySlotReview, retrySlotMarking, saveReview } from "@/domains/assess/api";
 import { useSurface } from "@/capabilities";
 import { can, useSession } from "@/foundation/session";
 import { GpLeadReview, SlotReviewers, readSittingReport, readSlotReviews } from "@/domains/assess/results";
@@ -196,7 +196,22 @@ function Editor({
     attemptId,
     hasResult: result !== null,
     hasRubric: Boolean(feedback?.rubric),
+    markingFailed: feedback?.marking_failed === true,
   });
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<Error | null>(null);
+  const retryMarking = useCallback(async () => {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      await retrySlotMarking(orgSlug, slotId);
+      onSaved();
+    } catch (cause) {
+      setRetryError(cause instanceof Error ? cause : new Error(String(cause)));
+    } finally {
+      setRetrying(false);
+    }
+  }, [orgSlug, slotId, onSaved]);
   const steps = slotReviewSteps({
     marking,
     mine: initial?.status === "completed" ? "completed" : initial ? "draft" : "none",
@@ -295,6 +310,16 @@ function Editor({
           ) : (
             <Panel padding="md">
               <p className="text-osce-body text-b2b-mid">{markingNotice(marking)}</p>
+              {marking === "failed" && (
+                <div className="mt-3 flex flex-col gap-2">
+                  <div>
+                    <Button variant="secondary" onClick={retryMarking} disabled={retrying}>
+                      {retrying ? "Retrying..." : "Retry marking"}
+                    </Button>
+                  </div>
+                  {retryError && <Alert tone="danger">{errorMessage(retryError)}</Alert>}
+                </div>
+              )}
             </Panel>
           )}
           {/* The marking is the machine's reading of the consultation; this is

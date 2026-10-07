@@ -822,3 +822,39 @@ async def test_pressing_start_again_leaves_a_running_circuit_where_it_is(
     assert again.json()["phase"] == "simulation"
     assert again.json()["started_at"] == advanced["started_at"]
     assert again.json()["phase_ends_at"] == advanced["phase_ends_at"]
+
+
+async def test_a_station_whose_rubric_is_no_longer_published_is_refused_before_anyone_sits_it(
+    client: AsyncClient, make_actor, db_session: AsyncSession, agents: FakeRoomAgents
+) -> None:  # type: ignore[no-untyped-def]
+    """S-2: a slot that could not be marked is not run, so nobody sits an unmarkable station."""
+    from sqlalchemy import func, select, update
+
+    from app.features.attempts.models import Attempt
+    from app.features.rubrics.models import RubricVersion
+    from app.features.sittings.models import Sitting
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    circuit_id, slot_id = await a_started_circuit(client, db_session, org_id, admin)
+    advanced = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/advance", json={}, headers=bearer(admin)
+    )
+    assert advanced.status_code == 200, advanced.text
+    before = await db_session.scalar(
+        select(func.count()).select_from(Attempt).where(Attempt.slot_id == slot_id)
+    )
+    bound = (await db_session.execute(select(Sitting.rubric_version_id))).scalars().one()
+    await db_session.execute(update(RubricVersion).where(RubricVersion.id == bound).values(status="draft"))
+    await db_session.commit()
+
+    refused = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit_id}/resend-patient", json={}, headers=bearer(admin)
+    )
+
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["code"] == "marking_not_ready"
+    assert before == 1
+    assert (
+        await db_session.scalar(select(func.count()).select_from(Attempt).where(Attempt.slot_id == slot_id))
+        == before
+    )

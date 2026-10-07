@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SLOW_AFTER_MS, watchMarking, type MarkingWaitTimers } from "@/capabilities/station-runner/markingWait";
+import { SLOW_AFTER_MS, markingWillNotArrive, watchMarking, type MarkingWaitTimers } from "@/capabilities/station-runner/markingWait";
 
 /** A clock the test moves by hand, so ten minutes of waiting takes no time. */
 function fakeClock() {
@@ -136,5 +136,13 @@ describe("watchMarking on a failed attempt", () => {
     await clock.advance(10 * 60 * 1000);
     assert.deepEqual(events, ["failed"]);
     assert.equal(clock.pendingCount(), 0);
+  });
+});
+
+describe("markingWillNotArrive", () => {
+  it("is true for an attempt the scorer gave up on or that failed outright", () => {
+    assert.equal(markingWillNotArrive({ status: "failed" }), true);
+    assert.equal(markingWillNotArrive({ status: "interaction_complete", marking_failed: true }), true);
+    assert.equal(markingWillNotArrive({ status: "interaction_complete" }), false);
   });
 });

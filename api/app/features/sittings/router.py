@@ -125,6 +125,7 @@ async def cancel_sitting(sitting_id: uuid.UUID, workspace: OrgAdmin, session: Se
         errors.SittingLockedError,
         errors.InvalidCircuitError,
         errors.TraineeRevokedError,
+        errors.MarkingNotReady,
         errors.TraineeNotOnRosterError,
     ),
 )
@@ -154,6 +155,7 @@ async def add_circuit(
         errors.CircuitLockedError,
         errors.InvalidCircuitError,
         errors.TraineeRevokedError,
+        errors.MarkingNotReady,
         errors.TraineeNotOnRosterError,
     ),
 )
@@ -200,6 +202,7 @@ async def delete_circuit(circuit_id: uuid.UUID, workspace: OrgAdmin, session: Se
         errors.StationNotOnCircuitError,
         errors.SittingLockedError,
         errors.TraineeRevokedError,
+        errors.MarkingNotReady,
         errors.TraineeNotOnRosterError,
     ),
 )

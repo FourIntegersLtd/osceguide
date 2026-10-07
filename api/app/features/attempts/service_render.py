@@ -9,6 +9,7 @@ what they were told they would be marked on, not against today's version.
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -120,31 +121,45 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
 async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) -> dict[str, Any] | None:
     """The rubric this attempt will be marked against, frozen onto it.
 
-    Slot attempts use the sitting's bound rubric version; everything else uses
-    the exam's published rubric.
-
     A missing or unpublished rubric is not fatal here: the session still runs
-    and is still recorded. It is `enqueue_scoring` that refuses to queue a
-    marking it cannot perform, which is the right place for that refusal.
+    and is still recorded, and `enqueue_scoring` fails the attempt with
+    `no_marking_rubric` rather than queue a marking it cannot perform. A slot
+    never gets this far unmarkable: `ensure_slot_markable` refuses it first.
     """
+    return await _snapshot_for(session, attempt.org_id, attempt.slot_id, exam)
+
+
+async def _snapshot_for(
+    session: AsyncSession, org_id: uuid.UUID | None, slot_id: uuid.UUID | None, exam: Any
+) -> dict[str, Any] | None:
+    """Slot attempts use the sitting's bound rubric version; everything else the exam's published one."""
     rubric_version_id = exam.rubric_version_id
-    if attempt.slot_id is not None and attempt.org_id is not None:
-        bound = await sittings_service.rubric_version_for_slot(session, attempt.org_id, attempt.slot_id)
+    if slot_id is not None and org_id is not None:
+        bound = await sittings_service.rubric_version_for_slot(session, org_id, slot_id)
         if bound is not None:
             rubric_version_id = bound
     if rubric_version_id is None:
-        log.warning("attempt has no rubric to be marked against", attempt_id=str(attempt.id))
+        log.warning("attempt has no rubric to be marked against", slot_id=str(slot_id))
         return None
     try:
         return await rubrics.marking_snapshot(
             session,
-            attempt.org_id,
+            org_id,
             rubric_version_id=rubric_version_id,
             field_selection=None,
         )
     except AppError as exc:
-        log.warning("rubric unavailable for attempt", attempt_id=str(attempt.id), reason=str(exc))
+        log.warning("rubric unavailable for attempt", slot_id=str(slot_id), reason=str(exc))
         return None
+
+
+async def ensure_slot_markable(
+    session: AsyncSession, *, org_id: uuid.UUID, slot_id: uuid.UUID, exam_id: uuid.UUID
+) -> None:
+    """Refuse (`marking_not_ready`) a slot whose marking snapshot cannot be built, before anyone sits it."""
+    exam = await catalog.exam_for_attempt(session, exam_id)
+    if await _snapshot_for(session, org_id, slot_id, exam) is None:
+        raise errors.MarkingNotReady()
 
 
 # --- Render the tutor from the source consultation, never the patient's prompt.

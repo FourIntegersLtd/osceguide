@@ -35,6 +35,13 @@ and the job that scores a delivered transcript.
 - Exactly one optional reference matches the kind — a CHECK, because six paths
   create attempts and only one needs to be wrong.
 - A slot has at most one attempt that has not failed: a partial unique index.
+- **Marking that gives up is not `failed`.** `score_attempt` retries 3 times (4 s, 16 s, 64 s). After
+  the last try the attempt stays `interaction_complete` with `failed_reason = scoring_failed`
+  (`AttemptRead` and feedback show `marking_failed`), so the transcript stays markable and the slot
+  stays taken. Staff retry with `POST /orgs/{slug}/slots/{slot_id}/marking/retry`, the platform with
+  `/platform/attempts/{id}/rescore`; both clear the reason. An attempt with no frozen rubric when its
+  marking is queued is `failed` with `no_marking_rubric`; a slot whose rubric is not published is
+  refused at dispatch with `marking_not_ready`.
 - **The transcript and the marking have three readers.** The candidate who
   spoke them, the supervisor named on the circuit they were spoken in, and an
   institution administrator of the owning organisation (B7) —

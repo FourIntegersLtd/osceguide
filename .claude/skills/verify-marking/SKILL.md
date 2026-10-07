@@ -109,6 +109,10 @@ mark on an already-marked attempt.
 
 ## Traps
 
+- A failed scoring job is retried by procrastinate (`attempts.jobs.SCORING_RETRIES`), and only the last
+  try writes `failed_reason = scoring_failed`. Prove retry changes with `score_attempt_now(..., last_try=True)`
+  in `tests/repository/test_scoring_job.py`; the task's strategy is read from `get_jobs_app().tasks`.
+
 - `unknown_exam` → the database is not seeded or the exam is not published.
 - Ortho: nullable `anyOf` domains made narrowed rubrics mark on the full exam,
   with every test green (fixed 2026-09-24). Assert the domain list, not "a result exists".

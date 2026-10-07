@@ -3,7 +3,8 @@ import { readTranscript, type Transcript } from "@/capabilities/attempt-runner";
 
 export type AssessmentResult = components["schemas"]["AssessmentResultRead"];
 type ResultPage = components["schemas"]["Page_AssessmentResultRead_"];
-export type AttemptFeedbackRead = components["schemas"]["AttemptFeedbackRead"];
+// `marking_failed` is added by hand until schema.d.ts is regenerated (R-5).
+export type AttemptFeedbackRead = components["schemas"]["AttemptFeedbackRead"] & { marking_failed?: boolean };
 
 export type { Transcript };
 /** The transcript is `/attempts/{id}/transcript`, which the runner already owns. */

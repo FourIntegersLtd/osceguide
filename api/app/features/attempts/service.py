@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts import domain, errors, repository
+from app.features.attempts import domain, errors, repository, service_render
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import (
     AttemptRead,
@@ -215,12 +215,15 @@ async def restart_for_slot(
     live = await repository.live_attempt_for_slot(session, slot_id)
     await repository.fail_live_attempt_for_slot(session, slot_id, at=now, reason="redispatched")
 
-    exam_id = await repository.exam_for_slot_attempt(session, slot_id) if live else None
+    exam_id = (await repository.exam_for_slot_attempt(session, slot_id) if live else None) or (
+        await _exam_for_station(session, station_version_id)
+    )
+    await service_render.ensure_slot_markable(session, org_id=org_id, slot_id=slot_id, exam_id=exam_id)
     return await repository.create_attempt(
         session,
         kind="exam_slot",
         user_id=user_id,
-        exam_id=exam_id or await _exam_for_station(session, station_version_id),
+        exam_id=exam_id,
         org_id=org_id,
         station_version_id=station_version_id,
         slot_id=slot_id,

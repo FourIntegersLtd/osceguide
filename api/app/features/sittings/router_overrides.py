@@ -157,6 +157,7 @@ async def set_auto_advance(
         errors.SlotNotFound,
         errors.VoiceUnavailable,
         errors.TraineeRevokedError,
+        errors.MarkingNotReady,
     ),
 )
 async def resend_patient(

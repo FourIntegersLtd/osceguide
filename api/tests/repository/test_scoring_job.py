@@ -146,3 +146,67 @@ async def test_an_attempt_that_never_completed_is_not_scored(db_session: AsyncSe
     attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
     await db_session.flush()
     assert not await score(db_session, attempt.id, FakeEvaluator())
+
+
+async def test_the_last_failed_try_marks_the_attempt_marking_failed_and_says_why(
+    db_session: AsyncSession,
+) -> None:
+    """R-5: after the last try the failure is recorded, not re-raised into a queue nobody reads.
+    The attempt keeps its transcript and stays markable, so staff can retry it."""
+    attempt_id = await completed_attempt(db_session)
+    scored = await score_attempt_now(
+        db_session,
+        attempt_id,
+        evaluator=FakeEvaluator(fail_times=1),
+        policy_version=PLATFORM_DEFAULT_POLICY,
+        framework_id="sca-rcgp-v1",
+        now=NOW,
+        last_try=True,
+    )
+    await db_session.flush()
+    assert scored is False
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    assert (attempt.status, attempt.failed_reason) == ("interaction_complete", "scoring_failed")
+
+
+async def test_a_mark_after_a_failed_one_clears_the_failure(db_session: AsyncSession) -> None:
+    attempt_id = await completed_attempt(db_session)
+    await repository.set_scoring_failure(db_session, attempt_id, reason="scoring_failed")
+    assert await score(db_session, attempt_id, FakeEvaluator())
+    await db_session.flush()
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    await db_session.refresh(attempt)
+    assert (attempt.status, attempt.failed_reason) == ("evaluated", None)
+
+
+async def test_the_scoring_job_is_retried_with_backoff_before_it_gives_up() -> None:
+    from app.core.jobs import get_jobs_app
+    from app.features.attempts.jobs import SCORING_TASK
+
+    strategy = get_jobs_app().tasks[SCORING_TASK].retry_strategy
+    assert (strategy.max_attempts, strategy.exponential_wait) == (3, 4)  # type: ignore[union-attr]
+
+
+async def test_an_attempt_with_no_frozen_rubric_is_failed_when_its_marking_is_queued(
+    db_session: AsyncSession,
+) -> None:
+    """S-2: a transcript for an attempt that cannot be marked says so on the attempt."""
+    from app.features.attempts.jobs import enqueue_scoring
+
+    user = await identity_repo.create_user(
+        session=db_session, email=f"u{uuid.uuid4().hex[:8]}@example.com", name="U", password_hash=None
+    )
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
+    attempt_id = attempt.id
+    await repository.set_status(db_session, attempt_id, status="running", at=NOW)
+    await repository.set_status(db_session, attempt_id, status="interaction_complete", at=NOW)
+    await enqueue_scoring(db_session, attempt, now=NOW)
+    await db_session.flush()
+    stored = await repository.attempt_by_id(db_session, attempt_id)
+    assert stored is not None
+    await db_session.refresh(stored)
+    assert (stored.status, stored.failed_reason) == ("failed", "no_marking_rubric")

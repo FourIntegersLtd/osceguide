@@ -5,7 +5,7 @@ import { Alert, Button, Modal, ModalCallout } from "@/foundation/ui";
 import { useMeEvents } from "@/foundation/hooks";
 import { readAttempt, readResults } from "@/capabilities/attempt-runner";
 import { GeneratingFeedback } from "@/capabilities/station-runner/GeneratingFeedback";
-import { watchMarking, type MarkingWait } from "@/capabilities/station-runner/markingWait";
+import { markingWillNotArrive, watchMarking, type MarkingWait } from "@/capabilities/station-runner/markingWait";
 import { useCurrentExam } from "@/foundation/session";
 import Tips from "./tips/Tips";
 
@@ -57,7 +57,7 @@ function OpenMarkingModal({
       isMarked: async () => (await readResults(attemptId)).length > 0,
       onReady: () => onReadyRef.current(),
       failure: {
-        check: async () => (await readAttempt(attemptId)).status === "failed",
+        check: async () => markingWillNotArrive(await readAttempt(attemptId)),
         onFailed: () => setPhase("failed"),
       },
       onSlow: () => setPhase((now) => (now === "failed" ? now : "slow")),
@@ -103,9 +103,9 @@ function OpenMarkingModal({
             We could not mark this consultation
           </h2>
           <Alert tone="danger">
-            Marking failed, so there is no feedback for this attempt. Check again in a moment, or
-            continue to your session summary and start the station again. If it keeps happening,
-            contact support and quote the station and the time.
+            Marking failed, so there is no feedback for this attempt yet. Check again in a moment, or
+            continue to your session summary. If it keeps happening, contact support and quote the
+            station and the time.
           </Alert>
           <div className="flex justify-center gap-2">
             <Button

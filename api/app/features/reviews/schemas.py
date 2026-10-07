@@ -25,6 +25,14 @@ class SlotReviewRead(BaseModel):
     form: ReviewFormRead | None = None
 
 
+class MarkingRetryRead(BaseModel):
+    """What asking for a slot's automatic marking again answered: whether it was queued, and why not."""
+
+    queued: bool
+    policy_version: str
+    reason: str | None = None
+
+
 class SlotRagSummary(BaseModel):
     """What several reviewers of one slot agreed, or did not, in the rubric's own rating.
 

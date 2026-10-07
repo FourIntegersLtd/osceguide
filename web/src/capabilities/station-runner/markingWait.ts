@@ -21,6 +21,15 @@ export const SLOW_AFTER_MS = 3 * 60 * 1000;
 const FIRST_DELAY_MS = 3_000;
 const CEILING_MS = 30_000;
 
+/**
+ * Whether the attempt will never get a result without somebody acting: it failed outright, or
+ * the scorer gave up after its retries. `marking_failed` is read by hand until schema.d.ts is
+ * regenerated (R-5).
+ */
+export function markingWillNotArrive(attempt: { status: string; marking_failed?: boolean }): boolean {
+  return attempt.status === "failed" || attempt.marking_failed === true;
+}
+
 export interface MarkingWaitTimers {
   now: () => number;
   setTimeout: (run: () => void, ms: number) => unknown;

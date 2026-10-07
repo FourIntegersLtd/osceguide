@@ -34,6 +34,16 @@ class AttemptNotReady(Conflict):
     default_message = "This attempt has no rendered definition yet"
 
 
+class MarkingNotReady(Conflict):
+    """The station's marking scheme cannot be built (its rubric is missing or not published).
+
+    Refused at the start of a slot so nobody sits a station that could never be marked.
+    """
+
+    code = "marking_not_ready"
+    default_message = "This station cannot be marked yet: its rubric is not published"
+
+
 class AttemptMismatch(Conflict):
     """The body names a different attempt than the path.
 

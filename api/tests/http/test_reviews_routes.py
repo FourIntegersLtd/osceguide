@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -683,3 +684,81 @@ async def test_a_training_review_is_shared_with_the_trainee_once_completed(
     assert shared.status_code == 200, shared.text
     assert shared.json()["notes"] == "Good rapport"
     assert shared.json()["summary"]["overall_rag"] == "G"
+
+
+async def a_slot_attempt_marking_failed(
+    db_session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID
+) -> uuid.UUID:
+    """The candidate's finished attempt on a slot, with the scorer having given up on it."""
+    from sqlalchemy import select
+
+    from app.features.attempts import repository as attempts_repo
+    from app.features.sittings.models import Slot
+    from tests.support.rubrics import frozen_definition
+
+    slot = (await db_session.execute(select(Slot).where(Slot.id == slot_id))).scalar_one()
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    attempt = await attempts_repo.create_attempt(
+        db_session,
+        kind="exam_slot",
+        user_id=slot.trainee_id,
+        exam_id=exam.id,
+        org_id=org_id,
+        station_version_id=slot.station_version_id,
+        slot_id=slot_id,
+    )
+    attempt_id = attempt.id
+    now = datetime.now(UTC)
+    await attempts_repo.freeze_definition(
+        db_session, attempt_id, definition=frozen_definition(str(attempt_id)), at=now
+    )
+    await attempts_repo.set_status(db_session, attempt_id, status="running", at=now)
+    await attempts_repo.set_status(db_session, attempt_id, status="interaction_complete", at=now)
+    await attempts_repo.set_scoring_failure(db_session, attempt_id, reason="scoring_failed")
+    await db_session.commit()
+    return attempt_id
+
+
+async def test_staff_see_that_marking_failed_and_can_retry_it(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-5: the slot's marking says it failed, and a reviewer queues it again from the org."""
+    from app.features.attempts import repository as attempts_repo
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+    attempt_id = await a_slot_attempt_marking_failed(db_session, org_id, slot_id)
+
+    feedback = await client.get(f"/api/v1/attempts/{attempt_id}/feedback", headers=bearer(admin))
+    assert feedback.status_code == 200, feedback.text
+    assert feedback.json()["marking_failed"] is True
+
+    retried = await client.post(
+        f"/api/v1/orgs/kings/slots/{slot_id}/marking/retry", json={}, headers=bearer(admin)
+    )
+    assert retried.status_code == 200, retried.text
+    assert retried.json()["queued"] is True
+
+    attempt = await attempts_repo.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    await db_session.refresh(attempt)
+    assert (attempt.status, attempt.failed_reason) == ("interaction_complete", None)
+    again = await client.get(f"/api/v1/attempts/{attempt_id}/feedback", headers=bearer(admin))
+    assert again.json()["marking_failed"] is False
+
+
+async def test_marking_cannot_be_retried_from_another_organisation(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, _admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+    await a_slot_attempt_marking_failed(db_session, org_id, slot_id)
+    other_org, other_admin = await org_with_admin(client, make_actor, slug="elsewhere")
+    _ = other_org
+
+    refused = await client.post(
+        f"/api/v1/orgs/elsewhere/slots/{slot_id}/marking/retry", json={}, headers=bearer(other_admin)
+    )
+    assert refused.status_code == 404
+    assert refused.json()["code"] == "slot_not_found"
