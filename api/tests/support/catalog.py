@@ -59,7 +59,7 @@ async def ensure_exam(
         marking_layout=MINIMAL_MARKING_LAYOUT,
     )
     version_id = rubric.versions[0].id
-    await rubrics.publish_version(session, None, rubric.id, 1, actor_id=None, now=_now())
+    await rubrics.publish_version(session, None, rubric.id, 1, actor=None, now=_now())
     reading, simulation = TIMINGS.get(code, (90, 600))
     exam = await catalog.create_exam(
         session,

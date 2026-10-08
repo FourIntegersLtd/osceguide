@@ -129,3 +129,24 @@ async def test_an_anonymised_trainee_is_named_nowhere_in_the_report_cohort_or_cs
         assert page.status_code == 200, (path, page.text)
         assert "erase.me" not in page.text, path
     assert "Anonymised trainee" in (await client.get(f"{base}/cohort", headers=bearer(admin))).text
+
+
+async def test_publishing_a_rubric_is_audited_in_its_owners_log(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """S-14: a published marking scheme decides every later mark, so who published it is recorded."""
+    from tests.support.rubrics import create_rubric
+
+    _, admin = await org_with_admin(client, make_actor)
+    root = await make_actor("root-rubric@osceguide.com", platform_admin=True)
+
+    await create_rubric(client, admin, org_slug="kings", title="Ours")
+    await create_rubric(client, root, title="Theirs")
+
+    org_log = await client.get(f"{KINGS}/audit", headers=bearer(admin))
+    platform_log = await client.get("/api/v1/platform/audit", headers=bearer(root))
+    assert [r["summary"] for r in org_log.json()["items"] if r["action"] == "rubric.published"] == [
+        'Published marking scheme "Ours" version 1'
+    ]
+    platform = [r["summary"] for r in platform_log.json()["items"] if r["action"] == "rubric.published"]
+    theirs = 'Published marking scheme "Theirs" version 1'
+    assert theirs in platform
+    assert theirs not in [r["summary"] for r in org_log.json()["items"]]

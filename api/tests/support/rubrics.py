@@ -223,7 +223,7 @@ async def published_rubric_version(
         pacing=PACING,
         marking_layout=MINIMAL_MARKING_LAYOUT,
     )
-    return await rubric_service.publish_version(session, None, rubric.id, 1, actor_id=None, now=now)
+    return await rubric_service.publish_version(session, None, rubric.id, 1, actor=None, now=now)
 
 
 async def published_feedback_version(

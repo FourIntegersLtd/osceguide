@@ -176,7 +176,7 @@ async def publish_org_version(
         workspace.org_id,
         rubric_id,
         version,
-        actor_id=workspace.principal.user_id,
+        actor=workspace.principal,
         now=clock.now(),
     )
 

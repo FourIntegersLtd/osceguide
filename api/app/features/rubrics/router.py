@@ -177,7 +177,7 @@ async def publish_platform_version(
     rubric_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session, clock: ClockDep
 ) -> schemas.RubricVersionRead:
     return await service.publish_version(
-        session, None, rubric_id, version, actor_id=admin.user_id, now=clock.now()
+        session, None, rubric_id, version, actor=admin, now=clock.now()
     )
 
 

@@ -198,7 +198,7 @@ async def test_an_authored_rubric_marks_end_to_end_with_no_code_change(
         system_prompt=SYSTEM_PROMPT,
         pacing=PACING,
     )
-    version = await rubrics.publish_version(db_session, org_id, rubric.id, 1, actor_id=None, now=PUBLISHED_AT)
+    version = await rubrics.publish_version(db_session, org_id, rubric.id, 1, actor=None, now=PUBLISHED_AT)
     version_id = version.id
     exam = await catalog_authoring.create_exam(
         db_session,

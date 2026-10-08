@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import lifecycle
+from app.core.auth import Principal
 from app.core.errors import AppError, raise_mapped
 from app.core.pagination import Page
 from app.features.attempts import service_trial
@@ -33,6 +34,7 @@ from app.features.rubrics.schemas import (
     TrialCandidateRead,
 )
 from app.features.sittings import service as sittings_service
+from app.features.tenancy import service_audit
 
 REFUSALS: dict[type[Exception], type[AppError]] = {
     lifecycle.NotEditable: errors.NotEditableError,
@@ -228,7 +230,7 @@ async def publish_version(
     rubric_id: uuid.UUID,
     version: int,
     *,
-    actor_id: uuid.UUID | None,
+    actor: Principal | None,
     now: datetime,
 ) -> RubricVersionRead:
     """Make this version the one new attempts are marked against.
@@ -258,8 +260,21 @@ async def publish_version(
             )
     except Exception as exc:  # noqa: BLE001
         raise_mapped(exc, REFUSALS)
-    await repository.set_version_status(session, org_id, version_row.id, status=status, at=now, by=actor_id)
+    by = actor.user_id if actor else None
+    await repository.set_version_status(session, org_id, version_row.id, status=status, at=now, by=by)
     await repository.set_current_version(session, org_id, rubric_id, version_id=version_row.id)
+    if actor is not None:
+        # A published scheme decides every later mark, so who published it is recorded (S-14).
+        rubric = await _own_rubric(session, org_id, rubric_id)
+        await service_audit.record_for_owner(
+            session,
+            org_id=org_id,
+            actor=actor,
+            action="rubric.published",
+            target_type="rubric",
+            target_id=str(rubric_id),
+            summary=f'Published marking scheme "{rubric.title}" version {version}',
+        )
     await session.refresh(version_row)
     return version_read(version_row)
 

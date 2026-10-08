@@ -23,6 +23,13 @@ describe("hire navigation", () => {
     assert.ok(mounted.includes("/authoring"));
   });
 
+  it("adds the team for whoever manages it, and gives staff no My training or practice sessions", () => {
+    const admin = navFor(["run_circuits", "manage_team"]);
+    assert.ok(admin.includes("/app/acme/team"));
+    assert.ok(!navFor(["run_circuits"]).includes("/app/acme/team"));
+    assert.ok(!admin.some((href) => href.endsWith("/trainee") || href.endsWith("/mocks")));
+  });
+
   it("sends a candidate to their own training, not the staff sittings list", () => {
     assert.deepEqual(navFor([]), ["/app/acme/trainee"]);
   });

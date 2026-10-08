@@ -269,7 +269,7 @@ async def seed(*, path: Path, dry_run: bool, report: bool, republish: bool = Fal
                     pacing=spec["pacing"],
                     marking_layout=spec.get("marking_layout") or DEFAULT_MARKING_LAYOUT,
                 )
-                published = await rubrics.publish_version(session, None, rubric.id, 1, actor_id=None, now=now)
+                published = await rubrics.publish_version(session, None, rubric.id, 1, actor=None, now=now)
                 exam = await exams.create_exam(
                     session,
                     None,

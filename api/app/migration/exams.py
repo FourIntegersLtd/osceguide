@@ -109,7 +109,7 @@ async def _publish_rubric(
         pacing=dict(rubric.get("pacing") or {}),
         marking_layout=dict(layout) if isinstance(layout, Mapping) else dict(_DEFAULT_MARKING_LAYOUT),
     )
-    published = await rubrics.publish_version(session, None, created.id, 1, actor_id=None, now=now)
+    published = await rubrics.publish_version(session, None, created.id, 1, actor=None, now=now)
     return published.id
 
 
