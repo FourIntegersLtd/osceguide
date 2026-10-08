@@ -13,10 +13,12 @@ export type SlotStep = RailStep<SlotStepId>;
 /**
  * `none`: nobody took the station. `pending`: taken, marking not finished. `failed`: marking
  * gave up after its retries; a reviewer can queue it again.
+ * `unmarkable`: taken, but the attempt failed for want of a marking scheme, so there is nothing to
+ * retry; the station has to be sat again.
  * `unavailable`: marked without a marking scheme, so there are no automatic
  * marks and there will not be. `ready`: marks to read.
  */
-export type MarkingState = "none" | "pending" | "failed" | "unavailable" | "ready";
+export type MarkingState = "none" | "pending" | "failed" | "unmarkable" | "unavailable" | "ready";
 
 export type FormStatus = "none" | "draft" | "completed";
 
@@ -25,8 +27,10 @@ export function markingState(input: {
   hasResult: boolean;
   hasRubric: boolean;
   markingFailed?: boolean;
+  /** Why the slot's last attempt failed when it has no live one (`SlotReviewsRead.attempt_failed_reason`). */
+  failedReason?: string | null;
 }): MarkingState {
-  if (!input.attemptId) return "none";
+  if (!input.attemptId) return input.failedReason ? "unmarkable" : "none";
   if (!input.hasResult) return input.markingFailed ? "failed" : "pending";
   return input.hasRubric ? "ready" : "unavailable";
 }
@@ -40,6 +44,8 @@ export function markingNotice(state: MarkingState): string | null {
       return "Automatic marking is not ready yet. It appears here when it finishes.";
     case "failed":
       return "Automatic marking failed. Retry it, or mark this station without it.";
+    case "unmarkable":
+      return "This station was taken, but it could not be marked because its exam had no marking scheme. It needs to be sat again; you can still record your own marks.";
     case "unavailable":
       return "This station was taken before the exam had a marking scheme, so there are no automatic marks and there will not be.";
     case "ready":
@@ -51,6 +57,7 @@ const AUTO: Record<MarkingState, Pick<SlotStep, "state" | "note">> = {
   none: { state: "todo", note: "Not taken" },
   pending: { state: "todo", note: "Not ready yet" },
   failed: { state: "attention", note: "Marking failed" },
+  unmarkable: { state: "attention", note: "Could not be marked" },
   unavailable: { state: "attention", note: "Not available" },
   ready: { state: "done", note: "Ready" },
 };

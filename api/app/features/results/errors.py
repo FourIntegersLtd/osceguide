@@ -70,6 +70,13 @@ class EvidenceChangedError(Conflict):
     default_message = "The evidence has changed since sign-off; review and sign off again"
 
 
+class NotReleasableError(Conflict):
+    """The outcome is withheld or inconclusive, so it is not sent to the candidate."""
+
+    code = "outcome_not_releasable"
+    default_message = "A withheld or inconclusive outcome cannot be released"
+
+
 class DecisionRevisedError(Conflict):
     """The decision was saved by someone else since the caller read it.
 

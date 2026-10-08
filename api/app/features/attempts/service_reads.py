@@ -202,6 +202,14 @@ async def live_attempts_for_slots(
     return {attempt.slot_id: _ref(attempt) for attempt in attempts if attempt.slot_id is not None}
 
 
+async def failed_reason_for_slot(session: AsyncSession, slot_id: uuid.UUID) -> str | None:
+    """Why a slot's last attempt failed (`no_marking_rubric`); None with a live attempt or none at all.
+
+    A reviewer opening the slot would otherwise read "nobody took this station" (R-37).
+    """
+    return await repository.failed_reason_for_untaken_slot(session, slot_id)
+
+
 async def slots_with_attempts(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
     """Which of these slots already have an attempt against them.
 

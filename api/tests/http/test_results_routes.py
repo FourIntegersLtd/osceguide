@@ -199,8 +199,29 @@ async def test_a_draft_cannot_be_released_directly(
 async def test_release_is_refused_if_the_evidence_moved(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    """A station re-marked after sign-off would otherwise send a candidate an
-    outcome nobody approved."""
+    """A station marked after sign-off would otherwise send a candidate an
+    outcome nobody approved. The server reads the marking itself (R-25): what
+    the client posts, whether the old evidence or a lie, changes nothing."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "R.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    await _mark_the_station(db_session, org_id, sitting)
+
+    response = await client.post(
+        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "evidence_changed"
+
+
+async def test_release_ignores_evidence_the_client_invents(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     await client.put(
@@ -212,11 +233,71 @@ async def test_release_is_refused_if_the_evidence_moved(
 
     response = await client.post(
         url(sitting, trainee, "/release"),
-        json={"evidence": {"slots": ["a"], "scores": {"communication": "R"}}},
+        json={"evidence": {"slots": ["z"], "scores": {"communication": "R"}}},
         headers=bearer(admin),
     )
-    assert response.status_code == 409
-    assert response.json()["code"] == "evidence_changed"
+    assert response.status_code == 200, response.text
+
+
+async def _mark_the_station(db_session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> None:
+    """The engine finishes marking the candidate's one station."""
+    from sqlalchemy import select
+
+    from app.features.attempts.models import Attempt
+    from app.features.catalog.models import Exam
+    from app.features.sittings.models import Slot
+
+    slot = (await db_session.execute(select(Slot).where(Slot.org_id == org_id))).scalars().one()
+    exam_id = await db_session.scalar(select(Exam.id).where(Exam.code == "sca"))
+    db_session.add(
+        Attempt(
+            kind="exam_slot",
+            user_id=slot.trainee_id,
+            org_id=org_id,
+            exam_id=exam_id,
+            slot_id=slot.id,
+            status="evaluated",
+        )
+    )
+    await db_session.flush()
+
+
+@pytest.mark.parametrize("outcome", ["withheld", "inconclusive"])
+async def test_a_withheld_or_inconclusive_outcome_is_not_released_or_emailed(
+    client: AsyncClient, make_actor, db_session: AsyncSession, outcome: str
+) -> None:  # type: ignore[no-untyped-def]
+    """R-24: "Your result is available" for an outcome that is held back or undecided is untrue."""
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": outcome, "rationale": "Held.", "evidence": EVIDENCE},
+        headers=bearer(admin),
+    )
+    signed = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    assert signed.status_code == 200, signed.text
+
+    single = await client.post(url(sitting, trainee, "/release"), json={}, headers=bearer(admin))
+    assert single.status_code == 409
+    assert single.json()["code"] == "outcome_not_releasable"
+
+    bulk = await client.post(
+        f"/api/v1/orgs/kings/sittings/{sitting}/decisions/release",
+        json={"candidates": [{"trainee_id": str(trainee)}]},
+        headers=bearer(admin),
+    )
+    assert bulk.json()["released"] == []
+    assert bulk.json()["skipped"] == [{"trainee_id": str(trainee), "code": "outcome_not_releasable"}]
+    queued = (
+        await db_session.execute(
+            select(OutboundMessage).where(OutboundMessage.template_key == "candidate_result_released")
+        )
+    ).scalars()
+    assert list(queued) == []
 
 
 async def test_a_candidate_reads_their_released_result(

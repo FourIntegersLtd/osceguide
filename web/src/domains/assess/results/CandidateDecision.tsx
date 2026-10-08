@@ -18,6 +18,7 @@ import {
   OUTCOME_HINT,
   OUTCOME_LABEL,
   evidenceFor,
+  heldBack,
   signOffBlockers,
   workflowLabel,
   workflowTone,
@@ -280,7 +281,7 @@ function Form({
             />
             <ReleaseButton
               busy={busy === "release"}
-              disabled={busy !== null}
+              disabled={busy !== null || heldBack(outcome)}
               count={1}
               label="Release to the candidate"
               onConfirm={() =>

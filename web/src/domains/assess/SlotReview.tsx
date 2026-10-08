@@ -38,6 +38,24 @@ function notFoundAsNull(err: unknown): null {
   throw err;
 }
 
+/**
+ * Staff who are not named on the station's circuit may open its review but not read the automatic
+ * marking (a 403). That is a fact about them, not a failure of the page (R-26): the marking is
+ * left out and the screen says so.
+ */
+async function readMarking(attemptId: string | null, signal: AbortSignal) {
+  if (!attemptId) return { feedback: null, hidden: false };
+  try {
+    return { feedback: await readFeedback(attemptId, signal), hidden: false };
+  } catch (err) {
+    if (isPlatformError(err) && err.status === 403) return { feedback: null, hidden: true };
+    return { feedback: notFoundAsNull(err), hidden: false };
+  }
+}
+
+/** `attempt_failed_reason` is declared here until the generated types carry it. */
+type SlotReviewsRead = SlotReviews & { attempt_failed_reason?: string | null };
+
 export function SlotReview({
   orgSlug,
   slotId,
@@ -50,7 +68,6 @@ export function SlotReview({
   /** The sitting this was opened from, when it was opened from its results. */
   sittingId?: string | null;
 }) {
-  const { session } = useSession();
   /*
    * My review is read directly (`GET .../reviews/mine`). An earlier version
    * called that route before it existed, answered 405 on every load and
@@ -60,14 +77,14 @@ export function SlotReview({
 
   const state = useAsync(
     async (signal) => {
-      const [feedback, reviews, mine] = await Promise.all([
-        // No marking yet (a 404) is an ordinary state beside a review form. Any other failure,
-        // a 403 included, is a failure: the boundary shows it with a retry.
-        attemptId ? readFeedback(attemptId, signal).catch(notFoundAsNull) : Promise.resolve(null),
-        readSlotReviews(orgSlug, slotId, signal),
+      const [marking, reviews, mine] = await Promise.all([
+        // No marking yet (a 404) is an ordinary state beside a review form, and so is a marking
+        // this person may not read (a 403). Any other failure is a failure: the boundary shows it.
+        readMarking(attemptId, signal),
+        readSlotReviews(orgSlug, slotId, signal) as Promise<SlotReviewsRead>,
         readMySlotReview(orgSlug, slotId, signal),
       ]);
-      return { feedback, reviews, mine };
+      return { feedback: marking.feedback, hidden: marking.hidden, reviews, mine };
     },
     [orgSlug, slotId, attemptId],
   );
@@ -77,9 +94,9 @@ export function SlotReview({
       <B2CPageHeader
         title="Mark this station"
         subtitle="The automatic marking, your marks and the admin's review."
-        action={sittingId && can(session, "sign_off_results") ? <CandidateStepper orgSlug={orgSlug} sittingId={sittingId} slotId={slotId} /> : undefined}
+        action={sittingId ? <CandidateStepper orgSlug={orgSlug} sittingId={sittingId} slotId={slotId} /> : undefined}
       />
-      {attemptId ? null : (
+      {attemptId || state.data?.reviews.attempt_failed_reason ? null : (
         /*
          * Without an attempt there is no engine marking to set the form
          * beside, and a bare form reads as "the machine has not finished"
@@ -89,6 +106,11 @@ export function SlotReview({
           Nobody has taken this station yet, so there is nothing to mark.
         </Alert>
       )}
+      {state.data?.hidden ? (
+        <Alert tone="warning">
+          You are not named on this station&apos;s circuit, so its automatic marking is not shown to you.
+        </Alert>
+      ) : null}
       <AsyncBoundary state={state}>
         {(data) => (
           <Editor
@@ -163,7 +185,7 @@ function Editor({
   slotId: string;
   attemptId: string | null;
   feedback: AttemptFeedbackRead | null;
-  reviews: SlotReviews;
+  reviews: SlotReviewsRead;
   initial: { field_values: Record<string, unknown>; notes: string | null; status: string } | null;
   onSaved: () => void;
 }) {
@@ -190,6 +212,8 @@ function Editor({
   const [busy, setBusy] = useState<"draft" | "completed" | "retry" | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  // Its own message, shown beside the marking it belongs to and not under the marks form too.
+  const [retryError, setRetryError] = useState<Error | null>(null);
 
   const submitted = initial?.status === "completed";
   const marking = markingState({
@@ -197,15 +221,16 @@ function Editor({
     hasResult: result !== null,
     hasRubric: Boolean(feedback?.rubric),
     markingFailed: feedback?.marking_failed === true,
+    failedReason: reviews.attempt_failed_reason,
   });
   const retryMarking = useCallback(async () => {
     setBusy("retry");
-    setError(null);
+    setRetryError(null);
     try {
       await retrySlotMarking(orgSlug, slotId);
       onSaved();
     } catch (cause) {
-      setError(cause instanceof Error ? cause : new Error(String(cause)));
+      setRetryError(cause instanceof Error ? cause : new Error(String(cause)));
     } finally {
       setBusy(null);
     }
@@ -315,7 +340,7 @@ function Editor({
                       {busy === "retry" ? "Retrying..." : "Retry marking"}
                     </Button>
                   </div>
-                  {error && busy === null && <Alert tone="danger">{errorMessage(error)}</Alert>}
+                  {retryError && busy === null && <Alert tone="danger">{errorMessage(retryError)}</Alert>}
                 </div>
               )}
             </Panel>

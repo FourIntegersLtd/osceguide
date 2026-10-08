@@ -443,6 +443,19 @@ async def live_attempts_for_slots(session: AsyncSession, slot_ids: Sequence[uuid
     return list((await session.execute(stmt)).scalars())
 
 
+async def failed_reason_for_untaken_slot(session: AsyncSession, slot_id: uuid.UUID) -> str | None:
+    """Why the latest attempt on a slot failed, when it has no live attempt to show instead."""
+    if await live_attempt_for_slot(session, slot_id) is not None:
+        return None
+    stmt = (
+        select(Attempt.failed_reason)
+        .where(Attempt.slot_id == slot_id, Attempt.status == "failed")
+        .order_by(Attempt.created_at.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def live_attempt_for_slot(session: AsyncSession, slot_id: uuid.UUID) -> Attempt | None:
     """The one unfailed attempt currently on this slot, if any."""
     stmt = select(Attempt).where(Attempt.slot_id == slot_id, Attempt.status != "failed")

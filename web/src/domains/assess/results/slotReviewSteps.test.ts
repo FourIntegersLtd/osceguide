@@ -63,3 +63,10 @@ test("marking that failed says so in the rail and in the panel, and is not 'not 
   );
   assert.match(markingNotice("failed") ?? "", /^Automatic marking failed\./);
 });
+
+test("a station whose attempt failed for want of a marking scheme was taken but cannot be marked (R-37)", () => {
+  const state = markingState({ attemptId: null, hasResult: false, hasRubric: false, failedReason: "no_marking_rubric" });
+  assert.equal(state, "unmarkable");
+  assert.match(markingNotice(state) ?? "", /had no marking scheme/);
+  assert.equal(markingState({ attemptId: null, hasResult: false, hasRubric: false, failedReason: null }), "none");
+});

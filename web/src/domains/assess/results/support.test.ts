@@ -10,6 +10,7 @@ import {
   readoutFilename,
   recruitmentLabel,
   releasable,
+  heldBack,
   signOffBlockers,
   formatScore,
   outcomeLabel,
@@ -229,4 +230,23 @@ test("outcomeLabel names each outcome and shows an unknown one as it came", () =
   assert.equal(outcomeLabel("pass"), "Pass");
   assert.equal(outcomeLabel("withheld"), "Withheld");
   assert.equal(outcomeLabel("something_new"), "something_new");
+});
+
+test("a withheld or inconclusive outcome is not offered for release (R-24)", () => {
+  const signed = (assessment_outcome: string) =>
+    candidate({
+      decision: {
+        workflow_state: "signed_off",
+        assessment_outcome,
+        recruitment_outcome: null,
+        signed_off_at: "2026-09-19T09:00:00Z",
+        released_at: null,
+      },
+    });
+  assert.equal(releasable(signed("withheld")), false);
+  assert.equal(releasable(signed("inconclusive")), false);
+  assert.equal(releasable(signed("fail")), true);
+  assert.equal(heldBack("withheld"), true);
+  assert.equal(heldBack("pass"), false);
+  assert.equal(releaseRefusal("outcome_not_releasable"), "a withheld or inconclusive outcome is not sent to the candidate");
 });

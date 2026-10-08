@@ -74,7 +74,6 @@ async def save_decision(
         recruitment_outcome=body.recruitment_outcome,
         rationale=body.rationale,
         moderation_notes=body.moderation_notes,
-        evidence=body.evidence,
         expected_revision=body.expected_revision,
         actor_id=workspace.principal.user_id,
     )
@@ -132,7 +131,11 @@ async def release_many(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision/release",
     response_model=schemas.DecisionRead,
     responses=error_responses(
-        Forbidden, errors.ResultNotFound, errors.EvidenceChangedError, errors.InvalidWorkflowError
+        Forbidden,
+        errors.ResultNotFound,
+        errors.EvidenceChangedError,
+        errors.InvalidWorkflowError,
+        errors.NotReleasableError,
     ),
 )
 async def release(
@@ -150,7 +153,6 @@ async def release(
         workspace.org_id,
         sitting_id=sitting_id,
         trainee_id=trainee_id,
-        current_evidence=body.evidence,
         actor_id=workspace.principal.user_id,
         now=clock.now(),
     )

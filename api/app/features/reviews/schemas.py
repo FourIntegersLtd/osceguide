@@ -65,6 +65,9 @@ class SlotReviewsRead(BaseModel):
     summary: SlotRagSummary
     # What a reviewer can rate on this slot, from the sitting's rubric.
     form: ReviewFormRead | None = None
+    # Why the slot's last attempt failed when it has no live one (`no_marking_rubric`): the
+    # station was taken, so "nobody took it" would be untrue. Null otherwise.
+    attempt_failed_reason: str | None = None
 
 
 class SubmitSlotReview(BaseModel):

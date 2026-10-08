@@ -36,7 +36,12 @@ two outcomes, and an outbox rather than an inline email.
 - The two outcomes are checked against each other, so a failed candidate cannot
   be recorded as hired and an unresolved assessment leaves recruitment pending.
 - Release re-checks the **evidence fingerprint**. A station re-marked between
-  sign-off and release would otherwise send an outcome nobody approved.
+  sign-off and release would otherwise send an outcome nobody approved. The
+  evidence is read by the server from the marking (`service_evidence`); the
+  `evidence` a client posts is ignored.
+- A `withheld` or `inconclusive` outcome can be signed off but not released
+  (`outcome_not_releasable`, 409; a bulk release skips it with that code), and
+  no "result available" email is queued for it.
 - A candidate sees only released revisions, and a narrower shape: moderation
   notes and the evidence snapshot stay internal. b2b's own schema doc says not
   to reproduce disclosure policy in frontend transforms, so it is applied here.
@@ -48,7 +53,7 @@ two outcomes, and an outbox rather than an inline email.
 |---|---|---|---|
 | GET/PUT | `.../sittings/{id}/candidates/{trainee_id}/decision` | institution admin | each save is a revision; GET is 200 `null` before the first draft |
 | POST | `.../decision/sign-off` | institution admin | `not_signable` (422) |
-| POST | `.../decision/release` | institution admin | `evidence_changed` (409) |
+| POST | `.../decision/release` | institution admin | `evidence_changed`, `outcome_not_releasable` (409) |
 | GET | `/api/v1/me/results/{sitting_id}` | bearer | released only, with `acknowledged_at`; 200 `null` until released (the PDF and acknowledge still answer `result_not_released`) |
 | POST | `/api/v1/me/results/{sitting_id}/acknowledge` | bearer | one event per revision; repeating returns the first answer |
 

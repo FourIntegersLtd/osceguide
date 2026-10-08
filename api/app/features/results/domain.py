@@ -58,6 +58,10 @@ class EvidenceChanged(Exception):
     """The scores a decision was signed off against have since moved."""
 
 
+class NotReleasable(Exception):
+    """A withheld or inconclusive outcome is held back or unresolved: the candidate is not told it."""
+
+
 class StaleDecision(Exception):
     """A save that named a revision older than the one now on record."""
 
@@ -114,6 +118,17 @@ def ensure_signable(*, assessment: Assessment | None, rationale: str | None) -> 
         raise NotSignable("A rationale is required before sign-off.")
     if len(text) > MAX_RATIONALE:
         raise NotSignable(f"A rationale is at most {MAX_RATIONALE} characters.")
+
+
+def ensure_releasable(assessment: str | None) -> None:
+    """Only a decided outcome goes to the candidate (R-24).
+
+    `withheld` is decided but held, for an investigation or an appeal;
+    `inconclusive` is not decided. Emailing "your result is available" for
+    either tells the candidate something untrue.
+    """
+    if assessment in (Assessment.WITHHELD, Assessment.INCONCLUSIVE):
+        raise NotReleasable(f"A {assessment} outcome cannot be released to the candidate.")
 
 
 def transition(current: Workflow, target: Workflow) -> Workflow:

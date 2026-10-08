@@ -34,6 +34,7 @@ class SaveDecision(BaseModel):
     )
     rationale: str | None = Field(default=None, max_length=4000)
     moderation_notes: str | None = None
+    # Ignored: the server reads the evidence from the marking itself (R-25). Kept so older screens still post.
     evidence: dict[str, Any] = Field(default_factory=dict)
     expected_revision: int = Field(default=0, ge=0)
 
@@ -41,7 +42,7 @@ class SaveDecision(BaseModel):
 MAX_BULK_RELEASE = 500
 
 
-# One candidate in a bulk release, with the evidence the screen is looking at.
+# One candidate in a bulk release. The evidence is ignored: the server reads it from the marking (R-25).
 class BulkReleaseCandidate(BaseModel):
     trainee_id: uuid.UUID
     evidence: dict[str, Any] = Field(default_factory=dict)

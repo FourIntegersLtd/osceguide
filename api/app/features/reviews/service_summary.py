@@ -13,6 +13,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.attempts import service_reads as attempts
 from app.features.reviews import errors, repository, scoring
 from app.features.reviews.schemas import MySlotReviewRead, SlotRagSummary, SlotReviewsRead
 from app.features.reviews.service import _slot_read, review_form, slot_rubric
@@ -80,6 +81,7 @@ async def read_slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: u
         items=[_slot_read(review) for review in reviews],
         summary=_summary(slot_id, scoring_rubric, [dict(review.field_values or {}) for review in completed]),
         form=review_form(scoring_rubric),
+        attempt_failed_reason=await attempts.failed_reason_for_slot(session, slot_id),
     )
 
 

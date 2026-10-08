@@ -179,10 +179,15 @@ export function signOffBlockers(input: {
   return blockers;
 }
 
-/** A candidate whose sign-off is done and whose release is not. */
+/** A withheld outcome is held back and an inconclusive one is undecided: neither is sent to the candidate (R-24). */
+export function heldBack(outcome: string | null | undefined): boolean {
+  return outcome === "withheld" || outcome === "inconclusive";
+}
+
+/** A candidate whose sign-off is done, whose release is not, and whose outcome may be sent. */
 export function releasable(candidate: CandidateReport): boolean {
   const decision = candidate.decision;
-  return Boolean(decision?.signed_off_at) && !decision?.released_at;
+  return Boolean(decision?.signed_off_at) && !decision?.released_at && !heldBack(decision?.assessment_outcome);
 }
 
 /**
@@ -294,6 +299,8 @@ export function releaseRefusal(code: string): string {
       return "the marking changed after sign-off, so sign it off again";
     case "invalid_workflow":
       return "not signed off, or already released";
+    case "outcome_not_releasable":
+      return "a withheld or inconclusive outcome is not sent to the candidate";
     case "decision_revised":
       return "the decision was changed by somebody else; reload and check it";
     case "result_not_found":

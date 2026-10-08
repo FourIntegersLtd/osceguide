@@ -5,13 +5,12 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.features.notifications import service as notifications
-from app.features.results import domain, errors, repository
+from app.features.results import domain, errors, repository, service_evidence
 from app.features.results.models import CandidateResultRevision
 from app.features.results.schemas import (
     BulkReleaseCandidate,
@@ -29,6 +28,7 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.NotSignable: errors.NotSignableError,
     domain.InvalidWorkflow: errors.InvalidWorkflowError,
     domain.EvidenceChanged: errors.EvidenceChangedError,
+    domain.NotReleasable: errors.NotReleasableError,
     domain.RecruitmentOutsideExam: errors.RecruitmentOutsideExamError,
     domain.DecisionOutsideExam: errors.DecisionOutsideExamError,
     domain.CandidateDidNotSit: errors.CandidateDidNotSitError,
@@ -79,7 +79,6 @@ async def save_draft(
     recruitment_outcome: str | None,
     rationale: str | None,
     moderation_notes: str | None,
-    evidence: dict[str, Any],
     expected_revision: int,
     actor_id: uuid.UUID,
 ) -> DecisionRead:
@@ -104,6 +103,7 @@ async def save_draft(
             str(exc), details={"current_revision": latest.revision if latest else 0}
         ) from exc
 
+    evidence = await service_evidence.current_evidence(session, org_id, sitting_id, trainee.user_id)
     assessment = domain.Assessment(assessment_outcome) if assessment_outcome else None
     recruitment = domain.Recruitment(recruitment_outcome) if recruitment_outcome else None
     if recruitment is not None:
@@ -185,7 +185,6 @@ async def release(
     *,
     sitting_id: uuid.UUID,
     trainee_id: uuid.UUID,
-    current_evidence: dict[str, Any],
     actor_id: uuid.UUID,
     now: datetime,
 ) -> DecisionRead:
@@ -199,10 +198,13 @@ async def release(
     pressed the button and never the candidate.
     """
     latest = await _require(session, org_id, sitting_id, trainee_id)
+    trainee = await roster.read_trainee(session, org_id, trainee_id)
+    current = await service_evidence.current_evidence(session, org_id, sitting_id, trainee.user_id)
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.RELEASED)
+        domain.ensure_releasable(latest.assessment_outcome)
         domain.ensure_evidence_unchanged(
-            signed=latest.evidence_fingerprint, current=domain.fingerprint(current_evidence)
+            signed=latest.evidence_fingerprint, current=domain.fingerprint(current)
         )
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
@@ -278,7 +280,6 @@ async def release_many(
                 org_id,
                 sitting_id=sitting_id,
                 trainee_id=candidate.trainee_id,
-                current_evidence=candidate.evidence,
                 actor_id=actor_id,
                 now=now,
             )
