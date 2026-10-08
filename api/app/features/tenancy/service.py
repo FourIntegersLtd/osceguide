@@ -74,6 +74,11 @@ async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> li
     ]
 
 
+async def revoked_org_ids(session: AsyncSession, user_id: uuid.UUID) -> set[uuid.UUID]:
+    """Organisations this person was removed from; their rostered sittings there are hidden."""
+    return await repository.orgs_where_every_membership_is_revoked(session, user_id)
+
+
 def default_workspace_for(memberships: list[TokenMembership]) -> str | None:
     """Which workspace a fresh token lands in."""
     picked = domain.pick_default_workspace(

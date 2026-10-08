@@ -115,11 +115,15 @@ export function listActiveMembers(slug: string, signal?: AbortSignal): Promise<M
 
 export type Programme = components["schemas"]["ProgrammeRead"];
 
-export function listProgrammes(slug: string, signal?: AbortSignal) {
-  return platformRequest<components["schemas"]["Page_ProgrammeRead_"]>(
-    `${org(slug)}/programmes`,
-    { signal },
+/** Every programme, every page: a first page of 25 hid the rest from the sitting pickers (S-27). */
+export async function listProgrammes(slug: string, signal?: AbortSignal) {
+  const items = await collectPages((cursor) =>
+    platformRequest<components["schemas"]["Page_ProgrammeRead_"]>(`${org(slug)}/programmes`, {
+      signal,
+      query: { limit: PAGE_LIMIT, cursor: cursor ?? undefined },
+    }),
   );
+  return { items };
 }
 
 /**
@@ -416,4 +420,21 @@ export function saveReview(
       body: { field_values: input.fieldValues, notes: input.notes, status: input.status },
     },
   );
+}
+
+export type ScimToken = components["schemas"]["ScimTokenRead"];
+export type ScimTokenIssued = components["schemas"]["ScimTokenIssued"];
+
+/** The identity-provider connectors that may provision this organisation's people. */
+export function listScimTokens(slug: string, signal?: AbortSignal): Promise<ScimToken[]> {
+  return platformRequest<ScimToken[]>(`${org(slug)}/scim/tokens`, { signal });
+}
+
+/** The token itself comes back once, in this response, and is never readable again. */
+export function issueScimToken(slug: string, label: string): Promise<ScimTokenIssued> {
+  return platformRequest<ScimTokenIssued>(`${org(slug)}/scim/tokens`, { method: "POST", body: { label } });
+}
+
+export function revokeScimToken(slug: string, tokenId: string): Promise<void> {
+  return platformRequest<void>(`${org(slug)}/scim/tokens/${encodeURIComponent(tokenId)}`, { method: "DELETE" });
 }

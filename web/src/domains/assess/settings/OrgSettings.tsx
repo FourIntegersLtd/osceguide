@@ -6,11 +6,12 @@ import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { Settings } from "@/capabilities/account";
 import { readOrganization } from "@/domains/assess/api";
+import { ScimTokens } from "@/domains/assess/settings/ScimTokens";
 
 /**
  * Settings, with the organisation's own tabs for the people who run it.
  *
- * The account capability knows nothing about institutions, so the two extra
+ * The account capability knows nothing about institutions, so the extra
  * tabs are handed to it from here. Everybody else, on every other arm, gets
  * the capability exactly as it was.
  */
@@ -26,6 +27,7 @@ export function WorkspaceSettings() {
           ? [
               { id: "organisation", label: "Organisation", panel: <OrganisationPanel orgSlug={orgSlug} /> },
               { id: "sso", label: "Single sign-on", panel: <SignInPanel orgSlug={orgSlug} /> },
+              { id: "provisioning", label: "Provisioning", panel: <ScimTokens orgSlug={orgSlug} /> },
             ]
           : []
       }

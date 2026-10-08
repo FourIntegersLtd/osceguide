@@ -86,7 +86,6 @@ async def read_my_sittings(
     return await service_trainee.my_sittings(
         session,
         principal.user_id,
-        org_slugs={membership.org_id: membership.org_slug for membership in principal.memberships},
         now=clock.now(),
         org_slug=org_slug,
     )

@@ -8,7 +8,6 @@ sitting somebody else is running.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Mapping
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +17,7 @@ from app.features.dashboard.schemas import MySitting, MySittings, MySlot
 from app.features.results import service_candidate as results
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
+from app.features.tenancy import service as tenancy
 
 # A slot is finished for the candidate once the station is completed or the
 # circuit moved past it.
@@ -32,7 +32,6 @@ async def my_sittings(
     session: AsyncSession,
     user_id: uuid.UUID,
     *,
-    org_slugs: Mapping[uuid.UUID, str],
     now: datetime,
     org_slug: str | None = None,
 ) -> MySittings:
@@ -42,14 +41,22 @@ async def my_sittings(
     trainee is actually in: two circuits of one sitting run separately, in
     different rooms, and can be at different stations.
 
-    `org_slugs` comes from the caller's token rather than another query — the
-    memberships are already in the JWT, and a slug is display, not access.
+    Read from the database, not the token: a person whose membership was revoked sees nothing of that
+    organisation, and a token minted before rostering still shows what it should. Someone rostered
+    straight onto a circuit with no membership row at all stays visible.
     """
-    trainee_slots = await sittings.slots_for_trainee(session, user_id)
+    removed = await tenancy.revoked_org_ids(session, user_id)
+    trainee_slots = [
+        slot
+        for slot in await sittings.slots_for_trainee(session, user_id)
+        if slot.sitting.org_id not in removed
+    ]
+    org_slugs: dict[uuid.UUID, str] = {}
+    for org_id in {slot.sitting.org_id for slot in trainee_slots}:
+        org = await tenancy.org_ref_by_id(session, org_id)
+        if org is not None:
+            org_slugs[org_id] = org.slug
     if org_slug is not None:
-        # One workspace's sittings (T-11); a slug the token holds no membership in shows nothing.
-        # The all-workspaces view is not filtered by the token: being rostered is the right to see a
-        # sitting, and a token minted before the roster entry would otherwise hide it.
         trainee_slots = [slot for slot in trainee_slots if org_slugs.get(slot.sitting.org_id) == org_slug]
     titles = await _titles_per_org(session, trainee_slots)
     live = await attempts.live_attempts_for_slots(

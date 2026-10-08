@@ -11,7 +11,7 @@ the whole examination.
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator
 
 from app.core.auth import Principal
 from app.core.db import SessionOpener
@@ -63,15 +63,12 @@ def my_sittings_stream(
     Subscribed by user rather than by circuit: a trainee may be rostered onto several at
     once, and every circuit change tells the people on it as well as the console.
     """
-    org_slugs: Mapping[uuid.UUID, str] = {
-        membership.org_id: membership.org_slug for membership in principal.memberships
-    }
 
     async def snapshot() -> Snapshot:
         """One frame: this trainee's whole portal, as it stands right now."""
         async with open_session() as session:
             mine = await service_trainee.my_sittings(
-                session, principal.user_id, org_slugs=org_slugs, now=clock.now(), org_slug=org_slug
+                session, principal.user_id, now=clock.now(), org_slug=org_slug
             )
         # Never final: a trainee's portal outlives any one sitting.
         return Snapshot(mine.model_dump_json())

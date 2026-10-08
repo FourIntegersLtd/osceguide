@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -150,7 +151,7 @@ async def test_my_sittings_can_be_scoped_to_one_workspace(
     assert (len(everywhere["items"]), len(here["items"]), there["items"]) == (1, 1, [])
 
 
-async def test_a_named_workspace_the_token_lacks_shows_no_sittings(
+async def test_a_named_workspace_the_token_lacks_still_shows_rostered_sittings(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
@@ -172,10 +173,43 @@ async def test_a_named_workspace_the_token_lacks_shows_no_sittings(
     )
     scoped = await client.get("/api/v1/me/sittings?org_slug=kings", headers=bearer(token))
     nowhere = await client.get("/api/v1/me/sittings?org_slug=nowhere", headers=bearer(token))
-    assert [(r.status_code, r.json()["items"]) for r in (scoped, nowhere)] == [(200, [])] * 2
-    # Without a slug the roster is the authority: a token minted before the roster entry still sees it.
+    assert [(r.status_code, r.json()["items"]) for r in (nowhere,)] == [(200, [])]
+    assert [item["id"] for item in scoped.json()["items"]] == [sitting["id"]]
     everywhere = await client.get("/api/v1/me/sittings", headers=bearer(token))
     assert [item["id"] for item in everywhere.json()["items"]] == [sitting["id"]]
+
+
+async def test_my_sittings_follow_database_membership_not_the_token(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """T-13: a revoked trainee sees nothing; a token minted before rostering still scopes by slug."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    token = await make_actor("stale@example.com", memberships=())
+    candidate_id = await a_user(db_session, "stale@example.com")
+    await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate_id)],
+        station_version_ids=[station],
+    )
+
+    async def seen(query: str) -> list[str]:
+        response = await client.get(f"/api/v1/me/sittings{query}", headers=bearer(token))
+        return [item["org_slug"] for item in response.json()["items"]]
+
+    # Rostered after the token was minted: the database membership is the authority.
+    assert (await seen(""), await seen("?org_slug=kings")) == (["kings"], ["kings"])
+
+    membership = await tenancy_repo.add_membership(
+        db_session, org_id=org_id, user_id=candidate_id, role="trainee"
+    )
+    await tenancy_repo.set_membership_revoked(db_session, org_id, membership.id, at=datetime.now(UTC))
+    await db_session.commit()
+    assert (await seen(""), await seen("?org_slug=kings")) == ([], [])
 
 
 async def test_a_repeat_start_of_a_running_circuit_is_a_read_even_if_the_lead_was_demoted(
