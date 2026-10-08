@@ -168,7 +168,17 @@ async def _apply_checkout(session: AsyncSession, *, event: dict[str, Any], now: 
     if not (price_id and intent_id):
         raise errors.InvalidWebhook("The checkout payload lacks a price or an intent.")
 
-    user = await identity.user_ref_by_email(session, email) if email else None
+    # The person who started the checkout, by id: the address Stripe echoes is the one they had
+    # then, and they may have changed it since. The address only finds older sessions.
+    user = None
+    reference = str(checkout_payload.get("client_reference_id") or "").strip()
+    if reference:
+        try:
+            user = await identity.user_ref_by_id(session, uuid.UUID(reference))
+        except ValueError:
+            user = None
+    if user is None and email:
+        user = await identity.user_ref_by_email(session, email)
     if user is None:
         log.warning("payment for an unknown address", event_id=event.get("id"))
         return False

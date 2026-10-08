@@ -238,6 +238,11 @@ async def payment_by_id(session: AsyncSession, payment_id: uuid.UUID) -> Payment
     return (await session.execute(select(Payment).where(Payment.id == payment_id))).scalar_one_or_none()
 
 
+async def lock_payment(session: AsyncSession, payment_id: uuid.UUID) -> None:
+    """Hold this payment's row until the transaction ends, so two withdrawals of it queue up."""
+    await session.execute(select(Payment.id).where(Payment.id == payment_id).with_for_update())
+
+
 async def payment_by_intent(session: AsyncSession, intent_id: str) -> Payment | None:
     """The payment recorded against a Stripe payment intent (or a manual reference), if any."""
     stmt = select(Payment).where(Payment.stripe_payment_intent_id == intent_id)

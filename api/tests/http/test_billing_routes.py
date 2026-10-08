@@ -1110,3 +1110,22 @@ async def test_a_plan_says_how_many_stations_its_exam_has_published(
 
     items = (await client.get("/api/v1/billing/plans")).json()["items"]
     assert {plan["exam_code"]: plan["station_count"] for plan in items} == {"sca": 2, "plab": 0}
+
+
+async def test_a_checkout_finds_its_payer_by_user_id_after_an_email_change(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """The address Stripe echoes is the one at checkout; the person may have changed it since."""
+    from app.features.entitlements import repository as ent_repo
+
+    await a_plan(db_session)
+    await a_customer(db_session, "moved@example.com")
+    user = await identity_repo.user_by_email(db_session, "moved@example.com")
+    assert user is not None
+    await identity_repo.set_email(db_session, user.id, "moved-on@example.com")
+    event = checkout_event("evt_moved", "moved@example.com")
+    event["data"]["object"]["client_reference_id"] = str(user.id)
+
+    response = await post_event(client, event)
+    assert response.json()["status"] == "applied"
+    assert [g.source for g in await ent_repo.for_user(db_session, user.id)] == ["purchase"]

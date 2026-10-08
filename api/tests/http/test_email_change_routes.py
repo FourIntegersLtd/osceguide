@@ -146,3 +146,41 @@ async def test_a_link_is_used_once_and_a_forged_one_is_refused(
     assert again.json()["code"] == "invalid_email_change_token"
     forged = await client.post("/api/v1/auth/email-change/confirm", json={"token": token[:-3] + "abc"})
     assert forged.json()["code"] == "invalid_email_change_token"
+
+
+async def test_a_pending_link_dies_when_the_password_is_reset(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A reset is what a person does on suspecting the account; it must void a link already in flight."""
+    from app.features.identity import repository as identity_repo
+    from app.features.identity.tokens import hash_password
+
+    pair = await signed_up(client)
+    await ask(client, pair, "reset@example.com")
+    token = await queued_token(db_session, "reset@example.com")
+    assert token
+    me = (await client.get("/api/v1/me", headers=bearer(pair["access_token"]))).json()
+    await identity_repo.set_password_hash(db_session, me["id"], hash_password("a brand new passphrase"))
+    await db_session.flush()
+
+    refused = await client.post("/api/v1/auth/email-change/confirm", json={"token": token})
+    assert refused.json()["code"] == "invalid_email_change_token"
+
+
+async def test_asking_for_a_change_warns_the_current_address(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    pair = await signed_up(client)
+    await ask(client, pair, "warned@example.com")
+    told = list(
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(
+                    OutboundMessage.template_key == "email_change_requested",
+                    OutboundMessage.recipient == "old@example.com",
+                )
+            )
+        ).scalars()
+    )
+    assert len(told) == 1
+    assert told[0].payload == {"new_email": "warned@example.com"}

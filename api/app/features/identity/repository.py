@@ -162,8 +162,10 @@ async def is_erased(session: AsyncSession, user_id: uuid.UUID) -> bool:
 
 
 async def set_email(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
-    """Move an account to a new sign-in address."""
+    """Move an account to a new sign-in address. Flushed at once, so an address someone else just
+    took raises `IntegrityError` here rather than at commit."""
     await session.execute(update(User).where(User.id == user_id).values(email=normalize_email(email)))
+    await session.flush()
 
 
 async def set_password_hash(session: AsyncSession, user_id: uuid.UUID, password_hash: str) -> None:

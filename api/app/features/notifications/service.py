@@ -170,6 +170,17 @@ def _email_change(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _email_change_requested(escaped_fields: dict[str, str]) -> str:
+    """The body sent to the current address when a change to a new one is asked for."""
+    return (
+        "<h1>A change of email was requested</h1>"
+        "<p>Someone asked to move your OSCE Guide account to "
+        f"{escaped_fields.get('new_email', 'a new address')}. Nothing changes until that address "
+        "confirms.</p>"
+        "<p>If this was not you, reset your password now.</p>"
+    )
+
+
 def _email_changed_notice(escaped_fields: dict[str, str]) -> str:
     """The body sent to the old address once an account has moved to a new one."""
     return (
@@ -367,6 +378,7 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "password_reset": _password_reset,
     "email_change": _email_change,
     "email_changed_notice": _email_changed_notice,
+    "email_change_requested": _email_change_requested,
     "payment_receipt": _payment_receipt,
     "entitlement_expiring": _entitlement_expiring,
     "invitation": _invitation,

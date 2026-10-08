@@ -153,6 +153,9 @@ async def withdraw_payment(
     back only if it still carries unpaid earnings, so a grant revoked by hand does not stop a
     later dispute taking back the credit. False when there was nothing left to take back.
     """
+    # A refund and a dispute arriving together would both see the grant live and each pull the
+    # later purchases forward; the second waits here and then finds it already revoked.
+    await repository.lock_payment(session, payment.id)
     withdrawn = False
     entitlement_id = payment.entitlement_id
     if entitlement_id is not None and not await entitlements.revoked_ids(session, [entitlement_id]):

@@ -8,10 +8,12 @@ the same secret as access tokens and bound to the address the account has now, s
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime, timedelta
 
 import jwt
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import Settings
@@ -30,6 +32,12 @@ from app.features.roster import service as roster
 
 EMAIL_CHANGE_TOKEN_TYPE = "email_change"  # noqa: S105 -- a claim name, not a secret
 LINK_LIFETIME = timedelta(hours=1)
+
+
+def _stamp(password_hash: str | None, email: str) -> str:
+    """What the account looked like when the link was sent: a reset or any address change since
+    makes it differ, which voids every link still in flight."""
+    return hashlib.sha256(f"{password_hash or ''}|{email.lower()}".encode()).hexdigest()[:32]
 
 
 async def begin_email_change(
@@ -67,6 +75,7 @@ async def begin_email_change(
             "sub": str(user.id),
             "old": user.email.lower(),
             "new": wanted,
+            "stamp": _stamp(user.password_hash, user.email),
             "iat": int(now.timestamp()),
             "exp": int((now + LINK_LIFETIME).timestamp()),
         },
@@ -80,6 +89,15 @@ async def begin_email_change(
         template_key="email_change",
         payload={"token": token},
         idempotency_key=f"email_change:{user.id}:{int(now.timestamp())}",
+    )
+    # The current address hears of the request, so a hijacked session cannot do this quietly.
+    await notifications.enqueue_email(
+        session,
+        recipient=user.email,
+        subject="Someone asked to change your OSCE Guide email",
+        template_key="email_change_requested",
+        payload={"new_email": wanted},
+        idempotency_key=f"email_change_requested:{user.id}:{int(now.timestamp())}",
     )
 
 
@@ -107,12 +125,17 @@ async def confirm_email_change(
     if (
         user is None
         or user.email.lower() != claims["old"]
+        or claims.get("stamp") != _stamp(user.password_hash, user.email)
         or user.status != "active"
         or await repository.user_by_email(session, new_email) is not None
     ):
         raise InvalidEmailChangeToken()
     old_email = user.email
-    await repository.set_email(session, user.id, new_email)
+    try:
+        await repository.set_email(session, user.id, new_email)
+    except IntegrityError as exc:
+        # Another confirmation took the address between the check and the write.
+        raise InvalidEmailChangeToken() from exc
     await repository.revoke_all_chains_for_user(session, user_id=user.id, at=now, reason="email_change")
     await roster.follow_account_email(session, user_id=user.id, email=new_email)
     await notifications.enqueue_email(
