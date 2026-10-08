@@ -50,7 +50,7 @@ Three pieces, one mechanism each:
 | Piece | Where | What it is |
 |---|---|---|
 | Area notes ("what to know") | `.claude/rules/<area>.md`, with `paths:` frontmatter | Loads on its own when a session touches those paths. 11 areas, 150 lines each at most |
-| Skills ("how to work") | `.claude/skills/<verb>/SKILL.md` | `build-feature`, `fix-bug`, `verify-*`, `experience-audit` (a new arm or big feature) |
+| Skills ("how to work") | `.claude/skills/<verb>/SKILL.md` | `build-feature`, `fix-bug`, `verify-*`, `make-slide-deck` |
 | Owners ("who does it") | `.claude/agents/<area>-owner.md` | "You own these paths; read the rule file; prove with the verify skill" |
 
 | File | Scope |

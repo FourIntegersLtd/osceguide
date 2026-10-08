@@ -15,10 +15,8 @@ import { join } from "node:path";
 import { allowList, finish, read, rel, root, sourceFiles } from "./lib-src.mjs";
 
 const PAGE_ALLOW = allowList(
-  {
-    "/debriefs": "REAL GAP: the Debrief nav item links to /debriefs, which has no index page (only /debriefs/[id])",
-  },
-  1, // lower only
+  {},
+  0, // lower only
 );
 
 const offenders = [];

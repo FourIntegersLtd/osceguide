@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { HiChevronRight, HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
-import { AsyncBoundary, Alert, Button, cardScrollBody, productTokens } from "@/foundation/ui";
+import { AsyncBoundary, Alert, B2CPageHeader, Button, cardScrollBody, productTokens } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { debriefDate, listDebriefs } from "@/capabilities/debrief/api";
@@ -14,6 +14,19 @@ const { b2cCard, b2cGroupedRow, b2cGroupedRowSubtitle, b2cGroupedRowTitle } = pr
 
 /** A page at a time. The backend's page cap on `GET /me/debriefs` is 100. */
 const DEBRIEF_HISTORY_PAGE_LIMIT = 25;
+
+/** The Debriefs screen: every debrief the person has had, newest first. */
+export function DebriefList() {
+  return (
+    <div className="mx-auto max-w-osce-page space-y-6">
+      <B2CPageHeader
+        title="Debriefs"
+        subtitle="Each time you talk a consultation through with Athena, its summary is kept here."
+      />
+      <DebriefHistory />
+    </div>
+  );
+}
 
 /**
  * The debriefs someone has had.

@@ -61,13 +61,7 @@ export const CONSUMER_REDIRECTS: readonly LegacyRedirect[] = [
   { from: "/partner-marketplace", to: personal("/marketplace") },
   { from: "/human-practice", to: personal("/marketplace") },
   { from: "/transcripts", to: personal("/transcripts") },
-  /*
-   * One debrief is still a page of its own; the *list* was never a page here —
-   * `DebriefHistory` is a panel on the attempt it belongs to. So the list of
-   * everything they have sat is where this lands, and it is the same list the
-   * old screen showed.
-   */
-  { from: "/debriefs", to: personal("/transcripts") },
+  { from: "/debriefs", to: personal("/debriefs") },
   /*
    * A *feedback* was the retiring backend's name for one marked attempt, and
    * the screen is `/attempts/<id>` now. The old address carries a document id

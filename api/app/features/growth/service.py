@@ -474,11 +474,12 @@ async def tracking_references(session: AsyncSession, *, partner: str) -> list[Tr
 
     The other half of `parse_ref_id`. Saves a partner from typing a reference
     by hand, where a typo would silently attribute their traffic to nobody.
-    The router's `PartnerReporter` has already checked the caller.
+    The router's `PartnerReporter` has already checked the caller. A partner
+    organisation outside the pilot has none: `parse_ref_id` would credit nobody.
     """
-    partner_key = (partner or "").strip().lower()
+    partner_key = await service_spend.resolve_partner(session, partner)
     if partner_key not in domain.PILOT_PARTNERS:
-        raise errors.UnknownPartnerError()
+        return []
     pilot_exams = sorted(await catalog.pilot_exam_codes(session))
     return [
         TrackingReference(

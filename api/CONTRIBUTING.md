@@ -33,7 +33,7 @@ Naming rules the tests should encode:
 
 ## 4. Oracle and golden tests
 
-Find the legacy tests that cover this domain in `backend/b2b-api/tests/` and `backend/b2c-api/b2c/tests/`. Port their assertions against the new routes and services with the product vocabulary stripped: they are the oracle for behaviour that must survive. Where output must not change (a rendered prompt, a feedback payload, a cohort score, a report total), capture it from the legacy code into `tests/fixtures/` and assert the platform reproduces it byte-for-byte.
+Find the legacy tests that cover this domain in the old backend repository (`b2b-api/tests/`, `b2c-api/b2c/tests/`). Port their assertions against the new routes and services with the product vocabulary stripped: they are the oracle for behaviour that must survive. Where output must not change (a rendered prompt, a feedback payload, a cohort score, a report total), capture it from the legacy code into `tests/fixtures/` and assert the platform reproduces it byte-for-byte.
 
 ## 5. Domain (`tests/unit/` then `domain.py`)
 

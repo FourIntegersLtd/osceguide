@@ -657,6 +657,16 @@ async def test_a_partner_admin_reads_its_own_dashboard_without_a_reporter_grant(
         assert response.status_code == 200, f"{slug}: {response.text}"
 
 
+async def test_a_partner_org_outside_the_pilot_has_no_references_yet(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    # Its Reporting screen loads them; a reference only attributes for a pilot partner.
+    token = await _partner_org_admin(db_session, make_actor, email="pa-refs@example.com", slug="wiley")
+    response = await client.get("/api/v1/growth/partners/wiley/ref-ids", headers=bearer(token))
+    assert response.status_code == 200, response.text
+    assert response.json() == {"items": [], "next_cursor": None}
+
+
 async def test_only_an_admin_of_that_partner_org_reads_it(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]

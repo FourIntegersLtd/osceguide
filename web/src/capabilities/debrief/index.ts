@@ -1,4 +1,4 @@
-export { DebriefHistory } from "@/capabilities/debrief/DebriefHistory";
+export { DebriefHistory, DebriefList } from "@/capabilities/debrief/DebriefHistory";
 export { DebriefDetail } from "@/capabilities/debrief/DebriefDetail";
 export { DebriefSession, DebriefLauncher } from "@/capabilities/debrief/DebriefSession";
 export { DebriefChooseModal } from "@/capabilities/debrief/DebriefChooseModal";

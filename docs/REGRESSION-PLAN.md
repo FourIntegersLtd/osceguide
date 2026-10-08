@@ -1,10 +1,10 @@
 # Ship features without breaking the rest
 
-Status: implemented 2026-10-08, uncommitted. Still to do by hand: restore the stashed
-hook, settings and e2e support files; add the web `check:*` scripts to `package.json` and
-`ci`; create the Sentry alerts (`docs/OPERATIONS.md`); add the staging GitHub secrets.
-Open: B-36 (bulk actions with no screen); the live stream's refusal of staff of a suspended
-org awaits a decision. Written as a proposal after a deep dive (coupling map, bug history,
+Status: implemented 2026-10-08 (5df56fd0, 3a763d13). Staging test world and its GitHub
+secrets set up the same day (`e2e-staging-*` organisations). Left by hand: the Sentry alerts
+(`docs/OPERATIONS.md`). Open: B-36 (bulk actions with no screen). Decided: staff of a
+suspended org keep the live stream's 403. Not built: the `experience-audit` skill
+(`fix-experience-gaps` covers audits until a new arm needs one). Written as a proposal after a deep dive (coupling map, bug history,
 arm map, coverage). Nothing in
 Parts 1-3 needs a new dependency or a database change; the two items that would are
 marked "ask first".

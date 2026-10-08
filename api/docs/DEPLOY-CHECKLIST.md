@@ -3,8 +3,8 @@
 Use this before promoting **platform-api** to production (not b2c-api/b2b-api).
 A push to `main` deploys staging by itself; production changes only through the
 promote workflow (see [ENVIRONMENT.md](ENVIRONMENT.md), "Staging and production").
-Each backend redeploys only for its own folder: `api/**`, `b2c-api/**`
-or `b2b-api/**`.
+platform-api redeploys only for `api/**` (and the engine); b2c-api and b2b-api
+deploy from the old backend repository.
 
 ## Before deploy
 
