@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LuShieldCheck } from "react-icons/lu";
 import {
+  Alert,
   AsyncBoundary,
   Badge,
   Button,
@@ -10,7 +11,7 @@ import {
   PlatformPageHeader,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { readDirectoryUser, readUser, type PlatformUserDetail } from "@/domains/platform/api";
 import { formatDay } from "@/domains/platform/support";
@@ -102,6 +103,13 @@ export function UserDetail({ userId }: { userId: string }) {
                   </span>
                 }
               />
+
+              {facts.error ? (
+                <Alert tone="danger">
+                  Could not load their payment and access details: {errorMessage(facts.error)}. The Account tab will
+                  show them as unknown, not as none.
+                </Alert>
+              ) : null}
 
               <B2CSegmentedTabs items={USER_TABS} value={tab} onChange={setTab} aria-label="User detail" className="mb-0 sm:mb-0" />
 

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import {
+  Alert,
   AsyncBoundary,
   B2CHero,
   B2CPageHeader,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { plural } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
 import { listPlans } from "@/capabilities/account/api";
@@ -57,6 +58,10 @@ export function Users() {
   return (
     <div className="flex flex-col gap-6">
       <B2CPageHeader title="Users" />
+
+      {plans.error ? (
+        <Alert tone="danger">Could not load the plans for the filter: {errorMessage(plans.error)}</Alert>
+      ) : null}
 
       <AsyncBoundary state={summary}>
         {(counts) => (

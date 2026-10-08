@@ -139,6 +139,12 @@ async def _require(session: AsyncSession, user_id: uuid.UUID) -> accounts.Suppor
 async def read_user(session: AsyncSession, user_id: uuid.UUID) -> PlatformUserDetail:
     """The full account detail the platform console shows, memberships included."""
     user = await _require(session, user_id)
+    held = await repository.memberships_for_user(session, user_id)
+    orgs = {
+        org.id: org
+        for org in await repository.organizations_by_ids(session, {membership.org_id for membership in held})
+    }
+    person = await identity.user_ref_by_id(session, user_id)
     memberships = [
         MembershipRead(
             id=membership.id,
@@ -148,8 +154,12 @@ async def read_user(session: AsyncSession, user_id: uuid.UUID) -> PlatformUserDe
             product_surface=membership.product_surface,
             status=membership.status,
             revoked_at=membership.revoked_at,
+            invited=person is not None and person.invitation_pending,
+            must_change_password=user.must_change_password,
+            org_slug=orgs[membership.org_id].slug if membership.org_id in orgs else None,
+            org_name=orgs[membership.org_id].name if membership.org_id in orgs else None,
         )
-        for membership in await repository.memberships_for_user(session, user_id)
+        for membership in held
     ]
     legacy_ids = await accounts.consumer_legacy_ids(session, user_id)
     return PlatformUserDetail(

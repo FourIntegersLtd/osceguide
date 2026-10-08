@@ -330,6 +330,13 @@ export function revokeMembership(slug: string, membershipId: string): Promise<Me
   return platformRequest<Membership>(`${membership(slug, membershipId)}/revoke`, { method: "POST" });
 }
 
+/** Send the choose-a-password link again to a member who has not used it. */
+export function resendMembershipInvitation(slug: string, membershipId: string): Promise<{ email: string }> {
+  return platformRequest<{ email: string }>(`${membership(slug, membershipId)}/resend-invitation`, {
+    method: "POST",
+  });
+}
+
 export function restoreMembership(slug: string, membershipId: string): Promise<Membership> {
   return platformRequest<Membership>(`${membership(slug, membershipId)}/restore`, { method: "POST" });
 }

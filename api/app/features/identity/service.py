@@ -53,6 +53,7 @@ class UserRef:
     # password chosen, never signed in, and not an SSO-only account (which has no password on
     # purpose). A screen listing invited people shows them as "invited" until this clears.
     invitation_pending: bool = False
+    must_change_password: bool = False
 
 
 async def _announce_registration(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
@@ -315,6 +316,7 @@ def _ref(user: User) -> UserRef:
         invitation_pending=(
             user.password_hash is None and not user.password_login_disabled and user.last_login_at is None
         ),
+        must_change_password=user.must_change_password,
     )
 
 

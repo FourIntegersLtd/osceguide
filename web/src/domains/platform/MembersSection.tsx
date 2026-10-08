@@ -17,11 +17,16 @@ import {
 } from "@/domains/platform/api";
 import {
   changeMembershipRole,
+  resendMembershipInvitation,
   restoreMembership,
   revokeMembership,
 } from "@/domains/platform/support/api";
 import { roleLabel } from "@/foundation/session/roles";
-import { MEMBER_ROLES, humanise, oneOptionPerLabel, rolesForOrgType } from "@/domains/platform/support";
+import { humanise } from "@/foundation/format";
+import { MEMBER_ROLES, oneOptionPerLabel, rolesForOrgType } from "@/domains/platform/support";
+
+/** The member row with the fields the api now sends; until the schema is regenerated. */
+type SupportMember = Membership & { must_change_password?: boolean };
 
 export function MembersSection({ slug, orgType }: { slug: string; orgType: string }) {
   const pages = useCursorPages(
@@ -74,7 +79,7 @@ function MemberRow({
   orgType,
   onChanged,
 }: {
-  membership: Membership;
+  membership: SupportMember;
   slug: string;
   orgType: string;
   onChanged: () => void;
@@ -110,6 +115,21 @@ function MemberRow({
         <Badge tone={revoked ? "neutral" : "success"}>
           {humanise(membership.status)}
         </Badge>
+        {membership.invited ? <Badge tone="warning">Invited, not signed in</Badge> : null}
+        {membership.must_change_password && !membership.invited ? (
+          <Badge tone="warning">Temporary password</Badge>
+        ) : null}
+        {membership.invited && !revoked ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() =>
+              run(() => resendMembershipInvitation(slug, membership.id), "Invitation sent again")
+            }
+          >
+            Resend invitation
+          </Button>
+        ) : null}
         <Select
           aria-label="Role"
           selectSize="sm"

@@ -40,6 +40,12 @@ class UpdateOrganization(BaseModel):
     require_staff_mfa: bool | None = None
 
 
+class RenameOrganization(BaseModel):
+    """What an organisation's own admin may change about it: its name. Not the address or contract."""
+
+    name: str = Field(min_length=1, max_length=200)
+
+
 class StaffMfaPolicy(BaseModel):
     """Whether this organisation's staff must sign in with a second factor."""
 
@@ -153,6 +159,11 @@ class MembershipRead(BaseModel):
     temporary_password_applied: bool = False
     # Circuits this person is named supervisor of; filled by the list read.
     circuits_led: int = 0
+    # Which organisation, for a list that spans several (a person's detail page).
+    org_slug: str | None = None
+    org_name: str | None = None
+    # True while the password the account holds is one an admin chose and the person has not replaced.
+    must_change_password: bool = False
 
 
 class CreateMembership(BaseModel):

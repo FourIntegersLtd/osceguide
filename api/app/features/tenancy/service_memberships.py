@@ -278,6 +278,7 @@ def _membership_read(
         status=membership.status,
         revoked_at=membership.revoked_at,
         invited=invited,
+        must_change_password=person is not None and person.must_change_password,
         temporary_password_applied=temporary_password_applied,
     )
 

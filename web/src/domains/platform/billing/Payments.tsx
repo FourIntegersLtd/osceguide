@@ -102,6 +102,16 @@ function PaymentRow({
         <Badge tone={granted ? "success" : "neutral"}>
           {granted ? "Granted" : payment.entitlement_id ? "Access withdrawn" : "No grant"}
         </Badge>
+        {payment.stripe_payment_intent_id ? (
+          <a
+            className="text-osce-meta text-accent underline"
+            href={`https://dashboard.stripe.com/payments/${encodeURIComponent(payment.stripe_payment_intent_id)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Refund in Stripe
+          </a>
+        ) : null}
         {/* Nothing to revoke once the grant is gone, so a second "refund" would only look like it did something. */}
         {granted ? (
           <InlineAction

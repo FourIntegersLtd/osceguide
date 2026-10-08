@@ -21,6 +21,7 @@ import {
   type DirectoryUser,
   type PlatformUserDetail,
 } from "@/domains/platform/api";
+import { roleLabel } from "@/foundation/session/roles";
 import { formatDay, formatSince } from "@/domains/platform/support";
 import { ReissuePasswordPanel } from "@/domains/platform/user/ReissuePasswordPanel";
 import { ResetMfaButton } from "@/domains/platform/user/ResetMfaButton";
@@ -102,7 +103,11 @@ export function AccountTab({
 
   const access = facts ? accessOf(facts) : null;
   const liveCodes = facts?.live_exam_codes ?? [];
-  const memberships = user.memberships ?? [];
+  // The fields the api sends for a membership here; until the schema is regenerated.
+  const memberships = (user.memberships ?? []) as (NonNullable<PlatformUserDetail["memberships"]>[number] & {
+    org_name?: string | null;
+    org_slug?: string | null;
+  })[];
 
   return (
     <>
@@ -190,12 +195,13 @@ export function AccountTab({
                   {memberships.map((membership) => (
                     <Row key={membership.id}>
                       <div className="min-w-0">
-                        <p className="truncate text-osce-data font-medium capitalize text-ink">
-                          {membership.role}
+                        <p className="truncate text-osce-data font-medium text-ink">
+                          {membership.org_name ?? membership.org_slug ?? "Organisation"}
                         </p>
                         <p className="truncate text-osce-meta text-ink-subtle">
-                          {membership.product_surface ?? "Organisation"}
-                          {membership.invited ? " · invited" : ""}
+                          {roleLabel(membership.role)}
+                          {membership.product_surface ? ` · ${membership.product_surface}` : ""}
+                          {membership.invited ? " · invited, not signed in" : ""}
                         </p>
                       </div>
                       <Badge
@@ -263,7 +269,7 @@ export function AccountTab({
         tone="danger"
         title="Deactivate this account?"
         confirmText="Deactivate"
-        message={`${user.email} will be signed out everywhere and refused until reactivated. Nothing is deleted.`}
+        message={`${user.email} will be signed out everywhere and refused until reactivated. Nothing is deleted, and their organisation roles and any attempt in progress stay as they are.`}
       />
       <ConfirmModal
         isOpen={pending !== null}

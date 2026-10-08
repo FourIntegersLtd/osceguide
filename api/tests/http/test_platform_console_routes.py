@@ -318,3 +318,34 @@ async def test_a_console_reset_for_a_sso_only_account_says_nothing_was_sent(
 
     refused = await client.post(f"/api/v1/platform/users/{user.id}/reset-password", headers=bearer(root))
     assert (refused.status_code, refused.json()["code"]) == (409, "password_reset_not_sent")
+
+
+async def test_the_user_detail_names_each_organisation_and_says_who_is_still_invited(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """P-25: the memberships panel showed a raw role, no organisation, and never "invited"."""
+    from app.core.auth import Membership
+    from app.features.identity import repository as identity_repo
+    from app.features.tenancy import repository as tenancy_repo
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    org = await tenancy_repo.create_organization(db_session, slug="named-org", name="Named Hospital")
+    await make_actor(
+        "newbie@osceguide.com",
+        memberships=(Membership(org_id=org.id, org_slug="named-org", role="supervisor"),),
+    )
+    user = await identity_repo.user_by_email(db_session, "newbie@osceguide.com")
+    assert user is not None
+    user.must_change_password = True
+    await db_session.flush()
+
+    detail = await client.get(f"/api/v1/platform/users/{user.id}", headers=bearer(root))
+
+    assert detail.status_code == 200, detail.text
+    [membership] = detail.json()["memberships"]
+    assert (membership["org_name"], membership["org_slug"], membership["role"]) == (
+        "Named Hospital",
+        "named-org",
+        "supervisor",
+    )
+    assert (membership["invited"], membership["must_change_password"]) == (True, True)

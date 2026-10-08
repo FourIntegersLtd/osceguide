@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { Alert, Button, DetailLayout, Input, Panel, Select } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { listPlatformPlans, recordManualPayment } from "@/domains/platform/support/api";
+import { penceFrom } from "@/domains/platform/support/money";
 import { BillingEvents } from "@/domains/platform/billing/BillingEvents";
 import { Payments } from "@/domains/platform/billing/Payments";
 
@@ -66,11 +67,15 @@ function ManualPaymentPanel({
     setBusy(true);
     setError(null);
     try {
-      const pence = amount.trim() ? Math.round(Number(amount) * 100) : null;
+      const pence = penceFrom(amount);
+      if (amount.trim() && pence === null) {
+        setError("Enter the amount as a number of pounds, such as 12 or 12.50.");
+        return;
+      }
       await recordManualPayment(userId, {
         planCode: planCode.trim(),
         reference: reference.trim() || null,
-        amountPence: Number.isFinite(pence) ? pence : null,
+        amountPence: pence,
         note: note.trim(),
       });
       toast.success(
