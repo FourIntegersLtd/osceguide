@@ -2282,10 +2282,31 @@ export interface paths {
         };
         /**
          * List My Receipts
-         * @description The receipt ids for this person's payments, newest first. `checkout_session_id` keeps only
-         *     the payment made by that Stripe checkout session.
+         * @description The receipt ids for this person's payments, newest first, a page at a time.
+         *     `checkout_session_id` keeps only the payment made by that Stripe checkout session.
          */
         get: operations["billing_list_my_receipts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/receipts-full": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List My Receipts Whole
+         * @description The same page of receipts as `/me/receipts`, rendered, so a screen needs one call and not
+         *     one per receipt. Scoped to the caller like every receipt route.
+         */
+        get: operations["billing_list_my_receipts_whole"];
         put?: never;
         post?: never;
         delete?: never;
@@ -12319,6 +12340,13 @@ export interface components {
         Page_ProgrammeRead_: {
             /** Items */
             items: components["schemas"]["ProgrammeRead"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** Page[ReceiptRead] */
+        Page_ReceiptRead_: {
+            /** Items */
+            items: components["schemas"]["ReceiptRead"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -23672,6 +23700,9 @@ export interface operations {
         parameters: {
             query?: {
                 checkout_session_id?: string | null;
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
             };
             header?: never;
             path?: never;
@@ -23697,13 +23728,55 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description invalid_input */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    billing_list_my_receipts_whole: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page */
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ReceiptRead_"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invalid_input */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

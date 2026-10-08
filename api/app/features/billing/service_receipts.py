@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.billing import errors, receipts, repository
+from app.features.billing.models import Payment
 from app.features.billing.receipt_document import render_receipt_html
 from app.features.billing.schemas import ReceiptRead
 
@@ -23,10 +24,15 @@ async def read_receipt(session: AsyncSession, user_id: uuid.UUID, receipt_id: st
     if payment is None or payment.receipt_id is None:
         raise errors.ReceiptNotFound()
 
+    return await _receipt_of(session, payment, payment.receipt_id)
+
+
+async def _receipt_of(session: AsyncSession, payment: Payment, receipt_id: str) -> ReceiptRead:
+    """The rendered receipt for a payment, under the receipt id it was minted with."""
     plan = await repository.plan_by_id(session, payment.plan_id) if payment.plan_id else None
 
     record = receipts.PaymentRecord(
-        receipt_id=payment.receipt_id,
+        receipt_id=receipt_id,
         customer_email=payment.customer_email or "",
         customer_name=payment.customer_name or "",
         exam_code=plan.exam_code or "" if plan else "",
@@ -51,17 +57,26 @@ async def read_receipt_document(session: AsyncSession, user_id: uuid.UUID, recei
 
 
 async def list_my_receipts(
-    session: AsyncSession, user_id: uuid.UUID, *, checkout_session_id: str | None = None
-) -> list[str]:
-    """The receipt ids this person has, newest first; only the ones for one Stripe checkout
-    session when its id is given (the page Stripe returns to asks whether it was paid)."""
-    return [
-        payment.receipt_id
-        for payment in await repository.payments_for_user(
-            session, user_id, checkout_session_id=checkout_session_id
-        )
-        if payment.receipt_id is not None
-    ]
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    checkout_session_id: str | None = None,
+) -> tuple[list[str], str | None]:
+    """A page of this person's receipt ids, newest first, and the cursor for the next page."""
+    payments, next_cursor = await repository.payments_page(
+        session, user_id, limit=limit, cursor=cursor, checkout_session_id=checkout_session_id
+    )
+    return [str(payment.receipt_id) for payment in payments], next_cursor
+
+
+async def list_my_receipts_whole(
+    session: AsyncSession, user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+) -> tuple[list[ReceiptRead], str | None]:
+    """A page of this person's rendered receipts in one go, so the account page needs no call per id."""
+    payments, next_cursor = await repository.payments_page(session, user_id, limit=limit, cursor=cursor)
+    return [await _receipt_of(session, payment, str(payment.receipt_id)) for payment in payments], next_cursor
 
 
 async def export_payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[dict[str, Any]]:

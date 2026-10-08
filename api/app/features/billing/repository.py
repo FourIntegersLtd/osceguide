@@ -163,6 +163,26 @@ async def payments_for_user(
     return list((await session.execute(stmt)).scalars())
 
 
+async def payments_page(
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    checkout_session_id: str | None = None,
+) -> tuple[list[Payment], str | None]:
+    """One page of this person's payments that have a receipt, newest first, with the next cursor.
+
+    Payments from before receipts existed have no receipt id and are not listed.
+    """
+    stmt = select(Payment).where(Payment.user_id == user_id, Payment.receipt_id.is_not(None))
+    if checkout_session_id is not None:
+        stmt = stmt.where(Payment.checkout_session_id == checkout_session_id)
+    return await keyset_page(
+        session, stmt, sort_col=Payment.paid_at, id_col=Payment.id, limit=limit, cursor=cursor
+    )
+
+
 async def count_payments_for_users(session: AsyncSession, user_ids: list[uuid.UUID]) -> int:
     """How many payments these people have made. Zero for an empty list."""
     if not user_ids:

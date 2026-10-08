@@ -310,6 +310,31 @@ async def test_a_purchase_mints_a_receipt_the_buyer_can_read(
     assert body["amount_total"] == "£24.99"
 
 
+async def test_receipts_page_by_cursor_and_come_back_whole_in_one_call(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.support.tokens import bearer
+
+    await a_plan(db_session)
+    buyer = await make_actor("pages@example.com")
+    for event_id in ("evt_pg1", "evt_pg2", "evt_pg3"):
+        await post_event(client, checkout_event(event_id, "pages@example.com"))
+
+    first = (await client.get("/api/v1/me/receipts", params={"limit": 2}, headers=bearer(buyer))).json()
+    second = (
+        await client.get(
+            "/api/v1/me/receipts", params={"limit": 2, "cursor": first["next_cursor"]}, headers=bearer(buyer)
+        )
+    ).json()
+    assert (len(first["items"]), len(second["items"]), second["next_cursor"]) == (2, 1, None)
+    assert len(set(first["items"] + second["items"])) == 3
+
+    whole = (await client.get("/api/v1/me/receipts-full", params={"limit": 2}, headers=bearer(buyer))).json()
+    assert [receipt["receipt_id"] for receipt in whole["items"]] == first["items"]
+    assert whole["items"][0]["amount_total"] == "£24.99"
+    assert whole["next_cursor"] == first["next_cursor"]
+
+
 async def test_a_receipt_is_read_by_its_owner_only(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]

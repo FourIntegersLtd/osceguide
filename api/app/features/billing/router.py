@@ -12,7 +12,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.openapi import DOCUMENT_MEDIA_TYPE
-from app.core.pagination import Page
+from app.core.pagination import CursorParams, Page
 from app.core.ports import CheckoutSessions, ClockDep
 from app.core.settings import SettingsDep
 from app.features.billing import errors, schemas, service, service_checkout, service_receipts
@@ -68,19 +68,40 @@ async def stripe_webhook(
 @router.get(
     "/me/receipts",
     response_model=Page[str],
-    responses=error_responses(Unauthenticated),
+    responses=error_responses(Unauthenticated, InvalidInput),
 )
 async def list_my_receipts(
     principal: CurrentPrincipal,
     session: Session,
+    cursor_params: Annotated[CursorParams, Depends()],
     checkout_session_id: Annotated[str | None, Query(max_length=200)] = None,
 ) -> Page[str]:
-    """The receipt ids for this person's payments, newest first. `checkout_session_id` keeps only
-    the payment made by that Stripe checkout session."""
-    items = await service_receipts.list_my_receipts(
-        session, principal.user_id, checkout_session_id=checkout_session_id
+    """The receipt ids for this person's payments, newest first, a page at a time.
+    `checkout_session_id` keeps only the payment made by that Stripe checkout session."""
+    items, next_cursor = await service_receipts.list_my_receipts(
+        session,
+        principal.user_id,
+        limit=cursor_params.limit,
+        cursor=cursor_params.cursor,
+        checkout_session_id=checkout_session_id,
     )
-    return Page(items=items, next_cursor=None)
+    return Page(items=items, next_cursor=next_cursor)
+
+
+@router.get(
+    "/me/receipts-full",
+    response_model=Page[schemas.ReceiptRead],
+    responses=error_responses(Unauthenticated, InvalidInput),
+)
+async def list_my_receipts_whole(
+    principal: CurrentPrincipal, session: Session, cursor_params: Annotated[CursorParams, Depends()]
+) -> Page[schemas.ReceiptRead]:
+    """The same page of receipts as `/me/receipts`, rendered, so a screen needs one call and not
+    one per receipt. Scoped to the caller like every receipt route."""
+    items, next_cursor = await service_receipts.list_my_receipts_whole(
+        session, principal.user_id, limit=cursor_params.limit, cursor=cursor_params.cursor
+    )
+    return Page(items=items, next_cursor=next_cursor)
 
 
 @router.get(

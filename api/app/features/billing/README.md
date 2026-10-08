@@ -49,7 +49,8 @@ service and never grants access itself.
 | GET | `/api/v1/billing/plans` | none | the pricing page reads this |
 | POST | `/api/v1/billing/checkout` | bearer | Start paying for a plan by code; `plan_not_available` (404), `already_purchased` (409: the same plan is already running or bought to start; a different plan is allowed and its access starts where the running access ends; a trial, an org grant or a lapsed purchase does not block), `checkout_failed` (503). `Idempotency-Key` is passed to Stripe scoped to the buyer. Grants nothing — the webhook does |
 | POST | `/api/v1/billing/webhooks/stripe` | signature | `already_applied` / `ignored` / `applied` |
-| GET | `/api/v1/me/receipts` | bearer | this person's receipt ids, newest first |
+| GET | `/api/v1/me/receipts` | bearer | this person's receipt ids, newest first, `cursor`/`limit` paged |
+| GET | `/api/v1/me/receipts-full` | bearer | the same page, whole receipts rendered, so a screen needs one call and not one per id |
 | GET | `/api/v1/me/receipts/{receipt_id}` | bearer | one receipt, every field rendered for display; `receipt_not_found` (404) |
 | GET | `/api/v1/me/receipts/{receipt_id}/document` | bearer | The receipt as HTML, to print or keep |
 | GET | `/api/v1/platform/users/{id}/payments` | platform admin | this person's payments with what each bought; `user_not_found` (404) |

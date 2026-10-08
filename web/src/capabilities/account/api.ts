@@ -87,22 +87,25 @@ export function startCheckout(
 }
 
 /**
- * The receipts this person has.
+ * The receipts this person has, rendered, newest first.
  *
- * `/me/receipts` answers a page of receipt **ids**, not documents — the
- * detail is a second call per id, scoped to the caller because a receipt id
- * travels to accountants and employers and must not be a key that anybody
- * holding it can read.
+ * `/me/receipts-full` answers whole receipts a page at a time, so the account page needs
+ * one call (two for an unusually long history) and never one per receipt id. Scoping to the
+ * caller is the server's: a receipt id travels to accountants and employers and must not be
+ * a key anybody holding it can read.
  */
-export async function listReceipts(signal?: AbortSignal): Promise<{ receipts: Receipt[]; unreadable: number }> {
-  const page = await platformRequest<components["schemas"]["Page_str_"]>(
-    "/api/v1/me/receipts",
-    { signal },
-  );
-  // One receipt that will not load must not take the others down with it.
-  const settled = await Promise.allSettled(page.items.map((id) => readReceipt(id, signal)));
-  const receipts = settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
-  return { receipts, unreadable: settled.length - receipts.length };
+export async function listReceipts(signal?: AbortSignal): Promise<Receipt[]> {
+  const receipts: Receipt[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await platformRequest<components["schemas"]["Page_ReceiptRead_"]>("/api/v1/me/receipts-full", {
+      query: { limit: 100, cursor },
+      signal,
+    });
+    receipts.push(...page.items);
+    cursor = page.next_cursor ?? undefined;
+  } while (cursor !== undefined);
+  return receipts;
 }
 
 /** The receipt ids made by one Stripe checkout session; empty until its payment has been recorded. */
