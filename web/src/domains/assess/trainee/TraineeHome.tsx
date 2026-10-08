@@ -25,7 +25,7 @@ import { workspaceBasePath } from "@/foundation/routing";
 import { capabilitiesFor, useSurface } from "@/capabilities";
 import { LiveTurnBanner } from "@/domains/assess/trainee/LiveTurnBanner";
 import {
-  MY_SITTINGS_STREAM,
+  mySittingsStreamPath,
   readMySittings,
   type MySitting,
   type MySittings,
@@ -34,13 +34,13 @@ import {
   continueLabel,
   firstName,
   greeting,
-  inOrganisation,
   isExam,
   liveSittings,
   progressOf,
   sittingForSlot,
   slotById,
   sortSittings,
+  splitFinished,
   summaryLine,
 } from "@/domains/assess/trainee/support";
 
@@ -58,8 +58,8 @@ import {
 export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
   const { session } = useSession();
   const { orgSlug } = useSurface();
-  const initial = useAsync((signal) => readMySittings(signal), []);
-  const stream = useEventStream<MySittings>(MY_SITTINGS_STREAM);
+  const initial = useAsync((signal) => readMySittings(orgSlug, signal), [orgSlug]);
+  const stream = useEventStream<MySittings>(mySittingsStreamPath(orgSlug));
   const data = stream.data ?? initial.data;
   const name = firstName(session?.user.name);
 
@@ -77,7 +77,7 @@ export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
       />
 
       <AsyncBoundary state={initial}>
-        {() => <Overview sittings={inOrganisation(data?.items ?? [], orgSlug)} slotId={slotId} />}
+        {() => <Overview sittings={data?.items ?? []} slotId={slotId} />}
       </AsyncBoundary>
     </div>
   );
@@ -92,7 +92,8 @@ function Overview({
 }) {
   const { hrefFor } = useSurface();
   const live = liveSittings(sittings);
-  const ordered = sortSittings(sittings);
+  const { current, past } = splitFinished(sortSittings(sittings));
+  const ordered = current;
   // An emailed join link named a slot, and only the list this person has
   // already loaded can say which sitting owns it. Not finding it is an answer
   // rather than a fault: the slot was taken off them, or the link was never
@@ -120,7 +121,7 @@ function Overview({
       <LiveTurnBanner sittings={live} />
 
       <section aria-label="Your sittings">
-        {ordered.length === 0 ? (
+        {ordered.length === 0 && past.length === 0 ? (
           <EmptyState
             title="You are not booked on anything yet"
             description="When your organisation adds you to a sitting it appears here, and you are told when it opens."
@@ -132,6 +133,13 @@ function Overview({
             ))}
           </B2CGroupedSection>
         )}
+        {past.length > 0 ? (
+          <B2CGroupedSection eyebrow="Past sittings">
+            {past.map((sitting) => (
+              <SittingRow key={`${sitting.id}-${sitting.circuit_id}`} sitting={sitting} />
+            ))}
+          </B2CGroupedSection>
+        ) : null}
       </section>
 
       <Explore />

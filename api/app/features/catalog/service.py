@@ -236,6 +236,14 @@ async def programme_exam_id(session: AsyncSession, org_id: uuid.UUID, programme_
     return programme.exam_id
 
 
+async def programme_status(session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID) -> str:
+    """Whether this programme is being run (`active`), or the refusal."""
+    programme = await repository.programme_by_id(session, org_id, programme_id)
+    if programme is None:
+        raise ProgrammeNotFound()
+    return programme.status
+
+
 async def programme_exams(
     session: AsyncSession, org_id: uuid.UUID, programme_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, tuple[str, str]]:

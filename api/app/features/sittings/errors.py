@@ -114,6 +114,7 @@ from app.features.voice.errors import VoiceUnavailable  # noqa: E402
 __all__ = [
     "ExamRubricNotReady",
     "MarkingNotReady",
+    "ProgrammeNotActive",
     "ProgrammeNotFound",
     "ProgrammeRequired",
     "RubricVersionNotFound",
@@ -137,6 +138,13 @@ class ExamRubricNotReady(Conflict):
 
     code = "exam_rubric_not_ready"
     default_message = "That programme's exam is not ready to mark against yet"
+
+
+class ProgrammeNotActive(Conflict):
+    """A sitting was scheduled against a programme that is not running, or whose exam is retired."""
+
+    code = "programme_not_active"
+    default_message = "That programme is not active, so nothing can be scheduled against it"
 
 
 class CircuitNotStarted(Conflict):

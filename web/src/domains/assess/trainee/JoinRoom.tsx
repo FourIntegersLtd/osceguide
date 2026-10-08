@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LuDoorOpen, LuLogOut } from "react-icons/lu";
 import { Alert, Badge, Button, Spinner } from "@/foundation/ui";
-import { errorMessage } from "@/foundation/hooks";
 import { AgentTile, VoiceRoom, useMicPreflight, type RoomGrant } from "@/foundation/livekit";
 import { ExamClock } from "@/capabilities/attempt-runner";
 import { joinCircuit, type MySitting } from "@/domains/assess/trainee/api";
-import { phaseLabel } from "@/domains/assess/trainee/support";
+import { joinFailureCopy, phaseLabel } from "@/domains/assess/trainee/support";
 
 /**
  * A candidate in the room, and the way in.
@@ -24,7 +23,7 @@ import { phaseLabel } from "@/domains/assess/trainee/support";
 export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () => void }) {
   const [grant, setGrant] = useState<RoomGrant | null>(null);
   const [joining, setJoining] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<string | null>(null);
   // Which circuit this person walked out of, rather than a flag that then has
   // to be cleared: a later circuit is a different id, so "have I left?" is
   // derived and there is no effect resetting state on the way in.
@@ -43,7 +42,7 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
       if (mic.status !== "ready") await mic.request().catch(() => undefined);
       setGrant(await joinCircuit(sitting.circuit_id));
     } catch (cause) {
-      setError(cause instanceof Error ? cause : new Error(String(cause)));
+      setError(joinFailureCopy(cause));
     } finally {
       setJoining(false);
     }
@@ -78,6 +77,12 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
     return (
       <VoiceRoom
         grant={grant}
+        onError={(cause) => {
+          // A room that will not connect is said, not swallowed: leave it so Join is offered again.
+          setGrant(null);
+          setError(joinFailureCopy(cause));
+          attempted.current = false;
+        }}
         onDisconnected={(unexpected) => {
           setGrant(null);
           // An unexpected drop should re-join: the room has to stay occupied
@@ -86,6 +91,7 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
         }}
       >
         <div className="flex flex-col items-center gap-4">
+          {mic.message ? <Alert tone="danger">{mic.message} The patient cannot hear you until it works.</Alert> : null}
           <Clock sitting={sitting} />
           <AgentTile name="Your patient" className="w-full max-w-sm" />
           <Button
@@ -107,7 +113,7 @@ export function JoinRoom({ sitting, onLeft }: { sitting: MySitting; onLeft?: () 
 
   return (
     <div className="flex flex-col gap-3">
-      {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+      {error ? <Alert tone="danger">{error}</Alert> : null}
       {sitting.can_join && mic.message ? <Alert tone="warning">{mic.message}</Alert> : null}
 
       <div className="flex flex-wrap items-center gap-2">

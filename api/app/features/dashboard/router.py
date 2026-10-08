@@ -77,7 +77,10 @@ async def read_performance(
     responses=error_responses(Unauthenticated),
 )
 async def read_my_sittings(
-    principal: CurrentPrincipal, session: Session, clock: ClockDep
+    principal: CurrentPrincipal,
+    session: Session,
+    clock: ClockDep,
+    org_slug: Annotated[str | None, Query(description="Only this workspace's sittings.")] = None,
 ) -> schemas.MySittings:
     """What a trainee is rostered onto, and whether it is their turn."""
     return await service_trainee.my_sittings(
@@ -85,6 +88,7 @@ async def read_my_sittings(
         principal.user_id,
         org_slugs={membership.org_id: membership.org_slug for membership in principal.memberships},
         now=clock.now(),
+        org_slug=org_slug,
     )
 
 
@@ -233,10 +237,13 @@ async def stream_my_sittings(
     bus: Annotated[EventBus, Depends(get_event_bus)],
     open_session: SessionOpenerDep,
     clock: ClockDep,
+    org_slug: Annotated[str | None, Query(description="Only this workspace's sittings.")] = None,
 ) -> StreamingResponse:
     """The trainee portal, pushed. Replaces a five-second poll of two lists."""
     return StreamingResponse(
-        service_streams.my_sittings_stream(principal, bus=bus, open_session=open_session, clock=clock),
+        service_streams.my_sittings_stream(
+            principal, bus=bus, open_session=open_session, clock=clock, org_slug=org_slug
+        ),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )

@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { PlatformError } from "@/foundation/platform-client";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
 import {
   continueLabel,
   greeting,
   greetingFor,
-  inOrganisation,
+  joinFailureCopy,
+  splitFinished,
   firstName,
   liveSittings,
   orderedSlots,
@@ -178,11 +180,20 @@ test("the greeting follows the clock, and a missing name is not a blank hello", 
   assert.equal(greetingFor(null, new Date(2026, 8, 19, 20)), "Good evening.");
 });
 
-test("a workspace shows only its own organisation's sittings", () => {
+test("finished sittings are set apart from the ones still to come", () => {
   const all = [
-    sitting({ id: "a", org_slug: "kings" }),
-    sitting({ id: "b", org_slug: "guys" }),
+    sitting({ id: "a", status: "scheduled" }),
+    sitting({ id: "b", status: "completed" }),
+    sitting({ id: "c", status: "in_progress" }),
+    sitting({ id: "d", status: "cancelled" }),
   ];
-  assert.deepEqual(inOrganisation(all, "guys").map((item) => item.id), ["b"]);
-  assert.deepEqual(inOrganisation(all, null).map((item) => item.id), ["a", "b"]);
+  const split = splitFinished(all);
+  assert.deepEqual(split.current.map((item) => item.id), ["a", "c"]);
+  assert.deepEqual(split.past.map((item) => item.id), ["b", "d"]);
+});
+
+test("a join refusal is said in words a candidate can act on", () => {
+  assert.equal(joinFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" })), "This circuit is not open yet. You will be let in when your supervisor starts it.");
+  assert.equal(joinFailureCopy(new PlatformError(503, { code: "voice_unavailable", message: "raw" })), "The voice service is not available right now. Wait a minute and try again.");
+  assert.equal(joinFailureCopy(new Error("boom")), "Something went wrong. Please try again.");
 });

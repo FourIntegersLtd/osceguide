@@ -51,7 +51,12 @@ def console_stream(
 
 
 def my_sittings_stream(
-    principal: Principal, *, bus: EventBus, open_session: SessionOpener, clock: Clock
+    principal: Principal,
+    *,
+    bus: EventBus,
+    open_session: SessionOpener,
+    clock: Clock,
+    org_slug: str | None = None,
 ) -> AsyncIterator[str]:
     """The trainee portal, pushed.
 
@@ -66,7 +71,7 @@ def my_sittings_stream(
         """One frame: this trainee's whole portal, as it stands right now."""
         async with open_session() as session:
             mine = await service_trainee.my_sittings(
-                session, principal.user_id, org_slugs=org_slugs, now=clock.now()
+                session, principal.user_id, org_slugs=org_slugs, now=clock.now(), org_slug=org_slug
             )
         # Never final: a trainee's portal outlives any one sitting.
         return Snapshot(mine.model_dump_json())

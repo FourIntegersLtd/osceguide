@@ -40,6 +40,11 @@ export function SelfPractice({ orgSlug }: { orgSlug: string }) {
           title: "No published stations yet",
           description:
             "Your organisation has not added any stations yet. Until it does, you can still practise with the OSCE Guide library.",
+          action: (
+            <ButtonLink themeType="b2b" variant="secondary" size="sm" href={`${workspaceBasePath("me")}/dashboard`}>
+              Open personal practice
+            </ButtonLink>
+          ),
         }}
       >
         {(stations) => <StationList stations={stations} />}

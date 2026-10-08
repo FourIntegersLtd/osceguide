@@ -1,3 +1,5 @@
+import { PlatformError } from "@/foundation/platform-client";
+import { errorMessage } from "@/foundation/hooks/useAsync";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
 
 /**
@@ -265,7 +267,21 @@ export function firstName(name: string | null | undefined): string | null {
   return first && !first.includes("@") ? first : null;
 }
 
-/** One organisation's sittings: a trainee in two sees each workspace's own, not both. */
-export function inOrganisation(sittings: readonly MySitting[], orgSlug: string | null): MySitting[] {
-  return orgSlug ? sittings.filter((sitting) => sitting.org_slug === orgSlug) : [...sittings];
+/** Sittings still to sit or being sat, and the ones that are over (T-9). */
+export function splitFinished(sittings: readonly MySitting[]): { current: MySitting[]; past: MySitting[] } {
+  const over = (sitting: MySitting) => ["completed", "ended", "cancelled"].includes(sitting.status);
+  return { current: sittings.filter((s) => !over(s)), past: sittings.filter(over) };
+}
+
+const JOIN_REFUSALS: Record<string, string> = {
+  circuit_not_live: "This circuit is not open yet. You will be let in when your supervisor starts it.",
+  circuit_not_found: "That circuit is not on your list any more. Go back to your sittings.",
+  voice_unavailable: "The voice service is not available right now. Wait a minute and try again.",
+  trainee_revoked: "Your access to this organisation has been withdrawn. Ask your administrator.",
+  trainee_not_on_roster: "You are not on this circuit. Ask your supervisor to add you.",
+};
+
+/** Why a join was refused, in words a candidate can act on (T-7). */
+export function joinFailureCopy(cause: unknown): string {
+  return (cause instanceof PlatformError ? JOIN_REFUSALS[cause.code] : undefined) ?? errorMessage(cause);
 }

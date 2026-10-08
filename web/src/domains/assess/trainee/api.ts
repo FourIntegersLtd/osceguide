@@ -30,10 +30,16 @@ export type OrgStation = components["schemas"]["StationRead"];
 export type MySlotReview = components["schemas"]["MySlotReviewRead"];
 
 /** Pushed, not polled. The old detail screen re-fetched every five seconds. */
-export const MY_SITTINGS_STREAM = "/api/v1/me/sittings/stream";
+export function mySittingsStreamPath(orgSlug: string | null): string {
+  const base = "/api/v1/me/sittings/stream";
+  return orgSlug ? `${base}?org_slug=${encodeURIComponent(orgSlug)}` : base;
+}
 
-export function readMySittings(signal?: AbortSignal): Promise<MySittings> {
-  return platformRequest<MySittings>("/api/v1/me/sittings", { signal });
+/** One workspace's sittings (a trainee in two organisations sees each in its own), or all when none is named. */
+export function readMySittings(orgSlug: string | null, signal?: AbortSignal): Promise<MySittings> {
+  // `org_slug` is declared on the route but not yet in the generated types.
+  const query = orgSlug ? `?org_slug=${encodeURIComponent(orgSlug)}` : "";
+  return platformRequest<MySittings>(`/api/v1/me/sittings${query}`, { signal });
 }
 
 /** Join the room for a circuit I am rostered onto. */

@@ -40,6 +40,7 @@ from app.features.sittings.service import (
     _REFUSALS,
     _require_circuit,
     _require_sitting,
+    ensure_lead_may_run,
     ensure_sitting_not_cancelled,
     read_circuit,
 )
@@ -78,6 +79,8 @@ async def start_circuit(
         return await read_circuit(session, org_id, circuit_id)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
     ensure_sitting_not_cancelled(sitting)
+    # R-41: a lead who lost the role since the circuit was built cannot run it.
+    await ensure_lead_may_run(session, org_id, circuit.supervisor_user_id)
 
     room = f"circuit_{circuit.id}"
     await repository.update_circuit(

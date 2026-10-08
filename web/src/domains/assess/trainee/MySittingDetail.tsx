@@ -18,7 +18,7 @@ import { useSurface } from "@/capabilities";
 import { JoinRoom } from "@/domains/assess/trainee/JoinRoom";
 import { SlotReadingBrief } from "@/domains/assess/trainee/SlotReadingBrief";
 import {
-  MY_SITTINGS_STREAM,
+  mySittingsStreamPath,
   readMyResult,
   readMyReview,
   readMySittings,
@@ -28,7 +28,6 @@ import {
 } from "@/domains/assess/trainee/api";
 import {
   activeSlot,
-  inOrganisation,
   isExam,
   modeLabel,
   orderedSlots,
@@ -50,11 +49,11 @@ import {
  * them. Keying on the sitting alone showed somebody another circuit's stations.
  */
 export function MySittingDetail({ sittingId }: { sittingId: string }) {
-  const initial = useAsync((signal) => readMySittings(signal), []);
-  const stream = useEventStream<MySittings>(MY_SITTINGS_STREAM);
-  const data = stream.data ?? initial.data;
   const { orgSlug } = useSurface();
-  const mine = inOrganisation(data?.items ?? [], orgSlug).filter((sitting) => sitting.id === sittingId);
+  const initial = useAsync((signal) => readMySittings(orgSlug, signal), [orgSlug]);
+  const stream = useEventStream<MySittings>(mySittingsStreamPath(orgSlug));
+  const data = stream.data ?? initial.data;
+  const mine = (data?.items ?? []).filter((sitting) => sitting.id === sittingId);
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">

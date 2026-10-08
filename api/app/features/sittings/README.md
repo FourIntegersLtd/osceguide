@@ -105,7 +105,7 @@ examination.
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/api/v1/orgs/{org_slug}/circuits/{id}/start` | the last manual act; opens the room and the first reading period |
+| POST | `/api/v1/orgs/{org_slug}/circuits/{id}/start` | the last manual act; opens the room and the first reading period; refused with `lead_cannot_run` if the lead has since lost a staff role that may run circuits (R-41) |
 | POST | `/api/v1/orgs/{org_slug}/circuits/{id}/end` | takes the patient out too, which ending never used to do |
 | GET | `/api/v1/orgs/{org_slug}/circuits/{id}/edit-lock` | whether the slots may still be rebuilt |
 | GET | `/api/v1/orgs/{org_slug}/circuits/{id}/interventions` | who did what to this examination |

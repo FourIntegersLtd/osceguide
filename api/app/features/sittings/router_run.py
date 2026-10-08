@@ -37,7 +37,11 @@ _LIVE = (Forbidden, *errors.LIVE_CIRCUIT_REFUSALS)
     "/orgs/{org_slug}/circuits/{circuit_id}/start",
     response_model=schemas.CircuitRead,
     responses=error_responses(
-        Forbidden, errors.CircuitNotFound, errors.CircuitAlreadyEndedError, errors.SittingLockedError
+        Forbidden,
+        errors.CircuitNotFound,
+        errors.CircuitAlreadyEndedError,
+        errors.SittingLockedError,
+        errors.LeadCannotRun,
     ),
 )
 async def start_circuit(

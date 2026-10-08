@@ -29,7 +29,12 @@ def _joinable(status: str, room_name: str | None, exam_completed: bool, circuit_
 
 
 async def my_sittings(
-    session: AsyncSession, user_id: uuid.UUID, *, org_slugs: Mapping[uuid.UUID, str], now: datetime
+    session: AsyncSession,
+    user_id: uuid.UUID,
+    *,
+    org_slugs: Mapping[uuid.UUID, str],
+    now: datetime,
+    org_slug: str | None = None,
 ) -> MySittings:
     """Every sitting this person is rostered onto, grouped by circuit.
 
@@ -41,6 +46,9 @@ async def my_sittings(
     memberships are already in the JWT, and a slug is display, not access.
     """
     trainee_slots = await sittings.slots_for_trainee(session, user_id)
+    if org_slug is not None:
+        # One workspace's sittings (T-11); a slug the caller holds no membership in shows nothing.
+        trainee_slots = [slot for slot in trainee_slots if org_slugs.get(slot.sitting.org_id) == org_slug]
     titles = await _titles_per_org(session, trainee_slots)
     live = await attempts.live_attempts_for_slots(
         session, [trainee_slot.slot.id for trainee_slot in trainee_slots]
