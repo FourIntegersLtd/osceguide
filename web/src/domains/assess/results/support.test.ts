@@ -10,6 +10,8 @@ import {
   recruitmentLabel,
   releasable,
   splitByAccount,
+  releaseFailureLine,
+  UNLINKED_REASON,
   signOffBlockers,
   formatScore,
   outcomeLabel,
@@ -217,5 +219,6 @@ test("a candidate with no linked account is named, not dropped from a bulk relea
   const orphan = candidate({ user_id: "u2", trainee_id: null, name: "Ben" });
   const split = splitByAccount([linked, orphan]);
   assert.deepEqual(split.traineeIds, ["t1"]);
-  assert.deepEqual(split.unlinked, ["Ben: has no linked account, so the result cannot be released"]);
+  assert.deepEqual(split.unlinked, [orphan]);
+  assert.equal(releaseFailureLine(orphan, UNLINKED_REASON), "Ben: has no linked account, so the result cannot be released");
 });

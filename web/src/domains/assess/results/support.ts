@@ -161,16 +161,20 @@ export function releasable(candidate: {
   return Boolean(decision?.signed_off_at) && !decision?.released_at && !heldBack;
 }
 
-/** Splits a chosen release into the accounts the server can release and the people it cannot name an account for. */
-export function splitByAccount(chosen: CandidateReport[]): { traineeIds: string[]; unlinked: string[] } {
+export const UNLINKED_REASON = "has no linked account, so the result cannot be released";
+
+/** One line of a release report: who, and why they were not released. */
+export function releaseFailureLine(candidate: CandidateReport | undefined, reason: string): string {
+  return `${candidate?.name ?? candidate?.email ?? "A candidate"}: ${reason}`;
+}
+
+/** Splits a chosen release into the accounts the server can release and the candidates it cannot name an account for. */
+export function splitByAccount(chosen: CandidateReport[]): { traineeIds: string[]; unlinked: CandidateReport[] } {
   const traineeIds: string[] = [];
-  const unlinked: string[] = [];
+  const unlinked: CandidateReport[] = [];
   for (const candidate of chosen) {
     if (candidate.trainee_id) traineeIds.push(candidate.trainee_id);
-    else
-      unlinked.push(
-        `${candidate.name ?? candidate.email ?? "A candidate"}: has no linked account, so the result cannot be released`,
-      );
+    else unlinked.push(candidate);
   }
   return { traineeIds, unlinked };
 }
