@@ -1,5 +1,7 @@
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { legacyDestination } from "@/foundation/routing/legacyRedirects";
+import { signInRedirect } from "@/foundation/routing/sessionGate";
+import { SESSION_COOKIES } from "@/foundation/platform-client/sessionCookies";
 import { examLandingRewritePath } from "@/foundation/routing/examSubdomainLanding";
 import { parseReferralParams } from "@/foundation/attribution/parseReferralParams";
 import {
@@ -17,11 +19,12 @@ import { buildCspHeader, cspEnforceFromEnv } from "@/foundation/security/content
  * have those old URLs bookmarked, in emails and on the marketing site, so each
  * one needs an answer rather than a 404.
  *
- * Session checking deliberately does **not** happen here. The session is an
- * `httpOnly` cookie now, so the edge *could* read it — but a cookie says only
- * that a token exists, not that it is still good or what the person may see,
- * and a redirect decided on that would be guessing. `RequireSession` does it
- * in the browser, against a token the server has just validated.
+ * Session checking deliberately does **not** happen here beyond one case: no
+ * session cookie at all sends `/app/*` to sign-in (`sessionGate.ts`). A cookie
+ * says only that a token exists, not that it is still good or what the person
+ * may see, so a redirect decided on its presence would be guessing; the API
+ * stays the authority and `RequireSession` does the rest in the browser,
+ * against a token the server has just validated.
  */
 export function middleware(request: NextRequest, event: NextFetchEvent) {
   /*
@@ -34,7 +37,8 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
    * it. So every response that renders a page (`next` and the exam rewrite) is
    * built with these forwarded headers; a redirect renders nothing and skips it.
    *
-   * It ships Report-Only unless `PLATFORM_WEB_CSP_ENFORCE` is set — a nonce CSP
+   * It ships Report-Only unless `PLATFORM_WEB_CSP_ENFORCE` is set, and stays so until a staging
+   * report window has been reviewed and the violations tuned (A-14 decision) — a nonce CSP
    * forces every page into dynamic rendering, so any statically-rendered page
    * would break silently under enforce until a staging browser pass confirms the
    * whole journey. See `foundation/security/contentSecurityPolicy.ts`.
@@ -82,6 +86,19 @@ export function middleware(request: NextRequest, event: NextFetchEvent) {
 
 /** The answer this URL needs, ignoring attribution: an old address, an exam host, or itself. */
 function route(request: NextRequest, requestHeaders: Headers): NextResponse {
+  const signIn = signInRedirect(
+    request.nextUrl.pathname,
+    request.nextUrl.search,
+    request.cookies.has(SESSION_COOKIES.refresh),
+  );
+  if (signIn) {
+    const url = request.nextUrl.clone();
+    const separator = signIn.indexOf("?");
+    url.pathname = signIn.slice(0, separator);
+    url.search = signIn.slice(separator + 1);
+    return NextResponse.redirect(url, 307);
+  }
+
   const destination = legacyDestination(request.nextUrl.pathname);
   if (destination) {
     const url = request.nextUrl.clone();
