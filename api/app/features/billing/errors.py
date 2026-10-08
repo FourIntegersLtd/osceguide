@@ -146,7 +146,7 @@ class PaymentNotFound(NotFound):
     default_message = "No such payment"
 
 
-class PaymentNotYetRecorded(PaymentNotFound):
+class PaymentNotYetRecorded(NotFound):
     """A refund or dispute named a charge with no payment yet (its checkout may still be on the
     way). `persist_effects`: the ledger row and its failure survive, so it is in `failed_only`
     and Stripe's retry applies it once the payment exists."""

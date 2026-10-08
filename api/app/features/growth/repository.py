@@ -169,6 +169,7 @@ async def redemption_made_at(
         Referral.redeemed_at == redeemed_at,
         Referral.earned_pence > 0,
     )
+    # No payment id is stored on a redeemed row, so a unique key would need a migration (left, noted).
     # Two redemptions at one instant are possible in principle; take the first, deterministically.
     return (await session.execute(stmt.order_by(Referral.id).limit(1))).scalar_one_or_none()
 
