@@ -27,7 +27,7 @@ export const authoringCapability: CapabilityModule = {
   surfaces: ["assess", "hire", "partner", "platform"],
   permission: ["run_circuits", "administer_platform"],
   path: "/authoring",
-  staffHiddenOn: ["assess", "hire"],
+  staffNavHiddenOn: ["assess", "hire"],
   icon: LuPencilRuler,
   section: "catalogue",
 };

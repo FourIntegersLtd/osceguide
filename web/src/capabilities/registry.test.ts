@@ -84,6 +84,19 @@ describe("capability registry", () => {
     );
   });
 
+  it("refuses a staff member the trainee pages by URL, but not the page their own Build entry opens", () => {
+    const staff = { run_circuits: true };
+    const byUrl = capabilitiesFor("assess", { can: staff, includeHidden: true }).map((c) => c.id);
+    for (const id of ["community", "stations", "study-a-to-z", "study-podcast"]) {
+      assert.ok(!byUrl.includes(id), `${id} should be refused to staff by URL`);
+    }
+    assert.ok(byUrl.includes("authoring"), "Build opens /authoring, so it stays reachable");
+    const nav = capabilitiesFor("assess", { can: staff }).map((c) => c.id);
+    assert.ok(!nav.includes("authoring"), "the arm lists Build itself, so the catalogue entry stays out of nav");
+    const trainee = capabilitiesFor("assess", { can: {}, includeHidden: true }).map((c) => c.id);
+    assert.ok(trainee.includes("community") && trainee.includes("study-a-to-z"));
+  });
+
   it("never mounts a capability on a surface it does not declare", () => {
     for (const surface of SURFACES) {
       for (const mounted of capabilitiesFor(surface, { includeHidden: true })) {

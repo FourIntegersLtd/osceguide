@@ -70,11 +70,15 @@ export interface CapabilityModule {
    */
   unmountedGoesTo?: string;
   /**
-   * Arms where somebody who runs circuits does not see it in navigation (the
-   * trainee's study items, community, and Authoring where the arm lists its own
-   * Build entry). The screen stays reachable by link.
+   * Arms where somebody who runs circuits is refused the page, by link as well as in
+   * navigation (the trainee's study items and community, which staff have no use for).
    */
   staffHiddenOn?: readonly Surface[];
+  /**
+   * Arms where somebody who runs circuits does not see it in navigation, though the page stays
+   * open: Authoring, where the arm lists its own Build entry that opens the same page.
+   */
+  staffNavHiddenOn?: readonly Surface[];
 }
 
 export interface MountedCapability extends CapabilityModule {

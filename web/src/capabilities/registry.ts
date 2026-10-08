@@ -75,7 +75,9 @@ export function capabilitiesFor(
   return CAPABILITIES.filter((capability) => {
     if (!capability.surfaces.includes(surface)) return false;
     if (capability.hidden && !includeHidden) return false;
-    if (!includeHidden && can.run_circuits === true && capability.staffHiddenOn?.includes(surface)) return false;
+    const staff = can.run_circuits === true;
+    if (staff && capability.staffHiddenOn?.includes(surface)) return false;
+    if (!includeHidden && staff && capability.staffNavHiddenOn?.includes(surface)) return false;
     if (!permitted(capability.permission, can)) return false;
     if (examCode !== undefined && capability.exams && !capability.exams.includes(examCode ?? "")) {
       return false;
