@@ -18,7 +18,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.ports import ClockDep, RoomAgents
 from app.core.settings import SettingsDep
-from app.core.tenancy import OrgStaff
+from app.core.tenancy import OrgStaffRunning
 from app.features.sittings import errors, schemas, service_run
 from app.features.sittings import service_control as control
 from app.features.sittings import service_overrides as overrides
@@ -39,7 +39,7 @@ Agents = Annotated[RoomAgents, Depends(service_run.get_room_agents)]
 async def pause(
     circuit_id: uuid.UUID,
     body: schemas.Override,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -62,7 +62,7 @@ async def pause(
 async def resume(
     circuit_id: uuid.UUID,
     body: schemas.Override,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -85,7 +85,7 @@ async def resume(
 async def extend_clock(
     circuit_id: uuid.UUID,
     body: schemas.ExtendClock,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -109,7 +109,7 @@ async def extend_clock(
 async def reset_clock(
     circuit_id: uuid.UUID,
     body: schemas.Override,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -132,7 +132,7 @@ async def reset_clock(
 async def set_auto_advance(
     circuit_id: uuid.UUID,
     body: schemas.SetAutoAdvance,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -163,7 +163,7 @@ async def set_auto_advance(
 async def resend_patient(
     circuit_id: uuid.UUID,
     body: schemas.Override,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -190,7 +190,7 @@ async def resend_patient(
 async def redo_station(
     circuit_id: uuid.UUID,
     body: schemas.StationOverride,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -218,7 +218,7 @@ async def redo_station(
 async def jump_to(
     circuit_id: uuid.UUID,
     body: schemas.StationOverride,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -242,7 +242,7 @@ async def jump_to(
     responses=error_responses(Forbidden, errors.CircuitNotFound),
 )
 async def list_interventions(
-    circuit_id: uuid.UUID, workspace: OrgStaff, session: Session
+    circuit_id: uuid.UUID, workspace: OrgStaffRunning, session: Session
 ) -> schemas.Interventions:
     """Everything a human did to this examination, and why."""
     return await overrides.list_interventions(session, workspace.org_id, circuit_id)

@@ -103,6 +103,7 @@ async def resolve_workspace(
     *,
     predicate: RolePredicate,
     allow_platform_admin: bool = True,
+    allow_suspended: bool = False,
 ) -> Workspace:
     """The whole access rule, as a plain function.
 
@@ -133,14 +134,14 @@ async def resolve_workspace(
     org = await _bound_org_lookup()(session, org_slug)
     if org is None:
         raise OrgNotFound()
-    if not org_permits_access(org.status) and not principal.is_platform_admin:
+    if not allow_suspended and not org_permits_access(org.status) and not principal.is_platform_admin:
         raise OrgSuspended()
 
     return Workspace(org_id=membership.org_id, org_slug=org_slug, role=membership.role, principal=principal)
 
 
 def require_org(
-    predicate: RolePredicate, *, allow_platform_admin: bool = True
+    predicate: RolePredicate, *, allow_platform_admin: bool = True, allow_suspended: bool = False
 ) -> Callable[..., Awaitable[Workspace]]:
     """Build a dependency that resolves an org slug and checks the caller's role.
 
@@ -161,6 +162,7 @@ def require_org(
             org_slug,
             predicate=predicate,
             allow_platform_admin=allow_platform_admin,
+            allow_suspended=allow_suspended,
         )
 
     return dependency
@@ -201,6 +203,9 @@ OrgReader = Annotated[Workspace, Depends(require_org(policy("may_read_org")))]
 # Running an examination: an org admin or its assigned supervisor. Not
 # `OrgReader`, which admits the trainee sitting the circuit.
 OrgStaff = Annotated[Workspace, Depends(require_org(policy("may_run_circuit")))]
+# S-29: a suspension lets running circuits finish, so the routes that run or end one still admit
+# staff of a suspended organisation. Starting a circuit stays on `OrgStaff` (and is refused again in the service).
+OrgStaffRunning = Annotated[Workspace, Depends(require_org(policy("may_run_circuit"), allow_suspended=True))]
 OrgAdmin = Annotated[Workspace, Depends(require_org(policy("is_org_admin"), allow_platform_admin=False))]
 OrgInstitutionAdmin = Annotated[
     Workspace, Depends(require_org(policy("is_institution_admin"), allow_platform_admin=False))

@@ -9,6 +9,7 @@ it is marked and its rating, the count marked, and the worst rating overall.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,10 +22,24 @@ from app.features.rubrics import service_scoring as scoring
 from app.features.sittings import service_reads as sittings
 
 
+# Version 2 (R-42): a completed human review counts a station as marked. Snapshots stored before
+# it carry no version and are compared the old way, so they do not read as re-marked (R-43).
+EVIDENCE_VERSION = 2
+
+
 async def current_evidence(
-    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    sitting_id: uuid.UUID,
+    trainee_id: uuid.UUID,
+    *,
+    stored: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """The candidate's stations in this sitting as they are marked right now."""
+    """The candidate's stations in this sitting as they are marked right now.
+
+    Given the snapshot a decision was made against, it is shaped like that snapshot: like with like.
+    """
+    legacy = stored is not None and "version" not in stored
     user_id = (await roster.read_trainee(session, org_id, trainee_id)).user_id
     sitting = await sittings.sitting_ref(session, org_id, sitting_id)
     slots = [
@@ -40,7 +55,7 @@ async def current_evidence(
             {
                 "slot_id": str(slot.id),
                 "marked": (slot.id in live and live[slot.id].status == "evaluated")
-                or summaries[slot.id].overall_rag is not None,
+                or (not legacy and summaries[slot.id].overall_rag is not None),
                 "overall_rag": summaries[slot.id].overall_rag,
             }
             for slot in slots
@@ -52,6 +67,7 @@ async def current_evidence(
         rubric = await rubrics.scoring_rubric_for_version(session, org_id, sitting.rubric_version_id)
         overall = scoring.worst_rating(rubric.structure, [station["overall_rag"] for station in stations])
     return {
+        **({} if legacy else {"version": EVIDENCE_VERSION}),
         "stations": stations,
         "stations_marked": sum(1 for station in stations if station["marked"]),
         "overall_rag": overall,

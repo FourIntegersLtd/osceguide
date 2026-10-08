@@ -144,7 +144,9 @@ async def sign_off(
 ) -> DecisionRead:
     """Put a name to the current draft. Refused if it has no outcome or rationale yet."""
     latest = await _require(session, org_id, sitting_id, trainee_id)
-    current = await service_evidence.current_evidence(session, org_id, sitting_id, trainee_id)
+    current = await service_evidence.current_evidence(
+        session, org_id, sitting_id, trainee_id, stored=latest.evidence_snapshot
+    )
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.SIGNED_OFF)
         assessment = domain.Assessment(latest.assessment_outcome) if latest.assessment_outcome else None
@@ -203,7 +205,9 @@ async def release(
     pressed the button and never the candidate.
     """
     latest = await _require(session, org_id, sitting_id, trainee_id)
-    current = await service_evidence.current_evidence(session, org_id, sitting_id, trainee_id)
+    current = await service_evidence.current_evidence(
+        session, org_id, sitting_id, trainee_id, stored=latest.evidence_snapshot
+    )
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.RELEASED)
         domain.ensure_releasable(latest.assessment_outcome)

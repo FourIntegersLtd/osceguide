@@ -702,3 +702,52 @@ async def test_sign_off_is_refused_if_the_evidence_moved_since_the_draft(
     response = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
     assert response.status_code == 409
     assert response.json()["code"] == "evidence_changed"
+
+
+async def test_a_draft_made_before_reviews_counted_as_marked_still_signs_off(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-43: R-42 made a completed review count as marked, which must not read as a re-mark of old drafts."""
+    from sqlalchemy import select
+
+    from app.features.results import domain
+    from app.features.results import repository as results_repo
+    from app.features.sittings.models import Slot
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    slot = (await db_session.execute(select(Slot).where(Slot.org_id == org_id))).scalars().one()
+    slot_id = slot.id
+    reviewed = await client.put(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
+        json={"field_values": {"consulting.score": "a"}, "status": "completed"},
+        headers=bearer(admin),
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    # The draft as it was stored before R-42: no version, and a review-only station not marked.
+    legacy = {
+        "stations": [{"slot_id": str(slot.id), "marked": False, "overall_rag": "A"}],
+        "stations_marked": 0,
+        "overall_rag": "A",
+    }
+    await results_repo.append_revision(
+        db_session,
+        org_id,
+        sitting_id=sitting,
+        trainee_id=trainee,
+        revision=1,
+        supersedes_revision=None,
+        workflow_state="draft",
+        assessment_outcome="pass",
+        recruitment_outcome=None,
+        rationale="R.",
+        moderation_notes=None,
+        evidence_snapshot=legacy,
+        evidence_fingerprint=domain.fingerprint(legacy),
+        created_by=slot.trainee_id,
+    )
+    await db_session.flush()
+
+    response = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+
+    assert response.status_code == 200, response.text

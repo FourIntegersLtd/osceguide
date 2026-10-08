@@ -356,3 +356,25 @@ async def test_a_repeat_start_of_a_running_circuit_is_a_read_even_if_the_lead_wa
 
     again = await client.post(url, headers=bearer(admin))
     assert (again.status_code, again.json()["started_at"]) == (200, first.json()["started_at"])
+
+
+async def test_staff_can_end_a_running_circuit_in_a_suspended_organisation(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-29: a suspension lets a running circuit finish, so staff must still be able to end it."""
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    candidate = await a_user(db_session, "end-susp@example.com")
+    circuit = await a_circuit(
+        client, admin, "kings", sitting_id=sitting["id"], trainee_ids=[str(candidate)], station_version_ids=[station]
+    )
+    started = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    assert started.status_code == 200, started.text
+    await tenancy_repo.set_organization_status(db_session, org_id, status="suspended")
+    await db_session.flush()
+
+    ended = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/end", headers=bearer(admin))
+
+    assert ended.status_code == 200, ended.text

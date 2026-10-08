@@ -19,7 +19,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep, RoomAgents, VoiceTokens
 from app.core.settings import SettingsDep
-from app.core.tenancy import OrgStaff, OrgSuspended
+from app.core.tenancy import OrgStaff, OrgStaffRunning, OrgSuspended
 from app.features.sittings import errors, schemas, service_brief, service_circuit, service_join, service_run
 from app.features.sittings import service_control as control
 from app.features.sittings import service_overrides as overrides
@@ -64,7 +64,7 @@ async def start_circuit(
     responses=error_responses(Forbidden, errors.CircuitNotFound, errors.VoiceUnavailable),
 )
 async def end_circuit(
-    circuit_id: uuid.UUID, workspace: OrgStaff, session: Session, clock: ClockDep, agents: Agents
+    circuit_id: uuid.UUID, workspace: OrgStaffRunning, session: Session, clock: ClockDep, agents: Agents
 ) -> schemas.CircuitRead:
     """Stop the whole examination, wherever it had got to."""
     return await service_run.end_circuit_by(
@@ -80,7 +80,7 @@ async def end_circuit(
 async def advance(
     circuit_id: uuid.UUID,
     body: schemas.Override,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     clock: ClockDep,
@@ -109,7 +109,9 @@ async def advance(
     response_model=schemas.EditLock,
     responses=error_responses(Forbidden, errors.CircuitNotFound),
 )
-async def read_edit_lock(circuit_id: uuid.UUID, workspace: OrgStaff, session: Session) -> schemas.EditLock:
+async def read_edit_lock(
+    circuit_id: uuid.UUID, workspace: OrgStaffRunning, session: Session
+) -> schemas.EditLock:
     """Whether the slots may still be rebuilt, and why not.
 
     Asked rather than discovered: the console needs this before it offers an
@@ -125,7 +127,7 @@ async def read_edit_lock(circuit_id: uuid.UUID, workspace: OrgStaff, session: Se
 )
 async def observer_token(
     circuit_id: uuid.UUID,
-    workspace: OrgStaff,
+    workspace: OrgStaffRunning,
     session: Session,
     principal: CurrentPrincipal,
     settings: SettingsDep,
