@@ -75,6 +75,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
           if (status !== "anonymous") await signOut();
         },
         signIn: async () => {
+          // eslint-disable-next-line no-restricted-syntax -- null is handled on the next line as the "failed" outcome, shown by the form
           const outcome = await login(email, result.data.password).catch(() => null);
           if (outcome === null) return "failed";
           if (outcome.status !== "signed_in") return "second_step";

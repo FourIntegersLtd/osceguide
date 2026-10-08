@@ -16,9 +16,15 @@ const GREEN_PAYLOAD = JSON.stringify({
 
 const CONTAINER = process.env.E2E_PG_CONTAINER ?? "platform-api-postgres-1";
 
+/** CI has Postgres as a service, not a named container: E2E_DATABASE_URL points psql at it. */
+const DATABASE_URL = process.env.E2E_DATABASE_URL;
+
 function psql(sql: string): string {
   assertLocalApi();
-  return execFileSync("docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-d", "osce_platform", "-At", "-v", "ON_ERROR_STOP=1"], {
+  const [command, args]: [string, string[]] = DATABASE_URL
+    ? ["psql", [DATABASE_URL, "-At", "-v", "ON_ERROR_STOP=1"]]
+    : ["docker", ["exec", "-i", CONTAINER, "psql", "-U", "postgres", "-d", "osce_platform", "-At", "-v", "ON_ERROR_STOP=1"]];
+  return execFileSync(command, args, {
     input: sql,
     encoding: "utf8",
   }).trim();

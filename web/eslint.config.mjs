@@ -146,6 +146,26 @@ export default defineConfig([
           message:
             "Do not spell a route prefix. Use `hrefFor()` from the surface context, or `foundation/routing` if this really is about the route space.",
         },
+        /*
+         * Failures that are swallowed into an empty answer (REGRESSION-PLAN 1.3). A request that
+         * fails and renders "nothing here" is a bug nobody sees: the screen must show the failed
+         * state, or the catch must say in a comment why the failure is harmless and disable this.
+         */
+        {
+          selector:
+            "CallExpression[callee.property.name='catch'][arguments.0.type='ArrowFunctionExpression'][arguments.0.body.type='Literal'][arguments.0.body.value=null]",
+          message: "`.catch(() => null)` hides a failed request as an empty result. Show the failed state, or justify and disable.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name='catch'][arguments.0.type='ArrowFunctionExpression'][arguments.0.body.type='ArrayExpression'][arguments.0.body.elements.length=0]",
+          message: "`.catch(() => [])` hides a failed request as an empty list. Show the failed state, or justify and disable.",
+        },
+        {
+          selector:
+            "JSXAttribute[name.name='failure'] > JSXExpressionContainer > ArrowFunctionExpression[body.type='Literal'][body.value=null]",
+          message: "`failure={() => null}` renders nothing when the request fails. Render the failed state, or justify and disable.",
+        },
       ],
       "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
       /*

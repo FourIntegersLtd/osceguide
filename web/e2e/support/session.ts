@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from "@playwright/test";
-import { loginPatiently, PASSWORD, WEB, type Session } from "./api";
+import { loginPatiently, WEB, type Session } from "./api";
 import { world, type Role } from "./world";
 
 const cache = new Map<Role, Session>();
@@ -8,7 +8,8 @@ const cache = new Map<Role, Session>();
 export async function sessionFor(role: Role): Promise<Session> {
   const known = cache.get(role);
   if (known) return known;
-  const session = await loginPatiently(world().accounts[role].email, PASSWORD);
+  const account = world().accounts[role];
+  const session = await loginPatiently(account.email, account.password);
   cache.set(role, session);
   return session;
 }

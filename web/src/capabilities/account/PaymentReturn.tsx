@@ -58,6 +58,7 @@ export default function PaymentReturn() {
       if (cancelled) return;
       if (outcome === "paid") {
         // Best effort: the date is a nicety, the receipt is the proof.
+        // eslint-disable-next-line no-restricted-syntax -- best effort: the end date is a nicety, the receipt is the proof
         const ends = await listEntitlements()
           .then(({ items }) => latestLiveEnd(items))
           .catch(() => null);

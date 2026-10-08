@@ -51,6 +51,7 @@ export function MockEnd({ setId }: { setId: string }) {
         loadStationCatalogue(set.exam_code, signal),
         readDashboard(signal),
         // One station's failed read must not take the whole end screen with it.
+        // eslint-disable-next-line no-restricted-syntax -- a null entry is rendered as the "unread" state below
         ...entries.map((entry) => listMyAttempts({ setEntryId: entry.id, limit: 5 }, signal).catch(() => null)),
       ]);
       const titles = new Map(library.map((station) => [station.version_id, station.title]));

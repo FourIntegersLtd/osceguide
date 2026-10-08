@@ -97,8 +97,14 @@ def parse_rows(text: str) -> list[Row]:
 
 
 def tracked_source_files() -> list[str]:
+    """Tracked files plus new ones not yet added, so a new file without an owner fails here
+    before it is committed, not first in CI."""
     listing = subprocess.run(  # noqa: S603 - fixed argv, no user input
-        [GIT, "ls-files"], cwd=REPO_ROOT, capture_output=True, text=True, check=True
+        [GIT, "ls-files", "--cached", "--others", "--exclude-standard"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.splitlines()
     return [
         path

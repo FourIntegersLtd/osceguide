@@ -12,10 +12,16 @@
     "test": "node --import ./scripts/register-test-loader.mjs --test \"src/**/*.test.ts\"",
     "platform:types": "openapi-typescript ../api/openapi.json -o src/foundation/platform-client/schema.d.ts",
     "check:ledger": "node scripts/audit-ledger-routes.mjs",
+    "check:errors": "node scripts/check-error-codes.mjs",
+    "check:routes": "node scripts/check-route-callers.mjs",
+    "check:surfaces": "node scripts/check-surfaces.mjs",
+    "check:copy-numbers": "node scripts/check-copy-numbers.mjs",
+    "check:gates": "node scripts/check-route-gates.mjs",
+    "test:scripts": "node --test scripts/lib-src.test.mjs",
     "e2e": "playwright test",
     "e2e:train": "playwright test e2e/train",
     "e2e:assess": "playwright test e2e/assess",
-    "ci": "npm run types && npm run lint && npm test && npm run check:ledger"
+    "ci": "npm run types && npm run lint && npm test && npm run test:scripts && npm run check:ledger && npm run check:errors && npm run check:routes && npm run check:surfaces && npm run check:copy-numbers && npm run check:gates"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
