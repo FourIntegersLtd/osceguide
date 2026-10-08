@@ -245,17 +245,10 @@ export function jobStatusTone(
   }
 }
 
-/**
- * Why an attempt has no feedback, from what the support read says.
- *
- * The four causes the backend's support view was built to tell apart, in the
- * words a person answering the ticket needs, with the action that fixes each.
- * `null` means nothing is wrong — the marking is done or on its way.
- */
 /** A consultation can legitimately run this long; younger than this is treated as live. */
 const LIVE_WINDOW_MINUTES = 30;
 
-export function diagnoseAttempt(attempt: {
+type AttemptDiagnosisInput = {
   status: string;
   transcript_complete: boolean;
   result_policy_versions: string[];
@@ -264,7 +257,16 @@ export function diagnoseAttempt(attempt: {
   has_definition?: boolean;
   started_at?: string | null;
   created_at?: string;
-}, now: number = Date.now()): { problem: string; action: "salvage" | "rescore" | "fail" | null } | null {
+};
+
+/**
+ * Why an attempt has no feedback, from what the support read says.
+ *
+ * The four causes the backend's support view was built to tell apart, in the
+ * words a person answering the ticket needs, with the action that fixes each.
+ * `null` means nothing is wrong — the marking is done or on its way.
+ */
+export function diagnoseAttempt(attempt: AttemptDiagnosisInput, now: number = Date.now()): { problem: string; action: "salvage" | "rescore" | "fail" | null } | null {
   const status = attempt.status;
   if (status === "evaluated" || status === "failed") return null;
   if (status === "created" || status === "running") {

@@ -72,7 +72,7 @@ export function PartnerDashboard({ partner }: { partner: string }) {
   // The moment the numbers on screen arrived.
   const updatedAt = useMemo(() => (summary.data ? new Date() : null), [summary.data]);
 
-  const failure = (title: string, note?: string) =>
+  const failure = (title: string, note = "Other sections are unaffected.") =>
     function Failure(error: Error, retry: () => void) {
       return <LoadFailure title={title} error={error} onRetry={retry} note={note} />;
     };
@@ -137,7 +137,7 @@ export function PartnerDashboard({ partner }: { partner: string }) {
         <div className="space-y-5">
           <AsyncBoundary
             state={visits}
-            failure={failure("We couldn't load performance", "Other sections are unaffected.")}
+            failure={failure("We couldn't load performance")}
           >
             {(report) =>
               report ? (
@@ -154,7 +154,7 @@ export function PartnerDashboard({ partner }: { partner: string }) {
               ) : null
             }
           </AsyncBoundary>
-          <AsyncBoundary state={signups} failure={failure("We couldn't load sign-ups over time", "Other sections are unaffected.")}>
+          <AsyncBoundary state={signups} failure={failure("We couldn't load sign-ups over time")}>
             {(report) =>
               report ? (
                 <CountOverTimeSection
@@ -173,7 +173,7 @@ export function PartnerDashboard({ partner }: { partner: string }) {
           {filters.exam ? null : (
             <AsyncBoundary
               state={summary}
-              failure={failure("We couldn't load the breakdown by exam", "Other sections are unaffected.")}
+              failure={failure("We couldn't load the breakdown by exam")}
             >
               {(data) =>
                 data ? <ExamBreakdownSection copy={copy.performance.byExam} rows={data.breakdown_by_exam} /> : null
@@ -185,7 +185,7 @@ export function PartnerDashboard({ partner }: { partner: string }) {
 
       {tab === "fee" ? (
         <div className="space-y-5">
-          <AsyncBoundary state={summary} failure={failure("We couldn't load the fee note", "Other sections are unaffected.")}>
+          <AsyncBoundary state={summary} failure={failure("We couldn't load the fee note")}>
             {(data) => (data ? <FeeDisclaimerBanner fee={data.fee} /> : null)}
           </AsyncBoundary>
           <AsyncBoundary state={fee} failure={failure("We couldn't load the fee estimate", "")}>
