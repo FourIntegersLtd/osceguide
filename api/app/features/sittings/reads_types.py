@@ -53,6 +53,7 @@ class CircuitRef:
     paused_at: datetime | None = None
     paused_seconds: int = 0
     auto_advance: bool = True
+    voice_fault_at: datetime | None = None
 
 
 @dataclass(frozen=True)

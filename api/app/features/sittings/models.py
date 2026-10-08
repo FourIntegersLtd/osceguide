@@ -92,6 +92,9 @@ class Circuit(Base, UUIDPrimaryKey, Timestamps):
     paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paused_seconds: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     auto_advance: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    # R-16: when the voice service last refused to bring the patient in. Set by the
+    # automatic advance that failed, cleared by the step that finally succeeds.
+    voice_fault_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class CircuitStation(Base, UUIDPrimaryKey):

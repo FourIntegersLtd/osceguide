@@ -101,14 +101,15 @@ async def platform_health(session: AsyncSession, redis: Redis | None) -> Platfor
     )
 
 
-# The worker beats every 10s; a minute of silence means the board should say so.
-WORKER_STALE_AFTER = timedelta(seconds=60)
+# Six missed beats and the board says the worker is down.
+WORKER_MISSED_BEATS = 6
 
 
 async def worker_running(session: AsyncSession, *, now: datetime) -> bool:
-    """Whether a job worker has checked in within the last minute (S-7)."""
+    """Whether a job worker has checked in lately (S-7), by the worker's own heartbeat interval."""
     seen = await repository_jobs.latest_worker_heartbeat(session)
-    return seen is not None and now - seen < WORKER_STALE_AFTER
+    stale_after = timedelta(seconds=WORKER_MISSED_BEATS * get_settings().worker_heartbeat_seconds)
+    return seen is not None and now - seen < stale_after
 
 
 async def list_jobs(

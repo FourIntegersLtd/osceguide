@@ -36,6 +36,8 @@ export const ALERT_COPY: Record<string, string> = {
     "The patient has not joined this station. Resend the patient if this does not clear.",
   attempt_failed:
     "This station's consultation failed. Resend the patient, or redo the station once it is safe to.",
+  voice_fault:
+    "The voice service is not answering, so the patient cannot join. The circuit will try again by itself; resend the patient if it does not clear.",
   clock_overdue:
     "The clock has run past this phase and the circuit has not moved on by itself. Advance it by hand.",
 };

@@ -628,3 +628,28 @@ async def _advance(
     return await service_run.advance(
         session, org_id, circuit_id, expected_seq=seq, agents=agents, settings=_settings(), now=at
     )
+
+
+async def test_a_voice_fault_is_kept_on_the_circuit_and_cleared_when_the_patient_arrives(
+    db_session: AsyncSession,
+) -> None:
+    """R-16: LiveKit down at dispatch leaves the circuit in Reading, and says why."""
+    agents = FakeRoomAgents(fail_dispatch=True)
+    org_id, circuit_id = await a_circuit(db_session)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+    at = NOW + timedelta(minutes=3)
+
+    moved = await _advance(db_session, org_id, circuit_id, agents, seq=1, at=at)
+
+    circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
+    assert moved is False
+    assert circuit is not None and circuit.phase == "reading"
+    assert circuit.voice_fault_at == at
+
+    agents.fail_dispatch = False
+    moved = await _advance(db_session, org_id, circuit_id, agents, seq=1, at=at + timedelta(minutes=1))
+
+    circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
+    assert moved is True
+    assert circuit is not None and circuit.phase == "simulation"
+    assert circuit.voice_fault_at is None

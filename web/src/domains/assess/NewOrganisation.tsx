@@ -6,6 +6,7 @@ import { Alert, Button, Checkbox, Input, Select, FoldSection } from "@/foundatio
 import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import { AuthShell } from "@/capabilities/account";
 import { sendSiteMessage } from "@/capabilities/help";
+import { setupRequestBody } from "@/domains/assess/newOrganisationRequest";
 
 /**
  * What an organisation can use the platform for. Product copy, not data: the
@@ -62,20 +63,16 @@ export function NewOrganisation() {
     setSending(true);
     setError(null);
     try {
-      await sendSiteMessage({
-        kind: "contact",
-        name: ownerName,
-        email,
-        subject: `Set up an organisation: ${name}`,
-        source: "register/organisation",
-        body: [
-          `Organisation: ${name}`,
-          `Type: ${orgType}`,
-          `Exams: ${exams.length ? exams.join(", ") : "none chosen"}`,
-          `Use: ${purposes.map((id) => PURPOSES.find((entry) => entry.id === id)?.label ?? id).join(", ")}`,
-          `Contact: ${ownerName} <${email}>`,
-        ].join("\n"),
-      });
+      await sendSiteMessage(
+        setupRequestBody({
+          name,
+          orgType,
+          exams,
+          purposes: purposes.map((id) => PURPOSES.find((entry) => entry.id === id)?.label ?? id),
+          ownerName,
+          email,
+        }),
+      );
       setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "The request could not be sent. Try again.");

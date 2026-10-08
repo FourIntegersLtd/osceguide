@@ -26,8 +26,7 @@ from app.features.dashboard.schemas_org import (
 from app.features.identity import service as identity
 from app.features.reviews import service as reviews
 from app.features.roster import service as roster
-from app.features.sittings import jobs as sitting_jobs
-from app.features.sittings import service_circuit
+from app.features.sittings import service_catchup, service_circuit
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 
@@ -42,7 +41,7 @@ async def build_console(
     slot for whether it has been marked, and the whole thing again every eight
     seconds.
     """
-    await sitting_jobs.advance_due(session, org_id=org_id, circuit_id=circuit_id, now=now)
+    await service_catchup.advance_due(session, org_id=org_id, circuit_id=circuit_id, now=now)
     detail = await sittings.circuit_detail(session, org_id, circuit_id)
     if detail is None:
         raise CircuitNotFound()
@@ -117,6 +116,7 @@ async def build_console(
             attempt_status=_active_attempt_status(detail, live),
             auto_advance=detail.circuit.auto_advance,
             now=now,
+            voice_fault=detail.circuit.voice_fault_at is not None,
         ),
     )
     return CircuitConsole(

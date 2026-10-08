@@ -70,6 +70,7 @@ def _circuit_ref(circuit: Circuit) -> CircuitRef:
         paused_at=circuit.paused_at,
         paused_seconds=circuit.paused_seconds,
         auto_advance=circuit.auto_advance,
+        voice_fault_at=circuit.voice_fault_at,
     )
 
 

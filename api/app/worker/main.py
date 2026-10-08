@@ -50,6 +50,7 @@ def main() -> None:
         # Circuit transitions are scheduled for a future moment, and a
         # scheduled job is found by polling rather than by notification.
         fetch_job_polling_interval=settings.worker_fetch_job_polling_seconds,
+        update_heartbeat_interval=settings.worker_heartbeat_seconds,
     )
 
 

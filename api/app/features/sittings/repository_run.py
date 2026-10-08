@@ -69,7 +69,14 @@ async def sitting_mode_for_circuit(session: AsyncSession, circuit_id: uuid.UUID)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def overdue_circuits(session: AsyncSession, *, now: datetime, grace_seconds: int) -> list[DueCircuit]:
+async def overdue_circuits(
+    session: AsyncSession,
+    *,
+    org_id: uuid.UUID | None = None,
+    circuit_id: uuid.UUID | None = None,
+    now: datetime,
+    grace_seconds: int,
+) -> list[DueCircuit]:
     """Live circuits whose phase ended and which nothing has moved on.
 
     Not org-scoped: the sweeper is a background job with no tenant, and
@@ -79,6 +86,9 @@ async def overdue_circuits(session: AsyncSession, *, now: datetime, grace_second
     The grace is what keeps this from racing the scheduled transition that is
     about to do the same work: a job due at the deadline gets its moment first,
     and only silence past the grace brings the sweeper in.
+
+    The sweeper passes no filter. A run screen passes its organisation, and a
+    console its circuit, to catch up only what it is showing.
     """
     cutoff = now - timedelta(seconds=grace_seconds)
     stmt = select(Circuit.org_id, Circuit.id, Circuit.phase_seq).where(
@@ -88,26 +98,24 @@ async def overdue_circuits(session: AsyncSession, *, now: datetime, grace_second
         Circuit.phase_ends_at.is_not(None),
         Circuit.phase_ends_at < cutoff,
     )
+    if org_id is not None:
+        stmt = stmt.where(Circuit.org_id == org_id)
+    if circuit_id is not None:
+        stmt = stmt.where(Circuit.id == circuit_id)
     return [
         DueCircuit(org_id=org_id, circuit_id=circuit_id, phase_seq=seq)
         for org_id, circuit_id, seq in (await session.execute(stmt)).all()
     ]
 
 
-async def overdue_circuits_of_org(
-    session: AsyncSession,
-    org_id: uuid.UUID,
-    *,
-    now: datetime,
-    grace_seconds: int,
-    circuit_id: uuid.UUID | None = None,
-) -> list[DueCircuit]:
-    """`overdue_circuits` narrowed to one organisation, and to one circuit when a console reads it."""
-    return [
-        row
-        for row in await overdue_circuits(session, now=now, grace_seconds=grace_seconds)
-        if row.org_id == org_id and (circuit_id is None or row.circuit_id == circuit_id)
-    ]
+async def lock_circuit_unless_held(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> bool:
+    """Take the circuit's row lock if nobody holds it; False when another advancer does."""
+    stmt = (
+        select(Circuit.id)
+        .where(Circuit.org_id == org_id, Circuit.id == circuit_id)
+        .with_for_update(skip_locked=True)
+    )
+    return (await session.execute(stmt)).first() is not None
 
 
 async def silent_patient_circuits(

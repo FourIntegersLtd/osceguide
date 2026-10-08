@@ -149,16 +149,22 @@ async def test_a_consultation_with_nothing_recording_it_raises_an_alert(
     assert "no_running_attempt" in row["alerts"], "but the worker never bootstrapped it"
 
 
-async def test_an_overdue_phase_raises_an_alert(
+async def test_a_voice_fault_on_an_overdue_phase_says_voice_not_worker(
     client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock
 ) -> None:
-    """The job worker is down, or a transition raised. Somebody must be told."""
+    """R-16: the read tries to bring the patient in; LiveKit is not configured here, so it cannot.
+
+    The board then names the voice service rather than a late clock, which would send
+    somebody to look at the worker.
+    """
     admin, _, _ = await a_running_morning(client, make_actor, db_session)
 
     clock.set(NOW + timedelta(minutes=10))
     response = await client.get("/api/v1/orgs/kings/live", headers=bearer(admin))
 
-    assert "clock_overdue" in response.json()["circuits"][0]["alerts"]
+    row = response.json()["circuits"][0]
+    assert row["phase"] == "reading"
+    assert row["alerts"] == ["voice_fault"]
 
 
 async def test_a_circuit_that_has_ended_leaves_the_board(
@@ -291,9 +297,9 @@ async def test_reading_the_board_advances_a_circuit_the_worker_left_behind(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """S-7: the worker is down, so the read moves the circuit on, once, and says the worker is down."""
-    from app.features.voice import service as voice
+    from app.features.sittings import service_run
 
-    monkeypatch.setattr(voice, "get_room_agents", lambda: FakeRoomAgents())
+    monkeypatch.setattr(service_run, "get_room_agents", lambda: FakeRoomAgents())
     admin, _, _ = await a_running_morning(client, make_actor, db_session)
 
     clock.set(NOW + timedelta(minutes=10))

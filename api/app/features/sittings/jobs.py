@@ -22,7 +22,6 @@ from typing import Any, TypeVar
 from procrastinate import RetryStrategy
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import savepoint
 from app.core.jobs import get_jobs_app
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
@@ -30,6 +29,7 @@ from app.core.settings import Settings, get_settings
 from app.features.sittings import (
     overrides,
     repository_run,
+    service_catchup,
     service_clock,
     service_patient,
     service_rescue,
@@ -46,7 +46,7 @@ SWEEP_TASK = "sweep_circuits"
 # How far past its deadline a phase must be before the sweeper steps in. Short
 # enough that a candidate does not wait, long enough that the scheduled
 # transition gets its moment first and the two do not race for every phase.
-SWEEP_GRACE_SECONDS = 15
+SWEEP_GRACE_SECONDS = service_catchup.OVERDUE_GRACE_SECONDS
 
 # How long a dispatched patient may take to start recording before the sweeper
 # sends a fresh one, once per station (R-17). Well past the board's 20s alert.
@@ -80,49 +80,6 @@ async def advance_one(
         settings=settings,
         now=now,
     )
-
-
-async def advance_due(
-    session: AsyncSession,
-    *,
-    org_id: uuid.UUID,
-    circuit_id: uuid.UUID | None = None,
-    now: datetime,
-) -> int:
-    """Catch up this organisation's overdue circuits from a read (S-7), when the worker is down.
-
-    Same `advance_one` as the worker, against the sequence just read, under the
-    circuit's row lock: a second reader, the scheduled job or the sweeper that
-    arrives at the same moment finds the sequence moved and does nothing. Each
-    circuit is a savepoint, so one whose dispatch fails is logged and left for
-    the next read without spoiling the read itself. Returns how many moved.
-    """
-    from app.features.voice.service import get_room_agents
-
-    due = await repository_run.overdue_circuits_of_org(
-        session, org_id, now=now, grace_seconds=SWEEP_GRACE_SECONDS, circuit_id=circuit_id
-    )
-    if not due:
-        return 0
-    agents = get_room_agents()
-    settings = get_settings()
-    moved = 0
-    for row in due:
-        try:
-            async with savepoint(session):
-                if await advance_one(
-                    session,
-                    org_id=row.org_id,
-                    circuit_id=row.circuit_id,
-                    expected_seq=row.phase_seq,
-                    agents=agents,
-                    settings=settings,
-                    now=now,
-                ):
-                    moved += 1
-        except Exception:
-            log.exception("read: advancing circuit failed", circuit_id=str(row.circuit_id))
-    return moved
 
 
 async def sweep_now(

@@ -19,6 +19,7 @@ from app.features.sittings.domain_run import RunPhase
 NO_RUNNING_ATTEMPT = "no_running_attempt"
 ATTEMPT_FAILED = "attempt_failed"
 CLOCK_OVERDUE = "clock_overdue"
+VOICE_FAULT = "voice_fault"
 
 # A dispatched agent takes a moment to join and fetch its bootstrap. Below this
 # the silence is normal, above it somebody should look.
@@ -38,6 +39,7 @@ def alerts_for(
     auto_advance: bool,
     now: datetime,
     grace_seconds: int = ALERT_GRACE_SECONDS,
+    voice_fault: bool = False,
 ) -> list[str]:
     """What is wrong with this circuit right now, as stable codes."""
     if paused_at is not None:
@@ -60,6 +62,7 @@ def alerts_for(
     # off, the clock running out is a human's cue to advance, not a fault (R-14).
     overdue = phase_ends_at is not None and (now - phase_ends_at).total_seconds() > grace_seconds
     if phase is not None and auto_advance and overdue:
-        alerts.append(CLOCK_OVERDUE)
+        # A late clock the voice service caused says so, rather than blaming the worker (R-16).
+        alerts.append(VOICE_FAULT if voice_fault else CLOCK_OVERDUE)
 
     return alerts

@@ -317,3 +317,20 @@ def test_a_sitting_with_a_circuit_still_to_run_is_not_over() -> None:
 def test_a_sitting_with_no_circuits_at_all_is_not_over() -> None:
     """It never started, so there is nothing to have finished."""
     assert not domain_run.sitting_is_over([])
+
+
+def test_a_voice_fault_replaces_the_overdue_alert() -> None:
+    """R-16: a late clock caused by LiveKit says so, rather than blaming the worker."""
+    now = datetime(2026, 9, 18, 9, 0, tzinfo=UTC)
+    alerts = domain_alerts.alerts_for(
+        phase="reading",
+        phase_started_at=now - timedelta(minutes=5),
+        phase_ends_at=now - timedelta(minutes=2),
+        paused_at=None,
+        attempt_status=None,
+        auto_advance=True,
+        now=now,
+        voice_fault=True,
+    )
+
+    assert alerts == ["voice_fault"]

@@ -241,6 +241,9 @@ class Settings(BaseSettings):
     # seconds is fine for marking and much too slow for an examination clock,
     # where it is five seconds of a candidate sitting in silence.
     worker_fetch_job_polling_seconds: float = 1.0
+    # How often a worker records that it is alive. The exam-day board calls the
+    # worker down after six missed beats.
+    worker_heartbeat_seconds: float = 10.0
 
     # --- HTTP ---
     # `NoDecode`: pydantic-settings would otherwise JSON-decode a `list[str]`

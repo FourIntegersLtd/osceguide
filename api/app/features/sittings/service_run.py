@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
+from app.core.db import savepoint
 from app.core.errors import raise_mapped
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
@@ -47,6 +48,7 @@ from app.features.sittings.service import (
 )
 from app.features.tenancy import service_audit as tenancy_audit
 from app.features.voice import service as voice
+from app.features.voice.errors import VoiceUnavailable
 
 log = get_logger(__name__)
 
@@ -146,7 +148,22 @@ async def advance(
     if not circuit.auto_advance and not by_human:
         return False
 
-    await _step_forward(session, org_id, circuit, agents=agents, settings=settings, now=now)
+    if by_human:
+        await _step_forward(session, org_id, circuit, agents=agents, settings=settings, now=now)
+    else:
+        try:
+            async with savepoint(session):
+                await _step_forward(session, org_id, circuit, agents=agents, settings=settings, now=now)
+        except VoiceUnavailable:
+            # R-16: the circuit stays where it was for the next try, and says why, so the
+            # board can tell a voice fault from a worker that is not running.
+            await repository.update_circuit(session, org_id, circuit_id, voice_fault_at=now)
+            circuit.voice_fault_at = now
+            log.warning("voice unavailable; circuit left for the next try", circuit_id=str(circuit_id))
+            return False
+    if circuit.voice_fault_at is not None:
+        await repository.update_circuit(session, org_id, circuit_id, voice_fault_at=None)
+        circuit.voice_fault_at = None
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.PHASE_ADVANCED)
     return True
 

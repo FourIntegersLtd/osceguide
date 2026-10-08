@@ -895,6 +895,7 @@ A scheduled event an organisation holds.
 | `paused_at` | `timestamptz null` | set while the clock is stopped |
 | `paused_seconds` | `int not null default 0` | total time this phase spent paused, so elapsed excludes it |
 | `auto_advance` | `boolean not null default true` | off means a human decides every move |
+| `voice_fault_at` | `timestamptz null` | when the voice service last refused to bring the patient in (R-16); cleared by the step that succeeds |
 
 **The examination clock is here, not on the slot.** A break belongs to no slot —
 it is the circuit resting between stations — and that is the one thing a per-slot
