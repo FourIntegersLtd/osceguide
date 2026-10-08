@@ -79,12 +79,15 @@ async def build_sitting_report(
         person = people.get(user_id)
         trainee = trainees.get(user_id)
         decision = decisions.get(trainee.id) if trainee else None
+        shown_name, shown_email = roster.shown_identity(
+            trainee, person.name if person else None, person.email if person else None
+        )
         candidates.append(
             CandidateReport(
                 user_id=user_id,
                 trainee_id=trainee.id if trainee else None,
-                name=person.name if person else None,
-                email=person.email if person else None,
+                name=shown_name,
+                email=shown_email,
                 stations=station_reports,
                 stations_marked=sum(1 for station_report in station_reports if station_report.marked),
                 overall_rag=scoring.worst_rating(

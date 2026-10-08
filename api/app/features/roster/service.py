@@ -247,6 +247,19 @@ async def count_trainees(session: AsyncSession, org_id: uuid.UUID) -> int:
     return await repository.count_trainees(session, org_id)
 
 
+ANONYMISED_NAME = "Anonymised trainee"
+
+
+def shown_identity(
+    trainee: TraineeRead | None, name: str | None, email: str | None
+) -> tuple[str | None, str | None]:
+    """The name and email to show for a person: their account's, unless the roster entry was
+    anonymised, when the account is no longer to be named (S-21) and the scrubbed address stands."""
+    if trainee is not None and trainee.anonymised:
+        return ANONYMISED_NAME, trainee.email
+    return name, email
+
+
 async def trainees_by_user_id(
     session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
 ) -> dict[uuid.UUID, TraineeRead]:

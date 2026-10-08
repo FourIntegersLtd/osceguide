@@ -99,3 +99,31 @@ async def test_scim_tokens_and_connector_deactivations_are_audited(client: Async
         ("scim.token_revoked", "admin-kings@example.com"),
         ("trainee.access_revoked", None),
     ]
+
+
+async def test_an_anonymised_trainee_is_named_nowhere_in_the_report_cohort_or_csv(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-21: the roster scrub must reach what staff download and read, not stop at the roster."""
+    _, admin = await org_with_admin(client, make_actor)
+    station = await published_station(client, admin, "kings", "Chest pain")
+    sitting = await a_sitting(client, admin, "kings")
+    candidate = await a_user(db_session, "erase.me@example.com")
+    await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate)],
+        station_version_ids=[station],
+    )
+    roster = await client.get(f"{KINGS}/trainees", headers=bearer(admin))
+    trainee = next(t for t in roster.json()["items"] if t["email"] == "erase.me@example.com")
+    gone = await client.post(f"{KINGS}/trainees/{trainee['id']}/anonymise", headers=bearer(admin))
+    assert gone.status_code == 200, gone.text
+    base = f"{KINGS}/sittings/{sitting['id']}"
+    for path in ("report", "report.csv", "cohort"):
+        page = await client.get(f"{base}/{path}", headers=bearer(admin))
+        assert page.status_code == 200, (path, page.text)
+        assert "erase.me" not in page.text, path
+    assert "Anonymised trainee" in (await client.get(f"{base}/cohort", headers=bearer(admin))).text

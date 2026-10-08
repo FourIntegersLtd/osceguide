@@ -188,13 +188,16 @@ async def _candidate_name(
     trainee_id: uuid.UUID,
     user_id: uuid.UUID | None,
 ) -> str:
-    """The person's account name, or the roster name when they have not signed in."""
+    """The person's account name, or the roster name when they have not signed in. An
+    anonymised entry is named by the roster alone (S-21)."""
+    trainee = await roster.read_trainee(session, org_id, trainee_id)
+    if trainee.anonymised:
+        return roster.ANONYMISED_NAME
     if user_id is not None:
         people = await identity.user_refs_by_ids(session, [user_id])
         person = people.get(user_id)
         if person is not None and person.name.strip():
             return person.name
-    trainee = await roster.read_trainee(session, org_id, trainee_id)
     given = " ".join(part for part in (trainee.first_name, trainee.last_name) if part)
     return given or trainee.email
 

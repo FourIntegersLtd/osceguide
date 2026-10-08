@@ -262,3 +262,39 @@ async def test_a_released_decision_is_a_row_of_the_csv(
         "decision_signed_off_at,decision_released_at"
     )
     assert row.startswith(f"Ada,released-csv@example.com,{user_id},{trainee_id},1,0,,,0,released,pass,")
+
+
+async def test_an_anonymised_candidates_pdf_does_not_name_them(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-21: the account still holds the real name; the document must not print it."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    await make_actor("lukasz@example.com")
+    from app.features.identity import repository as identity_repo
+    from app.features.roster import repository as roster_repo
+
+    user = await identity_repo.user_by_email(db_session, "lukasz@example.com")
+    assert user is not None
+    user.name = "Łukasz Żółć"
+    await roster_repo.link_trainee_to_user(db_session, org_id, trainee, user_id=user.id)
+    await db_session.flush()
+    await seat_candidate(db_session, org_id, sitting, trainee)
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "Safe", "moderation_notes": "n"},
+        headers=bearer(admin),
+    )
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    assert (await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))).status_code == 200
+    gone = await client.post(f"/api/v1/orgs/kings/trainees/{trainee}/anonymise", headers=bearer(admin))
+    assert gone.status_code == 200, gone.text
+
+    pdf = await client.get(
+        f"/api/v1/orgs/kings/sittings/{sitting}/candidates/{trainee}/result.pdf", headers=bearer(admin)
+    )
+    assert pdf.status_code == 200, pdf.content[:200]
+    text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(pdf.content)).pages)
+    assert "Anonymised trainee" in text
+    assert "Łukasz" not in text
+    assert "ukasz" not in pdf.headers["content-disposition"]
