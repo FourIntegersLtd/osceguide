@@ -296,6 +296,8 @@ unless written in full.
 - **rubrics**: `rubric_not_found`, `rubric_version_not_found`, `invalid_rubric`, `already_published`, `not_archivable`
 - Unknown codes fall through to the server's English message; `retry_after` is never read by the web; the generated union omits `announcement_not_found`, `inbox_message_not_found`, `message_not_repliable`; a doc comment cites `trial_exhausted`, which does not exist.
 
+- **Content slices re-checked 2026-10-08 (f3b44d2)**: `no_stations_for_exam` and `unknown_exam` on peer queue join now show the server sentence (failure.test.ts). stations, catalog, station_sets, marketplace, peer_practice, rubrics codes judged handled by the plain server message or an existing branch (`describeRefusal`, `failureText`, RubricBuilder); media and community judged fine on the server message without opening screens; cv is the access lane's.
+
 ## 12. Not provable from code: the staging run
 
 Live consultation end to end; a real scoring run and the score and priority columns; result and invitation email delivery; debrief clock (V-1/V-2); erasure and export on production (E-3); whether the voice token mint re-checks entitlement; the assessment worker's behaviour mid-attempt on org suspension; Entra state echo; Stripe session_id vs webhook wording; referral payout timing; CSP enforce in production; SSE behaviour with 50 viewers.
