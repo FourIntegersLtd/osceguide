@@ -79,3 +79,39 @@ async def test_renewing_is_a_new_end_date_and_a_restore(
     restored = await client.post("/api/v1/platform/organizations/renewing/restore", headers=bearer(root))
     assert restored.json()["status"] == "active"
     assert await suspend_lapsed_organizations(db_session, now=NOW) == []
+
+
+async def test_restoring_a_lapsed_organisation_is_not_undone_by_the_next_sweep(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await provisioned(client, root, "restored", NOW - timedelta(days=1))
+    await suspend_lapsed_organizations(db_session, now=NOW)
+
+    restored = await client.post("/api/v1/platform/organizations/restored/restore", headers=bearer(root))
+    assert restored.json()["status"] == "active"
+    assert restored.json()["contract_ends_at"] is None
+    assert await suspend_lapsed_organizations(db_session, now=NOW) == []
+
+
+async def test_renewing_to_a_past_date_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await provisioned(client, root, "past-renewal", None)
+    refused = await client.post(
+        "/api/v1/platform/organizations/past-renewal/contract",
+        json={"contract_ends_at": "2020-01-01T00:00:00Z"},
+        headers=bearer(root),
+    )
+    assert refused.status_code == 422, refused.text
+    assert refused.json()["code"] == "contract_end_in_past"
+
+
+async def test_an_employer_organisation_can_be_provisioned(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    created = await client.post(
+        "/api/v1/platform/organizations",
+        json={"slug": "acme-hire", "name": "Acme", "org_type": "employer"},
+        headers=bearer(root),
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["org_type"] == "employer"

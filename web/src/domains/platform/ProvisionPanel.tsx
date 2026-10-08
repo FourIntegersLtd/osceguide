@@ -102,7 +102,6 @@ export function ProvisionForm({
         label="Type"
           value={orgType}
           onChange={(event) => setOrgType(event.target.value)}
-          hint="For an employer, choose Institution: employers run exams the same way."
         >
           {ORG_TYPES.map((type) => (
             <option key={type.value} value={type.value}>

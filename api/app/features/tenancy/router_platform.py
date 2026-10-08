@@ -94,7 +94,9 @@ async def read_overview(admin: PlatformAdmin, session: Session, clock: ClockDep)
 @router.post(
     "/platform/organizations/{org_slug}/contract",
     response_model=schemas.OrganizationRead,
-    responses=error_responses(Forbidden, errors.OrgNotFound, errors.ContractDatesOutOfOrder),
+    responses=error_responses(
+        Forbidden, errors.OrgNotFound, errors.ContractDatesOutOfOrder, errors.ContractEndInPast
+    ),
 )
 async def renew_contract(
     body: schemas.RenewContract,

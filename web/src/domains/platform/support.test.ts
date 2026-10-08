@@ -6,6 +6,7 @@ import {
   STATUS_HELP,
   asContractDate,
   contractDatesError,
+  renewalDateError,
   ssoFieldErrors,
   permitsSignIn,
   slugError,
@@ -31,12 +32,11 @@ describe("staff console vocabulary", () => {
     }
   });
 
-  it("offers only the two types the backend will provision", () => {
-    // CreateOrganization.org_type is ^(institution|partner)$. An employer is
-    // an institution running exam-mode sittings, not a third kind.
+  it("offers exactly the types the backend will provision", () => {
+    // CreateOrganization.org_type is ^(institution|partner|employer)$.
     assert.deepEqual(
       ORG_TYPES.map((type) => type.value),
-      ["institution", "partner"],
+      ["institution", "partner", "employer"],
     );
   });
 
@@ -132,5 +132,15 @@ describe("ssoFieldErrors", () => {
     assert.ok(ssoFieldErrors({ issuer: "https://x", enabled: false, sso_only: true }).sso_only);
     assert.deepEqual(ssoFieldErrors({ issuer: "", enabled: false, sso_only: false }), {});
     assert.deepEqual(ssoFieldErrors({ issuer: "https://x", enabled: true, sso_only: true }), {});
+  });
+});
+
+describe("renewalDateError", () => {
+  it("refuses a renewal date that is today or earlier", () => {
+    assert.equal(renewalDateError("2026-10-07", "2026-10-08"), "A renewal must end in the future");
+    assert.equal(renewalDateError("2026-10-08", "2026-10-08"), "A renewal must end in the future");
+    assert.equal(renewalDateError("2026-10-09", "2026-10-08"), null);
+    assert.equal(renewalDateError("2027-01-01", "2026-10-08"), null);
+    assert.equal(renewalDateError("", "2026-10-08"), null);
   });
 });

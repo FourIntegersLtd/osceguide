@@ -24,10 +24,10 @@ export const authoringCapability: CapabilityModule = {
   id: "authoring",
   title: "Authoring",
   description: "Marking schemes, exams, programmes, templates and stations.",
-  surfaces: ["assess", "partner", "platform"],
+  surfaces: ["assess", "hire", "partner", "platform"],
   permission: ["run_circuits", "administer_platform"],
   path: "/authoring",
-  staffHiddenOn: ["assess"],
+  staffHiddenOn: ["assess", "hire"],
   icon: LuPencilRuler,
   section: "catalogue",
 };

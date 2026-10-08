@@ -10,6 +10,7 @@ import {
   B2CHero,
   B2CSegmentedTabs,
   Button,
+  ConfirmModal,
   DetailLayout,
   FactList,
   Input,
@@ -40,6 +41,7 @@ import {
   contractDatesError,
   formatDay,
   permitsSignIn,
+  renewalDateError,
 } from "@/domains/platform/support";
 
 type Tab = "overview" | "settings" | "members" | "sso" | "audit";
@@ -248,12 +250,14 @@ function OrganizationActions({
   const [endsAt, setEndsAt] = useState("");
   const [busy, setBusy] = useState<"renew" | "access" | null>(null);
   const [error, setError] = useState<Error | null>(null);
+  const [confirmingSuspend, setConfirmingSuspend] = useState(false);
   const suspended = !permitsSignIn(organization.status);
-  // Renewing sets the end date, so it may not fall before the stored start.
-  const orderError = contractDatesError("", endsAt, {
-    startsAt: organization.contract_starts_at?.slice(0, 10) ?? "",
-    endsAt: "",
-  });
+  // Renewing sets the end date, so it may not fall before the stored start, nor in the past.
+  const orderError =
+    contractDatesError("", endsAt, {
+      startsAt: organization.contract_starts_at?.slice(0, 10) ?? "",
+      endsAt: "",
+    }) ?? renewalDateError(endsAt, new Date().toISOString().slice(0, 10));
 
   const run = useCallback(
     async (
@@ -288,7 +292,10 @@ function OrganizationActions({
   };
 
   const toggleAccess = () =>
-    void run(
+    suspended ? changeAccess() : setConfirmingSuspend(true);
+
+  const changeAccess = () =>
+    run(
       "access",
       () =>
         suspended
@@ -301,6 +308,19 @@ function OrganizationActions({
     <ActionRail
       danger={
         <>
+          <ConfirmModal
+            isOpen={confirmingSuspend}
+            onCancel={() => setConfirmingSuspend(false)}
+            onConfirm={async () => {
+              await changeAccess();
+              setConfirmingSuspend(false);
+            }}
+            isLoading={busy === "access"}
+            tone="danger"
+            title={`Suspend ${organization.name}?`}
+            confirmText="Suspend access"
+            message="Every member is locked out at once, including anyone in a sitting that is running now: their circuit stops mid-examination. Nothing is deleted, and Restore access reverses it."
+          />
           <Button
             variant={suspended ? "secondary" : "danger"}
             disabled={busy !== null}

@@ -77,11 +77,11 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 | PATCH | `/api/v1/platform/organizations/{slug}/memberships/{id}` | platform admin | role change, for support |
 | POST | `/api/v1/platform/organizations/{slug}/memberships/{id}/revoke` | platform admin | `last_admin` (409) |
 | POST | `/api/v1/platform/organizations/{slug}/memberships/{id}/restore` | platform admin | the admin who locked themselves out |
-| POST | `/api/v1/platform/organizations/{slug}/contract` | platform admin | new dates and, unless `restore: false`, the suspension lifted with them; audited `organization.contract_renewed` |
+| POST | `/api/v1/platform/organizations/{slug}/contract` | platform admin | new dates and, unless `restore: false`, the suspension lifted with them; audited `organization.contract_renewed`; an end date not in the future is 422 `contract_end_in_past` |
 | POST | `/api/v1/platform/organizations/{slug}/suspend` | platform admin | |
 | GET | `/api/v1/platform/organizations` | platform admin | every tenant; `?status=` |
 | PATCH | `/api/v1/platform/organizations/{slug}` | platform admin | name, type, contract dates — never the slug; a start after the end (the stored other date counts) is 422 `contract_dates_out_of_order`, here and on the renewal |
-| POST | `/api/v1/platform/organizations/{slug}/restore` | platform admin | lifts a suspension |
+| POST | `/api/v1/platform/organizations/{slug}/restore` | platform admin | lifts a suspension; a lapsed `contract_ends_at` is cleared with it so the hourly sweep does not re-suspend |
 | GET | `/api/v1/platform/organizations/{slug}/memberships` | platform admin | read-only member list, for support |
 | GET | `/api/v1/platform/organizations/{slug}/audit` | platform admin | one organisation's audit log, for support |
 | GET | `/api/v1/platform/users` | platform admin | `?q=` part of an email; `?platform_admin=true` only console users |

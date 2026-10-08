@@ -132,7 +132,7 @@ class RenewContract(BaseModel):
 class CreateOrganization(BaseModel):
     slug: str = Field(min_length=2, max_length=100, pattern=r"^[a-zA-Z0-9][a-zA-Z0-9-]*$")
     name: str = Field(min_length=1, max_length=200)
-    org_type: str = Field(default="institution", pattern="^(institution|partner)$")
+    org_type: str = Field(default="institution", pattern="^(institution|partner|employer)$")
 
 
 class MembershipRead(BaseModel):

@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Principal
 from app.features.identity import service as identity
 from app.features.tenancy import domain, repository, repository_platform
-from app.features.tenancy.errors import ContractDatesOutOfOrder, OrgNotFound
+from app.features.tenancy.errors import ContractDatesOutOfOrder, ContractEndInPast, OrgNotFound
 from app.features.tenancy.models import AuditEntry
 from app.features.tenancy.schemas import (
     OrganizationRead,
@@ -100,10 +100,16 @@ async def update_organization(
 async def restore_organization(
     session: AsyncSession, *, org_id: uuid.UUID, actor: Principal, now: datetime
 ) -> OrganizationRead:
-    """Lift a suspension."""
+    """Lift a suspension.
+
+    A lapsed end date is cleared with it: left in place, the hourly sweep would suspend the
+    organisation again within the hour. A future end date is kept.
+    """
     org = await repository.organization_by_id(session, org_id)
     if org is None:
         raise OrgNotFound()
+    if domain.contract_lapsed(org.contract_ends_at, now=now):
+        await repository.update_organization(session, org_id, contract_ends_at=None)
     await repository.set_organization_status(
         session, org_id, status="active", suspended_at=None, suspended_by=None
     )
@@ -171,6 +177,8 @@ async def renew_contract(
     org = await repository.organization_by_id(session, org_id)
     if org is None:
         raise OrgNotFound()
+    if domain.contract_lapsed(terms.contract_ends_at, now=now):
+        raise ContractEndInPast()
     values: dict[str, Any] = {"contract_ends_at": terms.contract_ends_at}
     if terms.contract_starts_at is not None:
         values["contract_starts_at"] = terms.contract_starts_at

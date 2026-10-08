@@ -30,6 +30,13 @@ class ContractDatesOutOfOrder(InvalidInput):
     default_message = "The end date is before the start date"
 
 
+class ContractEndInPast(InvalidInput):
+    """A renewal that ends before now would lapse again at the next hourly sweep."""
+
+    code = "contract_end_in_past"
+    default_message = "A renewal must end in the future"
+
+
 class NotAMember(Forbidden):
     """Refuses to switch to a workspace this person does not belong to."""
 
@@ -76,13 +83,6 @@ class UserNotFound(NotFound):
     default_message = "No account for that email address"
 
 
-class LastAdministrator(Conflict):
-    """Revoking or demoting this member would leave the organisation without an administrator."""
-
-    code = "last_admin"
-    default_message = (
-        "This is the organisation's last administrator. Make someone else an administrator first."
-    )
 class CannotRevokeOwnConsoleAccess(Conflict):
     """A platform admin asked to remove their own console access."""
 
@@ -97,3 +97,10 @@ class PasswordAlreadyChosen(Conflict):
     default_message = "This person has already chosen their own password. Send them a reset link instead."
 
 
+class LastAdministrator(Conflict):
+    """Revoking or demoting this member would leave the organisation without an administrator."""
+
+    code = "last_admin"
+    default_message = (
+        "This is the organisation's last administrator. Make someone else an administrator first."
+    )

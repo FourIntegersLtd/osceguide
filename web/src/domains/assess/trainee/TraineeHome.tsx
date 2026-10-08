@@ -22,7 +22,7 @@ import {
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { activeMembership, useSession } from "@/foundation/session";
 import { workspaceBasePath } from "@/foundation/routing";
-import { useSurface } from "@/capabilities";
+import { capabilitiesFor, useSurface } from "@/capabilities";
 import { LiveTurnBanner } from "@/domains/assess/trainee/LiveTurnBanner";
 import {
   MY_SITTINGS_STREAM,
@@ -172,7 +172,9 @@ function SittingRow({ sitting }: { sitting: MySitting }) {
  * person's own workspace, a different base path.
  */
 function Explore() {
-  const { hrefFor } = useSurface();
+  const { hrefFor, surface } = useSurface();
+  const { session } = useSession();
+  const mounted = capabilitiesFor(surface, { can: session?.capabilities.can ?? {} }).map((c) => c.id);
 
   return (
     <>
@@ -199,13 +201,19 @@ function Explore() {
           title="Self practice"
           meta="From your organisation"
         />
-        <B2CGroupedRowLink href={hrefFor("/summary")} icon={HiOutlineBookOpen} title="A to Z" />
-        <B2CGroupedRowLink
-          href={hrefFor("/discussion")}
-          icon={HiOutlineChatBubbleLeftRight}
-          title="Community"
-          meta="Ask your cohort"
-        />
+        {/* Only what this workspace mounts: a link to a page it does not (Hire has no study
+            material or community) would open a 404. */}
+        {mounted.includes("study-a-to-z") ? (
+          <B2CGroupedRowLink href={hrefFor("/summary")} icon={HiOutlineBookOpen} title="A to Z" />
+        ) : null}
+        {mounted.includes("community") ? (
+          <B2CGroupedRowLink
+            href={hrefFor("/discussion")}
+            icon={HiOutlineChatBubbleLeftRight}
+            title="Community"
+            meta="Ask your cohort"
+          />
+        ) : null}
       </B2CGroupedSection>
     </>
   );

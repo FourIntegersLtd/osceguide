@@ -39,15 +39,13 @@ export const STATUS_HELP: Record<string, string> = {
 };
 
 /**
- * The two kinds the backend will provision.
- *
- * An employer is an institution running exam-mode sittings rather than a third
- * kind — `CreateOrganization.org_type` admits `institution` and `partner`, and
- * offering a third here would be a 422 an administrator could not explain.
+ * The kinds the backend will provision (`CreateOrganization.org_type`). An employer runs
+ * exam-mode sittings and gets the Hire workspace.
  */
 export const ORG_TYPES = [
   { value: "institution", label: "Institution" },
   { value: "partner", label: "Partner" },
+  { value: "employer", label: "Employer" },
 ] as const;
 
 export function slugify(value: string): string {
@@ -107,6 +105,15 @@ export function contractDatesError(
   const start = startsAt.trim() || stored.startsAt;
   const end = endsAt.trim() || stored.endsAt;
   return start && end && start > end ? CONTRACT_DATES_OUT_OF_ORDER : null;
+}
+
+/**
+ * Why the API would refuse this renewal date (`contract_end_in_past`), or null. A day is
+ * read as its midnight, so today is already past; the API stays the authority.
+ */
+export function renewalDateError(endsAt: string, today: string): string | null {
+  const end = endsAt.trim();
+  return end && end <= today ? "A renewal must end in the future" : null;
 }
 
 export interface SsoFormValues {
