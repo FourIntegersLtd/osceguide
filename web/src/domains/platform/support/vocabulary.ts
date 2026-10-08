@@ -101,19 +101,19 @@ export function contractDatesError(
   startsAt: string,
   endsAt: string,
   stored: { startsAt: string; endsAt: string },
+  /** A renewal passes today's local day: the new end must fall after it (`contract_end_in_past`). */
+  renewalToday?: string,
 ): string | null {
   const start = startsAt.trim() || stored.startsAt;
   const end = endsAt.trim() || stored.endsAt;
+  if (renewalToday && endsAt.trim() && endsAt.trim() <= renewalToday) return "A renewal must end in the future";
   return start && end && start > end ? CONTRACT_DATES_OUT_OF_ORDER : null;
 }
 
-/**
- * Why the API would refuse this renewal date (`contract_end_in_past`), or null. A day is
- * read as its midnight, so today is already past; the API stays the authority.
- */
-export function renewalDateError(endsAt: string, today: string): string | null {
-  const end = endsAt.trim();
-  return end && end <= today ? "A renewal must end in the future" : null;
+/** Today's date in the browser's own time zone, as `YYYY-MM-DD`. */
+export function localDay(now: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 export interface SsoFormValues {

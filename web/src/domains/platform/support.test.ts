@@ -6,7 +6,7 @@ import {
   STATUS_HELP,
   asContractDate,
   contractDatesError,
-  renewalDateError,
+  localDay,
   ssoFieldErrors,
   permitsSignIn,
   slugError,
@@ -135,12 +135,19 @@ describe("ssoFieldErrors", () => {
   });
 });
 
-describe("renewalDateError", () => {
-  it("refuses a renewal date that is today or earlier", () => {
-    assert.equal(renewalDateError("2026-10-07", "2026-10-08"), "A renewal must end in the future");
-    assert.equal(renewalDateError("2026-10-08", "2026-10-08"), "A renewal must end in the future");
-    assert.equal(renewalDateError("2026-10-09", "2026-10-08"), null);
-    assert.equal(renewalDateError("2027-01-01", "2026-10-08"), null);
-    assert.equal(renewalDateError("", "2026-10-08"), null);
+describe("contractDatesError for a renewal", () => {
+  const none = { startsAt: "", endsAt: "" };
+
+  it("refuses an end date that is today or earlier, only when a renewal day is given", () => {
+    const refused = "A renewal must end in the future";
+    assert.equal(contractDatesError("", "2026-10-07", none, "2026-10-08"), refused);
+    assert.equal(contractDatesError("", "2026-10-08", none, "2026-10-08"), refused);
+    assert.equal(contractDatesError("", "2026-10-09", none, "2026-10-08"), null);
+    assert.equal(contractDatesError("", "", none, "2026-10-08"), null);
+    assert.equal(contractDatesError("", "2026-10-07", none), null);
+  });
+
+  it("reads today in local time", () => {
+    assert.equal(localDay(new Date(2026, 9, 8, 23, 30)), "2026-10-08");
   });
 });

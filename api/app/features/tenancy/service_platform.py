@@ -108,7 +108,9 @@ async def restore_organization(
     org = await repository.organization_by_id(session, org_id)
     if org is None:
         raise OrgNotFound()
-    if domain.contract_lapsed(org.contract_ends_at, now=now):
+    lapsed_end = org.contract_ends_at
+    cleared = domain.contract_lapsed(lapsed_end, now=now)
+    if cleared:
         await repository.update_organization(session, org_id, contract_ends_at=None)
     await repository.set_organization_status(
         session, org_id, status="active", suspended_at=None, suspended_by=None
@@ -121,7 +123,8 @@ async def restore_organization(
         action="organization.restored",
         target_type="organization",
         target_id=str(org_id),
-        summary=f"Restored at {now.isoformat()}",
+        summary=f"Restored at {now.isoformat()}"
+        + (f"; lapsed end date {lapsed_end:%Y-%m-%d} cleared, contract open-ended" if cleared else ""),
     )
     refreshed = await repository.organization_by_id(session, org_id)
     return _org_read(refreshed)

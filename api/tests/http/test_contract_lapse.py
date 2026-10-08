@@ -115,3 +115,16 @@ async def test_an_employer_organisation_can_be_provisioned(client: AsyncClient, 
     )
     assert created.status_code == 201, created.text
     assert created.json()["org_type"] == "employer"
+
+
+async def test_restoring_a_lapsed_organisation_records_the_old_end_date(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await provisioned(client, root, "audited", NOW - timedelta(days=1))
+    await suspend_lapsed_organizations(db_session, now=NOW)
+    await client.post("/api/v1/platform/organizations/audited/restore", headers=bearer(root))
+
+    audit = await client.get("/api/v1/platform/organizations/audited/audit", headers=bearer(root))
+    restored = next(e for e in audit.json()["items"] if e["action"] == "organization.restored")
+    assert "2026-09-16" in restored["summary"]
