@@ -56,7 +56,7 @@ async def list_trainees(
     "/orgs/{org_slug}/trainees",
     response_model=schemas.TraineeRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(TooManyRequests, Forbidden, errors.TraineeExists),
+    responses=error_responses(TooManyRequests, Forbidden, errors.TraineeExists, errors.WeakPasswordError),
     dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def add_trainee(
@@ -71,6 +71,8 @@ async def add_trainee(
         last_name=body.last_name,
         cohort_id=body.cohort_id,
         now=clock.now(),
+        temporary_password=body.temporary_password,
+        actor=workspace.principal,
     )
 
 

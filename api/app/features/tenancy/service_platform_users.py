@@ -22,7 +22,12 @@ from app.features.identity import service_close_account, service_mfa, service_pa
 from app.features.identity import service_invitations as invitations
 from app.features.identity import service_platform as accounts
 from app.features.tenancy import repository, repository_platform
-from app.features.tenancy.errors import PlatformAdminExists, UserNotFound
+from app.features.tenancy.errors import (
+    CannotRevokeOwnConsoleAccess,
+    PasswordAlreadyChosen,
+    PlatformAdminExists,
+    UserNotFound,
+)
 from app.features.tenancy.schemas import (
     MembershipRead,
     PlatformAdminInviteRead,
@@ -95,7 +100,13 @@ async def set_platform_admin(
     session: AsyncSession, user_id: uuid.UUID, *, is_admin: bool, actor: Principal
 ) -> UserSummary:
     """Grant or revoke the console itself. Audited without an organisation, since this is a
-    platform act."""
+    platform act.
+
+    Nobody revokes their own access: the actor is by construction a platform admin, so
+    this is also what keeps the console from ever being left with none.
+    """
+    if not is_admin and user_id == actor.user_id:
+        raise CannotRevokeOwnConsoleAccess()
     user = await identity.set_platform_admin(session, user_id, is_admin=is_admin)
     await repository.write_audit(
         session,
@@ -204,6 +215,25 @@ async def trigger_password_reset(
         actor_user_id=actor.user_id,
         actor_email=actor.email,
         action="user.password_reset_sent",
+        target_type="user",
+        target_id=str(user_id),
+        summary=user.email,
+    )
+
+
+async def reissue_temporary_password(
+    session: AsyncSession, user_id: uuid.UUID, *, password: str, actor: Principal, now: datetime
+) -> None:
+    """Hand an account that has not yet changed its relayed password a new one."""
+    user = await _require(session, user_id)
+    if not await invitations.reissue_temporary_password(session, user_id=user_id, password=password, now=now):
+        raise PasswordAlreadyChosen()
+    await repository.write_audit(
+        session,
+        org_id=None,
+        actor_user_id=actor.user_id,
+        actor_email=actor.email,
+        action="user.temporary_password_reissued",
         target_type="user",
         target_id=str(user_id),
         summary=user.email,

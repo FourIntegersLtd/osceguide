@@ -116,6 +116,7 @@ async def add_membership(
     _guard_role_grant(actor, org_id, role)
     user = await identity.user_ref_by_email(session, email)
     invited = user is None
+    relayed = invited and temporary_password is not None
     if user is None:
         org = await repository.organization_by_id(session, org_id)
         if org is None:
@@ -134,7 +135,7 @@ async def add_membership(
     membership = await repository.add_membership(
         session, org_id=org_id, user_id=user_id, role=role, product_surface=product_surface
     )
-    how = "" if not invited else " (temporary password)" if temporary_password is not None else " (invited)"
+    how = "" if not invited else " (temporary password)" if relayed else " (invited)"
     await repository.write_audit(
         session,
         org_id=org_id,
@@ -145,7 +146,9 @@ async def add_membership(
         target_id=str(user_id),
         summary=f"Granted {role} to {email}{how}",
     )
-    return _membership_read(membership, person=user)
+    read = _membership_read(membership, person=user)
+    read.temporary_password_applied = relayed
+    return read
 
 
 async def change_membership_role(

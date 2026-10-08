@@ -123,16 +123,19 @@ async def list_memberships(
     "/orgs/{org_slug}/memberships",
     response_model=schemas.MembershipRead,
     status_code=status.HTTP_201_CREATED,
-    responses=error_responses(TooManyRequests, Forbidden, errors.MembershipExists),
+    responses=error_responses(TooManyRequests, Forbidden, errors.MembershipExists, errors.WeakPasswordError),
     dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
 )
 async def add_membership(
-    body: schemas.CreateMembership, workspace: OrgAdmin, session: Session, clock: ClockDep
+    body: schemas.SeatMembership, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.MembershipRead:
     """Put somebody in this organisation, by the address an administrator knows.
 
     An address with no account is invited: the account is created and the
     person is emailed a link to choose a password. `invited` says which.
+    `temporary_password` is the fallback when that email cannot be delivered: a
+    brand-new account gets it instead and must change it at first sign-in; an
+    existing account is never touched (`temporary_password_applied` says which).
     """
     return await service_memberships.add_membership(
         session,
@@ -142,6 +145,7 @@ async def add_membership(
         product_surface=body.product_surface,
         actor=workspace.principal,
         now=clock.now(),
+        temporary_password=body.temporary_password,
     )
 
 

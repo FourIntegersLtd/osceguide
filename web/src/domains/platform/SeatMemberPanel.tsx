@@ -1,7 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, Checkbox, Input, Panel, Select } from "@/foundation/ui";
+import { Alert, Button, Input, Panel, Select } from "@/foundation/ui";
+import {
+  IssuedPassword,
+  TemporaryPasswordField,
+  temporaryPasswordReady,
+} from "@/foundation/ui/TemporaryPassword";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { seatMembership } from "@/domains/platform/api";
 import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
@@ -41,6 +46,7 @@ export function SeatMemberPanel({
   );
   const [handPassword, setHandPassword] = useState(false);
   const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [issued, setIssued] = useState<{ email: string; password: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -50,18 +56,24 @@ export function SeatMemberPanel({
     setError(null);
     try {
       const relayed = handPassword && temporaryPassword.length > 0;
+      const address = email.trim();
       const membership = await seatMembership(slug, {
         email: email.trim(),
         role,
         ...(relayed ? { temporaryPassword } : {}),
       });
+      // `temporary_password_applied` is on the response but not yet in the generated type.
+      const applied = (membership as { temporary_password_applied?: boolean }).temporary_password_applied === true;
+      setIssued(applied ? { email: address, password: temporaryPassword } : null);
       toast.success(
-        `${email.trim()} added as ${roleLabel(role, humanise(role)).toLowerCase()}`,
+        `${address} added as ${roleLabel(role, humanise(role)).toLowerCase()}`,
         membership.invited
           ? "They have no account yet, so they have been emailed a link to choose a password."
-          : relayed
-            ? "If they had no account, they can sign in with the password you typed and must change it first."
-            : "They already had an account and can sign in now.",
+          : applied
+            ? "They can sign in with the password shown below and must change it first."
+            : relayed
+              ? "They already had an account, so the password you typed was not used. They sign in as before."
+              : "They already had an account and can sign in now.",
       );
       setEmail("");
       setTemporaryPassword("");
@@ -81,6 +93,13 @@ export function SeatMemberPanel({
     >
       <form onSubmit={submit} className="flex flex-col gap-3">
         {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
+        {issued ? (
+          <IssuedPassword
+            email={issued.email}
+            password={issued.password}
+            onDismiss={() => setIssued(null)}
+          />
+        ) : null}
         <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_14rem_auto]">
           <Input
             type="email"
@@ -106,30 +125,21 @@ export function SeatMemberPanel({
           <Button
             type="submit"
             disabled={
-              busy || !email.trim() || (handPassword && !temporaryPassword)
+              busy ||
+              !email.trim() ||
+              !temporaryPasswordReady(handPassword, temporaryPassword)
             }
           >
             {busy ? "Adding…" : "Add admin"}
           </Button>
         </div>
-        <Checkbox
-          label="Set a temporary password instead of emailing a link"
-          checked={handPassword}
-          onChange={(event) => setHandPassword(event.target.checked)}
+        <TemporaryPasswordField
+          enabled={handPassword}
+          onEnabledChange={setHandPassword}
+          value={temporaryPassword}
+          onChange={setTemporaryPassword}
           disabled={busy}
         />
-        {handPassword ? (
-          <Input
-            type="text"
-            label="Temporary password"
-            hint="At least 12 characters, mixing letters with numbers, punctuation or capitals. Only used if they have no account yet; they must change it when they first sign in."
-            required
-            autoComplete="off"
-            value={temporaryPassword}
-            onChange={(event) => setTemporaryPassword(event.target.value)}
-            disabled={busy}
-          />
-        ) : null}
       </form>
     </Panel>
   );

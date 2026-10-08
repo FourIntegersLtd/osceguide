@@ -146,6 +146,9 @@ class MembershipRead(BaseModel):
     # True when adding this membership created the account and queued an
     # invitation: the person cannot sign in until they choose a password.
     invited: bool = False
+    # True when this call created the account and gave it the temporary password the
+    # admin typed; false when the account already existed and the password was ignored.
+    temporary_password_applied: bool = False
     # Circuits this person is named supervisor of; filled by the list read.
     circuits_led: int = 0
 
@@ -157,7 +160,8 @@ class CreateMembership(BaseModel):
 
 
 class SeatMembership(CreateMembership):
-    """The platform console's add, which may hand a new account a temporary password.
+    """An add by an admin that may hand a new account a temporary password (the platform
+    console's seat route and an organisation's team invite).
 
     Only for an address with no account yet, and only because the invitation email
     cannot always be delivered. The person must change it at first sign-in. Ignored for
@@ -165,6 +169,10 @@ class SeatMembership(CreateMembership):
     """
 
     temporary_password: str | None = Field(default=None, min_length=1, max_length=512)
+
+
+class ReissueTemporaryPassword(BaseModel):
+    temporary_password: str = Field(min_length=1, max_length=512)
 
 
 class UpdateMembership(BaseModel):

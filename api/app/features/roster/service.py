@@ -13,6 +13,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audience import ViewerAudiences
+from app.core.auth import Principal
 from app.features.catalog import service as catalog
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
@@ -27,6 +28,7 @@ from app.features.roster.schemas import (
 )
 from app.features.sittings import service_reads as sittings
 from app.features.tenancy import service as tenancy
+from app.features.tenancy import service_audit as tenancy_audit
 
 
 async def add_trainee(
@@ -38,8 +40,14 @@ async def add_trainee(
     last_name: str | None,
     cohort_id: uuid.UUID | None,
     now: datetime,
+    temporary_password: str | None = None,
+    actor: Principal | None = None,
 ) -> TraineeRead:
     """Add a trainee to an organisation's roster and invite them, if needed.
+
+    With `temporary_password` (and the `actor` who typed it) a brand-new account gets
+    that password instead of an email, and must change it at first sign-in; an existing
+    account is never touched. The audit log says which path was taken.
 
     Every trainee ends up linked to an account: a slot names a `users.id`, so an
     unlinked trainee could be rostered and never scheduled.
@@ -57,19 +65,40 @@ async def add_trainee(
     # A slot names a `users.id`, so a trainee without a linked account could be
     # rostered and never scheduled. Invite and link now, so every trainee has one.
     existing = await identity.user_ref_by_email(session, email)
+    relayed = existing is None and temporary_password is not None and actor is not None
     if existing is None:
-        org = await tenancy.org_ref_by_id(session, org_id)
-        existing = await invitations.invite_user(
-            session,
-            email=email,
-            name=_display_name(first_name, last_name, email),
-            invited_to=org.name if org else "your institution",
-            now=now,
-        )
+        if relayed:
+            assert temporary_password is not None and actor is not None
+            existing = await invitations.seat_user_with_temporary_password(
+                session,
+                email=email,
+                password=temporary_password,
+                name=_display_name(first_name, last_name, email),
+            )
+            await tenancy_audit.record_for_org(
+                session,
+                org_id=org_id,
+                actor=actor,
+                action="trainee.added",
+                target_type="trainee",
+                target_id=str(trainee.id),
+                summary=f"Added {email} to the roster (temporary password)",
+            )
+        else:
+            org = await tenancy.org_ref_by_id(session, org_id)
+            existing = await invitations.invite_user(
+                session,
+                email=email,
+                name=_display_name(first_name, last_name, email),
+                invited_to=org.name if org else "your institution",
+                now=now,
+            )
     await repository.link_trainee_to_user(session, org_id, trainee.id, user_id=existing.id)
     await tenancy.grant_trainee_membership(session, org_id, existing.id)
     await session.refresh(trainee)
-    return _trainee_read(trainee)
+    read = _trainee_read(trainee)
+    read.temporary_password_applied = relayed
+    return read
 
 
 def _display_name(first: str | None, last: str | None, email: str) -> str:

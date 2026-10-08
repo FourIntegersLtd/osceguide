@@ -3,6 +3,11 @@
 import { useCallback, useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
+import {
+  IssuedPassword,
+  TemporaryPasswordField,
+  temporaryPasswordReady,
+} from "@/foundation/ui/TemporaryPassword";
 import { errorMessage } from "@/foundation/hooks";
 import { addTrainee, type Cohort } from "@/domains/assess/roster/api";
 import { BulkImportDialog } from "@/domains/assess/roster/BulkImportDialog";
@@ -21,10 +26,11 @@ export function splitName(value: string): { firstName: string | null; lastName: 
 /**
  * Add trainees: one at a time, or a spreadsheet.
  *
- * The old form also took a password, generated one, showed it and offered to
- * email it. The platform invites an unknown address instead — the account is
- * created and the person is emailed a link to choose their own password — so
- * the form is a name, an address and a group.
+ * The platform invites an unknown address — the account is created and the
+ * person is emailed a link to choose their own password. Where that email cannot
+ * be delivered, the admin may type a temporary password for a brand-new account
+ * and relay it by hand (changed at first sign-in; never applied to an existing
+ * account).
  */
 export function AddTraineePanel({
   orgSlug,
@@ -43,6 +49,9 @@ export function AddTraineePanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [handPassword, setHandPassword] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [issued, setIssued] = useState<{ email: string; password: string } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   const submit = useCallback(async () => {
@@ -51,6 +60,7 @@ export function AddTraineePanel({
     setBusy(true);
     setError(null);
     setNotice(null);
+    setIssued(null);
     try {
       const { firstName, lastName } = splitName(name);
       const trainee = await addTrainee(orgSlug, {
@@ -58,8 +68,18 @@ export function AddTraineePanel({
         firstName,
         lastName,
         cohortId: cohortId || null,
+        ...(handPassword ? { temporaryPassword } : {}),
       });
       setNotice(`${trainee.email} is on the roster.`);
+      if (trainee.temporary_password_applied) {
+        setIssued({ email: trainee.email, password: temporaryPassword });
+      } else if (handPassword) {
+        setNotice(
+          `${trainee.email} is on the roster. They already had an account, so the password you typed was not used.`,
+        );
+      }
+      setTemporaryPassword("");
+      setHandPassword(false);
       setName("");
       setEmail("");
       onAdded();
@@ -68,7 +88,7 @@ export function AddTraineePanel({
     } finally {
       setBusy(false);
     }
-  }, [name, email, cohortId, orgSlug, onAdded]);
+  }, [name, email, cohortId, handPassword, temporaryPassword, orgSlug, onAdded]);
 
   if (!canManage) {
     return (
@@ -82,7 +102,7 @@ export function AddTraineePanel({
     <div className="space-y-6">
       <Panel
         title="Add one person"
-        description="They are invited by email. If they have no account yet, we create one and send them a link to choose a password."
+        description="They are invited by email. If they have no account yet, we create one and send them a link to choose a password. If that email cannot reach them, set a temporary password to relay by hand."
       >
         <form
           className="space-y-5"
@@ -152,14 +172,29 @@ export function AddTraineePanel({
             </select>
           </div>
 
+          <TemporaryPasswordField
+            enabled={handPassword}
+            onEnabledChange={setHandPassword}
+            value={temporaryPassword}
+            onChange={setTemporaryPassword}
+            disabled={busy}
+          />
+
           {error ? <Alert tone="danger">{error}</Alert> : null}
           {notice ? <Alert tone="success">{notice}</Alert> : null}
+          {issued ? (
+            <IssuedPassword
+              email={issued.email}
+              password={issued.password}
+              onDismiss={() => setIssued(null)}
+            />
+          ) : null}
 
           <Button
             type="submit"
             themeType="b2b"
             variant="commit"
-            disabled={busy || email.trim().length === 0}
+            disabled={busy || email.trim().length === 0 || !temporaryPasswordReady(handPassword, temporaryPassword)}
             className="inline-flex items-center gap-2"
           >
             <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden />

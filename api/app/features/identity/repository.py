@@ -169,6 +169,13 @@ async def set_password_hash(session: AsyncSession, user_id: uuid.UUID, password_
     )
 
 
+async def set_temporary_password_hash(session: AsyncSession, user_id: uuid.UUID, password_hash: str) -> None:
+    """Store a relayed password hash and keep (or set) the forced-change flag."""
+    await session.execute(
+        update(User).where(User.id == user_id).values(password_hash=password_hash, must_change_password=True)
+    )
+
+
 async def record_login(session: AsyncSession, user_id: uuid.UUID, at: datetime) -> None:
     await session.execute(update(User).where(User.id == user_id).values(last_login_at=at))
 

@@ -107,7 +107,7 @@ async def update_user(
 @router.put(
     "/platform/users/{user_id}/platform-admin",
     response_model=schemas.UserSummary,
-    responses=error_responses(Forbidden, errors.UserNotFound),
+    responses=error_responses(Forbidden, errors.UserNotFound, errors.CannotRevokeOwnConsoleAccess),
 )
 async def set_platform_admin(
     user_id: uuid.UUID,
@@ -132,6 +132,28 @@ async def reset_user_password(
 ) -> Response:
     """Send the person a link to choose a new password."""
     await service_platform_users.trigger_password_reset(session, user_id, actor=admin, now=clock.now())
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/platform/users/{user_id}/temporary-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(
+        Forbidden, errors.UserNotFound, errors.PasswordAlreadyChosen, errors.WeakPasswordError
+    ),
+)
+async def reissue_temporary_password(
+    user_id: uuid.UUID,
+    body: schemas.ReissueTemporaryPassword,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> Response:
+    """Replace a relayed password that was lost, for an account that has not yet
+    changed it. Ends the account's sessions. Refused once they chose their own."""
+    await service_platform_users.reissue_temporary_password(
+        session, user_id, password=body.temporary_password, actor=admin, now=clock.now()
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

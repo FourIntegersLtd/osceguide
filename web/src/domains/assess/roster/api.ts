@@ -60,10 +60,23 @@ function traineeBody(input: TraineeInput) {
 }
 
 /** An address with no account is invited and linked in the same call. */
-export function addTrainee(slug: string, input: TraineeInput): Promise<Trainee> {
-  return platformRequest<Trainee>(`${orgPath(slug)}/trainees`, {
+// until regenerated: the add route answers with `temporary_password_applied`.
+export type AddedTrainee = Trainee & { temporary_password_applied?: boolean };
+
+/**
+ * `temporaryPassword` (when the invitation email cannot be delivered) gives a
+ * brand-new account a password to relay by hand; never applied to an existing one.
+ */
+export function addTrainee(
+  slug: string,
+  input: TraineeInput & { temporaryPassword?: string },
+): Promise<AddedTrainee> {
+  return platformRequest<AddedTrainee>(`${orgPath(slug)}/trainees`, {
     method: "POST",
-    body: traineeBody(input),
+    body: {
+      ...traineeBody(input),
+      ...(input.temporaryPassword ? { temporary_password: input.temporaryPassword } : {}),
+    },
   });
 }
 

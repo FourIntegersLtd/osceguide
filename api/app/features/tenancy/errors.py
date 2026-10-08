@@ -83,3 +83,17 @@ class LastAdministrator(Conflict):
     default_message = (
         "This is the organisation's last administrator. Make someone else an administrator first."
     )
+class CannotRevokeOwnConsoleAccess(Conflict):
+    """A platform admin asked to remove their own console access."""
+
+    code = "cannot_revoke_own_console_access"
+    default_message = "You cannot remove your own console access. Ask another platform admin to do it."
+
+
+class PasswordAlreadyChosen(Conflict):
+    """The account has set its own password, so a temporary one cannot replace it."""
+
+    code = "password_already_chosen"
+    default_message = "This person has already chosen their own password. Send them a reset link instead."
+
+

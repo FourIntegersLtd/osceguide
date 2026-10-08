@@ -107,6 +107,23 @@ async def test_the_console_grants_and_revokes_itself(
     assert revoked.status_code == 200, revoked.text
 
 
+async def test_an_admin_cannot_revoke_their_own_console_access(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """P-1: the last way into the console must not be closed from inside it."""
+    from app.features.identity import repository as identity_repo
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    me = await identity_repo.user_by_email(db_session, "root@osceguide.com")
+    assert me is not None
+    refused = await client.put(
+        f"/api/v1/platform/users/{me.id}/platform-admin",
+        json={"is_platform_admin": False},
+        headers=bearer(root),
+    )
+    assert (refused.status_code, refused.json()["code"]) == (409, "cannot_revoke_own_console_access")
+
+
 async def test_inviting_by_email_grants_the_console(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     root = await make_actor("root@osceguide.com", platform_admin=True)
 

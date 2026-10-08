@@ -165,6 +165,154 @@ async def test_a_temporary_password_never_touches_an_existing_account(
     assert login.status_code == 200, login.text
 
 
+async def test_a_team_invite_may_hand_a_new_account_a_temporary_password(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """B-1: an org admin can add staff while invitation email is undeliverable."""
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    added = await client.post(
+        "/api/v1/orgs/ashford/memberships",
+        json={"email": "sup@ashford.ac.uk", "role": "supervisor", "temporary_password": "Temp-Passw0rd!"},
+        headers=bearer(owner),
+    )
+    assert added.status_code == 201, added.text
+    assert added.json()["invited"] is False
+    assert added.json()["temporary_password_applied"] is True
+    assert await queued_invitations(db_session) == []
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "sup@ashford.ac.uk", "password": "Temp-Passw0rd!"}
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["user"]["must_change_password"] is True
+    audit = await client.get("/api/v1/orgs/ashford/audit", headers=bearer(owner))
+    assert "Granted supervisor to sup@ashford.ac.uk (temporary password)" in {
+        row["summary"] for row in audit.json()["items"]
+    }
+
+
+async def test_a_team_temporary_password_never_touches_an_existing_account(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    registered = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "here@ashford.ac.uk", "name": "Here", "password": "Their-0wn-Passw0rd"},
+    )
+    assert registered.status_code == 201, registered.text
+    added = await client.post(
+        "/api/v1/orgs/ashford/memberships",
+        json={"email": "here@ashford.ac.uk", "role": "supervisor", "temporary_password": "Temp-Passw0rd!"},
+        headers=bearer(owner),
+    )
+    assert added.status_code == 201, added.text
+    assert added.json()["temporary_password_applied"] is False
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "here@ashford.ac.uk", "password": "Temp-Passw0rd!"}
+    )
+    assert login.status_code == 401, login.text
+
+
+async def test_a_roster_add_may_hand_a_new_account_a_temporary_password(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    added = await client.post(
+        "/api/v1/orgs/ashford/trainees",
+        json={"email": "stu@ashford.ac.uk", "temporary_password": "Temp-Passw0rd!"},
+        headers=bearer(owner),
+    )
+    assert added.status_code == 201, added.text
+    assert added.json()["temporary_password_applied"] is True
+    assert await queued_invitations(db_session) == []
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "stu@ashford.ac.uk", "password": "Temp-Passw0rd!"}
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["user"]["must_change_password"] is True
+    audit = await client.get("/api/v1/orgs/ashford/audit", headers=bearer(owner))
+    assert "Added stu@ashford.ac.uk to the roster (temporary password)" in {
+        row["summary"] for row in audit.json()["items"]
+    }
+
+
+async def test_a_weak_roster_temporary_password_is_refused_and_adds_nobody(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    added = await client.post(
+        "/api/v1/orgs/ashford/trainees",
+        json={"email": "stu@ashford.ac.uk", "temporary_password": "short"},
+        headers=bearer(owner),
+    )
+    assert added.status_code == 422, added.text
+    assert added.json()["code"] == "weak_password"
+    listed = await client.get("/api/v1/orgs/ashford/trainees", headers=bearer(owner))
+    assert listed.json()["items"] == []
+
+
+async def test_the_console_reissues_a_password_only_until_it_is_changed(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """P-8: the relayed password is lost -> a new one, until the person chose their own."""
+    root, _ = await provisioned(client, make_actor)
+    seated = await client.post(
+        "/api/v1/platform/organizations/ashford/memberships",
+        json={"email": "lost.dean@ashford.ac.uk", "role": "owner", "temporary_password": "Temp-Passw0rd!"},
+        headers=bearer(root),
+    )
+    assert seated.json()["temporary_password_applied"] is True
+    user_id = seated.json()["user_id"]
+    url = f"/api/v1/platform/users/{user_id}/temporary-password"
+
+    weak = await client.post(url, json={"temporary_password": "short"}, headers=bearer(root))
+    assert (weak.status_code, weak.json()["code"]) == (422, "weak_password")
+
+    reissued = await client.post(url, json={"temporary_password": "Second-Passw0rd!"}, headers=bearer(root))
+    assert reissued.status_code == 204, reissued.text
+    old = await client.post(
+        "/api/v1/auth/login", json={"email": "lost.dean@ashford.ac.uk", "password": "Temp-Passw0rd!"}
+    )
+    assert old.status_code == 401
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "lost.dean@ashford.ac.uk", "password": "Second-Passw0rd!"}
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["user"]["must_change_password"] is True
+
+    # An account that chose its own password is never reset from here.
+    chosen = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "chosen@ashford.ac.uk", "name": "Chosen", "password": "Their-0wn-Passw0rd"},
+    )
+    chosen_id = chosen.json()["user"]["id"]
+    refused = await client.post(
+        f"/api/v1/platform/users/{chosen_id}/temporary-password",
+        json={"temporary_password": "Second-Passw0rd!"},
+        headers=bearer(root),
+    )
+    assert (refused.status_code, refused.json()["code"]) == (409, "password_already_chosen")
+
+
 async def test_only_the_console_may_seat(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     root, org_id = await provisioned(client, make_actor)
     owner = await make_actor(

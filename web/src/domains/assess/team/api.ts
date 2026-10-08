@@ -15,6 +15,8 @@ export type MembershipPage = components["schemas"]["Page_MembershipRead_"];
 export type AuditEvent = components["schemas"]["AuditRead"];
 export type AuditPage = components["schemas"]["Page_AuditRead_"];
 export type BulkMembershipsResult = components["schemas"]["BulkMembershipsResult"];
+// until regenerated: the add routes answer with `temporary_password_applied`.
+export type SeatedMembership = Membership & { temporary_password_applied?: boolean };
 export type SkippedMembership = components["schemas"]["SkippedMembership"];
 
 export function listMemberships(
@@ -32,17 +34,22 @@ export function listMemberships(
  * Put somebody in the organisation by the address an administrator knows.
  *
  * An address with no account is invited: the backend creates it and emails a
- * link to choose a password, then answers `invited: true`. The old client
- * generated a temporary password in the browser and displayed it for an
- * administrator to relay by hand; no password passes through this app at all.
+ * link to choose a password, then answers `invited: true`. When that email
+ * cannot be delivered, `temporaryPassword` gives a brand-new account a password
+ * the administrator relays by hand (changed at first sign-in; never applied to
+ * an existing account).
  */
 export function inviteMember(
   slug: string,
-  input: { email: string; role: string },
-): Promise<Membership> {
-  return platformRequest<Membership>(`${orgPath(slug)}/memberships`, {
+  input: { email: string; role: string; temporaryPassword?: string },
+): Promise<SeatedMembership> {
+  return platformRequest<SeatedMembership>(`${orgPath(slug)}/memberships`, {
     method: "POST",
-    body: { email: input.email, role: input.role },
+    body: {
+      email: input.email,
+      role: input.role,
+      ...(input.temporaryPassword ? { temporary_password: input.temporaryPassword } : {}),
+    },
   });
 }
 

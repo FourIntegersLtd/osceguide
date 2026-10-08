@@ -53,7 +53,9 @@ async def invite_user(
     return _ref(user)
 
 
-async def seat_user_with_temporary_password(session: AsyncSession, *, email: str, password: str) -> UserRef:
+async def seat_user_with_temporary_password(
+    session: AsyncSession, *, email: str, password: str, name: str = ""
+) -> UserRef:
     """Create an account that can sign in now, with a password the console relays by hand.
 
     The platform console's fallback for when the invitation email cannot reach anyone
@@ -67,10 +69,34 @@ async def seat_user_with_temporary_password(session: AsyncSession, *, email: str
     except WeakPassword as exc:
         raise WeakPasswordError(str(exc)) from exc
     user = await repository.create_user(
-        session, email=email, name="", password_hash=hash_password(password), must_change_password=True
+        session, email=email, name=name, password_hash=hash_password(password), must_change_password=True
     )
     await _announce_registration(session, user.id, user.email)
     return _ref(user)
+
+
+async def reissue_temporary_password(
+    session: AsyncSession, *, user_id: uuid.UUID, password: str, now: datetime
+) -> bool:
+    """Replace a relayed password that was lost, for an account that has not yet changed it.
+
+    Only while `must_change_password` is still set: once the person has chosen their own
+    password this returns False and touches nothing, so the console never resets a real
+    credential. Every session the account holds is ended. Raises `WeakPasswordError` as
+    seating does. False also when the account is gone or has no password.
+    """
+    try:
+        validate_password(password)
+    except WeakPassword as exc:
+        raise WeakPasswordError(str(exc)) from exc
+    user = await repository.user_by_id(session, user_id)
+    if user is None or user.password_hash is None or not user.must_change_password:
+        return False
+    await repository.set_temporary_password_hash(session, user.id, hash_password(password))
+    await repository.revoke_all_chains_for_user(
+        session, user_id=user.id, at=now, reason="temporary_password_reissued"
+    )
+    return True
 
 
 async def reissue_invitation(

@@ -4,8 +4,13 @@ import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
 import { useCallback, useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
+import {
+  IssuedPassword,
+  TemporaryPasswordField,
+  temporaryPasswordReady,
+} from "@/foundation/ui/TemporaryPassword";
 import { errorMessage } from "@/foundation/hooks";
-import { inviteMember, type Membership } from "@/domains/assess/team/api";
+import { inviteMember, type SeatedMembership } from "@/domains/assess/team/api";
 import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
 import {
   ASSIGNABLE_ROLES,
@@ -15,12 +20,12 @@ import {
 /**
  * Add a member of staff.
  *
- * The old screen made a temporary password in the browser, showed it on the
- * page and asked an administrator to pass it on — with an "email their login"
- * button beside it that sent the password in plain text. The platform invites
- * instead: an address with no account gets one and a link to choose a
- * password, and the response says which happened. So this form is an address
- * and a role, and nothing here ever holds a credential.
+ * The platform invites: an address with no account gets one and a link to
+ * choose a password, and the response says which happened. Where that email
+ * cannot be delivered, the admin may instead type a temporary password for a
+ * brand-new account and relay it by hand (the server applies it only to a new
+ * account; it must be changed at first sign-in). Nothing is ever emailed in
+ * plain text.
  *
  * The spreadsheet below it is the same act done to a list. The retiring client
  * had a staff upload that wrote a team row by row and generated a password per
@@ -41,7 +46,10 @@ export function InvitePanel({
   const [role, setRole] = useState<AssignableRole>("supervisor");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Membership | null>(null);
+  const [result, setResult] = useState<SeatedMembership | null>(null);
+  const [handPassword, setHandPassword] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [issued, setIssued] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   const submit = useCallback(async () => {
@@ -50,9 +58,17 @@ export function InvitePanel({
     setBusy(true);
     setError(null);
     setResult(null);
+    setIssued(null);
     try {
-      const membership = await inviteMember(orgSlug, { email: address, role });
+      const membership = await inviteMember(orgSlug, {
+        email: address,
+        role,
+        ...(handPassword ? { temporaryPassword } : {}),
+      });
       setResult(membership);
+      if (membership.temporary_password_applied) setIssued(temporaryPassword);
+      setTemporaryPassword("");
+      setHandPassword(false);
       setEmail("");
       onInvited();
     } catch (cause) {
@@ -60,7 +76,7 @@ export function InvitePanel({
     } finally {
       setBusy(false);
     }
-  }, [email, role, orgSlug, onInvited]);
+  }, [email, role, handPassword, temporaryPassword, orgSlug, onInvited]);
 
   if (!canManage) {
     return (
@@ -127,8 +143,22 @@ export function InvitePanel({
             </select>
           </div>
 
+          <TemporaryPasswordField
+            enabled={handPassword}
+            onEnabledChange={setHandPassword}
+            value={temporaryPassword}
+            onChange={setTemporaryPassword}
+            disabled={busy}
+          />
+
           {error ? <Alert tone="danger">{error}</Alert> : null}
-          {result ? (
+          {result && issued !== null ? (
+            <IssuedPassword
+              email={result.email ?? ""}
+              password={issued}
+              onDismiss={() => setIssued(null)}
+            />
+          ) : result ? (
             <Alert tone="success">
               {result.invited
                 ? `Invited ${result.email}. They have been emailed a link to choose a password.`
@@ -140,7 +170,7 @@ export function InvitePanel({
             type="submit"
             themeType="b2b"
             variant="commit"
-            disabled={busy || email.trim().length === 0}
+            disabled={busy || email.trim().length === 0 || !temporaryPasswordReady(handPassword, temporaryPassword)}
             className="inline-flex items-center gap-2"
           >
             <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden />

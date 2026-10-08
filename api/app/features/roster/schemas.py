@@ -31,6 +31,8 @@ class TraineeRead(BaseModel):
     stations_sat: int = 0
     # Filled by the list read: whether the linked account holds a live membership here.
     is_member: bool = False
+    # True when adding created the account with the temporary password the admin typed.
+    temporary_password_applied: bool = False
 
 
 class CreateTrainee(BaseModel):
@@ -38,6 +40,9 @@ class CreateTrainee(BaseModel):
     first_name: str | None = Field(default=None, max_length=100)
     last_name: str | None = Field(default=None, max_length=100)
     cohort_id: uuid.UUID | None = None
+    # For when the invitation email cannot be delivered: a brand-new account gets this
+    # password (changed at first sign-in) instead of an email. Ignored for an existing account.
+    temporary_password: str | None = Field(default=None, min_length=1, max_length=512)
 
 
 class UpdateTrainee(BaseModel):

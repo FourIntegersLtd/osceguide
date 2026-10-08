@@ -8,6 +8,9 @@ from typing import Any
 
 from app.core.errors import AppError, Conflict, InvalidInput, NotFound
 
+# Re-exported so the add route documents the refusal a weak temporary password gets.
+from app.features.identity.errors import WeakPasswordError as WeakPasswordError
+
 
 class TraineeNotFound(NotFound):
     """No trainee with that id is on this organisation's roster."""

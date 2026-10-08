@@ -22,6 +22,7 @@ import {
   type PlatformUserDetail,
 } from "@/domains/platform/api";
 import { formatDay, formatSince } from "@/domains/platform/support";
+import { ReissuePasswordPanel } from "@/domains/platform/user/ReissuePasswordPanel";
 import {
   accessLabel,
   accessOf,
@@ -171,6 +172,10 @@ export function AccountTab({
                 ]}
               />
             </Panel>
+
+            {user.must_change_password ? (
+              <ReissuePasswordPanel userId={user.id} email={user.email} />
+            ) : null}
 
             <Panel title="Memberships" padding="none">
               {memberships.length === 0 ? (

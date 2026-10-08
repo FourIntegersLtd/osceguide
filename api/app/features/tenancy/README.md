@@ -41,10 +41,14 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
   bulk add the retiring client called "import staff from a spreadsheet" is
   `POST /memberships/bulk` rather than a `roster` route — and why no temporary
   password appears in it: an unknown address is invited, exactly as it is one at
-  a time. The one exception is the platform console's seat route, whose optional
-  `temporary_password` exists because the invitation email cannot always be
-  delivered; it applies only to a brand-new account, which must change it at
-  first sign-in.
+  a time. The exception is the single add: the platform console's seat route, an
+  org admin's team invite and the roster's single add take an optional
+  `temporary_password` because the invitation email cannot always be delivered.
+  It applies only to a brand-new account (never an existing one;
+  `temporary_password_applied` says which), which must change it at first
+  sign-in, and the audit row says "(temporary password)". While the account is
+  still `must_change_password`, `POST /platform/users/{id}/temporary-password`
+  re-issues a lost one. A platform admin cannot revoke their own console access.
 - Org admin is `owner | admin | institution_admin | partner_admin`.
   Institution admin — who alone signs off candidate results — is the narrower
   `owner | admin | institution_admin`.
