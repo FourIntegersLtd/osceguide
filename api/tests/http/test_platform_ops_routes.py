@@ -127,7 +127,7 @@ async def test_the_machinery_stream_is_refused_to_anybody_but_a_platform_admin(
         assert response.status_code == 403
 
 
-async def test_a_job_its_worker_died_on_is_requeued_once_then_failed_with_its_history(
+async def test_a_job_its_worker_died_on_is_requeued_three_times_then_failed_with_its_history(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     """B32: two produce_media jobs sat `doing` at 0 attempts after their worker
@@ -158,22 +158,22 @@ async def test_a_job_its_worker_died_on_is_requeued_once_then_failed_with_its_hi
         status, attempts = found.one()
         return str(status), int(attempts)
 
-    await dies_while_running()
-    assert job_id in (await reclaim_stalled_jobs(db_session))[0]
-    assert await state() == ("todo", 1)
+    for requeues in (1, 2, 3):
+        await dies_while_running()
+        assert job_id in (await reclaim_stalled_jobs(db_session))[0]
+        assert await state() == ("todo", requeues)
 
     await dies_while_running()
     assert job_id in (await reclaim_stalled_jobs(db_session))[1]
-    assert await state() == ("failed", 2)
+    assert await state() == ("failed", 4)
 
     failed = await client.get("/api/v1/platform/jobs?status=failed&task=produce_media", headers=bearer(root))
     assert failed.status_code == 200, failed.text
     [job] = [job for job in failed.json()["items"] if job["id"] == job_id]
+    # procrastinate's retry sets a retry time, which logs as scheduled
     assert [event["type"] for event in job["events"]] == [
         "deferred",
-        "started",
-        "scheduled",  # procrastinate's retry sets a retry time, which logs as scheduled
-        "deferred_for_retry",
+        *["started", "scheduled", "deferred_for_retry"] * 3,
         "started",
         "failed",
     ]

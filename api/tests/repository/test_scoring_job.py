@@ -293,8 +293,9 @@ async def test_the_reaper_giving_up_on_a_marking_job_says_so_on_the_attempt(
             {"id": job_id},
         )
 
-    await dies_while_running()
-    assert job_id in (await reclaim_stalled_jobs(db_session))[0]
+    for _ in range(3):
+        await dies_while_running()
+        assert job_id in (await reclaim_stalled_jobs(db_session))[0]
     await dies_while_running()
     assert job_id in (await reclaim_stalled_jobs(db_session))[1]
 

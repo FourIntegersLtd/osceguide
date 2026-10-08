@@ -23,8 +23,14 @@ ask what the queue holds for the thing it is about without growing its own SQL.
 ## Jobs
 - `reclaim_stalled_jobs` (queue `health`, every 5 min): a job left `doing` by a
   worker that died (its row pruned, so `worker_id` is null, or no heartbeat for
-  `STALLED_AFTER_SECONDS`) is requeued once, then failed. procrastinate never
-  does this itself: a pruned worker's jobs stay `doing` for ever.
+  `STALLED_AFTER_SECONDS`) is requeued up to three times (procrastinate's own
+  `attempts` is the persisted count), then failed with a `job.stalled_failed`
+  row in the platform audit log. procrastinate never does this itself: a pruned
+  worker's jobs stay `doing` for ever.
+  The same sweep (`run_sweep`) fails consumer attempts left created or running
+  over three hours with `failed_reason` `abandoned`, and each step runs in its
+  own transaction: a step that raises writes `sweep.failed` to the platform
+  audit log (`GET /platform/audit?action=sweep.`) and the next step still runs.
 
 `JobRead.events` is the job's procrastinate event log (type and time). A retry
 logs `scheduled` before `deferred_for_retry`. procrastinate stores no exception

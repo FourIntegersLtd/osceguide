@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from app.core.jobs import get_jobs_app
-from app.core.logging import get_logger
+from datetime import UTC, datetime
 
-log = get_logger(__name__)
+from app.core.jobs import get_jobs_app
 
 
 def register() -> None:
@@ -15,14 +14,9 @@ def register() -> None:
     @app.periodic(cron="*/5 * * * *")
     @app.task(name="reclaim_stalled_jobs", queue="health")
     async def reclaim_stalled_jobs(timestamp: int = 0) -> None:
-        """Requeue or fail the jobs a dead worker left `doing`, every five minutes."""
+        """Requeue or fail the jobs a dead worker left `doing`, and fail consumer attempts
+        abandoned for over three hours, every five minutes."""
         from app.core.db import job_session
-        from app.features.health.service import reclaim_stalled_jobs as run
+        from app.features.health.service import run_sweep
 
-        async with job_session() as session:
-            requeued, failed = await run(session)
-            if failed:
-                # An error, so it reaches Sentry: a job that failed here will not run again (S-25).
-                log.error("stalled jobs failed", requeued=requeued, failed=failed)
-            elif requeued:
-                log.warning("stalled jobs requeued", requeued=requeued)
+        await run_sweep(job_session, now=datetime.now(UTC))

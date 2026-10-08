@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -215,6 +215,20 @@ async def abandon_attempt(
 
     await repository.set_status(session, attempt_id, status=domain.Status.FAILED, at=now, reason="abandoned")
     return _attempt_read(await _require(session, attempt_id))
+
+
+ABANDONED_AFTER = timedelta(hours=3)
+
+
+async def abandon_stale_attempts(session: AsyncSession, *, now: datetime) -> list[uuid.UUID]:
+    """Fail the consumer attempts left created or running for over three hours (S-25).
+
+    A candidate who closed the tab never called `abandon_attempt`, so the attempt would hold its
+    set entry or practice slot for ever. Returns the ids failed.
+    """
+    return await repository.fail_stale_consumer_attempts(
+        session, started_before=now - ABANDONED_AFTER, at=now, reason="abandoned"
+    )
 
 
 async def restart_for_slot(

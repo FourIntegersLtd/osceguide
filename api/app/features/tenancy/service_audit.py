@@ -57,6 +57,32 @@ async def record(
     )
 
 
+async def record_system(
+    session: AsyncSession,
+    *,
+    action: str,
+    target_type: str,
+    target_id: str,
+    summary: str | None = None,
+    meta: dict[str, Any] | None = None,
+    at: datetime | None = None,
+) -> None:
+    """One platform-log row for something the machinery did on its own, so no actor: a stalled
+    job given up on, a sweep step that failed. Staff read it in `GET /platform/audit`."""
+    await repository.write_audit(
+        session,
+        org_id=None,
+        actor_user_id=None,
+        actor_email=None,
+        action=action,
+        at=at,
+        target_type=target_type,
+        target_id=target_id,
+        summary=summary,
+        meta=meta,
+    )
+
+
 async def _record_for_org(
     session: AsyncSession,
     *,

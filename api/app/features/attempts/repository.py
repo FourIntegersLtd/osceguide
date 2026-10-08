@@ -509,6 +509,25 @@ async def fail_unfinished_for_user(
     return len(ids)
 
 
+async def fail_stale_consumer_attempts(
+    session: AsyncSession, *, started_before: datetime, at: datetime, reason: str
+) -> list[uuid.UUID]:
+    """Fail every consumer attempt still created or running since before `started_before`.
+
+    An exam-slot attempt is the sitting's: its circuit decides when a station is over, so it is left.
+    """
+    began = func.coalesce(Attempt.started_at, Attempt.created_at)
+    stmt = select(Attempt.id).where(
+        Attempt.kind != str(Kind.EXAM_SLOT),
+        Attempt.status.in_([str(Status.CREATED), str(Status.RUNNING)]),
+        began < started_before,
+    )
+    ids = list((await session.execute(stmt)).scalars())
+    for attempt_id in ids:
+        await set_status(session, attempt_id, status=Status.FAILED, at=at, reason=reason)
+    return ids
+
+
 async def exam_for_slot_attempt(session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID | None:
     """The exam a previous attempt on this slot ran under.
 

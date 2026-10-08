@@ -18,6 +18,7 @@ from app.core.logging import get_logger
 from app.core.ports import EventBus
 from app.core.settings import Settings, get_settings
 from app.core.sse import Snapshot, event_stream
+from app.features.attempts import service as attempts_service
 from app.features.attempts.jobs import SCORING_TASK, record_marking_gave_up
 from app.features.health import repository, repository_jobs
 from app.features.health.errors import JobNotCancellable, JobNotFound, JobNotRetryable, MessageNotRetryable
@@ -47,9 +48,10 @@ MACHINERY_JOB_PAGE = 100
 # A worker beats every 10s by default; three minutes of silence is a dead one,
 # not a slow one, and `worker_id` is null once procrastinate prunes it.
 STALLED_AFTER_SECONDS = 180
-# A stalled job is put back once. A second stall is likely the job itself
-# taking its worker down, so it fails rather than looping.
-MAX_STALLED_REQUEUES = 1
+# A stalled job is put back up to three times. procrastinate counts each requeue in the job's
+# `attempts`, so the count survives a restart. A fourth stall is likely the job itself taking its
+# worker down, so it fails rather than looping.
+MAX_STALLED_REQUEUES = 3
 
 
 async def check_database(session: AsyncSession) -> CheckState:
@@ -178,7 +180,8 @@ def machinery_stream(
 
 
 async def reclaim_stalled_jobs(session: AsyncSession) -> tuple[list[int], list[int]]:
-    """Move on every job a dead worker left `doing`: requeued once, failed after that.
+    """Move on every job a dead worker left `doing`: requeued up to `MAX_STALLED_REQUEUES` times,
+    failed after that with the reason in the platform audit log.
 
     procrastinate prunes a dead worker but leaves its jobs `doing` for ever, which
     is how two `produce_media` runs sat at 0 attempts. Returns `(requeued, failed)` ids.
@@ -192,10 +195,51 @@ async def reclaim_stalled_jobs(session: AsyncSession) -> tuple[list[int], list[i
         else:
             await repository_jobs.fail(session, job.id)
             failed.append(job.id)
+            await service_audit.record_system(
+                session,
+                action="job.stalled_failed",
+                target_type="job",
+                target_id=str(job.id),
+                summary=f"{job.task_name} lost its worker {job.attempts + 1} times and was failed",
+                meta={"task": job.task_name, "requeues": job.attempts},
+            )
             if job.task_name == SCORING_TASK:
                 # The job will not run again, so the attempt has to say marking gave up.
                 await record_marking_gave_up(session, uuid.UUID(job.args["attempt_id"]))
     return requeued, failed
+
+
+async def abandon_stale_attempts(session: AsyncSession, *, now: datetime) -> list[uuid.UUID]:
+    """The sweep's second step: fail the consumer attempts nobody finished (S-25)."""
+    return await attempts_service.abandon_stale_attempts(session, now=now)
+
+
+async def run_sweep(opener: SessionOpener, *, now: datetime) -> None:
+    """Run each step of the five-minute sweep in its own transaction.
+
+    A step that raises is rolled back and written to the platform audit log (`sweep.failed`), where
+    staff read it, then the next step still runs. Before this a failure reached the log and nothing else.
+    """
+    steps = (
+        ("reclaim_stalled_jobs", lambda session: reclaim_stalled_jobs(session)),
+        ("abandon_stale_attempts", lambda session: abandon_stale_attempts(session, now=now)),
+    )
+    for name, step in steps:
+        try:
+            async with opener() as session:
+                await step(session)
+        except Exception as exc:  # noqa: BLE001 - a failing step must not stop the next, and is recorded
+            log.error("sweep step failed", step=name, error=str(exc))
+            async with opener() as session:
+                await service_audit.record_system(
+                    session,
+                    action="sweep.failed",
+                    target_type="sweep",
+                    target_id=name,
+                    summary=f"{name} failed: {exc}",
+                    meta={"error": f"{type(exc).__name__}: {exc}"},
+                    at=now,
+                )
 
 
 async def retry_job(session: AsyncSession, job_id: int, *, actor: Principal, now: datetime) -> None:
