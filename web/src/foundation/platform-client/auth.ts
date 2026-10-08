@@ -247,14 +247,16 @@ async function fetchToken(): Promise<string | null> {
     // cookies are untouched. Answering null sent the next request out with no token, and its 401
     // read as a sign-out while the session was fine.
     if (!body) throw new PlatformTransportError("Could not refresh the session", null);
+    // Signed out while this was in the air: the answer belongs to a session that is gone, and
+    // acting on it (clearing on a refusal, storing a token) would undo whatever came since. Hand
+    // callers who joined it the current session's token, if a sign-in has made one.
+    if (generation !== startedIn) return session?.accessToken ?? null;
     if (!body.access_token) {
       // The server has already cleared the cookies: the chain was spent or
       // revoked, or there was never a session here.
       forgetLocally();
       return null;
     }
-    // Signed out while this was in the air: the answer belongs to a session that is gone.
-    if (generation !== startedIn) return null;
     session = {
       accessToken: body.access_token,
       expiresAt: body.expires_at ?? Date.now() + REFRESH_MARGIN_MS,

@@ -597,3 +597,18 @@ async def test_a_live_token_for_an_account_that_no_longer_exists_is_not_a_creden
     response = await client.get("/api/v1/me", headers=bearer(token))
     assert response.status_code == 401
     assert response.json()["code"] == "account_not_found"
+
+
+async def test_changing_or_closing_for_an_account_that_no_longer_exists_says_so_like_me_does(
+    client: AsyncClient,
+) -> None:
+    """Same 401 `account_not_found` as `/me`, not a wrong-password code or a 404."""
+    headers = bearer(mint_token(user_id=uuid.uuid4()))
+    changed = await client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "anything at all", "new_password": "a different horse battery"},
+        headers=headers,
+    )
+    closed = await client.post("/api/v1/me/close", json={"password": "anything at all"}, headers=headers)
+    assert (changed.status_code, changed.json()["code"]) == (401, "account_not_found")
+    assert (closed.status_code, closed.json()["code"]) == (401, "account_not_found")

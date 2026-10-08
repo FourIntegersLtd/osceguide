@@ -190,6 +190,47 @@ test("a refresh that answers after sign-out does not bring the session back", as
   assert.equal(peekPlatformAccessToken(), null);
 });
 
+/** A token route answer the test releases by hand, so sign-out and sign-in can happen first. */
+function holdRefresh(): (response: Response) => void {
+  let release: (response: Response) => void = () => {};
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (url.endsWith("/api/session") && init?.method === "POST") {
+      serverSetsMarker();
+      return new Response(null, { status: 204 });
+    }
+    if (url.includes("/auth/login")) return json(PAIR);
+    return held;
+  }) as typeof fetch;
+  return release;
+}
+
+test("a stale refresh refused after a new sign-in leaves the new session alone", async () => {
+  serverSetsMarker();
+  const release = holdRefresh();
+  const stale = platformAccessToken();
+  await logout();
+  await login("a@b.c", "right-password");
+  release(json({ access_token: null }));
+  await stale;
+  assert.equal(peekPlatformAccessToken(), "access-1");
+  assert.equal(hasStoredSession(), true);
+});
+
+test("callers that joined a refresh across a sign-out and sign-in get the new session's token", async () => {
+  serverSetsMarker();
+  const release = holdRefresh();
+  const stale = platformAccessToken();
+  await logout();
+  await login("a@b.c", "right-password");
+  release(json({ access_token: "late", expires_at: Date.now() + 900_000 }));
+  assert.equal(await stale, "access-1");
+});
+
 test("no session means no request at all", async () => {
   const calls = respond(() => json({ access_token: null }));
   assert.equal(await platformAccessToken(), null);

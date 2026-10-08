@@ -15,6 +15,7 @@ from app.core.settings import Settings
 from app.features.identity import repository, service_sessions
 from app.features.identity.domain import WeakPassword, validate_password
 from app.features.identity.errors import (
+    AccountNotFound,
     AccountSuspended,
     InvalidCredentials,
     InvalidResetToken,
@@ -121,7 +122,7 @@ async def change_password(
         raise WeakPasswordError(str(exc)) from exc
     user = await repository.user_by_id(session, user_id)
     if user is None:
-        raise InvalidCredentials()
+        raise AccountNotFound()
     if user.password_login_disabled:
         raise PasswordLoginDisabled()
     if user.password_hash is None:

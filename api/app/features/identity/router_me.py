@@ -105,7 +105,7 @@ async def upload_my_avatar(
 @router.post(
     "/me/close",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(Unauthenticated, InvalidCredentials),
+    responses=error_responses(Unauthenticated, AccountNotFound, InvalidCredentials),
 )
 async def close_me(
     body: schemas.CloseAccount,

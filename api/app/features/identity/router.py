@@ -240,6 +240,7 @@ async def confirm_password_reset(
     "/auth/change-password",
     response_model=schemas.TokenPair,
     responses=error_responses(
+        errors.AccountNotFound,
         errors.InvalidCredentials,
         errors.WeakPasswordError,
         errors.PasswordLoginDisabled,

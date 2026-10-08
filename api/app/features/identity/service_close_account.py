@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import repository
-from app.features.identity.errors import InvalidCredentials, UserNotFound
+from app.features.identity.errors import AccountNotFound, InvalidCredentials
 
 
 async def end_sessions(session: AsyncSession, user_id: uuid.UUID, *, now: datetime, reason: str) -> None:
@@ -35,7 +35,7 @@ async def close_account(
 
     user = await repository.user_by_id(session, user_id)
     if user is None:
-        raise UserNotFound()
+        raise AccountNotFound()
     if user.password_hash:
         if not verify_password(user.password_hash, password or ""):
             raise InvalidCredentials()

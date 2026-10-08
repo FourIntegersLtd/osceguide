@@ -126,7 +126,8 @@ class SaveSamlConnection(BaseModel):
     """What an institution's IdP metadata says, and which attributes carry the address and name.
 
     The attribute defaults are the claim URIs Entra sends. Text is stripped before it is
-    checked, so a name of only spaces is a 422 rather than a stored blank.
+    checked, so an `email_attribute` of only spaces is a 422. The optional name attributes
+    are not required, so a blank one is stored as empty and read as unset.
     """
 
     model_config = ConfigDict(str_strip_whitespace=True)
