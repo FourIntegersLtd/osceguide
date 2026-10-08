@@ -47,7 +47,11 @@ def console_stream(
         # An ended circuit gets one last snapshot and then the stream closes.
         return Snapshot(console.model_dump_json(), final=console.circuit.ended_at is not None)
 
-    return event_stream(topics=[circuit_topic(circuit_id)], snapshot=snapshot, bus=bus)
+    # A snapshot on every heartbeat: with the worker down nothing is announced, and a
+    # snapshot is what catches a due circuit up (S-7).
+    return event_stream(
+        topics=[circuit_topic(circuit_id)], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True
+    )
 
 
 def my_sittings_stream(
@@ -91,4 +95,4 @@ def live_board_stream(
             board = await service_live.build_live_board(session, org_id, now=clock.now())
         return Snapshot(board.model_dump_json())
 
-    return event_stream(topics=[org_topic(org_id)], snapshot=snapshot, bus=bus)
+    return event_stream(topics=[org_topic(org_id)], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True)

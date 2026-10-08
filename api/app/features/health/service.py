@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -99,6 +99,16 @@ async def platform_health(session: AsyncSession, redis: Redis | None) -> Platfor
         jobs_by_status=await repository_jobs.counts_by_status(session),
         worker_seen_at=await repository_jobs.latest_worker_heartbeat(session),
     )
+
+
+# The worker beats every 10s; a minute of silence means the board should say so.
+WORKER_STALE_AFTER = timedelta(seconds=60)
+
+
+async def worker_running(session: AsyncSession, *, now: datetime) -> bool:
+    """Whether a job worker has checked in within the last minute (S-7)."""
+    seen = await repository_jobs.latest_worker_heartbeat(session)
+    return seen is not None and now - seen < WORKER_STALE_AFTER
 
 
 async def list_jobs(

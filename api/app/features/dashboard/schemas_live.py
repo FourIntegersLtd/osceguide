@@ -72,6 +72,9 @@ class LiveBoard(BaseModel):
 
     as_of: datetime
     circuits: list[LiveCircuit] = Field(default_factory=list)
+    # False when no job worker has checked in lately. The api still advances due
+    # circuits on this read, but webhooks, marking and patient removal wait for it.
+    worker_running: bool = True
 
 
 class LiveRunRead(BaseModel):

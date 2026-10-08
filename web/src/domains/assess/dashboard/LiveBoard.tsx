@@ -87,6 +87,13 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
           }
           return (
             <div className="flex flex-col gap-3">
+              {board?.worker_running === false ? (
+                <Alert tone="warning">
+                  The background worker is not running. This screen still moves due circuits on, but
+                  marking and clearing patients from rooms wait until it is back. Tell your platform
+                  admin.
+                </Alert>
+              ) : null}
               <B2CHero
                 eyebrow="Live"
                 title={`${circuits.length} ${circuits.length === 1 ? "circuit" : "circuits"} running`}

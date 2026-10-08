@@ -94,6 +94,22 @@ async def overdue_circuits(session: AsyncSession, *, now: datetime, grace_second
     ]
 
 
+async def overdue_circuits_of_org(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    now: datetime,
+    grace_seconds: int,
+    circuit_id: uuid.UUID | None = None,
+) -> list[DueCircuit]:
+    """`overdue_circuits` narrowed to one organisation, and to one circuit when a console reads it."""
+    return [
+        row
+        for row in await overdue_circuits(session, now=now, grace_seconds=grace_seconds)
+        if row.org_id == org_id and (circuit_id is None or row.circuit_id == circuit_id)
+    ]
+
+
 async def silent_patient_circuits(
     session: AsyncSession, *, dispatched_before: datetime, auto_action: str
 ) -> list[DueCircuit]:

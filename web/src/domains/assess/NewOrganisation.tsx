@@ -5,10 +5,11 @@ import { useState } from "react";
 import { Alert, Button, Checkbox, Input, Select, FoldSection } from "@/foundation/ui";
 import { authButtonPrimary, authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import { AuthShell } from "@/capabilities/account";
+import { sendSiteMessage } from "@/capabilities/help";
 
 /**
  * What an organisation can use the platform for. Product copy, not data: the
- * backend has no `purpose` column yet, so the ticked choice is not stored.
+ * backend has no `purpose` column yet, so the choice travels in the request text.
  */
 type ProgrammePurpose = "exam_preparation" | "placement" | "recruitment" | "onboarding" | "cpd";
 
@@ -34,11 +35,12 @@ function toggled<T>(list: T[], value: T): T[] {
 }
 
 /**
- * An institution setting itself up, without waiting for us to do it.
+ * An institution or employer asking to be set up.
  *
- * Today an organisation is created by OSCE Guide staff from the platform
- * console; there is no public route that creates one with its first owner.
- * The form is whole and checks what it can, then says it created nothing.
+ * An organisation is created by OSCE Guide staff from the platform console
+ * (it has a contract and a first admin), so this form files a request through
+ * `POST /site/messages`, which staff read in the console inbox and answer by
+ * email. It creates no account, so it asks for no password (H-1).
  */
 export function NewOrganisation() {
   const [name, setName] = useState("");
@@ -47,23 +49,70 @@ export function NewOrganisation() {
   const [purposes, setPurposes] = useState<ProgrammePurpose[]>([]);
   const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
 
   const purposeMissing = submitted && purposes.length === 0;
+
+  async function send() {
+    setSubmitted(true);
+    if (purposes.length === 0) return;
+    setSending(true);
+    setError(null);
+    try {
+      await sendSiteMessage({
+        kind: "contact",
+        name: ownerName,
+        email,
+        subject: `Set up an organisation: ${name}`,
+        source: "register/organisation",
+        body: [
+          `Organisation: ${name}`,
+          `Type: ${orgType}`,
+          `Exams: ${exams.length ? exams.join(", ") : "none chosen"}`,
+          `Use: ${purposes.map((id) => PURPOSES.find((entry) => entry.id === id)?.label ?? id).join(", ")}`,
+          `Contact: ${ownerName} <${email}>`,
+        ].join("\n"),
+      });
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The request could not be sent. Try again.");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <AuthShell
+        variant="card"
+        eyebrow="For institutions"
+        title="Request received"
+        subtitle={`Thank you. We will set up ${name} and email ${email} with the next steps, usually within one working day.`}
+      >
+        <p className={authFooterLink}>
+          <Link href="/login" className={authLink}>
+            Back to sign in
+          </Link>
+        </p>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell
       variant="card"
       eyebrow="For institutions"
       title="Set up your organisation"
-      subtitle="Create a space for your programme. Next you will invite your faculty and trainees, then schedule your first sitting."
+      subtitle="Tell us about your programme or team. We create your organisation and make you its first admin, then you invite your faculty and trainees."
     >
       <form
         className="space-y-5"
         onSubmit={(event) => {
           event.preventDefault();
-          setSubmitted(true);
+          void send();
         }}
       >
         <FoldSection number={1} title="Organisation">
@@ -135,27 +184,21 @@ export function NewOrganisation() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
-        <Input
-          label="Password"
-          type="password"
-          required
-          minLength={10}
-          autoComplete="new-password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          hint="Use 10 or more characters. Or set up single sign-on later in Settings."
-        />
         </div>
         </FoldSection>
 
-        {submitted && !purposeMissing ? (
-          <Alert tone="warning" title="Nothing was created">
-            Self-serve sign-up is not connected yet. Contact us and we will set your organisation up.
-          </Alert>
-        ) : null}
+        {error ? <Alert tone="danger">{error}</Alert> : null}
 
-        <Button type="submit" variant="commit" themeType="b2c" fullWidth size="lg" className={authButtonPrimary}>
-          Create organisation
+        <Button
+          type="submit"
+          variant="commit"
+          themeType="b2c"
+          fullWidth
+          size="lg"
+          disabled={sending}
+          className={authButtonPrimary}
+        >
+          {sending ? "Sending…" : "Request set-up"}
         </Button>
         <p className={authFooterLink}>
           Already set up?{" "}

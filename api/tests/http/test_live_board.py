@@ -281,3 +281,38 @@ def test_a_run_is_complete_only_when_every_station_was_sat() -> None:
     assert run_status(stations_total=3, stations_completed=3) == "completed"
     assert run_status(stations_total=3, stations_completed=2) == "ended_early"
     assert run_status(stations_total=0, stations_completed=0) == "ended_early"
+
+
+async def test_reading_the_board_advances_a_circuit_the_worker_left_behind(
+    client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """S-7: the worker is down, so the read moves the circuit on, once, and says the worker is down."""
+    from app.features.voice import service as voice
+
+    monkeypatch.setattr(voice, "get_room_agents", lambda: FakeRoomAgents())
+    admin, _, _ = await a_running_morning(client, make_actor, db_session)
+
+    clock.set(NOW + timedelta(minutes=10))
+    first = (await client.get("/api/v1/orgs/kings/live", headers=bearer(admin))).json()
+    second = (await client.get("/api/v1/orgs/kings/live", headers=bearer(admin))).json()
+
+    row = first["circuits"][0]
+    assert row["phase"] == "simulation"
+    assert row["remaining_seconds"] == 600
+    assert "clock_overdue" not in row["alerts"]
+    assert second["circuits"][0]["phase"] == "simulation", "a second read must not advance it again"
+    assert second["circuits"][0]["remaining_seconds"] == 600
+    assert first["worker_running"] is False, "no worker has checked in"
+
+
+async def test_a_fresh_worker_heartbeat_means_the_worker_is_running(
+    client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock
+) -> None:
+    from sqlalchemy import text
+
+    admin, _, _ = await a_running_morning(client, make_actor, db_session)
+    await db_session.execute(text("INSERT INTO procrastinate_workers DEFAULT VALUES"))
+
+    board = (await client.get("/api/v1/orgs/kings/live", headers=bearer(admin))).json()
+
+    assert board["worker_running"] is True

@@ -4,7 +4,8 @@ import { orgPath, pageQuery } from "@/domains/assess/api";
 export type OrgDashboard = components["schemas"]["OrgDashboard"];
 export type OrgSetup = components["schemas"]["OrgSetup"];
 export type OrgSittingRow = components["schemas"]["OrgSittingRow"];
-export type LiveBoard = components["schemas"]["LiveBoard"];
+// `worker_running` is declared here until the generated schema is regenerated.
+export type LiveBoard = components["schemas"]["LiveBoard"] & { worker_running?: boolean };
 export type LiveCircuit = components["schemas"]["LiveCircuit"];
 export type SupervisorCircuits = components["schemas"]["SupervisorCircuits"];
 export type SupervisorCircuitRow = components["schemas"]["SupervisorCircuitRow"];

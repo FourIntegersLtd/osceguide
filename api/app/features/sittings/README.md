@@ -155,6 +155,11 @@ station (redo, jump) goes back to `scheduled`, not `completed`, and the clock
 moves on to the first station not yet sat (R-12). `clock_overdue` is raised only
 with auto-advance on (R-14). Starting a consultation still fails when the dispatch does.
 
+A run screen also catches a circuit up (S-7): reading the exam-day board or a circuit's console
+(and their streams, which snapshot on every heartbeat) calls `jobs.advance_due`, the same `advance_one` the
+worker uses, against the sequence just read and under the row lock, so it is idempotent and safe beside the
+scheduled job. The board's `worker_running` is false when `procrastinate_workers` has no heartbeat in 60s.
+
 A scheduled transition is found by polling, not by notification, so
 `worker_fetch_job_polling_seconds` (default 1.0) matters here in a way it does
 not for marking.
