@@ -246,6 +246,19 @@ class PasswordResetConfirm(BaseModel):
     password: str = Field(min_length=1, max_length=512)
 
 
+class EmailChangeRequest(BaseModel):
+    new_email: EmailStr
+    current_password: str = Field(min_length=1, max_length=512)
+
+
+class EmailChangeConfirm(BaseModel):
+    token: str = Field(min_length=1, max_length=2048)
+
+
+class EmailChanged(BaseModel):
+    email: str
+
+
 class Accepted(BaseModel):
     """Returned where the answer must not depend on whether a record exists."""
 

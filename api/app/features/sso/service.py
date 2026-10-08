@@ -6,10 +6,13 @@ controls the issuer controls who may sign in as that institution's members.
 
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, raise_mapped
 from app.core.tenancy import OrgNotFound
+from app.features.identity import service as identity
 from app.features.sso import domain, errors, repository, schemas
 from app.features.sso.models import OrganizationSso
 from app.features.tenancy import service as tenancy
@@ -111,6 +114,7 @@ async def save_config(
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
+    await _ensure_nobody_is_locked_out(session, org.id, body)
     config = await repository.upsert_config(
         session,
         org_id=org.id,
@@ -131,6 +135,23 @@ async def save_config(
 
     await repository.replace_bindings(session, sso_id=config.id, bindings=bindings)
     return await _read(session, config, org_slug=org.slug)
+
+
+async def _ensure_nobody_is_locked_out(
+    session: AsyncSession, org_id: uuid.UUID, body: schemas.SaveSsoConfig
+) -> None:
+    """Switching to SSO-only hides the password form: refuse, naming the members who have only a
+    password, unless the admin has seen them and confirmed. Already SSO-only changes nothing for them."""
+    if not (body.enabled and body.sso_only) or body.confirm_password_members:
+        return
+    current = await repository.config_for_org(session, org_id)
+    if current is not None and current.sso_only:
+        return
+    seated = await identity.emails_with_passwords(
+        session, await tenancy.live_member_user_ids(session, org_id)
+    )
+    if seated:
+        raise errors.SsoOnlyLocksOutPasswordMembers(details={"count": len(seated), "emails": seated[:20]})
 
 
 def _bindings(body: schemas.SaveSsoConfig) -> list[tuple[str, str]]:

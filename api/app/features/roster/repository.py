@@ -47,6 +47,17 @@ async def trainee_by_id(session: AsyncSession, org_id: uuid.UUID, trainee_id: uu
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def follow_account_email(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
+    """Give every roster entry that is this person their new address, except where the same
+    organisation already rosters that address for someone else (the unique key would refuse it)."""
+    taken = select(Trainee.org_id).where(Trainee.email == email).scalar_subquery()
+    await session.execute(
+        update(Trainee)
+        .where(Trainee.user_id == user_id, Trainee.anonymised_at.is_(None), Trainee.org_id.not_in(taken))
+        .values(email=email)
+    )
+
+
 async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
     """Every roster entry this person is, across organisations.
 

@@ -34,6 +34,8 @@ export {
   changePassword,
   requestPasswordReset,
   confirmPasswordReset,
+  requestEmailChange,
+  confirmEmailChange,
   hasStoredSession,
   installPlatformAuth,
   forgetAccessToken,

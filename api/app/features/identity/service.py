@@ -325,6 +325,13 @@ async def user_refs_by_ids(session: AsyncSession, user_ids: Sequence[uuid.UUID])
     return {user.id: _ref(user) for user in users}
 
 
+async def emails_with_passwords(session: AsyncSession, user_ids: Sequence[uuid.UUID]) -> list[str]:
+    """The addresses, sorted, of those among these people who sign in with a password."""
+    return sorted(
+        user.email for user in await repository.users_by_ids(session, list(user_ids)) if user.password_hash
+    )
+
+
 async def user_ids_matching(session: AsyncSession, term: str) -> list[uuid.UUID]:
     """Ids of every account whose name or email contains `term`. For another
     slice's own search filter, so it never joins `users` itself."""

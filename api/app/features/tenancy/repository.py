@@ -328,6 +328,12 @@ async def update_organization(session: AsyncSession, org_id: uuid.UUID, **values
     await session.execute(update(Organization).where(Organization.id == org_id).values(**values))
 
 
+async def live_member_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
+    """Everyone with a live membership here, whatever the role."""
+    stmt = select(Membership.user_id).where(Membership.org_id == org_id, Membership.revoked_at.is_(None))
+    return list((await session.execute(stmt)).scalars().unique())
+
+
 async def member_user_ids(
     session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
 ) -> set[uuid.UUID]:

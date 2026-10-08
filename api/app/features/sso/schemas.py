@@ -37,6 +37,8 @@ class SaveSsoConfig(BaseModel):
     default_exam_code: str | None = Field(default=None, max_length=32)
     hosts: list[str] = Field(default_factory=list)
     email_domains: list[str] = Field(default_factory=list)
+    # Sent on the repeat save, once the admin has seen who SSO-only would lock out.
+    confirm_password_members: bool = False
 
 
 class SsoSignIn(BaseModel):

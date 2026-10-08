@@ -64,6 +64,14 @@ class InvalidResetToken(InvalidInput):
     default_message = "That reset link has expired or has already been used"
 
 
+class InvalidEmailChangeToken(InvalidInput):
+    """Refuses an address-change link that is forged, expired, already used, or for an address
+    someone has taken since."""
+
+    code = "invalid_email_change_token"
+    default_message = "That link has expired or has already been used"
+
+
 class AccountSuspended(Unauthenticated):
     """Refuses sign-in for an account whose status is not `active`."""
 

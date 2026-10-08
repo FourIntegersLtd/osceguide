@@ -6,12 +6,14 @@ import {
   AsyncBoundary,
   Button,
   Checkbox,
+  ConfirmModal,
   Input,
   Panel,
   Select,
   Textarea,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { isPlatformError } from "@/foundation/platform-client/errors";
 import {
   readSsoConfig,
   saveSsoConfig,
@@ -36,6 +38,23 @@ interface SsoFormState {
   default_exam_code: string;
   hosts: string;
   email_domains: string;
+}
+
+// `confirm_password_members` and the `sso_only_password_members` code are not in the generated
+// types until `schema.d.ts` is regenerated from the API.
+type SaveWithConfirmation = SaveSsoConfigInput & { confirm_password_members?: boolean };
+
+/** Who SSO-only would lock out, as the API lists them. */
+interface PasswordMembers {
+  count: number;
+  emails: string[];
+}
+
+function passwordMembersOf(cause: unknown): PasswordMembers | null {
+  if (!isPlatformError(cause) || (cause.code as string) !== "sso_only_password_members") return null;
+  const count = Number(cause.details?.count ?? 0);
+  const emails = Array.isArray(cause.details?.emails) ? (cause.details.emails as string[]) : [];
+  return { count, emails };
 }
 
 const SSO_DESCRIPTION =
@@ -122,16 +141,17 @@ function SsoForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [lockedOut, setLockedOut] = useState<PasswordMembers | null>(null);
   const fieldErrors = submitted ? ssoFieldErrors(form) : {};
 
-  const commit = useCallback(async () => {
+  const commit = useCallback(async (confirmPasswordMembers = false) => {
     setSubmitted(true);
     if (Object.keys(ssoFieldErrors(form)).length > 0) return;
 
     setBusy(true);
     setError(null);
     try {
-      const body: SaveSsoConfigInput = {
+      const body: SaveWithConfirmation = {
         provider: form.provider,
         issuer: form.issuer.trim() || null,
         enabled: form.enabled,
@@ -140,11 +160,18 @@ function SsoForm({
         default_exam_code: form.default_exam_code.trim() || null,
         hosts: linesToList(form.hosts),
         email_domains: linesToList(form.email_domains),
+        confirm_password_members: confirmPasswordMembers,
       };
       await saveSsoConfig(slug, body);
+      setLockedOut(null);
       toast.success("SSO configuration saved");
       onSaved();
     } catch (cause) {
+      const members = passwordMembersOf(cause);
+      if (members) {
+        setLockedOut(members);
+        return;
+      }
       setError(cause instanceof Error ? cause : new Error(String(cause)));
     } finally {
       setBusy(false);
@@ -260,6 +287,29 @@ function SsoForm({
           {busy ? "Saving…" : "Save"}
         </Button>
       </div>
+
+      <ConfirmModal
+        isOpen={lockedOut !== null}
+        title="Some members sign in with a password"
+        tone="danger"
+        confirmText="Turn on SSO only"
+        isLoading={busy}
+        onCancel={() => setLockedOut(null)}
+        onConfirm={() => commit(true)}
+        message={
+          <>
+            <p>
+              {lockedOut?.count} {lockedOut?.count === 1 ? "member signs" : "members sign"} in with
+              a password and will not be able to sign in once the password form is hidden.
+            </p>
+            <ul className="mt-2 list-disc pl-5">
+              {lockedOut?.emails.map((email) => (
+                <li key={email}>{email}</li>
+              ))}
+            </ul>
+          </>
+        }
+      />
     </div>
   );
 }

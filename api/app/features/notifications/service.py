@@ -158,6 +158,28 @@ def _password_reset(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _email_change(escaped_fields: dict[str, str]) -> str:
+    """The body for the link that confirms a new sign-in address."""
+    link = f"{get_settings().frontend_url.rstrip('/')}/confirm-email?token={escaped_fields.get('token', '')}"
+    return (
+        "<h1>Confirm your new email address</h1>"
+        "<p>Use the link below to make this the address you sign in with. It expires in an hour, "
+        "and using it signs you out everywhere.</p>"
+        f'<p><a href="{link}">Confirm this address</a></p>'
+        "<p>If you did not ask for this, nothing has changed and you can ignore it.</p>"
+    )
+
+
+def _email_changed_notice(escaped_fields: dict[str, str]) -> str:
+    """The body sent to the old address once an account has moved to a new one."""
+    return (
+        "<h1>Your email address was changed</h1>"
+        "<p>Your OSCE Guide account now signs in with "
+        f"{escaped_fields.get('new_email', 'a new address')}.</p>"
+        "<p>If this was not you, reset your password straight away or contact support.</p>"
+    )
+
+
 def _result_released(escaped_fields: dict[str, str]) -> str:
     """The body telling a candidate their sitting's outcome is ready to read."""
     link = (
@@ -343,6 +365,8 @@ def _inactive_user_engagement(escaped_fields: dict[str, str]) -> str:
 
 _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "password_reset": _password_reset,
+    "email_change": _email_change,
+    "email_changed_notice": _email_changed_notice,
     "payment_receipt": _payment_receipt,
     "entitlement_expiring": _entitlement_expiring,
     "invitation": _invitation,

@@ -149,6 +149,7 @@ async def read_config(org_slug: str, _admin: PlatformAdmin, session: Session) ->
         errors.InvalidSsoBinding,
         errors.SsoNotConfigurableError,
         errors.SsoBindingTaken,
+        errors.SsoOnlyLocksOutPasswordMembers,
     ),
 )
 async def save_config(

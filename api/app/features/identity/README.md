@@ -74,6 +74,8 @@ live inside it and are never addressed independently.
 | POST | `/api/v1/auth/logout` | bearer | revokes the presented chain |
 | POST | `/api/v1/auth/password-reset` | none | always 202; never reveals whether the email exists; `too_many_requests` (429) |
 | POST | `/api/v1/auth/password-reset/confirm` | reset token | `invalid_reset_token` (422) for unknown, spent or expired; `weak_password` (422); `too_many_requests` (429). Only the first is about the link: the form says the others as themselves |
+| POST | `/api/v1/me/email-change` | user | password-proved; mails a one-hour signed link to the new address; always 202 whether or not the address is held; nothing is stored (no migration) |
+| POST | `/api/v1/auth/email-change/confirm` | change token | moves the account email, ends every session, roster entries follow, old address is told; `invalid_email_change_token` (422) for forged, spent, expired or since-taken |
 | POST | `/api/v1/auth/change-password` | bearer | the only route allowed while `must_change_password` |
 | POST | `/api/v1/auth/stream-ticket` | bearer | a 60-second credential for one `EventSource` (ADR 0015) |
 | GET | `/api/v1/me` | bearer | profile, memberships, active workspace |

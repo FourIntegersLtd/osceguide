@@ -16,16 +16,19 @@ from app.core.rate_limit import (
     LEGACY_EXCHANGE,
     PASSWORD_RESET,
     REGISTER,
+    USER_WRITE,
     TooManyRequests,
     caller_key,
     check,
     check_sign_in,
+    per_user,
 )
 from app.core.settings import SettingsDep
 from app.features.identity import (
     errors,
     schemas,
     service,
+    service_email_change,
     service_legacy,
     service_mfa,
     service_passwords,
@@ -265,6 +268,61 @@ async def change_password(
         settings=settings,
         now=clock.now(),
     )
+
+
+# Mail a confirmation link to a new address. Always 202 once the password is right, whether or not
+# the address is already held, so the form tells nobody who has an account.
+@router.post(
+    "/me/email-change",
+    response_model=schemas.Accepted,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=error_responses(
+        errors.AccountNotFound,
+        errors.InvalidCredentials,
+        errors.PasswordLoginDisabled,
+        errors.PasswordNotSet,
+        errors.AccountSuspended,
+        TooManyRequests,
+    ),
+    dependencies=[Depends(per_user(USER_WRITE))],
+)
+async def begin_email_change(
+    body: schemas.EmailChangeRequest,
+    principal: CurrentPrincipal,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.Accepted:
+    await service_email_change.begin_email_change(
+        session,
+        user_id=principal.user_id,
+        new_email=body.new_email,
+        current_password=body.current_password,
+        settings=settings,
+        now=clock.now(),
+    )
+    return schemas.Accepted()
+
+
+# Use the link mailed to the new address. Public: the link is the proof, and it is opened from an
+# inbox that may not be signed in. Ends every session, since the address is how the account is known.
+@router.post(
+    "/auth/email-change/confirm",
+    response_model=schemas.EmailChanged,
+    responses=error_responses(errors.InvalidEmailChangeToken, TooManyRequests),
+)
+async def confirm_email_change(
+    request: Request,
+    body: schemas.EmailChangeConfirm,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    settings: SettingsDep,
+    clock: ClockDep,
+) -> schemas.EmailChanged:
+    await check(PASSWORD_RESET, caller_key(request))
+    email = await service_email_change.confirm_email_change(
+        session, token=body.token, settings=settings, now=clock.now()
+    )
+    return schemas.EmailChanged(email=email)
 
 
 # Redeem a sign-in challenge with an authenticator code or a one-time recovery code.

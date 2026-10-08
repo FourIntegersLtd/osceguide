@@ -336,3 +336,8 @@ async def member_user_ids(
 ) -> set[uuid.UUID]:
     """Which of these people are live members of the organisation, for the roster's status column."""
     return await repository.member_user_ids(session, org_id, user_ids)
+
+
+async def live_member_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
+    """Everyone who is a live member of this organisation, whatever their role."""
+    return await repository.live_member_user_ids(session, org_id)

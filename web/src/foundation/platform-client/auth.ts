@@ -534,6 +534,27 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
   return done.email;
 }
 
+/**
+ * Ask for a confirmation link to a new sign-in address. The answer is the same
+ * whether or not the address is held, so the form cannot probe for accounts.
+ * Route not in the generated types until `openapi.json` is regenerated.
+ */
+export async function requestEmailChange(newEmail: string, currentPassword: string): Promise<void> {
+  await platformRequest<unknown>("/api/v1/me/email-change", {
+    method: "POST",
+    body: { new_email: newEmail, current_password: currentPassword },
+  });
+}
+
+/** Use the link mailed to the new address; every session ends, so sign in again. */
+export async function confirmEmailChange(token: string): Promise<string> {
+  const done = await platformRequest<{ email: string }>("/api/v1/auth/email-change/confirm", {
+    method: "POST",
+    body: { token },
+  });
+  return done.email;
+}
+
 export function hasStoredSession(): boolean {
   return Boolean(session?.accessToken) || hasMarker();
 }

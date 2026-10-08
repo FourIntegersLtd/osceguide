@@ -226,6 +226,12 @@ async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
     column name, two meanings.
     """
     return await repository.trainee_ids_for_user(session, user_id)
+async def follow_account_email(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> None:
+    """The person's account moved to a new address: their roster entries follow, so an institution
+    still reaches and recognises them."""
+    await repository.follow_account_email(session, user_id, email)
+
+
 
 
 async def audiences_for_viewer(session: AsyncSession, user_id: uuid.UUID) -> ViewerAudiences:

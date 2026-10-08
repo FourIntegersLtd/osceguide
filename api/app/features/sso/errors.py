@@ -73,6 +73,14 @@ class SsoNotConfigurableError(InvalidInput):
     default_message = "That combination of settings would leave nobody a way in"
 
 
+class SsoOnlyLocksOutPasswordMembers(Conflict):
+    """Turning on SSO-only would hide the password form from members who have only a password.
+    `details` carries how many and which, and the save is repeated with the confirmation."""
+
+    code = "sso_only_password_members"
+    default_message = "Some members sign in with a password and would be locked out"
+
+
 class SsoBindingTaken(Conflict):
     """A host or email domain another organisation already claims. Bindings
     are unique platform-wide, so this is checked before writing, not caught

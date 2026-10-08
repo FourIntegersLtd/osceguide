@@ -200,3 +200,41 @@ async def test_an_organisation_with_no_sso_reads_as_null_and_an_unknown_one_is_a
     unknown = await client.get("/api/v1/platform/orgs/nope/sso", headers=bearer(root))
     assert unknown.status_code == 404
     assert unknown.json()["code"] == "org_not_found"
+
+
+async def test_switching_to_sso_only_lists_the_members_who_sign_in_with_a_password(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """P-21: SSO-only hides the password form, so anyone whose only way in is a password is
+    locked out. The save is refused with who they are until the admin confirms."""
+    from app.features.identity import repository as identity_repo
+    from app.features.tenancy import repository as tenancy_repo
+
+    root = await make_actor("root-p21@osceguide.com", platform_admin=True)
+    created = await an_org(client, root, "p21")
+    seated = await identity_repo.create_user(
+        db_session, email="seated@p21.test", name="Seated", password_hash="hash"
+    )
+    federated = await identity_repo.create_user(
+        db_session, email="federated@p21.test", name="Fed", password_hash=None
+    )
+    for user in (seated, federated):
+        await tenancy_repo.add_membership(db_session, org_id=created["id"], user_id=user.id, role="trainee")
+    await db_session.commit()
+
+    refused = await client.put("/api/v1/platform/orgs/p21/sso", json=a_config(), headers=bearer(root))
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["code"] == "sso_only_password_members"
+    assert refused.json()["details"] == {"count": 1, "emails": ["seated@p21.test"]}
+    assert (await client.get("/api/v1/platform/orgs/p21/sso", headers=bearer(root))).json() is None
+
+    confirmed = await client.put(
+        "/api/v1/platform/orgs/p21/sso",
+        json=a_config(confirm_password_members=True),
+        headers=bearer(root),
+    )
+    assert confirmed.status_code == 200, confirmed.text
+
+    # Already SSO-only: saving again is not a new lock-out and asks nothing.
+    again = await client.put("/api/v1/platform/orgs/p21/sso", json=a_config(), headers=bearer(root))
+    assert again.status_code == 200, again.text

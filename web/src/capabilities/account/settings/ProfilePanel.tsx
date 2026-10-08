@@ -18,6 +18,7 @@ import { useSurface } from "@/capabilities/SurfaceContext";
 import { readMe, updateMe, uploadAvatar, type Me } from "@/capabilities/account/api";
 import type { ProfilePart } from "@/capabilities/account/settings/settingsTabs";
 import { examLabel, NO_EXAM_LABEL } from "@/capabilities/account/settings/examLabel";
+import ChangeEmail from "@/capabilities/account/settings/ChangeEmail";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
 import { CloseAccount } from "@/capabilities/account/settings/CloseAccount";
@@ -85,6 +86,9 @@ export default function ProfilePanel({
         <>
           <Panel title="Password" description="Change the password you sign in with.">
             <ChangePassword />
+          </Panel>
+          <Panel title="Email" description="Change the address you sign in with.">
+            <ChangeEmail />
           </Panel>
           <TwoFactorPanel />
         </>

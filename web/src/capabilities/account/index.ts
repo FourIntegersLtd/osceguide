@@ -1,6 +1,7 @@
 export { default as Login } from "@/capabilities/account/Login";
 export { default as Register } from "@/capabilities/account/Register";
 export { default as ForgotPassword } from "@/capabilities/account/ForgotPassword";
+export { default as ConfirmEmail } from "@/capabilities/account/ConfirmEmail";
 export { default as ResetPassword } from "@/capabilities/account/ResetPassword";
 export { default as AuthShell } from "@/capabilities/account/AuthShell";
 export { ChangePasswordRequired } from "@/capabilities/account/ChangePasswordRequired";

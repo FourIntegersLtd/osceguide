@@ -174,7 +174,9 @@ async def set_window(
 ) -> None:
     """Move a grant's dates, so access bought to follow another can start sooner."""
     await session.execute(
-        update(Entitlement).where(Entitlement.id == entitlement_id).values(starts_at=starts_at, ends_at=ends_at)
+        update(Entitlement)
+        .where(Entitlement.id == entitlement_id)
+        .values(starts_at=starts_at, ends_at=ends_at)
     )
 
 
