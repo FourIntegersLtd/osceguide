@@ -193,6 +193,7 @@ class FlagStationBody(BaseModel):
     """
 
     station_id: uuid.UUID
+    reason: str | None = Field(default=None, max_length=2000)
 
 
 class StationFlagRead(BaseModel):
@@ -208,6 +209,8 @@ class StationFlagRead(BaseModel):
     # caller already knows whose report it is and nobody else's name belongs in
     # their payload.
     reporter_name: str | None = None
+    # What the reporter said was wrong, if they said.
+    reason: str | None = None
     resolution_note: str | None = None
     resolved_at: datetime | None = None
 

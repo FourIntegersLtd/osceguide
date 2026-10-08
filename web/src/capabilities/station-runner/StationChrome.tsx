@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { HiOutlineCheck } from "react-icons/hi2";
 import { LuFlag, LuMessageSquareWarning } from "react-icons/lu";
-import { Back, cn, productTokens, Spinner } from "@/foundation/ui";
+import { Back, cn, ConfirmModal, productTokens, Spinner, Textarea } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { flagStation } from "@/capabilities/stations/api";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
@@ -72,6 +72,8 @@ export function StationHeader({
 }) {
   const toast = useToast();
   const [flagged, setFlagged] = useState(false);
+  const [reasonOpen, setReasonOpen] = useState(false);
+  const [reason, setReason] = useState("");
   const [marked, setMarked] = useState(comeBack?.initial ?? false);
   const [marking, setMarking] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -105,8 +107,10 @@ export function StationHeader({
     if (!flagStationId || reporting) return;
     setReporting(true);
     try {
-      await flagStation(flagStationId);
+      await flagStation(flagStationId, reason);
       setFlagged(true);
+      setReasonOpen(false);
+      setReason("");
       toast.show({
         tone: "success",
         title: "Problem reported",
@@ -167,7 +171,7 @@ export function StationHeader({
           {flagStationId ? (
             <button
               type="button"
-              onClick={() => void onFlag()}
+              onClick={() => setReasonOpen(true)}
               disabled={reporting}
               aria-busy={reporting || undefined}
               aria-pressed={flagged}
@@ -190,6 +194,22 @@ export function StationHeader({
           <div className="flex flex-wrap items-end gap-x-5 gap-y-3 sm:justify-end">{aside}</div>
         ) : null}
       </div>
+      <ConfirmModal
+        isOpen={reasonOpen}
+        title="Report a problem"
+        message="Tell our team what looks wrong with this station."
+        confirmText="Send report"
+        isLoading={reporting}
+        onCancel={() => setReasonOpen(false)}
+        onConfirm={onFlag}
+      >
+        <Textarea
+          label="What is wrong? (optional)"
+          value={reason}
+          maxLength={2000}
+          onChange={(event) => setReason(event.target.value)}
+        />
+      </ConfirmModal>
     </div>
   );
 }

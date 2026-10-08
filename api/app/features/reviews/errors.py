@@ -56,6 +56,20 @@ class ReviewLockedError(Conflict):
     )
 
 
+class ReviewNotFound(NotFound):
+    """No such review on this slot."""
+
+    code = "review_not_found"
+    default_message = "No such review"
+
+
+class ReviewNotDraftError(Conflict):
+    """Only a draft is withdrawn; a completed review is part of the record and is edited instead."""
+
+    code = "review_not_draft"
+    default_message = "Only a draft review can be withdrawn"
+
+
 class SlotNotFound(NotFound):
     """No such slot in this organisation.
 

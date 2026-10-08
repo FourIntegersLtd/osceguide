@@ -42,7 +42,9 @@ async def report_station(
     Idempotent: reporting the same station twice is the same report, not a
     duplicate and not an error.
     """
-    await service_flags.report(session, station_id=body.station_id, user_id=principal.user_id)
+    await service_flags.report(
+        session, station_id=body.station_id, user_id=principal.user_id, reason=body.reason
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

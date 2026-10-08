@@ -27,9 +27,11 @@ async def find(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UU
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def add(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UUID) -> StationFlag:
+async def add(
+    session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UUID, reason: str | None
+) -> StationFlag:
     """File a new open report against a station."""
-    flag = StationFlag(station_id=station_id, user_id=user_id)
+    flag = StationFlag(station_id=station_id, user_id=user_id, reason=reason)
     session.add(flag)
     await session.flush()
     await session.refresh(flag)

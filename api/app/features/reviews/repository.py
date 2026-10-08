@@ -25,6 +25,16 @@ async def slot_review_for(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def delete_slot_review(session: AsyncSession, review: SlotReview) -> None:
+    await session.delete(review)
+    await session.flush()
+
+
+async def delete_gp_lead_review(session: AsyncSession, review: GpLeadReview) -> None:
+    await session.delete(review)
+    await session.flush()
+
+
 async def slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> list[SlotReview]:
     """Every review of this slot, oldest first."""
     stmt = (

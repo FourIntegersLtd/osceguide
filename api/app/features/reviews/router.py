@@ -6,7 +6,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
@@ -114,6 +114,52 @@ async def submit_my_review(
         observer_trainee_id=body.observer_trainee_id,
         now=clock.now(),
     )
+
+
+@router.delete(
+    "/orgs/{org_slug}/slots/{slot_id}/reviews/{review_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(
+        Forbidden,
+        errors.SlotNotFound,
+        errors.ReviewNotFound,
+        errors.ReviewNotDraftError,
+        errors.ReviewLockedError,
+        errors.NotReviewerError,
+    ),
+)
+async def withdraw_review(
+    slot_id: uuid.UUID, review_id: uuid.UUID, workspace: OrgStaff, session: Session
+) -> Response:
+    """Withdraw a draft review: its author, an administrator or the circuit's supervisor may."""
+    await service.withdraw_slot_review(
+        session,
+        workspace.org_id,
+        slot_id,
+        review_id,
+        actor_id=workspace.principal.user_id,
+        role=workspace.role,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete(
+    "/orgs/{org_slug}/slots/{slot_id}/gp-lead-review",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(
+        Forbidden,
+        errors.SlotNotFound,
+        errors.ReviewNotFound,
+        errors.ReviewNotDraftError,
+        errors.ReviewLockedError,
+    ),
+)
+async def withdraw_gp_lead_review(
+    slot_id: uuid.UUID, workspace: OrgInstitutionAdmin, session: Session
+) -> Response:
+    """Withdraw the GP lead's draft review of a slot."""
+    await service.withdraw_gp_lead_review(session, workspace.org_id, slot_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # Read the GP lead's review of one sitting slot.

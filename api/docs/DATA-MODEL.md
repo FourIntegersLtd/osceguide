@@ -525,6 +525,7 @@ team never saw one at all.
 | `station_id` | `uuid not null` → `stations.id` CASCADE | what the report is about, which is why this is a table of its own rather than a column on `users` |
 | `user_id` | `uuid not null` → `users.id` CASCADE | who reported it |
 | `status` | `varchar(16) not null default 'open'` | `open` \| `resolved` |
+| `reason` | `text null` | why the reporter thinks the station is wrong, in their words (at most 2000 characters) |
 | `resolution_note` | `text null` | what staff wrote when they closed it. Sent to the reporter as an inbox message when the report is closed (open to resolved only) |
 | `resolved_by` | `uuid null` → `users.id` SET NULL | |
 | `resolved_at` | `timestamptz null` | cleared when a report is reopened, so an `open` row never answers twice |

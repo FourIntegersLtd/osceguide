@@ -266,3 +266,32 @@ async def test_a_library_station_can_be_reported_by_a_learner_with_no_org(
     assert (await client.get("/api/v1/me/station-flags", headers=bearer(learner))).json()["items"][0][
         "station_title"
     ] == "A sore ankle"
+
+
+async def test_the_reporters_reason_reaches_the_queue_and_their_own_list(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    station_id = await a_station(client, admin)
+    reader = await make_actor("reason-reader@example.com")
+    reported = await client.post(
+        "/api/v1/me/station-flags",
+        json={"station_id": station_id, "reason": "The peak flow value contradicts the history."},
+        headers=bearer(reader),
+    )
+    assert reported.status_code == 204, reported.text
+    root = await make_actor(f"reason-{uuid.uuid4().hex[:8]}@osceguide.com", platform_admin=True)
+
+    queue = await client.get("/api/v1/platform/station-flags", headers=bearer(root))
+    assert queue.json()["items"][0]["reason"] == "The peak flow value contradicts the history."
+    mine = await client.get("/api/v1/me/station-flags", headers=bearer(reader))
+    assert mine.json()["items"][0]["reason"] == "The peak flow value contradicts the history."
+
+
+async def test_a_report_without_a_reason_has_none(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    station_id = await a_station(client, admin)
+    reader = await make_actor("no-reason-reader@example.com")
+    await client.post("/api/v1/me/station-flags", json={"station_id": station_id}, headers=bearer(reader))
+    mine = await client.get("/api/v1/me/station-flags", headers=bearer(reader))
+    assert mine.json()["items"][0]["reason"] is None

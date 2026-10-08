@@ -6,7 +6,10 @@ import { isPlatformError, type PlatformErrorCode } from "@/foundation/platform-c
  * (EXPERIENCE-GAPS section 11). Keyed by code, never by the server's sentence; a code with no entry
  * shows the server's own message, and a typo in a key fails the type check.
  */
-const ASSESS_ERROR_COPY: Partial<Record<PlatformErrorCode, string>> = {
+// until regenerated: codes the API now answers with that schema.d.ts does not list yet.
+type AssessErrorCode = PlatformErrorCode | "reviews_pending" | "review_not_draft" | "review_not_found";
+
+const ASSESS_ERROR_COPY: Partial<Record<AssessErrorCode, string>> = {
   // decisions and results
   evidence_changed: "The marking changed after this was signed off. Review it and sign it off again before releasing.",
   decision_revised: "Somebody else changed this decision. Reload it and check it before saving again.",
@@ -21,6 +24,9 @@ const ASSESS_ERROR_COPY: Partial<Record<PlatformErrorCode, string>> = {
   review_incomplete: "Rate every required area before completing the review.",
   nothing_to_review: "Nobody took this station, so there is nothing to review.",
   invalid_review_status: "A review can only be saved as a draft or completed.",
+  reviews_pending: "A review of this candidate's stations is still a draft. Complete it, or ask its author to withdraw it, then sign off.",
+  review_not_draft: "Only a draft review can be withdrawn. A completed review is edited instead.",
+  review_not_found: "That review no longer exists. Reload the page.",
   invalid_rating: "One of the ratings is not one this station accepts. Pick again from the list.",
   // sittings and circuits
   circuit_locked: "This circuit has started or has feedback recorded, so its stations can no longer be changed. Reload to see where it is now.",

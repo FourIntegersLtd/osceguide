@@ -492,7 +492,8 @@ export function withdrawAnnouncement(messageId: string): Promise<Announcement> {
 
 /* ---------- the station report queue ---------- */
 
-export type StationFlag = components["schemas"]["StationFlagRead"];
+// `reason` (the reporter's words) is declared here until schema.d.ts is regenerated.
+export type StationFlag = components["schemas"]["StationFlagRead"] & { reason?: string | null };
 export type StationFlagPage = components["schemas"]["Page_StationFlagRead_"];
 
 /**

@@ -816,3 +816,64 @@ async def test_an_exam_review_says_whether_it_waits_for_release_or_for_marking(
     )
     released = await client.get(mine, headers=as_trainee)
     assert released.json() == {"slot_id": str(slot_id), "state": "not_marked"}
+
+
+async def test_a_draft_review_is_withdrawn_by_its_author_or_the_named_supervisor_only(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-44: a stale draft blocked sign-off with nobody able to remove it."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    named_id, named = await a_supervisor(db_session, org_id, "named-w@example.com")
+    _, other = await a_supervisor(db_session, org_id, "other-w@example.com")
+    slot_id = await a_slot(db_session, org_id, supervisor=named_id)
+    mine = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine"
+
+    drafted = await client.put(mine, json={"notes": "half", "status": "draft"}, headers=bearer(named))
+    review_url = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/{drafted.json()['id']}"
+
+    refused = await client.delete(review_url, headers=bearer(other))
+    assert (refused.status_code, refused.json()["code"]) == (403, "not_slot_reviewer")
+    withdrawn = await client.delete(review_url, headers=bearer(named))
+    assert withdrawn.status_code == 204, withdrawn.text
+    assert (await client.get(mine, headers=bearer(named))).json() is None
+
+    # An administrator may withdraw a supervisor's draft; nobody withdraws a completed review.
+    again = await client.put(mine, json={"notes": "half", "status": "draft"}, headers=bearer(named))
+    by_admin = await client.delete(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/{again.json()['id']}", headers=bearer(admin)
+    )
+    assert by_admin.status_code == 204, by_admin.text
+    gone = await client.delete(review_url, headers=bearer(admin))
+    assert (gone.status_code, gone.json()["code"]) == (404, "review_not_found")
+
+
+async def test_a_completed_review_cannot_be_withdrawn(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id, domains=("communication",))
+    done = await client.put(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
+        json={"field_values": {"communication.score": "G"}, "status": "completed"},
+        headers=bearer(admin),
+    )
+    assert done.status_code == 200, done.text
+    refused = await client.delete(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/{done.json()['id']}", headers=bearer(admin)
+    )
+    assert (refused.status_code, refused.json()["code"]) == (409, "review_not_draft")
+
+
+async def test_a_draft_gp_lead_review_is_withdrawn_by_an_administrator(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+    url = f"/api/v1/orgs/kings/slots/{slot_id}/gp-lead-review"
+    await client.put(url, json={"revision": 0, "notes": "half", "status": "draft"}, headers=bearer(admin))
+
+    withdrawn = await client.delete(url, headers=bearer(admin))
+    assert withdrawn.status_code == 204, withdrawn.text
+    assert (await client.get(url, headers=bearer(admin))).json() is None
+    again = await client.delete(url, headers=bearer(admin))
+    assert (again.status_code, again.json()["code"]) == (404, "review_not_found")

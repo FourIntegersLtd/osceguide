@@ -175,6 +175,8 @@ class StationFlag(Base, UUIDPrimaryKey, Timestamps):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'open'"))
 
+    # Why the reporter thinks the station is wrong, in their words; optional.
+    reason: Mapped[str | None] = mapped_column(Text)
     # What staff wrote when they closed it. Sent to the reporter as an inbox
     # message when the report is closed.
     resolution_note: Mapped[str | None] = mapped_column(Text)

@@ -795,6 +795,44 @@ async def test_sign_off_is_refused_while_a_review_of_the_candidates_station_is_a
     assert signed.status_code == 200, signed.text
 
 
+async def test_withdrawing_a_stale_draft_review_unblocks_sign_off(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-44: the draft that blocked sign-off (R-33) can be removed by the person who started it."""
+    from sqlalchemy import select
+
+    from app.features.sittings.models import Slot
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    slot_id = (await db_session.execute(select(Slot).where(Slot.org_id == org_id))).scalars().one().id
+    started = await client.put(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
+        json={"field_values": {"consulting.score": "a"}, "status": "draft"},
+        headers=bearer(admin),
+    )
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "R."},
+        headers=bearer(admin),
+    )
+    refused = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    assert (refused.status_code, refused.json()["code"]) == (409, "reviews_pending")
+
+    withdrawn = await client.delete(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/{started.json()['id']}", headers=bearer(admin)
+    )
+    assert withdrawn.status_code == 204, withdrawn.text
+    redrafted = await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "R.", "expected_revision": 1},
+        headers=bearer(admin),
+    )
+    assert redrafted.status_code == 200, redrafted.text
+    signed = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    assert signed.status_code == 200, signed.text
+
+
 async def test_a_released_result_breaks_down_by_station(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

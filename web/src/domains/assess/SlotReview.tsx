@@ -7,7 +7,7 @@ import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { type AttemptFeedbackRead } from "@/capabilities/feedback";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
-import { readMySlotReview, retrySlotMarking, saveReview } from "@/domains/assess/api";
+import { readMySlotReview, retrySlotMarking, saveReview, withdrawReview } from "@/domains/assess/api";
 import { readMarking } from "@/domains/assess/results/readMarking";
 import { CandidateStepper } from "@/domains/assess/CandidateStepper";
 import { MarkingPanel } from "@/domains/assess/results/MarkingPanel";
@@ -112,7 +112,7 @@ function Editor({
   attemptId: string | null;
   feedback: AttemptFeedbackRead | null;
   reviews: SlotReviewsRead;
-  initial: { field_values: Record<string, unknown>; notes: string | null; status: string } | null;
+  initial: { id: string; field_values: Record<string, unknown>; notes: string | null; status: string } | null;
   onSaved: () => void;
 }) {
   const { session } = useSession();
@@ -184,6 +184,20 @@ function Editor({
     [orgSlug, slotId, ratings, notes, onSaved],
   );
 
+  const withdraw = useCallback(async () => {
+    if (!initial) return;
+    setBusy("draft");
+    setError(null);
+    try {
+      await withdrawReview(orgSlug, slotId, initial.id);
+      onSaved();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error(String(cause)));
+    } finally {
+      setBusy(null);
+    }
+  }, [orgSlug, slotId, initial, onSaved]);
+
   const mineReadOnly = submitted;
   return (
     <>
@@ -227,6 +241,11 @@ function Editor({
 
               {!mineReadOnly && (
                 <div className="flex justify-end gap-2">
+                  {initial ? (
+                    <Button themeType="b2b" variant="ghost" onClick={() => void withdraw()} disabled={busy !== null}>
+                      Withdraw draft
+                    </Button>
+                  ) : null}
                   <Button themeType="b2b" variant="secondary" onClick={() => persist("draft")} disabled={busy !== null}>
                     {busy === "draft" ? <Spinner /> : "Save draft"}
                   </Button>

@@ -431,6 +431,14 @@ export function saveReview(
   );
 }
 
+/** Take back a draft review, so a stale one stops blocking sign-off. */
+export function withdrawReview(slug: string, slotId: string, reviewId: string): Promise<void> {
+  return platformRequest<void>(
+    `${org(slug)}/slots/${encodeURIComponent(slotId)}/reviews/${encodeURIComponent(reviewId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export type ScimToken = components["schemas"]["ScimTokenRead"];
 export type ScimTokenIssued = components["schemas"]["ScimTokenIssued"];
 

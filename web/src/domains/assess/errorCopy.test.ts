@@ -21,6 +21,10 @@ describe("assessErrorMessage", () => {
       "Someone else changed this review while you had it open. Reload the page and make your changes again, so theirs are not lost.",
     );
     assert.equal(
+      assessErrorMessage(refusal("reviews_pending")),
+      "A review of this candidate's stations is still a draft. Complete it, or ask its author to withdraw it, then sign off.",
+    );
+    assert.equal(
       assessErrorMessage(refusal("decision_revised")),
       "Somebody else changed this decision. Reload it and check it before saving again.",
     );

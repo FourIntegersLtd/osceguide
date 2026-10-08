@@ -63,3 +63,31 @@ async def test_the_list_filters_by_status_and_date_across_pages(
     assert first.json()["next_cursor"] is not None
     assert await names(client, admin, f"programme_id={uuid.uuid4()}") == []
     assert await names(client, admin, "status=nonsense") == []
+
+
+async def test_the_list_filters_by_mode_and_name_search_across_pages(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    await three_sittings(db_session, org_id)
+    version = await published_feedback_version(db_session, org_id)
+    db_session.add(
+        Sitting(org_id=org_id, name="Mayfair drill", mode="training", rubric_version_id=version.id)
+    )
+    await db_session.flush()
+
+    assert await names(client, admin, "mode=training") == ["Mayfair drill"]
+    assert await names(client, admin, "mode=exam") == ["June", "March", "May"]
+    assert await names(client, admin, "search=may") == ["May", "Mayfair drill"]
+    assert await names(client, admin, "search=may&mode=exam") == ["May"]
+    # A percent sign is text, not a wildcard.
+    assert await names(client, admin, "search=%25") == []
+    first = await client.get("/api/v1/orgs/kings/sittings?search=may&limit=1", headers=bearer(admin))
+    second = await client.get(
+        f"/api/v1/orgs/kings/sittings?search=may&limit=1&cursor={first.json()['next_cursor']}",
+        headers=bearer(admin),
+    )
+    assert sorted(item["name"] for item in first.json()["items"] + second.json()["items"]) == [
+        "May",
+        "Mayfair drill",
+    ]

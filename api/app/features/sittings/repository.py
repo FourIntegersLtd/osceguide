@@ -11,6 +11,7 @@ from sqlalchemy import delete, func, select, union, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.search import contains_text
 from app.features.sittings.models import Circuit, CircuitStation, CircuitTrainee, Sitting, Slot
 
 
@@ -69,6 +70,8 @@ async def list_sittings(
     limit: int,
     cursor: dict[str, Any] | None = None,
     status: str | None = None,
+    mode: str | None = None,
+    search: str | None = None,
     programme_id: uuid.UUID | None = None,
     scheduled_from: datetime | None = None,
     scheduled_to: datetime | None = None,
@@ -77,6 +80,10 @@ async def list_sittings(
     stmt = select(Sitting).where(Sitting.org_id == org_id)
     if status is not None:
         stmt = stmt.where(Sitting.status == status)
+    if mode is not None:
+        stmt = stmt.where(Sitting.mode == mode)
+    if search and search.strip():
+        stmt = stmt.where(contains_text(Sitting.name, search))
     if programme_id is not None:
         stmt = stmt.where(Sitting.programme_id == programme_id)
     if scheduled_from is not None:

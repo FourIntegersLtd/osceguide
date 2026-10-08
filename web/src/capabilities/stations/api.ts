@@ -113,13 +113,14 @@ export function listExams(signal?: AbortSignal): Promise<ExamPage> {
 }
 
 /** Ask the content team to review a station. */
-export async function flagStation(stationId: string, signal?: AbortSignal): Promise<void> {
+export async function flagStation(stationId: string, reason?: string, signal?: AbortSignal): Promise<void> {
   await platformRequest(`/api/v1/me/station-flags`, {
     method: "POST",
     // An object: `platformRequest` serialises it. This used to pass
     // `JSON.stringify(...)`, which serialised a *string* — so the request the
     // button made was rejected before it reached a handler that discarded it.
-    body: { station_id: stationId },
+    // `reason` is declared here until schema.d.ts is regenerated.
+    body: { station_id: stationId, ...(reason?.trim() ? { reason: reason.trim() } : {}) },
     signal,
   });
 }

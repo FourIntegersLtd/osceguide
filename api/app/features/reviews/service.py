@@ -205,6 +205,48 @@ async def submit_slot_review(
     return _slot_read(slot_review, form=review_form(scoring_rubric))
 
 
+async def withdraw_slot_review(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    slot_id: uuid.UUID,
+    review_id: uuid.UUID,
+    *,
+    actor_id: uuid.UUID,
+    role: str | None,
+) -> None:
+    """Take back a draft review, so a stale one stops blocking sign-off (R-44).
+
+    Its author may, and so may whoever may review the slot: an administrator or the
+    circuit's named supervisor.
+    """
+    await _require_open_slot(session, org_id, slot_id)
+    review = next(
+        (row for row in await repository.slot_reviews(session, org_id, slot_id) if row.id == review_id), None
+    )
+    if review is None:
+        raise errors.ReviewNotFound()
+    if review.submitted_by != actor_id:
+        _ensure_reviewer(
+            reviewer_id=actor_id,
+            role=role,
+            supervisor_id=await sittings_reads.supervisor_for_slot(session, org_id, slot_id),
+        )
+    if review.status == "completed":
+        raise errors.ReviewNotDraftError()
+    await repository.delete_slot_review(session, review)
+
+
+async def withdraw_gp_lead_review(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> None:
+    """Take back the GP lead's draft review of a slot (R-44); the route is administrators only."""
+    await _require_open_slot(session, org_id, slot_id)
+    review = await repository.gp_lead_review(session, org_id, slot_id)
+    if review is None:
+        raise errors.ReviewNotFound()
+    if review.status == "completed":
+        raise errors.ReviewNotDraftError()
+    await repository.delete_gp_lead_review(session, review)
+
+
 async def save_gp_lead_review(
     session: AsyncSession,
     org_id: uuid.UUID,

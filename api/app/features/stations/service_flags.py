@@ -22,7 +22,9 @@ from app.features.stations.models import StationFlag
 from app.features.stations.schemas import StationFlagRead, UpdateStationFlag
 
 
-async def report(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UUID) -> StationFlagRead:
+async def report(
+    session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.UUID, reason: str | None = None
+) -> StationFlagRead:
     """Say this station is wrong.
 
     Idempotent, and deliberately so: a double tap of the report button is one report, not a 400.
@@ -33,7 +35,7 @@ async def report(session: AsyncSession, *, station_id: uuid.UUID, user_id: uuid.
         raise errors.StationNotFound()
 
     existing = await flags.find(session, station_id=station_id, user_id=user_id)
-    flag = existing or await flags.add(session, station_id=station_id, user_id=user_id)
+    flag = existing or await flags.add(session, station_id=station_id, user_id=user_id, reason=reason or None)
     return _read(flag, None, None)
 
 
@@ -125,6 +127,7 @@ def _read(flag: StationFlag, station_title: str | None, reporter_name: str | Non
         status=flag.status,
         created_at=flag.created_at,
         reporter_name=reporter_name,
+        reason=flag.reason,
         resolution_note=flag.resolution_note,
         resolved_at=flag.resolved_at,
     )

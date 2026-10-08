@@ -19,7 +19,15 @@ from app.features.identity import service as identity
 from app.features.roster import service as roster
 from app.features.roster import service_groups as roster_groups
 from app.features.rubrics import service_marking
-from app.features.sittings import domain, domain_edit, domain_run, errors, repository, repository_reads, repository_run
+from app.features.sittings import (
+    domain,
+    domain_edit,
+    domain_run,
+    errors,
+    repository,
+    repository_reads,
+    repository_run,
+)
 from app.features.sittings.models import Circuit, Sitting, Slot
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
@@ -99,6 +107,8 @@ async def list_sittings(
     limit: int,
     cursor: dict[str, Any] | None,
     status: str | None = None,
+    mode: str | None = None,
+    search: str | None = None,
     programme_id: uuid.UUID | None = None,
     scheduled_from: date | None = None,
     scheduled_to: date | None = None,
@@ -110,6 +120,8 @@ async def list_sittings(
         limit=limit,
         cursor=cursor,
         status=status,
+        mode=mode,
+        search=search,
         programme_id=programme_id,
         scheduled_from=_start_of(scheduled_from),
         scheduled_to=_start_of(scheduled_to + timedelta(days=1)) if scheduled_to else None,

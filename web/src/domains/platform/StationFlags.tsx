@@ -102,6 +102,12 @@ function AnswerCard({
         </>
       }
     >
+      {flag.reason ? (
+        <p className="mb-3 whitespace-pre-wrap text-osce-body text-ink">
+          <span className="font-medium">{reporter} said: </span>
+          {flag.reason}
+        </p>
+      ) : null}
       {open ? (
         <Textarea
           label="Answer to the reporter"
