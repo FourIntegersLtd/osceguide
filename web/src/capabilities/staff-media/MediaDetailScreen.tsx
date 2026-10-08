@@ -624,8 +624,9 @@ export function MediaDetailScreen({
           </StepGuide>
           {review.error ? (
             <Alert tone="danger">
-              The last {ERROR_STEPS[review.error.step] ?? review.error.step} failed:{" "}
-              {review.error.message}
+              The last {ERROR_STEPS[review.error.step] ?? review.error.step} did not finish. Run that
+              step again; if it keeps failing, send engineering this detail:{" "}
+              <code className="break-words font-mono text-osce-caption">{review.error.message}</code>
             </Alert>
           ) : null}
           {review.run ? (

@@ -1,4 +1,5 @@
 import { feedbackReviewHref } from "@/capabilities/pending-feedback";
+import { stationFeedbackPath } from "@/capabilities/station-runner/stationFeedbackPath";
 
 /** Where a station was opened from: a practice set, the library, or an organisation's own practice. */
 export type StationSource =
@@ -16,8 +17,6 @@ export function stationKeyFor(source: StationSource): string {
 /** The page that shows the feedback for an attempt, before the surface adds its own prefix. */
 export function feedbackPathFor(source: StationSource, attemptId: string): string {
   if (source.kind === "set") return feedbackReviewHref(source.setId, source.entryId, attemptId);
-  if (source.kind === "practice") {
-    return `/stations/${source.stationId}/practise?action=review&tab=feedback&attempt=${attemptId}`;
-  }
-  return `/attempts/${attemptId}`;
+  // Library practice and an organisation's self practice read feedback on the same station page.
+  return stationFeedbackPath(source.stationId, attemptId);
 }

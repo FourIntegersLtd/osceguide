@@ -68,15 +68,27 @@ function StationList({ stations }: { stations: readonly OrgStation[] }) {
         eyebrow={`${rows.length} station${rows.length === 1 ? "" : "s"} you can sit`}
       >
         {rows.map((station) => (
-          <B2CGroupedRow
-            key={station.id}
-            icon={HiOutlineSparkles}
-            title={station.title}
-            meta={`${station.exam_code.toUpperCase()} · version ${station.version}`}
-            onClick={() =>
-              router.push(hrefFor(`/stations/${station.id}/practise?action=attempt`))
-            }
-          />
+          // Beside the row, not inside it: the row is a button that starts an attempt.
+          <div key={station.id} className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <B2CGroupedRow
+                icon={HiOutlineSparkles}
+                title={station.title}
+                meta={`${station.exam_code.toUpperCase()} · version ${station.version}`}
+                onClick={() =>
+                  router.push(hrefFor(`/stations/${station.id}/practise?action=attempt`))
+                }
+              />
+            </div>
+            <ButtonLink
+              themeType="b2b"
+              variant="ghost"
+              size="sm"
+              href={hrefFor(`/stations/${station.id}/practise?action=review&tab=feedback`)}
+            >
+              Past feedback
+            </ButtonLink>
+          </div>
         ))}
       </B2CGroupedSection>
       <B2CHero

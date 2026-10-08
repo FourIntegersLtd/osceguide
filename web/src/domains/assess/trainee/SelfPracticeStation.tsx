@@ -7,6 +7,7 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createAttempt } from "@/capabilities/attempt-runner";
 import { listExams } from "@/capabilities/stations";
+import { feedbackPathFor } from "@/capabilities/station-runner/stationSource";
 import { StationScreen } from "@/capabilities/station-runner/StationScreen";
 import type { StationStep } from "@/capabilities/station-runner/StationChrome";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
@@ -31,6 +32,10 @@ export function SelfPracticeStation({
 }) {
   const { hrefFor } = useSurface();
   const practiceHref = hrefFor("/trainee/practice");
+  // Leaving a sat attempt lands on its feedback; with no attempt there is nothing to read.
+  const completeHref = attemptId
+    ? hrefFor(feedbackPathFor({ kind: "self_practice", orgSlug, stationId }, attemptId))
+    : practiceHref;
 
   const context = useAsync(
     async (signal) => {
@@ -86,7 +91,7 @@ export function SelfPracticeStation({
               attemptLimit={null}
               createAttempt={create}
               nextHref={null}
-              completeHref={practiceHref}
+              completeHref={completeHref}
               backHref={practiceHref}
             />
           </>
