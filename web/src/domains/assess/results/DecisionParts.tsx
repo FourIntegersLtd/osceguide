@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { HiOutlinePaperAirplane } from "react-icons/hi2";
-import { Badge, Button, ConfirmModal, Select } from "@/foundation/ui";
+import { Alert, Badge, Button, ConfirmModal, Select } from "@/foundation/ui";
 import { formatShortDateTime } from "@/foundation/format";
 import type { Decision } from "@/domains/assess/results/api";
-import { RECRUITMENT_LABEL, RECRUITMENT_OUTCOMES, recruitmentLabel } from "@/domains/assess/results/support";
+import {
+  ASSESSMENT_OUTCOMES,
+  OUTCOME_HINT,
+  OUTCOME_LABEL,
+  RECRUITMENT_LABEL, RECRUITMENT_OUTCOMES, recruitmentLabel,
+  type AssessmentOutcome,
+} from "@/domains/assess/results/support";
 
 /** The employer's call on an exam-mode (hire) sitting. The candidate's own view never shows it. */
 export function RecruitmentField({
@@ -111,5 +117,46 @@ export function ReleaseButton({
         }}
       />
     </>
+  );
+}
+
+/** The assessment outcome choices; locked once the decision is signed off. */
+export function OutcomePicker({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (outcome: AssessmentOutcome) => void }) {
+  return (
+    <fieldset className="space-y-2" disabled={disabled}>
+      <legend className="mb-2 text-osce-meta font-medium text-b2b-headline">Outcome</legend>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {ASSESSMENT_OUTCOMES.map((option: AssessmentOutcome) => (
+          <button
+            key={option}
+            type="button"
+            aria-pressed={value === option}
+            onClick={() => onChange(option)}
+            className={
+              value === option
+                ? "flex flex-col gap-0.5 rounded-control border border-b2b-headline bg-canvas px-4 py-3 text-left"
+                : "flex flex-col gap-0.5 rounded-control border border-b2b-border bg-b2b-surface px-4 py-3 text-left hover:bg-canvas disabled:opacity-60"
+            }
+          >
+            <span className="text-osce-body font-medium text-b2b-headline">{OUTCOME_LABEL[option]}</span>
+            <span className="text-osce-meta text-b2b-mid">{OUTCOME_HINT[option]}</span>
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+/** A save was refused because somebody else revised the decision first. */
+export function StaleNotice({ onReload }: { onReload: () => void }) {
+  return (
+    <Alert tone="warning" title="This decision has changed since you loaded it">
+      <p>
+        Someone else saved a change while you had this open, so yours was not saved. Nothing is lost. Load the latest version and make your change again.
+      </p>
+      <Button themeType="b2b" variant="secondary" className="mt-2" onClick={onReload}>
+        Load the latest version
+      </Button>
+    </Alert>
   );
 }

@@ -14,19 +14,15 @@ import {
   type Decision,
 } from "@/domains/assess/results/api";
 import {
-  ASSESSMENT_OUTCOMES,
-  OUTCOME_HINT,
-  OUTCOME_LABEL,
   releasable,
   releaseRefusal,
   signOffBlockers,
   suggestedOutcome,
   workflowLabel,
   workflowTone,
-  type AssessmentOutcome,
 } from "@/domains/assess/results/support";
 import { candidateProgress } from "@/domains/assess/results/candidateProgress";
-import { RecruitmentField, ReleaseButton, ReleasedDecision, ReopenButton } from "@/domains/assess/results/DecisionParts";
+import { OutcomePicker, RecruitmentField, ReleaseButton, ReleasedDecision, ReopenButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -164,45 +160,15 @@ function Form({
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
       {note && !failure ? <Alert tone="success">{note}</Alert> : null}
       {stale && !failure ? (
-        <Alert tone="warning" title="This decision has changed since you loaded it">
-          <p>
-            Someone else saved a change while you had this open, so yours was not saved. Nothing is lost. Load the latest version and make your change again.
-          </p>
-          <Button
-            themeType="b2b"
-            variant="secondary"
-            className="mt-2"
-            onClick={() => {
-              setStale(false);
-              onChanged();
-            }}
-          >
-            Load the latest version
-          </Button>
-        </Alert>
+        <StaleNotice
+          onReload={() => {
+            setStale(false);
+            onChanged();
+          }}
+        />
       ) : null}
 
-      <fieldset className="space-y-2" disabled={signedOff}>
-        <legend className="mb-2 text-osce-meta font-medium text-b2b-headline">Outcome</legend>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {ASSESSMENT_OUTCOMES.map((value: AssessmentOutcome) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={outcome === value}
-              onClick={() => setOutcome(value)}
-              className={
-                outcome === value
-                  ? "flex flex-col gap-0.5 rounded-control border border-b2b-headline bg-canvas px-4 py-3 text-left"
-                  : "flex flex-col gap-0.5 rounded-control border border-b2b-border bg-b2b-surface px-4 py-3 text-left hover:bg-canvas disabled:opacity-60"
-              }
-            >
-              <span className="text-osce-body font-medium text-b2b-headline">{OUTCOME_LABEL[value]}</span>
-              <span className="text-osce-meta text-b2b-mid">{OUTCOME_HINT[value]}</span>
-            </button>
-          ))}
-        </div>
-      </fieldset>
+      <OutcomePicker value={outcome} disabled={signedOff} onChange={setOutcome} />
 
       {suggestion && !signedOff ? <p className="text-osce-meta text-b2b-mid">{suggestion}</p> : null}
 

@@ -153,9 +153,7 @@ export function signOffBlockers(input: {
  * A decision that is signed off, not yet released, and whose outcome may be sent. A withheld outcome
  * is held back and an inconclusive one is undecided: neither goes to the candidate (R-24).
  */
-export function releasable(candidate: {
-  decision?: { signed_off_at?: string | null; released_at?: string | null; assessment_outcome?: string | null } | null;
-}): boolean {
+export function releasable(candidate: Pick<CandidateReport, "decision">): boolean {
   const decision = candidate.decision;
   const heldBack = decision?.assessment_outcome === "withheld" || decision?.assessment_outcome === "inconclusive";
   return Boolean(decision?.signed_off_at) && !decision?.released_at && !heldBack;

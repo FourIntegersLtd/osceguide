@@ -1,5 +1,6 @@
 "use client";
 
+import { toggleInSet } from "@/domains/assess/support";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, Panel, StepGuide } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
@@ -49,13 +50,7 @@ export function ReleaseAll({
   const chosen = useMemo(() => waiting.filter((candidate) => picked.has(candidate.user_id)), [waiting, picked]);
   const allPicked = chosen.length === waiting.length;
 
-  const toggle = (userId: string) =>
-    setHeld((current) => {
-      const next = new Set(current);
-      if (next.has(userId)) next.delete(userId);
-      else next.add(userId);
-      return next;
-    });
+  const toggle = (id: string) => setHeld((current) => toggleInSet(current, id));
 
   const release = useCallback(async () => {
     setBusy(true);

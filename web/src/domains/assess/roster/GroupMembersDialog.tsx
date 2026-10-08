@@ -1,5 +1,6 @@
 "use client";
 
+import { toggleInSet } from "@/domains/assess/support";
 import { useCallback, useState } from "react";
 import {
   Alert,
@@ -95,13 +96,7 @@ function Picker({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const toggle = (id: string) =>
-    setPicked((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const toggle = (id: string) => setPicked((current) => toggleInSet(current, id));
 
   const save = useCallback(async () => {
     setBusy(true);
