@@ -1116,7 +1116,8 @@ async def test_a_dispute_won_after_a_paid_out_credit_was_clawed_back_reverses_th
 
     assert response.json()["status"] == "applied"
     rows = [r for r in await growth_repo.referrals_for(db_session, referrer.id) if r.redeemed_at]
-    assert sorted((r.earned_pence, r.payout_status) for r in rows) == [(250, "paid")]
+    # Review of fc59828: the clawback is voided, not deleted, so the ledger keeps the history.
+    assert sorted((r.earned_pence, r.payout_status) for r in rows) == [(0, "unpaid"), (250, "paid")]
     balance = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
     assert balance.json()["earned_pence"] == 250
 

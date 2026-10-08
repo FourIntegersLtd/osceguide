@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -312,9 +313,73 @@ async def test_a_stripe_refund_moves_the_money_then_withdraws_the_access(
             "idempotency_key": f"refund:{payment['id']}:2499",
         }
     ]
+    # Review of cc153db: a second click is refused before Stripe is asked again.
     again = await client.post(url, json={"reason": "again"}, headers=bearer(root))
-    assert again.status_code == 200
-    assert [r["idempotency_key"] for r in stripe.refunds] == [f"refund:{payment['id']}:2499"] * 2
+    assert again.status_code == 409
+    assert again.json()["code"] == "payment_already_refunded"
+    assert len(stripe.refunds) == 1
+
+
+async def test_a_stripe_refund_after_a_recorded_refund_never_reaches_stripe(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    root, _, payment = await _paid(client, make_actor, db_session, "recorded-first")
+    recorded = await client.post(
+        f"/api/v1/platform/payments/{payment['id']}/refund", json={"reason": "by hand"}, headers=bearer(root)
+    )
+    assert recorded.status_code == 200, recorded.text
+
+    refused = await client.post(
+        f"/api/v1/platform/payments/{payment['id']}/stripe-refund",
+        json={"reason": "again"},
+        headers=bearer(root),
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "payment_already_refunded"
+    assert stripe.refunds == []
+
+
+async def test_a_stripe_refund_on_a_disputed_payment_never_reaches_stripe(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    root, _, payment = await _paid(client, make_actor, db_session, "disputed-first")
+    intent = "pi_evt_disputed-first"
+    await post_event(
+        client,
+        {
+            "id": "evt_disp_sr",
+            "type": "charge.dispute.created",
+            "data": {"object": {"payment_intent": intent}},
+        },
+    )
+
+    refused = await client.post(
+        f"/api/v1/platform/payments/{payment['id']}/stripe-refund",
+        json={"reason": "x"},
+        headers=bearer(root),
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "payment_already_refunded"
+    assert stripe.refunds == []
+
+
+async def test_stripe_refusing_a_refund_is_a_conflict_with_its_reason_not_an_outage(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    root, _, payment = await _paid(client, make_actor, db_session, "stripe-says-no")
+    stripe.refusal = "Charge ch_1 has already been refunded."
+
+    refused = await client.post(
+        f"/api/v1/platform/payments/{payment['id']}/stripe-refund", json={"reason": "x"}, headers=bearer(root)
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "stripe_refund_refused"
+    assert "already been refunded" in refused.json()["message"]
+    after = await client.get(f"/api/v1/platform/users/{payment['user_id']}/payments", headers=bearer(root))
+    assert after.json()["items"][0]["access_revoked"] is False
 
 
 async def test_a_stripe_refusal_leaves_the_access_alone(
@@ -371,3 +436,33 @@ async def test_an_event_recorded_but_never_processed_is_in_the_queue_and_can_be_
     assert retried.status_code == 200, retried.text
     queue = await client.get("/api/v1/platform/billing/events?failed_only=true", headers=bearer(root))
     assert queue.json()["items"] == []
+
+
+async def test_a_webhook_delivery_locks_its_ledger_row_before_checking_it_was_applied(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Review of cc153db: two deliveries of one event queue on the row, so the loser sees it applied."""
+    from sqlalchemy import event
+
+    from app.features.billing import service as billing_service
+
+    statements: list[str] = []
+
+    def record(conn, cursor, statement, *args):  # type: ignore[no-untyped-def]
+        statements.append(statement)
+
+    await a_plan(db_session)
+    await a_customer(db_session, "lock@example.com")
+    delivery = checkout_event("evt_lock", "lock@example.com")
+    # Recorded by a delivery that has not been applied (or is being applied right now).
+    await billing_repo.record_event(
+        db_session, event_id="evt_lock", event_type=delivery["type"], event_payload=delivery
+    )
+    sync_engine = db_session.bind.sync_engine  # type: ignore[union-attr]
+    event.listen(sync_engine, "before_cursor_execute", record)
+    try:
+        await billing_service.handle_event(db_session, event=delivery, now=datetime.now(UTC))
+    finally:
+        event.remove(sync_engine, "before_cursor_execute", record)
+
+    assert [s for s in statements if "FROM stripe_events" in s and "FOR UPDATE" in s], statements

@@ -286,7 +286,12 @@ async def claw_back_referral_purchase(
     if credit.payout_status == "unpaid":
         await repository.void_credit(session, credit)
         return True
-    if await repository.clawback_of(session, credit.id) is not None:
+    existing = await repository.clawback_of(session, credit.id)
+    if existing is not None:
+        if existing.earned_pence == 0 and existing.payout_status == "unpaid":
+            # Voided by a won dispute that has since been lost or disputed again: take it back again.
+            await repository.set_earned(session, existing, -credit.earned_pence)
+            return True
         return False
     await repository.record_redemption(
         session,
@@ -307,14 +312,16 @@ async def restore_referral_purchase(
     """Give back the credit a disputed purchase had lost, now the dispute is won.
 
     A credit zeroed while unpaid is restored to what the plan earns. One already paid out and clawed
-    back with a negative row loses that row while it is still unpaid, so the balance nets back to the
-    paid credit; a negative row a payout has already settled is left for a person. Nothing here moves money.
+    back with a negative row has that row voided while it is still unpaid, so the balance nets back to
+    the paid credit; a negative row a payout has already settled is left for a person. Nothing here
+    moves money.
     """
     paid = await repository.redemption_made_at(session, referred_user_id, paid_at)
     if paid is not None:
         clawback = await repository.clawback_of(session, paid.id)
         if clawback is not None and clawback.payout_status == "unpaid":
-            await repository.delete_row(session, clawback)
+            # Voided, not deleted: the ledger keeps the clawback and why it came to nothing.
+            await repository.void_credit(session, clawback)
             return True
     credit = await repository.voided_redemption_made_at(session, referred_user_id, paid_at)
     if credit is None:

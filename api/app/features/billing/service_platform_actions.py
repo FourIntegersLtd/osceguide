@@ -8,15 +8,18 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.core.errors import AppError
-from app.core.ports import CheckoutSessions, CheckoutUnavailable
+from app.core.ports import CheckoutRefused, CheckoutSessions, CheckoutUnavailable
 from app.core.settings import SettingsDep
-from app.features.billing import errors, repository, service, service_platform, service_settlement
+from app.features.billing import domain, errors, repository, service, service_platform, service_settlement
+from app.features.billing.models import Payment, StripeEvent
 from app.features.billing.schemas import PlatformPaymentRead
+from app.features.entitlements import service as entitlement_grants
 from app.features.entitlements import service_platform as entitlements
 from app.features.identity import service as identity
 from app.features.tenancy import service_audit
@@ -167,12 +170,44 @@ async def stripe_refund(
         raise errors.PaymentNotFound()
     if not payment.stripe_payment_intent_id.startswith("pi_"):
         raise errors.NotAStripePayment()
+    # Held until the transaction ends: a second click queues here and then finds the first's
+    # withdrawal, instead of asking Stripe for a second refund.
+    await repository.lock_payment(session, payment.id)
+    if await _already_taken_back(session, payment):
+        raise errors.PaymentAlreadyRefunded()
     try:
         await stripe.refund(
             payment_intent_id=payment.stripe_payment_intent_id,
             amount_pence=payment.amount_total_pence,
             idempotency_key=f"refund:{payment.id}:{payment.amount_total_pence}",
         )
+    except CheckoutRefused as exc:
+        raise errors.StripeRefundRefused(f"Stripe refused that refund: {exc}") from exc
     except CheckoutUnavailable as exc:
         raise errors.StripeRefundFailed() from exc
     return await refund(session, payment_id, reason=reason, actor=actor, now=now)
+
+
+async def _already_taken_back(session: AsyncSession, payment: Payment) -> bool:
+    """True when the access was withdrawn, Stripe already refunded the charge, or it was disputed."""
+    if payment.entitlement_id is not None and await entitlement_grants.revoked_ids(
+        session, [payment.entitlement_id]
+    ):
+        return True
+    events = await repository.processed_events_for_intent(
+        session,
+        payment.stripe_payment_intent_id,
+        ["charge.refunded", "charge.dispute.created", "charge.dispute.closed"],
+    )
+
+    def payload_object(event: StripeEvent) -> dict[str, Any]:
+        return (event.payload or {}).get("data", {}).get("object") or {}
+
+    if any(
+        delivery.event_type == "charge.refunded" and domain.is_full_refund(payload_object(delivery))
+        for delivery in events
+    ):
+        return True
+    # A dispute is open until it closes; one won gave the access back and settled the matter.
+    won = any(domain.restores_access(delivery.event_type, payload_object(delivery)) for delivery in events)
+    return not won and any(delivery.event_type == "charge.dispute.created" for delivery in events)

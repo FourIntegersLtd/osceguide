@@ -12,7 +12,7 @@ from __future__ import annotations
 import httpx
 
 from app.core.logging import get_logger
-from app.core.ports import CheckoutUnavailable
+from app.core.ports import CheckoutRefused, CheckoutUnavailable
 from app.core.settings import Settings
 
 log = get_logger(__name__)
@@ -146,7 +146,18 @@ class StripeCheckout:
             raise CheckoutUnavailable(f"could not reach Stripe: {exc}") from exc
         if response.status_code >= 400:
             log.warning("stripe refused a refund", status=response.status_code, body=response.text[:500])
+            if response.status_code < 500 and response.status_code != 429:
+                raise CheckoutRefused(_stripe_reason(response))
             raise CheckoutUnavailable(f"Stripe refused the refund ({response.status_code})")
+
+
+def _stripe_reason(response: httpx.Response) -> str:
+    """Stripe's own sentence for a refused request, or the bare status when the body has none."""
+    try:
+        message = response.json()["error"]["message"]
+    except (ValueError, KeyError, TypeError):
+        return f"Stripe refused the refund ({response.status_code})"
+    return str(message)
 
 
 def build_checkout(settings: Settings) -> StripeCheckout:

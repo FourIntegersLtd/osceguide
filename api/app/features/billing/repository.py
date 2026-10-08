@@ -81,6 +81,13 @@ async def event_by_id(session: AsyncSession, event_id: str) -> StripeEvent | Non
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def lock_event(session: AsyncSession, event_id: str) -> StripeEvent | None:
+    """The ledger row, held until the transaction ends: two deliveries of one event queue here, and
+    the second reads `processed_at` after the first has committed it."""
+    stmt = select(StripeEvent).where(StripeEvent.event_id == event_id).with_for_update()
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def record_event(
     session: AsyncSession, *, event_id: str, event_type: str, event_payload: dict[str, Any] | None
 ) -> bool:

@@ -154,7 +154,12 @@ async def record_refund(
     "/platform/payments/{payment_id}/stripe-refund",
     response_model=schemas.PlatformPaymentRead,
     responses=error_responses(
-        Forbidden, errors.PaymentNotFound, errors.NotAStripePayment, errors.StripeRefundFailed
+        Forbidden,
+        errors.PaymentNotFound,
+        errors.NotAStripePayment,
+        errors.StripeRefundFailed,
+        errors.PaymentAlreadyRefunded,
+        errors.StripeRefundRefused,
     ),
 )
 async def refund_in_stripe(

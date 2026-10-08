@@ -199,12 +199,6 @@ async def clawback_of(session: AsyncSession, credit_id: uuid.UUID) -> Referral |
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def delete_row(session: AsyncSession, row: Referral) -> None:
-    """Remove a redeemed row: a clawback that a won dispute has made untrue."""
-    await session.delete(row)
-    await session.flush()
-
-
 async def void_credit(session: AsyncSession, credit: Referral) -> None:
     """Zero a redeemed row's earnings. The row stays, so the sale is still on record."""
     credit.earned_pence = 0

@@ -55,6 +55,13 @@ async def erase_recipients(session: AsyncSession, emails: set[str], *, placehold
     await session.execute(update(OutboundMessage).where(matching).values(recipient=placeholder))
 
 
+async def scrub_recipient(session: AsyncSession, message_id: uuid.UUID, *, placeholder: str) -> None:
+    """Stop a delivered message naming the person it was sent to."""
+    await session.execute(
+        update(OutboundMessage).where(OutboundMessage.id == message_id).values(recipient=placeholder)
+    )
+
+
 async def by_idempotency_key(session: AsyncSession, key: str) -> OutboundMessage | None:
     """The message already queued under this key, or nothing if none was."""
     stmt = select(OutboundMessage).where(OutboundMessage.idempotency_key == key)

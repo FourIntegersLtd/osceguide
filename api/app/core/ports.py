@@ -94,6 +94,11 @@ class CheckoutUnavailable(Exception):
     """The card processor could not start a checkout."""
 
 
+class CheckoutRefused(CheckoutUnavailable):
+    """The processor answered and said no (a 4xx): retrying will not change it. Its message is
+    the processor's own reason, fit to show a person (already refunded, disputed)."""
+
+
 class EventCountsUnavailable(Exception):
     """Event counts cannot be had at all here: switched off, no secret, or not on
     the analytics plan. Reported as "unconfigured", not as an error."""

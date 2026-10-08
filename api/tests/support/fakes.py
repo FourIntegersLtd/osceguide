@@ -445,6 +445,7 @@ class FakeCheckoutSessions:
     def __init__(self, *, url: str = "https://checkout.stripe.test/c/pay/abc", fails: bool = False) -> None:
         self.url = url
         self.fails = fails
+        self.refusal: str | None = None
         self.calls: list[dict[str, str]] = []
         self.prices: list[dict[str, str | int]] = []
         self.refunds: list[dict[str, str | int]] = []
@@ -495,8 +496,10 @@ class FakeCheckoutSessions:
         return f"price_fake_{plan_code}"
 
     async def refund(self, *, payment_intent_id: str, amount_pence: int, idempotency_key: str) -> None:
-        from app.core.ports import CheckoutUnavailable
+        from app.core.ports import CheckoutRefused, CheckoutUnavailable
 
+        if self.refusal:
+            raise CheckoutRefused(self.refusal)
         if self.fails:
             raise CheckoutUnavailable("stripe is down")
         self.refunds.append(

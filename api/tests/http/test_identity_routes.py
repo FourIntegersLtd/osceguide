@@ -873,6 +873,18 @@ async def test_erasure_clears_the_exam_and_sign_in_links_and_confirms_by_email(
     assert [(m.recipient, m.status) for m in mail] == [("confirm@example.com", "pending")]
     assert mail[0].payload == {}
 
+    # Review of 258199a: once it is delivered the outbox stops naming the address.
+    from app.features.notifications import service as notifications_service
+    from tests.support.fakes import RecordingEmailSender
+
+    sender = RecordingEmailSender()
+    await notifications_service.deliver_due(db_session, sender=sender, now=datetime.now(UTC))
+    assert [m.to for m in sender.sent if m.subject.startswith("Your OSCE Guide account has been erased")] == [
+        "confirm@example.com"
+    ]
+    await db_session.refresh(mail[0])
+    assert (mail[0].recipient, mail[0].status) == ("erased@anonymised.invalid", "sent")
+
 
 async def test_a_self_registered_account_keeps_its_trial_clock_through_its_first_later_sign_in(
     db_session: AsyncSession, settings

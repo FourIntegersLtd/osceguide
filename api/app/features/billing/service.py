@@ -108,11 +108,12 @@ async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: dat
     if not await repository.record_event(
         session, event_id=event_id, event_type=event_type, event_payload=event
     ):
-        existing = await repository.event_by_id(session, event_id)
+        existing = await repository.lock_event(session, event_id)
         if existing is not None and existing.processed_at is not None:
             # A concurrent delivery got there first and has committed.
             return {"status": "already_applied"}
-        # Recorded by an earlier delivery that failed to apply: try again.
+        # Recorded by an earlier delivery that failed to apply: try again, holding the row so a
+        # concurrent retry waits for this one instead of applying the event a second time.
 
     if domain.restores_access(event_type, (event.get("data") or {}).get("object") or {}):
         try:

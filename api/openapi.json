@@ -5615,6 +5615,7 @@
               "password_not_set",
               "password_reset_not_sent",
               "payment_already_recorded",
+              "payment_already_refunded",
               "payment_not_found",
               "payment_not_yet_recorded",
               "payout_account_number_required",
@@ -5697,6 +5698,7 @@
               "station_template_version_not_found",
               "station_version_not_usable",
               "stripe_refund_failed",
+              "stripe_refund_refused",
               "tag_too_long",
               "template_not_published",
               "too_early_to_join",
@@ -59938,9 +59940,11 @@
                 }
               }
             },
-            "description": "not_a_stripe_payment",
+            "description": "not_a_stripe_payment, payment_already_refunded, stripe_refund_refused",
             "x-codes": [
-              "not_a_stripe_payment"
+              "not_a_stripe_payment",
+              "payment_already_refunded",
+              "stripe_refund_refused"
             ]
           },
           "422": {

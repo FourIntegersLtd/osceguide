@@ -22,6 +22,13 @@ log = get_logger(__name__)
 DELIVERY_BATCH = 100
 
 
+# What a recipient becomes once the person behind it is erased.
+ERASED_RECIPIENT = "erased@anonymised.invalid"
+# Mail that is sent to an address after its owner was erased: delivered once, then the outbox must
+# not keep the address it was the last thing to name.
+SCRUB_RECIPIENT_ON_SEND = frozenset({"account_erased"})
+
+
 class UnknownTemplate(LookupError):
     """A queued message names a template that does not exist: a bug in whoever queued it."""
 
@@ -109,6 +116,8 @@ async def deliver_due(
                 await repository.mark_failed(session, message.id, attempts=attempts, error=str(exc))
             continue
         await repository.mark_sent(session, message.id, at=now)
+        if message.template_key in SCRUB_RECIPIENT_ON_SEND:
+            await repository.scrub_recipient(session, message.id, placeholder=ERASED_RECIPIENT)
         sent += 1
     return sent, deferred
 
@@ -117,7 +126,7 @@ async def erase_recipients(session: AsyncSession, emails: list[str]) -> None:
     """The people behind these addresses are being erased: queued mail for them is dropped and
     sent mail stops naming them. Compared lower-case, as addresses are stored."""
     await repository.erase_recipients(
-        session, {email.lower() for email in emails}, placeholder="erased@anonymised.invalid"
+        session, {email.lower() for email in emails}, placeholder=ERASED_RECIPIENT
     )
 
 

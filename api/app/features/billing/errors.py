@@ -120,6 +120,24 @@ class StripeRefundFailed(Unavailable):
     default_message = "Stripe could not refund that payment. Nothing has changed; try again in a moment."
 
 
+class PaymentAlreadyRefunded(Conflict):
+    """Access for this payment was already withdrawn, a refund was recorded, or it was disputed.
+    Refusing before Stripe is asked stops a second click or a stale console refunding twice."""
+
+    code = "payment_already_refunded"
+    default_message = (
+        "That payment has already been refunded, withdrawn or disputed, so it was not refunded again."
+    )
+
+
+class StripeRefundRefused(Conflict):
+    """Stripe answered and refused (already refunded there, disputed, too old). Not an outage: the
+    reason is Stripe's own, and nothing has changed here."""
+
+    code = "stripe_refund_refused"
+    default_message = "Stripe refused that refund."
+
+
 class NotAStripePayment(Conflict):
     """The payment was recorded by hand, so there is no Stripe charge to refund. Withdraw its access
     with "Record refund" and return the money where it was taken."""
