@@ -261,14 +261,22 @@ type AttemptDiagnosisInput = {
   created_at?: string;
 };
 
+type AttemptClock = Pick<AttemptDiagnosisInput, "started_at" | "created_at">;
+
+/** Whole minutes since the attempt began (or was created); null when it has no usable time. */
+function minutesSince(attempt: AttemptClock, now: number): number | null {
+  const since = Date.parse(attempt.started_at ?? attempt.created_at ?? "");
+  return Number.isFinite(since) ? Math.floor((now - since) / 60_000) : null;
+}
+
 /** Failing or salvaging ends a consultation, so neither is offered while it could still be running. */
 export function attemptMayBeLive(
-  attempt: Pick<AttemptDiagnosisInput, "status" | "started_at" | "created_at">,
+  attempt: AttemptClock & Pick<AttemptDiagnosisInput, "status">,
   now: number = Date.now(),
 ): boolean {
   if (attempt.status !== "created" && attempt.status !== "running") return false;
-  const since = Date.parse(attempt.started_at ?? attempt.created_at ?? "");
-  return Number.isFinite(since) && Math.floor((now - since) / 60_000) < LIVE_WINDOW_MINUTES;
+  const minutes = minutesSince(attempt, now);
+  return minutes !== null && minutes < LIVE_WINDOW_MINUTES;
 }
 
 /**
@@ -282,7 +290,7 @@ export function diagnoseAttempt(attempt: AttemptDiagnosisInput, now: number = Da
   const status = attempt.status;
   if (status === "evaluated" || status === "failed") return null;
   if (attemptMayBeLive(attempt, now)) {
-    const minutes = Math.floor((now - Date.parse(attempt.started_at ?? attempt.created_at ?? "")) / 60_000);
+    const minutes = minutesSince(attempt, now) ?? 0;
     return {
       problem: `This consultation began ${minutes < 1 ? "less than a minute" : `${minutes} minute${minutes === 1 ? "" : "s"}`} ago and may still be in progress. Failing or salvaging it now would end it for the person sitting it.`,
       action: null,
