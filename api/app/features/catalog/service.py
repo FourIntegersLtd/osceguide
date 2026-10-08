@@ -22,9 +22,9 @@ from app.features.catalog.models import Exam
 from app.features.catalog.schemas import ExamRead
 
 
-async def live_exams_using_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
+async def count_live_exams_for_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
     """How many exams not yet retired are marked against this rubric version."""
-    return await repository.live_exams_using_rubric_version(session, rubric_version_id)
+    return await repository.count_live_exams_for_rubric_version(session, rubric_version_id)
 
 
 async def pilot_exam_codes(session: AsyncSession) -> frozenset[str]:

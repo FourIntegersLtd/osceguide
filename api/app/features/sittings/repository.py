@@ -17,12 +17,12 @@ from app.features.sittings.models import Circuit, CircuitStation, CircuitTrainee
 async def count_open_sittings_for_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
     """Sittings marked against this rubric version that are not cancelled and still have
     a circuit to run, or have none built yet."""
-    ended = select(Circuit.sitting_id).where(Circuit.ended_at.is_(None))
+    unfinished = select(Circuit.sitting_id).where(Circuit.ended_at.is_(None))
     any_circuit = select(Circuit.sitting_id)
     stmt = select(func.count(Sitting.id)).where(
         Sitting.rubric_version_id == rubric_version_id,
         Sitting.status != "cancelled",
-        Sitting.id.in_(ended) | Sitting.id.not_in(any_circuit),
+        Sitting.id.in_(unfinished) | Sitting.id.not_in(any_circuit),
     )
     return int((await session.execute(stmt)).scalar_one())
 

@@ -135,7 +135,7 @@ async def delete_exam(session: AsyncSession, exam_id: uuid.UUID) -> None:
     await session.flush()
 
 
-async def live_exams_using_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
+async def count_live_exams_for_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
     """Exams not yet retired that are marked against this rubric version."""
     stmt = select(func.count(Exam.id)).where(
         Exam.rubric_version_id == rubric_version_id, Exam.status != "retired"

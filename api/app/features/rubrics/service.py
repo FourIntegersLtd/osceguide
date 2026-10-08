@@ -293,7 +293,7 @@ async def _refuse_while_in_use(session: AsyncSession, version_id: uuid.UUID) -> 
 
     Archiving it would have every attempt there refused `rubric_version_not_published`.
     """
-    exams = await catalog_service.live_exams_using_rubric_version(session, version_id)
+    exams = await catalog_service.count_live_exams_for_rubric_version(session, version_id)
     sittings = await sittings_service.open_sittings_using_rubric_version(session, version_id)
     if exams or sittings:
         raise errors.NotArchivableError(

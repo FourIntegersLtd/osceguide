@@ -136,27 +136,29 @@ async def events_by_job(session: AsyncSession, job_ids: Sequence[int]) -> dict[i
     return events
 
 
+# Jobs `doing` whose worker is gone or silent; callers add further AND clauses.
+_STALLED_FROM = (
+    "FROM procrastinate_jobs job "
+    "LEFT JOIN procrastinate_workers worker ON worker.id = job.worker_id "
+    "WHERE job.status = 'doing' AND (job.worker_id IS NULL "
+    "OR worker.last_heartbeat < now() - make_interval(secs => :seconds))"
+)
+
+
 async def stalled_jobs(session: AsyncSession, *, seconds_since_heartbeat: int) -> list[JobRef]:
     """Jobs left `doing` by a worker that died: its row pruned (`worker_id` null)
     or its heartbeat older than the limit. procrastinate's own
     `select_stalled_jobs_by_heartbeat`, read through our session."""
     stmt = text(
-        f"SELECT {', '.join('job.' + column for column in _COLUMNS.split(', '))} FROM procrastinate_jobs job "  # noqa: S608
-        "LEFT JOIN procrastinate_workers worker ON worker.id = job.worker_id "
-        "WHERE job.status = 'doing' AND (job.worker_id IS NULL "
-        "OR worker.last_heartbeat < now() - make_interval(secs => :seconds)) ORDER BY job.id"
+        f"SELECT {', '.join('job.' + column for column in _COLUMNS.split(', '))} "  # noqa: S608
+        f"{_STALLED_FROM} ORDER BY job.id"
     )
     return [_ref(job_row) for job_row in await session.execute(stmt, {"seconds": seconds_since_heartbeat})]
 
 
 async def is_stalled(session: AsyncSession, job_id: int, *, seconds_since_heartbeat: int) -> bool:
     """Whether this one job is `doing` with a dead worker (see `stalled_jobs`)."""
-    stmt = text(
-        "SELECT 1 FROM procrastinate_jobs job "
-        "LEFT JOIN procrastinate_workers worker ON worker.id = job.worker_id "
-        "WHERE job.id = :id AND job.status = 'doing' AND (job.worker_id IS NULL "
-        "OR worker.last_heartbeat < now() - make_interval(secs => :seconds))"
-    )
+    stmt = text(f"SELECT 1 {_STALLED_FROM} AND job.id = :id")  # noqa: S608
     found = await session.execute(stmt, {"id": job_id, "seconds": seconds_since_heartbeat})
     return found.first() is not None
 
