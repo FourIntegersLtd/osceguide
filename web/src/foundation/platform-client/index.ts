@@ -18,7 +18,6 @@ export {
   hasCode,
   validationFields,
   rateLimitMessage,
-  retryAfterPhrase,
   type PlatformErrorCode,
   type PlatformErrorBody,
 } from "@/foundation/platform-client/errors";

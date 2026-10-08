@@ -27,6 +27,7 @@ transaction that justified it; a worker drains the queue.
 - An abandoned message is logged as an error (Sentry) and stays `failed`; the
   console's System health page lists it and can queue it again with fresh
   attempts (`list_undelivered`, `retry_undelivered`, served by `health`).
+- `entitlement_expiring` (queued by `entitlements.warn_expiring_access`) warns a week before bought access ends; `practice_access_granted` opens `/app/me`. `enqueue_email` returns whether it queued or the key already existed.
 - Each message is attempted independently: one bad address does not stop the queue.
 
 ## Routes

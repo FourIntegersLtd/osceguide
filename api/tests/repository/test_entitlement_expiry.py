@@ -54,3 +54,33 @@ async def test_access_ending_later_or_not_bought_is_not_warned(db_session: Async
     await _holder(db_session, source="purchase", ends_in=-timedelta(days=1))
 
     assert await warn_expiring_access(db_session, now=NOW) == 0
+
+
+async def test_other_access_that_outlasts_it_stops_the_warning(db_session: AsyncSession) -> None:
+    """Any live source counts, and open-ended access (no end date) outlasts everything."""
+    user, _ = await _holder(db_session, source="purchase", ends_in=timedelta(days=3))
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    await ent_repo.grant(db_session, user_id=user.id, exam_id=exam.id, source="admin", ends_at=None)
+    await db_session.flush()
+
+    assert await warn_expiring_access(db_session, now=NOW) == 0
+
+
+async def test_a_plan_no_longer_than_the_warning_is_not_warned(db_session: AsyncSession) -> None:
+    user = await identity_repo.create_user(
+        db_session, email="short@example.com", name="Payer", password_hash=None
+    )
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    await ent_repo.grant(
+        db_session,
+        user_id=user.id,
+        exam_id=exam.id,
+        source="purchase",
+        starts_at=NOW - timedelta(hours=1),
+        ends_at=NOW + timedelta(days=WARN_DAYS) - timedelta(hours=1),
+    )
+    await db_session.flush()
+
+    assert await warn_expiring_access(db_session, now=NOW) == 0

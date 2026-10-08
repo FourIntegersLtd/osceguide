@@ -23,35 +23,28 @@ async def warn_expiring_access(session: AsyncSession, *, now: datetime) -> int:
     """Queue one email per purchase ending within `WARN_DAYS`; returns how many were queued.
 
     Idempotent on the entitlement, so the hourly job and an overlapping worker send one.
-    Skipped when the person already holds bought access for the same exam that outlasts this one.
+    Skipped when other live access to the same exam outlasts this one, and for a plan no longer
+    than the warning itself (it would be warned within the hour of buying).
     """
     queued = 0
-    for grant in await repository.purchases_ending_between(
-        session, after=now, before=now + timedelta(days=WARN_DAYS)
-    ):
+    warning = timedelta(days=WARN_DAYS)
+    for grant in await repository.purchases_ending_between(session, after=now, before=now + warning):
         ends_at = grant.ends_at
         if ends_at is None:
             continue
-        held = await repository.for_user_and_exam(session, grant.user_id, grant.exam_id)
-        if any(
-            other.id != grant.id
-            and other.source == "purchase"
-            and other.revoked_at is None
-            and other.ends_at is not None
-            and other.ends_at > ends_at
-            for other in held
-        ):
+        if grant.starts_at > ends_at - warning or await repository.has_later_access(session, grant, now=now):
             continue
         person = await identity.user_ref_by_id(session, grant.user_id)
         exam = await catalog.exam_ref_by_id(session, grant.exam_id)
         if person is None or exam is None:
             continue
+        ends_on = f"{ends_at:%-d %B %Y}"
         sent = await notifications.enqueue_email(
             session,
             recipient=person.email,
-            subject=f"Your {exam.name} access ends on {ends_at:%-d %B %Y}",
+            subject=f"Your {exam.name} access ends on {ends_on}",
             template_key="entitlement_expiring",
-            payload={"exam_title": exam.name, "ends_on": f"{ends_at:%-d %B %Y}"},
+            payload={"exam_title": exam.name, "ends_on": ends_on},
             idempotency_key=f"entitlement_expiring:{grant.id}",
         )
         queued += int(sent)

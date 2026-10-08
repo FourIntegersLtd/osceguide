@@ -98,11 +98,11 @@ test("a duplicate add and a rate-limited resend are said plainly", () => {
   );
   assert.equal(
     rosterErrorMessage(refused(429, "too_many_requests"), "ada@example.com"),
-    "You have sent a lot of invitation emails just now. Wait a while, then try again.",
+    "raw server text",
   );
   assert.equal(
     rosterErrorMessage(refused(429, "too_many_requests", { retry_after: 1500 }), "ada@example.com"),
-    "You have sent a lot of invitation emails just now. Try again in 25 minutes.",
+    "Too many attempts. Try again in 25 minutes.",
   );
   assert.equal(rosterErrorMessage(refused(500, "internal_error"), "a@b.c"), "raw server text");
 });

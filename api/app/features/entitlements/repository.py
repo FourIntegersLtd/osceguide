@@ -219,3 +219,21 @@ async def purchases_ending_between(
         .order_by(Entitlement.ends_at, Entitlement.id)
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def has_later_access(session: AsyncSession, grant: Entitlement, *, now: datetime) -> bool:
+    """Whether the same person holds other live access to the same exam, from any source,
+    that never ends or ends after `grant` does."""
+    assert grant.ends_at is not None
+    stmt = (
+        select(Entitlement.id)
+        .where(
+            Entitlement.user_id == grant.user_id,
+            Entitlement.exam_id == grant.exam_id,
+            Entitlement.id != grant.id,
+            or_(Entitlement.ends_at.is_(None), Entitlement.ends_at > grant.ends_at),
+            *_live(now),
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None

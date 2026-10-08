@@ -49,7 +49,7 @@ recomputed on every request and stored nowhere.
 | GET | `/api/v1/platform/users/{id}/entitlements` | platform admin | every grant the person has held, with source, `source_ref`, `granted_by` and `live`; `user_not_found` (404) |
 
 ## Jobs
-None. `billing` writes entitlements through this slice's service.
+`warn_expiring_access` (hourly, `jobs.py`): queues one `entitlement_expiring` email per bought grant ending within 7 days (`service_expiry.py`), once per grant, skipped when other live access outlasts it or the plan was 7 days or shorter. `billing` writes entitlements through this slice's service.
 
 ## Which exams a person may open
 `service.require` answers "may this one attempt start". `service_access` answers
