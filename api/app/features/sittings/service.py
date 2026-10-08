@@ -60,7 +60,7 @@ async def create_sitting(
     """Schedule a new sitting, marked against its programme's published rubric."""
     rubric_version_id = await rubric_version_for_programme(session, org_id, programme_id)
     if cohort_id is not None:
-        await roster_groups.ensure_cohort(session, org_id, cohort_id)
+        await roster_groups.require_cohort(session, org_id, cohort_id)
 
     sitting = await repository.create_sitting(
         session,

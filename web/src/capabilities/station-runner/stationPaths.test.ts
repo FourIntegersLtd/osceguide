@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { stationAttemptPath, stationFeedbackPath } from "@/capabilities/station-runner/stationFeedbackPath";
+import { stationAttemptPath, stationFeedbackPath } from "@/capabilities/station-runner/stationPaths";
 
 describe("station practise paths", () => {
   it("opens an attempt's feedback on the station's review tab", () => {

@@ -14,7 +14,7 @@ import {
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { stationAttemptPath, stationFeedbackPath } from "@/capabilities/station-runner/stationFeedbackPath";
+import { stationAttemptPath, stationFeedbackPath } from "@/capabilities/station-runner/stationPaths";
 import { listOrgStations, type OrgStation } from "@/domains/assess/trainee/api";
 import { PERSONAL_PRACTICE_HREF, practisable } from "@/domains/assess/trainee/support";
 

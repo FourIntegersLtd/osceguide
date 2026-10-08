@@ -43,7 +43,7 @@ async def list_trainees(
     """Readable by staff who run circuits; a trainee cannot read the roster.
 
     `total_count` is every match, not this page's size."""
-    trainees, next_cursor = await service.list_trainees(
+    return await service.list_trainees(
         session,
         workspace.org_id,
         limit=page.limit,
@@ -51,10 +51,6 @@ async def list_trainees(
         search=search,
         access_revoked=access_revoked,
     )
-    total = await service.count_trainees(
-        session, workspace.org_id, search=search, access_revoked=access_revoked
-    )
-    return schemas.TraineePage(items=trainees, next_cursor=next_cursor, total_count=total)
 
 
 @router.post(

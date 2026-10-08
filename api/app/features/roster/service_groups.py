@@ -36,13 +36,12 @@ async def add_cohort(
     if await repository_groups.cohort_by_name(session, org_id, name) is not None:
         raise errors.CohortExists()
     cohort = await repository_groups.create_cohort(session, org_id, name=name, academic_year=academic_year)
-    return _cohort_read(cohort)
+    return (await _cohort_reads(session, org_id, [cohort]))[0]
 
 
 async def list_cohorts(session: AsyncSession, org_id: uuid.UUID) -> list[CohortRead]:
-    cohorts = await repository_groups.list_cohorts(session, org_id)
-    held = await sittings.sitting_counts_by_cohort(session, org_id, [cohort.id for cohort in cohorts])
-    return [_cohort_read(cohort, held.get(cohort.id, 0)) for cohort in cohorts]
+    """Every intake at an organisation, with how many sittings are held for each."""
+    return await _cohort_reads(session, org_id, await repository_groups.list_cohorts(session, org_id))
 
 
 async def update_cohort(
@@ -56,7 +55,7 @@ async def update_cohort(
     """Rename an intake, or say which academic year it is. Only what was sent is
     written. Renaming the row keeps its trainees; nothing has to be moved.
     """
-    cohort = await _require_cohort(session, org_id, cohort_id)
+    cohort = await require_cohort(session, org_id, cohort_id)
     named = set(_COHORT_FIELDS) & fields_sent
     name = body.name if "name" in named else None
     if name is not None and name != cohort.name:
@@ -73,13 +72,7 @@ async def update_cohort(
         academic_year=body.academic_year if "academic_year" in named else None,
         clear_academic_year="academic_year" in named and body.academic_year is None,
     )
-    held = await sittings.sitting_counts_by_cohort(session, org_id, [cohort_id])
-    return _cohort_read(await _require_cohort(session, org_id, cohort_id), held.get(cohort_id, 0))
-
-
-async def ensure_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> None:
-    """Refuse `cohort_not_found` unless this organisation has the cohort, for a sitting held for it."""
-    await _require_cohort(session, org_id, cohort_id)
+    return (await _cohort_reads(session, org_id, [await require_cohort(session, org_id, cohort_id)]))[0]
 
 
 async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> None:
@@ -89,7 +82,7 @@ async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uui
     an unrefused delete would silently leave people with no intake instead of
     failing; moving them out is `PATCH /trainees/{id}`, done on purpose.
     """
-    await _require_cohort(session, org_id, cohort_id)
+    await require_cohort(session, org_id, cohort_id)
     if await repository_groups.count_trainees_in_cohort(session, org_id, cohort_id):
         raise errors.CohortInUse()
     await repository_groups.delete_cohort(session, org_id, cohort_id)
@@ -216,7 +209,7 @@ async def _require_group(session: AsyncSession, org_id: uuid.UUID, group_id: uui
     return group
 
 
-async def _require_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> Cohort:
+async def require_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> Cohort:
     """Fetch a cohort, or refuse if this organisation has none by that id."""
     cohort = await repository_groups.cohort_by_id(session, org_id, cohort_id)
     if cohort is None:
@@ -224,12 +217,16 @@ async def _require_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: u
     return cohort
 
 
-def _cohort_read(cohort: Cohort, sitting_count: int = 0) -> CohortRead:
-    """Shape a cohort row into what a route may return."""
-    return CohortRead(
-        id=cohort.id,
-        name=cohort.name,
-        academic_year=cohort.academic_year,
-        status=cohort.status,
-        sitting_count=sitting_count,
-    )
+async def _cohort_reads(session: AsyncSession, org_id: uuid.UUID, cohorts: list[Cohort]) -> list[CohortRead]:
+    """Shape cohort rows into what a route may return, each with its sitting count."""
+    held = await sittings.sitting_counts_by_cohort(session, org_id, [cohort.id for cohort in cohorts])
+    return [
+        CohortRead(
+            id=cohort.id,
+            name=cohort.name,
+            academic_year=cohort.academic_year,
+            status=cohort.status,
+            sitting_count=held.get(cohort.id, 0),
+        )
+        for cohort in cohorts
+    ]

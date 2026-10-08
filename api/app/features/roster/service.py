@@ -26,6 +26,7 @@ from app.features.roster.schemas import (
     BulkTraineesResult,
     CreateTrainee,
     SkippedTrainee,
+    TraineePage,
     TraineeRead,
 )
 from app.features.sittings import service_reads as sittings
@@ -108,9 +109,10 @@ async def list_trainees(
     cursor: dict[str, Any] | None,
     search: str | None = None,
     access_revoked: bool | None = None,
-) -> tuple[list[TraineeRead], str | None]:
+) -> TraineePage:
     """A page of an organisation's roster, optionally narrowed to a trainee
-    whose name, email or cohort matches `search`, and to revoked or live access."""
+    whose name, email or cohort matches `search`, and to revoked or live access,
+    with how many trainees match in all."""
     trainees, next_cursor = await repository.list_trainees(
         session, org_id, limit=limit, cursor=cursor, search=search, access_revoked=access_revoked
     )
@@ -137,7 +139,8 @@ async def list_trainees(
         read.programme_names = sorted(
             {exams[pid][0] for pid in programme_ids.get(read.user_id, set()) if pid in exams}
         )
-    return reads, next_cursor
+    total = await count_trainees(session, org_id, search=search, access_revoked=access_revoked)
+    return TraineePage(items=reads, next_cursor=next_cursor, total_count=total)
 
 
 async def set_access(

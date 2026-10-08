@@ -52,7 +52,7 @@ export const EXAM_CONFIGS = {
         price: 64.99,
         isPopular: true,
         features: [
-          "75 High-Yield Clinical Scenarios",
+          "High-Yield Clinical Scenarios",
           "3 attempts per station",
           "Real-Time Speech Transcription",
           "RCGP Aligned Structured Feedback",
@@ -73,7 +73,7 @@ export const EXAM_CONFIGS = {
         stations: "Full station library", 
         price: 94.99, 
         features: [
-          "100 High-Yield Clinical Scenarios",
+          "High-Yield Clinical Scenarios",
           "3 attempts per station",
           "Real-Time Speech Transcription",
           "RCGP Aligned Structured Feedback",
@@ -136,7 +136,7 @@ export const EXAM_CONFIGS = {
         price: 64.99,
         isPopular: true,
         features: [
-          "100+ High-Yield Clinical Scenarios",
+          "High-Yield Clinical Scenarios",
           "3 attempts per station",
           "Real-Time Speech Transcription",
           "GMC Aligned Structured Feedback",
@@ -153,7 +153,7 @@ export const EXAM_CONFIGS = {
         stations: "Full station library", 
         price: 94.99, 
         features: [
-          "125+ High-Yield Clinical Scenarios",
+          "High-Yield Clinical Scenarios",
           "3 attempts per station",
           "Real-Time Speech Transcription",
           "GMC Aligned Structured Feedback",
@@ -212,7 +212,7 @@ export const EXAM_CONFIGS = {
         price: 64.99,
         isPopular: true,
         features: [
-          "100+ High-Yield Psychiatry Scenarios",
+          "High-Yield Psychiatry Scenarios",
           "3 attempts per station",
           "Real-Time Speech Transcription",
           "RCPsych CASC-Aligned Feedback",
@@ -229,7 +229,7 @@ export const EXAM_CONFIGS = {
         stations: "Full station library", 
         price: 94.99, 
         features: [
-          "125+ High-Yield Psychiatry Scenarios",
+          "High-Yield Psychiatry Scenarios",
           "3 attempts per station",
           "Real-Time Speech Transcription",
           "RCPsych CASC-Aligned Feedback",
@@ -326,3 +326,5 @@ export type ExamConfig = {
   label: string;
   plans?: Record<string, ExamPlan>;
 };
+
+export type ExamName = keyof typeof EXAM_CONFIGS;

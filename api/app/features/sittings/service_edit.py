@@ -28,6 +28,10 @@ from app.features.tenancy import service_audit as tenancy_audit
 # `rubric_version_id` to the programme it is resolved from.
 EDITABLE = frozenset({"name", "mode", "sitting_type", "scheduled_for", "programme_id", "cohort_id"})
 
+# The fields where a null is a request to clear: a sitting can genuinely be unscheduled or
+# held for no cohort. On the others a null is the schema's default, read as absent.
+CLEARABLE = frozenset({"scheduled_for", "cohort_id"})
+
 
 async def update_sitting(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, *, body: UpdateSitting
@@ -73,7 +77,7 @@ async def update_sitting(
         )
 
     if "cohort_id" in changing and body.cohort_id is not None:
-        await roster_groups.ensure_cohort(session, org_id, body.cohort_id)
+        await roster_groups.require_cohort(session, org_id, body.cohort_id)
 
     if values:
         await repository.update_sitting(session, org_id, sitting_id, **values)
@@ -113,12 +117,11 @@ def _requested(body: UpdateSitting, sitting: Sitting, field: str) -> bool:
     the mode, it has restated it, and refusing that because somebody has started
     an examination would be a route refusing to save a form nobody edited.
 
-    A null is a request to clear for `scheduled_for` and `cohort_id`, because "not
-    scheduled" and "no intake" are states a sitting can genuinely be in. On the others it is
+    A null on a `CLEARABLE` field is a request to clear it; on the others it is
     the schema's default rather than an intention, so it is read as absent.
     """
     wanted: object = getattr(body, field)
-    if wanted is None and field not in ("scheduled_for", "cohort_id"):
+    if wanted is None and field not in CLEARABLE:
         return False
     current: object = getattr(sitting, field)
     if isinstance(wanted, datetime) and isinstance(current, datetime):

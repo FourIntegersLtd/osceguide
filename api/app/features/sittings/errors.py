@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from app.core.errors import Conflict, NotFound
 from app.features.attempts.errors import MarkingNotReady
-from app.features.roster.errors import TraineeNotOnRosterError, TraineeRevokedError
+from app.features.roster.errors import CohortNotFound, TraineeNotOnRosterError, TraineeRevokedError
 
 
 class SittingNotFound(NotFound):
@@ -112,6 +112,7 @@ from app.features.stations.errors import TemplateNotPublishedError  # noqa: E402
 from app.features.voice.errors import VoiceUnavailable  # noqa: E402
 
 __all__ = [
+    "CohortNotFound",
     "ExamRubricNotReady",
     "MarkingNotReady",
     "ProgrammeNotActive",

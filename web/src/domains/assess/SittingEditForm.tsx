@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, AsyncBoundary, Input, Spinner } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Input } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { listProgrammes, updateSitting, type Sitting, type SittingMode } from "@/domains/assess/api";
@@ -46,8 +46,13 @@ export function SittingEditForm({
   onSaved: () => void;
 }) {
   const lock = sittingEditLock(sitting);
-  const programmes = useAsync((signal) => listProgrammes(orgSlug, signal), [orgSlug]);
-  const cohorts = useAsync((signal) => listCohorts(orgSlug, signal), [orgSlug]);
+  const choices = useAsync(
+    async (signal) => ({
+      programmes: (await listProgrammes(orgSlug, signal)).items,
+      cohorts: (await listCohorts(orgSlug, signal)).items,
+    }),
+    [orgSlug],
+  );
   const [values, setValues] = useState<SittingFormValues>({
     name: sitting.name,
     mode: sittingModeOf(sitting.mode),
@@ -113,25 +118,20 @@ export function SittingEditForm({
           disabled={lock.modeFrozen}
         />
 
-        <AsyncBoundary state={programmes}>
-          {(page) => (
-            <ProgrammeField
-              value={values.programmeId}
-              onChange={(programmeId) => set("programmeId", programmeId)}
-              programmes={programmeChoices(page.items, sitting.programme_id)}
-              disabled={lock.assessmentFrozen}
-            />
+        <AsyncBoundary state={choices}>
+          {({ programmes, cohorts }) => (
+            <>
+              <ProgrammeField
+                value={values.programmeId}
+                onChange={(programmeId) => set("programmeId", programmeId)}
+                programmes={programmeChoices(programmes, sitting.programme_id)}
+                disabled={lock.assessmentFrozen}
+              />
+              {cohorts.length > 0 ? (
+                <CohortField value={values.cohortId} onChange={(cohortId) => set("cohortId", cohortId)} cohorts={cohorts} />
+              ) : null}
+            </>
           )}
-        </AsyncBoundary>
-
-        {programmes.loading ? <Spinner label="Loading programmes" /> : null}
-
-        <AsyncBoundary state={cohorts}>
-          {(page) =>
-            page.items.length > 0 ? (
-              <CohortField value={values.cohortId} onChange={(cohortId) => set("cohortId", cohortId)} cohorts={page.items} />
-            ) : null
-          }
         </AsyncBoundary>
 
         <ScheduledForField
