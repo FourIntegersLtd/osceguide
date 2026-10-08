@@ -252,6 +252,7 @@ unless written in full.
 - **S-25** · WRONG · open · Stalled job requeued once then failed silently; consumer attempt stuck in created/running has no reaper; sweep failures logged only; paused circuit force-ended at 12h; outbox drains 20 per run (500 invites ≈ 25 min); erasure batch aborts on one error. health/service.py; sittings/jobs.py; notifications
 - **S-26** · WRONG · open · Bulk import, single adds and resends share OUTBOUND_EMAIL 30/h per user: more than 30 resends in an hour 429s; rate limits handled only in MFA/2FA/help panels; retry_after never read. core/rate_limit.py
 - **S-27** · WRONG · open · collectPages stops at 25 pages silently; programmes, cohorts, groups lists first page only; SSE has no connection cap and auth is checked once at open. domains/assess/api.ts; core/sse.py
+- **S-28** · ROUGH · open · Found during 613c080, not caused by it: retiring a programme leaves scheduled sittings and circuits alone, so a lead can still start a circuit under a retired programme; only scheduling and editing are gated. Needs a product decision (cancel, block start, or allow to finish). catalog, sittings/service_run.py
 
 ## 10. Emails (E-*)
 
@@ -353,3 +354,4 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | 2026-10-08 | night r1 marking | review fixes edbf127 56f2206 (74bbded: failed-reason copy per reason, evidence shim deleted, ReleaseAll split); R-33 T-8 partly, T-6 fixed (cee07d0); institution 576c547 (5770d03 review); access fd62033 (c6bbf14, a59e4d6 review) | T-3 and R-34 need decisions; drafts saved before 74bbded are refused evidence_changed once at release |
 | 2026-10-08 | night r1 access | A-15 A-17 fixed, A-14 A-16 A-18 partly (75ee1d7); review fixes fd62033 | already_purchased and the SAML input need the openapi regen |
 | 2026-10-08 | night r1 institution | T-7 T-9 T-11 R-41 fixed, S-24 T-10 partly (33209b7); review fixes d7e3dc1 (edbf127, 576c547) | T-12 added; openapi needs org_slug, programme_not_active, lead_cannot_run; R-19 /end has no reason field |
+| 2026-10-08 | night r1 institution+access | review fixes 613c080 (33209b7 d7e3dc1: all-orgs /me/sittings now membership-scoped, ensure_programme_active, offline disables restored), 0d00c78 (75ee1d7 fd62033); runner fixed test_sitting_cancel_routes broken by edbf127 | S-28 added; access lane on 0d00c78 review fixes |
