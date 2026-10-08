@@ -32,6 +32,7 @@ from app.features.inbox import service as inbox_service
 from app.features.media_production import service as media_production
 from app.features.notifications import service as notifications
 from app.features.peer_practice import service_privacy as peer_practice_privacy
+from app.features.results import service as results
 from app.features.roster import service as roster
 from app.features.tenancy import service as tenancy
 from app.features.tutor_memory import service as tutor_memory_service
@@ -97,6 +98,7 @@ async def erase_account(session: AsyncSession, user_id: uuid.UUID, *, now: datet
     addresses = await roster.emails_for_user(session, user_id=user_id)
     await notifications.erase_recipients(session, [*addresses, *([address] if address else [])])
     await roster.anonymise_for_user(session, user_id=user_id, now=now)
+    await results.erase_text_for_user(session, user_id=user_id)
     attempts_scrubbed = await attempts_privacy.erase_content_for_user(session, user_id)
     recordings_deleted = await _erase_peer_recordings(session, get_settings(), user_id)
     await tutor_memory_service.forget_everything(session, user_id=user_id, include_debriefs=True)

@@ -3,17 +3,19 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import case, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.results.models import (
     CandidateResultEvent,
     CandidateResultRevision,
 )
+
+ERASED = "[erased]"
 
 
 async def latest_revision(
@@ -183,3 +185,26 @@ async def released_outcomes(session: AsyncSession, org_id: uuid.UUID) -> list[tu
     )
     rows = (await session.execute(stmt)).scalars()
     return [(row.sitting_id, row.assessment_outcome) for row in rows if row.released_at is not None]
+
+
+async def scrub_text_for_trainees(session: AsyncSession, trainee_ids: Sequence[uuid.UUID]) -> int:
+    """Replace the free text on these candidates' decisions with `[erased]`; the one update the
+    append-only trigger permits (S-20). Returns how many revisions had text to scrub."""
+    if not trainee_ids:
+        return 0
+    result = await session.execute(
+        update(CandidateResultRevision)
+        .where(
+            CandidateResultRevision.trainee_id.in_(list(trainee_ids)),
+            or_(
+                CandidateResultRevision.rationale.is_not(None),
+                CandidateResultRevision.moderation_notes.is_not(None),
+            ),
+        )
+        .values(
+            rationale=case((CandidateResultRevision.rationale.is_(None), None), else_=ERASED),
+            moderation_notes=case((CandidateResultRevision.moderation_notes.is_(None), None), else_=ERASED),
+        )
+        .execution_options(synchronize_session=False)
+    )
+    return int(result.rowcount or 0)  # type: ignore[attr-defined]

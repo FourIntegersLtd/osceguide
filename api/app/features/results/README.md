@@ -19,7 +19,10 @@ two outcomes, and an outbox rather than an inline email.
 
 - Revisions and events are **append-only, enforced by a database trigger**. A
   correction is a new revision superseding the old, so what was considered
-  survives and the record stays defensible months later.
+  survives and the record stays defensible months later. The one update the
+  trigger permits is erasure (S-20): `rationale` and `moderation_notes` become
+  `[erased]` (`erase_text_for_user`, called by identity's erasure) and nothing
+  else may change.
 - **A draft save names the revision it was written from** (`expected_revision`,
   `0` for "nothing recorded yet"), and a stale one is refused with
   `decision_revised` (409). Append-only made a stale save *look* safe — no row

@@ -382,3 +382,12 @@ async def released_outcomes_by_sitting(
     for sitting_id, outcome in await repository.released_outcomes(session, org_id):
         grouped.setdefault(sitting_id, []).append(outcome)
     return grouped
+
+
+async def erase_text_for_user(session: AsyncSession, *, user_id: uuid.UUID) -> int:
+    """An account is being erased: what was written about them in a decision becomes `[erased]`.
+
+    Who decided, when and the outcome stay; the free text names the person and does not.
+    """
+    trainee_ids = await roster.trainee_ids_for_user(session, user_id)
+    return await repository.scrub_text_for_trainees(session, trainee_ids)
