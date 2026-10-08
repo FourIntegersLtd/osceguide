@@ -9,8 +9,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts.domain import SCORING_FAILED
 from app.core.auth import Membership
+from app.features.attempts.domain import SCORING_FAILED
 from tests.support.catalog import create_exam, ensure_exam
 from tests.support.decisions import settle_decision
 from tests.support.rubrics import published_feedback_version, rubric_with_domains
