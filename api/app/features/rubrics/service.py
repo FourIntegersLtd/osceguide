@@ -20,9 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import lifecycle
 from app.core.auth import Principal
+from app.core.db import ensure_current
 from app.core.errors import AppError, raise_mapped
 from app.core.pagination import Page
-from app.core.revision import ensure_current
 from app.features.attempts import service_trial
 from app.features.catalog import service as catalog_service
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam

@@ -10,10 +10,9 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import StaleRevision, get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
-from app.core.revision import StaleRevision
 from app.core.tenancy import OrgAdmin, OrgStaff, PlatformAdmin
 from app.features.catalog import errors, schemas, service_authoring, service_import, service_programmes
 

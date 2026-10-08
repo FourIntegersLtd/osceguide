@@ -283,13 +283,17 @@ async def list_run_history(
     )
 
 
-async def programme_activity(session: AsyncSession, org_id: uuid.UUID) -> dict[uuid.UUID, tuple[int, int]]:
-    """Per programme: sittings held, and distinct candidates rostered across them (R-32)."""
+async def programme_activity(
+    session: AsyncSession, org_id: uuid.UUID
+) -> dict[uuid.UUID, tuple[int, int, list[uuid.UUID]]]:
+    """Per programme: sittings held, distinct candidates rostered across them (R-32), and the
+    sitting ids, so a per-sitting figure can be rolled up to its programme."""
     stmt = (
         select(
             Sitting.programme_id,
             func.count(func.distinct(Sitting.id)),
             func.count(func.distinct(CircuitTrainee.trainee_id)),
+            func.array_agg(func.distinct(Sitting.id)),
         )
         .select_from(Sitting)
         .outerjoin(Circuit, Circuit.sitting_id == Sitting.id)
@@ -298,12 +302,4 @@ async def programme_activity(session: AsyncSession, org_id: uuid.UUID) -> dict[u
         .group_by(Sitting.programme_id)
     )
     rows = await session.execute(stmt)
-    return {programme: (int(held), int(people)) for programme, held, people in rows}
-
-
-async def sitting_programmes(session: AsyncSession, org_id: uuid.UUID) -> dict[uuid.UUID, uuid.UUID]:
-    """Which programme each of this organisation's sittings belongs to; a sitting with none is left out."""
-    stmt = select(Sitting.id, Sitting.programme_id).where(
-        Sitting.org_id == org_id, Sitting.programme_id.is_not(None)
-    )
-    return {sitting: programme for sitting, programme in await session.execute(stmt) if programme}
+    return {programme: (int(held), int(people), list(ids)) for programme, held, people, ids in rows}

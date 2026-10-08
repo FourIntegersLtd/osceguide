@@ -20,7 +20,7 @@ from app.core.auth import Principal
 from app.core.db import SessionOpener
 from app.core.events import user_topic
 from app.core.ports import EventBus
-from app.core.sse import Snapshot, capped, event_stream
+from app.core.sse import Snapshot, event_stream
 from app.features.attempts import domain, service_reads
 
 # Once an attempt is here, nothing else will happen to it.
@@ -70,4 +70,4 @@ def attempt_stream(
         return Snapshot(attempt.model_dump_json(), final=domain.Status(attempt.status) in _TERMINAL)
 
     topics = [user_topic(principal.user_id)]
-    return capped(principal.user_id, event_stream(topics=topics, snapshot=snapshot, bus=bus))
+    return event_stream(topics=topics, snapshot=snapshot, bus=bus, owner=principal.user_id)

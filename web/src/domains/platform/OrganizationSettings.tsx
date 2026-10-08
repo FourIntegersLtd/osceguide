@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { Alert, Button, Input, Panel, Select } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import {
-  listOrgMembershipsForSupport,
+  listAllOrgMemberships,
   setStaffMfaPolicy,
   updateOrganization,
   type Organization,
@@ -64,25 +64,15 @@ export function OrganizationSettings({
     [organization.slug, onChanged, toast],
   );
 
-  const everyMember = async (): Promise<Membership[]> => {
-    const members: Membership[] = [];
-    let cursor: string | null | undefined;
-    do {
-      const page = await listOrgMembershipsForSupport(organization.slug, { limit: 100, cursor });
-      members.push(...page.items);
-      cursor = page.next_cursor;
-    } while (cursor);
-    return members;
-  };
+  const changes: OrganizationChanges = { name: name.trim(), org_type: orgType };
 
   /** Saving a new type first checks who it would strand, and asks before going on. */
   const save = async () => {
-    const changes = { name: name.trim(), org_type: orgType };
     if (orgType === organization.org_type) return commit(changes, "Details saved");
     setBusy(true);
     setError(null);
     try {
-      const stranded = misfitMembers(await everyMember(), orgType);
+      const stranded = misfitMembers(await listAllOrgMemberships(organization.slug), orgType);
       if (stranded.length > 0) {
         setShownPages(1);
         setMisfits(stranded);
@@ -98,8 +88,7 @@ export function OrganizationSettings({
     return commit(changes, "Details saved");
   };
 
-  const dirty =
-    name.trim() !== organization.name || orgType !== organization.org_type;
+  const dirty = changes.name !== organization.name || changes.org_type !== organization.org_type;
 
   return (
     <div className="grid items-start gap-6 lg:grid-cols-2">

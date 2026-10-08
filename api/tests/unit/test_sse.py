@@ -206,14 +206,12 @@ async def test_an_account_may_hold_only_so_many_streams_and_a_closed_one_frees_a
 
     import pytest
 
-    from app.core.sse import MAX_STREAMS_PER_ACCOUNT, TooManyStreams, capped
+    from app.core.sse import MAX_STREAMS_PER_ACCOUNT, TooManyStreams
 
     me, someone_else = uuid.uuid4(), uuid.uuid4()
 
     def open_one(owner: uuid.UUID) -> AsyncIterator[str]:
-        return capped(
-            owner, event_stream(topics=["t"], snapshot=lambda: _snapshot("{}"), bus=OneEventBus())
-        )
+        return event_stream(topics=["t"], snapshot=lambda: _snapshot("{}"), bus=OneEventBus(), owner=owner)
 
     held = [open_one(me) for _ in range(MAX_STREAMS_PER_ACCOUNT)]
     for stream in held:

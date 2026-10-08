@@ -11,7 +11,7 @@ from collections.abc import AsyncIterator
 from app.core.db import SessionOpener
 from app.core.events import user_topic
 from app.core.ports import EventBus
-from app.core.sse import Snapshot, StreamFinished, capped, event_stream
+from app.core.sse import Snapshot, StreamFinished, event_stream
 from app.features.peer_practice import errors, service
 
 WAITING = "waiting"
@@ -38,7 +38,7 @@ def queue_stream(
                 raise StreamFinished from None
         return Snapshot(status.model_dump_json(), final=status.status != WAITING)
 
-    return capped(user_id, event_stream(topics=[user_topic(user_id)], snapshot=snapshot, bus=bus))
+    return event_stream(topics=[user_topic(user_id)], snapshot=snapshot, bus=bus, owner=user_id)
 
 
 # --- SSE for practice session phase and partner presence.
@@ -65,4 +65,4 @@ def session_stream(
         return Snapshot(payload, final=final)
 
     topics = [user_topic(user_id), f"practice.session.{session_id}"]
-    return capped(user_id, event_stream(topics=topics, snapshot=snapshot, bus=bus))
+    return event_stream(topics=topics, snapshot=snapshot, bus=bus, owner=user_id)

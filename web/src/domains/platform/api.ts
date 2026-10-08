@@ -13,7 +13,7 @@
  * its powers. Its memberships and audit log are read through their own
  * platform-scope routes (`listOrgMembershipsForSupport`, `listOrgAuditForSupport`).
  */
-import { platformRequest, type components } from "@/foundation/platform-client";
+import { collectPages, platformRequest, type components } from "@/foundation/platform-client";
 
 type S = components["schemas"];
 
@@ -84,24 +84,9 @@ export interface PageParams {
 
 /** The backend caps `limit` at a hundred; asking for more is a 422. */
 const PAGE_LIMIT = 100;
-const MAX_PAGES = 25;
 
 function pageQuery(page?: PageParams) {
   return { limit: page?.limit ?? PAGE_LIMIT, cursor: page?.cursor ?? undefined };
-}
-
-async function collectPages<T>(
-  fetchPage: (cursor: string | null) => Promise<{ items: T[]; next_cursor?: string | null }>,
-): Promise<T[]> {
-  const items: T[] = [];
-  let cursor: string | null = null;
-  for (let index = 0; index < MAX_PAGES; index += 1) {
-    const page = await fetchPage(cursor);
-    items.push(...page.items);
-    cursor = page.next_cursor ?? null;
-    if (!cursor) break;
-  }
-  return items;
 }
 
 /* ------------------------------------------------------------------ Reads */
@@ -378,6 +363,11 @@ export function listOrgMembershipsForSupport(
     signal,
     query: pageQuery(page),
   });
+}
+
+/** Every membership of an organisation, walked to the end (a role change checks them all). */
+export function listAllOrgMemberships(slug: string, signal?: AbortSignal): Promise<Membership[]> {
+  return collectPages((cursor) => listOrgMembershipsForSupport(slug, { cursor }, signal));
 }
 
 export function listOrgAuditForSupport(

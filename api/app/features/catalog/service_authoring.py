@@ -17,8 +17,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
+from app.core.db import ensure_current
 from app.core.exam_settings import ExamSettings
-from app.core.revision import ensure_current
 from app.features.catalog import domain, repository
 from app.features.catalog.errors import (
     ExamCodeTaken,

@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
-from app.core.revision import ensure_current
+from app.core.db import ensure_current
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
 from app.features.roster import errors, repository, repository_groups

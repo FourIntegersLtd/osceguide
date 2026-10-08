@@ -76,7 +76,7 @@ export function capabilitiesFor(
     if (!capability.surfaces.includes(surface)) return false;
     if (capability.hidden && !includeHidden) return false;
     const staff = can.run_circuits === true;
-    if (staff && capability.staffHiddenOn?.includes(surface)) return false;
+    if (staff && capability.staffRefusedOn?.includes(surface)) return false;
     if (!includeHidden && staff && capability.staffNavHiddenOn?.includes(surface)) return false;
     if (!permitted(capability.permission, can)) return false;
     if (examCode !== undefined && capability.exams && !capability.exams.includes(examCode ?? "")) {

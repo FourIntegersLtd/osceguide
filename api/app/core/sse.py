@@ -22,7 +22,7 @@ import asyncio
 import contextlib
 import json
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 
 from app.core.errors import AppError
@@ -41,8 +41,9 @@ SSE_HEADERS = {
 MEDIA_TYPE = "text/event-stream"
 
 
-# One account holds at most this many live streams in a worker: a tab per device and a few
-# screens each is normal, a runaway client reconnecting without end is not (S-27).
+# One account holds at most this many live streams *per worker process*, not across the fleet (the
+# count lives in this process): a tab per device and a few screens each is normal, a runaway client
+# reconnecting without end is not (S-27).
 MAX_STREAMS_PER_ACCOUNT = 10
 _open_streams: dict[uuid.UUID, int] = {}
 
@@ -55,7 +56,7 @@ class TooManyStreams(AppError):
     default_message = "Too many live connections are open for this account. Close another tab and try again."
 
 
-def capped(owner: uuid.UUID, stream: AsyncIterator[str]) -> AsyncIterator[str]:
+def _capped(owner: uuid.UUID, stream: AsyncGenerator[str, None]) -> AsyncGenerator[str, None]:
     """Refuse a new stream for an account already at its cap, else count it while it runs.
 
     Called when the route builds the stream, before any bytes are sent, so the refusal is an
@@ -65,7 +66,7 @@ def capped(owner: uuid.UUID, stream: AsyncIterator[str]) -> AsyncIterator[str]:
     if _open_streams.get(owner, 0) >= MAX_STREAMS_PER_ACCOUNT:
         raise TooManyStreams
 
-    async def counted() -> AsyncIterator[str]:
+    async def counted() -> AsyncGenerator[str, None]:
         """Pass every frame through, holding one of the account's places until the stream closes."""
         _open_streams[owner] = _open_streams.get(owner, 0) + 1
         try:
@@ -75,7 +76,7 @@ def capped(owner: uuid.UUID, stream: AsyncIterator[str]) -> AsyncIterator[str]:
             _open_streams[owner] -= 1
             if _open_streams[owner] <= 0:
                 del _open_streams[owner]
-            await stream.aclose()  # type: ignore[attr-defined]
+            await stream.aclose()
 
     return counted()
 
@@ -112,14 +113,40 @@ def frame(event: str, payload: str) -> str:
     return f"event: {event}\n{body}\n\n"
 
 
-async def event_stream(
+def event_stream(
     *,
     topics: Sequence[str],
     snapshot: Callable[[], Awaitable[Snapshot]],
     bus: EventBus,
     heartbeat_seconds: float = HEARTBEAT_SECONDS,
     snapshot_on_heartbeat: bool = False,
-) -> AsyncIterator[str]:
+    owner: uuid.UUID | None = None,
+) -> AsyncGenerator[str, None]:
+    """The stream below, counted against `owner`'s cap when one is named.
+
+    An account's stream passes its `owner`: a new stream beyond `MAX_STREAMS_PER_ACCOUNT` is refused
+    here, when the route builds it and before any bytes are sent, so the refusal is an ordinary 429
+    and not a connection that opens and dies. A stream counts from its first frame to its close.
+    A platform-wide stream with no owner is not capped.
+    """
+    stream = _event_stream(
+        topics=topics,
+        snapshot=snapshot,
+        bus=bus,
+        heartbeat_seconds=heartbeat_seconds,
+        snapshot_on_heartbeat=snapshot_on_heartbeat,
+    )
+    return stream if owner is None else _capped(owner, stream)
+
+
+async def _event_stream(
+    *,
+    topics: Sequence[str],
+    snapshot: Callable[[], Awaitable[Snapshot]],
+    bus: EventBus,
+    heartbeat_seconds: float,
+    snapshot_on_heartbeat: bool,
+) -> AsyncGenerator[str, None]:
     """Send the current state, then send it again whenever something happens.
 
     The client gets `connected`, then a `snapshot` immediately — so a stream is
@@ -203,9 +230,21 @@ def _decode_message(raw: str) -> tuple[str, str]:
     return raw, "{}"
 
 
-async def fan_in_stream(
-    *, topics: Sequence[str], bus: EventBus, heartbeat_seconds: float = HEARTBEAT_SECONDS
-) -> AsyncIterator[str]:
+def fan_in_stream(
+    *,
+    topics: Sequence[str],
+    bus: EventBus,
+    heartbeat_seconds: float = HEARTBEAT_SECONDS,
+    owner: uuid.UUID | None = None,
+) -> AsyncGenerator[str, None]:
+    """The stream below, counted against `owner`'s cap when one is named (see `event_stream`)."""
+    stream = _fan_in_stream(topics=topics, bus=bus, heartbeat_seconds=heartbeat_seconds)
+    return stream if owner is None else _capped(owner, stream)
+
+
+async def _fan_in_stream(
+    *, topics: Sequence[str], bus: EventBus, heartbeat_seconds: float
+) -> AsyncGenerator[str, None]:
     """Forward every named event published on `topics`, as it arrives.
 
     Unlike `event_stream`, there is no single read model to snapshot: this is

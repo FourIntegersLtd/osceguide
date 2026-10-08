@@ -22,6 +22,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, MetaData, String, Uuid, fu
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from app.core.errors import Conflict
 from app.core.settings import get_settings
 
 NAMING_CONVENTION = {
@@ -59,10 +60,25 @@ class Timestamps:
 class Revisioned:
     """Mixin giving a table a `revision`, raised by one on every edit (B-15).
 
-    A client that sends the revision it read has a stale write refused (`core.revision`).
+    A client that sends the revision it read has a stale write refused by `ensure_current`.
+    The tables that check revisions are the ones using this mixin: `trainees` (roster), `exams`
+    (catalog), `rubric_versions` (rubrics), `sittings` and `circuits` (sittings).
     """
 
     revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+
+
+class StaleRevision(Conflict):
+    """Someone saved this since the caller read it."""
+
+    code = "stale_revision"
+    default_message = "This was changed by someone else since you opened it. Reload and try again."
+
+
+def ensure_current(expected: int | None, actual: int) -> None:
+    """Refuse a write that names an older revision than the row has. No revision named, no check."""
+    if expected is not None and expected != actual:
+        raise StaleRevision()
 
 
 def include_name(name: str | None, _type: str, _parent: object) -> bool:

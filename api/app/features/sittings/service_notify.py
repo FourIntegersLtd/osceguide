@@ -92,6 +92,14 @@ async def reviewer_assigned(
     )
 
 
+async def _circuit_recipients(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit) -> list[uuid.UUID]:
+    """Everyone a circuit's reminder goes to: its trainees and its supervisor, each once."""
+    people = await repository_reads.circuit_trainee_ids(session, org_id, circuit.id)
+    if circuit.supervisor_user_id is not None:
+        people = [*people, circuit.supervisor_user_id]
+    return list(dict.fromkeys(people))
+
+
 async def send_exam_day_reminders(session: AsyncSession, *, now: datetime) -> int:
     """Remind everyone on today's sittings, once, from the morning on. Returns the sittings covered.
 
@@ -105,10 +113,7 @@ async def send_exam_day_reminders(session: AsyncSession, *, now: datetime) -> in
     )
     for sitting in sittings:
         for circuit in await repository.circuits_for_sitting(session, sitting.org_id, sitting.id):
-            people = await repository_reads.circuit_trainee_ids(session, sitting.org_id, circuit.id)
-            if circuit.supervisor_user_id is not None:
-                people = [*people, circuit.supervisor_user_id]
-            for user_id in dict.fromkeys(people):
+            for user_id in await _circuit_recipients(session, sitting.org_id, circuit):
                 await _queue(
                     session,
                     user_id=user_id,

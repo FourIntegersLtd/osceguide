@@ -7,7 +7,8 @@ queries that fill them.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -112,14 +113,38 @@ async def sitting_counts_by_cohort(
     return await repository_reads.sitting_counts_by_cohort(session, org_id, cohort_ids)
 
 
-async def programme_activity(session: AsyncSession, org_id: uuid.UUID) -> dict[uuid.UUID, tuple[int, int]]:
-    """Per programme id: (sittings, distinct candidates), for the reporting screen."""
-    return await repository_reads.programme_activity(session, org_id)
+@dataclass(frozen=True)
+class ProgrammeFigures:
+    """One programme's totals: sittings held, distinct candidates, and released decisions."""
+
+    sittings: int
+    candidates: int
+    released: int
+    passed: int
 
 
-async def sitting_programmes(session: AsyncSession, org_id: uuid.UUID) -> dict[uuid.UUID, uuid.UUID]:
-    """Sitting id to programme id, for rolling a per-sitting figure up to its programme."""
-    return await repository_reads.sitting_programmes(session, org_id)
+async def programme_figures(
+    session: AsyncSession, org_id: uuid.UUID, *, outcomes_by_sitting: Mapping[uuid.UUID, Sequence[str | None]]
+) -> dict[uuid.UUID, ProgrammeFigures]:
+    """Per programme id: sittings, candidates, and the released outcomes of its sittings rolled up.
+
+    `outcomes_by_sitting` is another slice's figure (released decisions); the sitting-to-programme
+    join is done here, where that mapping lives, so the reporting screen only formats.
+    """
+    figures: dict[uuid.UUID, ProgrammeFigures] = {}
+    for programme_id, (held, people, sitting_ids) in (
+        await repository_reads.programme_activity(session, org_id)
+    ).items():
+        outcomes = [
+            outcome for sitting_id in sitting_ids for outcome in outcomes_by_sitting.get(sitting_id, ())
+        ]
+        figures[programme_id] = ProgrammeFigures(
+            sittings=held,
+            candidates=people,
+            released=len(outcomes),
+            passed=sum(1 for outcome in outcomes if outcome == "pass"),
+        )
+    return figures
 
 
 async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:

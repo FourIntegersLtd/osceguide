@@ -10,11 +10,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import StaleRevision, get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.ports import ClockDep
 from app.core.rate_limit import OUTBOUND_RESEND, TooManyRequests, per_user
-from app.core.revision import StaleRevision
 from app.core.tenancy import OrgAdmin
 from app.features.roster import errors, schemas, service_bulk, service_edit, service_groups
 

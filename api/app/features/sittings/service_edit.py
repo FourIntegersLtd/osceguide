@@ -15,8 +15,8 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
+from app.core.db import ensure_current
 from app.core.errors import raise_mapped
-from app.core.revision import ensure_current
 from app.features.roster import service_groups as roster_groups
 from app.features.sittings import domain, domain_edit, repository, repository_reads, service
 from app.features.sittings.models import Sitting
