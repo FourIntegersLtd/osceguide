@@ -6,6 +6,7 @@ import { LuFlag, LuMessageSquareWarning } from "react-icons/lu";
 import { Back, cn, productTokens, Spinner } from "@/foundation/ui";
 import { useToast } from "@/foundation/hooks";
 import { flagStation } from "@/capabilities/stations/api";
+import { actionFailureText } from "./actionFailure";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
 
 export type StationStep = "patient" | "simulation" | "management" | "feedback";
@@ -88,11 +89,11 @@ export function StationHeader({
         title: next ? "Flagged to come back to" : "Flag removed",
         message: next ? "Find it under Flagged stations." : "It is off your Flagged stations.",
       });
-    } catch {
+    } catch (cause) {
       toast.show({
         tone: "error",
         title: "We couldn't change the flag",
-        message: "Please try again in a moment.",
+        message: actionFailureText(cause),
       });
     } finally {
       setMarking(false);
@@ -112,11 +113,11 @@ export function StationHeader({
         title: "Problem reported",
         message: "Thanks. Our team will take a look at this station.",
       });
-    } catch {
+    } catch (cause) {
       toast.show({
         tone: "error",
         title: "We couldn't report this station",
-        message: "Please try again in a moment.",
+        message: actionFailureText(cause),
       });
     } finally {
       setReporting(false);
