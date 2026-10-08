@@ -21,6 +21,7 @@ from app.features.stations.refusals import REFUSALS as _REFUSALS
 from app.features.stations.schemas import StationVersionRead
 from app.features.stations.service import read_station
 from app.features.stations.service_facts import refuse_while_produced
+from app.features.tenancy import service_audit
 from app.features.tutor_memory import jobs as tutor_jobs
 
 # What a candidate is shown before the station starts. Presentation rather than
@@ -139,8 +140,9 @@ async def archive_version(
     *,
     actor_id: uuid.UUID,
     now: datetime,
+    actor: Principal | None = None,
 ) -> StationVersionRead:
-    """Retire a published version so it can no longer be scheduled."""
+    """Retire a published version so it can no longer be scheduled. Audited when `actor` is given."""
     station_version = await _version(session, org_id, station_id, version)
     try:
         new_status = domain.archive(
@@ -154,7 +156,47 @@ async def archive_version(
     )
     await _repoint_after_archiving(session, org_id, station_id, archived_version_id=station_version.id)
     await _refresh_tutor_material(session, org_id)
+    if actor is not None:
+        title = (await read_station(session, org_id, station_id)).title
+        await _audit(
+            session,
+            org_id,
+            actor,
+            "station.version_archived",
+            station_id,
+            f'Archived version {version} of "{title}"',
+        )
     return _version_read(await _version(session, org_id, station_id, version))
+
+
+async def _audit(
+    session: AsyncSession,
+    org_id: uuid.UUID | None,
+    actor: Principal,
+    action: str,
+    station_id: uuid.UUID,
+    summary: str,
+) -> None:
+    """One audit row, in the org's log for its own station and the platform's for the library."""
+    if org_id is None:
+        await service_audit.record(
+            session,
+            actor=actor,
+            action=action,
+            target_type="station",
+            target_id=str(station_id),
+            summary=summary,
+        )
+    else:
+        await service_audit.record_for_org(
+            session,
+            org_id=org_id,
+            actor=actor,
+            action=action,
+            target_type="station",
+            target_id=str(station_id),
+            summary=summary,
+        )
 
 
 async def _refuse_while_in_use(session: AsyncSession, version_id: uuid.UUID) -> None:
@@ -304,9 +346,9 @@ def _version_read(station_version: StationVersion) -> StationVersionRead:
 
 
 async def delete_version(
-    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int
+    session: AsyncSession, org_id: uuid.UUID | None, station_id: uuid.UUID, version: int, *, actor: Principal
 ) -> None:
-    """Throw away a draft (T6).
+    """Throw away a draft (T6), and audit it.
 
     Only a draft: a published revision is what somebody's attempt was assessed against, and an
     archived one is how that attempt is still readable.
@@ -318,7 +360,17 @@ async def delete_version(
         )
     except domain.LifecycleError as exc:
         raise_mapped(exc, _REFUSALS)
+    # Read first: the station goes with its last draft, and the row names it.
+    title = (await read_station(session, org_id, station_id)).title
     await repository.delete_version(session, org_id, station_version.id)
+    await _audit(
+        session,
+        org_id,
+        actor,
+        "station.version_deleted",
+        station_id,
+        f'Deleted draft version {version} of "{title}"',
+    )
     # A station with no version left is nothing to open or publish: it goes with its last draft.
     # Only drafts can be deleted, so a station emptied this way was never published and no
     # circuit, template or attempt can refer to it; that is the check delete_station relies on.

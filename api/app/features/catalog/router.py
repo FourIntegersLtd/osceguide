@@ -123,7 +123,7 @@ async def publish_exam(exam_id: uuid.UUID, admin: PlatformAdmin, session: Sessio
 )
 async def retire_exam(exam_id: uuid.UUID, admin: PlatformAdmin, session: Session) -> schemas.ExamRead:
     """Stop offering it. Past attempts keep working; nothing new may name it."""
-    return await service_authoring.retire_exam(session, exam_id)
+    return await service_authoring.retire_exam(session, exam_id, actor=admin)
 
 
 @router.get(
@@ -249,7 +249,7 @@ async def publish_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Ses
 )
 async def retire_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> schemas.ExamRead:
     """Stop running it. Past sittings and their results are untouched."""
-    return await service_authoring.retire_exam(session, exam_id, workspace.org_id)
+    return await service_authoring.retire_exam(session, exam_id, workspace.org_id, actor=workspace.principal)
 
 
 @router.delete(
@@ -263,7 +263,7 @@ async def delete_org_exam(exam_id: uuid.UUID, workspace: OrgAdmin, session: Sess
     Returns `exam_in_use` (409) if a station, sitting, attempt or rubric
     binding already references it.
     """
-    await service_authoring.delete_exam(session, exam_id, workspace.org_id)
+    await service_authoring.delete_exam(session, exam_id, workspace.org_id, actor=workspace.principal)
 
 
 # The institution's own list of exams it runs, newest first.

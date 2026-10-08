@@ -431,3 +431,20 @@ async def test_a_school_cannot_delete_the_platforms_exam(client: AsyncClient, ma
     response = await client.delete(f"/api/v1/orgs/ashford/exams/{platform_exam['id']}", headers=bearer(token))
     assert response.status_code == 404
     assert response.json()["code"] == "unknown_exam"
+
+
+async def test_retiring_and_deleting_an_exam_are_audited(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """S-14: who withdrew or removed a school's exam is on its audit log."""
+    org_id = await seed_org(client, make_actor, "ashford")
+    token = await org_admin(make_actor, org_id, "ashford")
+    live = await author_exam(client, token, "ashford", code="live-one")
+    draft = await author_exam(client, token, "ashford", code="draft-one", publish=False)
+
+    retired = await client.post(f"/api/v1/orgs/ashford/exams/{live['id']}/retire", headers=bearer(token))
+    deleted = await client.delete(f"/api/v1/orgs/ashford/exams/{draft['id']}", headers=bearer(token))
+    assert (retired.status_code, deleted.status_code) == (200, 204)
+
+    audit = await client.get("/api/v1/orgs/ashford/audit", headers=bearer(token))
+    rows = {(row["action"], row["target_id"]): row["summary"] for row in audit.json()["items"]}
+    assert rows[("exam.retired", live["id"])] == f'Retired exam "{live["name"]}"'
+    assert rows[("exam.deleted", draft["id"])] == f'Deleted exam "{draft["name"]}"'

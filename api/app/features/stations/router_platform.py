@@ -160,7 +160,7 @@ async def delete_platform_station_version(
     station_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session
 ) -> None:
     """Only a draft: a published version is what an attempt was assessed against, so it is archived."""
-    await service_versions.delete_version(session, None, station_id, version)
+    await service_versions.delete_version(session, None, station_id, version, actor=admin)
 
 
 # Edit the content of one version of a platform station.
@@ -216,7 +216,7 @@ async def publish_platform_station_version(
 ) -> schemas.StationVersionRead:
     """Publish it into the library, where every organisation may draw on it."""
     return await service_versions.publish_version(
-        session, None, station_id, version, actor_id=admin.user_id, now=clock.now()
+        session, None, station_id, version, actor_id=admin.user_id, now=clock.now(), actor=admin
     )
 
 

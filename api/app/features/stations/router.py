@@ -250,6 +250,7 @@ async def archive_version(
         version,
         actor_id=workspace.principal.user_id,
         now=clock.now(),
+        actor=workspace.principal,
     )
 
 
@@ -261,7 +262,9 @@ async def archive_version(
 async def delete_version(station_id: uuid.UUID, version: int, workspace: OrgAdmin, session: Session) -> None:
     """Throw away a draft. A published version is what an attempt was assessed
     against, so it is archived instead, never deleted."""
-    await service_versions.delete_version(session, workspace.org_id, station_id, version)
+    await service_versions.delete_version(
+        session, workspace.org_id, station_id, version, actor=workspace.principal
+    )
 
 
 @router.patch(

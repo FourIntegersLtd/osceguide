@@ -138,6 +138,24 @@ async def test_an_emptied_draft_cannot_be_published(client: AsyncClient, make_ac
     assert (await client.post(f"{base}/publish", headers=bearer(token))).status_code == 200
 
 
+async def test_archiving_and_deleting_station_versions_are_audited(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """S-14: who withdrew or threw away a station's version is on the organisation's audit log."""
+    org_id = await seed_org(client, make_actor)
+    token = await member(make_actor, org_id, "kings", "owner")
+    station = await make_station(client, token)
+    base = f"/api/v1/orgs/kings/stations/{station['id']}/versions"
+    await client.post(f"{base}/1/publish", headers=bearer(token))
+    draft = await client.post(base, headers=bearer(token))
+    assert draft.status_code == 201, draft.text
+    assert (await client.post(f"{base}/1/archive", headers=bearer(token))).status_code == 200
+    assert (await client.delete(f"{base}/2", headers=bearer(token))).status_code == 204
+
+    audit = await client.get("/api/v1/orgs/kings/audit", headers=bearer(token))
+    rows = {(row["action"], row["target_id"]): row["summary"] for row in audit.json()["items"]}
+    assert rows[("station.version_archived", station["id"])] == 'Archived version 1 of "Chest pain"'
+    assert rows[("station.version_deleted", station["id"])] == 'Deleted draft version 2 of "Chest pain"'
+
+
 async def test_publishing_twice_conflicts(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id = await seed_org(client, make_actor)
     token = await member(make_actor, org_id, "kings", "owner")

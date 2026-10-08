@@ -16,6 +16,7 @@ from typing import Any, Literal
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.core.exam_settings import ExamSettings
 from app.features.catalog import domain, repository
 from app.features.catalog.errors import (
@@ -30,6 +31,7 @@ from app.features.catalog.models import Exam
 from app.features.catalog.schemas import ExamRead
 from app.features.catalog.service import exam_read, exam_row
 from app.features.rubrics import service_marking as rubrics
+from app.features.tenancy import service_audit
 
 ExamListStatus = Literal["published", "draft", "all"]
 
@@ -157,7 +159,9 @@ async def publish_exam(
     return exam_read(await exam_row(session, exam_id))
 
 
-async def retire_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID | None = None) -> ExamRead:
+async def retire_exam(
+    session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID | None = None, *, actor: Principal
+) -> ExamRead:
     """Stop offering an exam without touching what was already attempted.
 
     An owner's own decision: retiring one institution's exam changes nothing
@@ -169,10 +173,33 @@ async def retire_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UU
     except domain.NotRetirable as exc:
         raise ExamNotPublishable(str(exc)) from exc
     await repository.update_exam(session, exam.id, status=status)
+    await _audit(session, org_id, actor, "exam.retired", exam, f'Retired exam "{exam.name}"')
     return exam_read(await exam_row(session, exam_id))
 
 
-async def delete_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID) -> None:
+async def _audit(
+    session: AsyncSession, org_id: uuid.UUID | None, actor: Principal, action: str, exam: Exam, summary: str
+) -> None:
+    """One audit row in the owner's log: the school's own, or the platform's for its catalogue."""
+    if org_id is None:
+        await service_audit.record(
+            session, actor=actor, action=action, target_type="exam", target_id=str(exam.id), summary=summary
+        )
+    else:
+        await service_audit.record_for_org(
+            session,
+            org_id=org_id,
+            actor=actor,
+            action=action,
+            target_type="exam",
+            target_id=str(exam.id),
+            summary=summary,
+        )
+
+
+async def delete_exam(
+    session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID, *, actor: Principal
+) -> None:
     """Remove an org's own exam outright, if nothing was ever built on it.
 
     Org-scoped by construction — `org_id` is required, not `None` — so the
@@ -188,6 +215,7 @@ async def delete_exam(session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UU
         await repository.delete_exam(session, exam.id)
     except IntegrityError as exc:
         raise ExamInUse() from exc
+    await _audit(session, org_id, actor, "exam.deleted", exam, f'Deleted exam "{exam.name}"')
 
 
 def _storable_settings(settings: ExamSettings) -> dict[str, Any]:
