@@ -25,7 +25,7 @@ import {
 } from "./api";
 import { useQueue, type JoinOutcome, type Queue } from "./support/useQueue";
 import { useQueuePersistence } from "./support/useQueuePersistence";
-import { failureText } from "./support/failure";
+import { failureText, joinFailureText } from "./support/failure";
 import { canJoin, joinWindowClosed } from "./support/time";
 import {
   PartnerUnavailableModal,
@@ -101,10 +101,8 @@ function PeerPracticeScope({ children, scope, orgId }: { children: ReactNode; sc
         const { cause } = outcome;
         if (isPlatformError(cause) && (cause.status === 400 || cause.status === 422)) {
           toast.error("We couldn't join the queue", "Something in the request wasn't right. Please try again.");
-        } else if (hasCode(cause, "not_entitled")) {
-          toast.error("We couldn't join the practice queue", failureText(cause, "Please try again in a moment."));
         } else {
-          toast.error("We couldn't join the practice queue", "Please try again in a moment.");
+          toast.error("We couldn't join the practice queue", joinFailureText(cause));
         }
         break;
       }
