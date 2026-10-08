@@ -215,6 +215,8 @@ function MyReviewLink({ slotId }: { slotId: string }) {
   // Not yet readable answers null — no link.
   const state = useAsync((signal) => readMyReview(slotId, signal), [slotId]);
 
+  // A failed check is said, not hidden: no link and no reason reads as "there is no feedback".
+  if (state.error) return <span className="text-osce-meta text-b2b-mid">Could not check for feedback. Reload to try again.</span>;
   if (!state.data) return null;
 
   return (
@@ -242,6 +244,7 @@ function MyResultLink({ sittingId }: { sittingId: string }) {
   // simply is not there.
   const state = useAsync((signal) => readMyResult(sittingId, signal), [sittingId]);
 
+  if (state.error) return <Alert tone="warning">Could not check whether your result is released. Reload to try again.</Alert>;
   if (!state.data?.released_at) return null;
 
   return (

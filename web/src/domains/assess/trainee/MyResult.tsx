@@ -80,16 +80,14 @@ export function MyResult({ sittingId }: { sittingId: string }) {
 
       {!state.loading && !state.error && state.data === null ? (
         <Alert tone="info" title="Not released yet">
-          Your organisation has not released this result. You are told when it is, and nothing
-          about it is decided here.
+          Your organisation has not released this result. When it is, we email you at the address your organisation holds for you.
         </Alert>
       ) : null}
       <AsyncBoundary state={state}>
         {(result) =>
           result.released_at === null ? (
             <Alert tone="info" title="Not released yet">
-              Your organisation has not released this result. You are told when it is, and nothing
-              about it is decided here.
+              Your organisation has not released this result. When it is, we email you at the address your organisation holds for you.
             </Alert>
           ) : (
             <>

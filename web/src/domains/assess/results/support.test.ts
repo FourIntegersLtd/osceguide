@@ -10,6 +10,7 @@ import {
   recruitmentLabel,
   releasable,
   splitByAccount,
+  suggestedOutcome,
   releaseFailureLine,
   UNLINKED_REASON,
   signOffBlockers,
@@ -221,4 +222,19 @@ test("a candidate with no linked account is named, not dropped from a bulk relea
   assert.deepEqual(split.traineeIds, ["t1"]);
   assert.deepEqual(split.unlinked, [orphan]);
   assert.equal(releaseFailureLine(orphan, UNLINKED_REASON), "Ben: has no linked account, so the result cannot be released");
+});
+
+test("the marks propose an outcome, and say nothing when they cannot (R-33)", () => {
+  const sat = (passed: boolean | null) => ({ slot_id: "s", marked: true, passed }) as unknown as NonNullable<CandidateReport["stations"]>[number];
+  assert.deepEqual(suggestedOutcome(candidate({ stations: [sat(true), sat(true)] })), {
+    outcome: "pass",
+    note: "Suggested from the marks: 2 of 2 stations passed. You decide.",
+  });
+  assert.deepEqual(suggestedOutcome(candidate({ stations: [sat(true), sat(false)] })), {
+    outcome: "fail",
+    note: "Suggested from the marks: 1 of 2 stations passed. You decide.",
+  });
+  // A station with no pass rule or no marks yet means there is nothing to propose.
+  assert.equal(suggestedOutcome(candidate({ stations: [sat(true), sat(null)] })), null);
+  assert.equal(suggestedOutcome(candidate({ stations: [] })), null);
 });

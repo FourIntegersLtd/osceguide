@@ -20,6 +20,7 @@ import {
   releasable,
   releaseRefusal,
   signOffBlockers,
+  suggestedOutcome,
   workflowLabel,
   workflowTone,
   type AssessmentOutcome,
@@ -75,6 +76,7 @@ export function CandidateDecision({
         sittingId={sittingId}
         traineeId={traineeId}
         hire={hire}
+        suggestion={suggestedOutcome(candidate)?.note ?? null}
         decision={stored.data}
         onChanged={() => {
           stored.reload();
@@ -90,6 +92,7 @@ function Form({
   sittingId,
   traineeId,
   hire,
+  suggestion,
   decision,
   onChanged,
 }: {
@@ -97,6 +100,7 @@ function Form({
   sittingId: string;
   traineeId: string;
   hire: boolean;
+  suggestion: string | null;
   decision: Decision | null;
   onChanged: () => void;
 }) {
@@ -199,6 +203,8 @@ function Form({
           ))}
         </div>
       </fieldset>
+
+      {suggestion && !signedOff ? <p className="text-osce-meta text-b2b-mid">{suggestion}</p> : null}
 
       {hire ? <RecruitmentField value={recruitment} disabled={signedOff} onChange={setRecruitment} /> : null}
 

@@ -161,6 +161,21 @@ export function releasable(candidate: {
   return Boolean(decision?.signed_off_at) && !decision?.released_at && !heldBack;
 }
 
+/**
+ * What the stations' own pass rules say about a candidate (R-33), for a lead to start from. Only
+ * when every station has been marked against a pass rule; otherwise nothing is proposed. Never
+ * chosen for them: the outcome is the lead's decision.
+ */
+export function suggestedOutcome(candidate: CandidateReport): { outcome: "pass" | "fail"; note: string } | null {
+  const stations = candidate.stations ?? [];
+  if (stations.length === 0 || stations.some((station) => station.passed == null)) return null;
+  const passed = stations.filter((station) => station.passed === true).length;
+  return {
+    outcome: passed === stations.length ? "pass" : "fail",
+    note: `Suggested from the marks: ${passed} of ${stations.length} stations passed. You decide.`,
+  };
+}
+
 export const UNLINKED_REASON = "has no linked account, so the result cannot be released";
 
 /** One line of a release report: who, and why they were not released. */
