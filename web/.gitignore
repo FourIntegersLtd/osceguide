@@ -11,3 +11,9 @@ AGENTS.md.bak
 # Evidence written by the verify skill (.claude/skills/verify)
 /.verify/
 .vercel
+
+# Playwright end-to-end run (e2e/)
+/.next-e2e/
+/test-results/
+/playwright-report/
+/e2e/.auth/

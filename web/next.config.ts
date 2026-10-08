@@ -38,6 +38,8 @@ function resolvePlatformApiOrigin(): string {
 const platformApiOrigin = resolvePlatformApiOrigin();
 
 const nextConfig: NextConfig = {
+  // The e2e run builds in its own folder, so it can run beside the developer's own `npm run dev`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   trailingSlash: false,
   experimental: {
     externalDir: true,

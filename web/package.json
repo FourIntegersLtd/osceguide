@@ -12,6 +12,9 @@
     "test": "node --import ./scripts/register-test-loader.mjs --test \"src/**/*.test.ts\"",
     "platform:types": "openapi-typescript ../api/openapi.json -o src/foundation/platform-client/schema.d.ts",
     "check:ledger": "node scripts/audit-ledger-routes.mjs",
+    "e2e": "playwright test",
+    "e2e:train": "playwright test e2e/train",
+    "e2e:assess": "playwright test e2e/assess",
     "ci": "npm run types && npm run lint && npm test && npm run check:ledger"
   },
   "dependencies": {
