@@ -21,5 +21,8 @@ def register() -> None:
 
         async with job_session() as session:
             requeued, failed = await run(session)
-            if requeued or failed:
-                log.warning("stalled jobs reclaimed", requeued=requeued, failed=failed)
+            if failed:
+                # An error, so it reaches Sentry: a job that failed here will not run again (S-25).
+                log.error("stalled jobs failed", requeued=requeued, failed=failed)
+            elif requeued:
+                log.warning("stalled jobs requeued", requeued=requeued)

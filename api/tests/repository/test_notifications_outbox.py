@@ -30,8 +30,8 @@ async def queue(session: AsyncSession, key: str = "k1", recipient: str = "a@exam
         session,
         recipient=recipient,
         subject="Subject",
-        template_key="t",
-        payload={"x": 1},
+        template_key="password_reset",
+        payload={"token": "x"},
         idempotency_key=key,
     )
     await session.flush()
@@ -185,3 +185,38 @@ async def test_a_password_reset_reads_as_an_email(db_session: AsyncSession) -> N
     assert "Reset your password" in body
     assert "reset-password?token=tok-123" in body
     assert "password_reset" not in body, "the template key is not copy for a human"
+
+
+async def test_a_message_with_an_unknown_template_is_failed_not_sent_and_the_rest_still_go(
+    db_session: AsyncSession,
+) -> None:
+    await service.enqueue_email(
+        db_session,
+        recipient="bad@example.com",
+        subject="Subject",
+        template_key="no_such_template",
+        payload={"x": 1},
+        idempotency_key="bad-template",
+    )
+    await queue(db_session, key="good-one", recipient="good@example.com")
+    sender = RecordingEmailSender()
+
+    sent, deferred = await service.deliver_due(db_session, sender=sender, now=now())
+
+    assert (sent, deferred) == (1, 0)
+    assert [m.to for m in sender.sent] == ["good@example.com"]
+    await db_session.flush()
+    bad = await repository.by_idempotency_key(db_session, "bad-template")
+    assert bad is not None
+    assert (bad.status, bad.last_error) == ("failed", "No template for 'no_such_template'")
+
+
+async def test_one_run_drains_a_whole_invitation_batch(db_session: AsyncSession) -> None:
+    """S-25: 500 invites at 20 a minute took 25 minutes; one run now takes 100."""
+    for index in range(130):
+        await queue(db_session, key=f"bulk-{index}")
+    sender = RecordingEmailSender()
+
+    sent, _ = await service.deliver_due(db_session, sender=sender, now=now())
+
+    assert sent == 100

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from html import escape
 from typing import Any
 
@@ -17,6 +17,13 @@ from app.features.notifications import domain, repository
 from app.features.notifications.models import OutboundMessage
 
 log = get_logger(__name__)
+
+# Messages sent per minute-run. 20 meant 500 invitations took 25 minutes (S-25).
+DELIVERY_BATCH = 100
+
+
+class UnknownTemplate(LookupError):
+    """A queued message names a template that does not exist: a bug in whoever queued it."""
 
 
 async def enqueue_email(
@@ -44,7 +51,7 @@ async def enqueue_email(
 
 
 async def deliver_due(
-    session: AsyncSession, *, sender: EmailSender, now: datetime, limit: int = 20
+    session: AsyncSession, *, sender: EmailSender, now: datetime, limit: int = DELIVERY_BATCH
 ) -> tuple[int, int]:
     """Send whatever is due. Returns (sent, deferred).
 
@@ -60,11 +67,17 @@ async def deliver_due(
     for message in await repository.claim_due(session, now=now, limit=limit):
         attempts = message.attempts + 1
         try:
-            await sender.send(
-                to=message.recipient,
-                subject=message.subject,
-                html=_render(message.template_key, message.payload),
+            html = _render(message.template_key, message.payload)
+        except UnknownTemplate as exc:
+            # Retrying cannot help: the code that queued it is wrong. Failed, so the console
+            # lists it, rather than a debug-style email to a real person.
+            log.error(
+                "message names no template", message_id=str(message.id), template_key=message.template_key
             )
+            await repository.mark_failed(session, message.id, attempts=attempts, error=str(exc))
+            continue
+        try:
+            await sender.send(to=message.recipient, subject=message.subject, html=html)
         except EmailDeliveryFailed as exc:
             if domain.should_retry(attempts=attempts):
                 await repository.mark_retry(
@@ -109,13 +122,7 @@ def _render(template_key: str, payload: dict[str, Any] | None) -> str:
     escaped_fields = {key: escape(str(raw_value)) for key, raw_value in (payload or {}).items()}
     template = _TEMPLATES.get(template_key)
     if template is None:
-        # An unknown key is a programming error, not a reason to send nothing:
-        # the message still goes, and the key is visible in it.
-        log.warning("no template for message", template_key=template_key)
-        lines = "".join(
-            f"<p>{key}: {escaped_value}</p>" for key, escaped_value in sorted(escaped_fields.items())
-        )
-        return f"{_LAYOUT_OPEN}<p>{escape(template_key)}</p>{lines}{_LAYOUT_CLOSE}"
+        raise UnknownTemplate(f"No template for {template_key!r}")
     return f"{_LAYOUT_OPEN}{template(escaped_fields)}{_LAYOUT_CLOSE}"
 
 
@@ -223,12 +230,13 @@ def _payment_receipt(escaped_fields: dict[str, str]) -> str:
     every value is still escaped here like any other template.
     """
     total = escaped_fields.get("amount_total", "")
+    link = f"{get_settings().frontend_url.rstrip('/')}/app/me/settings"
     return (
         "<h1>Your receipt</h1>"
         f"<p>Thank you for your payment of {total}.</p>"
         f"<p>Receipt {escaped_fields.get('receipt_id', '')} — {escaped_fields.get('plan_label', '')}, "
         f"access until {escaped_fields.get('plan_end_date', '')}.</p>"
-        "<p>You can open the full receipt in your account at any time.</p>"
+        f"{_button(link, 'Open your receipts')}"
     )
 
 
@@ -274,19 +282,31 @@ def _partner_spend_alert(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _in_words(iso: str) -> str:
+    """`2026-10-09T14:30:00+00:00` as "Friday 9 October 2026, 14:30 UTC"; anything else is left as given."""
+    try:
+        moment = datetime.fromisoformat(iso).astimezone(UTC)
+    except ValueError:
+        return iso
+    return f"{moment:%A} {moment.day} {moment:%B %Y}, {moment:%H:%M} UTC"
+
+
 def _marketplace_session_reminder(escaped_fields: dict[str, str]) -> str:
     """The body reminding both sides of a peer practice session it starts in an hour.
 
     `escaped_fields` carries the payload `service_reminders.py` builds: the recipient's
     own display name, their partner's, when the session starts, and which exam it is for.
     """
-    link = f"{get_settings().frontend_url.rstrip('/')}/marketplace"
+    link = (
+        f"{get_settings().frontend_url.rstrip('/')}/app/me/marketplace/session/"
+        f"{escaped_fields.get('peer_session_id', '')}"
+    )
     return (
         "<h1>Your practice session starts in an hour</h1>"
         f"<p>Hi {escaped_fields.get('username', 'there')}, you are practising with "
         f"{escaped_fields.get('partner_username', 'your partner')} at "
-        f"{escaped_fields.get('scheduled_at', '')}.</p>"
-        f'<p><a href="{link}">Open the marketplace</a></p>'
+        f"{_in_words(escaped_fields.get('scheduled_at', ''))}.</p>"
+        f'<p><a href="{link}">Open the session</a></p>'
     )
 
 
