@@ -62,7 +62,7 @@ async def update_trainee(
 
 
 async def delete_trainee(
-    session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID, *, now: datetime
+    session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID, *, actor: Principal, now: datetime
 ) -> None:
     """Remove a roster row nobody ever examined.
 
@@ -79,6 +79,15 @@ async def delete_trainee(
     except IntegrityError as exc:
         raise errors.TraineeInUse() from exc
     await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
+    await service_audit.record_for_org(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="trainee.deleted",
+        target_type="trainee",
+        target_id=str(trainee_id),
+        summary="Roster entry removed",
+    )
 
 
 async def anonymise_trainee(

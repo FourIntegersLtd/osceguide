@@ -107,7 +107,12 @@ async def set_access(
     """One route for revoke and restore: they are the same decision, and two
     routes invite one of them to be forgotten."""
     return await service.set_access(
-        session, workspace.org_id, trainee_id, revoked=body.revoked, now=clock.now()
+        session,
+        workspace.org_id,
+        trainee_id,
+        revoked=body.revoked,
+        actor=workspace.principal,
+        now=clock.now(),
     )
 
 

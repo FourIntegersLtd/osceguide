@@ -23,6 +23,7 @@ from fastapi import Depends, Header
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.core.db import get_session
 from app.core.ports import ClockDep
 from app.features.roster import (
@@ -52,6 +53,7 @@ from app.features.roster.schemas_scim import (
     ScimUserList,
 )
 from app.features.tenancy import service as tenancy
+from app.features.tenancy import service_audit as tenancy_audit
 
 TOKEN_BYTES = 32
 TOKEN_PREFIX = "scim_"  # noqa: S105 - a label on every token, not a secret
@@ -66,7 +68,7 @@ def _hash(token: str) -> str:
 
 
 async def issue_token(
-    session: AsyncSession, org_id: uuid.UUID, *, label: str, actor_id: uuid.UUID
+    session: AsyncSession, org_id: uuid.UUID, *, label: str, actor: Principal
 ) -> ScimTokenIssued:
     """Mint a token for this organisation's connector. The plaintext is returned this once."""
     token = TOKEN_PREFIX + secrets.token_urlsafe(TOKEN_BYTES)
@@ -76,7 +78,16 @@ async def issue_token(
         token_hash=_hash(token),
         token_prefix=token[:PREFIX_SHOWN],
         label=label.strip(),
-        created_by=actor_id,
+        created_by=actor.user_id,
+    )
+    await tenancy_audit.record_for_org(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="scim.token_issued",
+        target_type="scim_token",
+        target_id=str(stored.id),
+        summary=f"Provisioning token issued for {stored.label}",
     )
     return ScimTokenIssued(
         id=stored.id,
@@ -93,11 +104,20 @@ async def list_tokens(session: AsyncSession, org_id: uuid.UUID) -> list[ScimToke
 
 
 async def revoke_token(
-    session: AsyncSession, org_id: uuid.UUID, token_id: uuid.UUID, *, now: datetime
+    session: AsyncSession, org_id: uuid.UUID, token_id: uuid.UUID, *, actor: Principal, now: datetime
 ) -> None:
     """Stop a token working at once. Revoking twice keeps the first time."""
     if not await repository_scim.revoke_token(session, org_id, token_id, at=now):
         raise errors.ScimTokenNotFound()
+    await tenancy_audit.record_for_org(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="scim.token_revoked",
+        target_type="scim_token",
+        target_id=str(token_id),
+        summary="Provisioning token revoked",
+    )
 
 
 # --- authenticating the connector ------------------------------------------------
@@ -208,7 +228,7 @@ async def create_user(
         raise errors.ScimUniqueness()
     created = outcome.created[0]
     if not body.active:
-        await service.set_access(session, org_id, created.id, revoked=True, now=now)
+        await service.set_access(session, org_id, created.id, revoked=True, actor=None, now=now)
     return await read_user(session, org_id, created.id, base_url=base_url)
 
 
@@ -404,7 +424,7 @@ async def _set_active(
 ) -> None:
     """Revoke or restore access, only when it changes, so a repeat keeps the first date."""
     if (trainee.access_revoked_at is None) != active:
-        await service.set_access(session, org_id, trainee.id, revoked=not active, now=now)
+        await service.set_access(session, org_id, trainee.id, revoked=not active, actor=None, now=now)
 
 
 async def _require_trainee(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> Trainee:

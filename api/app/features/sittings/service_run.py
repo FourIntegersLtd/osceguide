@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.core.errors import raise_mapped
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
@@ -44,6 +45,7 @@ from app.features.sittings.service import (
     ensure_sitting_not_cancelled,
     read_circuit,
 )
+from app.features.tenancy import service_audit as tenancy_audit
 from app.features.voice import service as voice
 
 log = get_logger(__name__)
@@ -156,8 +158,10 @@ async def end_circuit(
     *,
     agents: RoomAgents,
     now: datetime,
+    actor: Principal | None = None,
 ) -> CircuitRead:
-    """Stop the whole examination, wherever it had got to.
+    """Stop the whole examination, wherever it had got to. `actor` is the person who pressed it;
+    the reaper passes none and writes its own intervention instead.
 
     The patient is removed here — previously ending a circuit only nulled the
     room name, leaving the agent stuck in a LiveKit room nobody returned to.
@@ -172,6 +176,16 @@ async def end_circuit(
             await service_steps.clear_patient_later(session, circuit)
         await service_steps.finish(session, org_id, circuit, now=now)
         await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ENDED)
+        if actor is not None:
+            await tenancy_audit.record_for_org(
+                session,
+                org_id=org_id,
+                actor=actor,
+                action="circuit.ended",
+                target_type="circuit",
+                target_id=str(circuit_id),
+                summary=f"Circuit {circuit.name} ended by hand",
+            )
     return await read_circuit(session, org_id, circuit_id)
 
 

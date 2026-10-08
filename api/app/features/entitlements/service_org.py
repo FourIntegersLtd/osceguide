@@ -18,6 +18,7 @@ from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
 from app.features.entitlements import errors, repository, service
 from app.features.entitlements.schemas import EntitlementRead
 from app.features.identity import service as identity
+from app.features.tenancy import service_audit as tenancy_audit
 
 
 async def grant_for_org(
@@ -38,7 +39,7 @@ async def grant_for_org(
     if user is None:
         raise errors.GranteeNotFound()
     try:
-        return await service.grant(
+        granted = await service.grant(
             session,
             user_id=user.id,
             exam_code=exam_code,
@@ -50,6 +51,16 @@ async def grant_for_org(
         )
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
+    await tenancy_audit.record_for_org(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="entitlement.granted",
+        target_type="entitlement",
+        target_id=str(granted.id),
+        summary=f"Granted {exam_code} to {email}",
+    )
+    return granted
 
 
 async def list_for_org(
@@ -90,7 +101,7 @@ async def list_for_org(
 
 
 async def revoke_for_org(
-    session: AsyncSession, org_id: uuid.UUID, entitlement_id: uuid.UUID, *, now: datetime
+    session: AsyncSession, org_id: uuid.UUID, entitlement_id: uuid.UUID, *, actor: Principal, now: datetime
 ) -> EntitlementRead:
     """Withdraw a grant. The row stays, with `revoked_at`, so the history holds."""
     entitlement = await repository.by_id_for_org(session, org_id, entitlement_id)
@@ -99,5 +110,14 @@ async def revoke_for_org(
     if entitlement.revoked_at is None:
         await repository.revoke(session, entitlement_id, at=now)
         await session.refresh(entitlement)
+        await tenancy_audit.record_for_org(
+            session,
+            org_id=org_id,
+            actor=actor,
+            action="entitlement.revoked",
+            target_type="entitlement",
+            target_id=str(entitlement_id),
+            summary="Access grant withdrawn",
+        )
     code = await catalog.exam_code_by_id(session, entitlement.exam_id)
     return service._read(entitlement, code or "", now=now)

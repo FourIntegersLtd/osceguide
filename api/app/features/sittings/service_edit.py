@@ -14,11 +14,13 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.core.errors import raise_mapped
 from app.features.sittings import domain, domain_edit, repository, repository_reads, service
 from app.features.sittings.models import Sitting
 from app.features.sittings.schemas import SittingRead, UpdateSitting
 from app.features.sittings.service import _REFUSALS, _require_sitting
+from app.features.tenancy import service_audit as tenancy_audit
 
 # The fields this route may write. Anything else on a sitting belongs to
 # something with a better claim on it: `status` to the run machine,
@@ -74,7 +76,9 @@ async def update_sitting(
     return await service.read_sitting(session, org_id, sitting_id)
 
 
-async def cancel_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> SittingRead:
+async def cancel_sitting(
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, *, actor: Principal
+) -> SittingRead:
     """Call off a sitting nobody has sat (R-7). Kept as `cancelled`, not deleted; asking twice is a no-op."""
     sitting = await _require_sitting(session, org_id, sitting_id)
     if sitting.status != domain_edit.CANCELLED:
@@ -85,6 +89,15 @@ async def cancel_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: u
         except domain_edit.SittingLocked as exc:
             raise_mapped(exc, _REFUSALS)
         await repository.set_sitting_status(session, org_id, sitting_id, status=domain_edit.CANCELLED)
+        await tenancy_audit.record_for_org(
+            session,
+            org_id=org_id,
+            actor=actor,
+            action="sitting.cancelled",
+            target_type="sitting",
+            target_id=str(sitting_id),
+            summary=f"Sitting {sitting.name} called off",
+        )
     return await service.read_sitting(session, org_id, sitting_id)
 
 

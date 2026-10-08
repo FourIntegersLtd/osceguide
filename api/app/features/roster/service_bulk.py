@@ -20,6 +20,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.features.roster import errors, repository, repository_groups, service, service_edit
 from app.features.roster.schemas import (
     BulkTraineeAccessResult,
@@ -39,7 +40,12 @@ def _dedupe_ids(trainee_ids: Sequence[uuid.UUID]) -> list[uuid.UUID]:
 
 
 async def bulk_revoke_trainees(
-    session: AsyncSession, org_id: uuid.UUID, trainee_ids: Sequence[uuid.UUID], *, now: datetime
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    trainee_ids: Sequence[uuid.UUID],
+    *,
+    actor: Principal,
+    now: datetime,
 ) -> list[BulkTraineeAccessResult]:
     """Revoke access for every trainee named, one `service.set_access` call per row.
 
@@ -57,7 +63,7 @@ async def bulk_revoke_trainees(
         if trainee.access_revoked_at is not None:
             results.append(BulkTraineeAccessResult(trainee_id=trainee_id, outcome="already_revoked"))
             continue
-        await service.set_access(session, org_id, trainee_id, revoked=True, now=now)
+        await service.set_access(session, org_id, trainee_id, revoked=True, actor=actor, now=now)
         results.append(BulkTraineeAccessResult(trainee_id=trainee_id, outcome="revoked"))
     return results
 

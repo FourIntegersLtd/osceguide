@@ -146,15 +146,26 @@ async def set_access(
     trainee_id: uuid.UUID,
     *,
     revoked: bool,
+    actor: Principal | None,
     now: datetime,
 ) -> TraineeRead:
-    """Revoke or restore a trainee's access to their organisation."""
+    """Revoke or restore a trainee's access to their organisation. `actor=None` is a directory connector."""
     trainee = await _require_trainee(session, org_id, trainee_id)
     await repository.set_trainee_access(session, org_id, trainee_id, revoked_at=now if revoked else None)
     if revoked:
         await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
     elif trainee.user_id is not None:
         await tenancy.grant_trainee_membership(session, org_id, trainee.user_id)
+    await tenancy_audit.record_for_org(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="trainee.access_revoked" if revoked else "trainee.access_restored",
+        target_type="trainee",
+        target_id=str(trainee_id),
+        summary=("Access revoked" if revoked else "Access restored")
+        + ("" if actor else " by the directory connector"),
+    )
     if trainee.user_id is not None:
         # The trainee's portal drops (or regains) this organisation's sittings at once.
         publish_after_commit(session, user_topic(trainee.user_id), "roster.access_changed")

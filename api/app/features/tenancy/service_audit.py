@@ -52,7 +52,7 @@ async def record_for_org(
     session: AsyncSession,
     *,
     org_id: uuid.UUID,
-    actor: Principal,
+    actor: Principal | None,
     action: str,
     target_type: str,
     target_id: str,
@@ -62,12 +62,13 @@ async def record_for_org(
 ) -> None:
     """`record`'s twin for an institution's own act on its own data — an
     organisation admin anonymising a trainee, say — read back by
-    `GET /orgs/{org_slug}/audit` rather than the platform's own log."""
+    `GET /orgs/{org_slug}/audit` rather than the platform's own log. `actor=None` is a
+    directory connector (SCIM), which is no person."""
     await repository.write_audit(
         session,
         org_id=org_id,
-        actor_user_id=actor.user_id,
-        actor_email=actor.email,
+        actor_user_id=actor.user_id if actor else None,
+        actor_email=actor.email if actor else None,
         action=action,
         at=at,
         target_type=target_type,

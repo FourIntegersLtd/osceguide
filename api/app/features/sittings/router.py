@@ -113,7 +113,7 @@ async def update_sitting(
 )
 async def cancel_sitting(sitting_id: uuid.UUID, workspace: OrgAdmin, session: Session) -> schemas.SittingRead:
     """Refused with `sitting_locked` once any circuit has started: end those circuits instead."""
-    return await service_edit.cancel_sitting(session, workspace.org_id, sitting_id)
+    return await service_edit.cancel_sitting(session, workspace.org_id, sitting_id, actor=workspace.principal)
 
 
 # Build a new circuit inside this sitting, from a roster and a station list.

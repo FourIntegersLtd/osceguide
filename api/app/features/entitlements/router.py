@@ -92,7 +92,9 @@ async def grant_org_entitlement(
 async def revoke_org_entitlement(
     entitlement_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.EntitlementRead:
-    return await service_org.revoke_for_org(session, workspace.org_id, entitlement_id, now=clock.now())
+    return await service_org.revoke_for_org(
+        session, workspace.org_id, entitlement_id, actor=workspace.principal, now=clock.now()
+    )
 
 
 # Everyone this organisation has given practice access, invited and revoked included.

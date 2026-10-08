@@ -52,7 +52,9 @@ async def delete_trainee(
     """Remove a roster row nothing was ever decided about. Returns 409
     `trainee_in_use` if a decision exists; revoke access instead in that case.
     """
-    await service_edit.delete_trainee(session, workspace.org_id, trainee_id, now=clock.now())
+    await service_edit.delete_trainee(
+        session, workspace.org_id, trainee_id, actor=workspace.principal, now=clock.now()
+    )
 
 
 @router.post(
@@ -87,7 +89,7 @@ async def bulk_revoke_trainees(
     organisation, or repeated in the request, is reported rather than acted on twice.
     """
     results = await service_bulk.bulk_revoke_trainees(
-        session, workspace.org_id, body.trainee_ids, now=clock.now()
+        session, workspace.org_id, body.trainee_ids, actor=workspace.principal, now=clock.now()
     )
     return schemas.BulkTraineeAccessResponse(results=results)
 

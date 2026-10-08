@@ -63,7 +63,7 @@ async def issue_scim_token(
     body: schemas_scim.IssueScimToken, workspace: OrgAdmin, session: Session
 ) -> schemas_scim.ScimTokenIssued:
     return await service_scim.issue_token(
-        session, workspace.org_id, label=body.label, actor_id=workspace.principal.user_id
+        session, workspace.org_id, label=body.label, actor=workspace.principal
     )
 
 
@@ -86,7 +86,9 @@ async def list_scim_tokens(workspace: OrgAdmin, session: Session) -> list[schema
 async def revoke_scim_token(
     token_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> Response:
-    await service_scim.revoke_token(session, workspace.org_id, token_id, now=clock.now())
+    await service_scim.revoke_token(
+        session, workspace.org_id, token_id, actor=workspace.principal, now=clock.now()
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
