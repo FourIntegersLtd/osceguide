@@ -32,7 +32,7 @@ async def warn_expiring_access(session: AsyncSession, *, now: datetime) -> int:
         ends_at = grant.ends_at
         if ends_at is None:
             continue
-        if grant.starts_at > ends_at - warning or await repository.has_later_access(session, grant, now=now):
+        if grant.starts_at >= ends_at - warning or await repository.has_later_access(session, grant, now=now):
             continue
         person = await identity.user_ref_by_id(session, grant.user_id)
         exam = await catalog.exam_ref_by_id(session, grant.exam_id)

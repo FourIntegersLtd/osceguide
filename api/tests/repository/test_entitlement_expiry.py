@@ -26,7 +26,12 @@ async def _holder(db_session: AsyncSession, *, source: str, ends_in: timedelta, 
     exam = await ensure_exam(db_session, "sca")
     assert exam is not None
     grant = await ent_repo.grant(
-        db_session, user_id=user.id, exam_id=exam.id, source=source, ends_at=NOW + ends_in
+        db_session,
+        user_id=user.id,
+        exam_id=exam.id,
+        source=source,
+        starts_at=NOW - timedelta(days=30),
+        ends_at=NOW + ends_in,
     )
     if revoked:
         await ent_repo.revoke(db_session, grant.id, at=NOW)
@@ -61,7 +66,14 @@ async def test_other_access_that_outlasts_it_stops_the_warning(db_session: Async
     user, _ = await _holder(db_session, source="purchase", ends_in=timedelta(days=3))
     exam = await ensure_exam(db_session, "sca")
     assert exam is not None
-    await ent_repo.grant(db_session, user_id=user.id, exam_id=exam.id, source="admin", ends_at=None)
+    await ent_repo.grant(
+        db_session,
+        user_id=user.id,
+        exam_id=exam.id,
+        source="admin",
+        starts_at=NOW - timedelta(days=30),
+        ends_at=None,
+    )
     await db_session.flush()
 
     assert await warn_expiring_access(db_session, now=NOW) == 0
