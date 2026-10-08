@@ -112,7 +112,11 @@ async def read_spend(
 
 async def read_config(session: AsyncSession, *, partner: str) -> PilotConfigRead:
     """This partner's pilot settings, or b2c's defaults if nobody has saved any."""
-    partner_key = require_partner(partner)
+    return await read_config_for(session, partner_key=require_partner(partner))
+
+
+async def read_config_for(session: AsyncSession, *, partner_key: str) -> PilotConfigRead:
+    """The same, for a partner already resolved: the partner dashboard finds its partner by organisation."""
     stored = await repository.pilot_config(session, partner_key)
     if stored is None:
         return PilotConfigRead(
@@ -278,6 +282,11 @@ def require_partner(partner: str) -> str:
     if partner_key not in domain.PILOT_PARTNERS:
         raise errors.UnknownPartnerError()
     return partner_key
+
+
+def organisation_partner(partner: str) -> str:
+    """The partner key, lower-cased, for a partner found by its organisation, not the pilot allowlist."""
+    return (partner or "").strip().lower()
 
 
 def require_bucket(bucket: str) -> str:

@@ -42,7 +42,7 @@ async def read_partner_summary(
     Oracle: b2c `_to_partner_summary` — the same underlying numbers as the
     admin summary, with every money figure but the partner's own fee removed.
     """
-    partner_key = service_spend.require_partner(partner)
+    partner_key = service_spend.organisation_partner(partner)
     service_spend.require_range(from_date, to_date)
     landed_from, landed_before = domain.ledger_bounds(from_date, to_date)
 
@@ -74,7 +74,7 @@ async def read_partner_summary(
         session, acquired_ids, paid_from=landed_from, paid_before=landed_before
     )
 
-    config = await service_spend.read_config(session, partner=partner_key)
+    config = await service_spend.read_config_for(session, partner_key=partner_key)
     estimate = domain.estimate_spend(
         arrivals=raw_arrivals,
         acquisitions=len(acquired_ids),
@@ -204,7 +204,7 @@ async def read_visits_over_time(
     bucket: str,
 ) -> CountOverTimeReport:
     """The partner Performance tab's visits chart."""
-    partner_key = service_spend.require_partner(partner)
+    partner_key = service_spend.organisation_partner(partner)
     service_spend.require_range(from_date, to_date)
     bucket_key = service_spend.require_bucket(bucket)
     landed_from, landed_before = domain.ledger_bounds(from_date, to_date)
@@ -244,7 +244,7 @@ async def read_signups_over_time(
     bucket: str,
 ) -> CountOverTimeReport:
     """The partner Performance tab's signups chart."""
-    partner_key = service_spend.require_partner(partner)
+    partner_key = service_spend.organisation_partner(partner)
     service_spend.require_range(from_date, to_date)
     bucket_key = service_spend.require_bucket(bucket)
     acquired_from, acquired_before = domain.ledger_bounds(from_date, to_date)
@@ -284,11 +284,11 @@ async def read_fee_over_time(
     bucket: str,
 ) -> FeeOverTimeReport:
     """The partner "Your fee" tab's chart: visits and their estimated fee, per bucket."""
-    partner_key = service_spend.require_partner(partner)
+    partner_key = service_spend.organisation_partner(partner)
     service_spend.require_range(from_date, to_date)
     bucket_key = service_spend.require_bucket(bucket)
     landed_from, landed_before = domain.ledger_bounds(from_date, to_date)
-    config = await service_spend.read_config(session, partner=partner_key)
+    config = await service_spend.read_config_for(session, partner_key=partner_key)
     rows = await repository.arrivals_over_time(
         session,
         partner_key,

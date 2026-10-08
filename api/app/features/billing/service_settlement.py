@@ -59,7 +59,12 @@ async def settle_payment(
         # column is NOT NULL now; a row from before that holds '' and lands here.
         raise errors.UnknownPlanError(f"Plan {plan_row.code!r} names no exam, so there is nothing to grant.")
     plan = _as_plans([plan_row])[0]
-    starts_at, ends_at = domain.access_window(plan, paid_at=now)
+    running = await entitlements.running_purchases(session, user.id, plan_row.exam_code, now=now)
+    starts_at, ends_at = domain.access_window(
+        plan,
+        paid_at=now,
+        running_until=max((grant.ends_at for grant in running if grant.ends_at), default=None),
+    )
 
     granted = await entitlements.grant(
         session,
@@ -67,6 +72,7 @@ async def settle_payment(
         exam_code=plan_row.exam_code,
         source="purchase",
         source_ref=intent_id,
+        starts_at=starts_at,
         ends_at=ends_at,
     )
     # Our own receipt, minted here so it exists from the moment the payment

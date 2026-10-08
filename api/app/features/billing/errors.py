@@ -70,11 +70,14 @@ class ReceiptNotFound(NotFound):
 
 
 class AlreadyPurchased(Conflict):
-    """The buyer already holds a live purchase for this plan's exam. A second payment would buy
-    access they have; buying again is how it is renewed once it lapses."""
+    """The buyer already holds this plan, running or bought to start. A second payment for the same
+    plan would buy access they have; a different plan is allowed and extends it."""
 
     code = "already_purchased"
-    default_message = "You already have access to this exam"
+    default_message = (
+        "You already have this plan. Choose a different plan to extend your access, "
+        "or buy it again when it ends."
+    )
 
 
 class PlanNotAvailable(NotFound):

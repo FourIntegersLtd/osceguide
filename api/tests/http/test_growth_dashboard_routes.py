@@ -625,3 +625,50 @@ async def test_the_funnel_requires_both_dates_when_filtering(client: AsyncClient
     )
     assert response.status_code == 422, response.text
     assert response.json()["code"] == "invalid_date_range"
+
+
+# --- a partner organisation's admin reads its own dashboard (H-2) -------------
+
+
+async def _partner_org_admin(
+    db_session: AsyncSession, make_actor, *, email: str, slug: str, role: str = "partner_admin"
+) -> str:  # type: ignore[no-untyped-def]
+    from app.core.auth import Membership
+    from app.features.tenancy import repository as tenancy_repo
+
+    org = await tenancy_repo.organization_by_slug(db_session, slug)
+    if org is None:
+        org = await tenancy_repo.create_organization(db_session, slug=slug, name=slug, org_type="partner")
+    token = await make_actor(
+        email, memberships=(Membership(org_id=org.id, org_slug=slug, role=role, surface=None),)
+    )
+    await db_session.commit()
+    return token
+
+
+async def test_a_partner_admin_reads_its_own_dashboard_without_a_reporter_grant(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    for slug in ("bmj", "wiley"):
+        token = await _partner_org_admin(db_session, make_actor, email=f"pa-{slug}@example.com", slug=slug)
+        response = await client.get(
+            f"/api/v1/growth/partners/{slug}/reporting/summary", params=date_range(), headers=bearer(token)
+        )
+        assert response.status_code == 200, f"{slug}: {response.text}"
+
+
+async def test_only_an_admin_of_that_partner_org_reads_it(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    member = await _partner_org_admin(
+        db_session, make_actor, email="pa-member@example.com", slug="wiley", role="member"
+    )
+    other_admin = await _partner_org_admin(
+        db_session, make_actor, email="pa-other@example.com", slug="elsevier"
+    )
+    for token in (member, other_admin):
+        response = await client.get(
+            "/api/v1/growth/partners/wiley/reporting/summary", params=date_range(), headers=bearer(token)
+        )
+        assert response.status_code == 403, response.text
+        assert response.json()["code"] == "not_a_partner_reporter"

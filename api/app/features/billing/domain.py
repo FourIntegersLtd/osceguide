@@ -83,8 +83,18 @@ def plan_for_price(plans: Sequence[Plan], price_id: str) -> Plan:
     )
 
 
-def access_window(plan: Plan, *, paid_at: datetime) -> tuple[datetime, datetime]:
-    return paid_at, paid_at + timedelta(days=plan.duration_days)
+def access_window(
+    plan: Plan, *, paid_at: datetime, running_until: datetime | None = None
+) -> tuple[datetime, datetime]:
+    """When a paid plan's access starts and ends: from the payment, or from the end of access
+    already bought for the same exam, so a second plan adds to the first instead of overlapping it."""
+    starts_at = running_until if running_until is not None and running_until > paid_at else paid_at
+    return starts_at, starts_at + timedelta(days=plan.duration_days)
+
+
+def base_plan_code(plan_code: str) -> str:
+    """The plan a referral-discounted plan is the discounted copy of; any other plan is itself."""
+    return plan_code.removesuffix(REFERRAL_PLAN_SUFFIX)
 
 
 def should_process_event(*, seen: Iterable[str], event_id: str) -> bool:

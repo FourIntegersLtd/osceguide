@@ -966,3 +966,67 @@ async def test_a_refund_after_a_dispute_on_the_same_payment_is_ignored(
 
     assert first.json()["status"] == "applied"
     assert second.json()["status"] == "ignored"
+
+
+async def test_a_different_plan_is_bought_while_one_is_live_and_extends_from_the_current_end(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """A-24: the same plan again stays refused, with a message that says what to do; a different
+    plan is allowed and its access starts where the live one ends, so nothing paid for is lost."""
+    from datetime import timedelta
+
+    from app.features.billing import service_checkout
+    from app.features.entitlements import repository as ent_repo
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan(db_session)
+    await billing_repo.create_plan(
+        db_session,
+        code="three_month",
+        stripe_price_id="price_three_month",
+        amount_pence=5999,
+        duration_days=90,
+        exam_code="sca",
+    )
+    await db_session.flush()
+    token = await make_actor("upgrade@example.com")
+    assert (await post_event(client, checkout_event("evt_up_1", "upgrade@example.com"))).json()[
+        "status"
+    ] == "applied"
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    same = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "one_month"}, headers=bearer(token)
+    )
+    assert same.status_code == 409, same.text
+    assert same.json()["code"] == "already_purchased"
+    assert same.json()["message"] == (
+        "You already have this plan. Choose a different plan to extend your access, "
+        "or buy it again when it ends."
+    )
+    assert fake.calls == []
+
+    different = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "three_month"}, headers=bearer(token)
+    )
+    assert different.status_code == 201, different.text
+
+    paid = await post_event(client, checkout_event("evt_up_2", "upgrade@example.com", "price_three_month"))
+    assert paid.json()["status"] == "applied"
+    user = await identity_repo.user_by_email(db_session, "upgrade@example.com")
+    assert user is not None
+    first, second = sorted(await ent_repo.for_user(db_session, user.id), key=lambda grant: grant.created_at)
+    assert first.ends_at is not None
+    assert second.starts_at == first.ends_at
+    assert second.ends_at == first.ends_at + timedelta(days=90)
+    payment = await billing_repo.payment_by_intent(db_session, "pi_evt_up_2")
+    assert payment is not None
+    assert payment.plan_starts_at == first.ends_at
+    assert payment.plan_ends_at == first.ends_at + timedelta(days=90)
+
+    # The extension is held too: the same plan is still refused while it is, and so is the new one.
+    again = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "three_month"}, headers=bearer(token)
+    )
+    assert again.status_code == 409, again.text

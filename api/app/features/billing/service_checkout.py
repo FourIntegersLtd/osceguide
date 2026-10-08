@@ -76,11 +76,17 @@ async def start_checkout(
     if access.codes and plan.exam_code not in access.codes:
         raise errors.PlanNotAvailable(details={"reason": "not_your_exam"})
 
-    # Only a paid, still-running purchase for this exam: a trial, an institution's grant or a
-    # lapsed purchase does not stop anyone buying (ADR 0012: entitlement is not payment).
-    held = await entitlements.list_for_user(session, user_id, now=now)
-    if any(grant.live and grant.source == "purchase" and grant.exam_code == plan.exam_code for grant in held):
-        raise errors.AlreadyPurchased()
+    # The same plan again while one is running stays refused: it would buy access they have. A
+    # different plan is allowed, and settlement starts it where the running access ends.
+    running = {
+        grant.id for grant in await entitlements.running_purchases(session, user_id, plan.exam_code, now=now)
+    }
+    for payment in await repository.payments_for_user(session, user_id):
+        if payment.entitlement_id not in running or payment.plan_id is None:
+            continue
+        held_plan = await repository.plan_by_id(session, payment.plan_id)
+        if held_plan is not None and domain.base_plan_code(held_plan.code) == plan.code:
+            raise errors.AlreadyPurchased()
 
     checked_referral_code: str | None = None
     if referral_code and referral_code.strip():

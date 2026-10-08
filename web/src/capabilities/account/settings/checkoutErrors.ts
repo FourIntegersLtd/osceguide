@@ -15,7 +15,7 @@ export function checkoutErrorMessage(cause: unknown, supportEmail: string): stri
   }
   // Not in the generated code union until `schema.d.ts` is regenerated from the API.
   if (isPlatformError(cause) && (cause.code as string) === "already_purchased") {
-    return "You already have access to this exam. A new plan can be bought when it ends.";
+    return "You already have this plan. Choose a different plan to extend your access, or buy it again when it ends.";
   }
   if (hasCode(cause, "plan_not_available")) {
     return "That plan is not available for your exam. Choose another plan.";

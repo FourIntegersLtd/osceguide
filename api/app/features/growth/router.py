@@ -73,6 +73,7 @@ async def read_funnel(
     await service.ensure_reporter(
         session,
         partner=partner.strip().lower(),
+        user_id=principal.user_id,
         email=principal.email,
         is_platform_admin=principal.is_platform_admin,
     )
@@ -118,6 +119,7 @@ async def read_tracking_references(
     references = await service.tracking_references(
         session,
         partner=partner,
+        user_id=principal.user_id,
         email=principal.email,
         is_platform_admin=principal.is_platform_admin,
     )
@@ -521,6 +523,7 @@ async def _ensure_partner_reporter(
     await service.ensure_reporter(
         session,
         partner=partner.strip().lower(),
+        user_id=principal.user_id,
         email=principal.email,
         is_platform_admin=principal.is_platform_admin,
     )

@@ -71,6 +71,7 @@ async def grant(
     source: str,
     source_ref: str | None = None,
     org_id: uuid.UUID | None = None,
+    starts_at: datetime | None = None,
     ends_at: datetime | None = None,
     granted_by: uuid.UUID | None = None,
 ) -> EntitlementRead:
@@ -85,10 +86,30 @@ async def grant(
         source=source,
         source_ref=source_ref,
         org_id=org_id,
+        starts_at=starts_at,
         ends_at=ends_at,
         granted_by=granted_by,
     )
     return _read(entitlement, exam.code, now=entitlement.starts_at)
+
+
+async def running_purchases(
+    session: AsyncSession, user_id: uuid.UUID, exam_code: str, *, now: datetime
+) -> list[EntitlementRead]:
+    """Paid-for access to this exam that has not ended: live now, or already bought to start later.
+
+    Not refunded, not lapsed. A trial, an institution's grant or a lapsed purchase is not one
+    (ADR 0012: entitlement is not payment).
+    """
+    return [
+        grant
+        for grant in await list_for_user(session, user_id, now=now)
+        if grant.source == "purchase"
+        and grant.exam_code == exam_code
+        and grant.revoked_at is None
+        and grant.ends_at is not None
+        and grant.ends_at > now
+    ]
 
 
 async def revoked_ids(session: AsyncSession, entitlement_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:

@@ -32,6 +32,23 @@ async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgRef | None:
     return None if org is None else OrgRef(id=org.id, slug=org.slug, status=org.status)
 
 
+async def is_partner_admin(session: AsyncSession, *, user_id: uuid.UUID, partner: str) -> bool:
+    """Whether this person is a live `partner_admin` of the partner organisation whose slug is `partner`.
+
+    A partner is found by its organisation, not by an allowlist: any organisation of type
+    `partner` is one. Read from the stored rows, so a revoked admin loses it before their token expires.
+    """
+    org = await repository.organization_by_slug(session, partner)
+    if org is None or org.org_type != "partner":
+        return False
+    return any(
+        membership.role == "partner_admin"
+        and membership.revoked_at is None
+        and membership.status != "revoked"
+        for membership in await repository.memberships_for_user_in_org(session, org.id, user_id)
+    )
+
+
 @dataclass(frozen=True)
 class OrgSummary:
     """An organisation as another slice names it to a person: the id and a name."""

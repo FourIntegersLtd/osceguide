@@ -27,6 +27,7 @@ from app.features.growth.schemas import (
     TrackingReference,
 )
 from app.features.identity import service as identity
+from app.features.tenancy import service as tenancy
 
 log = get_logger(__name__)
 
@@ -105,13 +106,16 @@ async def attribute_signup(
 
 
 async def ensure_reporter(
-    session: AsyncSession, *, partner: str, email: str, is_platform_admin: bool
+    session: AsyncSession, *, partner: str, user_id: uuid.UUID, email: str, is_platform_admin: bool
 ) -> None:
     """Reporting access is per partner, checked against the partner in the path
-    rather than "is a reporter at all"."""
+    rather than "is a reporter at all". A `partner_admin` of the partner's own
+    organisation reads it without a separate reporter grant."""
     if is_platform_admin:
         return
-    if not await repository.is_reporter(session, partner=partner, email=email):
+    if await repository.is_reporter(session, partner=partner, email=email):
+        return
+    if not await tenancy.is_partner_admin(session, user_id=user_id, partner=partner):
         raise errors.NotAReporter()
 
 
@@ -410,7 +414,7 @@ async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> No
 
 
 async def tracking_references(
-    session: AsyncSession, *, partner: str, email: str, is_platform_admin: bool
+    session: AsyncSession, *, partner: str, user_id: uuid.UUID, email: str, is_platform_admin: bool
 ) -> list[TrackingReference]:
     """The references a partner puts in its links, one per exam in the pilot.
 
@@ -420,7 +424,9 @@ async def tracking_references(
     partner_key = (partner or "").strip().lower()
     if partner_key not in domain.PILOT_PARTNERS:
         raise errors.UnknownPartnerError()
-    await ensure_reporter(session, partner=partner_key, email=email, is_platform_admin=is_platform_admin)
+    await ensure_reporter(
+        session, partner=partner_key, user_id=user_id, email=email, is_platform_admin=is_platform_admin
+    )
     pilot_exams = sorted(await catalog.pilot_exam_codes(session))
     return [
         TrackingReference(
