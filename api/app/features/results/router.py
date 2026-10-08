@@ -84,7 +84,11 @@ async def save_decision(
     "/orgs/{org_slug}/sittings/{sitting_id}/candidates/{trainee_id}/decision/sign-off",
     response_model=schemas.DecisionRead,
     responses=error_responses(
-        Forbidden, errors.ResultNotFound, errors.NotSignableError, errors.InvalidWorkflowError
+        Forbidden,
+        errors.ResultNotFound,
+        errors.NotSignableError,
+        errors.InvalidWorkflowError,
+        errors.EvidenceChangedError,
     ),
 )
 async def sign_off(

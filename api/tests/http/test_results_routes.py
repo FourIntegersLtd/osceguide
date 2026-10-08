@@ -683,3 +683,22 @@ async def test_a_signed_off_decision_goes_back_to_draft_until_it_is_released(
         headers=bearer(admin),
     )
     assert (after_release.status_code, after_release.json()["code"]) == (409, "invalid_workflow")
+
+
+async def test_sign_off_is_refused_if_the_evidence_moved_since_the_draft(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-40: sign-off used to copy the draft's snapshot, so a station marked
+    after the draft was signed and only refused at release."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "R."},
+        headers=bearer(admin),
+    )
+    await _mark_the_station(db_session, org_id, sitting)
+
+    response = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    assert response.status_code == 409
+    assert response.json()["code"] == "evidence_changed"

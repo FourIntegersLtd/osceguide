@@ -144,10 +144,15 @@ async def sign_off(
 ) -> DecisionRead:
     """Put a name to the current draft. Refused if it has no outcome or rationale yet."""
     latest = await _require(session, org_id, sitting_id, trainee_id)
+    current = await service_evidence.current_evidence(session, org_id, sitting_id, trainee_id)
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.SIGNED_OFF)
         assessment = domain.Assessment(latest.assessment_outcome) if latest.assessment_outcome else None
         domain.ensure_signable(assessment=assessment, rationale=latest.rationale)
+        # R-40: a station re-marked since the draft is refused here, not at release.
+        domain.ensure_evidence_unchanged(
+            signed=latest.evidence_fingerprint, current=domain.fingerprint(current)
+        )
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
