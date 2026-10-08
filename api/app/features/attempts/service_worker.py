@@ -79,7 +79,14 @@ async def bootstrap(
         raise errors.AttemptNotReady(str(exc)) from exc
 
     if now is not None and domain.Status(attempt.status) is domain.Status.CREATED:
-        await ensure_entitled_to_begin(session, attempt, now=now)
+        try:
+            await ensure_entitled_to_begin(session, attempt, now=now)
+        except errors.NotEntitled as exc:
+            # Not left `created` for a worker to retry into the same refusal for ever.
+            await repository.set_status(
+                session, attempt_id, status=domain.Status.FAILED, at=now, reason="not_entitled"
+            )
+            raise errors.NotEntitledToBegin(details=exc.details) from exc
         await repository.set_status(session, attempt_id, status=domain.Status.RUNNING, at=now)
         await _credit_practice_set_entry(session, attempt, at=now)
 

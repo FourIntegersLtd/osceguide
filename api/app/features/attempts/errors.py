@@ -17,7 +17,15 @@ from app.features.stations.errors import StationNotFound, StationNotPublishedErr
 # exist or belongs to another organisation. The two are one refusal on
 # purpose: "no such station" and "not yours" must not be distinguishable,
 # or the route becomes a way to enumerate another tenant's library.
-__all__ = ["NotEntitled", "StationNotFound", "StationNotPublishedError"]
+__all__ = ["NotEntitled", "NotEntitledToBegin", "StationNotFound", "StationNotPublishedError"]
+
+
+class NotEntitledToBegin(NotEntitled):
+    """`not_entitled`, raised as an attempt begins: the attempt is failed with that reason, and the
+    request still answers 403, so the failure has to be committed (`persist_effects`)."""
+
+    code = "not_entitled"
+    persist_effects = True
 
 
 def __getattr__(name: str) -> type[NotFound]:

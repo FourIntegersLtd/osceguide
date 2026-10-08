@@ -402,6 +402,19 @@ async def test_an_attempt_not_yet_started_is_refused_at_bootstrap_when_access_ha
     assert response.json()["code"] == "not_entitled"
 
 
+async def test_an_attempt_refused_at_bootstrap_is_failed_not_left_created(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    attempt_id, _ = await a_lapsed_learners_attempt(db_session, status="created")
+
+    refused = await client.get(f"/api/worker/attempts/{attempt_id}", headers=worker_headers())
+
+    assert refused.status_code == 403, refused.text
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    assert (attempt.status, attempt.failed_reason) == ("failed", "not_entitled")
+
+
 async def test_an_attempt_already_running_finishes_after_access_ends_but_a_new_one_is_refused(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
