@@ -4,9 +4,8 @@ import { useState, type ReactNode } from "react";
 import { HiOutlineCheck } from "react-icons/hi2";
 import { LuFlag, LuMessageSquareWarning } from "react-icons/lu";
 import { Back, cn, productTokens, Spinner } from "@/foundation/ui";
-import { useToast } from "@/foundation/hooks";
+import { errorMessage, useToast } from "@/foundation/hooks";
 import { flagStation } from "@/capabilities/stations/api";
-import { actionFailureText } from "./actionFailure";
 import type { StationAction } from "@/capabilities/station-runner/useStationAttempt";
 
 export type StationStep = "patient" | "simulation" | "management" | "feedback";
@@ -93,7 +92,7 @@ export function StationHeader({
       toast.show({
         tone: "error",
         title: "We couldn't change the flag",
-        message: actionFailureText(cause),
+        message: errorMessage(cause),
       });
     } finally {
       setMarking(false);
@@ -117,7 +116,7 @@ export function StationHeader({
       toast.show({
         tone: "error",
         title: "We couldn't report this station",
-        message: actionFailureText(cause),
+        message: errorMessage(cause),
       });
     } finally {
       setReporting(false);
