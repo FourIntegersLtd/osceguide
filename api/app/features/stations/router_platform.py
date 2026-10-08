@@ -216,7 +216,7 @@ async def publish_platform_station_version(
 ) -> schemas.StationVersionRead:
     """Publish it into the library, where every organisation may draw on it."""
     return await service_versions.publish_version(
-        session, None, station_id, version, actor_id=admin.user_id, now=clock.now(), actor=admin
+        session, None, station_id, version, actor_id=admin.user_id, now=clock.now()
     )
 
 
