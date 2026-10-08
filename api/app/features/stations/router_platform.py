@@ -230,7 +230,7 @@ async def archive_platform_station_version(
     station_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session, clock: ClockDep
 ) -> schemas.StationVersionRead:
     return await service_versions.archive_version(
-        session, None, station_id, version, actor_id=admin.user_id, now=clock.now()
+        session, None, station_id, version, now=clock.now(), actor=admin
     )
 
 

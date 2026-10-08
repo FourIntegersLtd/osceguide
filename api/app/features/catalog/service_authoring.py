@@ -173,28 +173,16 @@ async def retire_exam(
     except domain.NotRetirable as exc:
         raise ExamNotPublishable(str(exc)) from exc
     await repository.update_exam(session, exam.id, status=status)
-    await _audit(session, org_id, actor, "exam.retired", exam, f'Retired exam "{exam.name}"')
+    await service_audit.record_for_owner(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="exam.retired",
+        target_type="exam",
+        target_id=str(exam.id),
+        summary=f'Retired exam "{exam.name}"',
+    )
     return exam_read(await exam_row(session, exam_id))
-
-
-async def _audit(
-    session: AsyncSession, org_id: uuid.UUID | None, actor: Principal, action: str, exam: Exam, summary: str
-) -> None:
-    """One audit row in the owner's log: the school's own, or the platform's for its catalogue."""
-    if org_id is None:
-        await service_audit.record(
-            session, actor=actor, action=action, target_type="exam", target_id=str(exam.id), summary=summary
-        )
-    else:
-        await service_audit.record_for_org(
-            session,
-            org_id=org_id,
-            actor=actor,
-            action=action,
-            target_type="exam",
-            target_id=str(exam.id),
-            summary=summary,
-        )
 
 
 async def delete_exam(
@@ -215,7 +203,15 @@ async def delete_exam(
         await repository.delete_exam(session, exam.id)
     except IntegrityError as exc:
         raise ExamInUse() from exc
-    await _audit(session, org_id, actor, "exam.deleted", exam, f'Deleted exam "{exam.name}"')
+    await service_audit.record_for_owner(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="exam.deleted",
+        target_type="exam",
+        target_id=str(exam.id),
+        summary=f'Deleted exam "{exam.name}"',
+    )
 
 
 def _storable_settings(settings: ExamSettings) -> dict[str, Any]:

@@ -158,10 +158,9 @@ async def end_circuit(
     *,
     agents: RoomAgents,
     now: datetime,
-    actor: Principal | None = None,
 ) -> CircuitRead:
-    """Stop the whole examination, wherever it had got to. `actor` is the person who pressed it;
-    the reaper passes none and writes its own intervention instead.
+    """Stop the whole examination, wherever it had got to, without an audit row: the reaper's
+    end, which writes its own intervention. A person pressing End goes through `end_circuit_by`.
 
     The patient is removed here — previously ending a circuit only nulled the
     room name, leaving the agent stuck in a LiveKit room nobody returned to.
@@ -176,17 +175,33 @@ async def end_circuit(
             await service_steps.clear_patient_later(session, circuit)
         await service_steps.finish(session, org_id, circuit, now=now)
         await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ENDED)
-        if actor is not None:
-            await tenancy_audit.record_for_org(
-                session,
-                org_id=org_id,
-                actor=actor,
-                action="circuit.ended",
-                target_type="circuit",
-                target_id=str(circuit_id),
-                summary=f"Circuit {circuit.name} ended by hand",
-            )
     return await read_circuit(session, org_id, circuit_id)
+
+
+async def end_circuit_by(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    circuit_id: uuid.UUID,
+    *,
+    agents: RoomAgents,
+    now: datetime,
+    actor: Principal,
+) -> CircuitRead:
+    """A person ends the circuit: `end_circuit`, plus the audit row (none if it had already ended)."""
+    circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
+    was_open = circuit.ended_at is None
+    ended = await end_circuit(session, org_id, circuit_id, agents=agents, now=now)
+    if was_open:
+        await tenancy_audit.record_for_owner(
+            session,
+            org_id=org_id,
+            actor=actor,
+            action="circuit.ended",
+            target_type="circuit",
+            target_id=str(circuit_id),
+            summary=f"Circuit {circuit.name} ended by hand",
+        )
+    return ended
 
 
 async def end_abandoned(

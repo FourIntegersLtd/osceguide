@@ -79,7 +79,7 @@ async def delete_trainee(
     except IntegrityError as exc:
         raise errors.TraineeInUse() from exc
     await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
-    await service_audit.record_for_org(
+    await service_audit.record_for_owner(
         session,
         org_id=org_id,
         actor=actor,
@@ -106,7 +106,7 @@ async def anonymise_trainee(
             session, org_id, trainee_id, email=f"anon-{trainee_id}@anonymised.invalid", at=now
         )
         await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
-        await service_audit.record_for_org(
+        await service_audit.record_for_owner(
             session,
             org_id=org_id,
             actor=actor,

@@ -54,6 +54,7 @@ from app.features.roster.schemas_scim import (
 )
 from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as tenancy_audit
+from app.features.tenancy.service_audit import SCIM_CONNECTOR
 
 TOKEN_BYTES = 32
 TOKEN_PREFIX = "scim_"  # noqa: S105 - a label on every token, not a secret
@@ -80,7 +81,7 @@ async def issue_token(
         label=label.strip(),
         created_by=actor.user_id,
     )
-    await tenancy_audit.record_for_org(
+    await tenancy_audit.record_for_owner(
         session,
         org_id=org_id,
         actor=actor,
@@ -109,7 +110,7 @@ async def revoke_token(
     """Stop a token working at once. Revoking twice keeps the first time."""
     if not await repository_scim.revoke_token(session, org_id, token_id, at=now):
         raise errors.ScimTokenNotFound()
-    await tenancy_audit.record_for_org(
+    await tenancy_audit.record_for_owner(
         session,
         org_id=org_id,
         actor=actor,
@@ -223,12 +224,12 @@ async def create_user(
     connector learns to link rather than create.
     """
     entry = _create_trainee(body)
-    outcome = await service.add_trainees(session, org_id, entries=[entry], actor=None, now=now)
+    outcome = await service.add_trainees(session, org_id, entries=[entry], actor=SCIM_CONNECTOR, now=now)
     if not outcome.created:
         raise errors.ScimUniqueness()
     created = outcome.created[0]
     if not body.active:
-        await service.set_access(session, org_id, created.id, revoked=True, actor=None, now=now)
+        await service.set_access(session, org_id, created.id, revoked=True, actor=SCIM_CONNECTOR, now=now)
     return await read_user(session, org_id, created.id, base_url=base_url)
 
 
@@ -424,7 +425,9 @@ async def _set_active(
 ) -> None:
     """Revoke or restore access, only when it changes, so a repeat keeps the first date."""
     if (trainee.access_revoked_at is None) != active:
-        await service.set_access(session, org_id, trainee.id, revoked=not active, actor=None, now=now)
+        await service.set_access(
+            session, org_id, trainee.id, revoked=not active, actor=SCIM_CONNECTOR, now=now
+        )
 
 
 async def _require_trainee(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> Trainee:

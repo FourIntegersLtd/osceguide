@@ -31,6 +31,7 @@ from app.features.roster.schemas import (
 from app.features.sittings import service_reads as sittings
 from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as tenancy_audit
+from app.features.tenancy.service_audit import Connector
 
 
 async def add_trainee(
@@ -42,7 +43,7 @@ async def add_trainee(
     last_name: str | None,
     cohort_id: uuid.UUID | None,
     now: datetime,
-    actor: Principal | None,
+    actor: Principal | Connector,
     temporary_password: str | None = None,
 ) -> TraineeRead:
     """Add a trainee to an organisation's roster and invite them, if needed.
@@ -80,16 +81,15 @@ async def add_trainee(
             now=now,
         )
         how = seating_note(relayed=relayed)
-    if actor is not None:  # None: a directory connector (SCIM), which is no person to name
-        await tenancy_audit.record_for_org(
-            session,
-            org_id=org_id,
-            actor=actor,
-            action="trainee.added",
-            target_type="trainee",
-            target_id=str(trainee.id),
-            summary=roster_added_summary(email, how),
-        )
+    await tenancy_audit.record_for_owner(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="trainee.added",
+        target_type="trainee",
+        target_id=str(trainee.id),
+        summary=roster_added_summary(email, how),
+    )
     await repository.link_trainee_to_user(session, org_id, trainee.id, user_id=existing.id)
     await tenancy.grant_trainee_membership(session, org_id, existing.id)
     await session.refresh(trainee)
@@ -146,17 +146,17 @@ async def set_access(
     trainee_id: uuid.UUID,
     *,
     revoked: bool,
-    actor: Principal | None,
+    actor: Principal | Connector,
     now: datetime,
 ) -> TraineeRead:
-    """Revoke or restore a trainee's access to their organisation. `actor=None` is a directory connector."""
+    """Revoke or restore a trainee's access to their organisation. A `Connector` actor is SCIM."""
     trainee = await _require_trainee(session, org_id, trainee_id)
     await repository.set_trainee_access(session, org_id, trainee_id, revoked_at=now if revoked else None)
     if revoked:
         await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
     elif trainee.user_id is not None:
         await tenancy.grant_trainee_membership(session, org_id, trainee.user_id)
-    await tenancy_audit.record_for_org(
+    await tenancy_audit.record_for_owner(
         session,
         org_id=org_id,
         actor=actor,
@@ -164,7 +164,7 @@ async def set_access(
         target_type="trainee",
         target_id=str(trainee_id),
         summary=("Access revoked" if revoked else "Access restored")
-        + ("" if actor else " by the directory connector"),
+        + (" by the directory connector" if isinstance(actor, Connector) else ""),
     )
     if trainee.user_id is not None:
         # The trainee's portal drops (or regains) this organisation's sittings at once.
@@ -311,7 +311,7 @@ async def add_trainees(
     org_id: uuid.UUID,
     *,
     entries: list[CreateTrainee],
-    actor: Principal | None,
+    actor: Principal | Connector,
     now: datetime,
 ) -> BulkTraineesResult:
     """Add every row that can be added; report every row that cannot.

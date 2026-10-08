@@ -51,7 +51,7 @@ async def grant_for_org(
         )
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
-    await tenancy_audit.record_for_org(
+    await tenancy_audit.record_for_owner(
         session,
         org_id=org_id,
         actor=actor,
@@ -110,7 +110,7 @@ async def revoke_for_org(
     if entitlement.revoked_at is None:
         await repository.revoke(session, entitlement_id, at=now)
         await session.refresh(entitlement)
-        await tenancy_audit.record_for_org(
+        await tenancy_audit.record_for_owner(
             session,
             org_id=org_id,
             actor=actor,

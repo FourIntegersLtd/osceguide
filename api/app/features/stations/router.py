@@ -248,7 +248,6 @@ async def archive_version(
         workspace.org_id,
         station_id,
         version,
-        actor_id=workspace.principal.user_id,
         now=clock.now(),
         actor=workspace.principal,
     )

@@ -138,11 +138,10 @@ async def archive_version(
     station_id: uuid.UUID,
     version: int,
     *,
-    actor_id: uuid.UUID,
     now: datetime,
-    actor: Principal | None = None,
+    actor: Principal,
 ) -> StationVersionRead:
-    """Retire a published version so it can no longer be scheduled. Audited when `actor` is given."""
+    """Retire a published version so it can no longer be scheduled. Always audited."""
     station_version = await _version(session, org_id, station_id, version)
     try:
         new_status = domain.archive(
@@ -152,51 +151,21 @@ async def archive_version(
         raise_mapped(exc, _REFUSALS)
     await _refuse_while_in_use(session, station_version.id)
     await repository.set_version_status(
-        session, org_id, station_version.id, status=str(new_status), at=now, by=actor_id
+        session, org_id, station_version.id, status=str(new_status), at=now, by=actor.user_id
     )
     await _repoint_after_archiving(session, org_id, station_id, archived_version_id=station_version.id)
     await _refresh_tutor_material(session, org_id)
-    if actor is not None:
-        title = (await read_station(session, org_id, station_id)).title
-        await _audit(
-            session,
-            org_id,
-            actor,
-            "station.version_archived",
-            station_id,
-            f'Archived version {version} of "{title}"',
-        )
+    title = (await read_station(session, org_id, station_id)).title
+    await service_audit.record_for_owner(
+        session,
+        org_id=org_id,
+        actor=actor,
+        action="station.version_archived",
+        target_type="station",
+        target_id=str(station_id),
+        summary=f'Archived version {version} of "{title}"',
+    )
     return _version_read(await _version(session, org_id, station_id, version))
-
-
-async def _audit(
-    session: AsyncSession,
-    org_id: uuid.UUID | None,
-    actor: Principal,
-    action: str,
-    station_id: uuid.UUID,
-    summary: str,
-) -> None:
-    """One audit row, in the org's log for its own station and the platform's for the library."""
-    if org_id is None:
-        await service_audit.record(
-            session,
-            actor=actor,
-            action=action,
-            target_type="station",
-            target_id=str(station_id),
-            summary=summary,
-        )
-    else:
-        await service_audit.record_for_org(
-            session,
-            org_id=org_id,
-            actor=actor,
-            action=action,
-            target_type="station",
-            target_id=str(station_id),
-            summary=summary,
-        )
 
 
 async def _refuse_while_in_use(session: AsyncSession, version_id: uuid.UUID) -> None:
@@ -363,13 +332,14 @@ async def delete_version(
     # Read first: the station goes with its last draft, and the row names it.
     title = (await read_station(session, org_id, station_id)).title
     await repository.delete_version(session, org_id, station_version.id)
-    await _audit(
+    await service_audit.record_for_owner(
         session,
-        org_id,
-        actor,
-        "station.version_deleted",
-        station_id,
-        f'Deleted draft version {version} of "{title}"',
+        org_id=org_id,
+        actor=actor,
+        action="station.version_deleted",
+        target_type="station",
+        target_id=str(station_id),
+        summary=f'Deleted draft version {version} of "{title}"',
     )
     # A station with no version left is nothing to open or publish: it goes with its last draft.
     # Only drafts can be deleted, so a station emptied this way was never published and no

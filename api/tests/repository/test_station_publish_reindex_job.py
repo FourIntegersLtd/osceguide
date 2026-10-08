@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.features.identity import repository as identity_repo
 from app.features.stations import repository as stations_repo
 from app.features.stations import service_versions
@@ -50,7 +51,9 @@ async def test_publishing_then_archiving_a_library_station_queues_one_reindex(
 
     await service_versions.publish_version(db_session, None, station_id, 1, actor_id=author_id, now=NOW)
     after_publish = await queued_reindexes(db_session)
-    await service_versions.archive_version(db_session, None, station_id, 1, actor_id=author_id, now=NOW)
+    await service_versions.archive_version(
+        db_session, None, station_id, 1, now=NOW, actor=Principal(user_id=author_id, email="a@example.com")
+    )
 
     assert after_publish == max(before, 1)
     # A walk still waiting covers the archive too: the two changes share it.

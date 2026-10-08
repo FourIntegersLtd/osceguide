@@ -65,7 +65,7 @@ async def end_circuit(
     circuit_id: uuid.UUID, workspace: OrgStaff, session: Session, clock: ClockDep, agents: Agents
 ) -> schemas.CircuitRead:
     """Stop the whole examination, wherever it had got to."""
-    return await service_run.end_circuit(
+    return await service_run.end_circuit_by(
         session, workspace.org_id, circuit_id, agents=agents, now=clock.now(), actor=workspace.principal
     )
 

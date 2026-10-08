@@ -89,7 +89,7 @@ async def cancel_sitting(
         except domain_edit.SittingLocked as exc:
             raise_mapped(exc, _REFUSALS)
         await repository.set_sitting_status(session, org_id, sitting_id, status=domain_edit.CANCELLED)
-        await tenancy_audit.record_for_org(
+        await tenancy_audit.record_for_owner(
             session,
             org_id=org_id,
             actor=actor,
