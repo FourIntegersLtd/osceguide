@@ -36,12 +36,12 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
 }
 
 
-async def _ensure_recruitment_allowed(
 async def erase_recipient(session: AsyncSession, *, email: str) -> None:
     """The person behind this address is being erased: release emails queued for it stop naming it."""
     await repository.scrub_recipient(session, email)
 
 
+async def _ensure_recruitment_allowed(
     session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, recruitment: domain.Recruitment
 ) -> None:
     """A recruitment outcome belongs to an exam-mode (hire) sitting only."""
