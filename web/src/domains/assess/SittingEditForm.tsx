@@ -5,7 +5,8 @@ import { Alert, AsyncBoundary, Input, Spinner } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { hasCode } from "@/foundation/platform-client";
 import { listProgrammes, updateSitting, type Sitting, type SittingMode } from "@/domains/assess/api";
-import { ModeField, ProgrammeField, ScheduledForField } from "@/domains/assess/SittingFields";
+import { listCohorts } from "@/domains/assess/roster/api";
+import { CohortField, ModeField, ProgrammeField, ScheduledForField } from "@/domains/assess/SittingFields";
 import {
   fieldDateTime,
   hasChanges,
@@ -46,10 +47,12 @@ export function SittingEditForm({
 }) {
   const lock = sittingEditLock(sitting);
   const programmes = useAsync((signal) => listProgrammes(orgSlug, signal), [orgSlug]);
+  const cohorts = useAsync((signal) => listCohorts(orgSlug, signal), [orgSlug]);
   const [values, setValues] = useState<SittingFormValues>({
     name: sitting.name,
     mode: sittingModeOf(sitting.mode),
     programmeId: sitting.programme_id ?? "",
+    cohortId: sitting.cohort_id ?? "",
     scheduledFor: fieldDateTime(sitting.scheduled_for),
   });
   const [busy, setBusy] = useState(false);
@@ -122,6 +125,14 @@ export function SittingEditForm({
         </AsyncBoundary>
 
         {programmes.loading ? <Spinner label="Loading programmes" /> : null}
+
+        <AsyncBoundary state={cohorts}>
+          {(page) =>
+            page.items.length > 0 ? (
+              <CohortField value={values.cohortId} onChange={(cohortId) => set("cohortId", cohortId)} cohorts={page.items} />
+            ) : null
+          }
+        </AsyncBoundary>
 
         <ScheduledForField
           value={values.scheduledFor}

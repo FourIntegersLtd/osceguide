@@ -37,6 +37,7 @@ async def create_sitting(
     sitting_type: str,
     scheduled_for: datetime | None,
     programme_id: uuid.UUID | None,
+    cohort_id: uuid.UUID | None = None,
 ) -> Sitting:
     """Write a new sitting row and return it, refreshed with its defaults."""
     sitting = Sitting(
@@ -47,6 +48,7 @@ async def create_sitting(
         sitting_type=sitting_type,
         scheduled_for=scheduled_for,
         programme_id=programme_id,
+        cohort_id=cohort_id,
     )
     session.add(sitting)
     await session.flush()

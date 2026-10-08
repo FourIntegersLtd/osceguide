@@ -75,6 +75,8 @@ class SittingRead(BaseModel):
     scheduled_for: datetime | None
     rubric_version_id: uuid.UUID
     programme_id: uuid.UUID | None = None
+    # The intake the sitting is held for, if any.
+    cohort_id: uuid.UUID | None = None
     # The exam name the programme offers, and distinct candidates across the
     # sitting's circuits. Filled by the list and detail reads.
     programme_name: str | None = None
@@ -90,6 +92,7 @@ class CreateSitting(BaseModel):
     mode: str = Field(default="training", pattern="^(training|exam)$")
     sitting_type: str = Field(default="group_training", max_length=32)
     scheduled_for: datetime | None = None
+    cohort_id: uuid.UUID | None = None
 
 
 class UpdateSitting(BaseModel):
@@ -104,6 +107,8 @@ class UpdateSitting(BaseModel):
     sitting_type: str | None = Field(default=None, max_length=32)
     scheduled_for: datetime | None = None
     programme_id: uuid.UUID | None = None
+    # A null clears the cohort; leave it out to keep it.
+    cohort_id: uuid.UUID | None = None
 
 
 class TimingIn(BaseModel):

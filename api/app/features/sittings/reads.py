@@ -138,5 +138,6 @@ def sitting_read(sitting: Sitting, circuits: list[CircuitRead]) -> SittingRead:
         scheduled_for=sitting.scheduled_for,
         rubric_version_id=sitting.rubric_version_id,
         programme_id=sitting.programme_id,
+        cohort_id=sitting.cohort_id,
         circuits=circuits,
     )

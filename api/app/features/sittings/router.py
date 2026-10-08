@@ -17,6 +17,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.tenancy import OrgAdmin, OrgStaff
+from app.features.roster import errors as roster_errors
 from app.features.sittings import errors, schemas, service, service_edit, service_structure
 
 router = APIRouter(tags=["sittings"])
@@ -52,6 +53,7 @@ async def list_sittings(
         errors.ExamRubricNotReady,
         errors.RubricVersionNotFound,
         errors.RubricVersionNotPublished,
+        roster_errors.CohortNotFound,
     ),
 )
 async def create_sitting(
@@ -65,6 +67,7 @@ async def create_sitting(
         sitting_type=body.sitting_type,
         scheduled_for=body.scheduled_for,
         programme_id=body.programme_id,
+        cohort_id=body.cohort_id,
     )
 
 
@@ -86,6 +89,7 @@ async def read_sitting(sitting_id: uuid.UUID, workspace: OrgStaff, session: Sess
         errors.SittingNotFound,
         errors.SittingLockedError,
         errors.InvalidCircuitError,
+        roster_errors.CohortNotFound,
         errors.ProgrammeNotFound,
         errors.ProgrammeNotActive,
         errors.ExamRubricNotReady,

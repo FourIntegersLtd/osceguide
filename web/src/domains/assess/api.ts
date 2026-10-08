@@ -1,7 +1,8 @@
 import { collectPages, platformRequest, type components } from "@/foundation/platform-client";
 import type { StationLibraryScope } from "@/capabilities/stations";
 
-export type Sitting = components["schemas"]["SittingRead"];
+// until regenerated: a sitting also answers `cohort_id`, the intake it is held for.
+export type Sitting = components["schemas"]["SittingRead"] & { cohort_id?: string | null };
 export type SittingPage = components["schemas"]["Page_SittingRead_"];
 export type Trainee = components["schemas"]["TraineeRead"];
 
@@ -152,6 +153,7 @@ export function createSitting(
     mode: SittingMode;
     programmeId: string;
     scheduledFor: string | null;
+    cohortId?: string | null;
   },
 ): Promise<Sitting> {
   return platformRequest<Sitting>(`${org(slug)}/sittings`, {
@@ -162,6 +164,7 @@ export function createSitting(
       sitting_type: sittingTypeForMode(input.mode),
       programme_id: input.programmeId,
       scheduled_for: input.scheduledFor,
+      ...(input.cohortId ? { cohort_id: input.cohortId } : {}),
     },
   });
 }
@@ -189,6 +192,8 @@ export interface SittingChanges {
   sittingType?: string;
   scheduledFor?: string | null;
   programmeId?: string;
+  /** `null` takes the sitting off its cohort. */
+  cohortId?: string | null;
 }
 
 export function updateSitting(
@@ -196,7 +201,7 @@ export function updateSitting(
   sittingId: string,
   changes: SittingChanges,
 ): Promise<Sitting> {
-  const body: components["schemas"]["UpdateSitting"] = {};
+  const body: components["schemas"]["UpdateSitting"] & { cohort_id?: string | null } = {};
   if (changes.name !== undefined) body.name = changes.name;
   if (changes.mode !== undefined) body.mode = changes.mode;
   if (changes.sittingType !== undefined) body.sitting_type = changes.sittingType;
@@ -204,6 +209,7 @@ export function updateSitting(
   // for truthiness.
   if (changes.scheduledFor !== undefined) body.scheduled_for = changes.scheduledFor;
   if (changes.programmeId !== undefined) body.programme_id = changes.programmeId;
+  if (changes.cohortId !== undefined) body.cohort_id = changes.cohortId;
 
   return platformRequest<Sitting>(`${org(slug)}/sittings/${encodeURIComponent(sittingId)}`, {
     method: "PUT",

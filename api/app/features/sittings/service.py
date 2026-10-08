@@ -17,6 +17,7 @@ from app.core.errors import AppError, raise_mapped
 from app.features.catalog import service as catalog
 from app.features.identity import service as identity
 from app.features.roster import service as roster
+from app.features.roster import service_groups as roster_groups
 from app.features.rubrics import service_marking
 from app.features.sittings import domain, domain_edit, domain_run, errors, repository, repository_reads
 from app.features.sittings.models import Circuit, Sitting, Slot
@@ -54,9 +55,12 @@ async def create_sitting(
     sitting_type: str,
     scheduled_for: datetime | None,
     programme_id: uuid.UUID,
+    cohort_id: uuid.UUID | None = None,
 ) -> SittingRead:
     """Schedule a new sitting, marked against its programme's published rubric."""
     rubric_version_id = await rubric_version_for_programme(session, org_id, programme_id)
+    if cohort_id is not None:
+        await roster_groups.ensure_cohort(session, org_id, cohort_id)
 
     sitting = await repository.create_sitting(
         session,
@@ -67,6 +71,7 @@ async def create_sitting(
         sitting_type=sitting_type,
         scheduled_for=scheduled_for,
         programme_id=programme_id,
+        cohort_id=cohort_id,
     )
     return (await _with_totals(session, org_id, [sitting_read(sitting, [])]))[0]
 

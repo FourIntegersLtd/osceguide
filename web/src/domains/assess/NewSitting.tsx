@@ -6,7 +6,8 @@ import { Alert, AsyncBoundary, B2CPageHeader, Button, ButtonLink, Input, Spinner
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { createSitting, listProgrammes, type Programme, type SittingMode } from "@/domains/assess/api";
-import { ModeField, ProgrammeField, ScheduledForField } from "@/domains/assess/SittingFields";
+import { listCohorts, type Cohort } from "@/domains/assess/roster/api";
+import { CohortField, ModeField, ProgrammeField, ScheduledForField } from "@/domains/assess/SittingFields";
 
 /** Schedule a sitting against a programme (exam + published rubric). */
 export function NewSitting({ orgSlug }: { orgSlug: string }) {
@@ -14,7 +15,10 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
 
   const programmes = useAsync(
-    (signal) => listProgrammes(orgSlug, signal).then((page) => page.items),
+    async (signal) => ({
+      programmes: (await listProgrammes(orgSlug, signal)).items,
+      cohorts: (await listCohorts(orgSlug, signal)).items,
+    }),
     [orgSlug],
   );
 
@@ -26,10 +30,11 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
         subtitle="A training sitting rotates a group through stations; an exam sitting is one candidate, marked, signed off and released. Add circuits next."
       />
       <AsyncBoundary state={programmes}>
-        {(items) => (
+        {(loaded) => (
           <Form
             orgSlug={orgSlug}
-            programmes={items}
+            programmes={loaded.programmes}
+            cohorts={loaded.cohorts}
             programmesHref={hrefFor("/programmes")}
             cancelHref={hrefFor("/sittings")}
             onCreated={(id) => router.push(hrefFor(`/sittings/${id}`))}
@@ -43,12 +48,14 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
 function Form({
   orgSlug,
   programmes,
+  cohorts,
   programmesHref,
   cancelHref,
   onCreated,
 }: {
   orgSlug: string;
   programmes: Programme[];
+  cohorts: Cohort[];
   programmesHref: string;
   cancelHref: string;
   onCreated: (sittingId: string) => void;
@@ -61,6 +68,7 @@ function Form({
   const [name, setName] = useState("");
   const [mode, setMode] = useState<SittingMode>("training");
   const [programmeId, setProgrammeId] = useState<string>(activeProgrammes[0]?.id ?? "");
+  const [cohortId, setCohortId] = useState("");
   const [scheduledFor, setScheduledFor] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -75,6 +83,7 @@ function Form({
           name: name.trim(),
           mode,
           programmeId,
+          cohortId: cohortId || null,
           scheduledFor: scheduledFor ? new Date(scheduledFor).toISOString() : null,
         });
         onCreated(sitting.id);
@@ -84,7 +93,7 @@ function Form({
         setBusy(false);
       }
     },
-    [orgSlug, name, mode, programmeId, scheduledFor, onCreated],
+    [orgSlug, name, mode, programmeId, cohortId, scheduledFor, onCreated],
   );
 
   if (activeProgrammes.length === 0) {
@@ -124,6 +133,8 @@ function Form({
           onChange={setProgrammeId}
           programmes={activeProgrammes}
         />
+
+        {cohorts.length > 0 ? <CohortField value={cohortId} onChange={setCohortId} cohorts={cohorts} /> : null}
 
         <ScheduledForField value={scheduledFor} onChange={setScheduledFor} />
 

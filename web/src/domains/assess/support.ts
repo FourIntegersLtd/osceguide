@@ -53,6 +53,8 @@ export interface SittingFormValues {
   name: string;
   mode: SittingMode;
   programmeId: string;
+  /** The cohort the sitting is held for, or "" for none. */
+  cohortId: string;
   /** A `datetime-local` value, or "" for "not scheduled". */
   scheduledFor: string;
 }
@@ -71,7 +73,7 @@ export interface SittingFormValues {
  * zone the browser is in, and those are the same appointment.
  */
 export function sittingChanges(
-  before: Pick<Sitting, "name" | "mode" | "programme_id" | "scheduled_for">,
+  before: Pick<Sitting, "name" | "mode" | "programme_id" | "scheduled_for" | "cohort_id">,
   after: SittingFormValues,
 ): SittingChanges {
   const changes: SittingChanges = {};
@@ -89,6 +91,8 @@ export function sittingChanges(
   if (after.programmeId && after.programmeId !== before.programme_id) {
     changes.programmeId = after.programmeId;
   }
+
+  if (after.cohortId !== (before.cohort_id ?? "")) changes.cohortId = after.cohortId || null;
 
   const scheduled = instantOf(after.scheduledFor);
   if (!sameInstant(scheduled, instantOf(before.scheduled_for))) {

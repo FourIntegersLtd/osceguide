@@ -2,6 +2,7 @@
 
 import { Input, cn } from "@/foundation/ui";
 import type { Programme, SittingMode } from "@/domains/assess/api";
+import type { Cohort } from "@/domains/assess/roster/api";
 
 /**
  * The two fields every sitting form has.
@@ -103,6 +104,26 @@ export function ProgrammeField({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/** The intake the sitting is held for. Optional: it is what lets deleting a cohort say how many sittings it detaches. */
+export function CohortField({
+  value,
+  onChange,
+  cohorts,
+}: {
+  value: string;
+  onChange: (cohortId: string) => void;
+  cohorts: Pick<Cohort, "id" | "name">[];
+}) {
+  return (
+    <FieldSelect
+      label="Cohort (optional)"
+      value={value}
+      onChange={onChange}
+      options={[{ value: "", label: "No cohort" }, ...cohorts.map((c) => ({ value: c.id, label: c.name }))]}
+    />
   );
 }
 

@@ -77,6 +77,11 @@ async def update_cohort(
     return _cohort_read(await _require_cohort(session, org_id, cohort_id), held.get(cohort_id, 0))
 
 
+async def ensure_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> None:
+    """Refuse `cohort_not_found` unless this organisation has the cohort, for a sitting held for it."""
+    await _require_cohort(session, org_id, cohort_id)
+
+
 async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> None:
     """Remove an intake that nothing is attached to any more.
 

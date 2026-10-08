@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.core.errors import raise_mapped
+from app.features.roster import service_groups as roster_groups
 from app.features.sittings import domain, domain_edit, repository, repository_reads, service
 from app.features.sittings.models import Sitting
 from app.features.sittings.schemas import SittingRead, UpdateSitting
@@ -25,7 +26,7 @@ from app.features.tenancy import service_audit as tenancy_audit
 # The fields this route may write. Anything else on a sitting belongs to
 # something with a better claim on it: `status` to the run machine,
 # `rubric_version_id` to the programme it is resolved from.
-EDITABLE = frozenset({"name", "mode", "sitting_type", "scheduled_for", "programme_id"})
+EDITABLE = frozenset({"name", "mode", "sitting_type", "scheduled_for", "programme_id", "cohort_id"})
 
 
 async def update_sitting(
@@ -71,6 +72,9 @@ async def update_sitting(
             session, org_id, body.programme_id
         )
 
+    if "cohort_id" in changing and body.cohort_id is not None:
+        await roster_groups.ensure_cohort(session, org_id, body.cohort_id)
+
     if values:
         await repository.update_sitting(session, org_id, sitting_id, **values)
     return await service.read_sitting(session, org_id, sitting_id)
@@ -109,12 +113,12 @@ def _requested(body: UpdateSitting, sitting: Sitting, field: str) -> bool:
     the mode, it has restated it, and refusing that because somebody has started
     an examination would be a route refusing to save a form nobody edited.
 
-    A null is a request to clear for `scheduled_for` alone, because "not
-    scheduled" is a state a sitting can genuinely be in. On the other four it is
+    A null is a request to clear for `scheduled_for` and `cohort_id`, because "not
+    scheduled" and "no intake" are states a sitting can genuinely be in. On the others it is
     the schema's default rather than an intention, so it is read as absent.
     """
     wanted: object = getattr(body, field)
-    if wanted is None and field != "scheduled_for":
+    if wanted is None and field not in ("scheduled_for", "cohort_id"):
         return False
     current: object = getattr(sitting, field)
     if isinstance(wanted, datetime) and isinstance(current, datetime):

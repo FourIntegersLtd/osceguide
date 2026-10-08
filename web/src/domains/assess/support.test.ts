@@ -68,6 +68,7 @@ test("restating the sitting is not a change", () => {
       name: before.name,
       mode: "training",
       programmeId: "p1",
+      cohortId: "",
       scheduledFor: fieldDateTime(before.scheduled_for),
     }),
     {},
@@ -81,6 +82,7 @@ test("only what differs is sent, and a rename alone stays open on a begun sittin
     name: "  March mock OSCE  ",
     mode: "exam",
     programmeId: "p1",
+    cohortId: "",
     scheduledFor: fieldDateTime(before.scheduled_for),
   });
   assert.deepEqual(changes, { name: "March mock OSCE" });
@@ -91,6 +93,7 @@ test("a mode change carries the sitting type with it", () => {
     name: "March mock",
     mode: "exam",
     programmeId: "p1",
+    cohortId: "",
     scheduledFor: "",
   });
   assert.deepEqual(changes, { mode: "exam", sittingType: "examination" });
@@ -103,6 +106,7 @@ test("the same appointment in the other spelling is not a change", () => {
     name: "March mock",
     mode: "training",
     programmeId: "p1",
+    cohortId: "",
     scheduledFor: fieldDateTime(before.scheduled_for),
   });
   assert.equal(changes.scheduledFor, undefined);
@@ -114,6 +118,7 @@ test("an emptied date is a request to unschedule, not an absent field", () => {
     name: "March mock",
     mode: "training",
     programmeId: "p1",
+    cohortId: "",
     scheduledFor: "",
   });
   assert.deepEqual(changes, { scheduledFor: null });
@@ -125,6 +130,7 @@ test("a programme is only sent when it moves, and never as an empty pick", () =>
     name: "March mock",
     mode: "training",
     programmeId: "",
+    cohortId: "",
     scheduledFor: "",
   });
   assert.equal(changes.programmeId, undefined);
@@ -148,13 +154,14 @@ test("an unparseable date reads as unscheduled rather than as Invalid Date", () 
 });
 
 function form(
-  sitting: Pick<Sitting, "name" | "mode" | "programme_id" | "scheduled_for">,
+  sitting: Pick<Sitting, "name" | "mode" | "programme_id" | "scheduled_for" | "cohort_id">,
 ): SittingFormValues {
   const mode: SittingMode = sitting.mode === "exam" ? "exam" : "training";
   return {
     name: sitting.name,
     mode,
     programmeId: sitting.programme_id ?? "",
+    cohortId: sitting.cohort_id ?? "",
     scheduledFor: fieldDateTime(sitting.scheduled_for),
   };
 }
@@ -194,4 +201,13 @@ test("toggleInSet adds a missing id, removes a present one and leaves the origin
   assert.deepEqual([...toggleInSet(original, "b")], ["a", "b"]);
   assert.deepEqual([...toggleInSet(original, "a")], []);
   assert.deepEqual([...original], ["a"]);
+});
+
+test("holding a sitting for a cohort, moving it and clearing it are changes; restating is not", () => {
+  const unheld = full();
+  assert.deepEqual(sittingChanges(unheld, { ...form(unheld), cohortId: "c1" }), { cohortId: "c1" });
+  const held = full({ cohort_id: "c1" });
+  assert.deepEqual(sittingChanges(held, form(held)), {});
+  assert.deepEqual(sittingChanges(held, { ...form(held), cohortId: "c2" }), { cohortId: "c2" });
+  assert.deepEqual(sittingChanges(held, { ...form(held), cohortId: "" }), { cohortId: null });
 });

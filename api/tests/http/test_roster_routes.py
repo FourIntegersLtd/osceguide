@@ -401,47 +401,71 @@ async def test_the_roster_filters_on_revoked_access(client: AsyncClient, make_ac
     assert [trainee["email"] for trainee in active.json()["items"]] == ["still-here@example.com"]
 
 
-async def test_a_cohort_says_how_many_sittings_are_held_for_it(
-    client: AsyncClient, make_actor, db_session
+async def test_a_sitting_is_held_for_a_cohort_and_the_cohort_counts_it(
+    client: AsyncClient, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     """Deleting a cohort detaches its sittings (`SET NULL`), so the read says how many."""
-    from sqlalchemy import update
-
-    from app.features.sittings.models import Sitting
-    from tests.http.test_org_read_models import a_sitting
-    from tests.support.sittings import create_sitting_body
+    from tests.support.sittings import add_programme, create_sitting_body
 
     _, admin = await org_with_admin(client, make_actor)
     year_one = (
         await client.post("/api/v1/orgs/kings/cohorts", json={"name": "Y1"}, headers=bearer(admin))
     ).json()
-    year_two = (
-        await client.post("/api/v1/orgs/kings/cohorts", json={"name": "Y2"}, headers=bearer(admin))
-    ).json()
-    assert year_one["sitting_count"] == 0
-    first = await a_sitting(client, admin, "kings")
+    await client.post("/api/v1/orgs/kings/cohorts", json={"name": "Y2"}, headers=bearer(admin))
+    programme_id = await add_programme(client, admin, org_slug="kings")
+
+    first = await client.post(
+        "/api/v1/orgs/kings/sittings",
+        json={**create_sitting_body(name="Finals", programme_id=programme_id), "cohort_id": year_one["id"]},
+        headers=bearer(admin),
+    )
+    assert first.status_code == 201, first.text
+    assert first.json()["cohort_id"] == year_one["id"]
     second = (
         await client.post(
             "/api/v1/orgs/kings/sittings",
-            json=create_sitting_body(name="Resit", programme_id=uuid.UUID(first["programme_id"])),
+            json=create_sitting_body(name="Resit", programme_id=programme_id),
             headers=bearer(admin),
         )
     ).json()
-    for sitting in (first, second):
-        await db_session.execute(
-            update(Sitting)
-            .where(Sitting.id == uuid.UUID(sitting["id"]))
-            .values(cohort_id=uuid.UUID(year_one["id"]))
-        )
-    await db_session.flush()
+    assert second["cohort_id"] is None
+    moved = await client.put(
+        f"/api/v1/orgs/kings/sittings/{second['id']}",
+        json={"cohort_id": year_one["id"]},
+        headers=bearer(admin),
+    )
+    assert moved.json()["cohort_id"] == year_one["id"]
 
     listed = (await client.get("/api/v1/orgs/kings/cohorts", headers=bearer(admin))).json()["items"]
     assert {c["name"]: c["sitting_count"] for c in listed} == {"Y1": 2, "Y2": 0}
+
+    cleared = await client.put(
+        f"/api/v1/orgs/kings/sittings/{second['id']}", json={"cohort_id": None}, headers=bearer(admin)
+    )
+    assert cleared.json()["cohort_id"] is None
     renamed = await client.patch(
         f"/api/v1/orgs/kings/cohorts/{year_one['id']}", json={"name": "Year 1"}, headers=bearer(admin)
     )
-    assert renamed.json()["sitting_count"] == 2
-    assert year_two["sitting_count"] == 0
+    assert renamed.json()["sitting_count"] == 1
+
+
+async def test_a_sitting_cannot_be_held_for_another_organisations_cohort(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.support.sittings import add_programme, create_sitting_body
+
+    _, admin = await org_with_admin(client, make_actor)
+    programme_id = await add_programme(client, admin, org_slug="kings")
+    response = await client.post(
+        "/api/v1/orgs/kings/sittings",
+        json={
+            **create_sitting_body(name="Finals", programme_id=programme_id),
+            "cohort_id": str(uuid.uuid4()),
+        },
+        headers=bearer(admin),
+    )
+    assert response.status_code == 404
+    assert response.json()["code"] == "cohort_not_found"
 
 
 async def test_the_first_roster_page_carries_the_whole_count(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
