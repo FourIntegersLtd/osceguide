@@ -1,7 +1,7 @@
 "use client";
 
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { structureFromStartPoint } from "@/capabilities/authoring/structure/b2b/lib/stations/stationTemplatePresets";
 import {
@@ -22,9 +22,10 @@ import {
   zodErrorFirstMessage,
 } from "@/capabilities/authoring/structure/b2b/lib/validation";
 import { useSurface } from "@/capabilities";
-import { createStationTemplate } from "@/capabilities/authoring/api";
+import { createStationTemplate, publishStationTemplate } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
+import { stationNewPath } from "@/capabilities/authoring/stations/paths";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
 import { wizardSteps } from "@/capabilities/authoring/templates/wizardSteps";
@@ -35,6 +36,10 @@ function StationTemplateNewScreenForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const examCode = searchParams.get("exam")?.trim() || null;
+  // Opened from station creation: finish by publishing and going back there.
+  const thenStation = searchParams.get("then") === "station";
+  // A save that created the template but failed to publish it must not create a second one on retry.
+  const createdId = useRef<string | null>(null);
   const listHref = stationTemplatesListPath(hrefFor);
   const orgKey = orgSlug ?? "platform";
 
@@ -49,13 +54,22 @@ function StationTemplateNewScreenForm() {
         orgKey={orgKey}
         examCode={examCode}
         onCancel={() => router.push(listHref)}
-        onCreated={() => router.push(listHref)}
+        saveLabel={thenStation ? "Save and publish" : "Save draft"}
         onSave={async (title, structure, assignedExamCode) => {
-          await createStationTemplate(scope, {
-            title,
-            structure,
-            exam_code: assignedExamCode,
-          });
+          if (!createdId.current) {
+            const template = await createStationTemplate(scope, {
+              title,
+              structure,
+              exam_code: assignedExamCode,
+            });
+            createdId.current = template.id;
+          }
+          if (!thenStation) {
+            router.push(listHref);
+            return;
+          }
+          const version = await publishStationTemplate(scope, createdId.current);
+          router.push(stationNewPath(hrefFor, version.id));
         }}
       />
     </PlatformTemplateWizardPageLayout>
@@ -66,13 +80,13 @@ function CreateStationTemplateWizardBody({
   orgKey,
   examCode,
   onCancel,
-  onCreated,
+  saveLabel,
   onSave,
 }: {
   orgKey: string;
   examCode: string | null;
   onCancel: () => void;
-  onCreated: () => void;
+  saveLabel: string;
   onSave: (title: string, structure: StationStructure, examCode: string) => Promise<void>;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
@@ -221,7 +235,6 @@ function CreateStationTemplateWizardBody({
                 try {
                   setSaving(true);
                   await onSave(parsed.data, structure, selectedExamCode.trim());
-                  onCreated();
                 } catch (e: unknown) {
                   setError(
                     e instanceof Error ? e.message : "Failed to create template.",
@@ -231,7 +244,7 @@ function CreateStationTemplateWizardBody({
                 }
               }}
             >
-              {saving ? "Saving…" : "Save draft"}
+              {saving ? "Saving…" : saveLabel}
             </Button>
           )}
         </div>

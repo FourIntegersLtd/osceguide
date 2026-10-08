@@ -1,9 +1,9 @@
 "use client";
 
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Alert, Button, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
 import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { useSurface } from "@/capabilities";
@@ -20,6 +20,7 @@ import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/temp
 import { stationTemplateNewPath } from "@/capabilities/authoring/templates/paths";
 import { stationsListPath } from "@/capabilities/authoring/stations/paths";
 import { stationListUrl } from "@/capabilities/authoring/parts/stationListUrl";
+import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 
 function CreateStationScreenForm() {
@@ -30,6 +31,7 @@ function CreateStationScreenForm() {
   const { hrefFor } = useSurface();
   const router = useRouter();
   const listHref = stationsListPath(hrefFor);
+  const preselected = useSearchParams().get("templateVersion");
 
   const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
   const published = useMemo(
@@ -73,6 +75,19 @@ function CreateStationScreenForm() {
     [published],
   );
 
+  // Back from the template wizard: the template it just published is already chosen.
+  const { templateVersionId, handleTemplateSelect } = form;
+  useEffect(() => {
+    if (preselected && !templateVersionId && choices.some((c) => c.id === preselected)) {
+      handleTemplateSelect(preselected);
+    }
+    // handleTemplateSelect is recreated every render; choosing once per arrival is the point.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselected, choices]);
+
+  const aiAvailable = promptGeneration || Boolean(form.templateVersionId);
+  const aiMode = form.mode === "ai" && aiAvailable;
+
   const canSave =
     Boolean(form.title.trim()) &&
     Boolean(form.examCode || form.templateVersionId) &&
@@ -107,9 +122,11 @@ function CreateStationScreenForm() {
         <Alert tone="info">
           {promptGeneration
             ? "No published templates yet. You can still write a station straight from a prompt by choosing its exam below."
-            : "No published templates yet. You can still write a station by choosing its exam below. Generating one from a prompt needs a published template to generate against."}
+            : "No published templates yet. You can still write a station by choosing its exam below. Choose a published template to generate a draft with AI."}
         </Alert>
       ) : null}
+
+      {examCatalog.error ? <LoadError message={examCatalog.error} onRetry={examCatalog.reload} /> : null}
 
       {form.error ? <Alert tone="danger">{form.error}</Alert> : null}
 
@@ -119,10 +136,11 @@ function CreateStationScreenForm() {
             {(
               [
                 { id: "manual" as const, label: "Manual" },
-                { id: "ai" as const, label: "Generate with AI" },
+                // Org staff generate only from a published template (autogenerate-draft); the prompt-only route is the platform catalogue's.
+                ...(aiAvailable ? [{ id: "ai" as const, label: "Generate with AI" }] : []),
               ] as const
             ).map((t) => {
-              const active = form.mode === t.id;
+              const active = (aiMode ? "ai" : "manual") === t.id;
               return (
                 <button
                   key={t.id}
@@ -234,21 +252,7 @@ function CreateStationScreenForm() {
         </div>
         </FoldSection>
 
-        {/*
-          The AI tab stays selectable for an institution, because with a
-          template chosen it genuinely works (`autogenerate-draft`). What it
-          cannot do is draft from a prompt alone, so say that instead of
-          rendering an empty panel underneath a tab somebody just clicked.
-        */}
-        {form.mode === "ai" && !form.structure && !promptGeneration ? (
-          <Alert tone="info">
-            Generating a draft needs a published template to generate against. Choose one above, or
-            switch to Manual and write the station yourself. A station with no template is still a
-            real station.
-          </Alert>
-        ) : null}
-
-        {form.mode === "ai" && (form.structure || (form.examCode && promptGeneration)) ? (
+        {aiMode && (form.structure || (form.examCode && promptGeneration)) ? (
           <FoldSection
             title="Generate draft"
             description="Paste a short prompt (a few lines). We’ll auto-fill the template fields below; you can edit anything afterward."
@@ -295,8 +299,8 @@ function CreateStationScreenForm() {
               {form.needsTemplateForLayout ? (
                 <>
                   This exam has no built-in station layout. Create a station template for this exam
-                  first, publish it from the templates list, then pick it here. The exam is filled in for you.{" "}
-                  <Link href={stationTemplateNewPath(hrefFor, form.examCode)} className="font-semibold text-accent underline">
+                  here. It is published when you save it, and you come straight back to this station.{" "}
+                  <Link href={stationTemplateNewPath(hrefFor, form.examCode, { thenStation: true })} className="font-semibold text-accent underline">
                     Create a station template
                   </Link>
                 </>

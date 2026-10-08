@@ -4,6 +4,8 @@ export function stationsListPath(hrefFor: (path: string) => string): string {
   return `${hrefFor("/authoring")}/stations`;
 }
 
-export function stationNewPath(hrefFor: (path: string) => string): string {
-  return `${stationsListPath(hrefFor)}/new`;
+/** The create screen, with a published template version already chosen when the caller has one. */
+export function stationNewPath(hrefFor: (path: string) => string, templateVersionId?: string | null): string {
+  const base = `${stationsListPath(hrefFor)}/new`;
+  return templateVersionId ? `${base}?templateVersion=${encodeURIComponent(templateVersionId)}` : base;
 }
