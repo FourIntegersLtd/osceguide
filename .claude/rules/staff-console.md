@@ -39,3 +39,5 @@ Owner: `staff-console-owner`. Proof: `verify-staff-console`. Staff actions are p
   `npm run platform:types`.
 
 - Guards that press a transition at once need committed data on separate sessions (`tests/support/committed_worlds.py`). `candidate_result_*` are append-only by trigger: clean up inside `append_only_triggers_off(session, tables)`, never by a bare delete.
+
+- **The field guide is generated.** `docs/guides/platform-api-field-guide.html` has its `SCHEMA` block between `SCHEMA:BEGIN/END` markers, written by `api/scripts/build_field_guide.py` from `DATA-MODEL.md` and `Base.metadata`; a migration means rerunning it (`PYTHONPATH=. poetry run python scripts/build_field_guide.py`). `make data-model` also fails if the guide's route list differs from `api/openapi.json`.

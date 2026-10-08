@@ -113,9 +113,9 @@ names both.
 Domain: `MIN_PASSWORD_LENGTH = 12`.
 
 ### `user_identities`
-An external provider's handle on a user: Clerk today, others later. **Written by
-nothing yet** — the repository functions exist and have no callers, because no
-SSO flow has been built. See `organization_sso` below.
+An external provider's handle on a user: Clerk, Entra or SAML, and the legacy
+consumer import. Written by `identity.service_sso.sign_in_external` on a first
+single sign-on, and by `app.migration.load_people`. See `organization_sso` below.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -651,8 +651,9 @@ publish-and-read logic in each.
 | `status` | `varchar(16) not null default 'draft'` | |
 | `published_at` | `timestamptz null` | indexed with `kind` |
 
-Search caps at `MAX_QUERY = 300`, and currently returns nothing: no vector index is
-wired behind it.
+Search caps at `MAX_QUERY = 300`. It searches titles through the pgvector index
+the tutor reads (ADR 0019, `service_search.get_vector_index`), then reads the rows
+it named, so an item unpublished since indexing cannot leak.
 
 ---
 

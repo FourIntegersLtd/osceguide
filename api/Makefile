@@ -1,4 +1,4 @@
-.PHONY: help install bootstrap-admin start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format data-model
+.PHONY: help install bootstrap-admin start worker test test-unit guards lint typecheck arch ci db-up db-down migrate migrate-down new-migration openapi format data-model product-guide
 
 help:
 	@echo "OSCE Guide Platform API"
@@ -20,7 +20,8 @@ help:
 	@echo "  make openapi     write openapi.json"
 	@echo "  make bootstrap-admin EMAIL=you@example.com   make the first platform admin"
 	@echo "  make seed-platform  author the four consumer exams and rubrics (dry run)"
-	@echo "  make data-model  check docs/DATA-MODEL.md against the schema"
+	@echo "  make data-model  check docs/DATA-MODEL.md and the field guide's schema"
+	@echo "  make product-guide  check the product guide covers every refusal code"
 
 install:
 	poetry install
@@ -102,3 +103,9 @@ generate-seed:
 # nothing verifies drifts from the code it describes.
 data-model:
 	poetry run python scripts/check_data_model.py
+	PYTHONPATH=. poetry run python scripts/build_field_guide.py --check
+
+# The product guide's "what can go wrong" rows carry data-code attributes; every
+# refusal the api can answer with must have one, and none may cite a dead code.
+product-guide:
+	PYTHONPATH=. poetry run python scripts/build_product_guide.py --check

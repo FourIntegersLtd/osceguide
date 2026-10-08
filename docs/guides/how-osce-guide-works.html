@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>How OSCE Guide Works</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ground: #f3f5f4;
+    --panel: #ffffff;
+    --panel-2: #f8faf9;
+    --ink: #17242a;
+    --ink-2: #4d5c63;
+    --ink-3: #7e8d95;
+    --rule: #d3dbda;
+    --rule-2: #e7ecea;
+    --accent: #0e6f68;
+    --accent-ink: #0a524d;
+    --accent-wash: #e2f0ee;
+    --accent-wash-2: #f0f7f6;
+    --ok: #2f6d3f;
+    --ok-wash: #e3efe4;
+    --rough: #96590a;
+    --rough-wash: #f9eeda;
+    --gap: #9c3a34;
+    --gap-wash: #f8e8e5;
+    --shadow: 0 1px 2px rgba(23, 36, 42, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131a1d; --panel: #1a2327; --panel-2: #1f292d;
+      --ink: #e4eaea; --ink-2: #a7b4b6; --ink-3: #75858a;
+      --rule: #2b3639; --rule-2: #222d31;
+      --accent: #3fb9ad; --accent-ink: #7ad8cd; --accent-wash: #16302e; --accent-wash-2: #16262a;
+      --ok: #76c088; --ok-wash: #182c1d;
+      --rough: #dfa34e; --rough-wash: #30240f;
+      --gap: #e58a80; --gap-wash: #33191a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #131a1d; --panel: #1a2327; --panel-2: #1f292d;
+    --ink: #e4eaea; --ink-2: #a7b4b6; --ink-3: #75858a;
+    --rule: #2b3639; --rule-2: #222d31;
+    --accent: #3fb9ad; --accent-ink: #7ad8cd; --accent-wash: #16302e; --accent-wash-2: #16262a;
+    --ok: #76c088; --ok-wash: #182c1d;
+    --rough: #dfa34e; --rough-wash: #30240f;
+    --gap: #e58a80; --gap-wash: #33191a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15.5px;
+    line-height: 1.6;
+    padding-inline: clamp(16px, 4vw, 48px);
+    padding-block: 44px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main { max-width: 880px; margin: 0 auto; }
+
+  h1, h2, h3, h4 {
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 { font-size: clamp(32px, 5vw, 46px); line-height: 1.08; letter-spacing: -0.015em; }
+  h2 { font-size: clamp(25px, 3.4vw, 30px); line-height: 1.18; letter-spacing: -0.01em; }
+  h3 { font-size: 20px; line-height: 1.25; }
+  h4 {
+    font-family: "Public Sans", sans-serif;
+    font-size: 15.5px; font-weight: 700; line-height: 1.4;
+  }
+  p { margin: 0; max-width: 66ch; }
+  a { color: var(--accent-ink); text-underline-offset: 2px; }
+  a:focus-visible, .spine a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  strong { font-weight: 600; }
+
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    font-weight: 700; color: var(--ink-3);
+  }
+
+  /* ---------- header ---------- */
+  header.top { display: grid; gap: 16px; padding-bottom: 32px; border-bottom: 2px solid var(--rule); }
+  header.top .lede { font-size: 17.5px; color: var(--ink-2); max-width: 62ch; }
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 8px;
+  }
+  .facts div { background: var(--panel); padding: 10px 13px; }
+  .facts .k { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+  .facts .v { font-size: 14.5px; font-weight: 600; margin-top: 2px; }
+
+  /* ---------- generic blocks ---------- */
+  section.band { margin-top: 60px; }
+  .band > .eyebrow { display: block; margin-bottom: 8px; }
+  .band > h2 + p, .band > p + p { margin-top: 12px; }
+  .band > h2 { margin-bottom: 14px; }
+
+  .note {
+    background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    padding: 14px 16px; margin-top: 18px; box-shadow: var(--shadow);
+    display: grid; gap: 6px;
+  }
+  .note h4 { font-size: 14px; }
+  .note p { font-size: 14.5px; color: var(--ink-2); }
+
+  /* ---------- status chips ---------- */
+  .chip {
+    display: inline-block; font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 2px; white-space: nowrap; vertical-align: middle;
+  }
+  .s-ok { color: var(--ok); background: var(--ok-wash); }
+  .s-rough { color: var(--rough); background: var(--rough-wash); }
+  .s-gap { color: var(--gap); background: var(--gap-wash); }
+
+  .legend { display: grid; gap: 10px; margin-top: 18px; }
+  .legend div { display: grid; grid-template-columns: 116px 1fr; gap: 14px; align-items: start; font-size: 14.5px; color: var(--ink-2); }
+  @media (max-width: 520px) { .legend div { grid-template-columns: 1fr; gap: 4px; } }
+
+  /* ---------- figures ---------- */
+  figure {
+    margin: 26px 0 0; padding: 20px 18px 16px;
+    background: var(--panel); border: 1px solid var(--rule); box-shadow: var(--shadow);
+  }
+  figure svg { display: block; width: 100%; max-width: 100%; height: auto; color: var(--ink); }
+  figcaption {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule-2);
+    font-size: 13.5px; color: var(--ink-2); max-width: 70ch;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .svg-scroll { overflow-x: auto; }
+  .svg-scroll > svg { min-width: 460px; }
+
+  /* ---------- journey spine ---------- */
+  .spine {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 22px;
+  }
+  .spine a {
+    background: var(--panel); padding: 13px 14px 15px; text-decoration: none; color: var(--ink);
+    display: grid; gap: 3px; align-content: start;
+  }
+  .spine a:hover { background: var(--accent-wash-2); }
+  .spine .n {
+    font-family: "Newsreader", serif; font-size: 13px; font-weight: 600;
+    color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .spine .t { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+  .spine .who { font-size: 12.5px; color: var(--ink-2); }
+  .spine .when { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+  /* ---------- stage ---------- */
+  section.stage { margin-top: 72px; scroll-margin-top: 20px; }
+  .stage-head { display: grid; gap: 10px; padding-bottom: 18px; border-bottom: 2px solid var(--rule); }
+  .stage-head .num {
+    font-family: "Newsreader", serif; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);
+  }
+  .stage-head .meta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 10px 24px; font-size: 14px; color: var(--ink-2); margin-top: 2px;
+  }
+  .stage-head .meta b { color: var(--ink); font-weight: 600; display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+
+  .steps { display: grid; gap: 0; margin-top: 4px; }
+  .step {
+    display: grid; grid-template-columns: 132px 1fr; gap: 0 24px;
+    padding: 22px 0; border-bottom: 1px solid var(--rule-2);
+  }
+  .step > .actor {
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--accent-ink); padding-top: 4px; line-height: 1.4;
+  }
+  .step > .actor small {
+    display: block; text-transform: none; letter-spacing: 0; font-weight: 400;
+    color: var(--ink-3); font-size: 12px; margin-top: 3px;
+  }
+  .step > .body { display: grid; gap: 10px; }
+  .step > .body p { font-size: 15px; color: var(--ink-2); }
+  .step > .body p b, .step > .body li b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 620px) {
+    .step { grid-template-columns: 1fr; gap: 8px; padding: 20px 0; }
+  }
+
+  ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-2); }
+  ul.plain li::marker { color: var(--ink-3); }
+
+  /* ---------- collected-fields panel ---------- */
+  .collect {
+    background: var(--panel-2); border: 1px solid var(--rule); box-shadow: var(--shadow);
+    padding: 16px 18px; display: grid; gap: 12px; margin-top: 4px;
+  }
+  .collect > .title {
+    font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+    font-weight: 700; color: var(--accent-ink);
+  }
+  .fields { display: grid; gap: 0; }
+  .fields > div {
+    display: grid; grid-template-columns: 190px 1fr; gap: 4px 18px;
+    padding: 9px 0; border-top: 1px solid var(--rule-2); align-items: start;
+  }
+  .fields > div:first-child { border-top: 0; padding-top: 0; }
+  .fields .f { font-weight: 600; font-size: 14px; line-height: 1.45; }
+  .fields .d { font-size: 14px; color: var(--ink-2); }
+  .fields .d em { font-style: normal; color: var(--ink); font-weight: 600; }
+  .req {
+    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--rule);
+    padding: 0 5px; border-radius: 2px; margin-left: 6px; vertical-align: 1px; white-space: nowrap;
+  }
+  .req.must { color: var(--accent-ink); border-color: var(--accent); }
+  @media (max-width: 620px) {
+    .fields > div { grid-template-columns: 1fr; gap: 2px; }
+  }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; margin-top: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
+  caption {
+    text-align: left; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+    font-weight: 700; color: var(--ink-3); padding-bottom: 10px;
+  }
+  th {
+    text-align: left; font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 700; padding: 0 14px 9px 0; border-bottom: 1px solid var(--rule);
+    vertical-align: bottom;
+  }
+  td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--rule-2); vertical-align: top; color: var(--ink-2); }
+  td:first-child, th:first-child { padding-left: 0; }
+  td.k { color: var(--ink); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: 1px solid var(--rule); }
+
+  /* permission matrix */
+  table.matrix { min-width: 560px; }
+  table.matrix th.rot { text-align: center; padding: 0 6px 9px; font-size: 10px; }
+  table.matrix td.c { text-align: center; padding: 10px 6px; font-weight: 700; }
+  table.matrix td.yes { color: var(--ok); }
+  table.matrix td.no { color: var(--ink-3); font-weight: 400; }
+  table.matrix tbody tr:hover td { background: var(--accent-wash-2); }
+
+  /* ---------- health strip ---------- */
+  .health { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 20px; }
+  .health > div {
+    background: var(--panel); display: grid; grid-template-columns: 30px 1fr 128px;
+    gap: 14px; align-items: center; padding: 11px 14px;
+  }
+  .health .n { font-family: "Newsreader", serif; font-size: 17px; color: var(--ink-3); }
+  .health .t { font-size: 14.5px; font-weight: 600; }
+  .health .t small { display: block; font-weight: 400; font-size: 12.5px; color: var(--ink-2); margin-top: 1px; }
+  .health .s { text-align: right; }
+  @media (max-width: 560px) {
+    .health > div { grid-template-columns: 26px 1fr; }
+    .health .s { grid-column: 2; text-align: left; margin-top: 2px; }
+  }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    padding: 14px 16px; margin-top: 18px; display: grid; gap: 6px;
+    border: 1px solid var(--rule); border-left-width: 3px; background: var(--panel);
+  }
+  .callout h4 { font-size: 14px; }
+  .callout p, .callout ul { font-size: 14.5px; color: var(--ink-2); }
+  .callout.rough { border-left-color: var(--rough); background: var(--rough-wash); }
+  .callout.gap { border-left-color: var(--gap); background: var(--gap-wash); }
+  .callout.ok { border-left-color: var(--ok); background: var(--ok-wash); }
+  .callout.rough h4 { color: var(--rough); }
+  .callout.gap h4 { color: var(--gap); }
+  .callout.ok h4 { color: var(--ok); }
+  .callout.rough p, .callout.gap p, .callout.ok p { color: var(--ink); }
+
+  .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1px;
+    background: var(--rule); border: 1px solid var(--rule); margin-top: 10px; }
+  .parts a { background: var(--panel); padding: 16px 18px; text-decoration: none; color: var(--ink);
+    display: grid; gap: 5px; align-content: start; }
+  .parts a:hover { background: var(--accent-wash-2); }
+  .parts .pn { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--accent); }
+  .parts .pt { font-family: "Newsreader", Georgia, serif; font-size: 22px; line-height: 1.15; }
+  .parts .pd { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+
+  /* worked examples */
+  .eg {
+    display: block; margin-top: 5px; font-size: 13.5px; color: var(--accent-ink);
+    background: var(--accent-wash); padding: 5px 9px; border-radius: 2px;
+  }
+  .eg b { font-weight: 700; }
+  .fields .eg { font-size: 13px; }
+  .example {
+    background: var(--accent-wash-2); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); padding: 14px 16px; margin-top: 18px;
+    display: grid; gap: 8px;
+  }
+  .example h4 { font-size: 13.5px; color: var(--accent-ink); }
+  .example p, .example li { font-size: 14.5px; color: var(--ink); }
+  .example ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; }
+  .example ul li::marker { color: var(--accent); }
+
+  table.gloss { min-width: 560px; }
+  table.gloss td.w { color: var(--ink); font-weight: 700; white-space: nowrap; font-size: 14.5px; }
+  table.gloss td.ex { color: var(--accent-ink); }
+
+  footer {
+    margin-top: 72px; padding-top: 20px; border-top: 2px solid var(--rule);
+    font-size: 13.5px; color: var(--ink-2);
+  }
+  footer p { max-width: 74ch; }
+  footer p + p { margin-top: 10px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  .seq-wrap{overflow-x:auto}
+  .seq-wrap>svg{min-width:680px}
+  svg text{font-family:"Public Sans",system-ui,sans-serif;fill:var(--ink)}
+  svg .lane-box{fill:var(--accent-wash);stroke:var(--accent);stroke-width:1}
+  svg .lane-txt{font-size:12.5px;font-weight:700;fill:var(--accent-ink)}
+  svg .life{stroke:var(--rule);stroke-width:1.2;stroke-dasharray:4 4}
+  svg .msg{stroke:var(--accent);stroke-width:1.6;fill:none}
+  svg .msg.dash{stroke-dasharray:5 4;stroke:var(--ink-3)}
+  svg .msg.warn{stroke:var(--rough)}
+  svg .lbl{font-size:12px;fill:var(--ink);text-anchor:middle}
+  svg .num{fill:var(--accent);}
+  svg .numt{fill:#fff;font-size:10px;font-weight:700;text-anchor:middle}
+  svg .ax{font-size:11.5px;fill:var(--ink-2)}
+  svg .tick{stroke:var(--rule);stroke-width:1}
+  svg .b1{fill:var(--accent)} svg .b2{fill:var(--ok)} svg .b3{fill:var(--rough)} svg .b4{fill:var(--gap)} svg .b5{fill:var(--ink-3)}
+  svg .bt{font-size:11.5px;font-weight:600;fill:#fff}
+  ol.plain{margin:0;padding-left:22px;display:grid;gap:6px;font-size:14.5px;color:var(--ink-2)}
+  ol.plain li::marker{color:var(--accent);font-weight:700}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;background:var(--accent-wash-2);padding:1px 5px;border-radius:2px;color:var(--ink)}
+  .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:6px}
+  /* ---------- additions for the product guide ---------- */
+  .nest { display: grid; gap: 0; margin-top: 4px; }
+  .nest .lv { border: 1.5px solid var(--accent); background: var(--accent-wash-2); padding: 10px 12px 12px; display: grid; gap: 8px; border-radius: 3px; }
+  .nest .lv .lv { background: var(--panel); }
+  .nest .lv .lv .lv { background: var(--accent-wash-2); }
+  .nest .lv .lv .lv .lv { background: var(--panel); }
+  .nest .lv .lv .lv .lv .lv { background: var(--accent-wash-2); }
+  .nest .lv .lv .lv .lv .lv .lv { background: var(--accent-wash); border-style: dashed; }
+  .nest .nm { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; font-weight: 700; color: var(--accent-ink); }
+  .nest .ds { font-size: 13.5px; color: var(--ink-2); }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-top: 4px; }
+  .flow .bx { flex: 1 1 130px; min-width: 0; background: var(--panel-2); border: 1px solid var(--rule); border-top: 3px solid var(--accent); padding: 9px 11px; display: grid; gap: 3px; align-content: start; }
+  .flow .bx b { font-size: 13.5px; }
+  .flow .bx span { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+  .flow .bx.warn { border-top-color: var(--rough); }
+  .flow .bx.bad { border-top-color: var(--gap); }
+  .flow .bx.good { border-top-color: var(--ok); }
+  .flow .ar { align-self: center; color: var(--ink-3); font-size: 18px; flex: 0 0 auto; }
+  .lanes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .lanes > div { background: var(--panel-2); border: 1px solid var(--rule); padding: 10px 12px; display: grid; gap: 6px; align-content: start; }
+  .lanes h4 { font-size: 13px; color: var(--accent-ink); }
+  .lanes ol { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); display: grid; gap: 4px; }
+  .dots td.c { text-align: center; font-size: 16px; }
+  .dots td.c.y { color: var(--accent); }
+  .dots td.c.n { color: var(--rule); }
+  .big3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .big3 div { background: var(--panel-2); border: 1px solid var(--rule); padding: 12px 14px; display: grid; gap: 2px; }
+  .big3 .n { font-family: "Newsreader", Georgia, serif; font-size: 34px; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .big3 .l { font-size: 13px; color: var(--ink-2); }
+  .callout.rough li q, .callout.rough li .says { color: var(--ink); }
+  .callout.rough li .says { font-style: italic; }
+  table.refuse { min-width: 640px; }
+  table.refuse td:first-child { font-weight: 600; color: var(--ink); width: 34%; }
+  table.refuse td.says { font-style: italic; }
+  h3.ch { margin-top: 40px; }
+  .band > h3 + p, .stage > h3 + p { margin-top: 10px; }
+  .prose p + p { margin-top: 12px; }
+  .prose { display: grid; gap: 0; margin-top: 14px; }
+</style></head><body><main>
+<header class="top">
+<span class="eyebrow">Product guide</span>
+<h1>How OSCE Guide works</h1>
+<p class="lede">OSCE Guide helps doctors get ready for the practical exams of medicine, and helps the schools and employers who examine them. This guide describes the whole product in ordinary words: what each kind of user sees, what happens behind the screen, how the parts connect, and exactly what the product does when something goes wrong.</p>
+<div class="facts">
+<div><div class="k">Who uses it</div><div class="v">Doctors practising alone, schools, employers</div></div>
+<div><div class="k">What it runs on</div><div class="v">One shared engine for every user</div></div>
+<div><div class="k">Refusals described</div><div class="v">All 277 the product can give</div></div>
+<div><div class="k">Checked against</div><div class="v">Checked against commit 31a5e741, 8 Oct 2026</div></div>
+</div>
+</header>
+
+<section class="band" id="read">
+<span class="eyebrow">Before you start</span>
+<h2>How to read this guide</h2>
+<p>Each chapter follows the same pattern. It opens with a short summary, shows a picture of what happens, walks through the steps in order, and ends with a box headed <b>What can go wrong, and what you would see</b>. Every line in those boxes is a refusal the product really gives today. They were taken from the product's own list of refusals, not written from memory, and a check runs on every change to the code to make sure none is missing and none is out of date.</p>
+<p>Where a screen has its own wording for a refusal, we quote that wording. Where it does not, we quote the sentence the product sends with the refusal, which is what a person sees.</p>
+<div class="legend">
+<div><span class="chip s-ok">Works today</span><span>Built, in use, and does what a user would expect.</span></div>
+<div><span class="chip s-rough">Works, but rough</span><span>People get through it, but it costs them time or a workaround.</span></div>
+<div><span class="chip s-gap">Not built yet</span><span>People will ask for this and the answer today is no.</span></div>
+</div>
+<div class="note"><h4>No invented people</h4><p>This guide does not use made-up schools or names. Where an example helps, it describes a role, such as "a supervisor" or "a candidate", and uses timings and limits the product really applies.</p></div>
+</section>
+
+<section class="band" id="contents">
+<span class="eyebrow">Contents</span>
+<h2>Nine chapters</h2>
+<nav class="parts">
+<a href="#c1"><span class="pn">Chapter 1</span><span class="pt">What OSCE Guide is</span><span class="pd">The exam, the people who use the product, and the rule that records are kept.</span></a>
+<a href="#c2"><span class="pn">Chapter 2</span><span class="pt">One consultation, start to finish</span><span class="pd">A station, a session, a recording and its marking. Shared by everyone.</span></a>
+<a href="#c3"><span class="pn">Chapter 3</span><span class="pt">Practising on your own</span><span class="pd">Nine stages, from finding us to closing an account.</span></a>
+<a href="#c4"><span class="pn">Chapter 4</span><span class="pt">Running exams as a school</span><span class="pd">Six words, the people, and eight stages from set-up to results.</span></a>
+<a href="#c5"><span class="pn">Chapter 5</span><span class="pt">Employers and partners</span><span class="pd">Recruitment outcomes, and what a partner can see.</span></a>
+<a href="#c6"><span class="pn">Chapter 6</span><span class="pt">Our own team</span><span class="pd">What our staff console can do, and what it cannot.</span></a>
+<a href="#c7"><span class="pn">Chapter 7</span><span class="pt">How the sides connect</span><span class="pd">The same recording marked two ways, and what crosses between sides.</span></a>
+<a href="#c8"><span class="pn">Chapter 8</span><span class="pt">Reference</span><span class="pd">Roles, emails, every refusal in one place, and a glossary.</span></a>
+<a href="#c9"><span class="pn">Chapter 9</span><span class="pt">What is still rough</span><span class="pd">The open problems we know about, in plain words.</span></a>
+</nav>
+</section>
+
+<!-- ======================= CHAPTER 1 ======================= -->
+<section class="stage" id="c1">
+<div class="stage-head"><div class="num">Chapter 1</div><h2>What OSCE Guide is</h2><p>A place to practise and run the spoken, face-to-face exams of medicine, with an AI patient on the other side of the conversation.</p></div>
+
+<div class="prose">
+<p>Doctors are tested on more than what they know. In an <b>OSCE</b> (objective structured clinical examination) a candidate walks into a room, reads a short brief, and has a few minutes to talk to a patient: take a history, explain a diagnosis, agree a plan. An examiner watches and marks them against a fixed set of criteria. Then a bell rings and the candidate moves to the next room. A full exam is a circuit of these rooms, called stations.</p>
+<p>OSCE Guide recreates that experience. The patient is played by an AI that speaks and listens, so a candidate can practise at any hour. Each conversation is recorded word for word and marked against the same kind of criteria a human examiner uses. Some exams covered today are the UK licensing exam for overseas doctors (PLAB Part 2) and the general practice licensing exam (the SCA).</p>
+<p>Three groups of people use the product, and they use the same engine underneath.</p>
+</div>
+
+<figure><div class="svg-scroll"><svg viewBox="0 0 760 330" role="img" aria-label="One shared engine in the centre with three doors: people practising alone, schools, employers. Partners and our own team sit to the side.">
+<rect x="250" y="110" width="260" height="110" rx="6" fill="var(--accent-wash)" stroke="var(--accent)" stroke-width="1.5"/>
+<text x="380" y="140" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent-ink)">The shared engine</text>
+<text x="380" y="164" text-anchor="middle" font-size="12.5">stations · the AI patient · recordings</text>
+<text x="380" y="184" text-anchor="middle" font-size="12.5">automatic marking · feedback</text>
+<text x="380" y="204" text-anchor="middle" font-size="12.5">one account per person</text>
+<rect x="20" y="20" width="200" height="74" rx="4" fill="var(--panel-2)" stroke="var(--rule)"/>
+<text x="120" y="48" text-anchor="middle" font-size="13.5" font-weight="700">Practising alone</text>
+<text x="120" y="70" text-anchor="middle" font-size="12" fill="var(--ink-2)">a doctor pays and practises</text>
+<rect x="20" y="236" width="200" height="74" rx="4" fill="var(--panel-2)" stroke="var(--rule)"/>
+<text x="120" y="264" text-anchor="middle" font-size="13.5" font-weight="700">Schools</text>
+<text x="120" y="286" text-anchor="middle" font-size="12" fill="var(--ink-2)">examine and mark students</text>
+<rect x="540" y="20" width="200" height="74" rx="4" fill="var(--panel-2)" stroke="var(--rule)"/>
+<text x="640" y="48" text-anchor="middle" font-size="13.5" font-weight="700">Employers</text>
+<text x="640" y="70" text-anchor="middle" font-size="12" fill="var(--ink-2)">the school side, for hiring</text>
+<rect x="540" y="236" width="200" height="74" rx="4" fill="var(--panel-2)" stroke="var(--rule)" stroke-dasharray="4 3"/>
+<text x="640" y="264" text-anchor="middle" font-size="13.5" font-weight="700">Partners and our team</text>
+<text x="640" y="286" text-anchor="middle" font-size="12" fill="var(--ink-2)">send people in · keep it running</text>
+<path d="M220 70 L250 130" stroke="var(--accent)" stroke-width="1.6" fill="none"/>
+<path d="M220 270 L250 200" stroke="var(--accent)" stroke-width="1.6" fill="none"/>
+<path d="M540 70 L510 130" stroke="var(--accent)" stroke-width="1.6" fill="none"/>
+<path d="M540 270 L510 200" stroke="var(--ink-3)" stroke-width="1.4" stroke-dasharray="4 3" fill="none"/>
+</svg></div><figcaption><b>One centre, three doors.</b> Whoever comes in, the station, the AI patient, the recording and the marking are the same. What differs is who sets the practice up, who pays, and who decides what a result means.</figcaption></figure>
+
+<div class="table-wrap"><table><caption>The three ways in</caption><thead><tr><th>Who</th><th>Why they come</th><th>Who pays</th><th>Who decides the result</th></tr></thead><tbody>
+<tr><td class="k">A doctor practising alone</td><td>To get ready for an exam they will sit elsewhere.</td><td>They do, by card, after a free trial.</td><td>Nobody. They get feedback, not a pass or fail.</td></tr>
+<tr><td class="k">A school</td><td>To run practice circuits and real exams for its students, and mark them.</td><td>The school, under a contract with us.</td><td>The school's own senior staff, who sign off each result.</td></tr>
+<tr><td class="k">An employer</td><td>To assess doctors it may hire.</td><td>The employer, under a contract.</td><td>The employer, who also records a hiring outcome.</td></tr>
+</tbody></table></div>
+
+<p style="margin-top:16px">Two more groups stand beside these. <b>Partners</b> are organisations that send people to us, such as a publisher or a course provider; they can see how many people they sent and what those people bought. <b>Our own team</b> sets organisations up, answers support questions and keeps the service healthy (chapter 6).</p>
+
+<div class="note"><h4>The rule behind most of the product: records are kept</h4><p>A school may have to justify a pass or a fail to a student, an appeal panel or a regulator, months or years later. So the product switches things off rather than deleting them. A student who leaves has their access revoked. A member of staff who moves on loses their role. A school whose contract ends is suspended. A published station is archived, not deleted, and a corrected one becomes a new version. The one real deletion is personal: when a person closes their own account, they have 30 days to change their mind, and after that their personal details, and what they said in their recordings, are wiped.</p></div>
+</section>
+
+<!-- ======================= CHAPTER 2 ======================= -->
+<section class="stage" id="c2">
+<div class="stage-head"><div class="num">Chapter 2</div><h2>One consultation, start to finish</h2><p>Everything else in this guide is built on one thing: a candidate talking to a patient at one station, and what happens to that conversation afterwards.</p>
+<div class="meta"><div><b>Who</b>Every user: a doctor alone, a student in a school, a candidate for a job</div><div><b>How long</b>A few minutes of reading, then usually ten of talking</div><div><b>Status</b><span class="chip s-ok">Works today</span></div></div></div>
+
+<h3 class="ch" id="c2-station">Inside a station</h3>
+<p>A <b>station</b> is one medical case, written down once and used for years. Different people are allowed to read different parts of it. The candidate sees only their brief. The AI patient is given its story, including details it should reveal only if asked the right question. The examiner's notes and the material for the after-session tutor are kept away from the candidate.</p>
+<figure><div class="table-wrap" style="margin-top:0"><table class="matrix dots"><caption>Who reads which part of a station</caption><thead><tr><th>Part of the station</th><th class="rot">Candidate</th><th class="rot">AI patient</th><th class="rot">Examiner view</th><th class="rot">Debrief tutor</th></tr></thead><tbody>
+<tr><td class="k">The brief: who the patient is and what the task is</td><td class="c y">●</td><td class="c n">○</td><td class="c n">○</td><td class="c n">○</td></tr>
+<tr><td class="k">The patient's story, worries and expectations</td><td class="c n">○</td><td class="c y">●</td><td class="c n">○</td><td class="c n">○</td></tr>
+<tr><td class="k">What the patient holds back unless asked</td><td class="c n">○</td><td class="c y">●</td><td class="c n">○</td><td class="c n">○</td></tr>
+<tr><td class="k">The examiner's notes on a good answer</td><td class="c n">○</td><td class="c n">○</td><td class="c y">●</td><td class="c n">○</td></tr>
+<tr><td class="k">Teaching notes for the debrief</td><td class="c n">○</td><td class="c n">○</td><td class="c n">○</td><td class="c y">●</td></tr>
+</tbody></table></div><figcaption><b>Four readers, one document.</b> Each section of a station is labelled with the one reader it is written for: the candidate, the patient, the examiner or the teaching faculty. The mark shows that reader. The product cuts the station into those pieces before anyone sees it, so a candidate can never read the answer by looking harder at the screen.</figcaption></figure>
+<p style="margin-top:14px">Stations are written on a <b>station template</b>, which sets the headings every station of that kind has. Stations change in versions. A draft can be edited freely. A published version is never changed in place; a correction becomes a new version, so every recording points at exactly the wording the candidate saw.</p>
+
+<h3 class="ch" id="c2-session">What happens in a session</h3>
+<figure><div class="flow">
+<div class="bx"><b>1. Open</b><span>The candidate opens the station and reads the brief. Reading time is usually a few minutes.</span></div><div class="ar">›</div>
+<div class="bx"><b>2. The room opens</b><span>The product creates a private voice room and sends the AI patient into it.</span></div><div class="ar">›</div>
+<div class="bx"><b>3. The consultation</b><span>The candidate talks; the patient answers aloud. A clock counts down.</span></div><div class="ar">›</div>
+<div class="bx"><b>4. It ends</b><span>Time runs out, or the candidate finishes early. The conversation is saved word for word.</span></div><div class="ar">›</div>
+<div class="bx good"><b>5. Marking</b><span>The transcript is marked against the station's marking scheme. Feedback appears on screen.</span></div>
+</div><figcaption><b>Five stages, the same for everyone.</b> A practice session alone and a real exam in a school go through exactly these steps. In a school's exam the clock is run by the circuit rather than by the candidate (chapter 4).</figcaption></figure>
+<ol class="plain" style="margin-top:16px">
+<li><b>Open.</b> The product checks the person may use this station. For someone practising alone, that means a live plan or a trial with room left. For a school's exam, it means being on that circuit. Exam-day sessions never check a plan.</li>
+<li><b>The room opens.</b> The product books a seat on the voice service and dispatches the AI patient with only the parts of the station it may read.</li>
+<li><b>The consultation.</b> Speech is turned into text as the candidate speaks, the patient's reply is generated, and the reply is spoken back. Everything said is written down.</li>
+<li><b>It ends.</b> The transcript is stored with the exact station wording frozen as it was at that moment. A session left running is closed automatically after three hours.</li>
+<li><b>Marking.</b> The automatic marker reads the transcript and rates each area of the marking scheme. The candidate sees ratings and written feedback, and can open the whole transcript.</li>
+</ol>
+
+<h3 class="ch" id="c2-recording">The life of a recording</h3>
+<figure><div class="flow">
+<div class="bx"><b>Created</b><span>The session exists but nobody has spoken yet.</span></div><div class="ar">›</div>
+<div class="bx"><b>Running</b><span>The conversation is under way.</span></div><div class="ar">›</div>
+<div class="bx"><b>Finished</b><span>The conversation is over and waiting to be marked.</span></div><div class="ar">›</div>
+<div class="bx good"><b>Marked</b><span>Ratings and feedback are ready. This is final.</span></div>
+<div class="bx bad"><b>Failed</b><span>Reachable from any earlier step: the room never opened, the patient never arrived, or marking could not finish. Also final.</span></div>
+</div><figcaption><b>Five states, two of them final.</b> A recording only moves forward. Once marked it is never re-marked in place; in a school, people add their own reviews on top of the automatic marking instead (chapter 4, stage 6).</figcaption></figure>
+
+<h3 class="ch" id="c2-marking">How marking works</h3>
+<p>A <b>marking scheme</b> is the instrument a consultation is judged against. It has a scale (for example red, amber and green), the <b>areas</b> being judged (such as gathering information, management, and communication), and the exact wording that earns each rating in each area. Schemes are published in versions, like stations. An exam names one published version of a scheme, and that is what every consultation for that exam is marked against.</p>
+<p style="margin-top:10px">The automatic marker rates each area separately. The overall rating for the consultation is the <b>worst</b> of the area ratings: a green for communication does not rescue a red for safety. In a school, people can add their own ratings to each area, and how those combine is explained in chapter 4.</p>
+<figure><div class="svg-scroll"><svg viewBox="0 0 640 150" role="img" aria-label="Three area ratings, green, amber and red, combine into an overall red.">
+<rect x="20" y="20" width="150" height="34" rx="3" class="b2"/><text x="95" y="42" text-anchor="middle" class="bt">Information: green</text>
+<rect x="20" y="62" width="150" height="34" rx="3" class="b3"/><text x="95" y="84" text-anchor="middle" class="bt">Management: amber</text>
+<rect x="20" y="104" width="150" height="34" rx="3" class="b4"/><text x="95" y="126" text-anchor="middle" class="bt">Safety: red</text>
+<path d="M170 37 L330 79 M170 79 L330 79 M170 121 L330 79" stroke="var(--ink-3)" stroke-width="1.4" fill="none"/>
+<text x="360" y="70" font-size="12.5" fill="var(--ink-2)">worst of the three</text>
+<rect x="460" y="58" width="160" height="42" rx="3" class="b4"/><text x="540" y="84" text-anchor="middle" class="bt">Overall: red</text>
+</svg></div><figcaption><b>The worst area sets the overall rating.</b> This is how the automatic marking reads a single consultation.</figcaption></figure>
+
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="voice_unavailable"><b>The voice service cannot be reached.</b> The session does not open. You read: <span class="says">"The voice service is not available right now."</span></li>
+<li data-code="attempt_not_joinable"><b>Rejoining a session that has already finished</b>, for example from an old tab. You read: <span class="says">"That attempt has already finished."</span></li>
+<li data-code="invalid_attempt_state"><b>A step is asked for out of order</b>, such as finishing a session that never started. You read: <span class="says">"The attempt is not in a state that allows this."</span></li>
+<li data-code="attempt_not_finished"><b>Opening the feedback while the consultation is still to come.</b> The review tab says "not yet" rather than failing: <span class="says">"This attempt has not finished, so there is nothing to review yet."</span></li>
+<li data-code="attempt_not_ready"><b>The station has not been prepared for the session yet</b>, usually for a few seconds after opening it. You read: <span class="says">"This attempt has no rendered definition yet."</span></li>
+<li data-code="attempt_not_found"><b>Following a link to a session that does not exist</b>, or belongs to another organisation. You read: <span class="says">"No such attempt."</span></li>
+<li data-code="attempt_not_yours"><b>Opening somebody else's session</b> without being an administrator allowed to see it. You read: <span class="says">"That attempt belongs to someone else."</span></li>
+<li data-code="marking_not_ready"><b>Starting a station whose marking scheme is not published.</b> Refused at the start, so nobody sits a station that could never be marked. You read: <span class="says">"This station cannot be marked yet: its rubric is not published."</span></li>
+<li data-code="rubric_version_not_published"><b>Something tries to mark against a draft scheme.</b> You read: <span class="says">"That rubric version is not published."</span></li>
+<li data-code="marker_unavailable"><b>The automatic marker is switched off on this server.</b> Nothing can be marked until it is back. You read: <span class="says">"Marking is not available on this server."</span></li>
+<li data-code="too_many_streams"><b>Too many tabs are open on the same account</b>, each holding a live connection. You read: <span class="says">"Too many live connections are open for this account. Close another tab and try again."</span></li>
+</ul></div>
+</section>
+
+<!-- ======================= CHAPTER 3 ======================= -->
+<section class="stage" id="c3">
+<div class="stage-head"><div class="num">Chapter 3</div><h2>Practising on your own</h2><p>A doctor preparing for an exam finds us, tries the product free, pays if it helps, and practises with the AI patient, with other doctors, and with the study library.</p>
+<div class="meta"><div><b>Who</b>One doctor, with no school around them</div><div><b>Pays</b>By card, per exam, for a fixed length of time</div><div><b>Status</b><span class="chip s-ok">Works today</span></div></div></div>
+
+<nav class="spine" aria-label="The nine stages of practising alone">
+<a href="#c3-1"><span class="n">Stage 1</span><span class="t">Finding us</span><span class="who">A link or a friend</span></a>
+<a href="#c3-2"><span class="n">Stage 2</span><span class="t">Signing up and the trial</span><span class="who">Free, with three limits</span></a>
+<a href="#c3-3"><span class="n">Stage 3</span><span class="t">The first consultation</span><span class="who">From the library</span></a>
+<a href="#c3-4"><span class="n">Stage 4</span><span class="t">Feedback and the debrief</span><span class="who">Reading, then talking it through</span></a>
+<a href="#c3-5"><span class="n">Stage 5</span><span class="t">Paying</span><span class="who">A plan per exam</span></a>
+<a href="#c3-6"><span class="n">Stage 6</span><span class="t">Practice lists</span><span class="who">Your own mock exams</span></a>
+<a href="#c3-7"><span class="n">Stage 7</span><span class="t">Practising with a person</span><span class="who">Another doctor plays the patient</span></a>
+<a href="#c3-8"><span class="n">Stage 8</span><span class="t">Community, library, helper</span><span class="who">Everything around the practice</span></a>
+<a href="#c3-9"><span class="n">Stage 9</span><span class="t">Your account</span><span class="who">Sign-in, security, leaving</span></a>
+</nav>
+
+<section class="stage" id="c3-1"><div class="stage-head"><div class="num">Stage 1</div><h3>Finding us</h3><p>Most people arrive through a link from somebody else: a partner such as a publisher or course, or a friend who already uses the product.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>A partner's link.</b> When someone arrives through a partner's link, the product notes which partner sent them. If they sign up afterwards, the partner is credited with that person, once. There is no time limit: any visit through the link before signing up counts. A link naming a partner we do not know credits nobody.</li>
+<li><b>A friend's referral code.</b> Every user has a referral code. A friend who types it when paying gets the plan's referral price, which is 10% off the full price, and the person who shared the code is credited and told by email.</li>
+<li><b>The public website.</b> Anyone can read about the product and send us a message through the contact form, signed in or not.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="referral_not_found"><b>A referral code that does not exist</b>, or is the person's own. The payment screen says: <span class="says">"That referral code is not valid. Check it, or clear it to pay the full price."</span></li>
+<li data-code="referral_discount_unavailable"><b>A good code on a plan with no referral price.</b> Refused rather than charging full price to someone expecting a discount: <span class="says">"That plan has no referral discount. Choose another plan, or clear the code."</span></li>
+<li data-code="invalid_message"><b>A contact message missing something it needs</b>, such as an email address to reply to. You read: <span class="says">"That message cannot be sent as written."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c3-2"><div class="stage-head"><div class="num">Stage 2</div><h3>Signing up and the free trial</h3><p>A new account needs an email address, a password and a choice of exam. The exam decides which stations, study material and practice partners the person sees.</p></div>
+<figure><div class="big3">
+<div><span class="n">3</span><span class="l">stations finished, of any kind, for this exam</span></div>
+<div><span class="n">3</span><span class="l">different stations set up in practice lists</span></div>
+<div><span class="n">14</span><span class="l">days from signing up, the last day included</span></div>
+</div><figcaption><b>The trial's three limits, counted separately.</b> The trial ends at whichever limit is reached first. Stations are counted, not attempts, and a debrief does not count. Within the trial, each station in a practice list can be tried three times. A station that failed before it started does not use up the trial.</figcaption></figure>
+<ol class="plain" style="margin-top:14px">
+<li><b>Choose a password.</b> At least 12 characters, using at least two kinds of character out of lower case, upper case, numbers and symbols.</li>
+<li><b>Choose an exam.</b> This is set once. Changing it later is a support request, because it changes what the person has paid for.</li>
+<li><b>Start practising.</b> The trial begins at once. When it runs out, the library still shows, but starting a new station asks the person to subscribe or ask their organisation for access.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="email_taken"><b>Signing up with an address that already has an account.</b> The form marks the email field: <span class="says">"That email address is already registered."</span></li>
+<li data-code="weak_password"><b>A password that is too short or too simple.</b> The form marks the password field: <span class="says">"Choose a stronger password."</span></li>
+<li data-code="exam_already_chosen"><b>Trying to change exam from the account screen.</b> You read: <span class="says">"Your exam is already set. Contact support to switch exams."</span></li>
+<li data-code="not_entitled"><b>The trial is used up, or a plan has ended.</b> One refusal, whatever the reason; the screen picks the wording. Trial over: <span class="says">"Your free practice stations are used up. Ask your organisation for access, or subscribe, to keep practising."</span> Plan ended: <span class="says">"Your access to this exam has ended. Ask your organisation to renew it, or subscribe, to keep practising."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c3-3"><div class="stage-head"><div class="num">Stage 3</div><h3>The first consultation</h3><p>The person picks a station from the library for their exam and goes through the five stages of chapter 2.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Browse.</b> The library lists the published stations for the person's exam, searchable and in pages.</li>
+<li><b>Start.</b> The product checks the trial or plan, opens a room and sends the patient in.</li>
+<li><b>Resume.</b> If the person leaves mid-consultation and comes back, a session still running is offered back to them to resume, and an unstarted one is reused rather than duplicated.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="station_not_published"><b>A station that has been withdrawn, or was never finished.</b> You read: <span class="says">"This station is not available to practise right now. It may have been withdrawn or not finished yet."</span></li>
+<li data-code="station_not_found"><b>A link to a station that does not exist</b> in the library or the person's organisation. You read: <span class="says">"No such station."</span></li>
+<li data-code="attempt_limit_reached"><b>Every try at a station in a practice list is used.</b> You read: <span class="says">"You have used every attempt at this station."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c3-4"><div class="stage-head"><div class="num">Stage 4</div><h3>Reading the feedback, then the debrief</h3><p>The marking arrives on screen a short while after the consultation ends. The person can then talk it through with an AI tutor.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Feedback.</b> A rating for each area of the marking scheme, the overall rating, written comments, and the full transcript.</li>
+<li><b>Debrief.</b> A spoken conversation with an AI tutor about a finished consultation. The tutor uses the station's teaching notes, asks how it felt, and works through what to do differently. It may play the patient once so the person can try a moment again.</li>
+<li><b>Memory.</b> After each debrief, a short summary is kept. The tutor uses these summaries to remember what the person has struggled with before, and the person can read them back in their debrief history.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="nothing_to_debrief"><b>Asking for a debrief on a station never attempted.</b> You read: <span class="says">"A debrief needs a recorded consultation for this station. Attempt the station first."</span></li>
+<li data-code="debrief_not_found"><b>Opening a debrief summary that is not yours</b>, or no longer exists. Another person's gets the same answer: <span class="says">"No such debrief."</span></li>
+<li data-code="tutor_note_not_found"><b>The tutor looks up a remembered note that is not there.</b> The tutor carries on without it: <span class="says">"No such note."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c3-5"><div class="stage-head"><div class="num">Stage 5</div><h3>Paying</h3><p>Access is bought per exam, as a plan of a fixed length. Prices and lengths are set by us as data, not built into the product, so they can change without a release.</p></div>
+<figure><div class="flow">
+<div class="bx"><b>Choose a plan</b><span>Optionally type a referral code.</span></div><div class="ar">›</div>
+<div class="bx"><b>Pay on the card page</b><span>The card payment is taken by our payment provider, not by us.</span></div><div class="ar">›</div>
+<div class="bx"><b>The provider tells us</b><span>Only the provider's "payment completed" message grants access. Coming back to our page does not.</span></div><div class="ar">›</div>
+<div class="bx good"><b>Access starts</b><span>A receipt is emailed. A referrer, if any, is credited.</span></div><div class="ar">›</div>
+<div class="bx warn"><b>Seven days before the end</b><span>A reminder email, once per purchase.</span></div>
+</div><figcaption><b>A purchase, end to end.</b> If the provider sends the same message twice, the second is ignored, so nobody is granted access twice for one payment.</figcaption></figure>
+<ol class="plain" style="margin-top:14px">
+<li><b>Same plan again.</b> Buying a plan you already hold, running or bought to start, is refused. A <b>different</b> plan is allowed, and it starts where the current access ends, so time is never lost.</li>
+<li><b>Refunds.</b> If a payment is refunded, the access it bought is withdrawn, and any referral credit it earned is taken back.</li>
+<li><b>Disputes.</b> If a card holder disputes a payment with their bank, its access is withdrawn while the dispute runs. If we win, what the dispute took is given back.</li>
+<li><b>Receipts.</b> Each payment has a receipt the person can open again from their account.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="already_purchased"><b>Buying the same plan while it is still running.</b> You read: <span class="says">"You already have this plan. Choose a different plan to extend your access, or buy it again when it ends."</span></li>
+<li data-code="plan_not_available"><b>A plan that is no longer on sale</b>, or not for your exam. You read: <span class="says">"That plan is not available for your exam. Choose another plan."</span></li>
+<li data-code="checkout_failed"><b>The card provider cannot start a payment.</b> Usually brief. You read: <span class="says">"We could not start the checkout. Try again in a moment."</span></li>
+<li data-code="receipt_not_found"><b>A receipt link that is not yours</b>, or does not exist. Both get the same answer, so receipt numbers cannot be guessed: <span class="says">"No such receipt."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c3-6"><div class="stage-head"><div class="num">Stage 6</div><h3>Practice lists</h3><p>A practice list is the person's own mock exam: a handful of stations they choose, to work through in order.</p></div>
+<div class="table-wrap"><table><caption>Practice list or circuit: two ways to group stations</caption><thead><tr><th></th><th>A practice list</th><th>A circuit</th></tr></thead><tbody>
+<tr><td class="k">Made by</td><td>The person practising</td><td>A school or employer</td></tr>
+<tr><td class="k">Who is in it</td><td>One person</td><td>A group, at the same time</td></tr>
+<tr><td class="k">The clock</td><td>Each station starts when the person is ready</td><td>Runs for everyone; a supervisor can pause it</td></tr>
+<tr><td class="k">Tries per station</td><td>Limited during the trial (three)</td><td>One slot per person per station, re-run only by a supervisor</td></tr>
+<tr><td class="k">Result</td><td>Feedback only</td><td>Feedback, human review and, in an exam, a decision</td></tr>
+</tbody></table></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Build.</b> Pick stations for your exam. Only published stations for the same exam can go in.</li>
+<li><b>Work through.</b> Each station runs as in chapter 2. The list remembers progress.</li>
+<li><b>Keep the record.</b> Once a station in a list has been tried, it cannot be taken out of the list and the list cannot be deleted, because the recordings point at it.</li>
+<li><b>When access ends.</b> The list locks, but its past sessions can still be reviewed.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="set_locked"><b>Opening a list after access has ended.</b> You read: <span class="says">"This session is locked because your access has ended. You can still review it."</span></li>
+<li data-code="station_version_not_usable"><b>Adding a station that is not available for this exam</b>, usually from a page left open too long. You read: <span class="says">"One of these stations is not available for this exam."</span></li>
+<li data-code="set_entry_has_attempts"><b>Removing a station that has already been tried.</b> You read: <span class="says">"This set has a station that has already been attempted and cannot be removed."</span></li>
+<li data-code="set_has_attempts"><b>Deleting a list that has recordings in it.</b> You read: <span class="says">"This set still has attempts recorded against it."</span></li>
+<li data-code="set_not_found"><b>A list that does not exist, or is somebody else's.</b> You read: <span class="says">"No such practice set."</span></li>
+<li data-code="set_entry_not_found"><b>A station that is not in this list.</b> You read: <span class="says">"No such station in this set."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c3-7"><div class="stage-head"><div class="num">Stage 7</div><h3>Practising with a real person</h3><p>Two doctors preparing for the same exam meet in an online room. One plays the doctor, the other the patient, using a published station.</p></div>
+<figure><div class="two">
+<div class="lanes"><div><h4>Join the queue</h4><ol><li>Press to find a partner now.</li><li>The longest-waiting person is matched first.</li><li>Both have 120 seconds to accept.</li><li>A wait of 10 minutes without a match ends the search; you can join again.</li></ol></div></div>
+<div class="lanes"><div><h4>Offer a time</h4><ol><li>Post a slot of 5 to 180 minutes (30 by default).</li><li>Another doctor claims it.</li><li>A reminder email goes out an hour before.</li><li>The room opens 20 minutes before the start and closes an hour after.</li></ol></div></div>
+</div><figcaption><b>Two ways to find a partner.</b> Either way, both people must be preparing for the same exam, and the exam must have at least one published station to practise.</figcaption></figure>
+<div class="note"><h4>Who plays the doctor first</h4><p>The product decides, in this order. Someone who has asked never to play the doctor plays the patient. If the two last played opposite roles, they swap. Someone who has never practised this way plays the doctor before someone who has. Otherwise, whoever has done fewer sessions plays the doctor. A person can never be paired with themselves.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Recording.</b> A session can be recorded, transcribed and scored like a consultation with the AI patient. Its states are: not recording, recording, stopped, being transcribed, scored, failed, or erased.</li>
+<li><b>Feedback.</b> Once a session that began has finished, each person can leave feedback for the other.</li>
+<li><b>Reports.</b> A person can report abuse or a partner who did not turn up. Both are emailed to our team.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="already_queued"><b>Joining the queue twice.</b> You keep your place: <span class="says">"You're already in the practice queue."</span></li>
+<li data-code="queue_entry_not_found"><b>Leaving a queue you are no longer in.</b> You read: <span class="says">"You are not in the queue."</span></li>
+<li data-code="no_stations_for_exam"><b>Your exam has no published station yet.</b> You read: <span class="says">"There are no stations to practise for that exam yet."</span></li>
+<li data-code="partner_unavailable"><b>The other person declined, or the 120 seconds ran out.</b> You read: <span class="says">"Your partner is no longer available for this session."</span></li>
+<li data-code="practice_session_not_accepted"><b>Trying to join before both sides accepted.</b> You read: <span class="says">"Both sides must accept this match before joining it."</span></li>
+<li data-code="practice_session_ended"><b>Acting on a session that has finished.</b> You read: <span class="says">"That session has already finished."</span></li>
+<li data-code="practice_session_not_found"><b>A session you were not part of.</b> You read: <span class="says">"No such practice session."</span></li>
+<li data-code="practice_feedback_not_open"><b>Leaving feedback before the session finished</b>, or on one that never began. You read: <span class="says">"Feedback opens once a session you took part in has finished."</span></li>
+<li data-code="slot_already_claimed"><b>Someone else claimed the slot a moment before you.</b> You read: <span class="says">"This slot has already been claimed by someone else."</span></li>
+<li data-code="post_unavailable"><b>The slot was withdrawn, expired or has started.</b> You read: <span class="says">"That slot is no longer available."</span></li>
+<li data-code="cannot_claim_own_post"><b>Claiming your own slot.</b> You read: <span class="says">"You cannot claim your own slot."</span></li>
+<li data-code="not_your_post"><b>Withdrawing a slot someone else offered.</b> You read: <span class="says">"Only the person who offered a slot can withdraw it."</span></li>
+<li data-code="too_early_to_join"><b>Joining more than 20 minutes before the start.</b> The session is fine; come back closer to the time: <span class="says">"That session has not opened yet."</span></li>
+<li data-code="peer_session_not_open"><b>Joining a cancelled session, or more than an hour after the start.</b> You read: <span class="says">"That session can no longer be joined."</span></li>
+<li data-code="peer_session_not_found"><b>A booked session that does not exist.</b> You read: <span class="says">"No such session."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c3-8"><div class="stage-head"><div class="num">Stage 8</div><h3>Community, study library and the helper</h3><p>Around the practice itself there are places to ask questions, read, listen and get help.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Community.</b> Questions and answers between doctors. A post's title can be up to 300 characters and its body up to 10,000. A post can be taken down by its author, by our moderators, or by an administrator of the organisation it was addressed to. Posts can be addressed to everyone, an organisation, or a group within one.</li>
+<li><b>Study library.</b> Slide decks with narration, written summaries, articles and podcasts, searchable by exam.</li>
+<li><b>The helper.</b> A spoken assistant that answers questions about using the product and about the exam, and can look at the person's screen when asked. It cannot mark or change anything.</li>
+<li><b>Inbox.</b> Messages and announcements from our team, and replies to anything sent through the contact form while signed in.</li>
+<li><b>CV reading.</b> A person can upload their CV as a PDF so the product can tailor its suggestions.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="content_too_long"><b>A post over 10,000 characters.</b> You read: <span class="says">"That post is too long."</span></li>
+<li data-code="empty_content"><b>A post with nothing in it once spaces are removed.</b> You read: <span class="says">"There is nothing to post."</span></li>
+<li data-code="tag_too_long"><b>A tag that is too long.</b> You read: <span class="says">"That tag is too long."</span></li>
+<li data-code="too_many_tags"><b>A question with too many tags.</b> You read: <span class="says">"That question has too many tags."</span></li>
+<li data-code="post_not_yours"><b>Removing someone else's post</b> without moderating anything it was addressed to. You read: <span class="says">"You can only remove your own posts."</span></li>
+<li data-code="post_not_found"><b>A post that does not exist, or that you may not see.</b> You read: <span class="says">"No such post."</span></li>
+<li data-code="audience_not_yours"><b>Posting to a group you are not in.</b> You read: <span class="says">"You are not a member of that audience."</span></li>
+<li data-code="invalid_audience"><b>A post addressed to a mix of places that does not make sense together.</b> You read: <span class="says">"That audience is not a coherent one."</span></li>
+<li data-code="invalid_author_filter"><b>Asking for another person's answer history.</b> Only your own can be listed: <span class="says">"The only author filter is `me`."</span></li>
+<li data-code="empty_query"><b>Searching the library with nothing typed.</b> You read: <span class="says">"Type something to search for."</span></li>
+<li data-code="media_not_found"><b>A study item that does not exist.</b> You read: <span class="says">"No such item."</span></li>
+<li data-code="knowledge_unavailable"><b>The helper cannot answer right now.</b> You read: <span class="says">"Athena is temporarily unavailable. Please try again."</span></li>
+<li data-code="assistant_session_not_joinable"><b>Rejoining a helper conversation that has finished.</b> You read: <span class="says">"That session has already finished."</span></li>
+<li data-code="assistant_session_not_yours"><b>Opening someone else's helper conversation.</b> You read: <span class="says">"That assistant session belongs to somebody else."</span></li>
+<li data-code="assistant_session_not_found"><b>A helper conversation that does not exist.</b> You read: <span class="says">"No such assistant session."</span></li>
+<li data-code="inbox_message_not_found"><b>A message that is not yours.</b> You read: <span class="says">"No such message."</span></li>
+<li data-code="announcement_not_found"><b>An announcement that has been withdrawn.</b> You read: <span class="says">"No such announcement."</span></li>
+<li data-code="invalid_cv_file"><b>A CV that is not a readable PDF</b>, is too large, or has no text. You read: <span class="says">"That file could not be read as a CV."</span></li>
+<li data-code="cv_not_found"><b>A CV that is not yours.</b> The same answer as one that does not exist: <span class="says">"No such CV."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c3-9"><div class="stage-head"><div class="num">Stage 9</div><h3>Your account: signing in, security and leaving</h3><p>The same account is used on every side of the product. These rules apply to everyone.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Signing in.</b> Email and password. After 10 tries in a minute on one account, or 300 from one address, the product asks the person to wait.</li>
+<li><b>Forgotten password.</b> A reset link by email, valid for 60 minutes and usable once. At most 5 requests in 5 minutes.</li>
+<li><b>Two-step sign-in.</b> An authenticator app gives a six-digit code at each sign-in. Ten one-use recovery codes are given for a lost phone, and can be replaced. An organisation can require it for its staff. Students and people practising alone are never forced to use it. People who sign in through their organisation's own system skip it, because that system checks the second step.</li>
+<li><b>Changing email.</b> A confirmation link goes to the new address, and a notice goes to the old one.</li>
+<li><b>Signing in through an organisation.</b> Some schools connect their own sign-in system. Their members then sign in there instead of with a password.</li>
+<li><b>Closing an account.</b> Sign-in stops at once and every device is signed out. Signing in again with the password within 30 days reopens the account, and an email confirms it. After 30 days the account is wiped: name, email, roster entries, the text of results, and what was said in recordings. An email confirms that too.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="invalid_credentials"><b>A wrong password, or an address we do not know.</b> Both get the same answer, so nobody can test which addresses have accounts: <span class="says">"Email or password is incorrect."</span></li>
+<li data-code="too_many_requests"><b>Too many tries in a short time.</b> You read: <span class="says">"Too many attempts. Wait a moment and try again."</span></li>
+<li data-code="password_login_disabled"><b>A member of an organisation that uses its own sign-in, trying a password.</b> You read: <span class="says">"This account signs in through your organisation. Use your organisation's sign-in instead."</span></li>
+<li data-code="account_suspended"><b>An account that has been closed or switched off.</b> You read: <span class="says">"This account is not active."</span></li>
+<li data-code="account_not_found"><b>Still signed in on a device after the account was wiped.</b> You read: <span class="says">"Sign in again."</span></li>
+<li data-code="invalid_refresh_token"><b>A sign-in that has expired or was ended elsewhere.</b> You read: <span class="says">"Sign in again."</span></li>
+<li data-code="unauthenticated"><b>Opening a page that needs you to be signed in.</b> You are taken to sign in: <span class="says">"Authentication required."</span></li>
+<li data-code="password_change_required"><b>Signing in with a temporary password a colleague passed on.</b> You are sent straight to choose your own: <span class="says">"Set a new password before continuing."</span></li>
+<li data-code="invalid_reset_token"><b>A reset link that is old or already used.</b> You read: <span class="says">"That link is no longer valid. Ask for a new one and use the most recent email."</span> For an invitation link: <span class="says">"That invitation has already been used or has expired."</span></li>
+<li data-code="password_not_set"><b>Changing a password on an account that never had one</b>, such as one that only signs in through its organisation. You read: <span class="says">"This account has no password yet. Ask for a reset link to set one."</span></li>
+<li data-code="invalid_mfa_code"><b>A wrong or reused six-digit code.</b> You read: <span class="says">"That code is not valid."</span></li>
+<li data-code="mfa_challenge_expired"><b>Taking too long between password and code.</b> You read: <span class="says">"That took too long, so sign in again."</span></li>
+<li data-code="mfa_already_enrolled"><b>Setting up two-step sign-in twice.</b> You read: <span class="says">"An authenticator is already set up."</span></li>
+<li data-code="mfa_not_enrolled"><b>Turning off two-step sign-in that was never on.</b> You read: <span class="says">"This account has no authenticator set up."</span></li>
+<li data-code="mfa_required_by_policy"><b>Turning off two-step sign-in your organisation requires.</b> You read: <span class="says">"Two-factor sign-in is required for this account, so it cannot be turned off."</span></li>
+<li data-code="invalid_email_change_token"><b>An email-change link that is old, used, or for an address someone has taken since.</b> You read: <span class="says">"That link has expired or has already been used."</span></li>
+<li data-code="invalid_avatar_file"><b>A profile photo that is not a small image.</b> You read: <span class="says">"That file cannot be used as a profile photo."</span></li>
+</ul></div>
+</section>
+</section>
+
+<!-- ======================= CHAPTER 4 ======================= -->
+<section class="stage" id="c4">
+<div class="stage-head"><div class="num">Chapter 4</div><h2>Running exams as a school</h2><p>A medical school, deanery or training scheme uses the same consultations to run practice sessions and real exams for a whole group, mark them with people as well as the AI, and tell each candidate their result.</p>
+<div class="meta"><div><b>Who</b>An organisation with administrators, supervisors and trainees</div><div><b>Pays</b>By contract with us, not by card</div><div><b>Status</b><span class="chip s-ok">Works today</span></div></div></div>
+
+<h3 class="ch">Six words, each inside the next</h3>
+<p>Almost everything on the school side is one of six things. Each lives inside the one before it, so once these six are clear the rest of the chapter follows.</p>
+<figure><div class="nest">
+<div class="lv"><span class="nm">School</span><span class="ds">the organisation itself: its people, its web address, its contract</span>
+<div class="lv"><span class="nm">Programme</span><span class="ds">one exam the school runs, such as its final-year OSCE, with the marking scheme it uses</span>
+<div class="lv"><span class="nm">Sitting</span><span class="ds">one occasion: "the March mock" or "the summer finals", with its timings</span>
+<div class="lv"><span class="nm">Circuit</span><span class="ds">one group going round the stations together, with a supervisor in charge</span>
+<div class="lv"><span class="nm">Slot</span><span class="ds">one candidate at one station on that circuit</span>
+<div class="lv"><span class="nm">Recording</span><span class="ds">what happened in that slot: the conversation, the transcript and the marking, exactly as in chapter 2</span></div>
+</div></div></div></div></div>
+</div><figcaption><b>The nesting.</b> A school runs several programmes. Each programme has many sittings, each sitting one or more circuits, each circuit a slot for every candidate at every station, and each slot one recording.</figcaption></figure>
+
+<h3 class="ch">Who does what</h3>
+<div class="table-wrap"><table class="matrix"><caption>The people in a school, and what each may do</caption><thead><tr><th>Role</th><th>Set up the school</th><th>Write stations and schemes</th><th>Schedule sittings</th><th>Run a circuit live</th><th>Review recordings</th><th>Senior review and sign-off</th></tr></thead><tbody>
+<tr><td class="k">Owner or administrator</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+<tr><td class="k">Supervisor</td><td>No</td><td>No</td><td>No</td><td>Yes, when leading</td><td>The circuits they lead</td><td>No</td></tr>
+<tr><td class="k">Trainee or candidate</td><td>No</td><td>No</td><td>No</td><td>Takes part</td><td>Reads their own feedback</td><td>Reads a released result</td></tr>
+</tbody></table></div>
+<p>When inviting someone, the screens offer two roles: supervisor and administrator. Trainees join through the roster instead (stage 3). A school must always keep at least one administrator.</p>
+
+<nav class="spine" aria-label="The eight stages of a school's year">
+<a href="#c4-1"><span class="n">Stage 1</span><span class="t">Setting up</span><span class="who">Our team, then the school</span></a>
+<a href="#c4-2"><span class="n">Stage 2</span><span class="t">Exams, schemes, stations</span><span class="who">Administrators</span></a>
+<a href="#c4-3"><span class="n">Stage 3</span><span class="t">Candidates arrive</span><span class="who">The roster</span></a>
+<a href="#c4-4"><span class="n">Stage 4</span><span class="t">Scheduling</span><span class="who">Sittings and circuits</span></a>
+<a href="#c4-5"><span class="n">Stage 5</span><span class="t">Exam day</span><span class="who">Supervisors and candidates</span></a>
+<a href="#c4-6"><span class="n">Stage 6</span><span class="t">Marking</span><span class="who">AI first, then people</span></a>
+<a href="#c4-7"><span class="n">Stage 7</span><span class="t">Deciding and telling</span><span class="who">Senior staff</span></a>
+<a href="#c4-8"><span class="n">Stage 8</span><span class="t">Term after term</span><span class="who">Reports, leavers, renewal</span></a>
+</nav>
+
+<section class="stage" id="c4-1"><div class="stage-head"><div class="num">Stage 1</div><h3>Setting up the school</h3><p>A school cannot sign itself up. Our team creates it after a contract is agreed, then hands it over.</p></div>
+<figure><div class="flow">
+<div class="bx"><b>We create the school</b><span>Its name and a web address of its own, which can never change afterwards.</span></div><div class="ar">›</div>
+<div class="bx"><b>We seat the first administrator</b><span>An invitation email, valid for 7 days, with a reminder on day 5.</span></div><div class="ar">›</div>
+<div class="bx"><b>They choose a password</b><span>Or sign in through the school's own system, if it has one connected.</span></div><div class="ar">›</div>
+<div class="bx good"><b>The checklist</b><span>Eight setup steps, shown in order until each is done.</span></div>
+</div><figcaption><b>From contract to first login.</b> A school is always in one of three states: trial, active or suspended. There is no way to delete one; it is suspended instead, so its records survive.</figcaption></figure>
+<div class="note"><h4>The eight setup steps, in order</h4><p>1. A marking scheme. 2. An exam. 3. A programme. 4. A station template. 5. Stations. 6. The team. 7. Trainees. 8. The first sitting. Each step needs the ones before it: a sitting needs a programme, a programme needs an exam, and an exam needs a marking scheme.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Inviting the team.</b> An administrator invites supervisors and other administrators by email. If an invitation runs out, it can be resent. Someone who has already chosen a password gets a reset link instead.</li>
+<li><b>The school's own sign-in.</b> A school can connect its own sign-in system, so its people use their usual school login. It names the web address or email domain its people use, and that address can belong to only one school. It can then turn off passwords altogether, but only once nobody would be locked out.</li>
+<li><b>Switching between places.</b> A person who belongs to more than one organisation, or also practises alone, switches between them from their account menu. Each keeps its own records.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="last_admin"><b>Removing or demoting the only administrator.</b> You read: <span class="says">"This is the organisation's last administrator. Make someone else an administrator first."</span></li>
+<li data-code="membership_exists"><b>Inviting someone into a role they already hold.</b> You read: <span class="says">"That person already holds this role."</span></li>
+<li data-code="membership_not_found"><b>Changing a member who has since been removed.</b> You read: <span class="says">"No such membership."</span></li>
+<li data-code="invitation_not_pending"><b>Resending an invitation to someone who has already joined</b>, or who signs in through the school's system. You read: <span class="says">"There is nothing to resend for that member."</span></li>
+<li data-code="invitation_pending"><b>Giving a temporary password to someone who has not yet accepted their invitation.</b> You read: <span class="says">"This person has not set a password yet. Resend their invitation instead."</span></li>
+<li data-code="password_already_chosen"><b>Giving a temporary password to someone who has chosen their own.</b> You read: <span class="says">"This person has already chosen their own password. Send them a reset link instead."</span></li>
+<li data-code="not_a_member"><b>Switching to an organisation you do not belong to.</b> You read: <span class="says">"You are not a member of that organisation."</span></li>
+<li data-code="organization_suspended"><b>Acting in a school whose access has been suspended.</b> Members can sign in, but cannot act: <span class="says">"This organisation's access has been suspended."</span></li>
+<li data-code="org_not_found"><b>A web address for a school that does not exist.</b> You read: <span class="says">"No such organisation."</span></li>
+<li data-code="sso_binding_taken"><b>Claiming a web address or email domain another organisation already uses.</b> You read: <span class="says">"Another organisation already claims that host or email domain."</span></li>
+<li data-code="invalid_sso_binding"><b>An address or domain that is not one.</b> You read: <span class="says">"That is not a usable hostname or email domain."</span></li>
+<li data-code="sso_only_password_members"><b>Turning off passwords while some members only have a password.</b> The screen lists how many would be affected: <span class="says">"Some members sign in with a password and would be locked out."</span></li>
+<li data-code="sso_not_configurable"><b>Settings that would leave nobody a way in</b>, such as turning off passwords while the school's own sign-in is off. You read: <span class="says">"That combination of settings would leave nobody a way in."</span></li>
+<li data-code="unknown_sso_provider"><b>Naming a sign-in provider we do not know.</b> You read: <span class="says">"That is not an identity provider this platform knows."</span></li>
+<li data-code="invalid_saml_connection"><b>A sign-in connection missing its address or certificate.</b> You read: <span class="says">"That SAML connection is not usable."</span></li>
+<li data-code="saml_connection_not_found"><b>A sign-in connection that has been switched off or removed.</b> You read: <span class="says">"No such SAML connection."</span></li>
+<li data-code="sso_not_configured"><b>Signing in through a school that has no sign-in system connected</b>, or has switched it off. You read: <span class="says">"That organisation does not sign in through an identity provider."</span></li>
+<li data-code="sso_verification_failed"><b>The school's sign-in system did not vouch for you</b>, usually an interrupted login. You read: <span class="says">"That sign-in could not be verified. Try again."</span></li>
+<li data-code="sso_provider_unsupported"><b>A school whose sign-in provider we know of but have not built yet.</b> You read: <span class="says">"That organisation's sign-in provider is not enabled here."</span></li>
+<li data-code="sso_login_unavailable"><b>The service that links to school sign-in systems cannot be reached.</b> Nobody is let in by mistake: <span class="says">"Sign-in through an identity provider is not available here."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c4-2"><div class="stage-head"><div class="num">Stage 2</div><h3>Exams, marking schemes and stations</h3><p>Before anyone can be examined, the school needs an exam to run, a scheme to mark it against, and stations to put in it. It can write its own, or bring in ours.</p></div>
+<figure><div class="flow">
+<div class="bx"><b>Marking scheme</b><span>The areas to rate and how. Published in numbered versions.</span></div><div class="ar">›</div>
+<div class="bx"><b>Exam</b><span>Names the scheme it is marked against. The school's own, or one of ours imported.</span></div><div class="ar">›</div>
+<div class="bx"><b>Programme</b><span>The school running that exam. Only an active programme can be scheduled.</span></div><div class="ar">›</div>
+<div class="bx"><b>Station template</b><span>The layout a station follows: its sections and pictures.</span></div><div class="ar">›</div>
+<div class="bx good"><b>Stations</b><span>Written into a template, checked, then published.</span></div>
+</div><figcaption><b>What a sitting stands on.</b> Every piece has drafts and published versions. A published version is never changed in place: a change is a new draft, published as the next version, so a recording always points at exactly what the candidate was given.</figcaption></figure>
+<ol class="plain" style="margin-top:14px">
+<li><b>Writing a station.</b> Write by hand, start from an uploaded document, or ask the AI to draft one from a brief. A station can have pictures, such as an X-ray or a rash, in the places its template allows.</li>
+<li><b>Fact check.</b> Before publishing, the AI can check the station's medical facts and mark anything doubtful for a person to look at.</li>
+<li><b>Publishing.</b> A draft with nothing in it cannot go live. Publishing the next version leaves earlier recordings pointing at the version they used.</li>
+<li><b>Retiring.</b> A published version is archived rather than deleted, and only a draft can be deleted. An exam that has anything recorded against it is retired, never deleted.</li>
+<li><b>Reports.</b> Anyone using a station can report a problem with it. The report goes to its authors.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="exam_code_taken"><b>Two exams with the same short code.</b> You read: <span class="says">"An exam with that code already exists."</span></li>
+<li data-code="invalid_exam_code"><b>A short code with characters a web address cannot carry.</b> You read: <span class="says">"That is not a usable exam code."</span></li>
+<li data-code="exam_not_publishable"><b>Publishing an exam with no marking scheme</b>, or one that is retired. You read: <span class="says">"That exam cannot be published as it stands."</span></li>
+<li data-code="exam_in_use"><b>Deleting an exam that has stations, sittings or recordings.</b> You read: <span class="says">"This exam has stations, sittings or attempts recorded against it. Retire it instead of deleting it."</span></li>
+<li data-code="exam_already_imported"><b>Bringing in one of our exams that the school already runs.</b> You read: <span class="says">"That exam is already in this organisation."</span></li>
+<li data-code="invalid_exam_settings"><b>Exam settings naming an AI writing setup that does not exist.</b> You read: <span class="says">"Those exam settings name a prompt that does not exist."</span></li>
+<li data-code="unknown_exam"><b>An exam that is missing, unpublished, retired, or another school's.</b> You read: <span class="says">"No such exam."</span></li>
+<li data-code="programme_exists"><b>Adding a programme for an exam the school already runs.</b> You read: <span class="says">"A programme with that name already exists."</span></li>
+<li data-code="programme_not_active"><b>Scheduling against a programme that has stopped</b>, or whose exam is retired. You read: <span class="says">"That programme is not active, so nothing can be scheduled against it."</span></li>
+<li data-code="programme_not_found"><b>A programme that is not this school's.</b> You read: <span class="says">"No such programme."</span></li>
+<li data-code="invalid_rubric"><b>A marking scheme whose areas or timings cannot work.</b> You read: <span class="says">"That rubric could not be marked against."</span></li>
+<li data-code="rubric_not_found"><b>A station with no marking scheme.</b> You read: <span class="says">"This station has no marking scheme, so it cannot be marked."</span></li>
+<li data-code="rubric_version_not_found"><b>A marking scheme missing the version a station points at.</b> You read: <span class="says">"The marking scheme for this station is missing a version. Ask the station's owner to republish it."</span></li>
+<li data-code="draft_exists"><b>Starting a second draft of a station that already has one.</b> You read: <span class="says">"The station already has a draft. Publish or delete it first."</span></li>
+<li data-code="not_editable"><b>Changing a published version in place.</b> You read: <span class="says">"Published content cannot be edited; create a new version."</span></li>
+<li data-code="already_published"><b>Publishing a version that is already live.</b> You read: <span class="says">"That version is already published."</span></li>
+<li data-code="station_empty"><b>Publishing a draft with nothing written in it.</b> You read: <span class="says">"This station has no content yet. Write it before publishing."</span></li>
+<li data-code="template_not_published"><b>Building a station on a template that is still a draft.</b> You read: <span class="says">"A station can only be built on a published template version."</span></li>
+<li data-code="not_deletable"><b>Deleting a version that has been published.</b> You read: <span class="says">"Only a draft can be deleted."</span></li>
+<li data-code="not_archivable"><b>Archiving a draft.</b> A draft is deleted instead: <span class="says">"Only a published version can be archived."</span></li>
+<li data-code="station_being_produced"><b>Saving while the AI is still writing this draft.</b> You read: <span class="says">"The agent is working on this version; stop it or wait for it to finish."</span></li>
+<li data-code="fact_check_running"><b>Asking for a fact check that is already running.</b> You read: <span class="says">"This version's facts are already being checked."</span></li>
+<li data-code="invalid_import_file"><b>Uploading a document that cannot become a station</b>: the wrong kind, too large, or empty. You read: <span class="says">"That file cannot be imported as a station."</span></li>
+<li data-code="import_not_ready"><b>Drafting from an upload that is still being read</b>, or already being drafted. You read: <span class="says">"That import is not ready for a station to be drafted."</span></li>
+<li data-code="station_import_not_found"><b>An upload that does not exist.</b> You read: <span class="says">"No such station import."</span></li>
+<li data-code="invalid_photo"><b>A picture that is not a real image, or is too large.</b> You read: <span class="says">"That file cannot be used as a station image."</span></li>
+<li data-code="not_a_media_block"><b>Adding a picture where the template does not take one.</b> You read: <span class="says">"That block does not take images."</span></li>
+<li data-code="photo_not_on_station"><b>Removing a picture that is not on this station.</b> You read: <span class="says">"That image is not on this station."</span></li>
+<li data-code="photo_storage_unavailable"><b>Picture storage is not set up</b> on this copy of the product. You read: <span class="says">"Image storage is not configured."</span></li>
+<li data-code="version_not_found"><b>A version of a station that does not exist.</b> You read: <span class="says">"No such version."</span></li>
+<li data-code="station_template_not_found"><b>A station template that is not this school's.</b> You read: <span class="says">"No such station template."</span></li>
+<li data-code="station_template_version_not_found"><b>A template version that does not exist.</b> You read: <span class="says">"No such station template version."</span></li>
+<li data-code="generation_profile_not_found"><b>Asking the AI to draft with a writing setup that does not exist.</b> You read: <span class="says">"No such generation profile."</span></li>
+<li data-code="station_flag_not_found"><b>A report on a station that has since been dealt with or removed.</b> You read: <span class="says">"No such report on a station."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c4-3"><div class="stage-head"><div class="num">Stage 3</div><h3>Candidates arrive: the roster</h3><p>The roster is the school's list of its trainees. A circuit can only examine people on it.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Adding people.</b> One at a time, or from a spreadsheet. A spreadsheet can hold up to 500 people per upload; the screen sends larger lists in batches. Someone already on the list is skipped, not added twice. Each new trainee gets an invitation email.</li>
+<li><b>Cohorts and groups.</b> A cohort is a year group, and a trainee is in at most one. Groups are any other way of sorting people, such as by hospital site, and a trainee can be in several.</li>
+<li><b>Automatic lists.</b> A school with its own sign-in system can keep the roster in step with it automatically. Changes flow from the school's own records, so nobody re-types them.</li>
+<li><b>Practice access.</b> A school can also give trainees access to practise alone (chapter 3) for an exam, until a date it chooses, instead of each trainee paying.</li>
+<li><b>Leavers.</b> Removing someone's access is how a person leaves. Their records stay. A trainee who has a decision recorded cannot be deleted, only have their access removed.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="trainee_exists"><b>Adding someone already on the list.</b> You read: <span class="says">"That person is already on your trainee list."</span></li>
+<li data-code="too_many_trainees"><b>More than 500 people in one upload.</b> The screen normally splits the list itself: <span class="says">"An import takes at most 500 trainees at a time."</span></li>
+<li data-code="trainee_not_found"><b>A trainee who has been removed.</b> You read: <span class="says">"That trainee is no longer on your list."</span></li>
+<li data-code="trainee_revoked"><b>Putting someone whose access was removed into a sitting.</b> You read: <span class="says">"That person's access has been removed. Restore them before adding them to a sitting."</span></li>
+<li data-code="trainee_in_use"><b>Deleting a trainee who has a decision recorded.</b> You read: <span class="says">"This trainee has a decision recorded and cannot be deleted. Revoke access instead."</span></li>
+<li data-code="trainee_not_on_roster"><b>Examining someone who is not on the school's list.</b> You read: <span class="says">"That person is not on your trainee list. Add them first."</span></li>
+<li data-code="cohort_exists"><b>Two year groups with the same name.</b> You read: <span class="says">"A cohort with that name already exists."</span></li>
+<li data-code="cohort_in_use"><b>Deleting a year group that still has trainees.</b> You read: <span class="says">"That cohort still has trainees in it."</span></li>
+<li data-code="cohort_not_found"><b>A year group that has been deleted.</b> You read: <span class="says">"That cohort no longer exists."</span></li>
+<li data-code="group_exists"><b>Two groups with the same name.</b> You read: <span class="says">"A group with that name already exists."</span></li>
+<li data-code="group_not_empty"><b>Deleting a group that still has members.</b> You read: <span class="says">"That group still has members."</span></li>
+<li data-code="group_not_found"><b>A group that has been deleted.</b> You read: <span class="says">"That group no longer exists."</span></li>
+<li data-code="invalid_email"><b>Giving practice access to something that is not an email address.</b> A spreadsheet reports it per row: <span class="says">"That is not a valid email address."</span></li>
+<li data-code="practice_access_exists"><b>Giving practice access to someone who already has it</b> from this school for this exam. You read: <span class="says">"That person already has practice access to this exam."</span></li>
+<li data-code="entitlement_not_found"><b>Changing practice access that has ended or was never given.</b> You read: <span class="says">"No such entitlement in this organisation."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c4-4"><div class="stage-head"><div class="num">Stage 4</div><h3>Scheduling a sitting</h3><p>A sitting is one occasion, such as "the March mock". It belongs to one programme and is either a training session or a real exam.</p></div>
+<div class="table-wrap"><table><caption>Training session or real exam</caption><thead><tr><th></th><th>Training session</th><th>Real exam</th></tr></thead><tbody>
+<tr><td class="k">Who is on a circuit</td><td>As many trainees as there are stations, rotating together</td><td>One candidate, going round up to 12 stations</td></tr>
+<tr><td class="k">Breaks</td><td>None</td><td>Yes, between stations</td></tr>
+<tr><td class="k">After marking</td><td>Stops at feedback and review</td><td>Goes on to a decision and a result</td></tr>
+<tr><td class="k">Hiring outcome</td><td>Never</td><td>Optional, for employers (chapter 5)</td></tr>
+</tbody></table></div>
+<figure><div class="big3">
+<div><span class="n">1–30</span><span class="l">minutes of reading time before each station, 3 by default</span></div>
+<div><span class="n">1–180</span><span class="l">minutes in the consultation, 10 by default</span></div>
+<div><span class="n">1–60</span><span class="l">minutes of break between stations in an exam, 5 by default</span></div>
+</div><figcaption><b>Timings a sitting sets.</b> A value outside its range is brought back to the nearest end of it.</figcaption></figure>
+<ol class="plain" style="margin-top:14px">
+<li><b>Build circuits.</b> Choose stations, candidates and a supervisor to lead. The lead must be an administrator or supervisor of the school.</li>
+<li><b>When things lock.</b> A circuit's stations and people can no longer change once it has ended, once a station on it is in progress, or once feedback has been recorded on it. A sitting's content locks once any of its circuits has started, so everyone sitting it is examined on the same thing.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="programme_required"><b>A sitting with no programme.</b> You read: <span class="says">"Choose a programme for this sitting first."</span></li>
+<li data-code="exam_rubric_not_ready"><b>Scheduling an exam whose marking scheme has no published version yet.</b> You read: <span class="says">"That programme's exam is not ready to mark against yet."</span></li>
+<li data-code="invalid_circuit"><b>A circuit the rules do not allow</b>, such as more than 12 stations in an exam, or a training circuit with more trainees than stations. You read: <span class="says">"This circuit cannot be built as set up. Check the stations, candidates and timings."</span></li>
+<li data-code="lead_cannot_run"><b>Naming a lead who is not a supervisor or administrator.</b> You read: <span class="says">"A circuit's lead must be an administrator or supervisor of this organisation."</span></li>
+<li data-code="trainee_already_on_circuit"><b>Adding someone twice to the same circuit.</b> You read: <span class="says">"That person is already on this circuit."</span></li>
+<li data-code="circuit_locked"><b>Changing a circuit that has started or has feedback.</b> You read: <span class="says">"This circuit has started or has feedback recorded, so its stations can no longer be changed. Reload to see where it is now."</span></li>
+<li data-code="sitting_locked"><b>Changing or cancelling a sitting once a circuit has started.</b> You read: <span class="says">"A circuit on this sitting has started, so it cannot be cancelled. End its circuits instead."</span></li>
+<li data-code="not_permitted_in_mode"><b>An action meant for the other kind of circuit</b>, such as a break in a training session. You read: <span class="says">"That action does not apply to this kind of circuit."</span></li>
+<li data-code="sitting_not_found"><b>A sitting that has been deleted.</b> You read: <span class="says">"This sitting no longer exists. It may have been deleted."</span></li>
+<li data-code="circuit_not_found"><b>A circuit that has been deleted.</b> You read: <span class="says">"This circuit no longer exists. It may have been deleted."</span></li>
+<li data-code="stale_revision"><b>Two people editing the same thing at once.</b> The second save is refused rather than overwriting the first: <span class="says">"This was changed by someone else since you opened it. Reload and try again."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c4-5"><div class="stage-head"><div class="num">Stage 5</div><h3>Exam day</h3><p>The supervisor presses one button to start the circuit. From then on the product runs the clock, opens each room, sends each patient in and moves everyone on.</p></div>
+<figure><div class="lanes four">
+<div><h4>Supervisor</h4><ol><li>Starts the circuit.</li><li>Watches every room on one screen.</li><li>Can listen in to any room.</li><li>Steps in when needed.</li></ol></div>
+<div><h4>Candidate</h4><ol><li>Joins from their own screen.</li><li>Reads the instructions.</li><li>Holds the consultation.</li><li>Moves on when the clock says.</li></ol></div>
+<div><h4>AI patient</h4><ol><li>Arrives when the station opens.</li><li>Plays the case as written.</li><li>Leaves when time is up.</li></ol></div>
+<div><h4>What is saved</h4><ol><li>The recording and transcript.</li><li>The time each step happened.</li><li>Every step a supervisor took, with who and why.</li></ol></div>
+</div><figcaption><b>Exam day in four lanes.</b> Exam day never checks a plan or a trial: a candidate a school examines is never turned away for not having paid.</figcaption></figure>
+<div class="note"><h4>What a supervisor can do while it runs</h4><p>Pause and resume the clock, give extra time, restart the clock on a station, send the patient in again, let a candidate redo a station, jump to a station, move everyone on now, or let the circuit move on by itself. Every one of these is saved with the name of the person who did it and the reason they gave.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>The minute check.</b> Every minute the product checks every live circuit. A patient who has gone quiet for 60 seconds is sent in again.</li>
+<li><b>Forgotten circuits.</b> A circuit left untouched for 12 hours is closed by itself, unless it is paused on purpose.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="circuit_not_started"><b>Acting on a circuit that has not been started.</b> You read: <span class="says">"The circuit has not been started yet."</span></li>
+<li data-code="circuit_not_live"><b>Joining a circuit that is not running</b>, because it has not begun or is over. You read: <span class="says">"The circuit is not running, so nothing can be sat on it now."</span></li>
+<li data-code="circuit_paused"><b>Moving on while the clock is paused.</b> You read: <span class="says">"The circuit is paused. Resume it first."</span></li>
+<li data-code="circuit_not_paused"><b>Resuming a clock that is running.</b> You read: <span class="says">"The circuit is not paused."</span></li>
+<li data-code="circuit_already_ended"><b>Acting on a circuit that has finished.</b> You read: <span class="says">"The circuit has already ended."</span></li>
+<li data-code="no_active_station"><b>Stepping into a station during a break</b>, when none is running. You read: <span class="says">"No station is being sat on this circuit right now."</span></li>
+<li data-code="station_not_on_circuit"><b>Jumping to a station this circuit does not have.</b> You read: <span class="says">"That station is not on this circuit."</span></li>
+<li data-code="slot_not_found"><b>A candidate's place on the circuit that no longer exists.</b> You read: <span class="says">"That place on the circuit no longer exists. Reload the page."</span></li>
+<li data-code="forbidden"><b>Doing something your role does not allow</b>, such as a candidate opening a supervisor's screen. You read: <span class="says">"You do not have access to this resource."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c4-6"><div class="stage-head"><div class="num">Stage 6</div><h3>Marking</h3><p>Every recording is marked by the AI first, exactly as in chapter 2. In a school, people then review it, and their ratings are what count.</p></div>
+<figure><div class="table-wrap"><table><caption>Three reviewers, three areas: how ratings combine</caption><thead><tr><th></th><th>Reviewer A</th><th>Reviewer B</th><th>Reviewer C</th><th>Area result</th></tr></thead><tbody>
+<tr><td class="k">History taking</td><td>Good</td><td>Good</td><td>Fair</td><td><b>Good</b>, the most common</td></tr>
+<tr><td class="k">Explanation</td><td>Good</td><td>Fair</td><td>Poor</td><td><b>Poor</b>, a tie goes to the worse</td></tr>
+<tr><td class="k">Safety</td><td>Fair</td><td>Fair</td><td>Good</td><td><b>Fair</b>, the most common</td></tr>
+<tr><td class="k" colspan="4">Station overall</td><td><b>Poor</b>, the worst area</td></tr>
+</tbody></table></div><figcaption><b>Within an area, the most common rating wins, and a tie goes to the worse one. Across areas, the worst area sets the station.</b> One weak area cannot be hidden by strong ones.</figcaption></figure>
+<ol class="plain" style="margin-top:14px">
+<li><b>Who reviews.</b> The supervisor who led the circuit, or an administrator. Each person writes one review per candidate per station.</li>
+<li><b>Drafts.</b> A review stays a draft until every area is rated. Its author can withdraw a draft; a completed review is edited instead, never withdrawn.</li>
+<li><b>Senior review.</b> An administrator can add a senior review on top, with a reason of up to 4,000 characters. If someone else saved it first, the screen asks you to reload rather than overwrite them.</li>
+<li><b>Finalising.</b> Once every review on a circuit is done, the circuit's review is finalised. After a decision is signed off, its reviews are fixed.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="not_slot_reviewer"><b>Reviewing a circuit you did not lead</b>, without being an administrator. You read: <span class="says">"Only the supervisor named on this circuit, or an administrator, can review it."</span></li>
+<li data-code="review_incomplete"><b>Completing a review with an area unrated.</b> You read: <span class="says">"Rate every required area before completing the review."</span></li>
+<li data-code="invalid_rating"><b>A rating the scheme does not use.</b> You read: <span class="says">"One of the ratings is not one this station accepts. Pick again from the list."</span></li>
+<li data-code="invalid_review_status"><b>Saving a review as something other than a draft or completed.</b> You read: <span class="says">"A review can only be saved as a draft or completed."</span></li>
+<li data-code="review_conflict"><b>Someone else changed the review while you had it open.</b> You read: <span class="says">"Someone else changed this review while you had it open. Reload the page and make your changes again, so theirs are not lost."</span></li>
+<li data-code="review_not_draft"><b>Withdrawing a completed review.</b> You read: <span class="says">"Only a draft review can be withdrawn. A completed review is edited instead."</span></li>
+<li data-code="review_locked"><b>Changing a review after the result was signed off.</b> You read: <span class="says">"This candidate's result has been signed off or released, so its reviews can no longer be changed."</span></li>
+<li data-code="nothing_to_review"><b>A station nobody took, or with no areas to rate.</b> You read: <span class="says">"Nobody took this station, so there is nothing to review."</span></li>
+<li data-code="circuit_review_finalized"><b>Finalising a circuit's review twice.</b> You read: <span class="says">"This circuit's review has already been finalised."</span></li>
+<li data-code="review_not_found"><b>A review that has been withdrawn.</b> You read: <span class="says">"That review no longer exists. Reload the page."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c4-7"><div class="stage-head"><div class="num">Stage 7</div><h3>Deciding and telling the candidate</h3><p>In a real exam, a senior person records each candidate's outcome, signs it off, and releases it. The candidate sees nothing until it is released.</p></div>
+<figure><div class="flow">
+<div class="bx"><b>Draft</b><span>An outcome and a written reason. Saved in versions.</span></div><div class="ar">›</div>
+<div class="bx"><b>Signed off</b><span>Needs every review complete, an outcome and a reason.</span></div><div class="ar">›</div>
+<div class="bx warn"><b>The evidence check</b><span>If any mark moved since sign-off, release is refused until it is signed off again.</span></div><div class="ar">›</div>
+<div class="bx good"><b>Released</b><span>The candidate is emailed and can read it.</span></div>
+</div><figcaption><b>The life of a decision.</b> Outcomes are pass, fail, inconclusive and withheld. Inconclusive and withheld are never released to the candidate.</figcaption></figure>
+<div class="table-wrap"><table><caption>Which hiring outcomes go with which exam outcome</caption><thead><tr><th>Exam outcome</th><th>Hiring outcomes allowed</th></tr></thead><tbody>
+<tr><td class="k">Pass</td><td>Hired, reserve, not hired, withdrawn or pending</td></tr>
+<tr><td class="k">Fail</td><td>Not hired or withdrawn</td></tr>
+<tr><td class="k">Inconclusive or withheld</td><td>Pending or withdrawn</td></tr>
+</tbody></table></div>
+<p>Hiring outcomes are for employers and are optional (chapter 5). A school simply leaves them out.</p>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="reviews_pending"><b>Signing off while a review is still a draft.</b> You read: <span class="says">"A review of this candidate's stations is still a draft. Complete it, or ask its author to withdraw it, then sign off."</span></li>
+<li data-code="not_signable"><b>Signing off with no outcome or no reason.</b> You read: <span class="says">"This decision cannot be signed off yet. Choose an outcome and write the reason first."</span></li>
+<li data-code="evidence_changed"><b>A mark changed after sign-off.</b> You read: <span class="says">"The marking changed after this was signed off. Review it and sign it off again before releasing."</span></li>
+<li data-code="outcome_not_releasable"><b>Releasing an inconclusive or withheld outcome.</b> You read: <span class="says">"A withheld or inconclusive outcome cannot be released."</span></li>
+<li data-code="invalid_workflow"><b>A step out of order</b>, such as releasing before sign-off. You read: <span class="says">"This decision is not in the right stage for that. It must be signed off, and not yet released."</span></li>
+<li data-code="decision_revised"><b>Someone else changed the decision while you had it open.</b> You read: <span class="says">"Somebody else changed this decision. Reload it and check it before saving again."</span></li>
+<li data-code="incompatible_outcomes"><b>An exam outcome and hiring outcome that cannot both be true.</b> You read: <span class="says">"That outcome and the hiring outcome do not go together. Change one of them."</span></li>
+<li data-code="recruitment_outside_exam"><b>A hiring outcome on a training session.</b> You read: <span class="says">"A hiring outcome can only be recorded on an exam sitting."</span></li>
+<li data-code="decision_outside_exam"><b>A decision on a training session</b>, which stops at marking. You read: <span class="says">"Decisions are recorded for exam-mode sittings only."</span></li>
+<li data-code="candidate_did_not_sit"><b>A decision for someone who sat no station.</b> You read: <span class="says">"This candidate did not sit any station on this sitting."</span></li>
+<li data-code="result_not_found"><b>Opening a decision nobody has recorded yet.</b> You read: <span class="says">"No decision has been recorded for this candidate yet."</span></li>
+<li data-code="result_not_released"><b>A candidate opening a result before release.</b> You read: <span class="says">"This result has not been released to the candidate yet."</span></li>
+</ul></div>
+</section>
+
+<section class="stage" id="c4-8"><div class="stage-head"><div class="num">Stage 8</div><h3>Term after term</h3><p>After the exam, the school reads its results, moves people on, and renews its contract.</p></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>Reports.</b> A summary per exam sitting shows how the group did, station by station and area by area. Training sessions get feedback, not a group summary.</li>
+<li><b>Leavers and new years.</b> New trainees join the roster; leavers have their access removed. Their past records stay.</li>
+<li><b>Contract end.</b> When the contract's end date passes, an hourly check suspends the school. Its members can no longer act in it. Our team renews it with a new end date, which must be in the future, and everything is as it was.</li>
+</ol>
+<figure><div class="flow">
+<div class="bx good"><b>Active</b><span>Contract running.</span></div><div class="ar">›</div>
+<div class="bx warn"><b>End date passes</b><span>Checked every hour.</span></div><div class="ar">›</div>
+<div class="bx bad"><b>Suspended</b><span>Nothing deleted. Members read, but cannot act.</span></div><div class="ar">›</div>
+<div class="bx good"><b>Renewed</b><span>A new end date in the future. Back to active.</span></div>
+</div><figcaption><b>Contract end and renewal.</b></figcaption></figure>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="not_an_exam_sitting"><b>Asking for a group summary of a training session.</b> You read: <span class="says">"A cohort summary is only produced for an exam sitting."</span></li>
+<li data-code="contract_end_in_past"><b>Renewing with an end date already passed.</b> It would lapse again within the hour: <span class="says">"A renewal must end in the future."</span></li>
+<li data-code="contract_dates_out_of_order"><b>A contract that ends before it starts.</b> You read: <span class="says">"The end date is before the start date."</span></li>
+</ul></div>
+</section>
+</section>
+
+<!-- ======================= CHAPTER 5 ======================= -->
+<section class="stage" id="c5">
+<div class="stage-head"><div class="num">Chapter 5</div><h2>Employers and partners</h2><p>Employers use exactly the school side to assess job applicants. Partners, such as publishers and courses, send people to us and see how many came.</p>
+<div class="meta"><div><b>Who</b>Hospitals, practices and recruiters; publishers and courses</div><div><b>Pays</b>Employers by contract; partners are paid by us</div><div><b>Status</b><span class="chip s-ok">Works today</span></div></div></div>
+
+<h3 class="ch">Employers: the school side, with one extra field</h3>
+<p>An employer is set up as an organisation, like a school, and runs real exams exactly as chapter 4 describes. The only difference is a second outcome on each decision: whether the candidate is hired, kept in reserve, not hired, withdrawn, or still pending. The table in chapter 4, stage 7 shows which go together.</p>
+
+<h3 class="ch">Partners: sending people to us</h3>
+<figure><div class="flow">
+<div class="bx"><b>A visit through the partner's link</b><span>Logged before the person has an account.</span></div><div class="ar">›</div>
+<div class="bx"><b>The person signs up</b><span>Credited to that partner, once, however long afterwards.</span></div><div class="ar">›</div>
+<div class="bx"><b>They buy a plan</b><span>Counted against the partner's numbers.</span></div><div class="ar">›</div>
+<div class="bx good"><b>The partner's report</b><span>Visits, sign-ups and purchases, each as a share of the step before.</span></div>
+</div><figcaption><b>Partner credit, step by step.</b> A link naming a partner we do not know credits nobody, because a wrong guess would pay the wrong party. A visit after signing up does not count, and a person is never moved from one partner to another.</figcaption></figure>
+<ol class="plain" style="margin-top:14px">
+<li><b>Reporters.</b> A partner names people who may read its report. Each reporter sees their own partner's numbers and nobody else's.</li>
+<li><b>Charts.</b> Numbers can be shown by day, week or month, over any date range.</li>
+<li><b>Estimated spend.</b> For a partner who charges per visit, the product estimates what the visits have cost against what those people paid, and emails our team as the estimate crosses each threshold, once per threshold. The partner's own invoice, based on its own records, is what is paid.</li>
+<li><b>Referral codes.</b> Every user has one (chapter 3). It takes 10% off a plan, any number of times, for anyone but its owner. The owner is credited £2.50 for a one-month plan and £5 for anything longer, and our team records when that credit is paid out.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="not_a_partner_reporter"><b>A reporter opening another partner's numbers.</b> You read: <span class="says">"You do not have reporting access for that partner."</span></li>
+<li data-code="unknown_partner"><b>A partner we do not work with.</b> You read: <span class="says">"No such partner."</span></li>
+<li data-code="reporter_not_found"><b>Removing reporting access that does not exist.</b> You read: <span class="says">"No reporting access exists for that email."</span></li>
+<li data-code="exam_not_in_pilot"><b>Asking for a partner's numbers on an exam it does not cover.</b> You read: <span class="says">"That exam is not part of the pilot."</span></li>
+<li data-code="invalid_date_range"><b>A date range that ends before it starts.</b> You read: <span class="says">"from_date must be on or before to_date."</span></li>
+<li data-code="invalid_bucket"><b>A chart grouped by something other than day, week or month.</b> You read: <span class="says">"bucket must be one of day, week or month."</span></li>
+<li data-code="payout_account_number_required"><b>Saving bank details for the first time without an account number.</b> You read: <span class="says">"An account number is required the first time you save payout details."</span></li>
+<li data-code="referral_not_redeemed"><b>Marking a referral as paid when nobody used it.</b> You read: <span class="says">"That referral has not been redeemed, so it has no payout."</span></li>
+<li data-code="referral_code_taken"><b>A new referral code that happens to match an existing one.</b> Codes are random, so this is rare and the product tries again: <span class="says">"That referral code is already in use."</span></li>
+</ul></div>
+</section>
+
+<!-- ======================= CHAPTER 6 ======================= -->
+<section class="stage" id="c6">
+<div class="stage-head"><div class="num">Chapter 6</div><h2>Our own team</h2><p>Our staff have a console of their own. It creates and looks after organisations, handles money that needs a person, publishes study material, and keeps the background work running.</p>
+<div class="meta"><div><b>Who</b>Staff given console access by another staff member</div><div><b>Sees</b>Every organisation, but changes only what the console offers</div><div><b>Status</b><span class="chip s-ok">Works today</span></div></div></div>
+<div class="two">
+<div class="note"><h4>What the console can do</h4><p>Create, rename, suspend and restore organisations. Seat an organisation's first person. Connect a school's own sign-in. Look up any account. Give and remove console access. Set up plans and prices, refund payments, record payments made by bank transfer, and write invoices. Retry emails that could not be delivered, and watch, cancel or retry background tasks. Moderate community posts. Write, voice and publish study material. Answer messages from the contact form.</p></div>
+<div class="note"><h4>What it cannot do</h4><p>Delete an organisation. Change a published station, scheme or study item in place. Remove a staff member's own console access, so the console always has someone in charge.</p></div>
+</div>
+
+<h3 class="ch">Money that needs a person</h3>
+<ol class="plain" style="margin-top:14px">
+<li><b>Plans.</b> A plan has a short code that can never be reused, because past payments name their plan by it. Each plan has a twin at the referral price.</li>
+<li><b>Refunds.</b> A card refund goes through the card provider. Access is withdrawn only once the refund is made, so a failed refund changes nothing.</li>
+<li><b>Bank transfers.</b> A payment made outside the card page is recorded by hand, once, against its reference.</li>
+<li><b>Invoices.</b> For organisations. Once paid or cancelled, an invoice is final.</li>
+</ol>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="plan_code_taken"><b>A new plan with a code already used.</b> You read: <span class="says">"A plan already has that code."</span></li>
+<li data-code="plan_not_found"><b>Changing a plan that does not exist.</b> You read: <span class="says">"No such plan."</span></li>
+<li data-code="price_creation_failed"><b>The card provider could not create the price.</b> No plan is saved: <span class="says">"Stripe could not create that price. Try again in a moment."</span></li>
+<li data-code="payment_already_refunded"><b>Refunding a payment already refunded, withdrawn or disputed.</b> You read: <span class="says">"That payment has already been refunded, withdrawn or disputed, so it was not refunded again."</span></li>
+<li data-code="not_a_stripe_payment"><b>Refunding a bank transfer through the card provider.</b> You read: <span class="says">"That payment did not go through Stripe, so there is nothing to refund there."</span></li>
+<li data-code="stripe_refund_failed"><b>The card provider could not be reached for a refund.</b> You read: <span class="says">"Stripe could not refund that payment. Nothing has changed; try again in a moment."</span></li>
+<li data-code="stripe_refund_refused"><b>The card provider refused the refund</b>, for example because the payment is too old. You read: <span class="says">"Stripe refused that refund."</span></li>
+<li data-code="payment_not_found"><b>Refunding a payment that does not exist.</b> You read: <span class="says">"No such payment."</span></li>
+<li data-code="payment_already_recorded"><b>Recording the same bank transfer twice.</b> It would grant access twice: <span class="says">"That payment has already been applied."</span></li>
+<li data-code="invoice_not_editable"><b>Changing a paid or cancelled invoice.</b> You read: <span class="says">"That invoice is final and cannot be changed."</span></li>
+<li data-code="invalid_invoice_line"><b>An invoice line with no amount.</b> You read: <span class="says">"Each line needs an amount, or a payment to bill for."</span></li>
+<li data-code="invoice_not_found"><b>An invoice that is not this organisation's.</b> You read: <span class="says">"No such invoice."</span></li>
+<li data-code="billing_event_not_found"><b>Replaying a message from the card provider that we never received.</b> You read: <span class="says">"No such webhook delivery."</span></li>
+</ul></div>
+
+<h3 class="ch">Organisations, accounts and console access</h3>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="org_slug_taken"><b>A new organisation with a web address already taken.</b> You read: <span class="says">"That slug is already in use."</span></li>
+<li data-code="user_not_found"><b>Looking up an account that does not exist.</b> Only staff are ever told this; anyone else gets "no access": <span class="says">"No such user."</span></li>
+<li data-code="platform_admin_exists"><b>Giving console access to someone who has it.</b> You read: <span class="says">"That person already has staff console access."</span></li>
+<li data-code="cannot_revoke_own_console_access"><b>Removing your own console access.</b> You read: <span class="says">"You cannot remove your own console access. Ask another platform admin to do it."</span></li>
+<li data-code="password_reset_not_sent"><b>Sending a reset link to someone who signs in through their school.</b> No link is sent: <span class="says">"No reset link was sent: this account signs in through its organisation."</span></li>
+<li data-code="attempt_in_progress"><b>Clearing a person's progress on a station while one session is still running.</b> You read: <span class="says">"One attempt at this station is still running; end it first."</span></li>
+<li data-code="invalid_trial_transcript"><b>Trying out a marking scheme on a transcript with nothing the candidate said.</b> You read: <span class="says">"Give one transcript to mark, with at least one line the candidate said."</span></li>
+</ul></div>
+
+<h3 class="ch">Background work, mail and messages</h3>
+<p>Marking, emails, reminders and the checks described elsewhere in this guide run as background tasks. An email is tried up to 12 times, waiting longer each time, over about five hours, and is then set aside for a person to retry.</p>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="job_not_retryable"><b>Retrying a task that cannot be retried here</b>, such as a failed marking. You read: <span class="says">"That task cannot be retried here. A failed marking is retried from its attempt."</span></li>
+<li data-code="job_not_cancellable"><b>Cancelling a task that is running normally.</b> You read: <span class="says">"That task is running normally, so it cannot be cancelled. Reload the list."</span></li>
+<li data-code="job_not_found"><b>A task that no longer exists.</b> You read: <span class="says">"That background task does not exist. Reload the list."</span></li>
+<li data-code="message_not_retryable"><b>Retrying an email that was sent, or is already queued again.</b> You read: <span class="says">"That message is not waiting for a retry. Reload the list."</span></li>
+<li data-code="message_not_repliable"><b>Replying in the product to a contact message sent without signing in.</b> You read: <span class="says">"That message was sent without signing in; reply by email."</span></li>
+<li data-code="message_not_found"><b>A contact message that does not exist.</b> You read: <span class="says">"No such message."</span></li>
+</ul></div>
+
+<h3 class="ch">Study material</h3>
+<p>Slide decks, summaries, articles and podcasts are written as drafts, can be drafted by the AI, have their script checked, are voiced, and are then published. A published item is replaced, not edited.</p>
+<div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain">
+<li data-code="media_not_editable"><b>Editing a published item in place.</b> You read: <span class="says">"A published item's content is replaced, not edited in place."</span></li>
+<li data-code="media_not_deletable"><b>Deleting a published item.</b> You read: <span class="says">"Only drafts can be deleted."</span></li>
+<li data-code="media_already_published"><b>Publishing something already published.</b> You read: <span class="says">"That is already published."</span></li>
+<li data-code="media_not_published"><b>Unpublishing something that is not published.</b> You read: <span class="says">"That is not published."</span></li>
+<li data-code="media_being_produced"><b>Saving a draft while it is being voiced.</b> You read: <span class="says">"Production is in progress for this item; wait for it to finish or stop it."</span></li>
+<li data-code="slug_taken"><b>Two items with the same title.</b> You read: <span class="says">"Something with that title already exists."</span></li>
+<li data-code="unusable_title"><b>A title with no letters or numbers.</b> You read: <span class="says">"That title has nothing a URL can be made from."</span></li>
+<li data-code="unknown_media_kind"><b>A kind of material we do not have.</b> You read: <span class="says">"That is not a kind of study material."</span></li>
+<li data-code="invalid_media_status"><b>Filtering the list by something other than draft, published or all.</b> You read: <span class="says">"Status must be draft, published, or all."</span></li>
+<li data-code="script_not_checked"><b>Voicing a script that has not been checked</b>, or was edited since. You read: <span class="says">"Write and check the script before voicing it."</span></li>
+<li data-code="av_already_running"><b>Starting production twice.</b> You read: <span class="says">"Production is already in progress for this item."</span></li>
+<li data-code="av_not_running"><b>Stopping production that is not running.</b> You read: <span class="says">"Nothing is running on this item."</span></li>
+<li data-code="media_wrong_kind"><b>Narrating something that is not narrated</b>, such as an article. You read: <span class="says">"That operation does not apply to this kind of study material."</span></li>
+<li data-code="claim_outside_item"><b>A fact-check note placed on a slide the deck does not have.</b> You read: <span class="says">"A claim names a slide this item does not have."</span></li>
+<li data-code="station_has_no_template"><b>Asking the AI to draft a station that has no template.</b> You read: <span class="says">"This station has no template, so it cannot be drafted."</span></li>
+<li data-code="generation_empty"><b>The AI wrote nothing usable.</b> No empty draft is saved: <span class="says">"The model wrote no slides. Phrase the brief as the deck to write and try again."</span></li>
+<li data-code="generation_unavailable"><b>AI writing is not set up</b> on this copy of the product. You read: <span class="says">"Content generation is not configured on this environment."</span></li>
+<li data-code="av_unavailable"><b>Voicing is not set up</b> on this copy of the product. You read: <span class="says">"Audio/video production is not configured on this environment."</span></li>
+</ul></div>
+</section>
+
+<!-- ======================= CHAPTER 7 ======================= -->
+<section class="stage" id="c7">
+<div class="stage-head"><div class="num">Chapter 7</div><h2>How the sides connect</h2><p>The three arms share one engine, one account per person, and one library. This chapter shows where they meet and where they deliberately do not.</p></div>
+<div class="table-wrap"><table><caption>The same consultation, marked two ways</caption><thead><tr><th></th><th>Practising alone</th><th>In a school or employer</th></tr></thead><tbody>
+<tr><td class="k">AI marking</td><td>Yes, shown straight away</td><td>Yes, as a starting point for reviewers</td></tr>
+<tr><td class="k">Human review</td><td>No</td><td>Yes: one review per reviewer, combined as in chapter 4</td></tr>
+<tr><td class="k">Decision</td><td>No</td><td>In a real exam: drafted, signed off, then released</td></tr>
+<tr><td class="k">Who pays</td><td>The person, or a school giving practice access</td><td>The organisation, by contract</td></tr>
+<tr><td class="k">Is access checked</td><td>Yes, trial or plan</td><td>Never on exam day</td></tr>
+</tbody></table></div>
+<ol class="plain" style="margin-top:14px">
+<li><b>One person, one account.</b> A doctor who practises alone and is also a trainee at a school uses one sign-in and switches between the two.</li>
+<li><b>Practice access from a school.</b> A school can pay for its trainees to practise alone. That access ends on the date the school sets, or when the school is suspended.</li>
+<li><b>Shared library.</b> A school can bring one of our exams into its own programmes instead of writing one from scratch.</li>
+<li><b>Community across sides.</b> A post can be addressed to everyone, to one organisation, or to a group within it.</li>
+</ol>
+</section>
+
+<!-- ======================= CHAPTER 8 ======================= -->
+<section class="stage" id="c8">
+<div class="stage-head"><div class="num">Chapter 8</div><h2>Reference</h2><p>The roles, the emails, everything the product can refuse, and the words used in this guide.</p></div>
+
+<h3 class="ch">The roles</h3>
+<div class="table-wrap"><table class="gloss"><caption>Every role the product knows</caption><tbody>
+<tr><td class="k">Owner</td><td>The person who holds an organisation. Can do everything an administrator can.</td></tr>
+<tr><td class="k">Administrator</td><td>Runs an organisation: its people, content, sittings, reviews and decisions.</td></tr>
+<tr><td class="k">Institution administrator</td><td>An administrator role specific to schools and employers, with the same senior powers: senior review and sign-off.</td></tr>
+<tr><td class="k">Partner administrator</td><td>Looks after a partner's reporting.</td></tr>
+<tr><td class="k">Supervisor</td><td>Leads circuits on exam day and reviews the ones they led.</td></tr>
+<tr><td class="k">Trainee</td><td>A candidate on a school's or employer's roster.</td></tr>
+<tr><td class="k">Practice user</td><td>Someone practising alone.</td></tr>
+<tr><td class="k">Staff</td><td>Our own team, with console access (chapter 6).</td></tr>
+</tbody></table></div>
+
+<h3 class="ch">The emails we send</h3>
+<div class="table-wrap"><table><caption>All 23 emails, grouped by who gets them</caption><thead><tr><th>Group</th><th>Emails</th></tr></thead><tbody>
+<tr><td class="k">Your account</td><td>Password reset link. Email change confirmation, to the new address. Email change notice, to the old address. Email changed. Account reopened. Account wiped after 30 days.</td></tr>
+<tr><td class="k">Joining</td><td>Invitation. Invitation reminder, on day 5. Invitation to practice access from a school. Practice access granted.</td></tr>
+<tr><td class="k">Money</td><td>Payment receipt. Access ending in 7 days. Your referral code was used.</td></tr>
+<tr><td class="k">Exams</td><td>Sitting scheduled. Exam-day reminder, sent in the morning. A review to do. Your result is released. Your organisation's contract has ended.</td></tr>
+<tr><td class="k">Peer practice</td><td>Session reminder, an hour before. Report of abuse, to our team. Report of a no-show, to our team.</td></tr>
+<tr><td class="k">Our team</td><td>A partner's estimated spend crossed a threshold.</td></tr>
+<tr><td class="k">Coming back</td><td>A reminder to someone who has not practised for a while.</td></tr>
+</tbody></table></div>
+
+<h3 class="ch">Refusals a person never meets on a screen</h3>
+<p>Every refusal in the product appears somewhere in this guide. Most are under the stage where a person first meets them. These remaining ones are met by machines: the AI workers, the card provider, a school's own sign-in system, our older apps, or a fault. They are listed so the guide is complete.</p>
+<div class="table-wrap"><table class="refuse"><caption>Machine-facing and general refusals</caption><thead><tr><th>Who meets it</th><th>Situation</th><th>What it says</th></tr></thead><tbody>
+<tr data-code="internal_error"><td class="k">Anyone</td><td>Something broke that we did not expect. It is logged for us to fix.</td><td class="says">"Something went wrong."</td></tr>
+<tr data-code="not_found"><td class="k">Anyone</td><td>The general answer when nothing more specific applies: nothing is there, or it is hidden from you.</td><td class="says">"Resource not found."</td></tr>
+<tr data-code="invalid_input"><td class="k">Anyone</td><td>The general answer to a request that is not valid.</td><td class="says">"The request was not valid."</td></tr>
+<tr data-code="conflict"><td class="k">Anyone</td><td>The general answer to a clash with the current state.</td><td class="says">"The request conflicts with the current state."</td></tr>
+<tr data-code="gone"><td class="k">Anyone</td><td>Something that existed has been withdrawn for good.</td><td class="says">"This resource is no longer available."</td></tr>
+<tr data-code="unavailable"><td class="k">Anyone</td><td>A service the product relies on could not be reached.</td><td class="says">"A dependency is unavailable."</td></tr>
+<tr data-code="invalid_signature"><td class="k">Card provider</td><td>A message claiming to be from the card provider did not prove it.</td><td class="says">"That webhook could not be verified."</td></tr>
+<tr data-code="invalid_webhook"><td class="k">Card provider</td><td>A message from the card provider could not be applied. Kept for a person to look at.</td><td class="says">"That webhook payload was not usable."</td></tr>
+<tr data-code="unknown_plan"><td class="k">Card provider</td><td>A payment for a price we have no plan for. Kept for a person to look at.</td><td class="says">"No plan for that price."</td></tr>
+<tr data-code="payment_not_yet_recorded"><td class="k">Card provider</td><td>A refund or dispute arrived before the payment it is about. The provider tries again later.</td><td class="says">"No payment is recorded for that charge yet."</td></tr>
+<tr data-code="attempt_mismatch"><td class="k">AI worker</td><td>A worker sent back results for a different session than the one it was given.</td><td class="says">"That payload belongs to a different attempt."</td></tr>
+<tr data-code="assistant_session_not_ready"><td class="k">AI worker</td><td>A helper conversation was not ready for a worker to pick up.</td><td class="says">"That session has no rendered instructions."</td></tr>
+<tr data-code="unknown_assistant_type"><td class="k">AI worker</td><td>A helper conversation of a kind no worker handles.</td><td class="says">"No assistant handles that kind of session."</td></tr>
+<tr data-code="unknown_tool"><td class="k">AI tutor</td><td>The tutor asked for a tool it does not have.</td><td class="says">"No such tool."</td></tr>
+<tr data-code="tool_arguments_invalid"><td class="k">AI tutor</td><td>The tutor used a tool wrongly.</td><td class="says">"That tool was called with arguments it does not accept."</td></tr>
+<tr data-code="scim_unauthorized"><td class="k">School sign-in system</td><td>Keeping the roster in step, without a valid key from that school.</td><td class="says">"A valid SCIM bearer token for this organisation is required."</td></tr>
+<tr data-code="scim_invalid_filter"><td class="k">School sign-in system</td><td>A search we do not understand.</td><td class="says">"Only a single `attribute eq "value"` filter is supported."</td></tr>
+<tr data-code="scim_invalid_value"><td class="k">School sign-in system</td><td>A request that is not valid.</td><td class="says">"The request was not valid SCIM."</td></tr>
+<tr data-code="scim_mutability"><td class="k">School sign-in system</td><td>Changing a person's email address, which links the account.</td><td class="says">"userName cannot be changed; it is the address the account was linked by."</td></tr>
+<tr data-code="scim_not_found"><td class="k">School sign-in system</td><td>A person or group not on this school's roster.</td><td class="says">"No such resource."</td></tr>
+<tr data-code="scim_uniqueness"><td class="k">School sign-in system</td><td>A person or group that already exists.</td><td class="says">"That resource already exists."</td></tr>
+<tr data-code="scim_token_not_found"><td class="k">School administrator</td><td>Removing a roster key that does not exist.</td><td class="says">"No such SCIM token."</td></tr>
+<tr data-code="invalid_legacy_token"><td class="k">Our older apps</td><td>Moving across from our older app with a sign-in that has expired.</td><td class="says">"Sign in again."</td></tr>
+<tr data-code="legacy_account_not_imported"><td class="k">Our older apps</td><td>Moving across before the account has been copied over.</td><td class="says">"This account has not been migrated yet."</td></tr>
+<tr data-code="legacy_exchange_unavailable"><td class="k">Our older apps</td><td>Moving across is not set up on this copy of the product.</td><td class="says">"Legacy sign-in is not available here."</td></tr>
+</tbody></table></div>
+
+<h3 class="ch">Glossary</h3>
+<div class="table-wrap"><table class="gloss"><tbody>
+<tr><td class="k">OSCE</td><td>An exam in which a doctor goes round stations, each a short consultation with a patient, and is marked on each.</td></tr>
+<tr><td class="k">Station</td><td>One case: who the patient is, what they say, what the doctor is told, and how it is marked.</td></tr>
+<tr><td class="k">Consultation, session or attempt</td><td>One go at one station, recorded and marked.</td></tr>
+<tr><td class="k">Marking scheme</td><td>The areas a consultation is rated on, and the ratings allowed.</td></tr>
+<tr><td class="k">Debrief</td><td>A spoken talk-through of a finished consultation with an AI tutor.</td></tr>
+<tr><td class="k">Trial</td><td>Free practice: 3 stations finished, 3 set up in lists, 14 days.</td></tr>
+<tr><td class="k">Plan</td><td>Paid access to one exam for a fixed time.</td></tr>
+<tr><td class="k">Practice list</td><td>A person's own mock exam of chosen stations.</td></tr>
+<tr><td class="k">Programme</td><td>An exam a school runs.</td></tr>
+<tr><td class="k">Sitting</td><td>One occasion of a programme, as a training session or a real exam.</td></tr>
+<tr><td class="k">Circuit</td><td>A group going round the stations together on a sitting.</td></tr>
+<tr><td class="k">Slot</td><td>One candidate at one station on a circuit.</td></tr>
+<tr><td class="k">Roster</td><td>A school's list of its trainees.</td></tr>
+<tr><td class="k">Cohort</td><td>A year group on the roster.</td></tr>
+<tr><td class="k">Review</td><td>A person's ratings of one recording.</td></tr>
+<tr><td class="k">Decision</td><td>A candidate's outcome on a real exam, signed off then released.</td></tr>
+<tr><td class="k">Partner</td><td>An outside organisation that sends people to us.</td></tr>
+<tr><td class="k">Suspended</td><td>An organisation whose access is paused. Nothing is deleted.</td></tr>
+</tbody></table></div>
+</section>
+
+<!-- ======================= CHAPTER 9 ======================= -->
+<section class="stage" id="c9">
+<div class="stage-head"><div class="num">Chapter 9</div><h2>What is still rough</h2><p>The places we know are not finished. Each is tracked, and this list is taken from our own record of gaps.</p></div>
+<ul class="plain">
+<li><span class="chip s-rough">Rough</span> <b>One at a time.</b> Removing several team members, or resending or removing several trainees, has to be done one person at a time on screen, though the product could do it in one step.</li>
+<li><span class="chip s-gap">Open</span> <b>Undecided results.</b> The results screen shows how many decisions are undecided. Whether it should also show a score column is waiting for a walk-through on the test copy of the product.</li>
+<li><span class="chip s-gap">Open</span> <b>An examiner role.</b> Whether to add a separate role for examiners who only review, beside supervisor and administrator, is a product decision still to make.</li>
+<li><span class="chip s-gap">Open</span> <b>Remove, delete or wipe.</b> The roster offers three ways to deal with a leaver. Explanations are on screen; whether to fold the practice-access tab into each person's row is still to decide.</li>
+<li><span class="chip s-gap">Open</span> <b>Starting to practise.</b> Whether a session is opened before the person has chosen to begin is waiting for a check in a real browser.</li>
+</ul>
+</section>
+
+<footer class="foot"><p>Written for anyone who wants to understand how OSCE Guide works. Every "what can go wrong" row is checked against the product's own list of refusals, so a refusal added to the product without a row here fails our checks.</p></footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How Voice Sessions Work</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ground: #f3f5f4;
+    --panel: #ffffff;
+    --panel-2: #f8faf9;
+    --ink: #17242a;
+    --ink-2: #4d5c63;
+    --ink-3: #7e8d95;
+    --rule: #d3dbda;
+    --rule-2: #e7ecea;
+    --accent: #0e6f68;
+    --accent-ink: #0a524d;
+    --accent-wash: #e2f0ee;
+    --accent-wash-2: #f0f7f6;
+    --ok: #2f6d3f;
+    --ok-wash: #e3efe4;
+    --rough: #96590a;
+    --rough-wash: #f9eeda;
+    --gap: #9c3a34;
+    --gap-wash: #f8e8e5;
+    --shadow: 0 1px 2px rgba(23, 36, 42, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131a1d; --panel: #1a2327; --panel-2: #1f292d;
+      --ink: #e4eaea; --ink-2: #a7b4b6; --ink-3: #75858a;
+      --rule: #2b3639; --rule-2: #222d31;
+      --accent: #3fb9ad; --accent-ink: #7ad8cd; --accent-wash: #16302e; --accent-wash-2: #16262a;
+      --ok: #76c088; --ok-wash: #182c1d;
+      --rough: #dfa34e; --rough-wash: #30240f;
+      --gap: #e58a80; --gap-wash: #33191a;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #131a1d; --panel: #1a2327; --panel-2: #1f292d;
+    --ink: #e4eaea; --ink-2: #a7b4b6; --ink-3: #75858a;
+    --rule: #2b3639; --rule-2: #222d31;
+    --accent: #3fb9ad; --accent-ink: #7ad8cd; --accent-wash: #16302e; --accent-wash-2: #16262a;
+    --ok: #76c088; --ok-wash: #182c1d;
+    --rough: #dfa34e; --rough-wash: #30240f;
+    --gap: #e58a80; --gap-wash: #33191a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15.5px;
+    line-height: 1.6;
+    padding-inline: clamp(16px, 4vw, 48px);
+    padding-block: 44px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main { max-width: 880px; margin: 0 auto; }
+
+  h1, h2, h3, h4 {
+    font-family: "Newsreader", Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 { font-size: clamp(32px, 5vw, 46px); line-height: 1.08; letter-spacing: -0.015em; }
+  h2 { font-size: clamp(25px, 3.4vw, 30px); line-height: 1.18; letter-spacing: -0.01em; }
+  h3 { font-size: 20px; line-height: 1.25; }
+  h4 {
+    font-family: "Public Sans", sans-serif;
+    font-size: 15.5px; font-weight: 700; line-height: 1.4;
+  }
+  p { margin: 0; max-width: 66ch; }
+  a { color: var(--accent-ink); text-underline-offset: 2px; }
+  a:focus-visible, .spine a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  strong { font-weight: 600; }
+
+  .eyebrow {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    font-weight: 700; color: var(--ink-3);
+  }
+
+  /* ---------- header ---------- */
+  header.top { display: grid; gap: 16px; padding-bottom: 32px; border-bottom: 2px solid var(--rule); }
+  header.top .lede { font-size: 17.5px; color: var(--ink-2); max-width: 62ch; }
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 8px;
+  }
+  .facts div { background: var(--panel); padding: 10px 13px; }
+  .facts .k { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+  .facts .v { font-size: 14.5px; font-weight: 600; margin-top: 2px; }
+
+  /* ---------- generic blocks ---------- */
+  section.band { margin-top: 60px; }
+  .band > .eyebrow { display: block; margin-bottom: 8px; }
+  .band > h2 + p, .band > p + p { margin-top: 12px; }
+  .band > h2 { margin-bottom: 14px; }
+
+  .note {
+    background: var(--panel); border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    padding: 14px 16px; margin-top: 18px; box-shadow: var(--shadow);
+    display: grid; gap: 6px;
+  }
+  .note h4 { font-size: 14px; }
+  .note p { font-size: 14.5px; color: var(--ink-2); }
+
+  /* ---------- status chips ---------- */
+  .chip {
+    display: inline-block; font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 2px; white-space: nowrap; vertical-align: middle;
+  }
+  .s-ok { color: var(--ok); background: var(--ok-wash); }
+  .s-rough { color: var(--rough); background: var(--rough-wash); }
+  .s-gap { color: var(--gap); background: var(--gap-wash); }
+
+  .legend { display: grid; gap: 10px; margin-top: 18px; }
+  .legend div { display: grid; grid-template-columns: 116px 1fr; gap: 14px; align-items: start; font-size: 14.5px; color: var(--ink-2); }
+  @media (max-width: 520px) { .legend div { grid-template-columns: 1fr; gap: 4px; } }
+
+  /* ---------- figures ---------- */
+  figure {
+    margin: 26px 0 0; padding: 20px 18px 16px;
+    background: var(--panel); border: 1px solid var(--rule); box-shadow: var(--shadow);
+  }
+  figure svg { display: block; width: 100%; max-width: 100%; height: auto; color: var(--ink); }
+  figcaption {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule-2);
+    font-size: 13.5px; color: var(--ink-2); max-width: 70ch;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  .svg-scroll { overflow-x: auto; }
+  .svg-scroll > svg { min-width: 460px; }
+
+  /* ---------- journey spine ---------- */
+  .spine {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 22px;
+  }
+  .spine a {
+    background: var(--panel); padding: 13px 14px 15px; text-decoration: none; color: var(--ink);
+    display: grid; gap: 3px; align-content: start;
+  }
+  .spine a:hover { background: var(--accent-wash-2); }
+  .spine .n {
+    font-family: "Newsreader", serif; font-size: 13px; font-weight: 600;
+    color: var(--accent); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .spine .t { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+  .spine .who { font-size: 12.5px; color: var(--ink-2); }
+  .spine .when { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+
+  /* ---------- stage ---------- */
+  section.stage { margin-top: 72px; scroll-margin-top: 20px; }
+  .stage-head { display: grid; gap: 10px; padding-bottom: 18px; border-bottom: 2px solid var(--rule); }
+  .stage-head .num {
+    font-family: "Newsreader", serif; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);
+  }
+  .stage-head .meta {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 10px 24px; font-size: 14px; color: var(--ink-2); margin-top: 2px;
+  }
+  .stage-head .meta b { color: var(--ink); font-weight: 600; display: block; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+
+  .steps { display: grid; gap: 0; margin-top: 4px; }
+  .step {
+    display: grid; grid-template-columns: 132px 1fr; gap: 0 24px;
+    padding: 22px 0; border-bottom: 1px solid var(--rule-2);
+  }
+  .step > .actor {
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--accent-ink); padding-top: 4px; line-height: 1.4;
+  }
+  .step > .actor small {
+    display: block; text-transform: none; letter-spacing: 0; font-weight: 400;
+    color: var(--ink-3); font-size: 12px; margin-top: 3px;
+  }
+  .step > .body { display: grid; gap: 10px; }
+  .step > .body p { font-size: 15px; color: var(--ink-2); }
+  .step > .body p b, .step > .body li b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 620px) {
+    .step { grid-template-columns: 1fr; gap: 8px; padding: 20px 0; }
+  }
+
+  ul.plain { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14.5px; color: var(--ink-2); }
+  ul.plain li::marker { color: var(--ink-3); }
+
+  /* ---------- collected-fields panel ---------- */
+  .collect {
+    background: var(--panel-2); border: 1px solid var(--rule); box-shadow: var(--shadow);
+    padding: 16px 18px; display: grid; gap: 12px; margin-top: 4px;
+  }
+  .collect > .title {
+    font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+    font-weight: 700; color: var(--accent-ink);
+  }
+  .fields { display: grid; gap: 0; }
+  .fields > div {
+    display: grid; grid-template-columns: 190px 1fr; gap: 4px 18px;
+    padding: 9px 0; border-top: 1px solid var(--rule-2); align-items: start;
+  }
+  .fields > div:first-child { border-top: 0; padding-top: 0; }
+  .fields .f { font-weight: 600; font-size: 14px; line-height: 1.45; }
+  .fields .d { font-size: 14px; color: var(--ink-2); }
+  .fields .d em { font-style: normal; color: var(--ink); font-weight: 600; }
+  .req {
+    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--ink-3); border: 1px solid var(--rule);
+    padding: 0 5px; border-radius: 2px; margin-left: 6px; vertical-align: 1px; white-space: nowrap;
+  }
+  .req.must { color: var(--accent-ink); border-color: var(--accent); }
+  @media (max-width: 620px) {
+    .fields > div { grid-template-columns: 1fr; gap: 2px; }
+  }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; margin-top: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
+  caption {
+    text-align: left; font-size: 11px; letter-spacing: 0.09em; text-transform: uppercase;
+    font-weight: 700; color: var(--ink-3); padding-bottom: 10px;
+  }
+  th {
+    text-align: left; font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--ink-3); font-weight: 700; padding: 0 14px 9px 0; border-bottom: 1px solid var(--rule);
+    vertical-align: bottom;
+  }
+  td { padding: 11px 14px 11px 0; border-bottom: 1px solid var(--rule-2); vertical-align: top; color: var(--ink-2); }
+  td:first-child, th:first-child { padding-left: 0; }
+  td.k { color: var(--ink); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: 1px solid var(--rule); }
+
+  /* permission matrix */
+  table.matrix { min-width: 560px; }
+  table.matrix th.rot { text-align: center; padding: 0 6px 9px; font-size: 10px; }
+  table.matrix td.c { text-align: center; padding: 10px 6px; font-weight: 700; }
+  table.matrix td.yes { color: var(--ok); }
+  table.matrix td.no { color: var(--ink-3); font-weight: 400; }
+  table.matrix tbody tr:hover td { background: var(--accent-wash-2); }
+
+  /* ---------- health strip ---------- */
+  .health { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin-top: 20px; }
+  .health > div {
+    background: var(--panel); display: grid; grid-template-columns: 30px 1fr 128px;
+    gap: 14px; align-items: center; padding: 11px 14px;
+  }
+  .health .n { font-family: "Newsreader", serif; font-size: 17px; color: var(--ink-3); }
+  .health .t { font-size: 14.5px; font-weight: 600; }
+  .health .t small { display: block; font-weight: 400; font-size: 12.5px; color: var(--ink-2); margin-top: 1px; }
+  .health .s { text-align: right; }
+  @media (max-width: 560px) {
+    .health > div { grid-template-columns: 26px 1fr; }
+    .health .s { grid-column: 2; text-align: left; margin-top: 2px; }
+  }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    padding: 14px 16px; margin-top: 18px; display: grid; gap: 6px;
+    border: 1px solid var(--rule); border-left-width: 3px; background: var(--panel);
+  }
+  .callout h4 { font-size: 14px; }
+  .callout p, .callout ul { font-size: 14.5px; color: var(--ink-2); }
+  .callout.rough { border-left-color: var(--rough); background: var(--rough-wash); }
+  .callout.gap { border-left-color: var(--gap); background: var(--gap-wash); }
+  .callout.ok { border-left-color: var(--ok); background: var(--ok-wash); }
+  .callout.rough h4 { color: var(--rough); }
+  .callout.gap h4 { color: var(--gap); }
+  .callout.ok h4 { color: var(--ok); }
+  .callout.rough p, .callout.gap p, .callout.ok p { color: var(--ink); }
+
+  .parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1px;
+    background: var(--rule); border: 1px solid var(--rule); margin-top: 10px; }
+  .parts a { background: var(--panel); padding: 16px 18px; text-decoration: none; color: var(--ink);
+    display: grid; gap: 5px; align-content: start; }
+  .parts a:hover { background: var(--accent-wash-2); }
+  .parts .pn { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--accent); }
+  .parts .pt { font-family: "Newsreader", Georgia, serif; font-size: 22px; line-height: 1.15; }
+  .parts .pd { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+
+  /* worked examples */
+  .eg {
+    display: block; margin-top: 5px; font-size: 13.5px; color: var(--accent-ink);
+    background: var(--accent-wash); padding: 5px 9px; border-radius: 2px;
+  }
+  .eg b { font-weight: 700; }
+  .fields .eg { font-size: 13px; }
+  .example {
+    background: var(--accent-wash-2); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); padding: 14px 16px; margin-top: 18px;
+    display: grid; gap: 8px;
+  }
+  .example h4 { font-size: 13.5px; color: var(--accent-ink); }
+  .example p, .example li { font-size: 14.5px; color: var(--ink); }
+  .example ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; }
+  .example ul li::marker { color: var(--accent); }
+
+  table.gloss { min-width: 560px; }
+  table.gloss td.w { color: var(--ink); font-weight: 700; white-space: nowrap; font-size: 14.5px; }
+  table.gloss td.ex { color: var(--accent-ink); }
+
+  footer {
+    margin-top: 72px; padding-top: 20px; border-top: 2px solid var(--rule);
+    font-size: 13.5px; color: var(--ink-2);
+  }
+  footer p { max-width: 74ch; }
+  footer p + p { margin-top: 10px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  .seq-wrap{overflow-x:auto}
+  .seq-wrap>svg{min-width:680px}
+  svg text{font-family:"Public Sans",system-ui,sans-serif;fill:var(--ink)}
+  svg .lane-box{fill:var(--accent-wash);stroke:var(--accent);stroke-width:1}
+  svg .lane-txt{font-size:12.5px;font-weight:700;fill:var(--accent-ink)}
+  svg .life{stroke:var(--rule);stroke-width:1.2;stroke-dasharray:4 4}
+  svg .msg{stroke:var(--accent);stroke-width:1.6;fill:none}
+  svg .msg.dash{stroke-dasharray:5 4;stroke:var(--ink-3)}
+  svg .msg.warn{stroke:var(--rough)}
+  svg .lbl{font-size:12px;fill:var(--ink);text-anchor:middle}
+  svg .num{fill:var(--accent);}
+  svg .numt{fill:#fff;font-size:10px;font-weight:700;text-anchor:middle}
+  svg .ax{font-size:11.5px;fill:var(--ink-2)}
+  svg .tick{stroke:var(--rule);stroke-width:1}
+  svg .b1{fill:var(--accent)} svg .b2{fill:var(--ok)} svg .b3{fill:var(--rough)} svg .b4{fill:var(--gap)} svg .b5{fill:var(--ink-3)}
+  svg .bt{font-size:11.5px;font-weight:600;fill:#fff}
+  ol.plain{margin:0;padding-left:22px;display:grid;gap:6px;font-size:14.5px;color:var(--ink-2)}
+  ol.plain li::marker{color:var(--accent);font-weight:700}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;background:var(--accent-wash-2);padding:1px 5px;border-radius:2px;color:var(--ink)}
+  .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:6px}
+</style></head><body>
+<main>
+<header class="top">
+  <div class="eyebrow">How the product works · written for the product team</div>
+  <h1>How the voice sessions work</h1>
+  <p class="lede">When someone talks to a simulated patient, a tutor or the help assistant, a small program on a server listens, thinks and answers out loud. This page follows each kind of session step by step, in plain words, and says what you would see if a step fails.</p>
+  <div class="facts">
+    <div><div class="k">Session types</div><div class="v">Practice, debrief, help, circuit, peer</div></div>
+    <div><div class="k">Programs involved</div><div class="v">Two workers, one backend</div></div>
+    <div><div class="k">Covers</div><div class="v">The voice workers and the backend</div></div>
+    <div><div class="k">Not covered</div><div class="v">The old voice programs, switched off</div></div>
+  </div>
+  <div class="parts">
+    <a href="#s1"><span class="pn">1</span><span class="pt">Practice consultation</span><span class="pd">The simulated patient, from room to mark.</span></a>
+    <a href="#s2"><span class="pn">2</span><span class="pt">Debrief with the tutor</span><span class="pd">Ten minutes, PEARLS, a clock.</span></a>
+    <a href="#s3"><span class="pn">3</span><span class="pt">Help assistant</span><span class="pd">What Athena can and cannot do.</span></a>
+    <a href="#s4"><span class="pn">4</span><span class="pt">Circuits and peer practice</span><span class="pd">Exam day, and two learners.</span></a>
+    <a href="#s5"><span class="pn">5</span><span class="pt">Under the hood</span><span class="pd">Workers, models, timings.</span></a>
+    <a href="#s6"><span class="pn">6</span><span class="pt">Glossary</span><span class="pd">Every technical word, once.</span></a>
+  </div>
+</header>
+
+<section class="band">
+  <span class="eyebrow">Read this first</span>
+  <h2>The cast, in one minute</h2>
+  <p>Think of a voice session as a <b>private phone call</b> that an AI joins. Five parties take part, and every diagram below uses the same five.</p>
+  <div class="two">
+    <div class="note"><h4>The browser</h4><p>The learner's page. It holds the microphone and the speakers. It never talks to an AI model directly.</p></div>
+    <div class="note"><h4>platform-api (the backend)</h4><p>The one server that knows who the learner is, which station they are on, and what the patient should say. It writes the patient's instructions and, afterwards, marks the transcript.</p></div>
+    <div class="note"><h4>LiveKit (the room)</h4><p>A service that carries live audio. A <b>room</b> is a private call; people and programs join it with a one-use pass called a <b>token</b>.</p></div>
+    <div class="note"><h4>The worker</h4><p>Our program that joins the room as the patient (or tutor, or helper). It does not decide what to say: it asks the backend, then listens and speaks.</p></div>
+    <div class="note"><h4>AI models</h4><p>Three jobs: <b>speech-to-text</b> (ears), a <b>language model</b> (brain), <b>text-to-speech</b> (voice).</p></div>
+  </div>
+  <div class="callout ok"><h4>The one rule that shapes everything</h4><p>The worker never marks anything. It delivers a transcript back and stops. Scoring happens later, on the backend. If a mark looks wrong, the transcript is the first thing to check, not the voice.</p></div>
+</section>
+<section class="stage" id="s1"><div class="stage-head"><div class="num">Session 1</div><h2>A practice consultation: the simulated patient</h2><p>A learner starts a station and talks to an AI patient. Nobody else is in the room.</p></div><figure><div class="seq-wrap"><svg viewBox="0 0 900 594" role="img" aria-label="Practice consultation sequence" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs><line class="life" x1="70" y1="40" x2="70" y2="584"/><rect class="lane-box" x="8" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="70" y="21" text-anchor="middle">Browser</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="70" y="34" text-anchor="middle">the learner</text><line class="life" x1="260" y1="40" x2="260" y2="584"/><rect class="lane-box" x="198" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="260" y="21" text-anchor="middle">platform-api</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="260" y="34" text-anchor="middle">the backend</text><line class="life" x1="450" y1="40" x2="450" y2="584"/><rect class="lane-box" x="388" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="450" y="21" text-anchor="middle">LiveKit</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="450" y="34" text-anchor="middle">the room</text><line class="life" x1="640" y1="40" x2="640" y2="584"/><rect class="lane-box" x="578" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="640" y="21" text-anchor="middle">Worker</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="640" y="34" text-anchor="middle">the patient</text><line class="life" x1="830" y1="40" x2="830" y2="584"/><rect class="lane-box" x="768" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="830" y="21" text-anchor="middle">AI models</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="830" y="34" text-anchor="middle">speech + brain</text><line class="msg" x1="70" y1="94" x2="260" y2="94" marker-end="url(#ah)"/><text class="lbl" x="165" y="86">Start the station</text><circle class="num" cx="80" cy="85" r="8"/><text class="numt" x="80" y="88.5">1</text><line class="msg" x1="70" y1="140" x2="260" y2="140" marker-end="url(#ah)"/><text class="lbl" x="165" y="132">Ask for a voice token</text><circle class="num" cx="80" cy="131" r="8"/><text class="numt" x="80" y="134.5">2</text><line class="msg" x1="260" y1="186" x2="450" y2="186" marker-end="url(#ah)"/><text class="lbl" x="355" y="178">Mint token + dispatch worker</text><circle class="num" cx="270" cy="177" r="8"/><text class="numt" x="270" y="180.5">3</text><line class="msg" x1="450" y1="232" x2="640" y2="232" marker-end="url(#ah)"/><text class="lbl" x="545" y="224">Hands the job to a free worker</text><circle class="num" cx="460" cy="223" r="8"/><text class="numt" x="460" y="226.5">4</text><line class="msg" x1="640" y1="278" x2="260" y2="278" marker-end="url(#ah)"/><text class="lbl" x="450" y="270">Fetch the attempt (bootstrap)</text><circle class="num" cx="630" cy="269" r="8"/><text class="numt" x="630" y="272.5">5</text><line class="msg" x1="70" y1="324" x2="450" y2="324" marker-end="url(#ah)"/><text class="lbl" x="260" y="316">Join the room, turn mic on</text><circle class="num" cx="80" cy="315" r="8"/><text class="numt" x="80" y="318.5">6</text><line class="msg" x1="70" y1="370" x2="640" y2="370" marker-end="url(#ah)"/><text class="lbl" x="355" y="362">Learner speaks (audio)</text><circle class="num" cx="80" cy="361" r="8"/><text class="numt" x="80" y="364.5">7</text><line class="msg" x1="640" y1="416" x2="830" y2="416" marker-end="url(#ah)"/><text class="lbl" x="735" y="408">Ears, brain, voice</text><circle class="num" cx="650" cy="407" r="8"/><text class="numt" x="650" y="410.5">8</text><line class="msg" x1="640" y1="462" x2="70" y2="462" marker-end="url(#ah)"/><text class="lbl" x="355" y="454">Patient replies (audio)</text><circle class="num" cx="630" cy="453" r="8"/><text class="numt" x="630" y="456.5">9</text><line class="msg" x1="640" y1="508" x2="260" y2="508" marker-end="url(#ah)"/><text class="lbl" x="450" y="500">Transcript chunks, then whole</text><circle class="num" cx="630" cy="499" r="8"/><text class="numt" x="630" y="502.5">10</text><path class="msg" d="M260 542 h28 v14 h-26" marker-end="url(#ah)"/><text class="lbl" style="text-anchor:start" x="296" y="552">Queue marking job</text><circle class="num" cx="246" cy="546" r="8"/><text class="numt" x="246" y="549.5">11</text></svg></div><figcaption><b>Figure 1.</b> One practice consultation. Solid arrows are requests; the numbers match the list below.</figcaption></figure><div class="note" style="margin-top:22px"><h4>Step by step</h4></div><ol class="plain"><li><b>Start.</b> The learner opens a station. The backend creates an <b>attempt</b> (one recorded try at a station). Without a seeded exam and a published rubric the backend refuses with an "unknown exam" error, which looks like a worker fault but is not.</li><li><b>Ask to join.</b> The browser asks the backend for a pass to the room. The backend only answers for the attempt's owner, and only if the attempt is not finished.</li><li><b>Pass and dispatch.</b> The backend issues a token for a room named after the attempt, and attaches a <b>dispatch</b> to it: a note telling LiveKit "send a patient worker to this room". The note carries only three strings: attempt id, which backend, and the candidate's reference. Everything else is fetched later, so the note cannot drift out of date.</li><li><b>A worker picks it up.</b> LiveKit offers the job to a worker whose name matches. The name is fixed for each environment, which is why a laptop must use its own (section 5).</li><li><b>Fetch the script.</b> The worker asks the backend for the attempt, proving who it is with a shared secret. The reply holds the patient's fully written instructions and the scenario. The worker refuses to start if the instructions are blank, and it never sees how the transcript will be marked.</li><li><b>Learner joins.</b> The browser checks the microphone, joins the room and waits. The worker waits up to 120 seconds for the candidate; after that it leaves quietly. If two workers arrive for one room (a duplicate dispatch), the one that sorts first stays and the other leaves.</li><li><b>Speech in.</b> The learner speaks. Deepgram (<code>nova-3-medical</code>) turns the audio into text.</li><li><b>Brain and voice.</b> A language model writes the patient's next line, in role, and a text-to-speech voice says it. Greetings come from a fixed greeting, not the model.</li><li><b>Speech out.</b> The patient's audio travels back through the room to the learner.</li><li><b>Transcript back.</b> As the talk goes on, the worker sends each message back to the backend. When the learner leaves, the room closes or the worker is removed, it sends the whole transcript once more. A non-success reply counts as a failed delivery.</li><li><b>Marking, backend side.</b> The completed transcript queues a marking job. A separate engine reads it against the rubric and stores the result. This is the part another team owns; the worker is already gone.</li></ol><div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain"><li><b>Learner presses start and sees a "waiting in line" screen.</b> Every seat is taken. The token route answers 202 with a place in line, and the page counts down until a seat frees up. This is normal under load, not a fault.</li><li><b>Room joins but nobody ever speaks.</b> The worker could not fetch the script (wrong secret, attempt missing or no rendered instructions) and returned without a word. The room looks fine and the patient never arrives. Check the worker logs for "bootstrap failed".</li><li><b>Two patient voices at once.</b> A duplicate dispatch. The worker tie-break removes one, but a token that attached a dispatch where the circuit also dispatches caused this in the past.</li><li><b>A finished consultation never gets a mark.</b> Usually the station has no patient information, so it rendered degraded and is silently never marked. Check the stored result, not the screen.</li><li><b>Patient voice sounds like the tutor, or breaks role.</b> Voice and model are settings, not code (section 5). A model swap should be re-measured before it ships.</li></ul></div></section><section class="stage" id="s2"><div class="stage-head"><div class="num">Session 2</div><h2>The debrief with the tutor</h2><p>After a consultation the learner can talk it through with an AI tutor for about ten minutes.</p></div><p style="margin-top:14px">A debrief is a second kind of attempt, tied to the consultation it discusses. It runs on the <b>same assessment worker</b> as the patient, but with a different script and a different (stronger) model. It needs a recorded consultation: with none, the backend refuses to start it.</p><figure><div class="seq-wrap"><svg viewBox="0 0 900 594" role="img" aria-label="Debrief sequence" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs><line class="life" x1="70" y1="40" x2="70" y2="584"/><rect class="lane-box" x="8" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="70" y="21" text-anchor="middle">Browser</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="70" y="34" text-anchor="middle">the learner</text><line class="life" x1="260" y1="40" x2="260" y2="584"/><rect class="lane-box" x="198" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="260" y="21" text-anchor="middle">platform-api</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="260" y="34" text-anchor="middle">the backend</text><line class="life" x1="450" y1="40" x2="450" y2="584"/><rect class="lane-box" x="388" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="450" y="21" text-anchor="middle">LiveKit</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="450" y="34" text-anchor="middle">the room</text><line class="life" x1="640" y1="40" x2="640" y2="584"/><rect class="lane-box" x="578" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="640" y="21" text-anchor="middle">Worker</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="640" y="34" text-anchor="middle">the tutor</text><line class="life" x1="830" y1="40" x2="830" y2="584"/><rect class="lane-box" x="768" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="830" y="21" text-anchor="middle">AI models</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="830" y="34" text-anchor="middle">speech + brain</text><line class="msg" x1="70" y1="94" x2="260" y2="94" marker-end="url(#ah)"/><text class="lbl" x="165" y="86">Choose Debrief on a finished consultation</text><circle class="num" cx="80" cy="85" r="8"/><text class="numt" x="80" y="88.5">1</text><path class="msg" d="M260 128 h28 v14 h-26" marker-end="url(#ah)"/><text class="lbl" style="text-anchor:start" x="296" y="138">Start a debrief attempt + pacing plan</text><circle class="num" cx="246" cy="132" r="8"/><text class="numt" x="246" y="135.5">2</text><line class="msg" x1="70" y1="186" x2="260" y2="186" marker-end="url(#ah)"/><text class="lbl" x="165" y="178">Ask for a voice token</text><circle class="num" cx="80" cy="177" r="8"/><text class="numt" x="80" y="180.5">3</text><line class="msg" x1="260" y1="232" x2="450" y2="232" marker-end="url(#ah)"/><text class="lbl" x="355" y="224">Token + dispatch worker</text><circle class="num" cx="270" cy="223" r="8"/><text class="numt" x="270" y="226.5">4</text><line class="msg" x1="450" y1="278" x2="640" y2="278" marker-end="url(#ah)"/><text class="lbl" x="545" y="270">Worker takes the job</text><circle class="num" cx="460" cy="269" r="8"/><text class="numt" x="460" y="272.5">5</text><line class="msg" x1="640" y1="324" x2="260" y2="324" marker-end="url(#ah)"/><text class="lbl" x="450" y="316">Fetch instructions + pacing plan</text><circle class="num" cx="630" cy="315" r="8"/><text class="numt" x="630" y="318.5">6</text><line class="msg" x1="640" y1="370" x2="830" y2="370" marker-end="url(#ah)"/><text class="lbl" x="735" y="362">Tutor model + tutor voice</text><circle class="num" cx="650" cy="361" r="8"/><text class="numt" x="650" y="364.5">7</text><line class="msg" x1="640" y1="416" x2="70" y2="416" marker-end="url(#ah)"/><text class="lbl" x="355" y="408">Tutor talks the plan through (audio)</text><circle class="num" cx="630" cy="407" r="8"/><text class="numt" x="630" y="410.5">8</text><path class="msg" d="M640 450 h28 v14 h-26" marker-end="url(#ah)"/><text class="lbl" style="text-anchor:start" x="676" y="460">Clock notes at 2:30, 5:00, 8:00, 10:00</text><circle class="num" cx="626" cy="454" r="8"/><text class="numt" x="626" y="457.5">9</text><line class="msg" x1="640" y1="508" x2="260" y2="508" marker-end="url(#ah)"/><text class="lbl" x="450" y="500">Debrief transcript</text><circle class="num" cx="630" cy="499" r="8"/><text class="numt" x="630" y="502.5">10</text><path class="msg" d="M260 542 h28 v14 h-26" marker-end="url(#ah)"/><text class="lbl" style="text-anchor:start" x="296" y="552">Write one debrief summary</text><circle class="num" cx="246" cy="546" r="8"/><text class="numt" x="246" y="549.5">11</text></svg></div><figcaption><b>Figure 2.</b> The debrief. The sequence matches a practice consultation, with a clock added.</figcaption></figure><div class="two">
+<div class="note"><h4>PEARLS, not a checklist</h4><p>PEARLS is a way of giving feedback as a conversation: partnership, emotion, restatement, support, hypothetical questions, summary. The tutor starts with how it felt, then walks the management plan together, using Advocacy-Inquiry to raise gaps. It is not Pendleton (strengths first, then improvements); the code says so on purpose.</p></div>
+<div class="note"><h4>The ten-minute clock</h4><p>A language model has no sense of time and tends to wrap up too early. So the backend writes a timing plan and the worker pushes timed notes to the tutor: about 2:30 "you should be into the plan", 5:00 "half has gone", 8:00 "two minutes left, start closing", 10:00 "finish warmly". The tutor can also silently check the clock itself. The clock never ends the session by itself.</p></div>
+<div class="note"><h4>Playing the patient, once</h4><p>The tutor is locked into its role, with one written exception: it may play the patient a single time so the learner can try a moment again. Separately, the debrief chooser offers "Practice as the patient", where the help worker plays the <b>doctor</b> and the learner plays the patient. That one needs a finished attempt and is switched on per exam.</p></div>
+<div class="note"><h4>Summaries are kept</h4><p>After the debrief the backend writes <b>one</b> summary per attempt (the table refuses a second). It feeds the tutor's memory of the learner and shows in the learner's debrief history, which lists more than the 20 the tutor itself reads.</p></div>
+</div><ol class="plain"><li><b>Choose.</b> The learner picks a finished consultation and starts a debrief. The backend checks it is theirs and has a transcript.</li><li><b>Plan.</b> The backend renders the tutor's instructions and the pacing plan from the same numbers, so the prompt and the clock cannot disagree.</li><li><b>Token and dispatch.</b> As in session 1, with the debrief kind selected.</li><li><b>Join and fetch.</b> The worker fetches instructions plus the pacing plan.</li><li><b>Speak.</b> The tutor model (<code>gpt-5.4-mini</code>) and the tutor voice carry the conversation.</li><li><b>Clock.</b> The worker injects the timed notes between turns, never mid-sentence.</li><li><b>Hand back.</b> The debrief transcript is posted and a job writes the summary in the same sitting of work.</li></ol><div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain"><li><b>The tutor rushes to goodbye after six exchanges.</b> The clock plan did not arrive, so the tutor is pacing by turn count. Check that the timing plan and the clock check were in what the backend sent the worker.</li><li><b>"Debrief needs a recorded consultation".</b> The source attempt has no saved transcript chunks, so there is nothing to discuss.</li><li><b>A returning learner is greeted as new.</b> "Returning" is decided only by a stored session summary note. A session in which the learner never spoke writes none.</li><li><b>Summary missing from the history.</b> The summary is made by a background job after the call; it can lag, and a failed job leaves a gap rather than a wrong entry.</li></ul></div></section><section class="stage" id="s3"><div class="stage-head"><div class="num">Session 3</div><h2>Help: the assistant worker</h2><p>A friendly voice (Athena) that explains the product and can point at the screen. Nobody is assessed.</p></div><p style="margin-top:14px">This is the <b>second worker</b>, a separate program from the patient. It handles four kinds of session, each a row in one table in the code: <b>help</b>, <b>onboarding</b> (a guided walk through the app), <b>dashboard</b> (narrating the learner's progress) and <b>consulting-doctor</b> (Athena plays the doctor so the learner can practise being the patient).</p><figure><div class="seq-wrap"><svg viewBox="0 0 900 502" role="img" aria-label="Help sequence" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs><line class="life" x1="70" y1="40" x2="70" y2="492"/><rect class="lane-box" x="8" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="70" y="21" text-anchor="middle">Browser</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="70" y="34" text-anchor="middle">the learner</text><line class="life" x1="260" y1="40" x2="260" y2="492"/><rect class="lane-box" x="198" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="260" y="21" text-anchor="middle">platform-api</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="260" y="34" text-anchor="middle">the backend</text><line class="life" x1="450" y1="40" x2="450" y2="492"/><rect class="lane-box" x="388" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="450" y="21" text-anchor="middle">LiveKit</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="450" y="34" text-anchor="middle">the room</text><line class="life" x1="640" y1="40" x2="640" y2="492"/><rect class="lane-box" x="578" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="640" y="21" text-anchor="middle">Worker</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="640" y="34" text-anchor="middle">the assistant</text><line class="life" x1="830" y1="40" x2="830" y2="492"/><rect class="lane-box" x="768" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="830" y="21" text-anchor="middle">AI models</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="830" y="34" text-anchor="middle">speech + brain</text><line class="msg" x1="70" y1="94" x2="260" y2="94" marker-end="url(#ah)"/><text class="lbl" x="165" y="86">Open Help (create session)</text><circle class="num" cx="80" cy="85" r="8"/><text class="numt" x="80" y="88.5">1</text><line class="msg" x1="70" y1="140" x2="260" y2="140" marker-end="url(#ah)"/><text class="lbl" x="165" y="132">Ask for a voice token</text><circle class="num" cx="80" cy="131" r="8"/><text class="numt" x="80" y="134.5">2</text><line class="msg" x1="260" y1="186" x2="450" y2="186" marker-end="url(#ah)"/><text class="lbl" x="355" y="178">Token + dispatch assistant worker</text><circle class="num" cx="270" cy="177" r="8"/><text class="numt" x="270" y="180.5">3</text><line class="msg" x1="640" y1="232" x2="260" y2="232" marker-end="url(#ah)"/><text class="lbl" x="450" y="224">Fetch instructions, tools, greeting</text><circle class="num" cx="630" cy="223" r="8"/><text class="numt" x="630" y="226.5">4</text><line class="msg" x1="70" y1="278" x2="640" y2="278" marker-end="url(#ah)"/><text class="lbl" x="355" y="270">Voice, plus screenshots on request</text><circle class="num" cx="80" cy="269" r="8"/><text class="numt" x="80" y="272.5">5</text><line class="msg" x1="640" y1="324" x2="830" y2="324" marker-end="url(#ah)"/><text class="lbl" x="735" y="316">Vision model or speech-to-speech</text><circle class="num" cx="650" cy="315" r="8"/><text class="numt" x="650" y="318.5">6</text><line class="msg" x1="640" y1="370" x2="70" y2="370" marker-end="url(#ah)"/><text class="lbl" x="355" y="362">Answer, pointer, scroll or click</text><circle class="num" cx="630" cy="361" r="8"/><text class="numt" x="630" y="364.5">7</text><line class="msg" x1="640" y1="416" x2="260" y2="416" marker-end="url(#ah)"/><text class="lbl" x="450" y="408">Ask a tool question (remote tool)</text><circle class="num" cx="630" cy="407" r="8"/><text class="numt" x="630" y="410.5">8</text><line class="msg" x1="640" y1="462" x2="260" y2="462" marker-end="url(#ah)"/><text class="lbl" x="450" y="454">Transcript, kept or discarded by kind</text><circle class="num" cx="630" cy="453" r="8"/><text class="numt" x="630" y="456.5">9</text></svg></div><figcaption><b>Figure 3.</b> A help session. The extra loop is the screenshot and pointer round trip.</figcaption></figure><div class="two">
+<div class="callout ok"><h4>What it can do</h4><ul class="plain"><li>Answer from a help guide that is rendered into its instructions in full (there is no search tool for it).</li><li>Look at the learner's screen when asked, through a screenshot taken in their browser, and point with an on-screen pointer.</li><li>Scroll and click on the learner's behalf, with a time limit on each action and a rate limit per minute.</li><li>Ask the backend questions through "remote tools", used for the dashboard narration.</li><li>For voice-only FAQ help, run speech-to-speech instead of the ears-brain-voice chain.</li></ul></div>
+<div class="callout gap"><h4>What it cannot do</h4><ul class="plain"><li>Score, mark or change any attempt. It has no access to the marking engine.</li><li>Know product names, menu labels or exam ids. It only knows what the backend wrote into its instructions.</li><li>Keep every conversation. Help is kept as a record, a dashboard session is summarised and then deleted, and onboarding and consulting-doctor are thrown away unread.</li><li>Run for ever. A one-hour wall-clock cap shuts any session, and screen capture is read-only.</li></ul></div>
+</div><div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain"><li><b>"I could not find that" for an answer that should exist.</b> The help library has no relevance threshold, so the usual cause is an out-of-date index of help material. A platform admin can rebuild it.</li><li><b>Athena cannot be opened from the page.</b> The open-Athena event is heard by a lazy wrapper until the dock loads, then by the dock. Both must stay in place.</li><li><b>The pointer lands in the wrong place.</b> The pointer is a hidden instruction in the reply, cut out before it is spoken. If the screenshot and the page differ in size, the coordinates drift.</li><li><b>The voice stops after about an hour.</b> The session cap, by design.</li></ul></div></section><section class="stage" id="s4"><div class="stage-head"><div class="num">Session 4</div><h2>Group sessions: exam circuits and peer practice</h2><p>Two different things share a room idea. Only one of them involves an AI.</p></div><h3 style="margin-top:22px">4a. Exam-day circuits</h3><p style="margin-top:8px">In an exam, a <b>circuit</b> is a timetable of stations. The server owns the clock (a decision recorded as ADR 0018): the browser shows a countdown but never decides when a phase ends. Candidates and examiners join the circuit's room <b>during the reading phase</b> (3 minutes by default). The candidate's token carries <b>no</b> worker. When reading ends, the circuit itself dispatches the patient.</p><figure><div class="seq-wrap"><svg viewBox="0 0 900 594" role="img" aria-label="Exam-day circuit sequence" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs><line class="life" x1="70" y1="40" x2="70" y2="584"/><rect class="lane-box" x="8" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="70" y="21" text-anchor="middle">Supervisor</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="70" y="34" text-anchor="middle">runs the circuit</text><line class="life" x1="222" y1="40" x2="222" y2="584"/><rect class="lane-box" x="160" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="222" y="21" text-anchor="middle">platform-api</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="222" y="34" text-anchor="middle">server clock</text><line class="life" x1="374" y1="40" x2="374" y2="584"/><rect class="lane-box" x="312" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="374" y="21" text-anchor="middle">LiveKit</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="374" y="34" text-anchor="middle">circuit room</text><line class="life" x1="526" y1="40" x2="526" y2="584"/><rect class="lane-box" x="464" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="526" y="21" text-anchor="middle">Worker</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="526" y="34" text-anchor="middle">the patient</text><line class="life" x1="678" y1="40" x2="678" y2="584"/><rect class="lane-box" x="616" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="678" y="21" text-anchor="middle">Candidate</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="678" y="34" text-anchor="middle">browser</text><line class="life" x1="830" y1="40" x2="830" y2="584"/><rect class="lane-box" x="768" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="830" y="21" text-anchor="middle">Examiner</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="830" y="34" text-anchor="middle">browser</text><line class="msg" x1="70" y1="94" x2="222" y2="94" marker-end="url(#ah)"/><text class="lbl" x="146" y="86">Start the circuit</text><circle class="num" cx="80" cy="85" r="8"/><text class="numt" x="80" y="88.5">1</text><line class="msg" x1="678" y1="140" x2="222" y2="140" marker-end="url(#ah)"/><text class="lbl" x="450" y="132">Join during reading (token, no worker)</text><circle class="num" cx="668" cy="131" r="8"/><text class="numt" x="668" y="134.5">2</text><line class="msg" x1="678" y1="186" x2="374" y2="186" marker-end="url(#ah)"/><text class="lbl" x="526" y="178">Candidate enters room (mic on)</text><circle class="num" cx="668" cy="177" r="8"/><text class="numt" x="668" y="180.5">3</text><line class="msg" x1="830" y1="232" x2="374" y2="232" marker-end="url(#ah)"/><text class="lbl" x="602" y="224">Examiner listens (cannot speak)</text><circle class="num" cx="820" cy="223" r="8"/><text class="numt" x="820" y="226.5">4</text><path class="msg" d="M222 266 h28 v14 h-26" marker-end="url(#ah)"/><text class="lbl" style="text-anchor:start" x="258" y="276">Reading minutes pass on the server</text><circle class="num" cx="208" cy="270" r="8"/><text class="numt" x="208" y="273.5">5</text><line class="msg" x1="222" y1="324" x2="374" y2="324" marker-end="url(#ah)"/><text class="lbl" x="298" y="316">Reading ends: dispatch patient</text><circle class="num" cx="232" cy="315" r="8"/><text class="numt" x="232" y="318.5">6</text><line class="msg" x1="526" y1="370" x2="222" y2="370" marker-end="url(#ah)"/><text class="lbl" x="374" y="362">New attempt: fetch bootstrap</text><circle class="num" cx="516" cy="361" r="8"/><text class="numt" x="516" y="364.5">7</text><line class="msg" x1="526" y1="416" x2="678" y2="416" marker-end="url(#ah)"/><text class="lbl" x="602" y="408">Patient talks to candidate</text><circle class="num" cx="536" cy="407" r="8"/><text class="numt" x="536" y="410.5">8</text><line class="msg" x1="222" y1="462" x2="374" y2="462" marker-end="url(#ah)"/><text class="lbl" x="298" y="454">Simulation ends: remove patient</text><circle class="num" cx="232" cy="453" r="8"/><text class="numt" x="232" y="456.5">9</text><line class="msg" x1="526" y1="508" x2="222" y2="508" marker-end="url(#ah)"/><text class="lbl" x="374" y="500">On the way out: transcript</text><circle class="num" cx="516" cy="499" r="8"/><text class="numt" x="516" y="502.5">10</text><path class="msg" d="M222 542 h28 v14 h-26" marker-end="url(#ah)"/><text class="lbl" style="text-anchor:start" x="258" y="552">Queue marking</text><circle class="num" cx="208" cy="546" r="8"/><text class="numt" x="208" y="549.5">11</text></svg></div><figcaption><b>Figure 4.</b> A circuit station. The big difference from session 1: the server, not the candidate, decides when the patient arrives.</figcaption></figure><ol class="plain"><li><b>Start.</b> A supervisor starts the circuit; from here it runs itself, with controls to pause, extend or send the patient in by hand if something goes wrong.</li><li><b>Join early.</b> The candidate takes a token with no patient attached. If the token carried one, a second patient would arrive beside the circuit's own.</li><li><b>Examiner.</b> An examiner's token cannot publish audio or data at all. This is a guarantee, so a candidate cannot be prompted and the transcript stays a pure record.</li><li><b>Reading.</b> The server counts down the reading minutes. The candidate reads their brief.</li><li><b>Patient in.</b> The server creates a fresh attempt and dispatches the patient. A re-dispatch fails the old attempt rather than overwriting it, so the first recording is kept.</li><li><b>Consultation.</b> 10 minutes by default. The worker has no timer of its own.</li><li><b>Bell.</b> Removing the patient from the room ends the consultation. On its way out the worker posts the full transcript, which queues marking: "the bell goes" and "the recording is delivered" are the same act.</li></ol><div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain"><li><b>Reading ends and nobody speaks.</b> If nobody joined the room during reading, the circuit sits overdue for ever. If someone did, a patient dispatched more than 60 seconds ago with no recording gets one automatic resend per station; the supervisor can also press resend.</li><li><b>A trainee was removed after the circuit was built.</b> Their slot gets no recording, so nothing is marked for them.</li><li><b>A second patient voice.</b> A stale agent from a previous dispatch; the backend clears them first with a short settle pause.</li></ul></div><h3 style="margin-top:34px">4b. Peer practice between two learners</h3><p style="margin-top:8px"><b>Yes, it uses LiveKit, but there is no AI worker.</b> Two real people are paired, one as the doctor and one as the patient, and talk in an ordinary room. The backend hands each a token with no dispatch. Its phase clock (preparation 3 min, consultation 12 min, debrief 15 min by default, adjustable per exam) lives on the server. Each side has 2 minutes to accept a pairing, and a waiting learner is re-queued after up to 10 minutes.</p><figure><div class="seq-wrap"><svg viewBox="0 0 900 502" role="img" aria-label="Peer practice sequence" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs><line class="life" x1="70" y1="40" x2="70" y2="492"/><rect class="lane-box" x="8" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="70" y="21" text-anchor="middle">Learner A</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="70" y="34" text-anchor="middle">doctor</text><line class="life" x1="260" y1="40" x2="260" y2="492"/><rect class="lane-box" x="198" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="260" y="21" text-anchor="middle">platform-api</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="260" y="34" text-anchor="middle">phases + clock</text><line class="life" x1="450" y1="40" x2="450" y2="492"/><rect class="lane-box" x="388" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="450" y="21" text-anchor="middle">LiveKit</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="450" y="34" text-anchor="middle">the room</text><line class="life" x1="640" y1="40" x2="640" y2="492"/><rect class="lane-box" x="578" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="640" y="21" text-anchor="middle">Learner B</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="640" y="34" text-anchor="middle">patient</text><line class="life" x1="830" y1="40" x2="830" y2="492"/><rect class="lane-box" x="768" y="6" width="124" height="34" rx="3"/><text class="lane-txt" x="830" y="21" text-anchor="middle">Recording</text><text class="lane-txt" style="font-weight:500;font-size:11px" x="830" y="34" text-anchor="middle">egress + S3</text><line class="msg" x1="70" y1="94" x2="260" y2="94" marker-end="url(#ah)"/><text class="lbl" x="165" y="86">Join the queue</text><circle class="num" cx="80" cy="85" r="8"/><text class="numt" x="80" y="88.5">1</text><line class="msg dash" x1="260" y1="140" x2="70" y2="140" marker-end="url(#ah)"/><text class="lbl" x="165" y="132">Pair found: accept within 2 min</text><circle class="num" cx="250" cy="131" r="8"/><text class="numt" x="250" y="134.5">2</text><line class="msg" x1="640" y1="186" x2="260" y2="186" marker-end="url(#ah)"/><text class="lbl" x="450" y="178">Accepts too</text><circle class="num" cx="630" cy="177" r="8"/><text class="numt" x="630" y="180.5">3</text><line class="msg" x1="70" y1="232" x2="260" y2="232" marker-end="url(#ah)"/><text class="lbl" x="165" y="224">Ask for a room token (no worker)</text><circle class="num" cx="80" cy="223" r="8"/><text class="numt" x="80" y="226.5">4</text><line class="msg" x1="70" y1="278" x2="450" y2="278" marker-end="url(#ah)"/><text class="lbl" x="260" y="270">Both join the same room</text><circle class="num" cx="80" cy="269" r="8"/><text class="numt" x="80" y="272.5">5</text><line class="msg" x1="260" y1="324" x2="830" y2="324" marker-end="url(#ah)"/><text class="lbl" x="545" y="316">Start recording at consultation</text><circle class="num" cx="270" cy="315" r="8"/><text class="numt" x="270" y="318.5">6</text><line class="msg" x1="70" y1="370" x2="640" y2="370" marker-end="url(#ah)"/><text class="lbl" x="355" y="362">Two people talk (no AI)</text><circle class="num" cx="80" cy="361" r="8"/><text class="numt" x="80" y="364.5">7</text><line class="msg" x1="260" y1="416" x2="830" y2="416" marker-end="url(#ah)"/><text class="lbl" x="545" y="408">Stop recording at phase end</text><circle class="num" cx="270" cy="407" r="8"/><text class="numt" x="270" y="410.5">8</text><line class="msg" x1="830" y1="462" x2="260" y2="462" marker-end="url(#ah)"/><text class="lbl" x="545" y="454">Audio lands, job transcribes it</text><circle class="num" cx="820" cy="453" r="8"/><text class="numt" x="820" y="456.5">9</text></svg></div><figcaption><b>Figure 5.</b> Peer practice. The recording and the later transcription are the only automated parts.</figcaption></figure><p style="margin-top:14px">The consultation is recorded by LiveKit's <b>egress</b> (a built-in recorder) into storage. When the phase ends a background job waits for the file, transcribes it and separates the two voices (a <b>diariser</b>), then produces feedback. A recording is best effort: if it fails, the consultation still counts.</p><div class="callout rough"><h4>What can go wrong, and what you would see</h4><ul class="plain"><li><b>The session says "not yet accepted".</b> One side has not accepted the pairing. There is no way into the room until both have.</li><li><b>Feedback never appears.</b> The transcription job gives up after twenty looks if the recording never lands in storage and records why on the session.</li><li><b>A stranger cannot open a session link.</b> Deliberate: the answer is "not found", so nobody can confirm a session exists.</li></ul></div><div class="callout"><h4>What does not exist</h4><p>There is no AI participant in peer practice, and no group room where several candidates face one patient at the same time. A circuit has one candidate per station sitting; others wait their turn. The old voice programs are not described here because they are switched off.</p></div></section><section class="stage" id="s5"><div class="stage-head"><div class="num">Section 5</div><h2>Under the hood</h2></div><div class="two">
+<div class="note"><h4>One worker per process</h4><p>The same image can run either worker. An environment variable (<code>OSCE_LIVEKIT_WORKER</code>) picks <code>assessment</code> or <code>assistant</code>, and the program refuses to start on any other value. No shell or supervisor sits in front of it, so the stop signal reaches LiveKit directly. Otherwise a pod being shut down would keep accepting sessions.</p></div>
+<div class="note"><h4>Capacity and seats</h4><p>Each pod caps its live sessions. The shared default is 6 patient and 3 assistant sessions per pod, with 3 pods of each in production. Staging runs one pod of each, capped lower (2 and 1) because it shares machines with production. Beyond the seats, learners wait in line; a circuit never waits but does take a seat.</p></div>
+<div class="note"><h4>Draining</h4><p>On shutdown a worker keeps finishing live sessions for up to 840 seconds, inside the pod's 900-second grace period.</p></div>
+<div class="note"><h4>Cloud or ours</h4><p>The backend can send a session to LiveKit Cloud or to our own workers. Cloud overflows to ours when full; ours never spills onto Cloud, because that would be an unplanned bill.</p></div>
+</div><h3 style="margin-top:34px">Staging, production and your laptop</h3>
+<p style="margin-top:8px">Workers run on a small cluster in two <b>namespaces</b> (separate rooms of the same building): <code>assessment-platform-staging</code> and <code>assessment-platform</code> (production). A push to <code>main</code> that touches <code>assessment/</code> deploys staging; production only happens when someone presses "Promote workers to production". Settings that differ live in the staging and production overlays, never in the shared base.</p>
+<div class="callout gap"><h4>Why a local worker needs its own names</h4><p>Workers are found by <b>name</b>. Staging's are called <code>assessment-self-hosted</code> and <code>assistant-self-hosted</code>. If a worker on your laptop uses those names it joins the same pool and <b>steals staging's sessions</b>: a tester hears a patient with your half-finished code. Set <code>LIVEKIT_AGENT_NAMESPACE=dev-&lt;you&gt;</code> and name your workers <code>dev-&lt;you&gt;-assessment-self-hosted</code> and <code>dev-&lt;you&gt;-assistant-self-hosted</code>. The backend adds the same prefix when it dispatches.</p></div><h3 style="margin-top:34px">Speech settings and models</h3>
+<p style="margin-top:8px">No model is written into the logic. They are defaults in one settings class, each overridable by an environment variable named <code>VOICE_&lt;FIELD&gt;</code> (for example <code>VOICE_PATIENT_LLM</code>). Defaults at this commit:</p>
+<div class="table-wrap"><table><caption>Models configured by default</caption><thead><tr><th>Job</th><th>Setting</th><th>Default</th></tr></thead><tbody>
+<tr><td class="k">Ears (speech to text)</td><td><code>stt_model</code></td><td>Deepgram <code>nova-3-medical</code></td></tr>
+<tr><td class="k">Patient brain</td><td><code>patient_llm</code></td><td><code>gpt-4o-mini</code> (cheaper; tied the larger model on staying in role)</td></tr>
+<tr><td class="k">Tutor brain</td><td><code>tutor_llm</code></td><td><code>gpt-5.4-mini</code></td></tr>
+<tr><td class="k">Help brain (sees screenshots)</td><td><code>vision_llm</code></td><td>Anthropic <code>claude-haiku-4-5</code></td></tr>
+<tr><td class="k">Back-up brain, any role</td><td><code>fallback_llm</code></td><td><code>claude-haiku-4-5</code>, used when the first model fails</td></tr>
+<tr><td class="k">Patient voice</td><td><code>deepgram_female_voice</code> / <code>deepgram_male_voice</code></td><td><code>aura-2-thalia-en</code> / <code>aura-2-hermes-en</code>; then OpenAI <code>gpt-4o-mini-tts</code>; then Cartesia</td></tr>
+<tr><td class="k">Tutor voice</td><td><code>deepgram_tutor_voice</code></td><td><code>aura-2-athena-en</code>, with the same fallbacks</td></tr>
+<tr><td class="k">Speech-to-speech help</td><td>fixed in code</td><td><code>gpt-live-1</code>, answering with <code>gpt-5.6-luna</code></td></tr>
+<tr><td class="k">Thinking effort</td><td><code>patient_reasoning_effort</code>, <code>tutor_reasoning_effort</code></td><td><code>none</code>: live voice cannot wait for a model to think</td></tr>
+</tbody></table></div>
+<p style="margin-top:12px">Every model line is wrapped in a fallback: if the first model errors, the call moves to the next one instead of going silent. A model swap should be re-measured with the benchmark script before shipping.</p><h3 style="margin-top:34px">A typical session, to scale</h3><p style="margin-top:8px">The bars use real defaults from the code: a generic 12-minute consultation clock, a 10-minute debrief, and the circuit and peer-practice defaults. A real station supplies its own timings from its rubric, so treat the solo row as the fallback.</p><figure><div class="seq-wrap"><svg viewBox="0 0 900 370" role="img" aria-label="Typical timings of a consultation, a debrief, a circuit station and a peer practice session" xmlns="http://www.w3.org/2000/svg"><line class="tick" x1="170" y1="38" x2="170" y2="340"/><text class="ax" x="170" y="28" text-anchor="middle">0 min</text><line class="tick" x1="272" y1="38" x2="272" y2="340"/><text class="ax" x="272" y="28" text-anchor="middle">3 min</text><line class="tick" x1="374" y1="38" x2="374" y2="340"/><text class="ax" x="374" y="28" text-anchor="middle">6 min</text><line class="tick" x1="476" y1="38" x2="476" y2="340"/><text class="ax" x="476" y="28" text-anchor="middle">9 min</text><line class="tick" x1="578" y1="38" x2="578" y2="340"/><text class="ax" x="578" y="28" text-anchor="middle">12 min</text><line class="tick" x1="680" y1="38" x2="680" y2="340"/><text class="ax" x="680" y="28" text-anchor="middle">15 min</text><line class="tick" x1="782" y1="38" x2="782" y2="340"/><text class="ax" x="782" y="28" text-anchor="middle">18 min</text><line class="tick" x1="884" y1="38" x2="884" y2="340"/><text class="ax" x="884" y="28" text-anchor="middle">21 min</text><line class="tick" x1="986" y1="38" x2="986" y2="340"/><text class="ax" x="986" y="28" text-anchor="middle">24 min</text><line class="tick" x1="1088" y1="38" x2="1088" y2="340"/><text class="ax" x="1088" y="28" text-anchor="middle">27 min</text><text class="ax" x="160" y="74" text-anchor="end" style="fill:var(--ink)">Solo practice (generic clock)</text><rect class="b1" x="170.0" y="52" width="406.0" height="32" rx="2"/><text class="bt" x="373" y="72" text-anchor="middle">Consultation 12:00</text><rect class="b2" x="578.0" y="52" width="338.0" height="32" rx="2"/><text class="bt" x="747" y="72" text-anchor="middle">Debrief 10:00</text><text class="ax" x="160" y="128" text-anchor="end" style="fill:var(--ink)">inside the consultation</text><rect class="b5" x="170.0" y="106" width="15.0" height="32" rx="2"/><rect class="b1" x="187.0" y="106" width="185.0" height="32" rx="2"/><text class="bt" x="280" y="126" text-anchor="middle">History to 6:00</text><rect class="b3" x="374.0" y="106" width="134.0" height="32" rx="2"/><text class="bt" x="441" y="126" text-anchor="middle">Explain + plan to 10:00</text><rect class="b4" x="510.0" y="106" width="66.0" height="32" rx="2"/><text class="bt" x="543" y="126" text-anchor="middle">Safety net</text><text class="ax" x="160" y="182" text-anchor="end" style="fill:var(--ink)">inside the debrief</text><rect class="b5" x="170.0" y="160" width="49.0" height="32" rx="2"/><text class="bt" x="194" y="180" text-anchor="middle">1:30</text><rect class="b2" x="221.0" y="160" width="219.0" height="32" rx="2"/><text class="bt" x="330" y="180" text-anchor="middle">Plan together to 8:00</text><rect class="b3" x="442.0" y="160" width="66.0" height="32" rx="2"/><text class="bt" x="475" y="180" text-anchor="middle">Close</text><text class="ax" x="160" y="236" text-anchor="end" style="fill:var(--ink)">Exam circuit station</text><rect class="b5" x="170.0" y="214" width="100.0" height="32" rx="2"/><text class="bt" x="220" y="234" text-anchor="middle">Reading 3</text><rect class="b1" x="272.0" y="214" width="338.0" height="32" rx="2"/><text class="bt" x="441" y="234" text-anchor="middle">Simulation 10:00</text><rect class="b5" x="612.0" y="214" width="168.0" height="32" rx="2"/><text class="bt" x="696" y="234" text-anchor="middle">Break 5</text><text class="ax" x="160" y="290" text-anchor="end" style="fill:var(--ink)">Peer practice (two people)</text><rect class="b5" x="170.0" y="268" width="100.0" height="32" rx="2"/><text class="bt" x="220" y="288" text-anchor="middle">Prep 3</text><rect class="b1" x="272.0" y="268" width="406.0" height="32" rx="2"/><text class="bt" x="475" y="288" text-anchor="middle">Consultation 12:00</text><rect class="b2" x="680.0" y="268" width="508.0" height="32" rx="2"/><text class="bt" x="934" y="288" text-anchor="middle">Peer debrief 15:00</text><text class="ax" x="170" y="362">Bars drawn to scale. Colour: teal consultation or reading, green debrief, amber explanation, red safety net, grey waiting or rest.</text></svg></div><figcaption><b>Figure 6.</b> Phases and timings. Solo practice has no separate reading bar here because its reading time comes from the station, not from a fixed default I could find.</figcaption></figure><div class="callout"><h4>Other timers worth knowing</h4><ul class="plain"><li>Greeting: 10 seconds to say the opening line.</li><li>Patient worker waits 120 seconds for the candidate; the assistant waits 30.</li><li>Assistant session hard cap: 3600 seconds.</li><li>When a learner ends, the room is closed at once so the seat frees now, rather than after LiveKit's own empty-room timeout of about 20 seconds.</li></ul></div></section><section class="stage" id="s6"><div class="stage-head"><div class="num">Section 6</div><h2>Glossary</h2></div><div class="table-wrap"><table class="gloss"><thead><tr><th>Word</th><th>Plain meaning</th><th>Where you meet it</th></tr></thead><tbody><tr><td class="w">Attempt</td><td>One recorded try at a station.</td><td class="ex">a practice, a circuit slot or a debrief</td></tr><tr><td class="w">Room</td><td>A private live-audio call in LiveKit.</td><td class="ex">named after the attempt id</td></tr><tr><td class="w">Token</td><td>A one-use pass to join a room.</td><td class="ex">minted by the backend</td></tr><tr><td class="w">Dispatch</td><td>A note asking LiveKit to send a worker to a room.</td><td class="ex">carried on the learner's token</td></tr><tr><td class="w">Worker</td><td>Our program that joins a room as patient, tutor or helper.</td><td class="ex">assessment or assistant</td></tr><tr><td class="w">Bootstrap</td><td>The backend's reply to a worker's first question: its full script.</td><td class="ex">the worker's first question</td></tr><tr><td class="w">Transcript</td><td>The written record of who said what.</td><td class="ex">posted back by the worker</td></tr><tr><td class="w">Speech-to-text / text-to-speech</td><td>Audio to words, and words to audio.</td><td class="ex">Deepgram, OpenAI, Cartesia</td></tr><tr><td class="w">Language model</td><td>The brain that writes the next line.</td><td class="ex">gpt-4o-mini, gpt-5.4-mini, claude-haiku-4-5</td></tr><tr><td class="w">Fallback</td><td>A second model or voice used if the first fails.</td><td class="ex">Anthropic back-up brain</td></tr><tr><td class="w">PEARLS</td><td>A conversational way to give feedback.</td><td class="ex">the debrief tutor</td></tr><tr><td class="w">Pacing clock</td><td>Timed notes that keep the AI on schedule.</td><td class="ex">the ten-minute debrief</td></tr><tr><td class="w">Circuit</td><td>A timetable of stations on exam day, run by the server clock.</td><td class="ex">ADR 0018</td></tr><tr><td class="w">Egress</td><td>LiveKit's built-in recorder.</td><td class="ex">peer practice</td></tr><tr><td class="w">Diariser</td><td>Splits one recording into who spoke when.</td><td class="ex">peer practice</td></tr><tr><td class="w">Namespace</td><td>A separate room of the cluster, or a name prefix.</td><td class="ex">staging vs production; dev-you</td></tr><tr><td class="w">Drain</td><td>Finishing live sessions before shutting down.</td><td class="ex">840 seconds</td></tr></tbody></table></div></section><footer><p>Checked against commit 31a5e741, 8 Oct 2026. Source: the voice workers and their cluster settings, and the backend's voice, assistant, tutor memory, attempts, circuits and peer practice code.</p><p>Not covered: the old voice programs, which are switched off, and how marking computes a score.</p></footer>
+</main></body></html>
