@@ -36,3 +36,8 @@ const ADMIN_ROLES = new Set(["owner", "admin", "institution_admin", "partner_adm
 export function isAdminRole(role: string | null | undefined): boolean {
   return ADMIN_ROLES.has((role ?? "").toLowerCase());
 }
+
+/** The backend's assigned-staff role, read only to display (who can lead a circuit), never to gate. */
+export function isSupervisorRole(role: string | null | undefined): boolean {
+  return (role ?? "").toLowerCase() === "supervisor";
+}

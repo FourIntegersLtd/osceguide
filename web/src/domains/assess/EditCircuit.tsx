@@ -18,7 +18,7 @@ import {
   type PickedStation,
 } from "@/domains/assess/CircuitBuilder";
 import { editLockNotice } from "@/domains/assess/sessions/support";
-import { DEFAULT_BREAK_MINUTES, DEFAULT_READING_MINUTES } from "@/domains/assess/timing";
+import { DEFAULT_BREAK_MINUTES, DEFAULT_READING_MINUTES, DEFAULT_SIMULATION_MINUTES } from "@/domains/assess/timing";
 
 /**
  * Change a circuit that has already been built.
@@ -146,7 +146,7 @@ function draftFrom(console_: CircuitConsole): CircuitDraft {
     supervisorUserId: console_.circuit.supervisor?.user_id ?? null,
     timing: {
       readingMinutes: console_.circuit.timing?.reading_minutes ?? DEFAULT_READING_MINUTES,
-      simulationMinutes: console_.circuit.timing?.simulation_minutes ?? 10,
+      simulationMinutes: console_.circuit.timing?.simulation_minutes ?? DEFAULT_SIMULATION_MINUTES,
       breakMinutes: console_.circuit.timing?.break_minutes ?? DEFAULT_BREAK_MINUTES,
       breaks: console_.circuit.timing?.breaks ?? [],
     },

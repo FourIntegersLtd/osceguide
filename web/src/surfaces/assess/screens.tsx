@@ -1,9 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { EmptyState } from "@/foundation/ui";
 import { PeopleTabs } from "@/domains/assess/PeopleTabs";
-import { can, useSession } from "@/foundation/session";
+import { can, RequireCapability, useSession } from "@/foundation/session";
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
 import {
   MockDetail,
@@ -50,11 +49,7 @@ import {
  */
 
 /** Building a sitting or circuit is the administrator's; a supervisor who lands here by URL is told so rather than shown a form the server refuses. */
-function ForAdmins({ children }: { children: ReactNode }) {
-  const { session } = useSession();
-  if (can(session, "schedule_sittings")) return <>{children}</>;
-  return <EmptyState title="Administrators only" description="Ask an administrator to make this change." />;
-}
+const adminsOnly = <EmptyState title="Administrators only" description="Ask an administrator to make this change." />;
 
 const slugOf = ({ workspace }: ScreenProps) => workspace.orgSlug ?? "";
 
@@ -75,17 +70,17 @@ function AssessSittingDetail(props: ScreenProps) {
 
 function AssessNewSitting(props: ScreenProps) {
   return (
-    <ForAdmins>
+    <RequireCapability permission="schedule_sittings" fallback={adminsOnly}>
       <NewSitting orgSlug={slugOf(props)} />
-    </ForAdmins>
+    </RequireCapability>
   );
 }
 
 function AssessNewCircuit(props: ScreenProps) {
   return (
-    <ForAdmins>
+    <RequireCapability permission="schedule_sittings" fallback={adminsOnly}>
       <NewCircuit orgSlug={slugOf(props)} sittingId={props.params?.sittingId ?? ""} />
-    </ForAdmins>
+    </RequireCapability>
   );
 }
 
@@ -99,9 +94,9 @@ function AssessCircuitRunner(props: ScreenProps) {
 
 function AssessCircuitEdit(props: ScreenProps) {
   return (
-    <ForAdmins>
+    <RequireCapability permission="schedule_sittings" fallback={adminsOnly}>
       <EditCircuit orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />
-    </ForAdmins>
+    </RequireCapability>
   );
 }
 

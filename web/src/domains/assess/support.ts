@@ -1,4 +1,4 @@
-import { isAdminRole } from "@/foundation/session/roles";
+import { isAdminRole, isSupervisorRole } from "@/foundation/session/roles";
 import {
   sittingTypeForMode,
   type Programme,
@@ -161,7 +161,7 @@ export function sittingRunning(status: string): boolean {
 
 /** Who a circuit's lead can be: staff, not the trainees an organisation also lists. */
 export function circuitLeads<T extends { role: string }>(members: readonly T[]): T[] {
-  return members.filter((member) => isAdminRole(member.role) || member.role.toLowerCase() === "supervisor");
+  return members.filter((member) => isAdminRole(member.role) || isSupervisorRole(member.role));
 }
 
 /** Said under the sittings filters while the list is only partly loaded. */

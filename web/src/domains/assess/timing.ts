@@ -34,6 +34,9 @@ export function clampReadingMinutes(minutes: number): number {
   );
 }
 
+/** `domain.DEFAULT_SIMULATION_MINUTES`. */
+export const DEFAULT_SIMULATION_MINUTES = 10;
+
 /** `domain.BREAK_BOUNDS`. */
 export const BREAK_MINUTES_BOUNDS = { min: 1, max: 60 } as const;
 
