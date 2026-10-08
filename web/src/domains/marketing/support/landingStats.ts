@@ -1,3 +1,4 @@
+import { reportError } from "@/foundation/observability";
 import { readSiteStatistics } from "@/domains/marketing/api";
 
 /**
@@ -40,7 +41,9 @@ export async function fetchLandingStats(): Promise<LandingStats | null> {
       all_stations: stats.stations,
       as_of: stats.as_of,
     };
-  } catch {
+  } catch (cause) {
+    // Hidden from the visitor on purpose, but never silent for us.
+    reportError(cause);
     return null;
   }
 }

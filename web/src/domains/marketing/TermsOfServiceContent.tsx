@@ -1,3 +1,4 @@
+import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 /** Terms of Service copy, shared by the compliance page and the checkout modal. */
 export default function TermsOfServiceContent() {
   return (
@@ -6,9 +7,9 @@ export default function TermsOfServiceContent() {
 
       <div className="space-y-6 mb-12">
         <p className="text-osce-body text-osce-ink-600">
-          Effective Date: January 1, 2025
+          Effective Date: {COMPLIANCE_DATES.terms.effective}
           <br />
-          Last Updated: March 23, 2026
+          Last Updated: {COMPLIANCE_DATES.terms.updated}
         </p>
         <p className="text-osce-ink-700 leading-relaxed">
           Welcome to OSCE Guide! These Terms of Service (&quot;Terms&quot;)
@@ -254,7 +255,7 @@ export default function TermsOfServiceContent() {
             </li>
           </ul>
           <p className="text-osce-ink-700 mt-4 ml-6 font-semibold italic">
-            Questions? Contact hello@fourintegers.com before purchasing.
+            Questions? Contact {SUPPORT_EMAIL} before purchasing.
           </p>
         </section>
 
@@ -373,10 +374,10 @@ export default function TermsOfServiceContent() {
             <li>
               Email:{" "}
               <a
-                href="mailto:hello@fourintegers.com"
+                href={`mailto:${SUPPORT_EMAIL}`}
                 className="text-osce-accent hover:underline"
               >
-                hello@fourintegers.com
+                {SUPPORT_EMAIL}
               </a>
             </li>
           </ul>

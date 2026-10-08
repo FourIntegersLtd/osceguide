@@ -1,3 +1,4 @@
+import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/foundation/config/siteUrl";
 
@@ -18,9 +19,9 @@ export default function ReferralsPolicy() {
       </h1>
       <div className="space-y-6 mb-12">
         <p className="text-osce-body text-osce-ink-600">
-          Effective Date: January 1, 2025
+          Effective Date: {COMPLIANCE_DATES.referrals.effective}
           <br />
-          Last Updated: September 26, 2026
+          Last Updated: {COMPLIANCE_DATES.referrals.updated}
         </p>
       </div>
 
@@ -179,10 +180,10 @@ export default function ReferralsPolicy() {
             <li>
               Email:{" "}
               <a
-                href="mailto:hello@fourintegers.com"
+                href={`mailto:${SUPPORT_EMAIL}`}
                 className="text-osce-accent hover:underline"
               >
-                hello@fourintegers.com
+                {SUPPORT_EMAIL}
               </a>
             </li>
           </ul>

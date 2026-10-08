@@ -1,3 +1,4 @@
+import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/foundation/config/siteUrl";
 
@@ -17,9 +18,9 @@ export default function PrivacyPolicy() {
 
       <div className="space-y-6 mb-12">
         <p className="text-osce-body text-osce-ink-600">
-          Effective Date: January 1, 2025
+          Effective Date: {COMPLIANCE_DATES.privacy.effective}
           <br />
-          Last Updated: May 4, 2025
+          Last Updated: {COMPLIANCE_DATES.privacy.updated}
         </p>
         <p className="text-osce-ink-700 leading-relaxed">
           OSCE Guide (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides
@@ -100,11 +101,11 @@ export default function PrivacyPolicy() {
               <strong>Company:</strong> Four Integers Ltd
             </li>
             <li>
-              <strong>Email:</strong> hello@fourintegers.com
+              <strong>Email:</strong> {SUPPORT_EMAIL}
             </li>
             <li>
               <strong>Data Protection Officer:</strong>{" "}
-              aishat.abubakar@fourintegers.com
+              {SUPPORT_EMAIL}
             </li>
           </ul>
         </section>
@@ -363,10 +364,10 @@ export default function PrivacyPolicy() {
           <p className="text-osce-ink-700 leading-relaxed">
             To exercise these rights, contact us at{" "}
             <a
-              href="mailto:privacy@fourintegers.com"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="text-osce-accent hover:underline"
             >
-              privacy@fourintegers.com
+              {SUPPORT_EMAIL}
             </a>
           </p>
         </section>
@@ -473,10 +474,10 @@ export default function PrivacyPolicy() {
                 them until they close their own account too. You can also
                 contact us at{" "}
                 <a
-                  href="mailto:privacy@fourintegers.com"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="text-osce-accent hover:underline"
                 >
-                  privacy@fourintegers.com
+                  {SUPPORT_EMAIL}
                 </a>{" "}
                 to ask about your data at any time.
               </p>
@@ -531,10 +532,10 @@ export default function PrivacyPolicy() {
             <li>
               Email:{" "}
               <a
-                href="mailto:privacy@fourintegers.com"
+                href={`mailto:${SUPPORT_EMAIL}`}
                 className="text-osce-accent hover:underline"
               >
-                privacy@fourintegers.com
+                {SUPPORT_EMAIL}
               </a>
             </li>
           </ul>

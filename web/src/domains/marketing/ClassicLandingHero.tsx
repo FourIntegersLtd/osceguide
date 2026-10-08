@@ -1,5 +1,6 @@
 "use client";
 
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext";
 
 import { HiOutlineArrowRight } from "react-icons/hi2";
@@ -56,7 +57,7 @@ export function ClassicLandingHero() {
             <HiOutlineArrowRight className="transition-transform group-hover:translate-x-0.5" />
           </button>
           <a
-            href="mailto:hello@fourintegers.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className={`${type.ctaSecondary} w-full px-7 py-3.5 text-center text-base sm:w-auto`}
           >
             Contact us

@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import type { IconType } from "react-icons";
 import {
   HiOutlineChartBar,
@@ -11,7 +12,7 @@ import {
 import type { LandingIconColor } from "@/domains/marketing/landingIconPalette";
 
 export const DEMO_MAILTO =
-  "mailto:hello@fourintegers.com?subject=OSCE%20Guide%20Institutions%20Demo";
+  `mailto:${SUPPORT_EMAIL}?subject=OSCE%20Guide%20Institutions%20Demo`;
 
 export const INSTITUTIONS_NAV = [
   { href: "#for", label: "Who it's for" },

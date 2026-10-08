@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext";
 import { Button } from "@/foundation/ui";
@@ -8,6 +8,8 @@ import type { LandingType } from "./landingTypography";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
 import type { ExamKey } from "./landingExams";
+import { readPlansOnSale } from "@/domains/marketing/api";
+import { livePricedPlans, type LivePlan } from "@/domains/marketing/support/livePlans";
 import { REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 
 const EXAM_CONFIGS = {
@@ -37,7 +39,7 @@ const EXAM_CONFIGS = {
       },
       monthly: {
         name: "1 Month",
-        stations: "50 High-Yield Clinical Scenarios",
+        stations: "Full station library",
         price: 24.99,
         features: [
           "50 High-Yield Clinical Stations",
@@ -58,7 +60,7 @@ const EXAM_CONFIGS = {
       },
       quarterly: {
         name: "3 Months",
-        stations:  "75 High-Yield Clinical Scenarios",
+        stations: "Full station library",
         price: 64.99,
         isPopular: true,
         features: [
@@ -80,7 +82,7 @@ const EXAM_CONFIGS = {
       },
       sixMonth: { 
         name: "6 Months",
-        stations: "100 High-Yield Clinical Scenarios", 
+        stations: "Full station library", 
         price: 94.99, 
         features: [
           "100 High-Yield Clinical Scenarios",
@@ -125,7 +127,7 @@ const EXAM_CONFIGS = {
       },
       monthly: {
         name: "1 Month",
-        stations: "50 High-Yield Clinical Scenarios",
+        stations: "Full station library",
         price: 24.99,
         features: [
           "50 High-Yield Clinical Stations",
@@ -142,7 +144,7 @@ const EXAM_CONFIGS = {
       },
       quarterly: {
         name: "3 Months",
-        stations: "75 High-Yield Clinical Scenarios",
+        stations: "Full station library",
         price: 64.99,
         isPopular: true,
         features: [
@@ -160,7 +162,7 @@ const EXAM_CONFIGS = {
       },
       sixMonth: { 
         name: "6 Months",
-        stations: "100+ High-Yield Clinical Scenarios", 
+        stations: "Full station library", 
         price: 94.99, 
         features: [
           "125+ High-Yield Clinical Scenarios",
@@ -201,7 +203,7 @@ const EXAM_CONFIGS = {
       },
       monthly: {
         name: "1 Month",
-        stations: "50 High-Yield Psychiatry Scenarios",
+        stations: "Full station library",
         price: 24.99,
         features: [
           "50 High-Yield Psychiatry Stations",
@@ -218,7 +220,7 @@ const EXAM_CONFIGS = {
       },
       quarterly: {
         name: "3 Months",
-        stations: "75 High-Yield Psychiatry Scenarios",
+        stations: "Full station library",
         price: 64.99,
         isPopular: true,
         features: [
@@ -236,7 +238,7 @@ const EXAM_CONFIGS = {
       },
       sixMonth: { 
         name: "6 Months",
-        stations: "100+ High-Yield Psychiatry Scenarios", 
+        stations: "Full station library", 
         price: 94.99, 
         features: [
           "125+ High-Yield Psychiatry Scenarios",
@@ -334,13 +336,55 @@ type ExamPlan = {
 type ExamConfig = {
   name: string;
   label: string;
-  plans?: {
-    trial: ExamPlan;
-    monthly: ExamPlan;
-    quarterly: ExamPlan;
-    sixMonth: ExamPlan; 
-  };
+  plans?: Record<string, ExamPlan>;
 };
+
+/**
+ * The plans on sale: null while loading, "failed" when they could not be read.
+ * Prices on every card come from here, so a failed read shows no price at all.
+ */
+function useLivePlans(): LivePlan[] | "failed" | null {
+  const [plans, setPlans] = useState<LivePlan[] | "failed" | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    readPlansOnSale(controller.signal)
+      .then((page) => setPlans(page.items))
+      .catch(() => {
+        if (!controller.signal.aborted) setPlans("failed");
+      });
+    return () => controller.abort();
+  }, []);
+  return plans;
+}
+
+/** The exam's cards priced from the plans on sale, or a short line saying why not. */
+function PricedExam({
+  examName,
+  config,
+  live,
+  onSelectPlan,
+  type,
+}: {
+  examName: string;
+  config: ExamConfig & { plans: NonNullable<ExamConfig["plans"]> };
+  live: LivePlan[] | "failed" | null;
+  onSelectPlan: () => void;
+  type: LandingType;
+}) {
+  if (live === null) return <p className={`text-center ${type.itemBody}`}>Loading prices…</p>;
+  if (live === "failed") {
+    return (
+      <p role="alert" className={`text-center ${type.itemBody}`}>
+        We could not load prices just now. Please refresh, or try again shortly.
+      </p>
+    );
+  }
+  const plans = livePricedPlans(config.plans, examName.toLowerCase(), live);
+  if (Object.keys(plans).length <= 1) {
+    return <PricingComingSoon examName={config.name} label={config.label} type={type} />;
+  }
+  return <PricingComparisonLayout examConfig={{ ...config, plans }} onSelectPlan={onSelectPlan} type={type} />;
+}
 
 type ExamName = keyof typeof EXAM_CONFIGS;
 
@@ -405,6 +449,7 @@ export function PricingSectionContent() {
   const partner = usePartnerContext();
   const { type } = useLandingVariant();
   const [selectedExam, setSelectedExam] = useState<ExamName>("SCA");
+  const live = useLivePlans();
 
   const handleNavigation = (examName: ExamName) => {
     router.push(partner.href(REGISTER_PATH, examName.toLowerCase()));
@@ -460,8 +505,10 @@ export function PricingSectionContent() {
       : null;
 
   const pricingContent = plansConfig ? (
-    <PricingComparisonLayout
-      examConfig={plansConfig}
+    <PricedExam
+      examName={selectedExam}
+      config={plansConfig}
+      live={live}
       onSelectPlan={() => handleNavigation(selectedExam)}
       type={type}
     />
@@ -517,6 +564,7 @@ export function LandingPricingSection({ appType }: LandingPricingSectionProps) {
   const { type } = useLandingVariant();
   const examKey = APP_TYPE_TO_EXAM[appType];
   const examConfig = examKey ? (EXAM_CONFIGS[examKey] as ExamConfig | undefined) : undefined;
+  const live = useLivePlans();
 
   if (!examConfig?.plans) {
     return null;
@@ -541,8 +589,10 @@ export function LandingPricingSection({ appType }: LandingPricingSectionProps) {
           </p>
         </div>
 
-        <PricingComparisonLayout
-          examConfig={plansConfig}
+        <PricedExam
+          examName={examKey}
+          config={plansConfig}
+          live={live}
           onSelectPlan={() => router.push(partner.href(REGISTER_PATH, appType))}
           type={type}
         />

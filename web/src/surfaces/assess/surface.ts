@@ -1,7 +1,10 @@
 import {
   LuCalendarDays,
   LuGauge,
+  LuBookCopy,
   LuGraduationCap,
+  LuListChecks,
+  LuUserCog,
   LuLayers,
   LuRadio,
   LuSparkles,
@@ -28,12 +31,24 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
    * The staff menu is the admin's list: what they run, who they run it for and
    * what it is built from. Their own training is not in it. */
   if (can("run_circuits")) {
+    /* Team, Stations and Programmes are tabs of People and Build; they also get
+     * their own entries so an admin finds them without knowing which tab holds them.
+     * Each shows only to who may open it, as the tab does. */
     return [
       { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
       { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
       { key: "live", label: "Now running", href: href("/live"), icon: LuRadio },
       { key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers },
+      ...(can("manage_team")
+        ? [{ key: "team", label: "Team", href: href("/team"), icon: LuUserCog }]
+        : []),
       { key: "build", label: "Build", href: href("/authoring"), icon: LuPencilRuler },
+      ...(can("author_content")
+        ? [
+            { key: "stations", label: "Stations", href: href("/authoring/stations"), icon: LuBookCopy },
+            { key: "programmes", label: "Programmes", href: href("/programmes"), icon: LuListChecks },
+          ]
+        : []),
     ];
   }
   const items: NavItem[] = [];

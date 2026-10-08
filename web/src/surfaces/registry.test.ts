@@ -159,6 +159,8 @@ describe("surface registry", () => {
       });
       for (const item of items) {
         if (capabilityPaths.has(item.href)) continue;
+        // A page inside a mounted capability (Build's Stations tab) is that capability's to answer.
+        if ([...capabilityPaths].some((path) => path && item.href.startsWith(`${path}/`))) continue;
         // The staff console's overview is its own base path, which is "".
         if (item.href === "") continue;
         assert.ok(
@@ -313,7 +315,16 @@ describe("surface registry", () => {
       href,
     });
     const keys = (items: { key: string }[]) => items.map((item) => item.key);
-    assert.deepEqual(keys(admin), ["dashboard", "sittings", "live", "trainees", "build"]);
+    assert.deepEqual(keys(admin), [
+      "dashboard",
+      "sittings",
+      "live",
+      "trainees",
+      "team",
+      "build",
+      "stations",
+      "programmes",
+    ]);
     assert.deepEqual(keys(supervisor), ["dashboard", "sittings", "live", "trainees", "build"]);
     // A trainee (no staff permission) sees only their own items: study and
     // community come from the mounted capabilities, and the staff ones stay out.

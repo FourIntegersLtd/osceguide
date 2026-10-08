@@ -1,5 +1,6 @@
 "use client";
 
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import {
   MARQUEE_TESTIMONIALS,
   type MarqueeTestimonial,
@@ -59,7 +60,7 @@ function Testimonials({
   primaryCta = { label: "Start practising", href: LOGIN_PATH },
   secondaryCta = {
     label: "Book a demo",
-    href: "mailto:hello@fourintegers.com?subject=OSCE%20Guide%20Demo",
+    href: `mailto:${SUPPORT_EMAIL}?subject=OSCE%20Guide%20Demo`,
   },
 }: TestimonialsProps) {
   const { type } = useLandingVariant();

@@ -1,3 +1,4 @@
+import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/foundation/config/siteUrl";
 
@@ -17,9 +18,9 @@ export default function LegalDisclaimer() {
 
       <div className="space-y-6 mb-12">
         <p className="text-osce-body text-osce-ink-600">
-          Effective Date: January 1, 2025
+          Effective Date: {COMPLIANCE_DATES.disclaimer.effective}
           <br />
-          Last Updated: April 3, 2025
+          Last Updated: {COMPLIANCE_DATES.disclaimer.updated}
         </p>
         <p className="text-osce-ink-700 leading-relaxed">
           <strong>OSCE Guide </strong>is a platform designed to assist doctors
@@ -29,7 +30,7 @@ export default function LegalDisclaimer() {
           platform, you acknowledge that you have read and understood the terms
           and conditions, including the limitations of liability and the use of
           AI-generated feedback. If you have any questions, please contact us at
-          &quot;hello@fourintegers.com&quot;.
+          &quot;{SUPPORT_EMAIL}&quot;.
         </p>
       </div>
 

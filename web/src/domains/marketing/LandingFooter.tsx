@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import { FaFacebook, FaLinkedin } from "react-icons/fa";
 import Link from "next/link";
 import { FaXTwitter } from "react-icons/fa6";
@@ -134,7 +135,7 @@ export function LandingFooter({
                 </li>
                 <li>
                   <a
-                    href="mailto:hello@fourintegers.com?subject=OSCE%20Guide%20Institutions%20Demo"
+                    href={`mailto:${SUPPORT_EMAIL}?subject=OSCE%20Guide%20Institutions%20Demo`}
                     className={linkClass}
                   >
                     Book a demo
@@ -156,7 +157,7 @@ export function LandingFooter({
                   </Link>
                 </li>
                 <li>
-                  <a href="mailto:hello@fourintegers.com" className={linkClass}>
+                  <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
                     Contact us
                   </a>
                 </li>

@@ -1,3 +1,4 @@
+import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/foundation/config/siteUrl";
 
@@ -15,7 +16,7 @@ export default function CookiesPolicy() {
     <div className="py-12 px-6 sm:px-8 max-w-4xl mx-auto justify-center">
       <h1 className="text-osce-heading font-bold mb-8">Cookie Policy</h1>
       <p className="text-osce-body text-osce-ink-600 mb-4">
-        Last Updated: December 31, 2024
+        Last Updated: {COMPLIANCE_DATES.cookies.updated}
       </p>
 
       <div className="space-y-16">
@@ -142,10 +143,10 @@ export default function CookiesPolicy() {
             <li>
               Email:{" "}
               <a
-                href="mailto:privacy@fourintegers.com"
+                href={`mailto:${SUPPORT_EMAIL}`}
                 className="text-osce-accent hover:underline"
               >
-                privacy@fourintegers.com
+                {SUPPORT_EMAIL}
               </a>
             </li>
           </ul>

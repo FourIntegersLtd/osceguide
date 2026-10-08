@@ -7,6 +7,8 @@ import { platformRequest, type components } from "@/foundation/platform-client";
  * visitor sees before anything else — so nothing here may assume a session.
  */
 
+import type { LivePlan } from "@/domains/marketing/support/livePlans";
+
 export type SiteStatistics = components["schemas"]["SiteStatistics"];
 
 /**
@@ -19,4 +21,12 @@ export type SiteStatistics = components["schemas"]["SiteStatistics"];
  */
 export function readSiteStatistics(signal?: AbortSignal): Promise<SiteStatistics> {
   return platformRequest<SiteStatistics>("/api/v1/site/statistics", { signal });
+}
+
+/**
+ * The plans on sale, for the pricing section. Unauthenticated like the rest of
+ * this file; the price on every card comes from these rows, not from the page.
+ */
+export function readPlansOnSale(signal?: AbortSignal): Promise<{ items: LivePlan[] }> {
+  return platformRequest<{ items: LivePlan[] }>("/api/v1/billing/plans", { signal });
 }

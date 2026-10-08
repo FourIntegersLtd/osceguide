@@ -1,3 +1,4 @@
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import Link from "next/link";
 import { FaFacebook, FaLinkedin } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
@@ -6,7 +7,7 @@ import { landingSectionSurfaces } from "@/domains/marketing/landingSectionSurfac
 import { b2bLinkMuted } from "@/foundation/ui/b2bTokens";
 
 const DEMO_MAILTO =
-  "mailto:hello@fourintegers.com?subject=OSCE%20Guide%20Institutions%20Demo";
+  `mailto:${SUPPORT_EMAIL}?subject=OSCE%20Guide%20Institutions%20Demo`;
 
 const FOOTER_COLUMN_HEADING =
   "mb-4 text-osce-caption font-semibold uppercase tracking-wider text-b2b-accent";
@@ -189,7 +190,7 @@ export function B2BLandingFooter({
                   </Link>
                 </li>
                 <li>
-                  <a href="mailto:hello@fourintegers.com" className={linkClass}>
+                  <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
                     Contact us
                   </a>
                 </li>
