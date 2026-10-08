@@ -103,14 +103,14 @@ unless written in full.
 - **B-25** · ROUGH · open · Exam delete: ExamInUse shown raw with no pointer to Retire. service_authoring.py
 - **B-26** · WRONG · open · RubricDetail shows Archive/Publish without owner_kind check (platform rubrics refuse); Publish on archived and Archive on drafts always fail. RubricDetail.tsx
 - **B-27** · ROUGH · open · listProgrammes unpaginated; picker lists only published exams with no explanation. ProgrammesSection.tsx
-- **B-28** · WRONG · open · Setup guide shown to supervisors with links to Build screens they cannot use. OrgDashboard.tsx; dashboard/support.ts
-- **B-29** · ROUGH · open · Staff nav has no entry for Programmes, Stations, Library, Settings or Team; URL or Build only. surfaces/assess/surface.ts
+- **B-28** · WRONG · fixed 53c86a8 (dashboard/support.test.ts: somebody who cannot author gets no setup guide) · Setup guide shown to supervisors with links to Build screens they cannot use. OrgDashboard.tsx; dashboard/support.ts
+- **B-29** · ROUGH · open (design choice: Programmes and Stations are Build tabs, Team a People tab, Settings a staff capability; adding a nav entry for each needs a nav design decision) · Staff nav has no entry for Programmes, Stations, Library, Settings or Team; URL or Build only. surfaces/assess/surface.ts
 - **B-30** · ROUGH · open · Generation routes are PlatformAdmin; the org "Generate with AI" tab answers locally. generation/router.py; useCreateStationForm.ts:135-148
 - **B-31** · WRONG · open · SCIM token routes exist with no screen. roster/router_scim.py:56-90
 - **B-32** · ROUGH · open · Resend invitation 429 and trainee_exists shown raw. router_admin.py:130-136; AddTraineePanel.tsx:60-70
 - **B-33** · ROUGH · open · Org settings read-only, no SSO tab (U-17). OrgSettings.tsx
 - **B-34** · ROUGH · open · "None" literal for cohort and programme in roster rows; "Exam type" survives in TemplateGenerationPanel; "Not live" pill on platform templates. roster/support.ts:21; TemplateGenerationPanel.tsx:94; StatusPills.tsx:36
-- **B-35** · ROUGH · open · Caused by 9e7e86f: a cohort created from the bulk import dialog stays behind when the import is cancelled; Roster.tsx is 333 lines against the 300-line warning. BulkImportDialog.tsx; Roster.tsx
+- **B-35** · ROUGH · fixed bb24401 (cohorts created only when the import runs; Roster.tsx 131 lines) · Caused by 9e7e86f: a cohort created from the bulk import dialog stays behind when the import is cancelled; Roster.tsx is 333 lines against the 300-line warning. BulkImportDialog.tsx; Roster.tsx
 
 ## 3. Institution staff: run and assess (R-*)
 
@@ -135,16 +135,17 @@ unless written in full.
 - **R-25** · WRONG · open · Release evidence fingerprint is client-supplied. results/router.py:140-155
 - **R-26** · WRONG · open · Unnamed OrgStaff reviewer gets a hard error reading marks on a slot they may review. service_access.py:48; SlotReview.tsx:62
 - **R-27** · ROUGH · open · SlotReview "Candidate N of M" reads the OrgAdmin report, so supervisors always see "Could not load the other candidates". SlotReview.tsx:118-120
-- **R-28** · WRONG · open · NewSitting/NewCircuit/EditCircuit reachable by supervisors with no can() guard: 403 on submit and loads; "group session" in subtitle. NewSitting.tsx; NewCircuit.tsx; EditCircuit.tsx
-- **R-29** · ROUGH · open · Reading minutes: web allows 0, server clamps 1-30, defaults differ (2 vs 3). CircuitBuilder.tsx; timing.ts
-- **R-30** · WRONG · open · EditCircuit lock copy false once locked; lock read at load; lead dropdown lists admins who cannot run. EditCircuit.tsx
-- **R-31** · WRONG · open · Sittings list filters and "Next up" operate on loaded pages only; "Schedule your first one" shown to supervisors. Sittings.tsx
+- **R-28** · WRONG · fixed 53c86a8 (ForAdmins guard on schedule_sittings for newSitting, newCircuit, circuitEdit; no render test, node loader cannot render) · NewSitting/NewCircuit/EditCircuit reachable by supervisors with no can() guard: 403 on submit and loads; "group session" in subtitle. NewSitting.tsx; NewCircuit.tsx; EditCircuit.tsx
+- **R-29** · ROUGH · fixed 53c86a8 (timing.test.ts: reading time held to 1-30, default 3) · Reading minutes: web allows 0, server clamps 1-30, defaults differ (2 vs 3). CircuitBuilder.tsx; timing.ts
+- **R-30** · WRONG · partly fixed 53c86a8 (lock copy true, lead dropdown staff only; the lock is still read at load, a 409 on save is shown) · EditCircuit lock copy false once locked; lock read at load; lead dropdown lists admins who cannot run. EditCircuit.tsx
+- **R-31** · WRONG · partly fixed 53c86a8 (note says filters cover loaded sittings only, no schedule prompt for supervisors; server-side filter needs an api change) · Sittings list filters and "Next up" operate on loaded pages only; "Schedule your first one" shown to supervisors. Sittings.tsx
 - **R-32** · WRONG · open · Reporting route notFound for institutions; nothing aggregates across sittings or programmes. surfaces/assess/surface.ts; reporting/page.tsx
 - **R-33** · ROUGH · open · Pass/fail wholly manual: no threshold proposal (D2); sign-off with pending reviews allowed (R-2 decided, attention step only). candidateProgress.ts:35
 - **R-34** · ROUGH · open · Both review forms on one page; 2–3 release controls; late candidate (D7) and extra time (S-2) have no console control. slotReviewSteps.ts:66; DecisionParts.tsx
 - **R-35** · ROUGH · open · Decision, review, sitting and circuit error codes shown raw (see section 11). CandidateDecision.tsx:140-146; SlotReview.tsx:214; AddTraineesDialog.tsx:215-221; GpLeadReview.tsx:131-135 (double message on conflict)
 - **R-36** · WRONG · fixed 80bfee0 (test_a_training_review_is_shared_with_the_trainee_once_completed) · Training sittings: no share step; copy "once your supervisor shares it" false. MySittingDetail.tsx:116; reviews/service_summary.py:48. 
 - **R-37** · ROUGH · open · After a slot attempt fails with no_marking_rubric the slot review says nobody took the station, and a failed marking retry shows its error twice (marks form and marking panel). Caused by fix 1b2f457. results slot row has no attempt id for failed attempts; SlotReview.tsx
+- **R-38** · WRONG · open · Not caused by a fix (found during 53c86a8): the api accepts any member, including a trainee, as a circuit's lead; only the web dropdown now filters. sittings/service_edit.py; CircuitBuilder.tsx (also 335 lines, over the 300-line warning)
 
 ## 4. Institution trainee (T-*)
 
@@ -339,3 +340,4 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | 2026-10-08 | night r1 (access, institution, marking) | B-1 P-1 P-8 (610efab); P-6, H-1 partly (c3983f0); P-2 P-3 P-7 (a451a1e) | S-7 needs a design choice; openapi regen blocked by the user's dirty openapi.json |
 | 2026-10-08 | night r1 institution | B-9 B-11 B-12 fixed, B-13 B-14 partly (9e7e86f); review fixes 85c0f5b (c3983f0), 23f925e (a451a1e), b6ee5ea (610efab) | B-10 stays by design; B-35 new (caused by 9e7e86f) |
 | 2026-10-08 | night r1 access | SSO takeover closed e92016f (+b6ee5ea, f354e1c review fixes); P-5 fixed, P-10 P-11 fixed under P-9 (c6bbf14) | H-2 needs a product decision; P-9 reply UI is the user's inbox work |
+| 2026-10-08 | night r1 institution | review fixes bb24401 (9e7e86f, 85c0f5b; B-35 fixed there); B-28 R-28 R-29 fixed, R-30 R-31 partly (53c86a8) | B-29 needs a nav decision; R-38 new |
