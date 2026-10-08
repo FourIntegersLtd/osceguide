@@ -24,3 +24,8 @@ test("a saved but switched-off arrangement is not called connected", () => {
   const off = { configured: true, enabled: false, sso_only: false, sign_in_label: "Sign in" };
   assert.equal(describeSsoStatus(off).badge, "Switched off");
 });
+
+test("a connected arrangement with no label falls back to plain words", () => {
+  const unlabelled = { configured: true, enabled: true, sso_only: false, sign_in_label: null };
+  assert.equal(describeSsoStatus(unlabelled).detail, "People can sign in with “single sign-on” or with a password.");
+});

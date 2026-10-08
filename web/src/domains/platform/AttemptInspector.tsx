@@ -245,7 +245,7 @@ function Actions({
             toast.success(
               result.queued
                 ? "Sent for marking"
-                : `Not sent:  ${humanise(result.reason ?? "")}`,
+                : `Not sent: ${result.reason ? humanise(result.reason) : "unknown reason"}`,
             );
             await reload();
           }}
