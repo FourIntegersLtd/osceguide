@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import Select, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
@@ -74,6 +74,28 @@ async def trainee_by_email(session: AsyncSession, org_id: uuid.UUID, email: str)
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+def _matching(
+    stmt: Select[Any], org_id: uuid.UUID, search: str | None, access_revoked: bool | None
+) -> Select[Any]:
+    """Narrow a select over trainees to one organisation, a search term and an access state."""
+    stmt = stmt.where(Trainee.org_id == org_id)
+    if access_revoked is not None:
+        stmt = stmt.where(
+            Trainee.access_revoked_at.is_not(None) if access_revoked else Trainee.access_revoked_at.is_(None)
+        )
+    term = (search or "").strip()
+    if term:
+        stmt = stmt.outerjoin(Cohort, Trainee.cohort_id == Cohort.id).where(
+            or_(
+                contains_text(Trainee.first_name, term),
+                contains_text(Trainee.last_name, term),
+                contains_text(Trainee.email, term),
+                contains_text(Cohort.name, term),
+            )
+        )
+    return stmt
+
+
 async def list_trainees(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -92,21 +114,7 @@ async def list_trainees(
     contains it, case-insensitively. A left join to `cohorts` so a trainee with
     no cohort is still searchable on name and email.
     """
-    stmt = select(Trainee).where(Trainee.org_id == org_id)
-    if access_revoked is not None:
-        stmt = stmt.where(
-            Trainee.access_revoked_at.is_not(None) if access_revoked else Trainee.access_revoked_at.is_(None)
-        )
-    term = (search or "").strip()
-    if term:
-        stmt = stmt.outerjoin(Cohort, Trainee.cohort_id == Cohort.id).where(
-            or_(
-                contains_text(Trainee.first_name, term),
-                contains_text(Trainee.last_name, term),
-                contains_text(Trainee.email, term),
-                contains_text(Cohort.name, term),
-            )
-        )
+    stmt = _matching(select(Trainee), org_id, search, access_revoked)
     return await keyset_page(
         session,
         stmt,
@@ -208,9 +216,11 @@ async def link_trainee_to_user(
     )
 
 
-async def count_trainees(session: AsyncSession, org_id: uuid.UUID) -> int:
-    """How many trainees are on this organisation's roster."""
-    stmt = select(func.count()).select_from(Trainee).where(Trainee.org_id == org_id)
+async def count_trainees(
+    session: AsyncSession, org_id: uuid.UUID, *, search: str | None = None, access_revoked: bool | None = None
+) -> int:
+    """How many trainees are on this roster; with filters, how many `list_trainees` pages through."""
+    stmt = _matching(select(func.count(Trainee.id)), org_id, search, access_revoked)
     return int((await session.execute(stmt)).scalar_one())
 
 

@@ -145,6 +145,18 @@ export function rosterTabs(canManage: boolean): { key: RosterTabKey; label: stri
   return canManage ? [...tabs, { key: "access", label: "Exam access" }] : tabs;
 }
 
+/** The cohort delete prompt: how many sittings it detaches (they are kept, with no cohort). */
+export function cohortDeleteLead(name: string, sittingCount: number): string {
+  const held =
+    sittingCount <= 0
+      ? "No sittings are held for it."
+      : `The ${sittingCount} sitting${sittingCount === 1 ? "" : "s"} held for it ${sittingCount === 1 ? "is" : "are"} kept but no longer belong to any cohort.`;
+  return (
+    `Delete “${name}”? Nobody can be put into it afterwards. This cannot be undone, and a cohort ` +
+    `that still has trainees in it is not deleted. ${held}`
+  );
+}
+
 /** The delete prompt. Someone who has sat stations most likely has a decision, which delete refuses. */
 export function deleteLead(name: string, stationsSat: number): string {
   const base = "You can only delete a trainee with no results recorded. If they have been examined, remove their access instead.";

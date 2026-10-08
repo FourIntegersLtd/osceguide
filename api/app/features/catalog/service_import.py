@@ -11,6 +11,7 @@ practice access to. The exam's stations and rubric stay the platform's and stay 
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,6 +49,21 @@ async def platform_catalogue(session: AsyncSession, org_id: uuid.UUID) -> list[P
         )
         for platform_exam in platform_exams
     ]
+
+
+async def published_station_counts_by_code(session: AsyncSession, codes: Sequence[str]) -> dict[str, int]:
+    """Published library stations per platform exam code, for the public pricing page.
+
+    A code with no published exam or no stations reads zero, so every asked code is present.
+    """
+    exams = [
+        exam
+        for exam in await repository.list_exams(session, None, statuses=[domain.ExamStatus.PUBLISHED])
+        if exam.code in codes
+    ]
+    counts = await station_library.library_station_counts(session, [exam.id for exam in exams])
+    by_code = {exam.code: counts.get(exam.id, 0) for exam in exams}
+    return {code: by_code.get(code, 0) for code in codes}
 
 
 async def import_platform_exam(

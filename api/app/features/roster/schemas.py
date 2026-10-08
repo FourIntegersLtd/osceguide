@@ -9,6 +9,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.core.pagination import Page
 from app.core.schemas import InvitationRead as InvitationRead
 
 
@@ -33,6 +34,12 @@ class TraineeRead(BaseModel):
     is_member: bool = False
     # True when adding created the account with the temporary password the admin typed.
     temporary_password_applied: bool = False
+
+
+class TraineePage(Page[TraineeRead]):
+    """A roster page that also says how many people match, so the first load need not walk it all."""
+
+    total_count: int
 
 
 class CreateTrainee(BaseModel):
@@ -91,6 +98,8 @@ class CohortRead(BaseModel):
     name: str
     academic_year: str | None
     status: str
+    # Sittings held for this intake: deleting it detaches them (the column is SET NULL).
+    sitting_count: int = 0
 
 
 class CreateCohort(BaseModel):

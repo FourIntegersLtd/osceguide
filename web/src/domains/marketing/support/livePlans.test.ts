@@ -25,6 +25,26 @@ describe("livePricedPlans", () => {
     assert.equal(out.trial?.price, 0);
   });
 
+  it("counts the stations a plan's exam has published, on the card and in its high-yield line", () => {
+    const stationCards = {
+      trial: { name: "Free Trial", price: 0, stations: 3, features: ["3 free trial stations"] },
+      monthly: {
+        name: "1 Month",
+        price: 24.99,
+        stations: "Full station library" as number | string,
+        features: ["50 High-Yield Clinical Stations", "Video Presentations"],
+      },
+    };
+    const live = [{ exam_code: "sca", duration_days: 30, amount_pence: 2999, station_count: 112 }];
+    const out = livePricedPlans(stationCards, "sca", live);
+    assert.equal(out.monthly?.stations, 112);
+    assert.deepEqual(out.monthly?.features, ["112 High-Yield Clinical Stations", "Video Presentations"]);
+    assert.equal(out.trial?.stations, 3);
+    const none = livePricedPlans(stationCards, "sca", [{ ...live[0]!, station_count: 0 }]);
+    assert.equal(none.monthly?.stations, "Full station library");
+    assert.deepEqual(none.monthly?.features, ["50 High-Yield Clinical Stations", "Video Presentations"]);
+  });
+
   it("drops a card with no plan on sale rather than showing an invented price", () => {
     assert.deepEqual(Object.keys(livePricedPlans(cards, "sca", [])), ["trial"]);
   });

@@ -24,6 +24,20 @@ from app.features.sittings.models import (
 )
 
 
+async def sitting_counts_by_cohort(
+    session: AsyncSession, org_id: uuid.UUID, cohort_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """How many sittings are held for each of these cohorts; a cohort with none is absent."""
+    if not cohort_ids:
+        return {}
+    stmt = (
+        select(Sitting.cohort_id, func.count())
+        .where(Sitting.org_id == org_id, Sitting.cohort_id.in_(list(cohort_ids)))
+        .group_by(Sitting.cohort_id)
+    )
+    return {cohort_id: int(count) for cohort_id, count in (await session.execute(stmt)).all()}
+
+
 async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
     """How many sittings this organisation has scheduled."""
     stmt = select(func.count()).select_from(Sitting).where(Sitting.org_id == org_id)

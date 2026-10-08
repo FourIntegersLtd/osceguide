@@ -248,9 +248,11 @@ async def audiences_for_viewer(session: AsyncSession, user_id: uuid.UUID) -> Vie
     )
 
 
-async def count_trainees(session: AsyncSession, org_id: uuid.UUID) -> int:
-    """How many people this organisation teaches."""
-    return await repository.count_trainees(session, org_id)
+async def count_trainees(
+    session: AsyncSession, org_id: uuid.UUID, *, search: str | None = None, access_revoked: bool | None = None
+) -> int:
+    """How many people this organisation teaches; with the filters, how many `list_trainees` pages through."""
+    return await repository.count_trainees(session, org_id, search=search, access_revoked=access_revoked)
 
 
 ANONYMISED_NAME = "Anonymised trainee"

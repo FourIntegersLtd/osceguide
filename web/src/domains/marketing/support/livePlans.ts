@@ -3,6 +3,8 @@ export interface LivePlan {
   exam_code: string;
   duration_days: number;
   amount_pence: number;
+  /** Published stations in the plan's exam. Until regenerated: not in schema.d.ts yet. */
+  station_count?: number;
 }
 
 type Tier = "monthly" | "quarterly" | "sixMonth";
@@ -14,6 +16,18 @@ function tierOf(days: number): Tier {
   return "sixMonth";
 }
 
+/** The card's station figures from the exam's published count, or left as written when it has none. */
+function stationsOf(
+  card: { stations?: number | string; features?: readonly string[] },
+  count: number,
+): { stations?: number; features?: readonly string[] } {
+  if (count <= 0) return {};
+  return {
+    stations: count,
+    features: card.features?.map((line) => line.replace(/^\d+(?= High-Yield )/, String(count))),
+  };
+}
+
 /**
  * The price cards for an exam, priced from the plans on sale.
  *
@@ -21,7 +35,7 @@ function tierOf(days: number): Tier {
  * no plan behind it is dropped, because a price nobody can pay is worse than
  * a missing card. The free trial has no plan row and stays.
  */
-export function livePricedPlans<T extends { price: number }>(
+export function livePricedPlans<T extends { price: number; stations?: number | string; features?: readonly string[] }>(
   cards: Record<string, T>,
   examCode: string,
   live: readonly LivePlan[],
@@ -33,7 +47,7 @@ export function livePricedPlans<T extends { price: number }>(
       continue;
     }
     const plan = live.find((p) => p.exam_code === examCode && tierOf(p.duration_days) === key);
-    if (plan) out[key] = { ...card, price: plan.amount_pence / 100 };
+    if (plan) out[key] = { ...card, ...stationsOf(card, plan.station_count ?? 0), price: plan.amount_pence / 100 };
   }
   return out;
 }

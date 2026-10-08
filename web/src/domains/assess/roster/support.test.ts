@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
 import { PlatformError } from "@/foundation/platform-client";
-import { cohortName, deleteLead, rosterErrorMessage, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
+import { cohortDeleteLead, cohortName, deleteLead, rosterErrorMessage, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
 import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {
@@ -71,10 +71,16 @@ test("the delete prompt says up front when Revoke is the option that will work",
   assert.doesNotMatch(deleteLead("Ada", 0), /has sat/);
 });
 
+test("the cohort delete prompt counts the sittings that detach", () => {
+  assert.match(cohortDeleteLead("2027 intake", 3), /3 sittings held for it are kept but no longer belong to any cohort/);
+  assert.match(cohortDeleteLead("2027 intake", 1), /1 sitting held for it is kept/);
+  assert.match(cohortDeleteLead("2027 intake", 0), /No sittings are held for it/);
+});
+
 test("a reload fetches only the lists marked stale", async () => {
   const calls: string[] = [];
   const fetchers = {
-    trainees: async () => (calls.push("trainees"), [] as RosterData["trainees"]),
+    trainees: async () => (calls.push("trainees"), { rows: [], total: 0, cursor: null } as RosterData["trainees"]),
     cohorts: async () => (calls.push("cohorts"), [] as RosterData["cohorts"]),
     groups: async () => (calls.push("groups"), [] as RosterData["groups"]),
   };

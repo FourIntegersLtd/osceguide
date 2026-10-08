@@ -104,6 +104,13 @@ async def trainee_activity(
     return await repository_reads.trainee_activity(session, org_id, user_ids)
 
 
+async def sitting_counts_by_cohort(
+    session: AsyncSession, org_id: uuid.UUID, cohort_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, int]:
+    """Sittings held for each cohort, so deleting one can say how many it detaches."""
+    return await repository_reads.sitting_counts_by_cohort(session, org_id, cohort_ids)
+
+
 async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
     return await repository_reads.count_sittings(session, org_id)
 

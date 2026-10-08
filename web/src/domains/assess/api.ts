@@ -58,7 +58,8 @@ export function pageQuery(page?: PageParams) {
   };
 }
 
-export type TraineePage = components["schemas"]["Page_TraineeRead_"];
+// until regenerated: the roster page also answers `total_count`, every match rather than this page.
+export type TraineePage = components["schemas"]["Page_TraineeRead_"] & { total_count?: number };
 export type MembershipPage = components["schemas"]["Page_MembershipRead_"];
 
 /** `accessRevoked: false` narrows to trainees who still have access, in SQL. */

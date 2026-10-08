@@ -6,6 +6,7 @@ import { b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
 import { deleteCohort, renameCohort, type Cohort } from "@/domains/assess/roster/api";
+import { cohortDeleteLead } from "@/domains/assess/roster/support";
 
 /**
  * The two things a cohort row can be corrected into: renamed, or removed.
@@ -194,10 +195,7 @@ function DeleteForm({
     }
   };
 
-  const lead =
-    `Delete “${cohort.name}”? Nobody can be put into it afterwards. This cannot be ` +
-    "undone, and a cohort that still has trainees in it is not deleted. Sittings scheduled for it are " +
-    "kept but no longer belong to any cohort.";
+  const lead = cohortDeleteLead(cohort.name, cohort.sitting_count ?? 0);
 
   return (
     <Dialog

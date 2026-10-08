@@ -18,7 +18,8 @@ import {
   type TraineePage,
 } from "@/domains/assess/api";
 
-export type Cohort = components["schemas"]["CohortRead"];
+// until regenerated: a cohort also answers `sitting_count`, the sittings a delete would detach from it.
+export type Cohort = components["schemas"]["CohortRead"] & { sitting_count?: number };
 export type TraineeGroup = components["schemas"]["GroupRead"];
 export type BulkTraineesResult = components["schemas"]["BulkTraineesResult"];
 export type SkippedTrainee = components["schemas"]["SkippedTrainee"];
@@ -38,9 +39,20 @@ export function listTrainees(
   });
 }
 
-/** The whole roster, cursors walked: the group editor needs all of it. */
-export function listAllTrainees(slug: string, signal?: AbortSignal): Promise<Trainee[]> {
-  return collectPages((cursor) => listTrainees(slug, signal, { cursor }));
+/** One page of the roster with how many people it holds in all; the rest is `loadMore`. */
+export interface TraineeSlice {
+  rows: Trainee[];
+  total: number;
+  cursor: string | null;
+}
+
+export async function readTraineeSlice(
+  slug: string,
+  signal?: AbortSignal,
+  cursor?: string | null,
+): Promise<TraineeSlice> {
+  const page = await listTrainees(slug, signal, { cursor });
+  return { rows: page.items, total: page.total_count ?? page.items.length, cursor: page.next_cursor ?? null };
 }
 
 export interface TraineeInput {

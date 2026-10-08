@@ -399,3 +399,62 @@ async def test_the_roster_filters_on_revoked_access(client: AsyncClient, make_ac
     active = await client.get("/api/v1/orgs/kings/trainees?access_revoked=false", headers=bearer(admin))
     assert [trainee["email"] for trainee in revoked.json()["items"]] == ["gone@example.com"]
     assert [trainee["email"] for trainee in active.json()["items"]] == ["still-here@example.com"]
+
+
+async def test_a_cohort_says_how_many_sittings_are_held_for_it(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """Deleting a cohort detaches its sittings (`SET NULL`), so the read says how many."""
+    from sqlalchemy import update
+
+    from app.features.sittings.models import Sitting
+    from tests.http.test_org_read_models import a_sitting
+    from tests.support.sittings import create_sitting_body
+
+    _, admin = await org_with_admin(client, make_actor)
+    year_one = (
+        await client.post("/api/v1/orgs/kings/cohorts", json={"name": "Y1"}, headers=bearer(admin))
+    ).json()
+    year_two = (
+        await client.post("/api/v1/orgs/kings/cohorts", json={"name": "Y2"}, headers=bearer(admin))
+    ).json()
+    assert year_one["sitting_count"] == 0
+    first = await a_sitting(client, admin, "kings")
+    second = (
+        await client.post(
+            "/api/v1/orgs/kings/sittings",
+            json=create_sitting_body(name="Resit", programme_id=uuid.UUID(first["programme_id"])),
+            headers=bearer(admin),
+        )
+    ).json()
+    for sitting in (first, second):
+        await db_session.execute(
+            update(Sitting)
+            .where(Sitting.id == uuid.UUID(sitting["id"]))
+            .values(cohort_id=uuid.UUID(year_one["id"]))
+        )
+    await db_session.flush()
+
+    listed = (await client.get("/api/v1/orgs/kings/cohorts", headers=bearer(admin))).json()["items"]
+    assert {c["name"]: c["sitting_count"] for c in listed} == {"Y1": 2, "Y2": 0}
+    renamed = await client.patch(
+        f"/api/v1/orgs/kings/cohorts/{year_one['id']}", json={"name": "Year 1"}, headers=bearer(admin)
+    )
+    assert renamed.json()["sitting_count"] == 2
+    assert year_two["sitting_count"] == 0
+
+
+async def test_the_first_roster_page_carries_the_whole_count(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    for name in ("a", "b", "c"):
+        await add_trainee(client, admin, f"{name}@example.com")
+
+    first = (
+        await client.get("/api/v1/orgs/kings/trainees", params={"limit": 2}, headers=bearer(admin))
+    ).json()
+    assert len(first["items"]) == 2
+    assert first["total_count"] == 3
+    searched = (
+        await client.get("/api/v1/orgs/kings/trainees", params={"search": "b@"}, headers=bearer(admin))
+    ).json()
+    assert searched["total_count"] == 1

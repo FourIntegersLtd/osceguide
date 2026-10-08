@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AsyncBoundary, Button, B2CHero, B2CPageHeader, TextLink } from "@/foundation/ui";
+import { AsyncBoundary, Button, B2CHero, B2CPageHeader, LoadMore, TextLink } from "@/foundation/ui";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { TabStrip } from "@/domains/assess/team/chrome";
@@ -29,7 +29,8 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
   const [section, setSection] = useState<Section>("trainees");
   const canManage = can(session, "manage_team");
 
-  const { state, reloadAfter } = useRosterData(orgSlug);
+  const { state, reloadAfter, trainees, hasMore, loadMore, loadingMore, moreError } = useRosterData(orgSlug);
+  const loadedAll = !hasMore;
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,7 +40,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
             <B2CPageHeader
               title="People"
               subtitle={sectionSubtitle(section, {
-                trainees: data.trainees.length,
+                trainees: trainees.total,
                 groups: data.groups.length,
               })}
               action={
@@ -51,15 +52,15 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
               }
             />
 
-            {section === "trainees" && data.trainees.length > 0 ? (
-              <B2CHero title={rosterHeadline(data.trainees)}>
-                {rosterDetail(data.trainees)}
+            {section === "trainees" && trainees.total > 0 ? (
+              <B2CHero title={rosterHeadline(trainees.rows, trainees.total, loadedAll)}>
+                {loadedAll ? rosterDetail(trainees.rows) : null}
               </B2CHero>
             ) : null}
 
             <TabStrip
               tabs={rosterTabs(canManage).map((tab) =>
-                tab.key === "trainees" ? { ...tab, count: data.trainees.length } : tab,
+                tab.key === "trainees" ? { ...tab, count: trainees.total } : tab,
               )}
               active={section} onSelect={setSection}
               label="Roster sections"
@@ -88,14 +89,23 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
                 orgSlug={orgSlug}
                 cohorts={data.cohorts}
                 groups={data.groups}
-                trainees={data.trainees}
+                trainees={trainees.rows}
                 canManage={canManage}
                 onChanged={reloadAfter("groups", "cohorts")}
               />
             ) : null}
 
             {section === "access" ? (
-              <AccessPanel orgSlug={orgSlug} trainees={data.trainees} canManage={canManage} />
+              <AccessPanel orgSlug={orgSlug} trainees={trainees.rows} canManage={canManage} />
+            ) : null}
+
+            {(section === "groups" || section === "access") && (hasMore || moreError) ? (
+              <div className="flex flex-col items-center gap-1">
+                <p className="text-osce-caption text-b2b-mid">
+                  Showing {trainees.rows.length} of {trainees.total} trainees.
+                </p>
+                <LoadMore hasMore={hasMore} busy={loadingMore} onLoad={loadMore} error={moreError} />
+              </div>
             ) : null}
           </>
         )}
@@ -119,8 +129,10 @@ function programmeCount(trainees: Trainee[]): number {
 }
 
 /** "N trainees across M programmes", counting only programmes someone is rostered on. */
-function rosterHeadline(trainees: Trainee[]): string {
-  const people = `${trainees.length} ${trainees.length === 1 ? "trainee" : "trainees"}`;
+function rosterHeadline(trainees: Trainee[], total: number, loadedAll: boolean): string {
+  const people = `${total} ${total === 1 ? "trainee" : "trainees"}`;
+  // Programmes are read off the rows, so they are only the whole truth once every row is here.
+  if (!loadedAll) return people;
   const count = programmeCount(trainees);
   return `${people} across ${count} ${count === 1 ? "programme" : "programmes"}`;
 }

@@ -17,6 +17,8 @@ class PlanRead(BaseModel):
     # What this plan costs with a referral code, or None when it has no
     # referral discount. The discounted plan is not listed on its own.
     referral_amount_pence: int | None = None
+    # Published library stations for this plan's exam, so a price card can say what it buys.
+    station_count: int = 0
 
 
 class PlatformPlanRead(BaseModel):

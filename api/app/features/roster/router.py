@@ -28,7 +28,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 
 @router.get(
     "/orgs/{org_slug}/trainees",
-    response_model=Page[schemas.TraineeRead],
+    response_model=schemas.TraineePage,
     responses=error_responses(Forbidden),
 )
 async def list_trainees(
@@ -39,8 +39,10 @@ async def list_trainees(
     access_revoked: Annotated[
         bool | None, Query(description="true: only trainees whose access is revoked; false: only live ones.")
     ] = None,
-) -> Page[schemas.TraineeRead]:
-    """Readable by staff who run circuits; a trainee cannot read the roster."""
+) -> schemas.TraineePage:
+    """Readable by staff who run circuits; a trainee cannot read the roster.
+
+    `total_count` is every match, not this page's size."""
     trainees, next_cursor = await service.list_trainees(
         session,
         workspace.org_id,
@@ -49,7 +51,10 @@ async def list_trainees(
         search=search,
         access_revoked=access_revoked,
     )
-    return Page(items=trainees, next_cursor=next_cursor)
+    total = await service.count_trainees(
+        session, workspace.org_id, search=search, access_revoked=access_revoked
+    )
+    return schemas.TraineePage(items=trainees, next_cursor=next_cursor, total_count=total)
 
 
 @router.post(

@@ -22,6 +22,7 @@ from app.features.roster.schemas import (
     UpdateCohort,
 )
 from app.features.roster.service import _require_trainee, _trainee_read
+from app.features.sittings import service_reads as sittings
 
 # `academic_year` can be cleared and `name` cannot, so the two are not treated
 # alike: an absent key leaves the value alone in both cases.
@@ -39,7 +40,9 @@ async def add_cohort(
 
 
 async def list_cohorts(session: AsyncSession, org_id: uuid.UUID) -> list[CohortRead]:
-    return [_cohort_read(cohort) for cohort in await repository_groups.list_cohorts(session, org_id)]
+    cohorts = await repository_groups.list_cohorts(session, org_id)
+    held = await sittings.sitting_counts_by_cohort(session, org_id, [cohort.id for cohort in cohorts])
+    return [_cohort_read(cohort, held.get(cohort.id, 0)) for cohort in cohorts]
 
 
 async def update_cohort(
@@ -70,7 +73,8 @@ async def update_cohort(
         academic_year=body.academic_year if "academic_year" in named else None,
         clear_academic_year="academic_year" in named and body.academic_year is None,
     )
-    return _cohort_read(await _require_cohort(session, org_id, cohort_id))
+    held = await sittings.sitting_counts_by_cohort(session, org_id, [cohort_id])
+    return _cohort_read(await _require_cohort(session, org_id, cohort_id), held.get(cohort_id, 0))
 
 
 async def delete_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: uuid.UUID) -> None:
@@ -215,8 +219,12 @@ async def _require_cohort(session: AsyncSession, org_id: uuid.UUID, cohort_id: u
     return cohort
 
 
-def _cohort_read(cohort: Cohort) -> CohortRead:
+def _cohort_read(cohort: Cohort, sitting_count: int = 0) -> CohortRead:
     """Shape a cohort row into what a route may return."""
     return CohortRead(
-        id=cohort.id, name=cohort.name, academic_year=cohort.academic_year, status=cohort.status
+        id=cohort.id,
+        name=cohort.name,
+        academic_year=cohort.academic_year,
+        status=cohort.status,
+        sitting_count=sitting_count,
     )

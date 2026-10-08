@@ -1088,3 +1088,25 @@ async def test_refunding_the_first_plan_pulls_a_stacked_plan_forward(
     now = datetime.now(UTC)
     assert abs(second.starts_at - now) < timedelta(minutes=5)
     assert second.ends_at - second.starts_at == timedelta(days=90)
+
+
+async def test_a_plan_says_how_many_stations_its_exam_has_published(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from tests.support.library import publish_library_station
+
+    await a_plan(db_session)
+    await billing_repo.create_plan(
+        db_session,
+        code="plab_month",
+        stripe_price_id="price_plab",
+        amount_pence=999,
+        duration_days=30,
+        exam_code="plab",
+    )
+    await publish_library_station(db_session, "sca")
+    await publish_library_station(db_session, "sca")
+    await db_session.flush()
+
+    items = (await client.get("/api/v1/billing/plans")).json()["items"]
+    assert {plan["exam_code"]: plan["station_count"] for plan in items} == {"sca": 2, "plab": 0}

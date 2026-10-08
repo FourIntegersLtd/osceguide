@@ -13,6 +13,7 @@ from app.core.errors import AppError
 from app.core.logging import get_logger
 from app.features.billing import domain, errors, receipts, repository, signature
 from app.features.billing.service_settlement import _as_plans, settle_payment, withdraw_payment
+from app.features.catalog import service_import as catalog_import
 from app.features.entitlements import service as entitlements
 from app.features.growth import service as growth
 from app.features.identity import service as identity
@@ -221,6 +222,9 @@ async def list_plans(session: AsyncSession) -> list[dict[str, Any]]:
     plan as `referral_amount_pence`, so the pricing page can show what a code would save.
     """
     plans = await repository.active_plans(session)
+    stations = await catalog_import.published_station_counts_by_code(
+        session, sorted({plan.exam_code for plan in plans})
+    )
     referral_prices = {plan.code: plan.amount_pence for plan in plans if domain.is_referral_plan(plan.code)}
     return [
         {
@@ -230,6 +234,7 @@ async def list_plans(session: AsyncSession) -> list[dict[str, Any]]:
             "duration_days": plan.duration_days,
             "exam_code": plan.exam_code,
             "referral_amount_pence": referral_prices.get(domain.referral_plan_code(plan.code)),
+            "station_count": stations[plan.exam_code],
         }
         for plan in plans
         if not domain.is_referral_plan(plan.code)
