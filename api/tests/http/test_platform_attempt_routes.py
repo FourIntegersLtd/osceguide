@@ -345,3 +345,41 @@ async def test_the_fixes_are_refused_to_anybody_but_a_platform_admin(
             f"/api/v1/platform/attempts/{attempt_id}/{path}", json=body, headers=bearer(someone)
         )
         assert response.status_code == 403, path
+
+
+async def test_an_exam_slot_attempt_names_its_sitting_and_a_practice_one_does_not(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Support asked about an exam attempt needs to know which sitting it belongs to (P-27)."""
+    from sqlalchemy import select
+
+    from app.features.attempts.models import Attempt
+    from app.features.catalog.models import Exam
+    from app.features.sittings.models import Slot
+    from tests.http.test_results_routes import a_sitting_and_trainee, org_with_admin
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    org_id, _ = await org_with_admin(client, make_actor)
+    sitting_id, _ = await a_sitting_and_trainee(db_session, org_id)
+    slot = (await db_session.execute(select(Slot).where(Slot.org_id == org_id))).scalars().one()
+    exam_id = await db_session.scalar(select(Exam.id).where(Exam.code == "sca"))
+    attempt = Attempt(
+        kind="exam_slot",
+        user_id=slot.trainee_id,
+        org_id=org_id,
+        exam_id=exam_id,
+        slot_id=slot.id,
+        status="running",
+    )
+    db_session.add(attempt)
+    await db_session.flush()
+    attempt_id = attempt.id
+    _, practice_id = await a_person_with_an_attempt(db_session, "plain@example.com")
+
+    sat = (await client.get(f"/api/v1/platform/attempts/{attempt_id}", headers=bearer(root))).json()
+    plain = (await client.get(f"/api/v1/platform/attempts/{practice_id}", headers=bearer(root))).json()
+
+    assert sat["sitting_id"] == str(sitting_id)
+    assert sat["sitting_name"] == "Finals"
+    assert plain["sitting_id"] is None
+    assert plain["sitting_name"] is None

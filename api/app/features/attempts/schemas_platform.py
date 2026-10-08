@@ -46,6 +46,9 @@ class PlatformAttemptDetail(PlatformAttemptRead):
     definition_frozen_at: datetime | None
     chunk_count: int
     jobs: list[ScoringJobRead]
+    # For an exam_slot attempt: the sitting it was sat in. None for every other kind.
+    sitting_id: uuid.UUID | None = None
+    sitting_name: str | None = None
 
 
 class RescoreRequest(BaseModel):

@@ -88,7 +88,7 @@ async def read_user(user_id: uuid.UUID, admin: PlatformAdmin, session: Session) 
 @router.patch(
     "/platform/users/{user_id}",
     response_model=schemas.PlatformUserDetail,
-    responses=error_responses(Forbidden, errors.UserNotFound),
+    responses=error_responses(Forbidden, errors.UserNotFound, errors.LastAdministrator),
 )
 async def update_user(
     user_id: uuid.UUID,
@@ -98,7 +98,8 @@ async def update_user(
     clock: ClockDep,
 ) -> schemas.PlatformUserDetail:
     """Correct a name or exam, or deactivate the account — which ends its
-    sessions now, not at the next refresh."""
+    sessions and any consultation it has open now, not at the next refresh. Refused
+    for the only active administrator of an organisation."""
     return await service_platform_users.update_user(
         session, user_id, changes=body, actor=admin, now=clock.now()
     )

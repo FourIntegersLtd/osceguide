@@ -70,7 +70,7 @@ export function AccountTab({
             ? "Account deactivated"
             : "Account reactivated",
           status === "deactivated"
-            ? "They have been signed out everywhere and cannot sign in again."
+            ? "They are signed out everywhere, any consultation they had open is ended, and they cannot sign in again."
             : "They can sign in again.",
         );
         setConfirmOff(false);
@@ -269,7 +269,7 @@ export function AccountTab({
         tone="danger"
         title="Deactivate this account?"
         confirmText="Deactivate"
-        message={`${user.email} will be signed out everywhere and refused until reactivated. Nothing is deleted, and their organisation roles and any attempt in progress stay as they are.`}
+        message={`${user.email} will be signed out everywhere and refused until reactivated. Any consultation they have open is ended. Nothing is deleted, and their organisation roles stay as they are. An organisation's only active administrator cannot be deactivated.`}
       />
       <ConfirmModal
         isOpen={pending !== null}

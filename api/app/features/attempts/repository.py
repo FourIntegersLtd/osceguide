@@ -496,6 +496,19 @@ async def fail_live_attempt_for_slot(
     await session.flush()
 
 
+async def fail_unfinished_for_user(
+    session: AsyncSession, user_id: uuid.UUID, *, at: datetime, reason: str
+) -> int:
+    """Fail every attempt of this person that is still created or running. Returns how many."""
+    stmt = select(Attempt.id).where(
+        Attempt.user_id == user_id, Attempt.status.in_([str(Status.CREATED), str(Status.RUNNING)])
+    )
+    ids = list((await session.execute(stmt)).scalars())
+    for attempt_id in ids:
+        await set_status(session, attempt_id, status=Status.FAILED, at=at, reason=reason)
+    return len(ids)
+
+
 async def exam_for_slot_attempt(session: AsyncSession, slot_id: uuid.UUID) -> uuid.UUID | None:
     """The exam a previous attempt on this slot ran under.
 

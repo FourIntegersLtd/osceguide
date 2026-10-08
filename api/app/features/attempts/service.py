@@ -266,6 +266,16 @@ async def fail_live_for_slot(
     await repository.fail_live_attempt_for_slot(session, slot_id, at=now, reason=reason)
 
 
+async def fail_unfinished_for_user(
+    session: AsyncSession, *, user_id: uuid.UUID, now: datetime, reason: str
+) -> int:
+    """End every consultation this person has open, for an account that has just been closed.
+
+    Failed with a reason rather than deleted, like an abandon, so what was recorded survives.
+    """
+    return await repository.fail_unfinished_for_user(session, user_id, at=now, reason=reason)
+
+
 async def _exam_for_station(session: AsyncSession, station_version_id: uuid.UUID | None) -> uuid.UUID:
     """Which exam this slot's station belongs to.
 

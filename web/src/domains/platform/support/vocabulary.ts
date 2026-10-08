@@ -261,6 +261,16 @@ type AttemptDiagnosisInput = {
   created_at?: string;
 };
 
+/** Failing or salvaging ends a consultation, so neither is offered while it could still be running. */
+export function attemptMayBeLive(
+  attempt: Pick<AttemptDiagnosisInput, "status" | "started_at" | "created_at">,
+  now: number = Date.now(),
+): boolean {
+  if (attempt.status !== "created" && attempt.status !== "running") return false;
+  const since = Date.parse(attempt.started_at ?? attempt.created_at ?? "");
+  return Number.isFinite(since) && Math.floor((now - since) / 60_000) < LIVE_WINDOW_MINUTES;
+}
+
 /**
  * Why an attempt has no feedback, from what the support read says.
  *
@@ -271,15 +281,12 @@ type AttemptDiagnosisInput = {
 export function diagnoseAttempt(attempt: AttemptDiagnosisInput, now: number = Date.now()): { problem: string; action: "salvage" | "rescore" | "fail" | null } | null {
   const status = attempt.status;
   if (status === "evaluated" || status === "failed") return null;
-  if (status === "created" || status === "running") {
-    const since = Date.parse(attempt.started_at ?? attempt.created_at ?? "");
-    const minutes = Math.floor((now - since) / 60_000);
-    if (Number.isFinite(since) && minutes < LIVE_WINDOW_MINUTES) {
-      return {
-        problem: `This consultation began ${minutes < 1 ? "less than a minute" : `${minutes} minute${minutes === 1 ? "" : "s"}`} ago and may still be in progress. Failing or salvaging it now would end it for the person sitting it.`,
-        action: null,
-      };
-    }
+  if (attemptMayBeLive(attempt, now)) {
+    const minutes = Math.floor((now - Date.parse(attempt.started_at ?? attempt.created_at ?? "")) / 60_000);
+    return {
+      problem: `This consultation began ${minutes < 1 ? "less than a minute" : `${minutes} minute${minutes === 1 ? "" : "s"}`} ago and may still be in progress. Failing or salvaging it now would end it for the person sitting it.`,
+      action: null,
+    };
   }
   if (status === "created") {
     return { problem: "The room was never joined, so nothing was recorded.", action: "fail" };

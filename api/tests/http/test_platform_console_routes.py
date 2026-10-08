@@ -349,3 +349,60 @@ async def test_the_user_detail_names_each_organisation_and_says_who_is_still_inv
         "supervisor",
     )
     assert (membership["invited"], membership["must_change_password"]) == (True, True)
+
+
+async def test_deactivating_an_account_fails_the_attempt_it_is_in_the_middle_of(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """A deactivated person cannot finish a consultation, so it must not stay live (P-25)."""
+    from datetime import UTC, datetime
+
+    from app.features.attempts import repository as attempts
+    from app.features.attempts.domain import Status
+    from tests.support.catalog import ensure_exam
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    person = await make_actor("midway@example.com")
+    user_id = (await client.get("/api/v1/me", headers=bearer(person))).json()["id"]
+    exam = await ensure_exam(db_session, "sca")
+    attempt = await attempts.create_attempt(
+        db_session, kind="practice", user_id=uuid.UUID(user_id), exam_id=exam.id, room_name="room-midway"
+    )
+    await attempts.set_status(db_session, attempt.id, status=Status.RUNNING, at=datetime.now(UTC))
+    await db_session.flush()
+    attempt_id = attempt.id
+
+    gone = await client.patch(
+        f"/api/v1/platform/users/{user_id}", json={"status": "deactivated"}, headers=bearer(root)
+    )
+    assert gone.status_code == 200, gone.text
+
+    seen = (await client.get(f"/api/v1/platform/attempts/{attempt_id}", headers=bearer(root))).json()
+    assert (seen["status"], seen["failed_reason"]) == ("failed", "account_deactivated")
+
+
+async def test_an_organisations_only_active_administrator_cannot_be_deactivated(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Deactivated admins do not count towards "an administrator remains" (P-25)."""
+    from tests.http.test_tenancy_routes import member_token, seed_org
+
+    org_id = await seed_org(client, make_actor)
+    root = await make_actor("root2@osceguide.com", platform_admin=True)
+    first = await member_token(make_actor, org_id, "kings", "institution_admin")
+    second = await make_actor(
+        "second-admin@example.com",
+        memberships=(Membership(org_id=org_id, org_slug="kings", role="institution_admin"),),
+        active_org_slug="kings",
+    )
+    first_id = (await client.get("/api/v1/me", headers=bearer(first))).json()["id"]
+    second_id = (await client.get("/api/v1/me", headers=bearer(second))).json()["id"]
+
+    async def deactivate(user_id: str):  # type: ignore[no-untyped-def]
+        return await client.patch(
+            f"/api/v1/platform/users/{user_id}", json={"status": "deactivated"}, headers=bearer(root)
+        )
+
+    assert (await deactivate(first_id)).status_code == 200
+    refused = await deactivate(second_id)
+    assert (refused.status_code, refused.json()["code"]) == (409, "last_admin")

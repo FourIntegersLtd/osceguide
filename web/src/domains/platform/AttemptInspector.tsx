@@ -33,6 +33,7 @@ import {
 import { InlineAction } from "@/domains/platform/user/InlineAction";
 import {
   attemptStatusLabel,
+  attemptMayBeLive,
   attemptStatusTone,
   diagnoseAttempt,
   formatMoment,
@@ -162,6 +163,9 @@ function attemptFacts(
   attempt: PlatformAttemptDetail,
 ): { label: string; value: string }[] {
   const facts = [
+    ...(attempt.sitting_name
+      ? [{ label: "Sitting", value: attempt.sitting_name }]
+      : []),
     {
       label: "Station loaded",
       value: attempt.has_definition
@@ -201,6 +205,7 @@ function Actions({
   const toast = useToast();
   const terminal =
     attempt.status === "evaluated" || attempt.status === "failed";
+  const mayBeLive = attemptMayBeLive(attempt);
   const markable =
     attempt.status === "interaction_complete" || attempt.status === "evaluated";
 
@@ -213,7 +218,7 @@ function Actions({
     <ActionRail
       title="Fix it"
       danger={
-        !terminal ? (
+        !terminal && !mayBeLive ? (
           <InlineAction
             label="Fail this attempt"
             tone="danger"
@@ -246,7 +251,7 @@ function Actions({
           }}
         />
       ) : null}
-      {attempt.status === "running" ? (
+      {attempt.status === "running" && !mayBeLive ? (
         <InlineAction
           label="Salvage the transcript"
           requireReason={false}

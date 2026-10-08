@@ -4,11 +4,14 @@ import { useCallback, useState } from "react";
 import { Alert, Button, Input, Panel, Select } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import {
+  listOrgMembershipsForSupport,
   setStaffMfaPolicy,
   updateOrganization,
   type Organization,
+  type Membership,
   type OrganizationChanges,
 } from "@/domains/platform/api";
+import { roleLabel } from "@/foundation/session/roles";
 import { hasCode } from "@/foundation/platform-client";
 import { WriteOnlyNote } from "@/domains/platform/chrome";
 import {
@@ -16,6 +19,8 @@ import {
   ORG_TYPES,
   asContractDate,
   contractDatesError,
+  misfitMembers,
+  pageOf,
 } from "@/domains/platform/support";
 
 /**
@@ -39,6 +44,9 @@ export function OrganizationSettings({
   const [orgType, setOrgType] = useState(organization.org_type);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  // Members a type change would leave in a role that belongs to another kind of organisation.
+  const [misfits, setMisfits] = useState<Membership[] | null>(null);
+  const [shownPages, setShownPages] = useState(1);
 
   const commit = useCallback(
     async (changes: OrganizationChanges, done: string) => {
@@ -55,6 +63,40 @@ export function OrganizationSettings({
     },
     [organization.slug, onChanged, toast],
   );
+
+  const everyMember = async (): Promise<Membership[]> => {
+    const members: Membership[] = [];
+    let cursor: string | null | undefined;
+    do {
+      const page = await listOrgMembershipsForSupport(organization.slug, { limit: 100, cursor });
+      members.push(...page.items);
+      cursor = page.next_cursor;
+    } while (cursor);
+    return members;
+  };
+
+  /** Saving a new type first checks who it would strand, and asks before going on. */
+  const save = async () => {
+    const changes = { name: name.trim(), org_type: orgType };
+    if (orgType === organization.org_type) return commit(changes, "Details saved");
+    setBusy(true);
+    setError(null);
+    try {
+      const stranded = misfitMembers(await everyMember(), orgType);
+      if (stranded.length > 0) {
+        setShownPages(1);
+        setMisfits(stranded);
+        setBusy(false);
+        return;
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause : new Error(String(cause)));
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    return commit(changes, "Details saved");
+  };
 
   const dirty =
     name.trim() !== organization.name || orgType !== organization.org_type;
@@ -82,7 +124,10 @@ export function OrganizationSettings({
           <Select
             label="Type"
             value={orgType}
-            onChange={(event) => setOrgType(event.target.value)}
+            onChange={(event) => {
+              setOrgType(event.target.value);
+              setMisfits(null);
+            }}
             disabled={busy}
             hint="Which version of the site this organisation’s members see when they sign in."
           >
@@ -100,17 +145,38 @@ export function OrganizationSettings({
             ) : null}
           </Select>
 
-          <div className="flex justify-end">
+          {misfits ? (
+            <Alert tone="warning">
+              <p className="mb-2">
+                {misfits.length} {misfits.length === 1 ? "member has a role" : "members have roles"} that
+                do not belong in a {orgType} organisation. They keep the role until someone changes it.
+              </p>
+              <ul className="mb-2 list-disc pl-5">
+                {pageOf(misfits, shownPages).map((member) => (
+                  <li key={member.id}>
+                    {member.email ?? "Unnamed"} · {roleLabel(member.role)}
+                  </li>
+                ))}
+              </ul>
+              {pageOf(misfits, shownPages).length < misfits.length ? (
+                <Button variant="ghost" size="sm" onClick={() => setShownPages(shownPages + 1)}>
+                  Show more
+                </Button>
+              ) : null}
+            </Alert>
+          ) : null}
+
+          <div className="flex justify-end gap-2">
+            {misfits ? (
+              <Button variant="ghost" disabled={busy} onClick={() => setMisfits(null)}>
+                Cancel
+              </Button>
+            ) : null}
             <Button
               disabled={busy || !dirty || !name.trim()}
-              onClick={() =>
-                commit(
-                  { name: name.trim(), org_type: orgType },
-                  "Details saved",
-                )
-              }
+              onClick={() => (misfits ? commit({ name: name.trim(), org_type: orgType }, "Details saved").then(() => setMisfits(null)) : save())}
             >
-              {busy ? "Saving…" : "Save"}
+              {busy ? "Saving…" : misfits ? "Change type anyway" : "Save"}
             </Button>
           </div>
         </div>

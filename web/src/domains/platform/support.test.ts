@@ -15,6 +15,9 @@ import {
   statusTone,
   attemptStatusTone,
   diagnoseAttempt,
+  misfitMembers,
+  pageOf,
+  attemptMayBeLive,
   jobStatusTone,
 } from "@/domains/platform/support";
 
@@ -102,6 +105,13 @@ describe("the support view's diagnosis", () => {
     const stale = diagnoseAttempt({ ...base, status: "running", chunk_count: 0, started_at: "2026-10-08T11:00:00Z" }, now);
     assert.equal(stale?.action, "fail");
   });
+  it("hides Fail and Salvage for an attempt under thirty minutes old, and shows them after", () => {
+    const now = Date.parse("2026-10-08T12:10:00Z");
+    assert.equal(attemptMayBeLive({ status: "running", started_at: "2026-10-08T12:00:00Z" }, now), true);
+    assert.equal(attemptMayBeLive({ status: "created", started_at: null, created_at: "2026-10-08T12:05:00Z" }, now), true);
+    assert.equal(attemptMayBeLive({ status: "running", started_at: "2026-10-08T11:30:00Z" }, now), false);
+    assert.equal(attemptMayBeLive({ status: "evaluated", started_at: "2026-10-08T12:09:00Z" }, now), false);
+  });
   it("says nothing is wrong when the marking is done or on its way", () => {
     assert.equal(diagnoseAttempt({ ...base, status: "evaluated" }), null);
     assert.equal(diagnoseAttempt({ ...base, status: "interaction_complete", scoring_job: { status: "todo" } }), null);
@@ -155,5 +165,24 @@ describe("renewalDateError", () => {
 
   it("reads today in local time", () => {
     assert.equal(localDay(new Date(2026, 9, 8, 23, 30)), "2026-10-08");
+  });
+});
+
+describe("changing an organisation's type", () => {
+  const members = [
+    { id: "1", email: "a@x.org", role: "owner" },
+    { id: "2", email: "b@x.org", role: "partner_admin" },
+    { id: "3", email: "c@x.org", role: "trainee" },
+    { id: "4", email: "d@x.org", role: "institution_admin" },
+  ];
+  it("lists the members whose role belongs to another kind of organisation", () => {
+    assert.deepEqual(misfitMembers(members, "institution").map((m) => m.id), ["2"]);
+    assert.deepEqual(misfitMembers(members, "partner").map((m) => m.id), ["3", "4"]);
+    assert.deepEqual(misfitMembers(members, "employer").map((m) => m.id), ["2", "3", "4"]);
+  });
+  it("shows a long list a page at a time", () => {
+    const rows = Array.from({ length: 25 }, (_, i) => i);
+    assert.deepEqual(pageOf(rows, 1), rows.slice(0, 10));
+    assert.equal(pageOf(rows, 3).length, 25);
   });
 });

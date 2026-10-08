@@ -31,6 +31,7 @@ from app.features.attempts.schemas_platform import (
 )
 from app.features.health import service_jobs
 from app.features.identity import service as identity
+from app.features.sittings import service_reads as sittings
 
 
 async def list_for_user(
@@ -78,8 +79,15 @@ async def read_detail(session: AsyncSession, attempt_id: uuid.UUID) -> PlatformA
         versions=list(await transcripts.scored_policy_versions(session, attempt.id)),
         latest_job=_latest(jobs),
     )
+    found = (
+        await sittings.slot_and_sitting(session, attempt.org_id, attempt.slot_id)
+        if attempt.slot_id is not None and attempt.org_id is not None
+        else None
+    )
     return PlatformAttemptDetail(
         **base.model_dump(),
+        sitting_id=found[1].id if found else None,
+        sitting_name=found[1].name if found else None,
         has_definition=bool(attempt.definition),
         definition_frozen_at=attempt.definition_frozen_at,
         chunk_count=await transcripts.chunk_count(session, attempt.id),

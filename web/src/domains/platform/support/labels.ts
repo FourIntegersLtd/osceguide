@@ -66,6 +66,21 @@ export function rolesForOrgType(roles: readonly string[], orgType: string): stri
   });
 }
 
+/** Members whose role is meant for another kind of organisation than `orgType`. */
+export function misfitMembers<M extends { role: string }>(members: readonly M[], orgType: string): M[] {
+  return members.filter((member) => {
+    const only = ROLE_ORG_TYPE[member.role];
+    return only !== undefined && only !== orgType;
+  });
+}
+
+const LIST_PAGE = 10;
+
+/** The first `pages` pages of a list shown in one go, ten to a page. */
+export function pageOf<T>(items: readonly T[], pages: number): T[] {
+  return items.slice(0, pages * LIST_PAGE);
+}
+
 /** An audit row's or a job's details, as "Status: Active · Reason: …", without the empty ones. */
 export function formatDetail(meta: Record<string, unknown> | null | undefined): string {
   if (!meta) return "";

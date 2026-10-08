@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import {
   LuBuilding2,
   LuScrollText,
@@ -10,6 +11,7 @@ import {
 import {
   AsyncBoundary,
   B2CHero,
+  Button,
   ButtonLink,
   EmptyPanel,
   Panel,
@@ -25,7 +27,7 @@ import { useSurface } from "@/capabilities";
 import { readOverview } from "@/domains/platform/api";
 import type { OrgAtRisk } from "@/domains/platform/support/api";
 import { StatusBadge } from "@/domains/platform/chrome";
-import { atRiskLabel } from "@/domains/platform/support";
+import { atRiskLabel, pageOf } from "@/domains/platform/support";
 
 /**
  * The console's first screen: how many of everything, and what needs a look.
@@ -112,17 +114,7 @@ export function PlatformOverview() {
                       description="None is suspended, lapsed or ending within thirty days."
                     />
                   ) : (
-                    <RowList flush>
-                      {attention.map((risk) => (
-                        <AttentionRow
-                          key={risk.slug}
-                          organization={risk}
-                          href={hrefFor(
-                            `/organizations/${encodeURIComponent(risk.slug)}`,
-                          )}
-                        />
-                      ))}
-                    </RowList>
+                    <AttentionList attention={attention} hrefFor={hrefFor} />
                   )}
                 </Panel>
 
@@ -154,6 +146,38 @@ export function PlatformOverview() {
         }}
       </AsyncBoundary>
     </div>
+  );
+}
+
+/** Ten at a time: a platform with many lapsing contracts should not push everything else off the screen. */
+function AttentionList({
+  attention,
+  hrefFor,
+}: {
+  attention: OrgAtRisk[];
+  hrefFor: (path: string) => string;
+}) {
+  const [pages, setPages] = useState(1);
+  const shown = pageOf(attention, pages);
+  return (
+    <>
+      <RowList flush>
+        {shown.map((risk) => (
+          <AttentionRow
+            key={risk.slug}
+            organization={risk}
+            href={hrefFor(`/organizations/${encodeURIComponent(risk.slug)}`)}
+          />
+        ))}
+      </RowList>
+      {shown.length < attention.length ? (
+        <div className="flex justify-center p-3">
+          <Button variant="ghost" size="sm" onClick={() => setPages(pages + 1)}>
+            Show more ({attention.length - shown.length} left)
+          </Button>
+        </div>
+      ) : null}
+    </>
   );
 }
 

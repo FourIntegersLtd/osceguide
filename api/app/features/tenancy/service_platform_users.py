@@ -18,11 +18,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_wording import password_reissued_summary
 from app.core.auth import Principal
+from app.features.attempts import service as attempts
 from app.features.identity import service as identity
 from app.features.identity import service_close_account, service_mfa, service_passwords
 from app.features.identity import service_invitations as invitations
 from app.features.identity import service_platform as accounts
-from app.features.tenancy import repository, repository_platform
+from app.features.tenancy import repository, repository_platform, service_memberships
 from app.features.tenancy.errors import (
     CannotRevokeOwnConsoleAccess,
     InvitationPending,
@@ -198,11 +199,16 @@ async def update_user(
     before = await _require(session, user_id)
     values = changes.model_dump(exclude_unset=True)
     if values:
+        if values.get("status") == "deactivated" and before.status != "deactivated":
+            await service_memberships.ensure_not_sole_admin_anywhere(session, user_id)
         if await accounts.update_user(session, user_id, **values) is None:
             raise UserNotFound()
         action = "user.updated"
         status = values.get("status")
         if status == "deactivated" and before.status != "deactivated":
+            await attempts.fail_unfinished_for_user(
+                session, user_id=user_id, now=now, reason="account_deactivated"
+            )
             await service_close_account.end_sessions(session, user_id, now=now, reason="deactivated_by_admin")
             action = "user.deactivated"
         elif status == "active" and before.status != "active":

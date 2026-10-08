@@ -246,9 +246,28 @@ async def _ensure_an_admin_remains(session: AsyncSession, org_id: uuid.UUID, mem
     """
     if membership.revoked_at is not None or not domain.is_org_admin(membership.role):
         return
-    live_admins = await repository.count_memberships(session, org_id, roles=sorted(domain.ORG_ADMIN_ROLES))
-    if not domain.an_admin_remains(role=membership.role, other_admins=live_admins - 1):
+    others = await active_admins_besides(session, org_id, membership.user_id)
+    if not domain.an_admin_remains(role=membership.role, other_admins=others):
         raise LastAdministrator()
+
+
+async def active_admins_besides(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> int:
+    """Live administrators other than this person whose account is not deactivated.
+
+    A deactivated administrator cannot sign in, so counting one would leave the organisation with
+    nobody able to seat anyone.
+    """
+    others = [admin for admin in await repository.admin_user_ids(session, org_id) if admin != user_id]
+    return sum([await identity.account_status(session, admin) == "active" for admin in others])
+
+
+async def ensure_not_sole_admin_anywhere(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Refuse closing an account that is the only active administrator of an organisation."""
+    for membership in await repository.memberships_for_user(session, user_id):
+        if domain.is_org_admin(membership.role) and not await active_admins_besides(
+            session, membership.org_id, user_id
+        ):
+            raise LastAdministrator()
 
 
 async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membership_id: uuid.UUID) -> Any:
