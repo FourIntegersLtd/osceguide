@@ -14,8 +14,8 @@ import uuid
 import pytest
 from httpx import AsyncClient
 
-from tests.http.test_sittings_routes import org_with_admin
 from tests.support.catalog import create_exam
+from tests.support.sittings import org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import delete, func, select
@@ -22,6 +23,16 @@ from app.features.sittings.models import (
     Sitting,
     Slot,
 )
+
+
+async def sittings_scheduled_between(
+    session: AsyncSession, *, start: datetime, end: datetime, excluding_status: str
+) -> list[Sitting]:
+    """Every organisation's sittings dated in [start, end) that are not `excluding_status`."""
+    stmt = select(Sitting).where(
+        Sitting.scheduled_for >= start, Sitting.scheduled_for < end, Sitting.status != excluding_status
+    )
+    return list((await session.execute(stmt)).scalars())
 
 
 async def sitting_counts_by_cohort(

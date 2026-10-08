@@ -181,7 +181,9 @@ async def update_trainee(
     if not values:
         return
     await session.execute(
-        update(Trainee).where(Trainee.org_id == org_id, Trainee.id == trainee_id).values(**values)
+        update(Trainee)
+        .where(Trainee.org_id == org_id, Trainee.id == trainee_id)
+        .values(**values, revision=Trainee.revision + 1)
     )
 
 

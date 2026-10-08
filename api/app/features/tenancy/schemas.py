@@ -25,6 +25,8 @@ class OrganizationRead(BaseModel):
     contract_starts_at: datetime | None = None
     contract_ends_at: datetime | None = None
     require_staff_mfa: bool = False
+    contact_name: str | None = None
+    contact_email: str | None = None
     # The organisation this one sits under (a trust above its hospitals), or
     # null for a top-level organisation.
     parent_org_id: uuid.UUID | None = None
@@ -38,12 +40,19 @@ class UpdateOrganization(BaseModel):
     contract_starts_at: datetime | None = None
     contract_ends_at: datetime | None = None
     require_staff_mfa: bool | None = None
+    contact_name: str | None = Field(default=None, max_length=200)
+    contact_email: EmailStr | None = None
 
 
-class RenameOrganization(BaseModel):
-    """What an organisation's own admin may change about it: its name. Not the address or contract."""
+class UpdateOrgDetails(BaseModel):
+    """What an org admin may change: the name and contact. Not the address or contract.
 
-    name: str = Field(min_length=1, max_length=200)
+    A contact sent as null is cleared; one left out is kept.
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    contact_name: str | None = Field(default=None, max_length=200)
+    contact_email: EmailStr | None = None
 
 
 class StaffMfaPolicy(BaseModel):

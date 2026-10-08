@@ -7,7 +7,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.http.test_examiner_transcript_routes import an_examiner
-from tests.http.test_sittings_routes import a_template_version, a_trainee, org_with_admin, published_station
+from tests.http.test_sittings_routes import a_template_version, a_trainee, published_station
+from tests.support.sittings import org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

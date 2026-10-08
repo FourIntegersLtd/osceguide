@@ -116,9 +116,9 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                 }
                 onSubmit={async (shape) => {
                   try {
-                    await rebuildCircuit(orgSlug, circuitId, shape);
+                    await rebuildCircuit(orgSlug, circuitId, shape, data.circuit.revision);
                   } catch (cause) {
-                    if (hasCode(cause, "circuit_locked")) setLockedOnSave(true);
+                    if (hasCode(cause, "circuit_locked", "stale_revision")) setLockedOnSave(true);
                     throw cause;
                   }
                   router.push(hrefFor(`/circuits/${circuitId}`));

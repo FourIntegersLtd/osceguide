@@ -2211,6 +2211,11 @@
             ],
             "title": "Phase Started At"
           },
+          "revision": {
+            "default": 1,
+            "title": "Revision",
+            "type": "integer"
+          },
           "room_name": {
             "anyOf": [
               {
@@ -2754,6 +2759,11 @@
               }
             ],
             "title": "Remaining Seconds"
+          },
+          "revision": {
+            "default": 1,
+            "title": "Revision",
+            "type": "integer"
           },
           "room_name": {
             "anyOf": [
@@ -5156,6 +5166,17 @@
             "title": "Pacing",
             "type": "object"
           },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
           "structure": {
             "additionalProperties": true,
             "title": "Structure",
@@ -5570,6 +5591,7 @@
               "not_a_media_block",
               "not_a_member",
               "not_a_partner_reporter",
+              "not_a_stripe_payment",
               "not_an_exam_sitting",
               "not_archivable",
               "not_deletable",
@@ -5662,6 +5684,7 @@
               "sso_only_password_members",
               "sso_provider_unsupported",
               "sso_verification_failed",
+              "stale_revision",
               "station_being_produced",
               "station_empty",
               "station_flag_not_found",
@@ -5673,6 +5696,7 @@
               "station_template_not_found",
               "station_template_version_not_found",
               "station_version_not_usable",
+              "stripe_refund_failed",
               "tag_too_long",
               "template_not_published",
               "too_early_to_join",
@@ -5903,6 +5927,11 @@
             "default": false,
             "title": "Partner Pilot",
             "type": "boolean"
+          },
+          "revision": {
+            "default": 1,
+            "title": "Revision",
+            "type": "integer"
           },
           "rubric_version_id": {
             "anyOf": [
@@ -9887,6 +9916,28 @@
       },
       "OrganizationRead": {
         "properties": {
+          "contact_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
           "contract_ends_at": {
             "anyOf": [
               {
@@ -13943,6 +13994,17 @@
             ],
             "title": "Name"
           },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
           "station_version_ids": {
             "items": {
               "format": "uuid",
@@ -14621,22 +14683,6 @@
           "photo_url"
         ],
         "title": "RemoveStationPhoto",
-        "type": "object"
-      },
-      "RenameOrganization": {
-        "description": "What an organisation's own admin may change about it: its name. Not the address or contract.",
-        "properties": {
-          "name": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "RenameOrganization",
         "type": "object"
       },
       "RenameRubric": {
@@ -15523,6 +15569,11 @@
             "additionalProperties": true,
             "title": "Result Schema",
             "type": "object"
+          },
+          "revision": {
+            "default": 1,
+            "title": "Revision",
+            "type": "integer"
           },
           "rubric_id": {
             "format": "uuid",
@@ -17266,6 +17317,11 @@
               }
             ],
             "title": "Programme Name"
+          },
+          "revision": {
+            "default": 1,
+            "title": "Revision",
+            "type": "integer"
           },
           "rubric_version_id": {
             "format": "uuid",
@@ -19786,6 +19842,11 @@
             "title": "Programme Names",
             "type": "array"
           },
+          "revision": {
+            "default": 1,
+            "title": "Revision",
+            "type": "integer"
+          },
           "stations_sat": {
             "default": 0,
             "title": "Stations Sat",
@@ -20527,6 +20588,17 @@
             ],
             "title": "Partner Pilot"
           },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
           "rubric_version_id": {
             "anyOf": [
               {
@@ -20809,9 +20881,77 @@
         "title": "UpdateMembership",
         "type": "object"
       },
+      "UpdateOrgDetails": {
+        "description": "What an org admin may change: the name and contact. Not the address or contract.\n\nA contact sent as null is cleared; one left out is kept.",
+        "properties": {
+          "contact_email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "UpdateOrgDetails",
+        "type": "object"
+      },
       "UpdateOrganization": {
         "description": "What a platform administrator may change about an organisation. Not the slug.",
         "properties": {
+          "contact_email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Email"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
           "contract_ends_at": {
             "anyOf": [
               {
@@ -21121,6 +21261,17 @@
             ],
             "title": "Programme Id"
           },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
+          },
           "scheduled_for": {
             "anyOf": [
               {
@@ -21244,6 +21395,17 @@
               }
             ],
             "title": "Last Name"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
           }
         },
         "title": "UpdateTrainee",
@@ -38081,7 +38243,7 @@
         ]
       },
       "patch": {
-        "operationId": "tenancy_rename_organization",
+        "operationId": "tenancy_update_organization_details",
         "parameters": [
           {
             "description": "Organisation slug",
@@ -38099,7 +38261,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RenameOrganization"
+                "$ref": "#/components/schemas/UpdateOrgDetails"
               }
             }
           },
@@ -38159,7 +38321,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "Rename Organization",
+        "summary": "Update Organization Details",
         "tags": [
           "tenancy"
         ]
@@ -38468,8 +38630,9 @@
                 }
               }
             },
-            "description": "circuit_already_ended, circuit_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster",
+            "description": "stale_revision, circuit_already_ended, circuit_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster",
             "x-codes": [
+              "stale_revision",
               "circuit_already_ended",
               "circuit_locked",
               "lead_cannot_run",
@@ -41776,8 +41939,9 @@
                 }
               }
             },
-            "description": "exam_not_publishable",
+            "description": "stale_revision, exam_not_publishable",
             "x-codes": [
+              "stale_revision",
               "exam_not_publishable"
             ]
           },
@@ -45275,8 +45439,9 @@
                 }
               }
             },
-            "description": "not_editable, already_published, not_archivable",
+            "description": "stale_revision, not_editable, already_published, not_archivable",
             "x-codes": [
+              "stale_revision",
               "not_editable",
               "already_published",
               "not_archivable"
@@ -47353,6 +47518,10 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "exam",
+                    "training"
+                  ],
                   "type": "string"
                 },
                 {
@@ -47783,8 +47952,9 @@
                 }
               }
             },
-            "description": "sitting_locked, invalid_circuit, programme_not_active, exam_rubric_not_ready, rubric_version_not_published",
+            "description": "stale_revision, sitting_locked, invalid_circuit, programme_not_active, exam_rubric_not_ready, rubric_version_not_published",
             "x-codes": [
+              "stale_revision",
               "sitting_locked",
               "invalid_circuit",
               "programme_not_active",
@@ -53801,6 +53971,19 @@
               "cohort_not_found"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "stale_revision",
+            "x-codes": [
+              "stale_revision"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -56535,8 +56718,9 @@
                 }
               }
             },
-            "description": "exam_not_publishable",
+            "description": "stale_revision, exam_not_publishable",
             "x-codes": [
+              "stale_revision",
               "exam_not_publishable"
             ]
           },
@@ -59683,6 +59867,117 @@
         ]
       }
     },
+    "/api/v1/platform/payments/{payment_id}/stripe-refund": {
+      "post": {
+        "description": "Refund the payment in Stripe, then withdraw what it bought. If Stripe refuses, nothing changes.",
+        "operationId": "billing_refund_in_stripe",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformPaymentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "payment_not_found",
+            "x-codes": [
+              "payment_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_a_stripe_payment",
+            "x-codes": [
+              "not_a_stripe_payment"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "stripe_refund_failed",
+            "x-codes": [
+              "stripe_refund_failed"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refund In Stripe",
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/api/v1/platform/rubrics": {
       "get": {
         "description": "`search` matches a rubric's title; `exam_code` narrows to rubrics already\nbound to that exam.",
@@ -60697,8 +60992,9 @@
                 }
               }
             },
-            "description": "not_editable, already_published, not_archivable",
+            "description": "stale_revision, not_editable, already_published, not_archivable",
             "x-codes": [
+              "stale_revision",
               "not_editable",
               "already_published",
               "not_archivable"

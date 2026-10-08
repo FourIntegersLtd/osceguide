@@ -147,6 +147,8 @@ class ConsoleCircuit(BaseModel):
     started_at: datetime | None
     ended_at: datetime | None
     agent_dispatched: bool
+    # What a rebuild names as the revision it read (B-15).
+    revision: int = 1
     supervisor: ConsolePerson | None
     # The examination clock, and whether the circuit is still driving itself.
     phase: str | None = None

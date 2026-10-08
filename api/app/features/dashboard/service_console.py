@@ -85,6 +85,7 @@ async def build_console(
         started_at=detail.circuit.started_at,
         ended_at=detail.circuit.ended_at,
         agent_dispatched=detail.circuit.agent_dispatched_at is not None,
+        revision=detail.circuit.revision,
         supervisor=(
             person(detail.circuit.supervisor_user_id)
             if detail.circuit.supervisor_user_id is not None

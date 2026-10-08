@@ -32,6 +32,9 @@ class Organization(Base, UUIDPrimaryKey, Timestamps):
     contract_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     suspended_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # Who to write to about the organisation's account; the org admin keeps them (B-33).
+    contact_name: Mapped[str | None] = mapped_column(String(200))
+    contact_email: Mapped[str | None] = mapped_column(String(320))
     # When true, every membership whose role is not an end user must sign in
     # with a second factor. Takes effect at the next password sign-in; a
     # refresh chain already issued keeps working.

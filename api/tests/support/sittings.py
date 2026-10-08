@@ -6,7 +6,29 @@ import uuid
 
 from httpx import AsyncClient
 
+from app.core.auth import Membership
+from tests.support.catalog import create_exam
 from tests.support.tokens import bearer
+
+
+async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"):  # type: ignore[no-untyped-def]
+    """An institution organisation and its owner token, with the `sca` exam written."""
+    root = await make_actor(f"root-{slug}@osceguide.com", platform_admin=True)
+    created = await client.post(
+        "/api/v1/platform/organizations",
+        json={"slug": slug, "name": slug.title(), "org_type": "institution"},
+        headers=bearer(root),
+    )
+    org_id = uuid.UUID(created.json()["id"])
+    admin = await make_actor(
+        f"admin-{slug}@example.com",
+        memberships=(Membership(org_id=org_id, org_slug=slug, role="owner"),),
+        active_org_slug=slug,
+    )
+    # Nothing is seeded, so the exam an org's stations name has to be written
+    # first, by a platform admin, which is exactly who is holding this token.
+    await create_exam(client, root, code="sca")
+    return org_id, admin
 
 
 async def add_programme(

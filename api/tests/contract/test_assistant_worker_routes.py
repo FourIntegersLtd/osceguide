@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
 from app.features.assistant import repository
-from tests.http.test_sittings_routes import org_with_admin
+from tests.support.sittings import org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

@@ -68,6 +68,7 @@ def exam_read(exam: Exam) -> ExamRead:
     """Map a stored exam onto what a route returns."""
     return ExamRead(
         id=exam.id,
+        revision=exam.revision,
         owner_kind=exam.owner_kind,
         org_id=exam.org_id,
         code=exam.code,

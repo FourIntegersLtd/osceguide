@@ -91,3 +91,11 @@ async def test_the_list_filters_by_mode_and_name_search_across_pages(
         "May",
         "Mayfair drill",
     ]
+
+
+async def test_a_mode_that_is_not_a_mode_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+
+    refused = await client.get("/api/v1/orgs/kings/sittings?mode=nonsense", headers=bearer(admin))
+
+    assert refused.status_code == 422

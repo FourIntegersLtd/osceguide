@@ -13,6 +13,7 @@ from app.core.auth import CurrentPrincipal
 from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
+from app.core.revision import StaleRevision
 from app.core.tenancy import OrgAdmin, OrgStaff, PlatformAdmin
 from app.features.catalog import errors, schemas, service_authoring, service_import, service_programmes
 
@@ -92,6 +93,7 @@ async def create_exam(body: schemas.CreateExam, admin: PlatformAdmin, session: S
     "/platform/exams/{exam_id}",
     response_model=schemas.ExamRead,
     responses=error_responses(
+        StaleRevision,
         Unauthenticated,
         Forbidden,
         errors.UnknownExamError,
@@ -216,6 +218,7 @@ async def create_org_exam(
     "/orgs/{org_slug}/exams/{exam_id}",
     response_model=schemas.ExamRead,
     responses=error_responses(
+        StaleRevision,
         Forbidden,
         errors.UnknownExamError,
         errors.InvalidExamSettings,

@@ -289,6 +289,7 @@ they are regenerated. Only the argon2 hash is stored. No `created_at` or
 ### `organizations`
 | Field | Type | Notes |
 |---|---|---|
+| `contact_name` / `contact_email` | `varchar(200)` / `varchar(320) null` | who to write to about the account; the organisation's own admin keeps them (B-33) |
 | `slug` | `citext not null unique` | the URL identifier and nothing else — every FK everywhere points at `id`, which is the mistake b2b made the other way round |
 | `name` | `varchar(200) not null` | |
 | `org_type` | `varchar(32) not null default 'institution'` | |
@@ -351,6 +352,7 @@ asking us, published on its own schedule, and never in `GET /exams`.
 
 | Field | Type | Notes |
 |---|---|---|
+| `revision` | `int not null default 1` | raised by one on every edit; a write that names an older one is refused `stale_revision` (B-15) |
 | `owner_kind` | `varchar(16) not null default 'platform'` | `platform` (the consumer catalogue) or `org` |
 | `org_id` | `uuid null` → `organizations.id` CASCADE | set iff `owner_kind = 'org'` |
 | `code` | `citext not null` | lower-case, URL-safe; appears in plans and partner ref ids, so it is never renamed. Unique **per owner**, not globally |
@@ -426,6 +428,7 @@ wording of the rubric that produced it.
 
 | Field | Type | Notes |
 |---|---|---|
+| `revision` | `int not null default 1` | raised by one on every edit; a write that names an older one is refused `stale_revision` (B-15) |
 | `rubric_id` | `uuid not null` → `rubrics.id` CASCADE | |
 | `org_id` | `uuid null` → `organizations.id` CASCADE | mirrors the rubric's owner |
 | `version` | `int not null` | UNIQUE `(rubric_id, version)` |
@@ -869,6 +872,7 @@ A scheduled event an organisation holds.
 
 | Field | Type | Notes |
 |---|---|---|
+| `revision` | `int not null default 1` | raised by one on every edit; a write that names an older one is refused `stale_revision` (B-15) |
 | `org_id` | `uuid not null` → `organizations.id` CASCADE | indexed with `status` |
 | `programme_id` | `uuid null` → `org_programmes.id` SET NULL | |
 | `cohort_id` | `uuid null` → `cohorts.id` SET NULL | |
@@ -882,6 +886,7 @@ A scheduled event an organisation holds.
 ### `circuits`
 | Field | Type | Notes |
 |---|---|---|
+| `revision` | `int not null default 1` | raised by one on every edit; a write that names an older one is refused `stale_revision` (B-15) |
 | `sitting_id` | `uuid not null` → `sittings.id` CASCADE | |
 | `org_id` | `uuid not null` → `organizations.id` CASCADE | |
 | `name` | `varchar(200) not null` | |
@@ -1008,6 +1013,7 @@ people before they have ever signed in — `user_id` is filled when they do.
 
 | Field | Type | Notes |
 |---|---|---|
+| `revision` | `int not null default 1` | raised by one on every edit; a write that names an older one is refused `stale_revision` (B-15) |
 | `org_id` | `uuid not null` → `organizations.id` CASCADE | indexed with `cohort_id` |
 | `user_id` | `uuid null` → `users.id` SET NULL | filled on first sign-in |
 | `email` | `citext not null` | |

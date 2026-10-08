@@ -21,6 +21,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.revision import StaleRevision
 from app.core.tenancy import PlatformAdmin
 from app.features.rubrics import errors, schemas, service, service_authoring
 
@@ -143,7 +144,7 @@ async def add_platform_version(
     "/platform/rubrics/{rubric_id}/versions/{version}",
     response_model=schemas.RubricVersionRead,
     responses=error_responses(
-        Unauthenticated, Forbidden, *_NOT_FOUND, *_LIFECYCLE, errors.InvalidRubricError
+        StaleRevision, Unauthenticated, Forbidden, *_NOT_FOUND, *_LIFECYCLE, errors.InvalidRubricError
     ),
 )
 async def edit_platform_version(
@@ -162,6 +163,7 @@ async def edit_platform_version(
         system_prompt=body.system_prompt,
         pacing=body.pacing,
         marking_layout=body.marking_layout,
+        revision=body.revision,
     )
 
 

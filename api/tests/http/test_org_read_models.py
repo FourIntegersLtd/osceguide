@@ -17,11 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership
 from app.features.tenancy import repository as tenancy_repo
 from tests.http.test_sittings_routes import (
-    org_with_admin,
     published_station,
 )
 from tests.support.catalog import create_exam
-from tests.support.sittings import add_programme
+from tests.support.sittings import add_programme, org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

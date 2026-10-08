@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.core.errors import raise_mapped
+from app.core.revision import ensure_current
 from app.features.roster import service_groups as roster_groups
 from app.features.sittings import domain, domain_edit, repository, repository_reads, service
 from app.features.sittings.models import Sitting
@@ -42,13 +43,14 @@ async def update_sitting(
     a sitting to rename it.
     """
     sent = EDITABLE & set(body.model_fields_set)
+    sitting = await _require_sitting(session, org_id, sitting_id)
+    ensure_current(body.revision, sitting.revision)
     if not sent:
         # Nothing was asked for. Answered with the sitting rather than refused,
         # because a PUT of the document as read has to be a no-op; an empty patch
         # is a client whose form was not dirty, not a malformed request.
         return await service.read_sitting(session, org_id, sitting_id)
 
-    sitting = await _require_sitting(session, org_id, sitting_id)
     changing = {field for field in sent if _requested(body, sitting, field)}
 
     # A cancelled sitting is a record of what was called off, not a draft (R-7).

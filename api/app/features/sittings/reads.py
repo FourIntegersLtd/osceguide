@@ -107,6 +107,7 @@ def circuit_read(circuit: Circuit, slots: list[Slot]) -> CircuitRead:
     """A circuit and its slots as the API shape a console screen reads."""
     return CircuitRead(
         id=circuit.id,
+        revision=circuit.revision,
         sitting_id=circuit.sitting_id,
         name=circuit.name,
         supervisor_user_id=circuit.supervisor_user_id,
@@ -131,6 +132,7 @@ def sitting_read(sitting: Sitting, circuits: list[CircuitRead]) -> SittingRead:
     """A sitting and its circuits as the API shape a console screen reads."""
     return SittingRead(
         id=sitting.id,
+        revision=sitting.revision,
         name=sitting.name,
         mode=sitting.mode,
         sitting_type=sitting.sitting_type,

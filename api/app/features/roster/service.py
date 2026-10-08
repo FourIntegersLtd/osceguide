@@ -188,6 +188,7 @@ def _trainee_read(trainee: Trainee, *, temporary_password_applied: bool = False)
     """Shape a trainee row into what a route may return."""
     return TraineeRead(
         id=trainee.id,
+        revision=trainee.revision,
         email=trainee.email,
         first_name=trainee.first_name,
         last_name=trainee.last_name,

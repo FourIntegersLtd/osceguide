@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.tenancy import repository as tenancy_repo
 from tests.http.test_org_read_models import a_circuit, a_user
-from tests.http.test_sittings_routes import org_with_admin, published_station
-from tests.support.sittings import add_programme, create_sitting_body
+from tests.http.test_sittings_routes import published_station
+from tests.support.sittings import add_programme, create_sitting_body, org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

@@ -14,6 +14,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.ports import ClockDep
 from app.core.rate_limit import OUTBOUND_RESEND, TooManyRequests, per_user
+from app.core.revision import StaleRevision
 from app.core.tenancy import OrgAdmin
 from app.features.roster import errors, schemas, service_bulk, service_edit, service_groups
 
@@ -25,7 +26,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.patch(
     "/orgs/{org_slug}/trainees/{trainee_id}",
     response_model=schemas.TraineeRead,
-    responses=error_responses(Forbidden, errors.TraineeNotFound, errors.CohortNotFound),
+    responses=error_responses(StaleRevision, Forbidden, errors.TraineeNotFound, errors.CohortNotFound),
 )
 async def edit_trainee(
     trainee_id: uuid.UUID, body: schemas.UpdateTrainee, workspace: OrgAdmin, session: Session

@@ -264,9 +264,11 @@ async def active_admins_besides(session: AsyncSession, org_id: uuid.UUID, user_i
 async def ensure_not_sole_admin_anywhere(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Refuse closing an account that is the only active administrator of an organisation."""
     for membership in await repository.memberships_for_user(session, user_id):
-        if domain.is_org_admin(membership.role) and not await active_admins_besides(
-            session, membership.org_id, user_id
-        ):
+        if not domain.is_org_admin(membership.role):
+            continue
+        # Locked before counting: two admins closed at once would otherwise each see the other.
+        await repository.lock_admin_memberships(session, membership.org_id)
+        if not await active_admins_besides(session, membership.org_id, user_id):
             raise LastAdministrator()
 
 

@@ -71,11 +71,12 @@ export function SittingEditForm({
     setBusy(true);
     setFailure(null);
     try {
-      await updateSitting(orgSlug, sitting.id, patch);
+      await updateSitting(orgSlug, sitting.id, patch, sitting.revision);
       onSaved();
       onClose();
     } catch (cause) {
       setFailure(refusal(cause));
+      if (hasCode(cause, "stale_revision")) onSaved();
     } finally {
       setBusy(false);
     }
@@ -157,6 +158,9 @@ export function SittingEditForm({
  * the circuits.
  */
 function refusal(cause: unknown): string {
+  if (hasCode(cause, "stale_revision")) {
+    return "Someone else changed this sitting just now. We have reloaded it: close this and choose Edit again to see their changes.";
+  }
   if (hasCode(cause, "sitting_locked")) {
     return "This sitting has begun, so what it examines is fixed. Its name and date can still change.";
   }

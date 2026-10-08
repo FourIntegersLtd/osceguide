@@ -9,7 +9,7 @@ from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base, Timestamps, UUIDPrimaryKey
+from app.core.db import Base, Revisioned, Timestamps, UUIDPrimaryKey
 
 
 class Cohort(Base, UUIDPrimaryKey, Timestamps):
@@ -26,7 +26,7 @@ class Cohort(Base, UUIDPrimaryKey, Timestamps):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
 
 
-class Trainee(Base, UUIDPrimaryKey, Timestamps):
+class Trainee(Base, UUIDPrimaryKey, Timestamps, Revisioned):
     """Someone an organisation teaches.
 
     Separate from `users` because an institution rosters people before they have

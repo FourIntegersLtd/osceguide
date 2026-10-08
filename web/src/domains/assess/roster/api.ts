@@ -195,8 +195,9 @@ export function updateTrainee(
   slug: string,
   traineeId: string,
   edit: Partial<TraineeEdit>,
+  revision?: number,
 ): Promise<Trainee> {
-  const body: components["schemas"]["UpdateTrainee"] = {};
+  const body: components["schemas"]["UpdateTrainee"] = { revision };
   if (edit.firstName !== undefined) body.first_name = edit.firstName;
   if (edit.lastName !== undefined) body.last_name = edit.lastName;
   if (edit.cohortId !== undefined) body.cohort_id = edit.cohortId;

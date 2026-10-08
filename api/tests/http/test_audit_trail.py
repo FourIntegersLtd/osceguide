@@ -10,7 +10,8 @@ from tests.http.test_entitlements_routes import org_with_admin as entitlement_or
 from tests.http.test_org_read_models import a_circuit, a_sitting, a_user
 from tests.http.test_roster_edit_routes import KINGS, add_trainee
 from tests.http.test_scim_routes import SCIM, an_org_with_a_connector, scim_user
-from tests.http.test_sittings_routes import org_with_admin, published_station
+from tests.http.test_sittings_routes import published_station
+from tests.support.sittings import org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

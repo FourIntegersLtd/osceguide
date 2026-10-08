@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy import DateTime, ForeignKey, MetaData, String, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, Integer, MetaData, String, Uuid, func
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -54,6 +54,15 @@ class Timestamps:
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+class Revisioned:
+    """Mixin giving a table a `revision`, raised by one on every edit (B-15).
+
+    A client that sends the revision it read has a stale write refused (`core.revision`).
+    """
+
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
 
 
 def include_name(name: str | None, _type: str, _parent: object) -> bool:

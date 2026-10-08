@@ -40,6 +40,7 @@ class TimingRead(BaseModel):
 
 class CircuitRead(BaseModel):
     id: uuid.UUID
+    revision: int = 1
     sitting_id: uuid.UUID
     name: str
     supervisor_user_id: uuid.UUID | None
@@ -68,6 +69,7 @@ class CircuitRead(BaseModel):
 
 class SittingRead(BaseModel):
     id: uuid.UUID
+    revision: int = 1
     name: str
     mode: str
     sitting_type: str
@@ -109,6 +111,8 @@ class UpdateSitting(BaseModel):
     programme_id: uuid.UUID | None = None
     # A null clears the cohort; leave it out to keep it.
     cohort_id: uuid.UUID | None = None
+    # The revision the caller read; an older one is refused 409 `stale_revision` (B-15).
+    revision: int | None = None
 
 
 class TimingIn(BaseModel):
@@ -139,6 +143,8 @@ class RebuildCircuit(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     supervisor_user_id: uuid.UUID | None = None
     timing: TimingIn | None = None
+    # The revision the caller read; an older one is refused 409 `stale_revision` (B-15).
+    revision: int | None = None
 
 
 class Override(BaseModel):

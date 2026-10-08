@@ -17,6 +17,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.revision import StaleRevision
 from app.core.tenancy import OrgAdmin, OrgStaff
 from app.features.rubrics import errors, schemas, service, service_authoring
 
@@ -141,7 +142,7 @@ async def add_org_version(
 @router.patch(
     "/orgs/{org_slug}/rubrics/{rubric_id}/versions/{version}",
     response_model=schemas.RubricVersionRead,
-    responses=error_responses(Forbidden, *_NOT_FOUND, *_LIFECYCLE, errors.InvalidRubricError),
+    responses=error_responses(StaleRevision, Forbidden, *_NOT_FOUND, *_LIFECYCLE, errors.InvalidRubricError),
 )
 async def edit_org_version(
     rubric_id: uuid.UUID,
@@ -159,6 +160,7 @@ async def edit_org_version(
         system_prompt=body.system_prompt,
         pacing=body.pacing,
         marking_layout=body.marking_layout,
+        revision=body.revision,
     )
 
 

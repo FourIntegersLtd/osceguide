@@ -61,6 +61,7 @@ def _circuit_ref(circuit: Circuit) -> CircuitRef:
         active_slot_id=circuit.active_slot_id,
         room_name=circuit.room_name,
         agent_dispatched_at=circuit.agent_dispatched_at,
+        revision=circuit.revision,
         started_at=circuit.started_at,
         ended_at=circuit.ended_at,
         phase=circuit.phase,

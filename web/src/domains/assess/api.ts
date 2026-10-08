@@ -217,8 +217,9 @@ export function updateSitting(
   slug: string,
   sittingId: string,
   changes: SittingChanges,
+  revision?: number,
 ): Promise<Sitting> {
-  const body: components["schemas"]["UpdateSitting"] & { cohort_id?: string | null } = {};
+  const body: components["schemas"]["UpdateSitting"] & { cohort_id?: string | null } = { revision };
   if (changes.name !== undefined) body.name = changes.name;
   if (changes.mode !== undefined) body.mode = changes.mode;
   if (changes.sittingType !== undefined) body.sitting_type = changes.sittingType;
@@ -321,10 +322,12 @@ export function rebuildCircuit(
   slug: string,
   circuitId: string,
   input: CircuitShape,
+  revision?: number,
 ): Promise<Circuit> {
   return platformRequest<Circuit>(`${org(slug)}/circuits/${encodeURIComponent(circuitId)}`, {
     method: "PUT",
     body: {
+      revision,
       name: input.name,
       station_version_ids: input.stationVersionIds,
       trainee_ids: input.traineeIds,

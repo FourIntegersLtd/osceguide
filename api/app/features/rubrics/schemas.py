@@ -28,6 +28,7 @@ class RubricProblemRead(BaseModel):
 
 class RubricVersionRead(BaseModel):
     id: uuid.UUID
+    revision: int = 1
     rubric_id: uuid.UUID
     version: int
     status: str
@@ -83,6 +84,8 @@ class EditRubricVersion(BaseModel):
     system_prompt: str = Field(min_length=1)
     pacing: dict[str, Any]
     marking_layout: dict[str, Any] | None = None
+    # The revision the caller read; an older one is refused 409 `stale_revision` (B-15).
+    revision: int | None = None
 
 
 class RubricDraft(BaseModel):

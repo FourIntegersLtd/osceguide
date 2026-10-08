@@ -247,6 +247,7 @@ async def set_version_body(
             system_prompt=system_prompt,
             pacing=pacing,
             marking_layout=marking_layout,
+            revision=RubricVersion.revision + 1,
         )
     )
 

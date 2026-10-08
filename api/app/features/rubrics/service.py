@@ -22,6 +22,7 @@ from app.core import lifecycle
 from app.core.auth import Principal
 from app.core.errors import AppError, raise_mapped
 from app.core.pagination import Page
+from app.core.revision import ensure_current
 from app.features.attempts import service_trial
 from app.features.catalog import service as catalog_service
 from app.features.catalog.errors import UnknownExamError as CatalogUnknownExam
@@ -196,6 +197,7 @@ async def edit_version(
     system_prompt: str,
     pacing: dict[str, Any],
     marking_layout: dict[str, Any] | None,
+    revision: int | None = None,
 ) -> RubricVersionRead:
     """Rewrite a draft's body. Refused as `not_editable` once it has been published.
 
@@ -203,6 +205,7 @@ async def edit_version(
     the marking layout are still checked, since nothing in the builder fixes them later.
     """
     version_row = await _version(session, org_id, rubric_id, version)
+    ensure_current(revision, version_row.revision)
     try:
         lifecycle.ensure_editable(
             lifecycle.VersionRef(number=version_row.version, status=lifecycle.Status(version_row.status))
@@ -431,6 +434,7 @@ def version_read(version: RubricVersion) -> RubricVersionRead:
     schema = domain.derive_result_schema(parsed) if parsed else {}
     return RubricVersionRead(
         id=version.id,
+        revision=version.revision,
         rubric_id=version.rubric_id,
         version=version.version,
         status=version.status,

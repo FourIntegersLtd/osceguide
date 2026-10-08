@@ -114,7 +114,9 @@ async def update_sitting(
     instead.
     """
     await session.execute(
-        update(Sitting).where(Sitting.org_id == org_id, Sitting.id == sitting_id).values(**values)
+        update(Sitting)
+        .where(Sitting.org_id == org_id, Sitting.id == sitting_id)
+        .values(**values, revision=Sitting.revision + 1)
     )
 
 
@@ -180,6 +182,15 @@ async def circuits_for_sitting(
         .order_by(Circuit.created_at)
     )
     return list((await session.execute(stmt)).scalars())
+
+
+async def bump_circuit_revision(session: AsyncSession, org_id: uuid.UUID, circuit_id: uuid.UUID) -> None:
+    """Count an edit of the circuit's roster, stations or settings (B-15); the run's clock does not."""
+    await session.execute(
+        update(Circuit)
+        .where(Circuit.org_id == org_id, Circuit.id == circuit_id)
+        .values(revision=Circuit.revision + 1)
+    )
 
 
 async def update_circuit(

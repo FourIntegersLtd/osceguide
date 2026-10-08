@@ -20,10 +20,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base, Timestamps, UUIDPrimaryKey
+from app.core.db import Base, Revisioned, Timestamps, UUIDPrimaryKey
 
 
-class Sitting(Base, UUIDPrimaryKey, Timestamps):
+class Sitting(Base, UUIDPrimaryKey, Timestamps, Revisioned):
     """A scheduled event an organisation holds."""
 
     __tablename__ = "sittings"
@@ -48,7 +48,7 @@ class Sitting(Base, UUIDPrimaryKey, Timestamps):
     )
 
 
-class Circuit(Base, UUIDPrimaryKey, Timestamps):
+class Circuit(Base, UUIDPrimaryKey, Timestamps, Revisioned):
     """A group or a single candidate running through a set of stations, with its own clock."""
 
     __tablename__ = "circuits"

@@ -370,6 +370,24 @@ async def admin_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.
     return list((await session.execute(stmt)).scalars().unique())
 
 
+async def lock_admin_memberships(session: AsyncSession, org_id: uuid.UUID) -> None:
+    """Lock the live admin memberships of an organisation until the transaction ends.
+
+    So two closures racing for its last two administrators serialise: the second counts after the
+    first has committed, instead of both seeing the other still there.
+    """
+    stmt = (
+        select(Membership.user_id)
+        .where(
+            Membership.org_id == org_id,
+            Membership.revoked_at.is_(None),
+            Membership.role.in_(sorted(ORG_ADMIN_ROLES)),
+        )
+        .with_for_update()
+    )
+    await session.execute(stmt)
+
+
 async def member_user_ids(
     session: AsyncSession, org_id: uuid.UUID, user_ids: Sequence[uuid.UUID]
 ) -> set[uuid.UUID]:

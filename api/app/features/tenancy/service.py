@@ -212,6 +212,30 @@ async def record_audit(
     )
 
 
+async def update_organization_details(
+    session: AsyncSession, org_id: uuid.UUID, values: dict[str, Any], *, actor: Principal
+) -> None:
+    """Write an organisation's own fields and audit who changed them (B-33).
+
+    The one write behind the org admin's settings screen and the platform console's edit. A
+    name sent as null is not a rename; a contact sent as null clears it.
+    """
+    values = {key: value for key, value in values.items() if value is not None or key.startswith("contact_")}
+    if not values:
+        return
+    await repository.update_organization(session, org_id, **values)
+    await repository.write_audit(
+        session,
+        org_id=org_id,
+        actor_user_id=actor.user_id,
+        actor_email=actor.email,
+        action="organization.updated",
+        target_type="organization",
+        target_id=str(org_id),
+        summary=", ".join(sorted(values)),
+    )
+
+
 async def set_require_staff_mfa(
     session: AsyncSession, org_id: uuid.UUID, *, required: bool, actor: Principal, now: datetime
 ) -> OrganizationRead:
@@ -319,6 +343,8 @@ def _org_read(org: Any) -> OrganizationRead:
         contract_starts_at=org.contract_starts_at,
         contract_ends_at=org.contract_ends_at,
         require_staff_mfa=org.require_staff_mfa,
+        contact_name=org.contact_name,
+        contact_email=org.contact_email,
         parent_org_id=org.parent_org_id,
     )
 

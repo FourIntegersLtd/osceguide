@@ -20,12 +20,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership
 from tests.http.test_sittings_routes import (
     a_trainee,
-    org_with_admin,
     published_station,
 )
 from tests.support.catalog import create_exam
 from tests.support.fakes import FakeRoomAgents
-from tests.support.sittings import add_programme, create_sitting_body
+from tests.support.sittings import add_programme, create_sitting_body, org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

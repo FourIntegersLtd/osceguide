@@ -99,3 +99,20 @@ def test_the_expiry_warning_names_the_exam_and_the_end_date() -> None:
     html = service._render("entitlement_expiring", {"exam_title": "SCA <b>", "ends_on": "15 October 2026"})
     assert "Your SCA &lt;b&gt; access ends on 15 October 2026</h1>" in html
     assert '/app/me/settings" style=' in html
+
+
+def test_the_institution_emails_link_to_the_sitting_and_the_circuit() -> None:
+    from app.features.notifications import service
+
+    fields = {
+        "org_slug": "kings",
+        "org_name": "Kings",
+        "sitting_id": "s1",
+        "sitting_name": "Finals",
+        "circuit_id": "c1",
+        "circuit_name": "Room 1",
+        "scheduled_at": "2026-11-03T10:00:00+00:00",
+    }
+    for key in ("sitting_scheduled", "exam_day_reminder"):
+        assert "/app/kings/trainee/sittings/s1" in service._render(key, fields)
+    assert "/app/kings/circuits/c1" in service._render("review_assigned", fields)

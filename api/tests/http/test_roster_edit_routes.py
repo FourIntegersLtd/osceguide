@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from app.features.notifications.models import OutboundMessage
-from tests.http.test_sittings_routes import org_with_admin
+from tests.support.sittings import org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

@@ -120,7 +120,9 @@ async def create_exam(
 async def update_exam(session: AsyncSession, exam_id: uuid.UUID, **fields: Any) -> None:
     """Change whichever columns are given. Does nothing if `fields` is empty."""
     if fields:
-        await session.execute(update(Exam).where(Exam.id == exam_id).values(**fields))
+        await session.execute(
+            update(Exam).where(Exam.id == exam_id).values(**fields, revision=Exam.revision + 1)
+        )
 
 
 async def delete_exam(session: AsyncSession, exam_id: uuid.UUID) -> None:

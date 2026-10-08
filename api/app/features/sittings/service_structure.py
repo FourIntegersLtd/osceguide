@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import raise_mapped
+from app.core.revision import ensure_current
 from app.features.attempts import service_reads as attempts
 from app.features.roster import service as roster
 from app.features.sittings import (
@@ -158,6 +159,7 @@ async def rebuild_circuit(
     name: str | None = None,
     supervisor_user_id: uuid.UUID | None = None,
     timing: TimingIn | None = None,
+    revision: int | None = None,
 ) -> CircuitRead:
     """Change who is on a circuit and which stations they sit (C3).
 
@@ -166,6 +168,7 @@ async def rebuild_circuit(
     and recorded feedback would point at a slot that no longer exists.
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
+    ensure_current(revision, circuit.revision)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
     if circuit.ended_at is not None:
         raise errors.CircuitAlreadyEndedError("That circuit has already finished.")
@@ -215,6 +218,8 @@ async def rebuild_circuit(
         )
     if values:
         await repository.update_circuit(session, org_id, circuit_id, **values)
+    await repository.bump_circuit_revision(session, org_id, circuit_id)
+    await session.refresh(circuit)
 
     await repository_reads.delete_circuit_structure(session, org_id, circuit_id)
     await repository.add_circuit_members(

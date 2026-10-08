@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.core.exam_settings import ExamSettings
+from app.core.revision import ensure_current
 from app.features.catalog import domain, repository
 from app.features.catalog.errors import (
     ExamCodeTaken,
@@ -128,6 +129,7 @@ async def update_exam(
     one would silently strand them; a new exam is the honest way to do it.
     """
     exam = await _owned_exam(session, exam_id, org_id)
+    ensure_current(fields.pop("revision", None), exam.revision)
     changes = {field: value for field, value in fields.items() if value is not None or field in _CLEARABLE}
     if "rubric_version_id" in changes:
         if changes["rubric_version_id"] is None:

@@ -18,6 +18,7 @@ function trainee(over: Partial<Trainee> = {}): Trainee {
     invitation_pending: false,
     is_member: true,
     programme_names: [],
+    revision: 1,
     stations_sat: 0,
     temporary_password_applied: false,
     ...over,

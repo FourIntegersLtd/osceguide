@@ -20,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base, Timestamps, UUIDPrimaryKey
+from app.core.db import Base, Revisioned, Timestamps, UUIDPrimaryKey
 
 _OWNER_MATCHES_ORG = (
     "(owner_kind = 'platform' AND org_id IS NULL) OR (owner_kind = 'org' AND org_id IS NOT NULL)"
@@ -50,7 +50,7 @@ class Rubric(Base, UUIDPrimaryKey, Timestamps):
     )
 
 
-class RubricVersion(Base, UUIDPrimaryKey, Timestamps):
+class RubricVersion(Base, UUIDPrimaryKey, Timestamps, Revisioned):
     """One immutable revision of a rubric.
 
     An attempt is marked against a version, and the version's id *is* the

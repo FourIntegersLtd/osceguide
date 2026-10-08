@@ -11,6 +11,7 @@ from app.core.exam_settings import ExamSettings
 
 class ExamRead(BaseModel):
     id: uuid.UUID
+    revision: int = 1
     # Who wrote it: `platform` is the consumer catalogue, `org` is an
     # institution's own. `org_id` is set only for the latter.
     owner_kind: str = "platform"
@@ -52,6 +53,8 @@ class UpdateExam(BaseModel):
     partner_pilot: bool | None = None
     # Replaces the whole settings object; there is no partial merge.
     settings: ExamSettings | None = None
+    # The revision the caller read; an older one is refused 409 `stale_revision` (B-15).
+    revision: int | None = None
 
 
 class ProgrammeRead(BaseModel):

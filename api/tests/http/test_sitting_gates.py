@@ -15,10 +15,10 @@ from app.features.tenancy import repository as tenancy_repo
 from app.features.voice.service import get_room_agents
 from tests.http.test_examiner_transcript_routes import an_examiner
 from tests.http.test_org_read_models import a_circuit, a_sitting, a_user
-from tests.http.test_sittings_routes import org_with_admin, published_station
+from tests.http.test_sittings_routes import published_station
 from tests.support.catalog import create_exam
 from tests.support.fakes import FakeRoomAgents
-from tests.support.sittings import add_programme, create_sitting_body
+from tests.support.sittings import add_programme, create_sitting_body, org_with_admin
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
+from app.core.revision import StaleRevision
 from app.core.tenancy import OrgAdmin, OrgStaff
 from app.features.sittings import errors, schemas, service, service_edit, service_structure
 
@@ -36,7 +37,7 @@ async def list_sittings(
     session: Session,
     page: Annotated[CursorParams, Depends()],
     sitting_status: Annotated[str | None, Query(alias="status")] = None,
-    mode: Annotated[str | None, Query(description="exam or training")] = None,
+    mode: Annotated[Literal["exam", "training"] | None, Query(description="exam or training")] = None,
     search: Annotated[str | None, Query(description="Part of the sitting name")] = None,
     programme_id: uuid.UUID | None = None,
     scheduled_from: date | None = None,
@@ -102,6 +103,7 @@ async def read_sitting(sitting_id: uuid.UUID, workspace: OrgStaff, session: Sess
     "/orgs/{org_slug}/sittings/{sitting_id}",
     response_model=schemas.SittingRead,
     responses=error_responses(
+        StaleRevision,
         Forbidden,
         errors.SittingNotFound,
         errors.SittingLockedError,
@@ -173,6 +175,7 @@ async def add_circuit(
     "/orgs/{org_slug}/circuits/{circuit_id}",
     response_model=schemas.CircuitRead,
     responses=error_responses(
+        StaleRevision,
         Forbidden,
         errors.CircuitNotFound,
         errors.SittingNotFound,
@@ -202,6 +205,7 @@ async def rebuild_circuit(
         name=body.name,
         supervisor_user_id=body.supervisor_user_id,
         timing=body.timing,
+        revision=body.revision,
     )
 
 

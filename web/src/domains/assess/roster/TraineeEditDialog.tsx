@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { Alert, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
+import { hasCode } from "@/foundation/platform-client";
 import { Dialog } from "@/domains/assess/team/chrome";
 import type { Trainee } from "@/domains/assess/api";
 import { updateTrainee, type Cohort } from "@/domains/assess/roster/api";
@@ -78,15 +79,20 @@ function Form({
         firstName: firstName.trim() || null,
         lastName: lastName.trim() || null,
         cohortId: cohortId || null,
-      });
+      }, trainee.revision);
       onSaved();
       onClose();
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(
+        hasCode(cause, "stale_revision")
+          ? "Someone else changed this person just now. We have reloaded the list: close this and choose Edit again to see their changes."
+          : errorMessage(cause),
+      );
+      if (hasCode(cause, "stale_revision")) onSaved();
     } finally {
       setBusy(false);
     }
-  }, [orgSlug, trainee.id, firstName, lastName, cohortId, onSaved, onClose]);
+  }, [orgSlug, trainee.id, trainee.revision, firstName, lastName, cohortId, onSaved, onClose]);
 
   return (
     <Dialog

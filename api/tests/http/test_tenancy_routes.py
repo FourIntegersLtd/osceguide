@@ -671,3 +671,30 @@ async def test_an_org_admin_renames_their_organisation_but_not_its_address(
     assert [r["action"] for r in audit.json()["items"] if r["action"] == "organization.updated"] == [
         "organization.updated"
     ]
+
+
+async def test_an_org_admin_sets_the_contact_and_the_audit_names_them(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """B-33: the contact person is the org admin's to keep; the log names who changed it."""
+    org_id = await seed_org(client, make_actor)
+    admin = await member_token(make_actor, org_id, "kings", "institution_admin")
+
+    saved = await client.patch(
+        "/api/v1/orgs/kings",
+        json={"contact_name": "Dr Aisha Rahman", "contact_email": "exams@kings.example"},
+        headers=bearer(admin),
+    )
+    bad = await client.patch("/api/v1/orgs/kings", json={"contact_email": "nope"}, headers=bearer(admin))
+    audit = await client.get("/api/v1/orgs/kings/audit", headers=bearer(admin))
+
+    assert saved.status_code == 200, saved.text
+    assert (saved.json()["contact_name"], saved.json()["contact_email"]) == (
+        "Dr Aisha Rahman",
+        "exams@kings.example",
+    )
+    assert bad.status_code == 422
+    updated = [r for r in audit.json()["items"] if r["action"] == "organization.updated"]
+    assert [(r["actor_email"], r["summary"]) for r in updated] == [
+        ("institution_admin-kings@example.com", "contact_email, contact_name")
+    ]

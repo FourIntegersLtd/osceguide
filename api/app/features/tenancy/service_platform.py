@@ -32,7 +32,7 @@ from app.features.tenancy.schemas import (
     RenewContract,
     UpdateOrganization,
 )
-from app.features.tenancy.service import _org_read, set_require_staff_mfa
+from app.features.tenancy.service import _org_read, set_require_staff_mfa, update_organization_details
 
 # How far ahead "ending soon" looks. Thirty days is what b2b's console used
 # for its at-risk list, and a renewal conversation takes about that long.
@@ -82,18 +82,7 @@ async def update_organization(
     if "require_staff_mfa" in values:
         required = bool(values.pop("require_staff_mfa"))
         await set_require_staff_mfa(session, org_id, required=required, actor=actor, now=now)
-    if values:
-        await repository.update_organization(session, org_id, **values)
-        await repository.write_audit(
-            session,
-            org_id=org_id,
-            actor_user_id=actor.user_id,
-            actor_email=actor.email,
-            action="organization.updated",
-            target_type="organization",
-            target_id=str(org_id),
-            summary=", ".join(sorted(values)),
-        )
+    await update_organization_details(session, org_id, values, actor=actor)
     refreshed = await repository.organization_by_id(session, org_id)
     return _org_read(refreshed)
 

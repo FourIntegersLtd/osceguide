@@ -15,6 +15,7 @@ from app.core.schemas import InvitationRead as InvitationRead
 
 class TraineeRead(BaseModel):
     id: uuid.UUID
+    revision: int = 1
     email: str
     first_name: str | None
     last_name: str | None
@@ -61,6 +62,8 @@ class UpdateTrainee(BaseModel):
     first_name: str | None = Field(default=None, max_length=100)
     last_name: str | None = Field(default=None, max_length=100)
     cohort_id: uuid.UUID | None = None
+    # The revision the caller read; an older one is refused 409 `stale_revision` (B-15).
+    revision: int | None = None
 
 
 # The browser sends rows in chunks of IMPORT_CHUNK (web roster api.ts); keep the two equal.

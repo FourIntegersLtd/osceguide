@@ -54,6 +54,8 @@ class CircuitRef:
     paused_seconds: int = 0
     auto_advance: bool = True
     voice_fault_at: datetime | None = None
+    # Raised by each edit; an edit made from an older read is refused (B-15).
+    revision: int = 1
 
 
 @dataclass(frozen=True)

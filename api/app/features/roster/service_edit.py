@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
+from app.core.revision import ensure_current
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
 from app.features.roster import errors, repository, repository_groups
@@ -40,7 +41,8 @@ async def update_trainee(
     The address is not one of them — it identifies the entry and is what the
     account link was made against, so changing it would re-point a person's results.
     """
-    await _require_trainee(session, org_id, trainee_id)
+    trainee = await _require_trainee(session, org_id, trainee_id)
+    ensure_current(body.revision, trainee.revision)
     named = set(_FIELDS) & fields_sent
     cohort_id = body.cohort_id if "cohort_id" in named else None
     # Checked against this org, so an intake from elsewhere cannot be attached
