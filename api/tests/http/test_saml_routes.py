@@ -318,3 +318,20 @@ async def test_a_claim_name_pasted_with_spaces_is_stored_without_them(
         headers=bearer(root),
     )
     assert (saved.json()["email_attribute"], saved.json()["first_name_attribute"]) == ("mail", "given")
+
+
+async def test_an_email_claim_name_of_only_spaces_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    idp = TestIdentityProvider()
+    await a_saml_org(client, make_actor, idp)
+    root = await make_actor("root-saml-blank@osceguide.com", platform_admin=True)
+    saved = await client.put(
+        "/api/v1/platform/orgs/kings/sso/saml",
+        json={
+            "idp_entity_id": IDP_ENTITY_ID,
+            "idp_sso_url": IDP_SSO_URL,
+            "idp_x509_cert": idp.cert_pem,
+            "email_attribute": "   ",
+        },
+        headers=bearer(root),
+    )
+    assert saved.status_code == 422

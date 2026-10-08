@@ -18,10 +18,10 @@ from app.features.catalog import service as catalog
 from app.features.identity import repository, repository_platform
 from app.features.identity.domain import WeakPassword, may_call, normalize_email, validate_password
 from app.features.identity.errors import (
+    AccountNotFound,
     EmailTaken,
     ExamAlreadyChosen,
     InvalidAvatarFile,
-    InvalidCredentials,
     UnknownExamError,
     UserNotFound,
     WeakPasswordError,
@@ -139,12 +139,11 @@ async def register(
 async def read_me(
     session: AsyncSession, *, principal: Principal, memberships_for: MembershipLookup
 ) -> UserRead:
-    """The signed-in person, refusing `invalid_credentials` for a valid token
-    naming an account that no longer exists — the same code a bad token gets,
-    since the caller's next move is identical either way."""
+    """The signed-in person, refusing `account_not_found` for a valid token
+    naming an account that no longer exists."""
     user = await repository.user_by_id(session, principal.user_id)
     if user is None:
-        raise InvalidCredentials()
+        raise AccountNotFound()
     memberships = await memberships_for(session, principal.user_id)
     return user_read(user, memberships)
 
@@ -183,7 +182,7 @@ async def upload_avatar(
     previous_url = previous.avatar_url if previous else None
     user = await repository.set_avatar_url(session, user_id, avatar_url=url)
     if user is None:
-        raise InvalidCredentials()
+        raise AccountNotFound()
     if previous_url:
         media_production.delete_image(settings, previous_url)
 
@@ -252,7 +251,7 @@ async def update_me(
     )
     user = await repository.update_profile(session, principal.user_id, changes)
     if user is None:
-        raise InvalidCredentials()
+        raise AccountNotFound()
     memberships = await memberships_for(session, principal.user_id)
     return user_read(user, memberships)
 
@@ -269,7 +268,7 @@ async def _exam_to_set(session: AsyncSession, user_id: uuid.UUID, requested: str
         return None
     user = await repository.user_by_id(session, user_id)
     if user is None:
-        raise InvalidCredentials()
+        raise AccountNotFound()
     if user.exam_code == requested:
         return None
     if user.exam_code is not None:

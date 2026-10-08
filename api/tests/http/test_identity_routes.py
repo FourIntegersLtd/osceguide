@@ -586,3 +586,14 @@ async def test_a_suspended_account_cannot_change_its_password_for_a_fresh_sessio
         headers=bearer(mint_token(user_id=user.id, email="suspended@example.com")),
     )
     assert response.json()["code"] == "account_suspended"
+
+
+async def test_a_live_token_for_an_account_that_no_longer_exists_is_not_a_credential_error(
+    client: AsyncClient,
+) -> None:
+    """The web hook ignores `invalid_credentials` (a wrong password typed on a screen), so a
+    vanished account must answer with a code of its own or the browser stays signed in."""
+    token = mint_token(user_id=uuid.uuid4())
+    response = await client.get("/api/v1/me", headers=bearer(token))
+    assert response.status_code == 401
+    assert response.json()["code"] == "account_not_found"

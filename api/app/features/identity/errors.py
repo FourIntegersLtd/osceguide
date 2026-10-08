@@ -28,6 +28,17 @@ class InvalidCredentials(Unauthenticated):
     default_message = "Email or password is incorrect"
 
 
+class AccountNotFound(Unauthenticated):
+    """A valid token names an account that has been deleted or erased.
+
+    Not `InvalidCredentials`: the web client reads that code as a wrong password typed on a
+    screen and keeps the session, whereas this one means the session is dead.
+    """
+
+    code = "account_not_found"
+    default_message = "Sign in again"
+
+
 class InvalidRefreshToken(Unauthenticated):
     """Refuses a refresh token that is unknown, expired, or already revoked."""
 

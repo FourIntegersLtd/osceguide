@@ -16,3 +16,13 @@ def seating_note(*, relayed: bool) -> str:
 def roster_added_summary(email: str, note: str = "") -> str:
     """The `trainee.added` summary; `note` is empty when the address already had an account."""
     return f"Added {email} to the roster{note}"
+
+
+def membership_granted_summary(role: str, email: str, note: str = "") -> str:
+    """The `membership.added` summary; `note` is empty when the person already had an account."""
+    return f"Granted {role} to {email}{note}"
+
+
+def password_reissued_summary(email: str) -> str:
+    """The `user.temporary_password_reissued` summary: a new password somebody else chose."""
+    return f"{email}{RELAYED_PASSWORD_NOTE}"

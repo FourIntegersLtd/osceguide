@@ -8,7 +8,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.audit_wording import seating_note
+from app.core.audit_wording import membership_granted_summary, seating_note
 from app.core.auth import Principal
 from app.core.errors import Forbidden, InvalidInput
 from app.features.identity import service as identity
@@ -147,7 +147,7 @@ async def add_membership(
         action="membership.added",
         target_type="membership",
         target_id=str(user_id),
-        summary=f"Granted {role} to {email}{how}",
+        summary=membership_granted_summary(role, email, how),
     )
     return _membership_read(membership, person=user, temporary_password_applied=relayed)
 

@@ -21,6 +21,7 @@ from app.core.sse import MEDIA_TYPE, SSE_HEADERS, fan_in_stream
 from app.core.streams import StreamPrincipal
 from app.features.identity import schemas, service, service_close_account, service_export, service_mfa
 from app.features.identity.errors import (
+    AccountNotFound,
     ExamAlreadyChosen,
     InvalidAvatarFile,
     InvalidCredentials,
@@ -40,7 +41,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.patch(
     "/me",
     response_model=schemas.UserRead,
-    responses=error_responses(Unauthenticated, ExamAlreadyChosen, UnknownExamError),
+    responses=error_responses(Unauthenticated, AccountNotFound, ExamAlreadyChosen, UnknownExamError),
 )
 async def update_me(
     body: schemas.UpdateMe,
@@ -64,7 +65,9 @@ async def update_me(
 
 
 # Read the signed-in person's account and the workspaces they belong to.
-@router.get("/me", response_model=schemas.UserRead, responses=error_responses(Unauthenticated))
+@router.get(
+    "/me", response_model=schemas.UserRead, responses=error_responses(Unauthenticated, AccountNotFound)
+)
 async def read_me(
     principal: CurrentPrincipal,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -76,7 +79,7 @@ async def read_me(
 @router.post(
     "/me/avatar",
     response_model=schemas.UserRead,
-    responses=error_responses(TooManyRequests, Unauthenticated, InvalidAvatarFile),
+    responses=error_responses(TooManyRequests, Unauthenticated, AccountNotFound, InvalidAvatarFile),
     dependencies=[Depends(per_user(USER_WRITE))],
 )
 async def upload_my_avatar(

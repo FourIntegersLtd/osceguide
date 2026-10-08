@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test } from "node:test";
 
 import {
   changePassword,
+  logout,
   PasswordChangedNotStored,
   clearPlatformSession,
   register,
@@ -170,6 +171,23 @@ test("a reload asks the server once and spends no refresh token", async () => {
   assert.equal(await platformAccessToken(), "access-from-cookie");
   assert.equal(await platformAccessToken(), "access-from-cookie");
   assert.equal(calls().length, 1, "the second read comes from memory");
+});
+
+test("a refresh that answers after sign-out does not bring the session back", async () => {
+  serverSetsMarker();
+  let release: (response: Response) => void = () => {};
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) =>
+    init?.method === "DELETE" ? new Response(null, { status: 204 }) : held) as typeof fetch;
+
+  const refresh = platformAccessToken();
+  await logout();
+  release(json({ access_token: "late", expires_at: Date.now() + 900_000 }));
+
+  assert.equal(await refresh, null);
+  assert.equal(peekPlatformAccessToken(), null);
 });
 
 test("no session means no request at all", async () => {

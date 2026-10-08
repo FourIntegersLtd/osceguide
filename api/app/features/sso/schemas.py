@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SsoBinding(BaseModel):
@@ -125,8 +125,11 @@ class SamlConnectionRead(BaseModel):
 class SaveSamlConnection(BaseModel):
     """What an institution's IdP metadata says, and which attributes carry the address and name.
 
-    The attribute defaults are the claim URIs Entra sends.
+    The attribute defaults are the claim URIs Entra sends. Text is stripped before it is
+    checked, so a name of only spaces is a 422 rather than a stored blank.
     """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
 
     idp_entity_id: str = Field(min_length=1, max_length=500)
     idp_sso_url: str = Field(min_length=1, max_length=1000, pattern="^https://")

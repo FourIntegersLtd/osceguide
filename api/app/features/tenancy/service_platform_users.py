@@ -16,7 +16,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.audit_wording import RELAYED_PASSWORD_NOTE
+from app.core.audit_wording import password_reissued_summary
 from app.core.auth import Principal
 from app.features.identity import service as identity
 from app.features.identity import service_close_account, service_mfa, service_passwords
@@ -239,7 +239,7 @@ async def reissue_temporary_password(
         action="user.temporary_password_reissued",
         target_type="user",
         target_id=str(user_id),
-        summary=f"{user.email}{RELAYED_PASSWORD_NOTE}",
+        summary=password_reissued_summary(user.email),
     )
 
 

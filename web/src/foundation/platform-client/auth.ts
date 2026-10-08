@@ -65,6 +65,8 @@ interface CachedToken {
 
 let session: CachedToken | null = null;
 let inFlight: Promise<string | null> | null = null;
+/** Bumped on every sign-out, so a refresh that started before one can tell it must not land. */
+let generation = 0;
 
 /* ---------- the session marker ---------- */
 
@@ -91,6 +93,7 @@ function dropMarker(): void {
 
 /** Drop what this tab holds. The server's cookies are cleared separately. */
 function forgetLocally(): void {
+  generation += 1;
   session = null;
   inFlight = null;
   dropMarker();
@@ -234,6 +237,7 @@ async function askForToken(refused?: string): Promise<TokenAnswer | null> {
 }
 
 async function fetchToken(): Promise<string | null> {
+  const startedIn = generation;
   return withSessionLock(async () => {
     let body = await askForToken();
     // A refused refresh is checked back once: a pair stored meanwhile (another
@@ -249,6 +253,8 @@ async function fetchToken(): Promise<string | null> {
       forgetLocally();
       return null;
     }
+    // Signed out while this was in the air: the answer belongs to a session that is gone.
+    if (generation !== startedIn) return null;
     session = {
       accessToken: body.access_token,
       expiresAt: body.expires_at ?? Date.now() + REFRESH_MARGIN_MS,
@@ -268,10 +274,10 @@ export async function platformAccessToken(): Promise<string | null> {
   // No marker means no session at all, and asking would be a pointless round
   // trip on every anonymous page.
   if (!session && !hasMarker()) return null;
-  inFlight ??= fetchToken().finally(() => {
-    inFlight = null;
-  });
-  return inFlight;
+  const started = (inFlight ??= fetchToken().finally(() => {
+    if (inFlight === started) inFlight = null;
+  }));
+  return started;
 }
 
 /**

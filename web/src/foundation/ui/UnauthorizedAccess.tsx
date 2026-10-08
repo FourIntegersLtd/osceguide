@@ -7,7 +7,6 @@ import { useSession } from "@/foundation/session";
 import { SUPPORT_EMAIL } from "@/foundation/support";
 import { b2cButtonPrimary, b2cButtonSecondary } from "@/foundation/ui/productTokens";
 
-
 type UnauthorizedAccessProps = {
   title?: string;
   description?: string;

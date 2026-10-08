@@ -219,6 +219,18 @@ test("a 401 on a request that carried a token tells the session to re-check", as
   setUnauthorizedHandler(null);
 });
 
+test("a 401 for an account that no longer exists tells the session to re-check", async () => {
+  let told = 0;
+  setUnauthorizedHandler(() => {
+    told += 1;
+  });
+  setPlatformTokenSource(() => "live");
+  respondWith(401, JSON.stringify({ code: "account_not_found", message: "Sign in again" }));
+  await assert.rejects(platformRequest("/api/v1/me"), PlatformError);
+  assert.equal(told, 1);
+  setUnauthorizedHandler(null);
+});
+
 test("a 401 from sign-in, or with no token sent, is not a lost session", async () => {
   let told = 0;
   setUnauthorizedHandler(() => {

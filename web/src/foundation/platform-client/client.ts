@@ -193,7 +193,12 @@ async function platformFetch(
   }
 }
 
-/** A 401 that answers a wrong code or password typed on a screen, not a refused session. */
+/**
+ * A 401 that answers a wrong code or password typed on a screen, not a refused session.
+ * The codes are the api's `InvalidCredentials` and `InvalidMfaCode`
+ * (`api/app/features/identity/errors.py`). A vanished account is `account_not_found`, which
+ * is deliberately not here: that session is dead.
+ */
 const CREDENTIAL_CODES = new Set(["invalid_credentials", "invalid_mfa_code"]);
 
 async function isCredentialRefusal(response: Response): Promise<boolean> {

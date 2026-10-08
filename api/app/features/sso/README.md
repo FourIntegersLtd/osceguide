@@ -62,6 +62,8 @@ An institution whose IdP speaks only SAML sets `organization_sso.provider` to
 `saml` (with the IdP's entity id as `issuer`) and describes the IdP in
 `organization_saml_connections`: entity id, sign-in URL, signing certificate and
 which attributes carry the address and name (Entra's claim URIs by default).
+The save strips spaces from every field before validating it. A connection saved before that
+may still hold padded claim names; they are cleaned on its next save, not by a migration.
 
 - **The XML signature is `python3-saml`'s to check, never ours.** Strict mode:
   the response or its assertion must be signed with the connection's
