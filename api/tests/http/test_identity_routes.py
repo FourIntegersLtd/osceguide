@@ -872,3 +872,28 @@ async def test_erasure_clears_the_exam_and_sign_in_links_and_confirms_by_email(
     )
     assert [(m.recipient, m.status) for m in mail] == [("confirm@example.com", "pending")]
     assert mail[0].payload == {}
+
+
+async def test_a_self_registered_account_keeps_its_trial_clock_through_its_first_later_sign_in(
+    db_session: AsyncSession, settings
+) -> None:  # type: ignore[no-untyped-def]
+    """Review of S-10: registering is the first sign-in, so a counted sign-in a week later must not
+    restart the free trial."""
+    from app.features.identity import service as identity_service
+
+    registered_at = datetime(2026, 1, 1, tzinfo=UTC)
+    await identity_service.register(
+        db_session,
+        email="trialclock@example.com",
+        name="Trial Clock",
+        password="correct horse battery",
+        settings=settings,
+        now=registered_at,
+    )
+    user = await identity_repo.user_by_email(db_session, "trialclock@example.com")
+    assert user is not None
+
+    await identity_repo.record_login(db_session, user.id, registered_at + timedelta(days=8))
+    await db_session.refresh(user)
+
+    assert user.activated_at == registered_at

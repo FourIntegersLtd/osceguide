@@ -221,6 +221,22 @@ async def plan_by_id(session: AsyncSession, plan_id: uuid.UUID) -> Plan | None:
     return (await session.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
 
 
+async def processed_events_for_intent(
+    session: AsyncSession, intent_id: str, event_types: Collection[str]
+) -> list[StripeEvent]:
+    """The applied deliveries of these types that named this payment intent, read from the stored payload.
+
+    How a won dispute learns what happened to the payment meanwhile: when its grant was withdrawn
+    (`processed_at` is the `now` the webhook withdrew with) and whether Stripe refunded it.
+    """
+    stmt = select(StripeEvent).where(
+        StripeEvent.event_type.in_(list(event_types)),
+        StripeEvent.processed_at.is_not(None),
+        StripeEvent.payload["data"]["object"]["payment_intent"].astext == intent_id,
+    )
+    return list((await session.execute(stmt)).scalars())
+
+
 async def list_events(
     session: AsyncSession, *, failed_only: bool, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[StripeEvent], str | None]:

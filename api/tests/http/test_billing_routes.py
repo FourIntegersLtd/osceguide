@@ -1243,6 +1243,110 @@ async def test_refunding_the_first_plan_pulls_a_stacked_plan_forward(
     assert second.ends_at - second.starts_at == timedelta(days=90)
 
 
+async def test_a_dispute_won_puts_a_pulled_forward_plan_back_behind_the_restored_one(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Review of S-13: the stacked plan was pulled forward when the first was disputed; once the
+    first is back, the two must not overlap or the buyer loses the overlapping days."""
+    from datetime import timedelta
+
+    from app.features.entitlements import repository as ent_repo
+
+    await a_plan(db_session)
+    await billing_repo.create_plan(
+        db_session,
+        code="three_month",
+        stripe_price_id="price_three_month",
+        amount_pence=5999,
+        duration_days=90,
+        exam_code="sca",
+    )
+    await a_customer(db_session, "overlap@example.com")
+    await post_event(client, checkout_event("evt_ov_1", "overlap@example.com"))
+    await post_event(client, checkout_event("evt_ov_2", "overlap@example.com", "price_three_month"))
+    user = await identity_repo.user_by_email(db_session, "overlap@example.com")
+    assert user is not None
+    first, second = sorted(await ent_repo.for_user(db_session, user.id), key=lambda grant: grant.ends_at)
+    await post_event(client, charge_event("evt_ov_open", "charge.dispute.created", "pi_evt_ov_1"))
+
+    won = await post_event(client, dispute_closed_event("evt_ov_close", "pi_evt_ov_1", "won"))
+
+    assert won.json()["status"] == "applied"
+    await db_session.refresh(first)
+    await db_session.refresh(second)
+    assert first.revoked_at is None
+    assert second.starts_at == first.ends_at
+    assert second.ends_at == first.ends_at + timedelta(days=90)
+
+
+async def test_a_dispute_won_does_not_restore_access_support_had_already_revoked(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Review of S-13: the dispute did not withdraw this grant, so winning it must not give it back."""
+    from datetime import UTC, datetime
+
+    referrer_token, buyer, intent, ent_repo = await _bought_with_a_code(
+        client, make_actor, db_session, "abuse"
+    )
+    for grant in await ent_repo.for_user(db_session, buyer.id):
+        await ent_repo.revoke(db_session, grant.id, at=datetime.now(UTC))
+    await db_session.commit()
+    await post_event(client, charge_event("evt_abuse_open", "charge.dispute.created", intent))
+
+    await post_event(client, dispute_closed_event("evt_abuse_close", intent, "won"))
+
+    assert [g.revoked_at is not None for g in await ent_repo.for_user(db_session, buyer.id)] == [True]
+
+
+async def test_a_dispute_won_after_the_payment_was_refunded_restores_nothing(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Review of S-13: the money went back by refund, so neither the access nor the credit returns."""
+    referrer_token, buyer, intent, ent_repo = await _bought_with_a_code(
+        client, make_actor, db_session, "refwon"
+    )
+    await post_event(client, charge_event("evt_refwon_open", "charge.dispute.created", intent))
+    await post_event(client, charge_event("evt_refwon_refund", "charge.refunded", intent))
+
+    won = await post_event(client, dispute_closed_event("evt_refwon_close", intent, "won"))
+
+    assert won.json()["status"] == "ignored"
+    assert [g.revoked_at is not None for g in await ent_repo.for_user(db_session, buyer.id)] == [True]
+    earned = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert earned.json()["earned_pence"] == 0
+
+
+async def test_a_clawback_row_is_not_a_redeemed_referral_and_is_netted_in_the_queue(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Review of S-13: the negative row nets the balance but is not a second referral."""
+    from datetime import UTC, datetime
+
+    from app.features.growth import repository as growth_repo
+    from app.features.growth import service_payouts
+
+    referrer_token, _, intent, _ = await _bought_with_a_code(client, make_actor, db_session, "netted")
+    referrer = await identity_repo.user_by_email(db_session, "netted-referrer@example.com")
+    assert referrer is not None
+    credit = next(r for r in await growth_repo.referrals_for(db_session, referrer.id) if r.earned_pence)
+    await growth_repo.set_payout(
+        db_session,
+        credit.id,
+        payout_status="paid",
+        payout_reference="BANK-3",
+        paid_at=datetime.now(UTC),
+        paid_by_user_id=None,
+    )
+    await db_session.commit()
+
+    await post_event(client, charge_event("evt_netted_refund", "charge.refunded", intent))
+
+    balance = (await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))).json()
+    assert (balance["redeemed_count"], balance["earned_pence"]) == (1, 0)
+    owed = await service_payouts.owed_total(db_session)
+    assert (owed.owed_pence, owed.referrals) == (-250, 0)
+
+
 async def test_a_plan_says_how_many_stations_its_exam_has_published(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

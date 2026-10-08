@@ -140,6 +140,12 @@ async def revoked_ids(session: AsyncSession, entitlement_ids: Collection[uuid.UU
     return await repository.revoked_ids(session, entitlement_ids)
 
 
+async def revoked_at(session: AsyncSession, entitlement_id: uuid.UUID) -> datetime | None:
+    """When this grant was withdrawn, or None while it stands."""
+    entitlement = await repository.by_id(session, entitlement_id)
+    return entitlement.revoked_at if entitlement is not None else None
+
+
 async def withdraw(session: AsyncSession, entitlement_id: uuid.UUID, *, now: datetime) -> None:
     """Take a grant back because the money for it went back (refund, dispute). No staff actor:
     the processor did it. Twice is once."""
@@ -149,8 +155,40 @@ async def withdraw(session: AsyncSession, entitlement_id: uuid.UUID, *, now: dat
 async def restore(session: AsyncSession, entitlement_id: uuid.UUID) -> None:
     """Give a withdrawn grant back because the money did not go back after all (a dispute won).
     Its window is unchanged, so it simply ends when it was always going to. A grant that has already
-    run out stays out. Twice is once."""
+    run out stays out. Twice is once.
+
+    Plans bought to follow it were pulled forward when it was withdrawn (`pull_stacked_purchases_forward`);
+    they are pushed back behind it again, so the buyer keeps every day of both rather than losing the
+    days the two windows would overlap."""
+    if entitlement_id not in await repository.revoked_ids(session, [entitlement_id]):
+        return
     await repository.restore(session, entitlement_id)
+    restored = await repository.by_id(session, entitlement_id)
+    if restored is None or restored.source != "purchase" or restored.ends_at is None:
+        return
+    cursor = restored.ends_at
+    later_purchases = sorted(
+        (
+            later
+            for later in await repository.for_user_and_exam(session, restored.user_id, restored.exam_id)
+            if later.id != restored.id
+            and later.source == "purchase"
+            and later.revoked_at is None
+            and later.ends_at is not None
+            and later.starts_at >= restored.starts_at
+        ),
+        key=lambda grant: grant.starts_at,
+    )
+    for later in later_purchases:
+        assert later.ends_at is not None
+        if later.starts_at < cursor:
+            shift = cursor - later.starts_at
+            await repository.set_window(
+                session, later.id, starts_at=later.starts_at + shift, ends_at=later.ends_at + shift
+            )
+            cursor = later.ends_at + shift
+        else:
+            cursor = later.ends_at
 
 
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:

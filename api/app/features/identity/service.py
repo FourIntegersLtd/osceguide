@@ -131,7 +131,13 @@ async def register(
     if await repository.user_by_email(session, email) is not None:
         raise EmailTaken()
     user = await repository.create_user(
-        session, email=email, name=name, password_hash=hash_password(password), exam_code=exam_code
+        session,
+        email=email,
+        name=name,
+        password_hash=hash_password(password),
+        exam_code=exam_code,
+        # Registering is the first sign-in: the free trial counts from here, not from a later one.
+        activated_at=now,
     )
     await _announce_registration(session, user.id, user.email)
     from app.features.identity.service_mfa import finish_password_sign_in

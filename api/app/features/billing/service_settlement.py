@@ -172,15 +172,29 @@ async def withdraw_payment(
 async def restore_payment(session: AsyncSession, payment: Payment) -> bool:
     """Give back what a payment bought, because the dispute that took it was won.
 
-    The grant keeps its original window, so a stacked purchase that was pulled forward may overlap
-    it for a while; that errs towards the buyer, who did pay for both. False when nothing was taken.
+    Only what the dispute itself took: a grant support revoked (abuse, a recorded refund) stays
+    revoked, and a payment Stripe refunded gets back neither the grant nor the referral credit.
+    The webhook ledger says which: the grant is the dispute's when it was revoked at the instant the
+    dispute delivery was applied. False when nothing was taken.
     """
     await repository.lock_payment(session, payment.id)
+    intent = payment.stripe_payment_intent_id
+    if any(
+        domain.is_full_refund((event.payload or {}).get("data", {}).get("object") or {})
+        for event in await repository.processed_events_for_intent(session, intent, ["charge.refunded"])
+    ):
+        return False
+    disputed_at = {
+        event.processed_at
+        for event in await repository.processed_events_for_intent(session, intent, ["charge.dispute.created"])
+    }
     restored = False
     entitlement_id = payment.entitlement_id
-    if entitlement_id is not None and await entitlements.revoked_ids(session, [entitlement_id]):
-        await entitlements.restore(session, entitlement_id)
-        restored = True
+    if entitlement_id is not None:
+        revoked_at = await entitlements.revoked_at(session, entitlement_id)
+        if revoked_at is not None and revoked_at in disputed_at:
+            await entitlements.restore(session, entitlement_id)
+            restored = True
     days = (
         (payment.plan_ends_at - payment.plan_starts_at).days
         if payment.plan_ends_at and payment.plan_starts_at

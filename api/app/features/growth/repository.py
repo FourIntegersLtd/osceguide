@@ -318,7 +318,8 @@ async def owed_referral_totals(session: AsyncSession) -> tuple[int, int, int]:
     """Pence owed, referrals owed and distinct referrers owed, over every redeemed unpaid row."""
     stmt = select(
         func.coalesce(func.sum(Referral.earned_pence), 0),
-        func.count(),
+        # The pence net a clawback row off; the count is of sales owed, and a clawback is not one.
+        func.count().filter(Referral.clawback_of_id.is_(None)),
         func.count(func.distinct(Referral.referrer_user_id)),
     ).where(Referral.redeemed_at.is_not(None), Referral.payout_status == "unpaid")
     owed, referrals, referrers = (await session.execute(stmt)).one()

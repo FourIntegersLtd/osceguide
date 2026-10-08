@@ -444,7 +444,8 @@ def _referral_read(code: str, referrals: list) -> ReferralRead:  # type: ignore[
     redeemed = [referral for referral in referrals if referral.redeemed_at is not None]
     return ReferralRead(
         code=code,
-        redeemed_count=len(redeemed),
+        # A clawback row nets the balance below but is not a second person referred.
+        redeemed_count=sum(1 for referral in redeemed if referral.clawback_of_id is None),
         earned_pence=sum(referral.earned_pence for referral in redeemed),
     )
 

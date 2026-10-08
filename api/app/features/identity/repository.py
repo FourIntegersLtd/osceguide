@@ -33,9 +33,11 @@ async def create_user(
     must_change_password: bool = False,
     exam_code: str | None = None,
     password_login_disabled: bool = False,
+    activated_at: datetime | None = None,
 ) -> User:
     """Write a new account. The caller has already checked the email is free
-    and, for a password account, that the password is strong enough."""
+    and, for a password account, that the password is strong enough. `activated_at` is set only
+    for someone who signed themselves up; an invited account stays null until its first sign-in."""
     user = User(
         email=normalize_email(email),
         name=name,
@@ -44,6 +46,7 @@ async def create_user(
         must_change_password=must_change_password,
         exam_code=exam_code,
         password_login_disabled=password_login_disabled,
+        activated_at=activated_at,
     )
     session.add(user)
     # Flushed and refreshed so the caller gets the generated id and defaults.
