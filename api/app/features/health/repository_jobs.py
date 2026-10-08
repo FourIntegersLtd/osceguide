@@ -77,9 +77,10 @@ async def jobs_for_arg(
     return [_ref(job_row) for job_row in job_rows]
 
 
-async def job_by_id(session: AsyncSession, job_id: int) -> JobRef | None:
-    """One job by id, or None."""
-    stmt = text(f"SELECT {_COLUMNS} FROM procrastinate_jobs WHERE id = :id")  # noqa: S608
+async def job_by_id_locked(session: AsyncSession, job_id: int) -> JobRef | None:
+    """One job by id, or None, with its row locked until the transaction ends so a worker
+    cannot move it on between the console's check and its act."""
+    stmt = text(f"SELECT {_COLUMNS} FROM procrastinate_jobs WHERE id = :id FOR UPDATE")  # noqa: S608
     job_row = (await session.execute(stmt, {"id": job_id})).first()
     return _ref(job_row) if job_row is not None else None
 
@@ -146,6 +147,18 @@ async def stalled_jobs(session: AsyncSession, *, seconds_since_heartbeat: int) -
         "OR worker.last_heartbeat < now() - make_interval(secs => :seconds)) ORDER BY job.id"
     )
     return [_ref(job_row) for job_row in await session.execute(stmt, {"seconds": seconds_since_heartbeat})]
+
+
+async def is_stalled(session: AsyncSession, job_id: int, *, seconds_since_heartbeat: int) -> bool:
+    """Whether this one job is `doing` with a dead worker (see `stalled_jobs`)."""
+    stmt = text(
+        "SELECT 1 FROM procrastinate_jobs job "
+        "LEFT JOIN procrastinate_workers worker ON worker.id = job.worker_id "
+        "WHERE job.id = :id AND job.status = 'doing' AND (job.worker_id IS NULL "
+        "OR worker.last_heartbeat < now() - make_interval(secs => :seconds))"
+    )
+    found = await session.execute(stmt, {"id": job_id, "seconds": seconds_since_heartbeat})
+    return found.first() is not None
 
 
 async def requeue(session: AsyncSession, job_id: int) -> None:

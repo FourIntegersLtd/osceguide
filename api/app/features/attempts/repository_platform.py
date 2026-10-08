@@ -18,7 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.attempts.domain import Kind, Status
 from app.features.attempts.models import Attempt
 
-EXAM_SLOT = str(Kind.EXAM_SLOT)
+# Never the console's to reset or delete: an exam sitting is an institution's record.
+PROTECTED_KINDS = (str(Kind.EXAM_SLOT),)
 
 
 async def attempted_user_ids(session: AsyncSession) -> set[uuid.UUID]:
@@ -67,7 +68,7 @@ async def progress_by_version(session: AsyncSession, user_id: uuid.UUID) -> list
     sat = (
         Attempt.user_id == user_id,
         Attempt.station_version_id.is_not(None),
-        Attempt.kind.not_in(("debrief", EXAM_SLOT)),
+        Attempt.kind.not_in((str(Kind.DEBRIEF), *PROTECTED_KINDS)),
     )
     counts = (
         select(
@@ -113,7 +114,7 @@ async def running_for_user_versions(
     stmt = select(func.count(Attempt.id)).where(
         Attempt.user_id == user_id,
         Attempt.station_version_id.in_(list(version_ids)),
-        Attempt.kind != EXAM_SLOT,
+        Attempt.kind.not_in(PROTECTED_KINDS),
         Attempt.status == str(Status.RUNNING),
     )
     return int((await session.execute(stmt)).scalar_one())
@@ -135,7 +136,7 @@ async def delete_for_user_versions(
         delete(Attempt).where(
             Attempt.user_id == user_id,
             Attempt.station_version_id.in_(list(version_ids)),
-            Attempt.kind != EXAM_SLOT,
+            Attempt.kind.not_in(PROTECTED_KINDS),
         )
     )
     return int(getattr(deleted, "rowcount", 0) or 0)

@@ -47,3 +47,29 @@ async def test_archiving_the_current_version_falls_back_to_the_previous_publishe
     assert archived.status_code == 200, archived.text
     after = await client.get(base, headers=bearer(admin))
     assert after.json()["current_version_id"] == first_id
+
+
+async def test_a_version_a_scheduled_sitting_without_circuits_uses_cannot_be_archived(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    import uuid
+
+    from app.features.sittings.models import Sitting
+    from tests.http.test_rubrics_routes import seed_org
+
+    admin = await make_actor("admin@osceguide.com", platform_admin=True)
+    org_id = await seed_org(client, make_actor, "kings")
+    rubric = await create_rubric(client, admin)
+    db_session.add(
+        Sitting(
+            org_id=org_id, name="Autumn OSCE", mode="exam", rubric_version_id=uuid.UUID(rubric["version_id"])
+        )
+    )
+    await db_session.flush()
+
+    refused = await client.post(
+        f"/api/v1/platform/rubrics/{rubric['id']}/versions/1/archive", headers=bearer(admin)
+    )
+
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["details"] == {"reason": "in_use", "exams": 0, "sittings": 1}

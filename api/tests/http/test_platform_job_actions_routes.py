@@ -99,3 +99,38 @@ async def test_only_a_platform_admin_may_act_on_jobs(
     for action in ("retry", "cancel"):
         response = await client.post(f"/api/v1/platform/jobs/{job_id}/{action}", headers=bearer(someone))
         assert response.status_code == 403
+
+
+async def test_cancelling_a_waiting_marking_says_on_the_attempt_that_marking_gave_up(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.attempts import repository
+    from tests.repository.test_attempts_repository import a_user, sca
+    from tests.support.finished_consultation import finish_consultation
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    user, exam = await a_user(db_session), await sca(db_session)
+    attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
+    attempt_id = attempt.id
+    await finish_consultation(db_session, attempt_id)
+    job_id = await a_job(db_session, task="score_attempt", status="todo", attempt_id=str(attempt_id))
+
+    cancelled = await client.post(f"/api/v1/platform/jobs/{job_id}/cancel", headers=bearer(root))
+
+    assert cancelled.status_code == 204, cancelled.text
+    db_session.expire_all()
+    reloaded = await repository.attempt_by_id(db_session, attempt_id)
+    assert reloaded is not None
+    assert reloaded.failed_reason == "scoring_failed"
+
+
+async def test_cancelling_a_job_that_already_finished_is_refused_and_not_audited(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    job_id = await a_job(db_session, task="produce_media", status="succeeded", media_id=str(uuid.uuid4()))
+
+    refused = await client.post(f"/api/v1/platform/jobs/{job_id}/cancel", headers=bearer(root))
+
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "job_not_cancellable"

@@ -190,7 +190,7 @@ async def reclaim_stalled_jobs(session: AsyncSession) -> tuple[list[int], list[i
 async def retry_job(session: AsyncSession, job_id: int, *, actor: Principal, now: datetime) -> None:
     """Queue a failed task again. A marking is not replayed blind: it goes back through
     its attempt, so the retry is checked against the attempt's state."""
-    job = await repository_jobs.job_by_id(session, job_id)
+    job = await repository_jobs.job_by_id_locked(session, job_id)
     if job is None:
         raise JobNotFound()
     if job.status != "failed" or job.task_name == SCORING_TASK:
@@ -206,22 +206,20 @@ async def retry_job(session: AsyncSession, job_id: int, *, actor: Principal, now
 async def cancel_job(session: AsyncSession, job_id: int, *, actor: Principal, now: datetime) -> None:
     """Stop a waiting task, or a running one whose worker has gone quiet. A task a live
     worker is still running is left alone."""
-    job = await repository_jobs.job_by_id(session, job_id)
+    job = await repository_jobs.job_by_id_locked(session, job_id)
     if job is None:
         raise JobNotFound()
     if job.status == "todo":
         await repository_jobs.cancel_waiting(session, job_id)
-    elif job.status == "doing" and job_id in {
-        stalled.id
-        for stalled in await repository_jobs.stalled_jobs(
-            session, seconds_since_heartbeat=STALLED_AFTER_SECONDS
-        )
-    }:
+    elif job.status == "doing" and await repository_jobs.is_stalled(
+        session, job_id, seconds_since_heartbeat=STALLED_AFTER_SECONDS
+    ):
         await repository_jobs.cancel_running(session, job_id)
-        if job.task_name == SCORING_TASK:
-            await record_marking_gave_up(session, uuid.UUID(job.args["attempt_id"]))
     else:
         raise JobNotCancellable()
+    if job.task_name == SCORING_TASK:
+        # The job will not run, so the attempt has to say marking gave up.
+        await record_marking_gave_up(session, uuid.UUID(job.args["attempt_id"]))
     await service_audit.record(
         session, actor=actor, action="job.cancelled", target_type="job", target_id=str(job_id), at=now
     )
