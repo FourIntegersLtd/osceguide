@@ -5,7 +5,7 @@ import { Alert } from "@/foundation/ui/Alert";
 import { Button } from "@/foundation/ui/Button";
 import { Checkbox } from "@/foundation/ui/Checkbox";
 import { Input } from "@/foundation/ui/Input";
-import { generateTemporaryPassword, temporaryPasswordIssue } from "@/foundation/session/temporaryPassword";
+import { generateTemporaryPassword, MIN_LENGTH, temporaryPasswordIssue } from "@/foundation/session/temporaryPassword";
 
 /** The password box with a Generate button; the strength rule is the server's. */
 export function TemporaryPasswordInput({
@@ -22,7 +22,7 @@ export function TemporaryPasswordInput({
       <div className="min-w-0 flex-1">
         <Input
           label="Temporary password"
-          hint="At least 12 characters, mixing letters with numbers, punctuation or capitals."
+          hint={`At least ${MIN_LENGTH} characters, mixing letters with numbers, punctuation or capitals.`}
           error={temporaryPasswordIssue(value)}
           required
           autoComplete="off"

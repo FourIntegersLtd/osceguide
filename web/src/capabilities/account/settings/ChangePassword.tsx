@@ -1,5 +1,6 @@
 "use client";
 
+import { OTHER_DEVICES_SIGN_OUT_MINUTES } from "@/foundation/config/copyNumbers";
 import { useState } from "react";
 import { HiOutlineArrowPath, HiOutlineLockClosed } from "react-icons/hi2";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
@@ -109,7 +110,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
     setIsSubmitting(true);
     try {
       await changePassword(values.currentPassword, values.newPassword);
-      setSuccessMessage("Password updated. This device stays signed in; your other devices are signed out within 15 minutes.");
+      setSuccessMessage(`Password updated. This device stays signed in; your other devices are signed out within ${OTHER_DEVICES_SIGN_OUT_MINUTES} minutes.`);
       setValues({ currentPassword: "", newPassword: "", confirmPassword: "" });
       if (onChanged) await onChanged();
     } catch (error) {

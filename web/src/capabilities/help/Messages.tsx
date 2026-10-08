@@ -1,5 +1,6 @@
 "use client";
 
+import { SUPPORT_REPLY_HOURS } from "@/foundation/config/copyNumbers";
 import { useMemo, useState } from "react";
 import { Alert, B2CPageHeader, Button, productTokens, Panel } from "@/foundation/ui";
 import {
@@ -54,7 +55,7 @@ function ContactForm() {
       setSubject("");
       setMessage("");
       setSuccessMessage(
-        "Message successfully sent! We aim to respond within the next 12 hours.",
+        `Message successfully sent! We aim to respond within the next ${SUPPORT_REPLY_HOURS} hours.`,
       );
     } catch {
       setErrorMessage(
@@ -69,7 +70,7 @@ function ContactForm() {
     <div className="space-y-6">
       <B2CHero eyebrow="Contact" title="Send a message to the team">
         If you are reporting a problem with a station, flag it in the station and tell us which one. We
-        aim to reply within 12 hours.
+        aim to reply within {SUPPORT_REPLY_HOURS} hours.
       </B2CHero>
 
       <form onSubmit={handleSubmit}>

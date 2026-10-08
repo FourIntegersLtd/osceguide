@@ -1,5 +1,6 @@
 "use client";
 
+import { PODCAST_LENGTH_LABEL } from "@/capabilities/media/limits";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { HiOutlineArrowRight } from "react-icons/hi2";
@@ -53,7 +54,7 @@ function metaLine(item: MediaItem, kind: MediaKind | null): string {
   }
 
   if (kind === "podcast") {
-    return ["7–10 min", "with Ben & Michelle"].join(" · ");
+    return [PODCAST_LENGTH_LABEL, "with Ben & Michelle"].join(" · ");
   }
 
   const specialties = specialtiesOf(item);

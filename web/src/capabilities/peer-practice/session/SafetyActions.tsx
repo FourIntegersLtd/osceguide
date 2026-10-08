@@ -1,5 +1,6 @@
 "use client";
 
+import { PEER_MATCH_WAIT_MINUTES, PEER_REPORT_NOTE_MAX_CHARS } from "@/capabilities/peer-practice/limits";
 import { useState, type ReactNode } from "react";
 import { HiOutlineExclamationTriangle, HiOutlineInformationCircle } from "react-icons/hi2";
 import Alert from "@/foundation/forms/Alert";
@@ -87,10 +88,10 @@ export function ReportAbuseButton({ sessionId, className = "" }: { sessionId: st
               onChange={(event) => setNote(event.target.value)}
               placeholder="Describe what happened"
               rows={4}
-              maxLength={2000}
+              maxLength={PEER_REPORT_NOTE_MAX_CHARS}
               className={b2cInputBase}
             />
-            <p className="mb-1 mt-1 text-osce-meta text-osce-ink-500">{note.length}/2000 characters</p>
+            <p className="mb-1 mt-1 text-osce-meta text-osce-ink-500">{note.length}/{PEER_REPORT_NOTE_MAX_CHARS} characters</p>
             <ModalFooterActions className="flex-col-reverse sm:flex-row">
               <ModalSecondaryButton onClick={close} disabled={loading}>
                 Cancel
@@ -158,11 +159,11 @@ export function NoShowGuidelines({ sessionId, afterReport }: { sessionId: string
           <div className="space-y-4 p-4 sm:p-5">
             <ul className="list-inside list-disc space-y-2 text-osce-body text-b2c-text-secondary">
               <li>
-                Please wait up to <strong className="text-osce-ink-900">10 minutes</strong> for your partner to join.
+                Please wait up to <strong className="text-osce-ink-900">{PEER_MATCH_WAIT_MINUTES} minutes</strong> for your partner to join.
               </li>
               <li>
                 If your partner doesn&apos;t show{" "}
-                <strong className="text-osce-ink-900"> 10 minutes beyond the scheduled time </strong>, please report a
+                <strong className="text-osce-ink-900"> {PEER_MATCH_WAIT_MINUTES} minutes beyond the scheduled time </strong>, please report a
                 no-show so we can follow up.
               </li>
             </ul>

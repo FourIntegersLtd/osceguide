@@ -33,7 +33,7 @@ def _used_names(node: ast.AST) -> set[str]:
     """Every name this code uses, called or merely referred to.
 
     References count, not just calls: a predicate handed to
-    `bind_org_access_policy(org_permits_access)` is wired even though no call
+    `bind_org_lookup(org_ref_by_slug)` is wired even though no call
     site names it. Counting calls alone reported that rule as dead the moment
     it was fixed, which would have taught people to ignore this guard.
 

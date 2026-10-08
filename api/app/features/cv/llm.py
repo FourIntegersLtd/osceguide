@@ -42,8 +42,8 @@ async def extract_structured(text: str, *, settings: Settings) -> tuple[Structur
 
     from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=settings.openai_api_key)
     try:
+        client = AsyncOpenAI(api_key=settings.openai_api_key)
         response = await client.beta.chat.completions.parse(
             model=CV_MODEL,
             messages=[

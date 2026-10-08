@@ -18,7 +18,7 @@ import { useAsync } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { ExamWishes } from "@/capabilities/account";
-import { kindLabel } from "@/capabilities/transcripts/api";
+import { attemptKindLabel } from "@/capabilities/transcripts/kindLabel";
 import {
   OnboardingFlow,
   needsDashboardOnboarding,
@@ -256,7 +256,7 @@ function RecentStations({
           key={attempt.id}
           href={attemptHref(attempt.id)}
           icon={HiOutlineMicrophone}
-          title={kindLabel(attempt.kind)}
+          title={attemptKindLabel(attempt.kind)}
           meta={`${relativeDay(attempt.created_at)} · ${attempt.exam_code.toUpperCase()}`}
           trailing={
             <span className="hidden h-[22px] shrink-0 items-center rounded-osce-sm bg-b2c-surface-muted px-2 text-osce-caption font-medium text-osce-ink-700 sm:inline-flex">

@@ -13,7 +13,7 @@ import {
 } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { kindLabel } from "@/capabilities/transcripts/api";
+import { attemptKindLabel } from "@/capabilities/transcripts/kindLabel";
 import {
   listUserAttempts,
   type PlatformAttempt,
@@ -121,7 +121,7 @@ function AttemptRow({
     <Row className="flex-col items-stretch sm:flex-row sm:items-center">
       <Link href={href} className="min-w-0 flex-1">
         <p className="truncate text-osce-data font-medium text-ink">
-          {kindLabel(attempt.kind)} · {formatMoment(attempt.created_at)}
+          {attemptKindLabel(attempt.kind)} · {formatMoment(attempt.created_at)}
         </p>
         <p className="truncate text-osce-meta text-ink-subtle">
           {diagnosis

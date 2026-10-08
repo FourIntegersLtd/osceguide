@@ -5,27 +5,10 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from tests.support.media_production import LINES, SCRIPT, a_summary
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
-
-
-SCRIPT = "Ben: Chest pain on exertion needs an ECG.\n\nMichelle: And a same-day review."
-LINES = ["Ben: Chest pain on exertion needs an ECG.", "Michelle: And a same-day review."]
-
-
-async def _summary(client: AsyncClient, admin: str, *, checked: bool = True) -> dict:
-    """A summary with its podcast script written; `checked` says whether that script has been read."""
-    content: dict = {"red_flags": ["x"], "script": SCRIPT}
-    if checked:
-        content["review"] = {"script": {"lines": LINES}}
-    response = await client.post(
-        "/api/v1/media",
-        json={"kind": "summary", "title": "AV Summary Test", "content": content},
-        headers=bearer(admin),
-    )
-    assert response.status_code == 201
-    return response.json()
 
 
 async def test_generate_podcast_wrong_kind(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
@@ -46,7 +29,7 @@ async def test_generate_podcast_wrong_kind(client: AsyncClient, make_actor) -> N
 
 async def test_enqueue_summary_podcast_sets_status(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("av-pod@osceguide.com", platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
     response = await client.post(
         f"/api/v1/media/{item['id']}/generate-podcast",
         headers=bearer(admin),
@@ -76,7 +59,7 @@ async def test_a_failed_render_still_tells_the_requester(
 
     email = "av-fail@osceguide.com"
     admin = await make_actor(email, platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
     media_id = uuid.UUID(item["id"])
     user = await identity_repository.user_by_email(db_session, email)
     assert user is not None
@@ -100,7 +83,7 @@ async def test_a_failed_render_still_tells_the_requester(
 
 async def test_enqueue_twice_conflicts(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("av-twice@osceguide.com", platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
     url = f"/api/v1/media/{item['id']}/generate-podcast"
     await client.post(url, headers=bearer(admin))
     again = await client.post(url, headers=bearer(admin))
@@ -110,7 +93,7 @@ async def test_enqueue_twice_conflicts(client: AsyncClient, make_actor) -> None:
 
 async def test_voicing_is_refused_until_the_script_has_been_checked(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("av-unchecked@osceguide.com", platform_admin=True)
-    item = await _summary(client, admin, checked=False)
+    item = await a_summary(client, admin, checked=False)
 
     response = await client.post(f"/api/v1/media/{item['id']}/generate-podcast", headers=bearer(admin))
 
@@ -122,7 +105,7 @@ async def test_voicing_is_refused_again_once_a_checked_script_is_edited(
     client: AsyncClient, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("av-edited@osceguide.com", platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
     edited = {**item["content"], "script": SCRIPT.replace("an ECG", "a troponin")}
     saved = await client.patch(f"/api/v1/media/{item['id']}", json={"content": edited}, headers=bearer(admin))
     assert saved.status_code == 200
@@ -137,7 +120,7 @@ async def test_a_save_that_moves_what_a_checked_script_was_written_from_starts_t
     client: AsyncClient, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("av-moved@example.com", platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
     content = {**item["content"], "red_flags": ["Crushing chest pain at rest"]}
     content["review"] = {"script": {"lines": LINES, "source": "an-older-summary"}}
 
@@ -153,7 +136,7 @@ async def test_a_save_leaves_a_script_alone_when_nothing_says_what_it_was_writte
     client: AsyncClient, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("av-unmoved@example.com", platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
 
     saved = await client.patch(
         f"/api/v1/media/{item['id']}", json={"title": "AV Summary Renamed"}, headers=bearer(admin)
@@ -187,7 +170,7 @@ async def test_a_check_is_queued_once_and_shows_as_running(
     client: AsyncClient, make_actor, route: str, status: str
 ) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor(f"av-queue-{route}@osceguide.com", platform_admin=True)
-    item = await _summary(client, admin, checked=False)
+    item = await a_summary(client, admin, checked=False)
     url = f"/api/v1/media/{item['id']}/{route}"
 
     first = await client.post(url, json={}, headers=bearer(admin))
@@ -202,7 +185,7 @@ async def test_a_check_is_queued_once_and_shows_as_running(
 async def test_a_learner_is_never_sent_checks_only_staff(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """Sources and what was flagged are for the people editing: the published item carries neither."""
     admin = await make_actor("av-review-read@osceguide.com", platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
     assert item["content"]["review"] == {"script": {"lines": LINES}}
     published = await client.post(f"/api/v1/media/{item['id']}/publish", headers=bearer(admin))
     assert published.status_code == 200
@@ -226,7 +209,7 @@ async def test_writing_a_script_checks_it_and_then_voicing_is_allowed(
 
     email = "av-write@osceguide.com"
     admin = await make_actor(email, platform_admin=True)
-    item = await _summary(client, admin, checked=False)
+    item = await a_summary(client, admin, checked=False)
     user = await identity_repository.user_by_email(db_session, email)
     assert user is not None
     user_id = user.id
@@ -261,7 +244,7 @@ async def test_a_fact_check_stores_its_verdicts_and_puts_the_status_back(
 
     email = "av-facts@osceguide.com"
     admin = await make_actor(email, platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
     user = await identity_repository.user_by_email(db_session, email)
     assert user is not None
     user_id = user.id
@@ -506,7 +489,7 @@ async def test_a_run_that_fails_is_recorded_on_the_item(client: AsyncClient, mak
 async def test_a_hand_check_shows_as_checked_with_its_sources(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """A person's own check is stored where the platform's goes, so the screen shows it checked."""
     admin = await make_actor("av-hand-check@osceguide.com", platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
     claim = {
         "claim": "Chest pain on exertion needs an ECG",
         "source": "NICE CG95",
@@ -536,7 +519,7 @@ async def test_a_hand_check_shows_as_checked_with_its_sources(client: AsyncClien
 
 async def test_a_hand_check_is_refused_for_a_slide_the_item_lacks(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     admin = await make_actor("av-hand-slide@osceguide.com", platform_admin=True)
-    item = await _summary(client, admin)
+    item = await a_summary(client, admin)
 
     response = await client.post(
         f"/api/v1/media/{item['id']}/hand-check",

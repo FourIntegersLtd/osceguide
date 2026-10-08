@@ -471,7 +471,7 @@ async def test_an_empty_team_upload_is_invalid(client: AsyncClient, make_actor) 
 async def test_suspending_an_organisation_stops_its_members_working(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """Suspension was write-only: it set a status nothing ever read.
 
-    `org_permits_access` existed, with a unit test, and had no caller — so a
+    The org status check existed, with a unit test, and had no caller — so a
     platform admin could suspend an organisation, see it marked suspended, and
     every one of its members would carry on exactly as before.
     """

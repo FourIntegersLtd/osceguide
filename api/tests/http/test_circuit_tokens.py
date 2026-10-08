@@ -16,13 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from app.features.voice.service import get_room_agents, get_voice_tokens
-from tests.http.test_sittings_routes import (
-    a_template_version,
-    a_trainee,
-    published_station,
-)
+from tests.http.test_sittings_routes import a_template_version
 from tests.support.fakes import FakeRoomAgents, FakeVoiceTokens
-from tests.support.sittings import org_with_admin
+from tests.support.sittings import a_trainee, org_with_admin, published_station
 from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db

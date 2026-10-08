@@ -17,10 +17,9 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
-from tests.http.test_org_read_models import a_circuit, a_sitting, a_user
-from tests.http.test_sittings_routes import published_station
-from tests.support.sittings import org_with_admin
-from tests.support.tokens import bearer
+from tests.http.test_org_read_models import a_circuit, a_user
+from tests.support.sittings import a_sitting, org_with_admin, published_station
+from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
 
@@ -179,6 +178,30 @@ async def test_ending_a_circuit_closes_its_console_stream(
         assert json.loads(remaining[0][1])["circuit"]["ended_at"] is not None
         # The stream ended: nothing followed the last snapshot.
         assert len(remaining) == 1
+
+
+async def test_closing_an_account_closes_its_live_stream(
+    client: AsyncClient, streaming_client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """A stream opened before the account was closed ends at its next frame, not when the tab does."""
+    from sqlalchemy import text
+
+    from app.core.events import get_event_bus, user_topic
+
+    user_id = await a_user(db_session, "cand@example.com")
+    token = mint_token(user_id=user_id, email="cand@example.com")
+    async with streaming_client.stream(
+        "GET", "/api/v1/me/sittings/stream", headers=bearer(token)
+    ) as response:
+        assert response.status_code == 200
+        lines = response.aiter_lines()
+        await asyncio.wait_for(frames(lines, 2), timeout=10)
+
+        await db_session.execute(text("UPDATE users SET status = 'deleted' WHERE id = :u"), {"u": user_id})
+        await db_session.flush()
+        await get_event_bus().publish(user_topic(user_id), "changed")
+
+        assert await asyncio.wait_for(frames(lines, 1), timeout=10) == []
 
 
 async def test_the_exam_day_board_is_pushed_a_pause(

@@ -1,5 +1,6 @@
 "use client";
 
+import { ACCOUNT_REOPEN_DAYS } from "@/foundation/config/copyNumbers";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineArrowPath, HiOutlineTrash } from "react-icons/hi2";
@@ -57,7 +58,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
         <div className="min-w-0 flex-1">
           <h2 className="text-osce-subheading font-semibold text-danger">Delete your account</h2>
           <p className={settingsSub}>
-            You are signed out straight away. Sign in again within 30 days to reopen it; after that your details and practice are erased.
+            You are signed out straight away. Sign in again within {ACCOUNT_REOPEN_DAYS} days to reopen it; after that your details and practice are erased.
           </p>
           {isAdmin ? (
             <p className={`mt-1 ${settingsMeta}`}>Admin accounts cannot be deleted from Settings.</p>
@@ -88,7 +89,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
         onCancel={reset}
         onConfirm={() => close()}
         title="Delete your account?"
-        message="You will be signed out now. Sign in again within 30 days to reopen the account; after that your details, attempts and feedback are erased. Closing does not cancel a subscription or refund a payment: email support first if you want that. Type DELETE to confirm."
+        message={`You will be signed out now. Sign in again within ${ACCOUNT_REOPEN_DAYS} days to reopen the account; after that your details, attempts and feedback are erased. Closing does not cancel a subscription or refund a payment: email support first if you want that. Type DELETE to confirm.`}
         confirmText="Delete my account"
         cancelText="Keep account"
         tone="danger"

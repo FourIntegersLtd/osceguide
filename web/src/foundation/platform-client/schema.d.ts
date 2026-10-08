@@ -6518,6 +6518,27 @@ export interface paths {
         patch: operations["tenancy_change_membership_role_for_support"];
         trace?: never;
     };
+    "/api/v1/platform/organizations/{org_slug}/memberships/{membership_id}/resend-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Membership Invitation For Support
+         * @description The invitation that expired or went to spam, sent again as a new token. Returns 409
+         *     `invitation_not_pending` once the person has chosen a password.
+         */
+        post: operations["tenancy_resend_membership_invitation_for_support"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/organizations/{org_slug}/memberships/{membership_id}/restore": {
         parameters: {
             query?: never;
@@ -17108,6 +17129,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     assistant_read_onboarding_scenes: {
@@ -18341,7 +18369,7 @@ export interface operations {
                     "application/json": components["schemas"]["TokenPair"];
                 };
             };
-            /** @description account_not_found, invalid_credentials, password_login_disabled, account_suspended */
+            /** @description account_not_found, invalid_credentials, password_login_disabled, account_suspended, unauthenticated */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -20115,6 +20143,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_AcquiredUserRow_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -20175,6 +20210,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Page_ArrivalRow_"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -20290,6 +20332,13 @@ export interface operations {
                     "application/json": components["schemas"]["PilotConfigRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -20342,6 +20391,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PilotConfigRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -20398,6 +20454,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["LandingReconciliationRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -20506,6 +20569,13 @@ export interface operations {
                     "application/json": components["schemas"]["ReporterRead"][];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -20557,6 +20627,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -20600,6 +20677,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20927,6 +21011,13 @@ export interface operations {
                     "application/json": components["schemas"]["AcquiredRevenueReport"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -20985,6 +21076,13 @@ export interface operations {
                     "application/json": components["schemas"]["RevenueOverTimeReport"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -21038,6 +21136,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PartnerSpendRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -21095,6 +21200,13 @@ export interface operations {
                     "application/json": components["schemas"]["DashboardSummaryRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -21147,6 +21259,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_ReferralAdminRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -21185,6 +21304,13 @@ export interface operations {
                     "application/json": components["schemas"]["ReferralOwedRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -21219,6 +21345,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ReferralAdminRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -22281,7 +22414,7 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__identity__schemas__Accepted"];
                 };
             };
-            /** @description account_not_found, invalid_credentials, password_login_disabled, account_suspended */
+            /** @description account_not_found, invalid_credentials, password_login_disabled, account_suspended, unauthenticated */
             401: {
                 headers: {
                     [name: string]: unknown;
@@ -25162,6 +25295,13 @@ export interface operations {
                     "application/json": components["schemas"]["MediaPage"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description unknown_exam */
             404: {
                 headers: {
@@ -25203,6 +25343,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__media__schemas__MediaRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -25367,6 +25514,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__media__schemas__MediaRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description media_not_found */
             404: {
                 headers: {
@@ -25400,6 +25554,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25467,6 +25628,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__media__schemas__MediaRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -25524,6 +25692,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -25592,6 +25767,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -25658,6 +25840,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -25730,6 +25919,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -25791,6 +25987,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -25859,6 +26062,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__media__schemas__MediaRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -25916,6 +26126,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -25984,6 +26201,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -26032,6 +26256,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -26090,6 +26321,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__media__schemas__MediaRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -26152,6 +26390,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__media_production__schemas__MediaRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -26220,6 +26465,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__media__schemas__MediaRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description media_not_found */
             404: {
                 headers: {
@@ -26260,6 +26512,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OrganizationRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -26314,6 +26573,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OrganizationRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -26373,6 +26639,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_AuditRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -26418,6 +26691,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -26472,6 +26752,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -26540,6 +26827,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -26614,6 +26908,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -26678,6 +26979,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -26738,6 +27046,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitConsole"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -26793,7 +27108,14 @@ export interface operations {
                     "text/event-stream": components["schemas"]["CircuitConsole"];
                 };
             };
-            /** @description forbidden */
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -26843,6 +27165,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EditLock"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -26898,6 +27227,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -26963,6 +27299,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27023,6 +27366,13 @@ export interface operations {
                     "application/json": components["schemas"]["Interventions"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27077,6 +27427,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -27137,6 +27494,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__sittings__schemas__RoomGrant"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -27211,6 +27575,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27274,6 +27645,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -27348,6 +27726,13 @@ export interface operations {
                     "application/json": components["schemas"]["DispatchResult"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27421,6 +27806,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27485,6 +27877,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27545,6 +27944,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitReviewRead"] | null;
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27590,6 +27996,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CircuitReviewRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, not_slot_reviewer, organization_suspended */
             403: {
@@ -27651,6 +28064,13 @@ export interface operations {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27710,6 +28130,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_CohortRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27755,6 +28182,13 @@ export interface operations {
                     "application/json": components["schemas"]["CohortRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27799,6 +28233,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -27868,6 +28309,13 @@ export interface operations {
                     "application/json": components["schemas"]["CohortRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27927,6 +28375,13 @@ export interface operations {
                     "application/json": components["schemas"]["OrgDashboard"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -27974,6 +28429,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_EntitlementRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -28018,6 +28480,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EntitlementRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28069,6 +28538,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EntitlementRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28123,6 +28599,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_ExamRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -28167,6 +28650,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ExamRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28227,6 +28717,13 @@ export interface operations {
                     "application/json": components["schemas"]["PlatformCatalogueRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -28271,6 +28768,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ImportedExamRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28325,6 +28829,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -28394,6 +28905,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExamRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -28454,6 +28972,13 @@ export interface operations {
                     "application/json": components["schemas"]["ExamRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -28513,6 +29038,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ExamRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28577,6 +29109,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_InvoiceRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -28618,6 +29157,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28673,6 +29219,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28733,6 +29286,13 @@ export interface operations {
                     "application/json": components["schemas"]["LiveBoard"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -28777,6 +29337,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Page_LiveRunRead_"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28823,7 +29390,14 @@ export interface operations {
                     "text/event-stream": components["schemas"]["LiveBoard"];
                 };
             };
-            /** @description forbidden */
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -28872,6 +29446,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_MembershipRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -28916,6 +29497,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -28980,6 +29568,13 @@ export interface operations {
                     "application/json": components["schemas"]["BulkMembershipsResult"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29034,6 +29629,13 @@ export interface operations {
                     "application/json": components["schemas"]["BulkMembershipInvitationResponse"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29078,6 +29680,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BulkMembershipRevokeResponse"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -29133,6 +29742,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -29193,6 +29809,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvitationRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -29263,6 +29886,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29313,6 +29943,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -29377,6 +30014,13 @@ export interface operations {
                     "application/json": components["schemas"]["OrganizationRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29427,6 +30071,13 @@ export interface operations {
                     "application/json": components["schemas"]["PracticeAccessList"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29471,6 +30122,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PracticeAccessItem"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -29535,6 +30193,13 @@ export interface operations {
                     "application/json": components["schemas"]["BulkPracticeAccessResults"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29576,6 +30241,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PracticeAccessItem"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -29631,6 +30303,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_ProgrammeRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29675,6 +30354,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ProgrammeRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -29740,6 +30426,13 @@ export interface operations {
                     "application/json": components["schemas"]["ProgrammeRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29790,6 +30483,13 @@ export interface operations {
                     "application/json": components["schemas"]["OrgReporting"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29834,6 +30534,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ResolvedRoster"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -29891,6 +30598,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_RubricRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29936,6 +30650,13 @@ export interface operations {
                     "application/json": components["schemas"]["RubricRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -29980,6 +30701,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RubricRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -30044,6 +30772,13 @@ export interface operations {
                     "application/json": components["schemas"]["DraftInstructionsRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -30089,6 +30824,13 @@ export interface operations {
                     "application/json": components["schemas"]["RubricPreviewRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -30131,6 +30873,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RubricStartingPointsRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -30178,6 +30927,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_TrialCandidateRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -30219,6 +30975,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RubricRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -30275,6 +31038,13 @@ export interface operations {
                     "application/json": components["schemas"]["RubricRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -30325,6 +31095,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RubricVersionRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -30381,6 +31158,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RubricVersionRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -30443,6 +31227,13 @@ export interface operations {
                     "application/json": components["schemas"]["RubricVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -30503,6 +31294,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RubricVersionRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -30647,6 +31445,13 @@ export interface operations {
                     "application/json": components["schemas"]["ScimTokenRead"][];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -30692,6 +31497,13 @@ export interface operations {
                     "application/json": components["schemas"]["ScimTokenIssued"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -30727,6 +31539,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -31556,6 +32375,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_SittingRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -31600,6 +32426,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SittingRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -31661,6 +32494,13 @@ export interface operations {
                     "application/json": components["schemas"]["SittingRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -31715,6 +32555,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SittingRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -31775,6 +32622,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SittingRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -31837,6 +32691,13 @@ export interface operations {
                     "application/json": components["schemas"]["DecisionRead"] | null;
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -31883,6 +32744,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DecisionRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -31945,6 +32813,13 @@ export interface operations {
                     "application/json": components["schemas"]["DecisionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32005,6 +32880,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DecisionRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -32067,6 +32949,13 @@ export interface operations {
                     "application/pdf": string;
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32121,6 +33010,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CircuitRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -32182,6 +33078,13 @@ export interface operations {
                     "application/json": components["schemas"]["CohortSummary"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32237,6 +33140,13 @@ export interface operations {
                     "application/json": components["schemas"]["BulkReleaseResult"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32278,6 +33188,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SittingReadout"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -32330,6 +33247,13 @@ export interface operations {
                     "application/json": components["schemas"]["SittingReport"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32380,6 +33304,13 @@ export interface operations {
                 content: {
                     "text/csv": string;
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -32432,6 +33363,13 @@ export interface operations {
                     "application/json": components["schemas"]["GpLeadReviewRead"] | null;
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32477,6 +33415,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GpLeadReviewRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -32531,6 +33476,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -32596,6 +33548,13 @@ export interface operations {
                     "application/json": components["schemas"]["MarkingRetryRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32656,6 +33615,13 @@ export interface operations {
                     "application/json": components["schemas"]["SlotReviewsRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32697,6 +33663,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SlotReviewRead"] | null;
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -32753,6 +33726,13 @@ export interface operations {
                     "application/json": components["schemas"]["SlotReviewRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, not_slot_reviewer, organization_suspended */
             403: {
                 headers: {
@@ -32807,6 +33787,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -32921,6 +33908,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationImportList"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -32965,6 +33959,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationImportRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -33035,6 +34036,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationImportRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33085,6 +34093,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationImportRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -33161,6 +34176,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_StationTemplateRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33205,6 +34227,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationTemplateRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -33256,6 +34285,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationTemplateRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -33317,6 +34353,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationTemplateVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33377,6 +34420,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationTemplateVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33422,6 +34472,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -33492,6 +34549,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationTemplateVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33553,6 +34617,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationTemplateVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33613,6 +34684,13 @@ export interface operations {
                     "application/json": components["schemas"]["AudienceSectionRead"][];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33670,6 +34748,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_StationRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33714,6 +34799,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -33777,6 +34869,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AutogenerateStationDraftResult"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -33847,6 +34946,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -33892,6 +34998,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -33962,6 +35075,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34022,6 +35142,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -34087,6 +35214,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -34155,6 +35289,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationPhotosResult"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -34230,6 +35371,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34300,6 +35448,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationVersionRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34359,6 +35514,13 @@ export interface operations {
                     "application/json": components["schemas"]["SupervisorCircuits"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34399,6 +35561,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Page_GroupRead_"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -34445,6 +35614,13 @@ export interface operations {
                     "application/json": components["schemas"]["GroupRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34489,6 +35665,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -34558,6 +35741,13 @@ export interface operations {
                     "application/json": components["schemas"]["GroupRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34622,6 +35812,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_TraineeRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34676,6 +35873,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GroupRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -34735,6 +35939,13 @@ export interface operations {
                     "application/json": components["schemas"]["TraineePage"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34779,6 +35990,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TraineeRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -34843,6 +36061,13 @@ export interface operations {
                     "application/json": components["schemas"]["BulkTraineesResult"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34896,6 +36121,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BulkTraineeCohortResponse"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -34951,6 +36183,13 @@ export interface operations {
                     "application/json": components["schemas"]["BulkTraineeInvitationResponse"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -34996,6 +36235,13 @@ export interface operations {
                     "application/json": components["schemas"]["BulkTraineeAccessResponse"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -35031,6 +36277,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -35100,6 +36353,13 @@ export interface operations {
                     "application/json": components["schemas"]["TraineeRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -35164,6 +36424,13 @@ export interface operations {
                     "application/json": components["schemas"]["TraineeRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -35215,6 +36482,13 @@ export interface operations {
                     "application/json": components["schemas"]["TraineeRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -35265,6 +36539,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvitationRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -35559,6 +36840,13 @@ export interface operations {
                     "application/json": components["schemas"]["UserSummary"][];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -35591,6 +36879,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformAdminInviteRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -35801,6 +37096,13 @@ export interface operations {
                     "application/json": components["schemas"]["PlatformAttemptDetail"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -35853,6 +37155,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformAttemptDetail"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -35916,6 +37225,13 @@ export interface operations {
                     "application/json": components["schemas"]["RescoreResult"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -35973,6 +37289,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformAttemptDetail"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -36040,6 +37363,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_PlatformAuditRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -36093,6 +37423,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_StripeEventRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -36132,6 +37469,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WebhookResult"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -36180,6 +37524,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_PlatformPlanRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -36212,6 +37563,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformPlanRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -36284,6 +37642,13 @@ export interface operations {
                     "application/json": components["schemas"]["PlatformPlanRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -36346,6 +37711,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_DirectoryUser_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -36384,6 +37756,13 @@ export interface operations {
                     "application/json": components["schemas"]["DirectorySummary"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -36414,6 +37793,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DirectoryUser"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -36468,6 +37854,13 @@ export interface operations {
                     "application/json": components["schemas"]["PlatformEntitlementRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -36520,6 +37913,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformEntitlementRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -36899,6 +38299,13 @@ export interface operations {
                     "application/json": components["schemas"]["GenerateResult"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -36949,6 +38356,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GenerateResult"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -37001,6 +38415,13 @@ export interface operations {
                     "application/json": components["schemas"]["GenerateResult"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -37051,6 +38472,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GenerateResult"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -37103,6 +38531,13 @@ export interface operations {
                     "application/json": components["schemas"]["GenerateResult"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -37150,6 +38585,13 @@ export interface operations {
                     "application/json": components["schemas"]["PlatformHealth"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -37184,6 +38626,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -37248,6 +38697,13 @@ export interface operations {
                     "application/json": components["schemas"]["JobsPage"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -37281,6 +38737,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -37337,6 +38800,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -37401,6 +38871,13 @@ export interface operations {
                     "application/json": components["schemas"]["Machinery"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -37446,6 +38923,13 @@ export interface operations {
                     "text/event-stream": components["schemas"]["Machinery"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -37488,6 +38972,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__core__pagination__Page_PostRead___2"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -37537,6 +39028,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_OrganizationRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -37578,6 +39076,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OrganizationRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -37633,6 +39138,13 @@ export interface operations {
                     "application/json": components["schemas"]["OrganizationRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -37686,6 +39198,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Page_AuditRead_"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -37741,6 +39260,13 @@ export interface operations {
                     "application/json": components["schemas"]["OrganizationRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -37793,6 +39319,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -37848,6 +39381,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_MembershipRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -37901,6 +39441,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -37966,6 +39513,13 @@ export interface operations {
                     "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -38004,6 +39558,82 @@ export interface operations {
             };
         };
     };
+    tenancy_resend_membership_invitation_for_support: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membership_id: string;
+                /** @description Organisation slug */
+                org_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationRead"];
+                };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description forbidden, organization_suspended */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description org_not_found, membership_not_found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description invitation_not_pending */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description too_many_requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     tenancy_restore_membership_for_support: {
         parameters: {
             query?: never;
@@ -38025,6 +39655,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -38076,6 +39713,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -38136,6 +39780,13 @@ export interface operations {
                     "application/json": components["schemas"]["OrganizationRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden, organization_suspended */
             403: {
                 headers: {
@@ -38185,6 +39836,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OrganizationRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden, organization_suspended */
             403: {
@@ -38482,6 +40140,13 @@ export interface operations {
                     "application/json": components["schemas"]["UndeliveredMail"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -38506,6 +40171,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -38558,6 +40230,13 @@ export interface operations {
                     "application/json": components["schemas"]["PlatformOverview"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -38592,6 +40271,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformPaymentRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -38645,6 +40331,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformPaymentRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -41262,6 +42955,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationReview"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -41448,6 +43148,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationReview"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -41503,6 +43210,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_UserSummary_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -41542,6 +43256,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformUserDetail"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -41595,6 +43316,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformUserDetail"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -41660,6 +43388,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_PlatformAttemptRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -41713,6 +43448,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_PlatformAuditRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -41762,6 +43504,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_StripeEventRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -41810,6 +43559,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Page_PlatformEntitlementRead_"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -41863,6 +43619,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformEntitlementRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -41975,6 +43738,13 @@ export interface operations {
                     "application/json": components["schemas"]["Page_PlatformPaymentRead_"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -42027,6 +43797,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlatformPaymentRead"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -42090,6 +43867,13 @@ export interface operations {
                     "application/json": components["schemas"]["UserSummary"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -42146,6 +43930,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -42197,6 +43988,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -42260,6 +44058,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationProgressRead"][];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -42313,6 +44118,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["StationProgressChange"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description forbidden */
             403: {
@@ -42373,6 +44185,13 @@ export interface operations {
                     "application/json": components["schemas"]["StationProgressChange"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -42419,6 +44238,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -42480,6 +44306,13 @@ export interface operations {
                     "application/json": components["schemas"]["CloudCapacityRead"];
                 };
             };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description forbidden */
             403: {
                 headers: {
@@ -42512,6 +44345,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["MessageAccepted"];
                 };
+            };
+            /** @description unauthenticated, account_suspended */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description invalid_message */
             422: {

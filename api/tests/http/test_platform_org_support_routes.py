@@ -11,9 +11,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.http.test_platform_console_routes import an_org
+from tests.support.people import invitations_to
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -155,6 +157,44 @@ async def test_the_console_moves_revokes_and_restores_a_membership_without_becom
         f"/api/v1/platform/organizations/kings/memberships/{uuid.uuid4()}/revoke", headers=bearer(root)
     )
     assert missing.status_code == 404
+
+
+async def test_the_console_resends_an_invitation_only_while_it_is_pending(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await an_org(client, root, "kings")
+    seats = {}
+    for email in ("lost@kings.example.com", "joined@kings.example.com"):
+        seated = await client.post(
+            "/api/v1/platform/organizations/kings/memberships",
+            json={"email": email, "role": "supervisor"},
+            headers=bearer(root),
+        )
+        assert seated.status_code == 201, seated.text
+        seats[email] = seated.json()["id"]
+
+    def resend(membership_id: str):  # type: ignore[no-untyped-def]
+        return client.post(
+            f"/api/v1/platform/organizations/kings/memberships/{membership_id}/resend-invitation",
+            headers=bearer(root),
+        )
+
+    pending = await resend(seats["lost@kings.example.com"])
+    assert pending.status_code == 200, pending.text
+    assert pending.json()["email"] == "lost@kings.example.com"
+    assert len(await invitations_to(db_session, "lost@kings.example.com")) == 2
+
+    queued = await invitations_to(db_session, "joined@kings.example.com")
+    chose = await client.post(
+        "/api/v1/auth/password-reset/confirm",
+        json={"token": queued[0].payload["token"], "password": "Str0ng-Passw0rd!"},  # type: ignore[attr-defined]
+    )
+    assert chose.status_code < 300, chose.text
+    accepted = await resend(seats["joined@kings.example.com"])
+    assert accepted.status_code == 409
+    assert accepted.json()["code"] == "invitation_not_pending"
+    assert (await resend(str(uuid.uuid4()))).status_code == 404
 
 
 async def test_org_support_is_refused_to_anybody_but_a_platform_admin(

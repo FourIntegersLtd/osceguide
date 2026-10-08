@@ -146,8 +146,14 @@ def contract_lapsed(contract_ends_at: datetime | None, *, now: datetime) -> bool
     return contract_ends_at is not None and now >= contract_ends_at
 
 
-def org_permits_access(status: str | None) -> bool:
-    return str(status or "").strip().lower() in ACTIVE_ORG_STATUSES
+def org_active(status: str | None, contract_ends_at: datetime | None, *, now: datetime) -> bool:
+    """Whether an organisation may act now: the one org check every gate composes.
+
+    A status that permits access, and a contract that has not run out. The hourly sweep
+    turns a lapse into `suspended`; checking the date too makes the lapse bite before it runs.
+    """
+    permitted = str(status or "").strip().lower() in ACTIVE_ORG_STATUSES
+    return permitted and not contract_lapsed(contract_ends_at, now=now)
 
 
 @dataclass(frozen=True)

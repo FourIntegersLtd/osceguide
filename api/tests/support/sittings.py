@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.support.catalog import create_exam
@@ -65,3 +66,63 @@ def create_sitting_body(
         "mode": mode,
         "sitting_type": sitting_type,
     }
+
+
+STATION_CONTENT = {"patient_information": {"persona": "anxious"}}
+
+
+async def published_station(client: AsyncClient, admin: str, slug: str, title: str) -> str:
+    created = await client.post(
+        f"/api/v1/orgs/{slug}/stations",
+        json={"title": title, "exam_code": "sca", "content": STATION_CONTENT},
+        headers=bearer(admin),
+    )
+    station_id = created.json()["id"]
+    published = await client.post(
+        f"/api/v1/orgs/{slug}/stations/{station_id}/versions/1/publish", headers=bearer(admin)
+    )
+    return str(published.json()["id"])
+
+
+async def a_trainee(db_session: AsyncSession, email: str, *, org_slug: str = "kings") -> uuid.UUID:
+    """A signed-in person the organisation has rostered, and their `users.id`.
+
+    SEC-014: a circuit may only examine people on the org's roster, which is
+    what the real flow does — an admin adds a trainee (linking a `users.id`)
+    before scheduling them. This mirrors that: it creates the account *and* the
+    linked roster row, so the returned id is one `ensure_rosterable` accepts.
+    """
+    from app.features.identity import repository as identity_repo
+    from app.features.roster import repository as roster_repo
+    from app.features.tenancy import repository as tenancy_repo
+
+    user = await identity_repo.create_user(session=db_session, email=email, name=email, password_hash=None)
+    await db_session.flush()
+    org = await tenancy_repo.organization_by_slug(db_session, org_slug)
+    if org is not None:
+        trainee = await roster_repo.create_trainee(
+            db_session, org.id, email=email, first_name=None, last_name=None, cohort_id=None
+        )
+        await roster_repo.link_trainee_to_user(db_session, org.id, trainee.id, user_id=user.id)
+        await db_session.flush()
+    return user.id
+
+
+async def a_sitting(client: AsyncClient, admin: str, slug: str, *, mode: str = "exam") -> dict:
+    programme_id = await add_programme(client, admin, org_slug=slug)
+    created = await client.post(
+        f"/api/v1/orgs/{slug}/sittings",
+        json=create_sitting_body(name="Finals", programme_id=programme_id, mode=mode),
+        headers=bearer(admin),
+    )
+    assert created.status_code == 201, created.text
+    return created.json()
+
+
+async def org_by_slug(db_session: AsyncSession, slug: str):  # type: ignore[no-untyped-def]
+    """The organisation row for `slug`; the test has just created it, so absence is a bug."""
+    from app.features.tenancy import repository as tenancy_repo
+
+    org = await tenancy_repo.organization_by_slug(db_session, slug)
+    assert org is not None, slug
+    return org

@@ -7,6 +7,7 @@ import uuid
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tests.support.rubrics import published_feedback_version
 from tests.support.tokens import bearer
 
 
@@ -84,3 +85,29 @@ async def seat_candidate(
         )
     )
     await db_session.flush()
+
+
+async def a_sitting_and_trainee(db_session: AsyncSession, org_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
+    sitting, trainee, _ = await a_sitting_and_named_trainee(db_session, org_id)
+    return sitting, trainee
+
+
+async def a_sitting_and_named_trainee(
+    db_session: AsyncSession, org_id: uuid.UUID
+) -> tuple[uuid.UUID, uuid.UUID, str]:
+    """The same fixture, but it tells you the candidate's address.
+
+    Needed to assert who a released result is actually written to.
+    """
+    from app.features.roster.models import Trainee
+    from app.features.sittings.models import Sitting
+
+    version = await published_feedback_version(db_session, org_id)
+    await db_session.flush()
+    sitting = Sitting(org_id=org_id, name="Finals", mode="exam", rubric_version_id=version.id)
+    email = f"c{uuid.uuid4().hex[:8]}@example.com"
+    trainee = Trainee(org_id=org_id, email=email)
+    db_session.add_all([sitting, trainee])
+    await db_session.flush()
+    await seat_candidate(db_session, org_id, sitting.id, trainee.id)
+    return sitting.id, trainee.id, email

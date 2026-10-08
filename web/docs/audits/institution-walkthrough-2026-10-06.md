@@ -288,7 +288,7 @@ the rest.
 
 | What | Why | How to test on staging |
 |---|---|---|
-| The live consultation (patient, reading time, clocks running out) | No LiveKit locally; the runner logged "LiveKit credentials are not configured" | `verify-voice-station` deployed level: one training circuit and one exam circuit with a real trainee account |
+| The live consultation (patient, reading time, clocks running out) | No LiveKit locally; the runner logged "LiveKit credentials are not configured" | `verify-attempt-engine` deployed level: one training circuit and one exam circuit with a real trainee account |
 | Automatic marking of a real attempt | Marked work was faked with a fixture (`assessment_results` with framework `sca` on a custom exam) | Run one exam circuit on staging and check the Score column and Review order (confusion 4) |
 | Email delivery | No mail key locally; invitations show `failed` and the release email `pending` in the outbox | Send one invitation and one release on staging; check the links and that failed delivery shows on Team or People |
 | SSO | Org SSO tab is read-only and needs an identity provider | Staff-console SSO form against a test Entra tenant |

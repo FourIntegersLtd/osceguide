@@ -16,11 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from app.features.tenancy import repository as tenancy_repo
-from tests.http.test_sittings_routes import (
-    published_station,
-)
 from tests.support.catalog import create_exam
-from tests.support.sittings import add_programme, org_with_admin
+from tests.support.sittings import a_sitting, add_programme, org_with_admin, published_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -75,19 +72,6 @@ async def a_circuit(
         body["supervisor_user_id"] = supervisor_user_id
     created = await client.post(
         f"/api/v1/orgs/{slug}/sittings/{sitting_id}/circuits", json=body, headers=bearer(admin)
-    )
-    assert created.status_code == 201, created.text
-    return created.json()
-
-
-async def a_sitting(client: AsyncClient, admin: str, slug: str, *, mode: str = "exam") -> dict:
-    from tests.support.sittings import add_programme, create_sitting_body
-
-    programme_id = await add_programme(client, admin, org_slug=slug)
-    created = await client.post(
-        f"/api/v1/orgs/{slug}/sittings",
-        json=create_sitting_body(name="Finals", programme_id=programme_id, mode=mode),
-        headers=bearer(admin),
     )
     assert created.status_code == 201, created.text
     return created.json()

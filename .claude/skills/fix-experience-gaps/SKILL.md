@@ -5,6 +5,8 @@ description: Fix the next batch of rows from docs/EXPERIENCE-GAPS.md (the single
 
 # Fix experience gaps
 
+**Retiring:** delete this skill once every row in `docs/EXPERIENCE-GAPS.md` is fixed or has a written reason; new work goes through `build-feature` and `fix-bug`.
+
 `docs/EXPERIENCE-GAPS.md` is the queue and the ledger. No session holds the whole list; each
 reads only the rows it will fix, and ends by updating the file. Usage:
 `/fix-experience-gaps <area letter or "1"> [n]` (default n = 6).
@@ -16,7 +18,7 @@ reads only the rows it will fix, and ends by updating the file. Usage:
 2. Hand the batch to the owner for that area: `institution-owner` for B, R, T, P, H and the
    org-lifecycle S rows; `access-owner` for A, E and the entitlement, billing, close-account
    and erasure S rows; `content-owner` for C, station and media rows; `marking-owner` for
-   scoring rows (R-5, S-2, S-8); `platform-web-owner` for F rows and section 11. Opus for
+   scoring rows (R-5, S-2, S-8); `web-foundation-owner` for F rows and section 11; `attempt-engine-owner` for voice and runner rows; `staff-console-owner` for staff-console rows. Opus for
    anything touching auth, money or security; Sonnet otherwise. Up to three owners at once,
    on lanes that do not share files.
 3. Each row: write the test first and watch it fail for the stated reason, then fix the root

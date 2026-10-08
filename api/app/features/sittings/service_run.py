@@ -88,7 +88,7 @@ async def start_circuit(
     ensure_sitting_not_cancelled(sitting)
     await ensure_sitting_programme_active(session, org_id, sitting)
     # S-17: nothing new starts for a suspended organisation, whoever asks.
-    await tenancy.ensure_org_active(session, org_id)
+    await tenancy.ensure_org_active(session, org_id, now=now)
     # R-41: a lead who lost the role since the circuit was built cannot run it.
     await ensure_lead_may_run(session, org_id, circuit.supervisor_user_id)
 

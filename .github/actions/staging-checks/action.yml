@@ -1,0 +1,74 @@
+name: Staging checks
+description: >-
+  Part 3.1 and 3.2 of docs/REGRESSION-PLAN.md. Runs web/scripts/smoke.mjs and the
+  read-only @staging journeys against staging. Creates nothing there; each part
+  skips with a notice when its secrets are absent. Needs the repository checked out.
+inputs:
+  api-url:
+    description: Staging platform-api URL, no trailing slash.
+    required: true
+  web-url:
+    description: Staging site URL.
+    required: true
+  secrets:
+    description: "Pass ${{ toJSON(secrets) }}: composite actions cannot read secrets themselves."
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/web-install
+
+    - name: "Staging smoke: client routes and permissions"
+      shell: bash
+      working-directory: web
+      env:
+        PLATFORM_API_URL: ${{ inputs.api-url }}
+        SMOKE_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_SMOKE_EMAIL }}
+        SMOKE_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_SMOKE_PASSWORD }}
+      run: |
+        if [ -z "${SMOKE_EMAIL}" ] || [ -z "${SMOKE_PASSWORD}" ] || [ -z "${PLATFORM_API_URL}" ]; then
+          echo "::notice::Staging smoke skipped: set STAGING_SMOKE_EMAIL and STAGING_SMOKE_PASSWORD (and the staging api URL)."
+          echo "Staging smoke: skipped (secrets absent)" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        node scripts/smoke.mjs --email "${SMOKE_EMAIL}" --password "${SMOKE_PASSWORD}"
+        echo "Staging smoke: passed" >> "$GITHUB_STEP_SUMMARY"
+
+    # The @staging specs in web/e2e (docs/CORE-JOURNEYS.md): read-only, one browser
+    # per role. A role whose secrets are absent skips itself inside the specs.
+    - name: "Staging journeys: every role opens its pages"
+      shell: bash
+      working-directory: web
+      env:
+        E2E_TARGET: staging
+        STAGING_E2E_WEB_URL: ${{ inputs.web-url }}
+        STAGING_E2E_API_URL: ${{ inputs.api-url }}
+        STAGING_E2E_ORG_SLUG: ${{ fromJSON(inputs.secrets).STAGING_E2E_ORG_SLUG }}
+        STAGING_E2E_HIRE_SLUG: ${{ fromJSON(inputs.secrets).STAGING_E2E_HIRE_SLUG }}
+        STAGING_E2E_PARTNER_SLUG: ${{ fromJSON(inputs.secrets).STAGING_E2E_PARTNER_SLUG }}
+        STAGING_E2E_CONSUMER_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_E2E_CONSUMER_EMAIL }}
+        STAGING_E2E_CONSUMER_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_E2E_CONSUMER_PASSWORD }}
+        STAGING_E2E_ADMIN_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_E2E_ADMIN_EMAIL }}
+        STAGING_E2E_ADMIN_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_E2E_ADMIN_PASSWORD }}
+        STAGING_E2E_SUPERVISOR_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_E2E_SUPERVISOR_EMAIL }}
+        STAGING_E2E_SUPERVISOR_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_E2E_SUPERVISOR_PASSWORD }}
+        STAGING_E2E_TRAINEE_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_E2E_TRAINEE_EMAIL }}
+        STAGING_E2E_TRAINEE_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_E2E_TRAINEE_PASSWORD }}
+        STAGING_E2E_HIRE_ADMIN_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_E2E_HIRE_ADMIN_EMAIL }}
+        STAGING_E2E_HIRE_ADMIN_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_E2E_HIRE_ADMIN_PASSWORD }}
+        STAGING_E2E_HIRE_CANDIDATE_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_E2E_HIRE_CANDIDATE_EMAIL }}
+        STAGING_E2E_HIRE_CANDIDATE_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_E2E_HIRE_CANDIDATE_PASSWORD }}
+        STAGING_E2E_PARTNER_ADMIN_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_E2E_PARTNER_ADMIN_EMAIL }}
+        STAGING_E2E_PARTNER_ADMIN_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_E2E_PARTNER_ADMIN_PASSWORD }}
+        STAGING_E2E_PLATFORM_EMAIL: ${{ fromJSON(inputs.secrets).STAGING_E2E_PLATFORM_EMAIL }}
+        STAGING_E2E_PLATFORM_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_E2E_PLATFORM_PASSWORD }}
+        ADMIN_TOTP_SECRET: ${{ fromJSON(inputs.secrets).STAGING_E2E_PLATFORM_TOTP_SECRET }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ fromJSON(inputs.secrets).VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: |
+        if [ -z "${STAGING_E2E_WEB_URL}" ] || [ -z "${STAGING_E2E_API_URL}" ] || [ -z "${STAGING_E2E_CONSUMER_EMAIL}" ]; then
+          echo "::notice::Staging journeys skipped: set the STAGING_E2E_* secrets (docs/CORE-JOURNEYS.md)."
+          echo "Staging journeys: skipped (secrets absent)" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        npx playwright test
+        echo "Staging journeys: passed" >> "$GITHUB_STEP_SUMMARY"

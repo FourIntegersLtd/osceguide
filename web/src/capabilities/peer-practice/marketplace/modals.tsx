@@ -1,5 +1,6 @@
 "use client";
 
+import { PEER_JOIN_EARLY_MINUTES } from "@/capabilities/peer-practice/limits";
 import { HiOutlineArrowPath, HiOutlineCalendarDays, HiOutlineVideoCamera } from "react-icons/hi2";
 import {
   Modal,
@@ -92,7 +93,7 @@ const STEPS = [
   },
   {
     title: "Join on the day",
-    text: "Join the video call up to 20 minutes before. Roles (Doctor/Patient) are assigned automatically.",
+    text: `Join the video call up to ${PEER_JOIN_EARLY_MINUTES} minutes before. Roles (Doctor/Patient) are assigned automatically.`,
   },
   {
     title: "Practice over video",

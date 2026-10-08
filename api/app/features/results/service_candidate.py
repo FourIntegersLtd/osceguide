@@ -149,10 +149,14 @@ async def released_revision_for_user(
 ) -> CandidateResultRevision | None:
     """The released revision this signed-in person may see, if there is one.
 
-    A result is keyed by `trainees.id`, but the token carries a `users.id`.
+    A result is keyed by `trainees.id`, but the token carries a `users.id`. A trainee whose
+    access the organisation revoked sees nothing of it, as the portal shows none of its sittings (T-13).
     """
     trainee_ids = await roster.trainee_ids_for_user(session, user_id)
-    return await repository.released_revision(session, sitting_id, trainee_ids)
+    revision = await repository.released_revision(session, sitting_id, trainee_ids)
+    if revision is None or await roster.is_revoked(session, revision.org_id, user_id):
+        return None
+    return revision
 
 
 async def sealed_sittings(
@@ -167,7 +171,11 @@ async def sealed_sittings(
     if not wanted:
         return set()
     trainee_ids = await roster.trainee_ids_for_user(session, user_id)
-    return wanted - await repository.released_sitting_ids(session, wanted, trainee_ids)
+    # A revoked trainee sees nothing of that org's results (T-13), so its sittings stay sealed.
+    revoked = await roster.revoked_org_ids(session, user_id)
+    return wanted - await repository.released_sitting_ids(
+        session, wanted, trainee_ids, excluding_org_ids=revoked
+    )
 
 
 async def _acknowledged_at(

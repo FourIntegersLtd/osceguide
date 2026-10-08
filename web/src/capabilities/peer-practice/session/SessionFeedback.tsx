@@ -1,5 +1,6 @@
 "use client";
 
+import { PEER_FEEDBACK_MAX_CHARS } from "@/capabilities/peer-practice/limits";
 import { useState, type FormEvent } from "react";
 import { HiOutlineStar } from "react-icons/hi2";
 import { Button, productTokens, Panel } from "@/foundation/ui";
@@ -108,9 +109,9 @@ export function SessionFeedback({ sessionId, onDone }: { sessionId: string; onDo
             placeholder="Share any thoughts, suggestions, or feedback about your experience..."
             className={productTokens.b2cSettingsFieldInput}
             rows={3}
-            maxLength={500}
+            maxLength={PEER_FEEDBACK_MAX_CHARS}
           />
-          <p className="mt-1 text-osce-meta text-b2c-text-muted">Optional. {feedbackText.length}/500 characters</p>
+          <p className="mt-1 text-osce-meta text-b2c-text-muted">Optional. {feedbackText.length}/{PEER_FEEDBACK_MAX_CHARS} characters</p>
         </div>
 
         {error && (

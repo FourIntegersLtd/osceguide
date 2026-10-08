@@ -11,8 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership
 from app.features.notifications import service as notifications
 from tests.support.catalog import create_exam
-from tests.support.decisions import seat_candidate
-from tests.support.rubrics import published_feedback_version
+from tests.support.decisions import a_sitting_and_named_trainee, a_sitting_and_trainee, seat_candidate
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -35,32 +34,6 @@ async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"): 
     # first — by a platform admin, which is exactly who is holding this token.
     await create_exam(client, root, code="sca")
     return org_id, admin
-
-
-async def a_sitting_and_trainee(db_session: AsyncSession, org_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID]:
-    sitting, trainee, _ = await a_sitting_and_named_trainee(db_session, org_id)
-    return sitting, trainee
-
-
-async def a_sitting_and_named_trainee(
-    db_session: AsyncSession, org_id: uuid.UUID
-) -> tuple[uuid.UUID, uuid.UUID, str]:
-    """The same fixture, but it tells you the candidate's address.
-
-    Needed to assert who a released result is actually written to.
-    """
-    from app.features.roster.models import Trainee
-    from app.features.sittings.models import Sitting
-
-    version = await published_feedback_version(db_session, org_id)
-    await db_session.flush()
-    sitting = Sitting(org_id=org_id, name="Finals", mode="exam", rubric_version_id=version.id)
-    email = f"c{uuid.uuid4().hex[:8]}@example.com"
-    trainee = Trainee(org_id=org_id, email=email)
-    db_session.add_all([sitting, trainee])
-    await db_session.flush()
-    await seat_candidate(db_session, org_id, sitting.id, trainee.id)
-    return sitting.id, trainee.id, email
 
 
 def url(sitting: uuid.UUID, trainee: uuid.UUID, suffix: str = "") -> str:

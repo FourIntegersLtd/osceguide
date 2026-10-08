@@ -110,20 +110,28 @@ async def _ensure_runnable(
 
 
 async def require_entitlement(
-    session: AsyncSession, *, user_id: uuid.UUID, exam_id: uuid.UUID, now: datetime
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    exam_id: uuid.UUID,
+    now: datetime,
+    station_version_id: uuid.UUID | None = None,
 ) -> None:
     """The same entitlement gate `POST /attempts` applies, for callers that need the trial counts too.
 
     Peer practice, the marketplace and practice sets all have to ask the same question. One function
     keeps the free trial a single rule: calling `entitlements.require` directly with `trial=None`
     made `decide` skip the trial branch and refuse a brand-new account outright — the bug this closes.
+    With `station_version_id`, a trial station already counted is not counted again against itself.
     """
     await entitlements.require(
         session,
         user_id=user_id,
         exam_id=exam_id,
         now=now,
-        trial=await trial_state_for(session, user_id=user_id, exam_id=exam_id),
+        trial=await trial_state_for(
+            session, user_id=user_id, exam_id=exam_id, station_version_id=station_version_id
+        ),
     )
 
 
@@ -136,18 +144,12 @@ async def ensure_entitled_to_begin(session: AsyncSession, attempt: Attempt, *, n
     """
     if attempt.kind not in _RESUMABLE_KINDS or attempt.status != "created":
         return
-    await entitlements.require(
+    await require_entitlement(
         session,
         user_id=attempt.user_id,
         exam_id=attempt.exam_id,
         now=now,
-        # Its own station, so a trial set station is not counted as a fourth against itself.
-        trial=await trial_state_for(
-            session,
-            user_id=attempt.user_id,
-            exam_id=attempt.exam_id,
-            station_version_id=attempt.station_version_id,
-        ),
+        station_version_id=attempt.station_version_id,
     )
 
 

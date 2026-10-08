@@ -111,6 +111,8 @@ async def read_machinery(
 @router.get(
     "/platform/machinery/stream",
     responses=sse_responses(schemas.Machinery, Forbidden),
+    # Checked in the handler (a stream cannot take `require_org`), so stated here.
+    openapi_extra={"x-capability": "platform_admin"},
     response_class=StreamingResponse,
 )
 async def stream_machinery(

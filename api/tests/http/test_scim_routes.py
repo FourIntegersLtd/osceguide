@@ -238,8 +238,9 @@ async def test_a_deprovisioned_user_is_absent_from_unstarted_stations(
 ) -> None:  # type: ignore[no-untyped-def]
     """S-18: the directory dropped them, but their stations in circuits still to run stayed scheduled."""
     from app.features.sittings.models import Slot
-    from tests.http.test_org_read_models import a_circuit, a_sitting
+    from tests.http.test_org_read_models import a_circuit
     from tests.http.test_sittings_routes import org_with_admin, published_station
+    from tests.support.sittings import a_sitting
 
     _, admin = await org_with_admin(client, make_actor)
     issued = await client.post(

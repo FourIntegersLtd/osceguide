@@ -18,9 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.http.test_cohort_summary_routes import a_candidate, finish, mark
-from tests.http.test_org_read_models import a_sitting
-from tests.http.test_sittings_routes import published_station
-from tests.support.sittings import org_with_admin
+from tests.support.sittings import a_sitting, org_with_admin, published_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

@@ -10,12 +10,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.voice.service import get_room_agents
 from tests.support.fakes import FakeRoomAgents
-from tests.support.sittings import add_programme, create_sitting_body, org_with_admin
+from tests.support.sittings import (
+    a_trainee,
+    add_programme,
+    create_sitting_body,
+    org_with_admin,
+    published_station,
+)
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
-
-CONTENT = {"patient_information": {"persona": "anxious"}}
 
 
 @pytest.fixture
@@ -32,19 +36,6 @@ def agents(client: AsyncClient) -> FakeRoomAgents:
     return fake
 
 
-async def published_station(client: AsyncClient, admin: str, slug: str, title: str) -> str:
-    created = await client.post(
-        f"/api/v1/orgs/{slug}/stations",
-        json={"title": title, "exam_code": "sca", "content": CONTENT},
-        headers=bearer(admin),
-    )
-    station_id = created.json()["id"]
-    published = await client.post(
-        f"/api/v1/orgs/{slug}/stations/{station_id}/versions/1/publish", headers=bearer(admin)
-    )
-    return published.json()["id"]
-
-
 async def a_programme(client: AsyncClient, admin: str, slug: str = "kings") -> uuid.UUID:
     """A programme naming the platform SCA exam — required to schedule a sitting."""
     return await add_programme(client, admin, org_slug=slug)
@@ -53,30 +44,6 @@ async def a_programme(client: AsyncClient, admin: str, slug: str = "kings") -> u
 async def a_template_version(client: AsyncClient, admin: str, slug: str = "kings") -> uuid.UUID:
     """Backward-compatible alias used by other HTTP tests."""
     return await a_programme(client, admin, slug=slug)
-
-
-async def a_trainee(db_session: AsyncSession, email: str, *, org_slug: str = "kings") -> uuid.UUID:
-    """A signed-in person the organisation has rostered, and their `users.id`.
-
-    SEC-014: a circuit may only examine people on the org's roster, which is
-    what the real flow does — an admin adds a trainee (linking a `users.id`)
-    before scheduling them. This mirrors that: it creates the account *and* the
-    linked roster row, so the returned id is one `ensure_rosterable` accepts.
-    """
-    from app.features.identity import repository as identity_repo
-    from app.features.roster import repository as roster_repo
-    from app.features.tenancy import repository as tenancy_repo
-
-    user = await identity_repo.create_user(session=db_session, email=email, name=email, password_hash=None)
-    await db_session.flush()
-    org = await tenancy_repo.organization_by_slug(db_session, org_slug)
-    if org is not None:
-        trainee = await roster_repo.create_trainee(
-            db_session, org.id, email=email, first_name=None, last_name=None, cohort_id=None
-        )
-        await roster_repo.link_trainee_to_user(db_session, org.id, trainee.id, user_id=user.id)
-        await db_session.flush()
-    return user.id
 
 
 async def test_a_sitting_is_created_against_a_published_template(

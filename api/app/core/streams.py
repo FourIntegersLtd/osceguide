@@ -29,12 +29,16 @@ from uuid import UUID, uuid4
 
 import jwt
 from fastapi import Depends, Header, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.account_status import AccountDeactivated, refuse_if_deactivated
 from app.core.auth import Membership, Principal
+from app.core.db import SessionOpenerDep
 from app.core.errors import Unauthenticated
 from app.core.logging import get_logger
 from app.core.redis import get_redis
 from app.core.settings import Settings, get_settings
+from app.core.sse import StreamFinished
 
 log = get_logger(__name__)
 
@@ -156,4 +160,29 @@ async def get_stream_principal(
     raise Unauthenticated("A stream needs a ticket or a bearer token")
 
 
-StreamPrincipal = Annotated[Principal, Depends(get_stream_principal)]
+async def get_active_stream_principal(
+    principal: Annotated[Principal, Depends(get_stream_principal)], open_session: SessionOpenerDep
+) -> Principal:
+    """The stream's watcher, refused if their account has since been closed or deactivated.
+
+    The same check `get_principal` makes on every REST request, on a short session of its own so
+    the stream does not hold a transaction open for as long as it runs.
+    """
+    async with open_session() as session:
+        await refuse_if_deactivated(session, principal.user_id)
+    return principal
+
+
+StreamPrincipal = Annotated[Principal, Depends(get_active_stream_principal)]
+
+
+async def still_active(session: AsyncSession, user_id: UUID) -> None:
+    """End a stream (`StreamFinished`) whose account was closed or deactivated after it opened.
+
+    Asked in each frame's snapshot, on the session that frame already opens, as a stream's
+    membership is: a token outlives the closure by up to fifteen minutes, a stream indefinitely.
+    """
+    try:
+        await refuse_if_deactivated(session, user_id)
+    except AccountDeactivated:
+        raise StreamFinished from None

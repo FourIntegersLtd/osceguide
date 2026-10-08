@@ -9,9 +9,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import CurrentPrincipal
+from app.core.auth import CurrentPrincipal, Principal
 from app.core.db import get_session
 from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
+from app.core.openapi import grant
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, EventCounts
 from app.core.rate_limit import USER_WRITE, TooManyRequests, per_user
@@ -29,6 +30,24 @@ from app.features.growth import (
 router = APIRouter(tags=["growth"])
 
 Session = Annotated[AsyncSession, Depends(get_session)]
+
+
+@grant("partner_reporter")
+async def require_partner_reporter(
+    partner: str, principal: CurrentPrincipal, session: Session, clock: ClockDep
+) -> Principal:
+    """A reporter for the partner in the path, or a platform admin standing in for one.
+
+    Per partner, so it reads the path; refused with `not_a_partner_reporter` before the handler
+    runs, so a stranger learns nothing about which partners exist.
+    """
+    await service.ensure_reporter(
+        session, partner=partner.strip().lower(), principal=principal, now=clock.now()
+    )
+    return principal
+
+
+PartnerReporter = Annotated[Principal, Depends(require_partner_reporter)]
 
 
 @router.post(
@@ -58,7 +77,7 @@ async def record_arrival(body: schemas.RecordArrival, session: Session) -> schem
 )
 async def read_funnel(
     partner: str,
-    principal: CurrentPrincipal,
+    _reporter: PartnerReporter,
     session: Session,
     from_date: Annotated[date | None, Query(description="Inclusive UTC date")] = None,
     to_date: Annotated[date | None, Query(description="Inclusive UTC date")] = None,
@@ -70,11 +89,6 @@ async def read_funnel(
     With no range, this is the whole pilot to date; a range plus an optional
     exam or campaign filter narrows every count to match.
     """
-    await service.ensure_reporter(
-        session,
-        partner=partner.strip().lower(),
-        principal=principal,
-    )
     return await service.read_funnel(
         session,
         partner=partner,
@@ -108,17 +122,13 @@ async def credit_signup(
     responses=error_responses(Unauthenticated, errors.NotAReporter, errors.UnknownPartnerError),
 )
 async def read_tracking_references(
-    partner: str, principal: CurrentPrincipal, session: Session
+    partner: str, _reporter: PartnerReporter, session: Session
 ) -> Page[schemas.TrackingReference]:
     """The references this partner puts in its links, one per exam in the pilot.
 
     Reporter-gated like the funnel.
     """
-    references = await service.tracking_references(
-        session,
-        partner=partner,
-        principal=principal,
-    )
+    references = await service.tracking_references(session, partner=partner)
     return Page(items=references, next_cursor=None)
 
 
@@ -522,18 +532,6 @@ async def revoke_dashboard_reporter(
 # --- the BMJ dashboard: partner mode (reporter-gated, never any money) ------
 
 
-async def _ensure_partner_reporter(
-    session: AsyncSession, *, partner: str, principal: CurrentPrincipal
-) -> None:
-    """The one gate every `reporting/*` route shares: a reporter for this
-    partner, or a platform admin standing in for one."""
-    await service.ensure_reporter(
-        session,
-        partner=partner.strip().lower(),
-        principal=principal,
-    )
-
-
 # The partner-mode Overview tab: fee-framed, never revenue-framed.
 @router.get(
     "/growth/partners/{partner}/reporting/summary",
@@ -544,7 +542,7 @@ async def _ensure_partner_reporter(
 )
 async def read_partner_reporting_summary(
     partner: str,
-    principal: CurrentPrincipal,
+    _reporter: PartnerReporter,
     session: Session,
     from_date: Annotated[date, Query(description="Inclusive UTC date")],
     to_date: Annotated[date, Query(description="Inclusive UTC date")],
@@ -552,7 +550,6 @@ async def read_partner_reporting_summary(
     utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
 ) -> schemas.PartnerDashboardSummaryRead:
     """A partner's own view of its pilot: visits, signups, its own fee. No revenue, ever."""
-    await _ensure_partner_reporter(session, partner=partner, principal=principal)
     return await service_partner_reports.read_partner_summary(
         session,
         partner=partner,
@@ -577,7 +574,7 @@ async def read_partner_reporting_summary(
 )
 async def read_partner_visits_over_time(
     partner: str,
-    principal: CurrentPrincipal,
+    _reporter: PartnerReporter,
     session: Session,
     from_date: Annotated[date, Query(description="Inclusive UTC date")],
     to_date: Annotated[date, Query(description="Inclusive UTC date")],
@@ -585,7 +582,6 @@ async def read_partner_visits_over_time(
     exam_code: Annotated[str | None, Query(max_length=32)] = None,
     utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
 ) -> schemas.CountOverTimeReport:
-    await _ensure_partner_reporter(session, partner=partner, principal=principal)
     return await service_partner_reports.read_visits_over_time(
         session,
         partner=partner,
@@ -611,7 +607,7 @@ async def read_partner_visits_over_time(
 )
 async def read_partner_signups_over_time(
     partner: str,
-    principal: CurrentPrincipal,
+    _reporter: PartnerReporter,
     session: Session,
     from_date: Annotated[date, Query(description="Inclusive UTC date")],
     to_date: Annotated[date, Query(description="Inclusive UTC date")],
@@ -619,7 +615,6 @@ async def read_partner_signups_over_time(
     exam_code: Annotated[str | None, Query(max_length=32)] = None,
     utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
 ) -> schemas.CountOverTimeReport:
-    await _ensure_partner_reporter(session, partner=partner, principal=principal)
     return await service_partner_reports.read_signups_over_time(
         session,
         partner=partner,
@@ -645,7 +640,7 @@ async def read_partner_signups_over_time(
 )
 async def read_partner_fee_over_time(
     partner: str,
-    principal: CurrentPrincipal,
+    _reporter: PartnerReporter,
     session: Session,
     from_date: Annotated[date, Query(description="Inclusive UTC date")],
     to_date: Annotated[date, Query(description="Inclusive UTC date")],
@@ -653,7 +648,6 @@ async def read_partner_fee_over_time(
     exam_code: Annotated[str | None, Query(max_length=32)] = None,
     utm_campaign: Annotated[str | None, Query(max_length=100)] = None,
 ) -> schemas.FeeOverTimeReport:
-    await _ensure_partner_reporter(session, partner=partner, principal=principal)
     return await service_partner_reports.read_fee_over_time(
         session,
         partner=partner,

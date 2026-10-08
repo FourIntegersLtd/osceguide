@@ -21,6 +21,7 @@ from app.core.db import SessionOpener
 from app.core.events import user_topic
 from app.core.ports import EventBus
 from app.core.sse import Snapshot, event_stream
+from app.core.streams import still_active
 from app.features.attempts import domain, service_reads
 
 # Once an attempt is here, nothing else will happen to it.
@@ -61,6 +62,7 @@ def attempt_stream(
     async def snapshot() -> Snapshot:
         """The current frame: the whole attempt, and whether this is the last one."""
         async with open_session() as session:
+            await still_active(session, principal.user_id)
             attempt = await service_reads.read_attempt(
                 session,
                 attempt_id,

@@ -1,5 +1,6 @@
 "use client";
 
+import { PEER_MATCH_WAIT_MINUTES } from "@/capabilities/peer-practice/limits";
 import {
   HiOutlineArrowPath,
   HiOutlineClock,
@@ -48,7 +49,7 @@ export function LivePracticeModal({
       <ModalContent>
         <ModalLead
           title="Live practice"
-          description="We'll search for an available colleague for up to 10 minutes. You can get matched immediately and start a video session."
+          description={`We'll search for an available colleague for up to ${PEER_MATCH_WAIT_MINUTES} minutes. You can get matched immediately and start a video session.`}
           icon={<HiOutlineUsers className="h-4 w-4" />}
         />
         <ModalFooterActions>
@@ -90,7 +91,7 @@ export function SearchingModal({
           description={
             <>
               We&apos;re looking for an available colleague to match you with.
-              We&apos;ll search for up to 10 minutes. You can close this and
+              We&apos;ll search for up to {PEER_MATCH_WAIT_MINUTES} minutes. You can close this and
               continue browsing. We&apos;ll notify you when a match is found.
             </>
           }
@@ -110,7 +111,7 @@ export function QueueExpiredModal({ onClose }: { onClose: () => void }) {
       <ModalContent>
         <ModalLead
           title="No match found"
-          description="No practice partner found within 10 minutes. Try again or use AI practice."
+          description={`No practice partner found within ${PEER_MATCH_WAIT_MINUTES} minutes. Try again or use AI practice.`}
           icon={<HiOutlineClock className="h-4 w-4" />}
           iconTone="orange"
         />

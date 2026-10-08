@@ -17,8 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.entitlements import repository as ent_repo
 from app.features.identity import repository as identity_repo
-from tests.http.test_billing_routes import a_plan, checkout_event, post_event
+from tests.http.test_billing_routes import checkout_event, post_event
 from tests.http.test_station_sets_routes import a_learner, a_station_version
+from tests.support.billing import a_plan
 from tests.support.catalog import ensure_exam
 from tests.support.tokens import bearer
 

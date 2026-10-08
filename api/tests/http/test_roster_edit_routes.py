@@ -530,8 +530,8 @@ async def test_deleting_a_trainee_with_a_decision_is_refused(
     """`roster` sits below `results` in the layer contract and cannot check
     for a decision itself — the database's `RESTRICT` is the refusal,
     mapped to a clean 409 rather than a raw 500."""
-    from tests.http.test_results_routes import a_sitting_and_trainee as a_decided_sitting_and_trainee
     from tests.http.test_results_routes import org_with_admin as org_with_institution_admin
+    from tests.support.decisions import a_sitting_and_trainee as a_decided_sitting_and_trainee
 
     org_id, admin = await org_with_institution_admin(client, make_actor, "decidedorg")
     sitting, trainee = await a_decided_sitting_and_trainee(db_session, org_id)
@@ -556,8 +556,8 @@ async def test_anonymising_a_decided_trainee_scrubs_the_person_and_keeps_the_dec
 ) -> None:  # type: ignore[no-untyped-def]
     """The GDPR path for exactly the row `delete` above refuses: anonymise,
     never delete, a trainee with a decision on record."""
-    from tests.http.test_results_routes import a_sitting_and_named_trainee
     from tests.http.test_results_routes import org_with_admin as org_with_institution_admin
+    from tests.support.decisions import a_sitting_and_named_trainee
 
     org_id, admin = await org_with_institution_admin(client, make_actor, "gdprorg")
     sitting, trainee, original_email = await a_sitting_and_named_trainee(db_session, org_id)
@@ -673,8 +673,9 @@ async def test_anonymising_ends_the_unstarted_stations_and_frees_the_address(
     """S-21: an erased person is not still scheduled into a circuit, and the same address may be
     rostered again afterwards as a different, new trainee."""
     from app.features.sittings.models import Slot
-    from tests.http.test_org_read_models import a_circuit, a_sitting
+    from tests.http.test_org_read_models import a_circuit
     from tests.http.test_sittings_routes import published_station
+    from tests.support.sittings import a_sitting
 
     _, admin = await org_with_admin(client, make_actor)
     old = await add_trainee(client, admin, "erase.slots@example.com")

@@ -8,14 +8,19 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import case, or_, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import savepoint
+from app.features.results import errors
 from app.features.results.models import (
     CandidateResultEvent,
     CandidateResultRevision,
 )
 
 ERASED = "[erased]"
+# The unique (sitting, trainee, revision) chain: the only violation that means "someone else saved first".
+CHAIN_CONSTRAINT = "uq_candidate_result_revisions_chain"
 
 
 async def latest_revision(
@@ -69,7 +74,11 @@ async def append_revision(
     released_by: uuid.UUID | None = None,
     released_at: datetime | None = None,
 ) -> CandidateResultRevision:
-    """Insert a new, append-only revision row: never edits one that already exists."""
+    """Insert a new, append-only revision row: never edits one that already exists.
+
+    Two presses that both read revision N both try to write N+1; the unique chain lets one in
+    and the other is told the decision moved (409), not left to surface as a 500.
+    """
     revision_row = CandidateResultRevision(
         org_id=org_id,
         sitting_id=sitting_id,
@@ -89,8 +98,14 @@ async def append_revision(
         released_by=released_by,
         released_at=released_at,
     )
-    session.add(revision_row)
-    await session.flush()
+    try:
+        async with savepoint(session):
+            session.add(revision_row)
+            await session.flush()
+    except IntegrityError as exc:
+        if CHAIN_CONSTRAINT not in str(exc.orig):
+            raise
+        raise errors.DecisionRevisedError() from exc
     await session.refresh(revision_row)
     return revision_row
 
@@ -119,9 +134,14 @@ async def append_event(
 
 
 async def released_sitting_ids(
-    session: AsyncSession, sitting_ids: Collection[uuid.UUID], trainee_ids: list[uuid.UUID]
+    session: AsyncSession,
+    sitting_ids: Collection[uuid.UUID],
+    trainee_ids: list[uuid.UUID],
+    *,
+    excluding_org_ids: Collection[uuid.UUID] = (),
 ) -> set[uuid.UUID]:
-    """Of these sittings, the ones with a released revision for any of these roster entries."""
+    """Of these sittings, the ones with a released revision for any of these roster entries,
+    leaving out those organisations' sittings."""
     if not sitting_ids or not trainee_ids:
         return set()
     stmt = (
@@ -130,6 +150,7 @@ async def released_sitting_ids(
             CandidateResultRevision.sitting_id.in_(list(sitting_ids)),
             CandidateResultRevision.trainee_id.in_(trainee_ids),
             CandidateResultRevision.workflow_state == "released",
+            CandidateResultRevision.org_id.not_in(list(excluding_org_ids)),
         )
         .distinct()
     )

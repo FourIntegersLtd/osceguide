@@ -40,17 +40,28 @@ and redeploys the api's staging.
 **The rule:**
 
 - Anything that spans apps or is about how agents work goes at the root:
-  owner agents, cross-app verify skills, shared Cursor rules, and this map.
-- Anything describing one app's code goes in that folder's `AGENTS.md` or
-  `.claude/skills/`, and changes in the same commit as the code.
+  owner agents, rule files, skills, the ownership table and this map.
+- Anything describing one app's code goes in that folder's `AGENTS.md` (rules every change
+  obeys), and area-specific "what to know" goes in `.claude/rules/<area>.md`, changed in the same
+  commit as the code.
+
+Three pieces, one mechanism each:
+
+| Piece | Where | What it is |
+|---|---|---|
+| Area notes ("what to know") | `.claude/rules/<area>.md`, with `paths:` frontmatter | Loads on its own when a session touches those paths. 11 areas, 150 lines each at most |
+| Skills ("how to work") | `.claude/skills/<verb>/SKILL.md` | `build-feature`, `fix-bug`, `verify-*`, `experience-audit` (a new arm or big feature) |
+| Owners ("who does it") | `.claude/agents/<area>-owner.md` | "You own these paths; read the rule file; prove with the verify skill" |
 
 | File | Scope |
 |---|---|
 | `AGENTS.md` (this file) | Repository map, principles, cost discipline |
-| `.claude/agents/voice-station-owner.md` | Owner: live voice station, across assessment/ and api/ |
-| `.claude/skills/verify-voice-station/` | How to prove a voice change works (unit → e2e → deployed) |
-| `.claude/agents/*-owner.md` | The other owners (see Owners) |
-| `.claude/skills/verify-{marking,institution,access,content}/` | Their proof recipes; web/'s is its own `verify` skill |
+| `.claude/OWNERS.md` | Path glob to owner. `api/tests/guards/test_ownership.py` fails if a tracked source file matches no row or two |
+| `.claude/rules/*.md` | The 11 area notes: identity-tenancy, money, attempt-engine, marking-results, exam-day, station-content, media-community, tutor-ai, comms, staff-console, web-foundation |
+| `.claude/agents/*-owner.md` | The 7 owners (see Owners) |
+| `.claude/skills/build-feature/`, `fix-bug/` | The way to work: build tests-first with arm and sibling checks; fix a bug at its root and close the CI gap that let it through |
+| `.claude/skills/verify-{attempt-engine,marking,institution,access,content,staff-console}/` | Proof recipes; web/'s is its own `verify` skill |
+| `.claude/skills/fix-experience-gaps/` | Retiring once `docs/EXPERIENCE-GAPS.md` is closed |
 | `.claude/agents/slide-deck-author.md` | Makes teaching slide decks from OSCE cases: fact-check, voice, publish. Runs the `.claude/skills/make-slide-deck/` pipeline |
 | `.claude/agents/quality-reviewer.md` | Second check on every code change: repetition, reuse, structure, tiers, dead code. Not correctness (`reviewer`) |
 | `.claude/hooks/quality-gate.sh` | Stop hook: once per changed code diff, asks the main agent to run `quality-reviewer` and act on it |
@@ -59,38 +70,46 @@ and redeploys the api's staging.
 | `web/AGENTS.md` (+ `docs/DESIGN.md`) | Frontend tiers, non-negotiables, design language |
 | `web/.claude/skills/verify/` | Prove a web/ change in a real browser |
 | `.github/workflows/` | One CI and one promote workflow per app, filtered by folder |
-| `assessment/AGENTS.md` | Engine and worker boundaries (test-enforced) |
+| `assessment/AGENTS.md` | Engine boundaries (test-enforced) |
 | b2b-api's and `livekit/k8s/`'s `AGENTS.md` | Legacy, in the old repos. Retire with their code, don't extend |
 
 `CLAUDE.md` files contain only `@AGENTS.md`, so Claude Code and Cursor read
 the same text.
 
+## How to work
+
+New behaviour goes through `build-feature` (spec matrix, arm check, sibling check, impact, failing
+tests, smallest build, proof, review, ledger). A defect goes through `fix-bug` (failing test, root
+cause, name the kind of bug and the CI check that should have caught it, add that check). Both start
+as, or hand to, the owner of the paths you touch.
+
 ## Owners
 
-An owner is a subagent that starts from one area's notes and proves its work
-before calling it done.
+An owner is a subagent that starts from one area's rule files and proves its work before calling it
+done. One owner per file: `.claude/OWNERS.md` is the table, and the guard keeps it complete.
 
-| Owner | Area | Proof recipe |
-|---|---|---|
-| `voice-station-owner` | assessment-platform workers + platform-api voice, assistant, tutor memory, room start, transcript intake | `verify-voice-station` |
-| `marking-owner` | Scoring, rubrics, authored exams, engine marking prompts, legacy oracles, outcome computation | `verify-marking` |
-| `institution-owner` | Exam mode (incl. hire), circuits, roster, tenancy, review and decision workflow, programmes, `domains/assess` + `domains/platform` | `verify-institution` |
-| `access-owner` | Sign-in, sessions, SSO, invitations, entitlements, billing, referrals and partners, the email outbox | `verify-access` |
-| `content-owner` | Station library and templates, authoring, generation, media, practice sets, community, marketplace, peer practice | `verify-content` |
-| `platform-web-owner` | The frontend codebase: tiers, foundation, design system, learner home and performance, marketing site | platform-web `verify` |
+| Owner | Rule files it reads | Area | Proof recipe |
+|---|---|---|---|
+| `access-owner` | identity-tenancy, money, comms | Sign-in, sessions, SSO, invitations, entitlements, billing, growth and referrals, the email outbox, inbox api | `verify-access` |
+| `institution-owner` | exam-day | Exam mode (incl. hire), circuits, roster, tenancy, programmes, org read models, `domains/assess`, hire and partner surfaces | `verify-institution` |
+| `marking-owner` | marking-results | Scoring, rubrics, authored exams, results and reviews, engine marking prompts, legacy oracles | `verify-marking` |
+| `attempt-engine-owner` | attempt-engine, tutor-ai | Attempts, voice, the `/api/worker/*` contract, assessment/ workers, assistant and tutor memory, web runners, feedback, debrief, transcripts | `verify-attempt-engine` |
+| `content-owner` | station-content, media-community | Station library, templates, generation, authoring, media, community, marketplace, peer practice, CV, public site | `verify-content` |
+| `staff-console-owner` | staff-console | Health and ops, background jobs, alembic, worker entry, `domains/platform`, staff-* capabilities | `verify-staff-console` |
+| `web-foundation-owner` | web-foundation | Foundation, surfaces, tiers, design system, `app/`, learner dashboard, marketing, inbox web | platform-web `verify` |
 
-Every platform-api slice but `health` has one owner. Where two claim a file: voice starts
-rooms, marking computes scores, institution runs the workflow, and a screen's
-behaviour belongs to its area's owner while platform-web owns how it is built.
+Every platform-api slice has one owner. Where two claim a file: attempt-engine starts rooms,
+marking computes scores, institution runs the workflow, and a screen's behaviour belongs to its
+area's owner while web-foundation owns how it is built.
 
-To add one:
+To add an owner or area:
 
-1. Agent file: `.claude/agents/<area>-owner.md`. Give it what it owns, what it
-   must read first, how it works, and what to update after a change.
-2. Proof recipe: `.claude/skills/verify-<area>/SKILL.md`. Map each kind of
-   change to a level of proof, then list the exact commands and the traps.
-3. Notes: in the owned repo's `AGENTS.md`, plus a row in its Owners table.
-4. Add a row here.
+1. Agent file `.claude/agents/<area>-owner.md` and rule file `.claude/rules/<area>.md`
+   (with `paths:`, 150 lines at most).
+2. Proof recipe `.claude/skills/verify-<area>/SKILL.md`: each kind of change to a level of proof,
+   then the exact commands and the traps.
+3. Rows in `.claude/OWNERS.md`; run `cd api && poetry run pytest tests/guards/test_ownership.py -q`.
+4. A row in this file and in the Owners table of the owned app's `AGENTS.md`.
 
 ## Commands
 
@@ -206,5 +225,5 @@ these at the moment you break them. It never blocks -- heed it anyway.
 
 ## Updating this file
 
-Update it when an app is added or retires, when an owner is added, or when an
+Update it when an app is added or retires, when an owner or rule file is added, or when an
 agent file moves.

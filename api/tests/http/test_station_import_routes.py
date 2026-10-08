@@ -26,22 +26,14 @@ from app.features.stations.station_import_drafting import (
     TranscribedBlock,
     TranscribedDocument,
 )
-from tests.http.test_cv_routes import _pdf
 from tests.http.test_station_autogenerate_routes import org_with_admin, published_template_version
+from tests.support.documents import a_pdf
+from tests.support.station_imports import COPIED, DOCUMENT, IMPORTS, upload_import
 from tests.support.tokens import bearer
 from tests.unit.test_station_import_domain import docx
 
 pytestmark = pytest.mark.db
 
-IMPORTS = "/api/v1/orgs/kings/station-imports"
-
-_COPIED = "Take a focused history from Mr Khan, who has had central chest pain for two days."
-# Long enough to clear `MIN_TEXT_CHARS`, and containing `_COPIED` word for word.
-_DOCUMENT = (
-    f"Station 4. Chest pain. Candidate instructions. {_COPIED} "
-    "Patient history. You are Mr Khan, a 54-year-old teacher. The pain came on while marking. "
-    "Mark scheme. Introduces self. Asks about the site of the pain. Asks about smoking."
-)
 
 _DRAFTED_TEMPLATE = ImportedTemplate(
     title="History taking station",
@@ -78,29 +70,11 @@ def _answer(block_id: str, *, text: str = "", items: list[str] | None = None) ->
 _TRANSCRIBED = TranscribedDocument(
     title="Chest pain",
     blocks=[
-        _answer("candidate_instructions", text=_COPIED),
+        _answer("candidate_instructions", text=COPIED),
         _answer("patient_history", text="A history the model made up."),
         _answer("mark_scheme"),
     ],
 )
-
-
-def _upload(  # type: ignore[no-untyped-def]
-    client: AsyncClient,
-    token: str,
-    *,
-    filename: str = "Station 4.pdf",
-    content: bytes | None = None,
-    template_version_id: UUID | None = None,
-    url: str = IMPORTS,
-):
-    """Post one document to the import route, as a multipart form."""
-    form = {"exam_code": "sca"}
-    if template_version_id is not None:
-        form["template_version_id"] = str(template_version_id)
-    document = content if content is not None else _pdf(_DOCUMENT)
-    files = {"file": (filename, document, "application/octet-stream")}
-    return client.post(url, files=files, data=form, headers=bearer(token))
 
 
 async def _draft_template(db_session, import_id: str) -> None:  # type: ignore[no-untyped-def]
@@ -133,7 +107,7 @@ async def test_a_pdf_becomes_a_template_draft_and_then_a_station_draft(  # type:
 ) -> None:
     _, admin = await org_with_admin(client, make_actor)
 
-    uploaded = await _upload(client, admin)
+    uploaded = await upload_import(client, admin)
     assert uploaded.status_code == 201, uploaded.text
     import_id = uploaded.json()["id"]
     assert uploaded.json()["status"] == "drafting_template"
@@ -175,7 +149,7 @@ async def test_a_pdf_becomes_a_template_draft_and_then_a_station_draft(  # type:
     assert station["status"] == "draft"
     assert station["template_version_id"] == ready["template_version_id"]
     assert station["content"] == {
-        "candidate_instructions": _COPIED,
+        "candidate_instructions": COPIED,
         "patient_history": "A history the model made up.",
     }
 
@@ -189,14 +163,14 @@ async def test_a_word_file_with_a_published_template_goes_straight_to_a_station(
     _, admin = await org_with_admin(client, make_actor)
     version_id = await published_template_version(client, admin)
 
-    uploaded = await _upload(
-        client, admin, filename="Station 4.docx", content=docx([_DOCUMENT]), template_version_id=version_id
+    uploaded = await upload_import(
+        client, admin, filename="Station 4.docx", content=docx([DOCUMENT]), template_version_id=version_id
     )
     assert uploaded.status_code == 201, uploaded.text
     assert uploaded.json()["status"] == "drafting_station"
     assert uploaded.json()["template_version_id"] == str(version_id)
 
-    transcribed = TranscribedDocument(title="", blocks=[_answer("notes", text=_COPIED)])
+    transcribed = TranscribedDocument(title="", blocks=[_answer("notes", text=COPIED)])
     with patch(
         "app.features.stations.station_import_drafting.parse_ai_structured",
         new=AsyncMock(return_value=(transcribed, "")),
@@ -217,7 +191,7 @@ async def test_a_job_with_no_model_configured_fails_the_import_and_tells_the_upl
 ) -> None:
     """`OPENAI_API_KEY` is blanked in `conftest`, so the real model call is refused."""
     _, admin = await org_with_admin(client, make_actor)
-    import_id = (await _upload(client, admin)).json()["id"]
+    import_id = (await upload_import(client, admin)).json()["id"]
     db_session.info.pop(PENDING_KEY, None)
 
     await service_imports.run_template_job(db_session, UUID(import_id), settings=get_settings())
@@ -239,7 +213,7 @@ async def test_a_redelivered_template_job_does_not_draft_a_second_template(  # t
     client: AsyncClient, make_actor, db_session
 ) -> None:
     _, admin = await org_with_admin(client, make_actor)
-    import_id = (await _upload(client, admin)).json()["id"]
+    import_id = (await upload_import(client, admin)).json()["id"]
 
     await _draft_template(db_session, import_id)
     await _draft_template(db_session, import_id)
@@ -252,7 +226,7 @@ async def test_a_station_is_refused_while_the_template_is_still_a_draft(  # type
     client: AsyncClient, make_actor, db_session
 ) -> None:
     _, admin = await org_with_admin(client, make_actor)
-    import_id = (await _upload(client, admin)).json()["id"]
+    import_id = (await upload_import(client, admin)).json()["id"]
     await _draft_template(db_session, import_id)
 
     refused = await client.post(f"{IMPORTS}/{import_id}/station", headers=bearer(admin))
@@ -264,7 +238,7 @@ async def test_a_station_is_refused_before_the_template_has_been_drafted(  # typ
     client: AsyncClient, make_actor
 ) -> None:
     _, admin = await org_with_admin(client, make_actor)
-    import_id = (await _upload(client, admin)).json()["id"]
+    import_id = (await upload_import(client, admin)).json()["id"]
 
     refused = await client.post(f"{IMPORTS}/{import_id}/station", headers=bearer(admin))
     assert refused.status_code == 409, refused.text
@@ -274,7 +248,7 @@ async def test_a_station_is_refused_before_the_template_has_been_drafted(  # typ
 async def test_a_file_that_is_not_a_pdf_or_word_document_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     _, admin = await org_with_admin(client, make_actor)
 
-    refused = await _upload(client, admin, filename="station.txt", content=_DOCUMENT.encode())
+    refused = await upload_import(client, admin, filename="station.txt", content=DOCUMENT.encode())
     assert refused.status_code == 422, refused.text
     assert refused.json()["code"] == "invalid_import_file"
 
@@ -282,7 +256,7 @@ async def test_a_file_that_is_not_a_pdf_or_word_document_is_refused(client: Asyn
 async def test_a_document_with_nothing_to_read_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     _, admin = await org_with_admin(client, make_actor)
 
-    refused = await _upload(client, admin, content=_pdf("Scanned page"))
+    refused = await upload_import(client, admin, content=a_pdf("Scanned page"))
     assert refused.status_code == 422, refused.text
     assert refused.json()["code"] == "invalid_import_file"
     assert "too little text" in refused.json()["message"]
@@ -290,7 +264,7 @@ async def test_a_document_with_nothing_to_read_is_refused(client: AsyncClient, m
 
 async def test_another_organisations_import_is_not_found(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     _, admin = await org_with_admin(client, make_actor)
-    import_id = (await _upload(client, admin)).json()["id"]
+    import_id = (await upload_import(client, admin)).json()["id"]
     _, outsider = await org_with_admin(client, make_actor, slug="barts")
 
     probed = await client.get(f"/api/v1/orgs/barts/station-imports/{import_id}", headers=bearer(outsider))
@@ -302,7 +276,7 @@ async def test_a_platform_admin_imports_into_the_platform_library(client: AsyncC
     _, admin = await org_with_admin(client, make_actor)
     root = await make_actor("root-imports@osceguide.com", platform_admin=True)
 
-    uploaded = await _upload(client, root, url="/api/v1/platform/station-imports")
+    uploaded = await upload_import(client, root, url="/api/v1/platform/station-imports")
     assert uploaded.status_code == 201, uploaded.text
 
     # The platform's import is not an organisation's to read.

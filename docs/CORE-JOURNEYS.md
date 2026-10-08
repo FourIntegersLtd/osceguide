@@ -92,7 +92,7 @@ Outcome: profile edits persist. Gaps: A-6.
 microphone, talk to the simulated patient, end, wait for marking, read
 feedback. Skipped: needs LiveKit workers, and the mic check never resolves in
 headless Chrome. Its pieces are covered by TRAIN-3 (set-up), TRAIN-4 (the
-marked result) and `verify-voice-station` (the room itself). Gaps: T-7, C-1.
+marked result) and `verify-attempt-engine` (the room itself). Gaps: T-7, C-1.
 
 ## ASSESS: the institution
 
@@ -151,3 +151,58 @@ Outcome: each role sees only what its capabilities grant. Gaps: B-5, R-2, R-6.
 **ASSESS-6 (skipped).** Actor: candidate. Steps: join the room, speak to the
 patient, the examiner agent closes, scoring runs. Skipped: LiveKit. Covered in
 pieces by ASSESS-2/3 and ASSESS-4's seam. Gaps: S-1, S-2, R-5.
+
+## HIRE: the employer
+
+| ID | Journey | Local | Spec |
+|---|---|---|---|
+| HIRE-1 | Employer admin sees the hiring menu (Assessments, Candidates, Now running, Build), not the institution's wording | yes, `@staging` | `hire/employer.spec.ts` |
+| HIRE-2 | A candidate is shown only "My assessments" | yes, `@staging` | `hire/employer.spec.ts` |
+
+Actors: an `employer` organisation's `institution_admin`, and a `trainee`
+member. Outcome: the Hire arm renders Assess's screens in employer wording and a
+candidate is never offered a staff read (403 for them). Gaps: B-5, R-2.
+
+## PARTNER: the publishing partner
+
+| ID | Journey | Local | Spec |
+|---|---|---|---|
+| PARTNER-1 | Partner admin opens Overview, Reporting and Team; no examining menu | yes, `@staging` | `partner/partner.spec.ts` |
+
+Actor: a `partner_admin` of a `partner` organisation. Outcome: the three
+partner screens open and the institution's Sittings and People never appear.
+
+## CONSOLE: the staff console
+
+| ID | Journey | Local | Spec |
+|---|---|---|---|
+| CONSOLE-1 | Platform admin opens `/staff`, Organisations and Users | yes, `@staging` | `console/staff-console.spec.ts` |
+| CONSOLE-2 | A learner who opens `/staff/organizations` is not shown the console | yes, `@staging` | `console/staff-console.spec.ts` |
+
+## ROLES: the role matrix
+
+`roles/role-matrix.spec.ts` (ROLES-1) signs in as each seeded role (institution
+admin, supervisor, trainee, consumer, employer admin, employer candidate,
+partner admin, platform admin), reads the links in the sidebar it is shown,
+opens each, and fails on any 401/403/404 from the page's own api calls or a
+"Page not found" heading.
+
+## Running in CI and against staging
+
+- **ci-web.yml, job `journeys`**: Postgres service, `alembic upgrade head`,
+  `seed_platform.py`, `bootstrap_admin.py` (the platform admin, TOTP from
+  `ADMIN_TOTP_SECRET`), uvicorn on :8002, `next build` with
+  `PLATFORM_API_URL` pointing at it, then `npm run e2e` with `E2E_PREBUILT=1`
+  and `E2E_DATABASE_URL` (the database seam uses `psql` there, not docker).
+  Global setup authors three minimal published SCA stations when the library
+  is empty. Never a remote api.
+- **Staging** (`promote-web.yml` job `staging-journeys`, `promote-api.yml` before
+  gate 5): `web/scripts/smoke.mjs`, then `E2E_TARGET=staging npx playwright
+  test`, which runs only specs tagged `@staging` (read-only; they create
+  nothing). Both skip with a notice when secrets are absent; a role without
+  secrets skips itself. Secrets (repo, or `production-api` environment for the
+  api): `STAGING_SMOKE_EMAIL`, `STAGING_SMOKE_PASSWORD`,
+  `STAGING_E2E_{CONSUMER,ADMIN,SUPERVISOR,TRAINEE,HIRE_ADMIN,HIRE_CANDIDATE,PARTNER_ADMIN,PLATFORM}_{EMAIL,PASSWORD}`,
+  `STAGING_E2E_ORG_SLUG`, `_HIRE_SLUG`, `_PARTNER_SLUG`,
+  `STAGING_E2E_PLATFORM_TOTP_SECRET`; variable `STAGING_E2E_WEB_URL` on
+  `production-api` (`STAGING_API_URL` already exists).

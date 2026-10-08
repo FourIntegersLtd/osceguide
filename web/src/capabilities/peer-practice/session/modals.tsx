@@ -1,12 +1,13 @@
 "use client";
 
+import { PEER_WARNING_MINUTES } from "@/capabilities/peer-practice/limits";
 import { useEffect, useRef, useState } from "react";
 import { IoTimeOutline } from "react-icons/io5";
 import { Modal, ModalContent, ModalFooterActions, ModalLead, ModalPrimaryButton } from "@/foundation/ui";
 import type { RunnerPhase } from "../support/sessionState";
 
 /** Seconds left in the consultation when the "6 minutes remaining" warning rings. */
-const WARNING_AT_SECONDS = 360;
+const WARNING_AT_SECONDS = PEER_WARNING_MINUTES * 60;
 
 /**
  * The two timing prompts: six minutes left in the consultation, and the move
@@ -64,7 +65,7 @@ export function PhaseModals({
         <ModalContent>
           <ModalLead
             title="Time warning"
-            description="6 minutes remaining! Please prepare to move to management."
+            description={`${PEER_WARNING_MINUTES} minutes remaining! Please prepare to move to management.`}
             icon={<IoTimeOutline className="h-4 w-4" aria-hidden />}
             iconTone="amber"
           />

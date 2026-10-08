@@ -12,9 +12,9 @@ them to HTTP.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Annotated
+from datetime import datetime
+from typing import Annotated, Protocol
 
 from fastapi import Depends, Path
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import CurrentPrincipal, Principal
 from app.core.db import get_session
 from app.core.errors import Forbidden, NotFound
-from app.core.role_policy import RolePredicate, org_permits_access, policy
+from app.core.ports import ClockDep
+from app.core.role_policy import Policy, RolePredicate, policy
 
 
 class OrgNotFound(NotFound):
@@ -54,10 +55,15 @@ class OrgRef:
 
     id: uuid.UUID
     slug: str
-    status: str
+    # Whether it may act now: tenancy's `org_active`, so core holds no copy of the rule.
+    active: bool
 
 
-OrgLookup = Callable[[AsyncSession, str], Awaitable[OrgRef | None]]
+class OrgLookup(Protocol):
+    """Finds an organisation by slug, and whether it may act at `now`."""
+
+    async def __call__(self, session: AsyncSession, slug: str, *, now: datetime) -> OrgRef | None: ...
+
 
 _org_lookup: OrgLookup | None = None
 
@@ -102,6 +108,7 @@ async def resolve_workspace(
     org_slug: str,
     *,
     predicate: RolePredicate,
+    now: datetime,
     allow_platform_admin: bool = True,
     allow_suspended: bool = False,
 ) -> Workspace:
@@ -119,7 +126,7 @@ async def resolve_workspace(
             # 403 rather than 404: the caller did authenticate, and a 404
             # here would let membership be probed by response code.
             raise Forbidden()
-        org = await _bound_org_lookup()(session, org_slug)
+        org = await _bound_org_lookup()(session, org_slug, now=now)
         if org is None:
             raise OrgNotFound()
         return Workspace(org_id=org.id, org_slug=org.slug, role=None, principal=principal)
@@ -131,41 +138,53 @@ async def resolve_workspace(
     # lives 15 minutes, and a suspension that takes a quarter of an hour to
     # bite is not a suspension. One indexed read per org-scoped request is
     # the price of it taking effect now.
-    org = await _bound_org_lookup()(session, org_slug)
+    org = await _bound_org_lookup()(session, org_slug, now=now)
     if org is None:
         raise OrgNotFound()
-    if not allow_suspended and not org_permits_access(org.status) and not principal.is_platform_admin:
+    if not allow_suspended and not org.active and not principal.is_platform_admin:
         raise OrgSuspended()
 
     return Workspace(org_id=membership.org_id, org_slug=org_slug, role=membership.role, principal=principal)
 
 
-def require_org(
-    predicate: RolePredicate, *, allow_platform_admin: bool = True, allow_suspended: bool = False
-) -> Callable[..., Awaitable[Workspace]]:
-    """Build a dependency that resolves an org slug and checks the caller's role.
+class OrgGate:
+    """The dependency `require_org` builds. Its settings are plain attributes so the OpenAPI
+    document reads a route's rung and `x-platform-admin` from them (`core/openapi.py`)."""
 
-    `allow_platform_admin` is deliberately explicit: a platform admin may read
-    any organisation for support, but does not thereby become its
-    administrator.
-    """
+    def __init__(self, predicate: Policy, *, allow_platform_admin: bool, allow_suspended: bool) -> None:
+        self.predicate = predicate
+        self.allow_platform_admin = allow_platform_admin
+        self.allow_suspended = allow_suspended
 
-    async def dependency(
+    async def __call__(
+        self,
         org_slug: OrgSlug,
         principal: CurrentPrincipal,
         session: Annotated[AsyncSession, Depends(get_session)],
+        clock: ClockDep,
     ) -> Workspace:
         """Resolve the path's org slug against this predicate for the current request."""
         return await resolve_workspace(
             session,
             principal,
             org_slug,
-            predicate=predicate,
-            allow_platform_admin=allow_platform_admin,
-            allow_suspended=allow_suspended,
+            predicate=self.predicate,
+            now=clock.now(),
+            allow_platform_admin=self.allow_platform_admin,
+            allow_suspended=self.allow_suspended,
         )
 
-    return dependency
+
+def require_org(
+    predicate: Policy, *, allow_platform_admin: bool = True, allow_suspended: bool = False
+) -> OrgGate:
+    """Build a dependency that resolves an org slug and checks the caller's role.
+
+    `allow_platform_admin` is deliberately explicit: a platform admin may read
+    any organisation for support, but does not thereby become its
+    administrator.
+    """
+    return OrgGate(predicate, allow_platform_admin=allow_platform_admin, allow_suspended=allow_suspended)
 
 
 def admin_org_ids(principal: Principal) -> frozenset[uuid.UUID]:

@@ -14,10 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Membership
 from app.features.sittings.models import Slot
 from app.features.tenancy.models import AuditEntry
-from tests.http.test_org_read_models import a_circuit, a_sitting
-from tests.http.test_results_routes import a_sitting_and_trainee, org_with_admin, url
-from tests.http.test_sittings_routes import published_station
-from tests.support.decisions import seat_candidate
+from tests.http.test_org_read_models import a_circuit
+from tests.http.test_results_routes import org_with_admin, url
+from tests.support.decisions import a_sitting_and_trainee, seat_candidate
+from tests.support.sittings import a_sitting, published_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

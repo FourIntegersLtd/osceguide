@@ -8,7 +8,7 @@ module replaces carries no penalty.
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable, Mapping
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -59,13 +59,18 @@ def is_migration(path: Path) -> bool:
 ROUTE_METHODS = {"get", "post", "put", "patch", "delete", "api_route", "websocket"}
 
 
-def is_route_handler(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    """True when the function is decorated as an HTTP route, e.g. `@router.get(...)`."""
+def route_method(function: ast.FunctionDef | ast.AsyncFunctionDef) -> str | None:
+    """The HTTP method a route decorator names (`"delete"` for `@router.delete(...)`), else None."""
     for decorator in function.decorator_list:
         target = decorator.func if isinstance(decorator, ast.Call) else decorator
         if isinstance(target, ast.Attribute) and target.attr in ROUTE_METHODS:
-            return True
-    return False
+            return target.attr
+    return None
+
+
+def is_route_handler(function: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True when the function is decorated as an HTTP route, e.g. `@router.get(...)`."""
+    return route_method(function) is not None
 
 
 def parse(path: Path) -> ast.Module:
@@ -163,3 +168,22 @@ def names_imported_from(path: Path, package: str) -> set[str]:
         ):
             found.update(alias.asname or alias.name for alias in node.names)
     return found
+
+
+def assert_allow_list(
+    name: str,
+    entries: Mapping[str, str],
+    ceiling: int,
+    still_offending: Collection[str],
+) -> None:
+    """The three rules every allow-list here obeys.
+
+    It never grows past its ceiling, each entry carries a reason of at least four words, and an
+    entry whose offence is gone (fixed, or the code deleted) must be removed, so the list shrinks
+    as the code is fixed and cannot hide a new offender behind an old name.
+    """
+    assert len(entries) <= ceiling, f"{name} grew to {len(entries)} (ceiling {ceiling}): fix the new offender"
+    unexplained = sorted(key for key, why in entries.items() if len(why.split()) < 4)
+    assert not unexplained, f"{name}: give a real reason (four words or more) for {unexplained}"
+    resolved = sorted(set(entries) - set(still_offending))
+    assert not resolved, f"{name}: no longer offending or gone, remove from the list: {resolved}"

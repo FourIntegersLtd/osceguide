@@ -17,7 +17,7 @@ import {
 import { humanise } from "@/foundation/format";
 import { useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
-import { kindLabel } from "@/capabilities/transcripts/api";
+import { attemptKindLabel } from "@/capabilities/transcripts/kindLabel";
 import {
   AttemptFeedback,
   readTranscript,
@@ -66,7 +66,7 @@ export function AttemptInspector({ attemptId }: { attemptId: string }) {
           return (
             <>
               <PlatformPageHeader
-                title={`${kindLabel(attempt.kind)} · ${formatMoment(attempt.created_at)}`}
+                title={`${attemptKindLabel(attempt.kind)} · ${formatMoment(attempt.created_at)}`}
                 description={`${attempt.id}${attempt.room_name ? ` · room ${attempt.room_name}` : ""}`}
                 back={{
                   href: hrefFor(

@@ -62,7 +62,7 @@ Checked against the code on 2026-09-29.
 | # | Item | State |
 |---|---|---|
 | M-1 | Consumer identity import needs a production export | The loader and verify step are written and proven against a real database (dry run, real run, idempotent re-run, tamper-detecting verify). The production export is still needed to size the run and find real-data shapes. Station sets, sittings and org data are not transformed yet |
-| V-1 | The debrief clock and walk-through prompt are unproven live | Engine `engine-v0.8.0` (assessment-platform `fd5180b`) landed with platform-api `835d34e`; staging is now further ahead at `c004c8e` (see E-3). Run one staging debrief (`verify-voice-station`): the tutor walks the plan, never mentions time, and closes near 10 min. Then Promote the worker and platform-api together |
+| V-1 | The debrief clock and walk-through prompt are unproven live | Engine `engine-v0.8.0` (assessment-platform `fd5180b`) landed with platform-api `835d34e`; staging is now further ahead at `c004c8e` (see E-3). Run one staging debrief (`verify-attempt-engine`): the tutor walks the plan, never mentions time, and closes near 10 min. Then Promote the worker and platform-api together |
 | V-2 | The debrief rarely reaches the differential | Missed in 14 of 16 bench debriefs even with the clock. The likely cause: each plan section opens by asking what the doctor told the patient, which a differential never is. A `differential` bench variant now changes only those sentences, and the report counts misses per heading. Run `scripts/debrief_bench.py run --variants baseline,differential --repeats 2` with real keys, then ship the variant if it wins |
 
 ### Website hosting

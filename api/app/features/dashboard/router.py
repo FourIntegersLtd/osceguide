@@ -17,7 +17,7 @@ from app.core.openapi import sse_responses
 from app.core.ports import ClockDep, EventBus
 from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
-from app.core.tenancy import OrgAdmin, OrgStaff, may_run_circuit_policy, resolve_workspace
+from app.core.tenancy import OrgAdmin, OrgStaff, OrgStaffRunning, may_run_circuit_policy, resolve_workspace
 from app.features.dashboard import (
     errors,
     schemas,
@@ -129,7 +129,7 @@ async def read_supervisor_circuits(workspace: OrgStaff, session: Session) -> sch
     responses=error_responses(Forbidden, errors.CircuitNotFound),
 )
 async def read_circuit_console(
-    circuit_id: uuid.UUID, workspace: OrgStaff, session: Session, clock: ClockDep
+    circuit_id: uuid.UUID, workspace: OrgStaffRunning, session: Session, clock: ClockDep
 ) -> schemas_org.CircuitConsole:
     """The screen an examination is run from: session, stations, trainees, staff and feedback state.
 
@@ -213,6 +213,8 @@ async def read_sitting_readout(
 @router.get(
     "/orgs/{org_slug}/circuits/{circuit_id}/console/stream",
     responses=sse_responses(schemas_org.CircuitConsole, Forbidden, errors.CircuitNotFound),
+    # Checked in the handler (a stream cannot take `require_org`), so stated here.
+    openapi_extra={"x-capability": "org_staff"},
     response_class=StreamingResponse,
 )
 async def stream_circuit_console(
@@ -231,7 +233,14 @@ async def stream_circuit_console(
     the REST console is: every frame names each candidate on the circuit.
     """
     async with open_session() as session:
-        workspace = await resolve_workspace(session, principal, org_slug, predicate=may_run_circuit_policy())
+        workspace = await resolve_workspace(
+            session,
+            principal,
+            org_slug,
+            predicate=may_run_circuit_policy(),
+            now=clock.now(),
+            allow_suspended=True,
+        )
     return StreamingResponse(
         service_streams.console_stream(
             workspace.org_id, circuit_id, principal, bus=bus, open_session=open_session, clock=clock

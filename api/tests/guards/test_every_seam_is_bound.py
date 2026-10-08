@@ -85,7 +85,6 @@ def test_a_built_app_has_every_seam_filled_in() -> None:
     filled = {
         "password gate": auth._password_gate,
         "org lookup": [tenancy._org_lookup] if tenancy._org_lookup else [],
-        "org access policy": role_policy._access_policy,
         "role policies": list(role_policy._policies),
         "viewer audiences": audience._lookup,
         "membership lookup": [memberships._lookup] if memberships._lookup else [],

@@ -368,8 +368,17 @@ async def test_references_are_refused_to_someone_who_is_not_a_reporter(
     assert response.json()["code"] == "not_a_partner_reporter"
 
 
-async def test_references_are_refused_for_an_unknown_partner(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+async def test_a_stranger_cannot_tell_an_unknown_partner_from_a_real_one(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
     token = await make_actor("someone@elsewhere.com")
+    response = await client.get("/api/v1/growth/partners/acme/ref-ids", headers=bearer(token))
+    assert response.status_code == 403
+    assert response.json()["code"] == "not_a_partner_reporter"
+
+
+async def test_references_are_refused_for_an_unknown_partner(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("root-unknown-partner@osceguide.com", platform_admin=True)
     response = await client.get("/api/v1/growth/partners/acme/ref-ids", headers=bearer(token))
     assert response.status_code == 404
     assert response.json()["code"] == "unknown_partner"

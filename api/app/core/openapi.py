@@ -11,7 +11,8 @@ every code in the app, so a client switches on values the compiler knows.
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
@@ -78,49 +79,191 @@ def operation_id(route: APIRoute) -> str:
     return f"{tag.replace('-', '_')}_{route.name}"
 
 
-def _org_scoped(route: APIRoute) -> bool:
-    """Whether this route resolves an organisation from its slug.
+# The minimum role a route admits, lowest first. Each is one dependency:
+# `CurrentPrincipal` (or a stream's principal), then `require_org` with one of
+# tenancy's four predicates, then `PlatformAdmin`. A route on two takes the
+# higher. Published per operation as `x-capability` so the web can check that a
+# screen gates the button that calls it (`web/scripts/check-route-gates.mjs`).
+ROLE_LADDER = ("signed_in", "org_member", "org_staff", "org_admin", "institution_admin", "platform_admin")
+CAPABILITY_KEY = "x-capability"
+# On an org rung: whether a platform admin who is not a member also passes. `require_org`
+# lets one in by default (support reads, running a circuit), never as `OrgAdmin`.
+PLATFORM_ADMIN_KEY = "x-platform-admin"
+# A per-resource grant, and the rung it narrows. Off the ladder because it is held per partner,
+# not per organisation, and refused with the grant's own 403 code. Its dependency is marked with
+# `@grant(name)`, so the route's role is derived like any other.
+GRANTS = {"partner_reporter": "signed_in"}
+_GRANT_DEPENDENCIES: dict[object, str] = {}
+Dependency = TypeVar("Dependency", bound=Callable[..., Any])
+# Not on the ladder: no person's token reaches these.
+PUBLIC = "public"
+WORKER = "worker"
 
-    Read from the resolved dependency graph, not from the endpoint's
-    annotations: `from __future__ import annotations` makes those strings, so
-    comparing them against `Workspace` matches nothing and silently reports
-    every route as unscoped.
+# `require_org`'s predicate is `role_policy.policy(name)`; the name says which rung it is.
+_POLICY_ROLES = {
+    "may_read_org": "org_member",
+    "may_run_circuit": "org_staff",
+    "is_org_admin": "org_admin",
+    "is_institution_admin": "institution_admin",
+}
 
-    `require_org` returns a closure, so the marker is its qualified name.
+
+def grant(name: str) -> Callable[[Dependency], Dependency]:
+    """Mark a feature's dependency as enforcing the grant `name` (a `GRANTS` key)."""
+    if name not in GRANTS:
+        raise RuntimeError(f"unknown grant {name!r}; add it to GRANTS")
+
+    def mark(dependency: Dependency) -> Dependency:
+        """Record the dependency so the routes using it are documented as needing the grant."""
+        _GRANT_DEPENDENCIES[dependency] = name
+        return dependency
+
+    return mark
+
+
+def _dependency_calls(route: APIRoute) -> list[Any]:
+    """Every callable in the route's resolved dependency graph, nested ones included.
+
+    Read from the graph, not from the endpoint's annotations: `from __future__
+    import annotations` makes those strings.
     """
     seen = []
     stack = list(route.dependant.dependencies)
     while stack:
         dep = stack.pop()
-        call = getattr(dep, "call", None)
-        if call is not None:
-            seen.append(getattr(call, "__qualname__", ""))
-        stack.extend(getattr(dep, "dependencies", ()))
-    return any(name.startswith("require_org.") for name in seen)
+        if dep.call is not None:
+            seen.append(dep.call)
+        stack.extend(dep.dependencies)
+    return seen
+
+
+def _is_require_org(call: Any) -> bool:
+    """Whether this dependency is one `require_org(...)` built."""
+    from app.core.tenancy import OrgGate  # avoids an import cycle
+
+    return isinstance(call, OrgGate)
+
+
+def _org_rung(gate: Any) -> str:
+    """The rung a `require_org(...)` dependency stands for, read from its policy's name.
+
+    Raises rather than guessing: a policy this does not know is a route whose
+    role nobody can state, and the route guard should say so.
+    """
+    name = gate.predicate.name
+    if name not in _POLICY_ROLES:
+        raise RuntimeError(f"require_org with an unknown policy {name!r}; add it to _POLICY_ROLES")
+    return _POLICY_ROLES[name]
+
+
+def _derived_role(route: APIRoute) -> str | None:
+    """The minimum role the route's own dependencies enforce, or None when none do."""
+    from app.core.auth import get_principal, require_worker_secret  # avoids an import cycle
+    from app.core.streams import get_stream_principal
+    from app.core.tenancy import require_platform_admin
+
+    rungs: list[str] = []
+    for call in _dependency_calls(route):
+        if call is require_worker_secret:
+            return WORKER
+        if call in _GRANT_DEPENDENCIES:
+            return _GRANT_DEPENDENCIES[call]
+        if call is require_platform_admin:
+            rungs.append("platform_admin")
+        elif _is_require_org(call):
+            rungs.append(_org_rung(call))
+        elif call is get_principal or call is get_stream_principal:
+            rungs.append("signed_in")
+    return max(rungs, key=ROLE_LADDER.index) if rungs else None
+
+
+def minimum_role(route: APIRoute) -> str | None:
+    """The lowest role this route admits: a `ROLE_LADDER` rung, a grant, `WORKER`, or None.
+
+    A stream cannot take `require_org` (it would hold the request's transaction
+    open for the life of the connection) and checks the role in its handler, so
+    it states the rung in `openapi_extra={"x-capability": ...}`. A statement may
+    only raise what the dependencies enforce, never lower it, and
+    `tests/http/test_route_roles.py` calls it to prove it true.
+    """
+    derived = _derived_role(route)
+    stated = (route.openapi_extra or {}).get(CAPABILITY_KEY)
+    if stated is None or stated == (derived or PUBLIC):
+        return derived
+    if stated not in ROLE_LADDER or derived not in ROLE_LADDER:
+        raise RuntimeError(f"{route.path}: x-capability {stated!r} cannot stand in for {derived!r}")
+    if ROLE_LADDER.index(stated) < ROLE_LADDER.index(derived):
+        raise RuntimeError(f"{route.path}: x-capability {stated!r} is below what it enforces, {derived!r}")
+    return str(stated)
+
+
+def admits_platform_admin(route: APIRoute) -> bool:
+    """Whether a platform admin outside the organisation passes this route's role check.
+
+    True on `platform_admin`; on an org rung, when every `require_org` it uses allows it
+    (a stream that resolves its own workspace uses `resolve_workspace`'s default, which does).
+    """
+    role = minimum_role(route)
+    if role == "platform_admin":
+        return True
+    if role not in ROLE_LADDER[1:]:
+        return False
+    return all(call.allow_platform_admin for call in _dependency_calls(route) if _is_require_org(call))
+
+
+def _authenticates(route: APIRoute) -> bool:
+    """Whether a missing, bad or dead credential is refused with 401 on this route."""
+    from app.core.auth import get_principal, get_principal_if_present, require_worker_secret
+    from app.core.streams import get_stream_principal
+
+    gates = {get_principal, get_principal_if_present, get_stream_principal, require_worker_secret}
+    return any(call in gates for call in _dependency_calls(route))
+
+
+def _declare(route: APIRoute, error: type[Any], *extra_codes: str) -> None:
+    """Add one error's code (and any it implies) to the route's `responses`, once."""
+    from app.core.errors import ErrorResponse  # avoids an import cycle
+
+    entry = route.responses.setdefault(error.status, {"model": ErrorResponse, "description": ""})
+    codes = entry.setdefault("x-codes", [])
+    for code in (error.code, *extra_codes):
+        if code not in codes:
+            codes.append(code)
+    entry["description"] = ", ".join(codes)
 
 
 def document_shared_auth_errors(app: FastAPI) -> None:
-    """Declare the codes that shared auth dependencies raise, on the routes that use them.
+    """Declare what the shared auth dependencies raise, and each route's minimum role.
 
-    `organization_suspended` comes from `require_org`, not from any slice's
-    service, so no route lists it in its own `error_responses(...)`. Derived
-    from the dependency each route actually uses, so a new org route is
-    covered the day it is written rather than needing fifty routes updated
-    by hand.
+    `unauthenticated`, `forbidden` and `organization_suspended` come from
+    `get_principal`, the role dependencies and `require_org`, not from any
+    slice's service, so a route's own `error_responses(...)` cannot be trusted
+    to list them (org routers once answered 401 and declared only 403).
+    Derived from the dependency each route actually uses, so a new route is
+    covered the day it is written.
 
-    Written onto `route.responses`, not the finished document, so it and
-    `tests/support/declared_codes.py` — which reads the route — agree.
+    Written onto `route.responses` and `route.openapi_extra`, not the finished
+    document, so the document, `tests/support/declared_codes.py` and the route
+    guards all read the same thing.
     """
-    from app.core.errors import ErrorResponse  # avoids an import cycle
+    from app.core.errors import ACCOUNT_DEACTIVATED_CODE, Forbidden, Unauthenticated  # avoids an import cycle
 
     for route in app.routes:
-        if not isinstance(route, APIRoute) or not _org_scoped(route):
+        if not isinstance(route, APIRoute):
             continue
-        entry = route.responses.setdefault(403, {"model": ErrorResponse, "description": ""})
-        codes = entry.setdefault("x-codes", [])
-        if ORG_SUSPENDED not in codes:
-            codes.append(ORG_SUSPENDED)
-            entry["description"] = ", ".join(codes)
+        role = minimum_role(route)
+        route.openapi_extra = {**(route.openapi_extra or {}), CAPABILITY_KEY: role or PUBLIC}
+        if role in ROLE_LADDER[1:-1]:
+            route.openapi_extra[PLATFORM_ADMIN_KEY] = admits_platform_admin(route)
+        if _authenticates(route):
+            _declare(route, Unauthenticated, ACCOUNT_DEACTIVATED_CODE)
+        if role in ROLE_LADDER and role != "signed_in":
+            _declare(route, Forbidden)
+        # A stream on an org rung resolves its own workspace (`resolve_workspace`), which refuses a
+        # suspended organisation like `require_org` does.
+        org_stream = role in ROLE_LADDER[1:-1] and "{org_slug}" in route.path
+        if org_stream or any(_is_require_org(call) for call in _dependency_calls(route)):
+            _declare(route, Forbidden, ORG_SUSPENDED)
 
 
 def install_error_catalogue(app: FastAPI) -> None:

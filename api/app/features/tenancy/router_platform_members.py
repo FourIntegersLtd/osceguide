@@ -18,8 +18,10 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
+from app.core.rate_limit import OUTBOUND_RESEND, TooManyRequests, per_user
 from app.core.tenancy import OrgReader, PlatformAdmin
 from app.features.tenancy import errors, schemas, service_memberships
+from app.features.tenancy.schemas import InvitationRead
 
 router = APIRouter(tags=["tenancy"])
 
@@ -128,4 +130,22 @@ async def restore_membership_for_support(
     """The administrator who locked themselves out, let back in."""
     return await service_memberships.set_membership_revoked(
         session, workspace.org_id, membership_id, revoked=False, actor=admin, now=clock.now()
+    )
+
+
+@router.post(
+    "/platform/organizations/{org_slug}/memberships/{membership_id}/resend-invitation",
+    response_model=InvitationRead,
+    responses=error_responses(
+        TooManyRequests, Forbidden, errors.OrgNotFound, errors.MembershipNotFound, errors.InvitationNotPending
+    ),
+    dependencies=[Depends(per_user(OUTBOUND_RESEND))],
+)
+async def resend_membership_invitation_for_support(
+    membership_id: uuid.UUID, workspace: OrgReader, _admin: PlatformAdmin, session: Session, clock: ClockDep
+) -> InvitationRead:
+    """The invitation that expired or went to spam, sent again as a new token. Returns 409
+    `invitation_not_pending` once the person has chosen a password."""
+    return await service_memberships.resend_invitation(
+        session, workspace.org_id, membership_id, now=clock.now()
     )

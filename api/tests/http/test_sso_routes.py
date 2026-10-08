@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
+from tests.support.sso import a_config
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -24,20 +25,6 @@ async def an_org(client: AsyncClient, root: str, slug: str) -> dict:
     )
     assert created.status_code == 201, created.text
     return created.json()
-
-
-def a_config(**over: object) -> dict:
-    body: dict = {
-        "provider": "clerk",
-        "issuer": "https://accounts.bmj.com",
-        "enabled": True,
-        "sso_only": True,
-        "sign_in_label": "Sign in with BMJ",
-        "hosts": ["https://BMJ.osceguide.com/"],
-        "email_domains": ["someone@bmj.com"],
-    }
-    body.update(over)
-    return body
 
 
 async def test_a_partner_host_is_a_server_side_fact(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

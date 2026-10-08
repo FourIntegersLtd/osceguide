@@ -1,7 +1,11 @@
 # Ship features without breaking the rest
 
-Status: proposal, 2026-10-08, revised after a deep dive (coupling map, bug history,
-arm map, coverage). Start once the night runner has finished and pushed. Nothing in
+Status: implemented 2026-10-08, uncommitted. Still to do by hand: restore the stashed
+hook, settings and e2e support files; add the web `check:*` scripts to `package.json` and
+`ci`; create the Sentry alerts (`docs/OPERATIONS.md`); add the staging GitHub secrets.
+Open: B-36 (bulk actions with no screen); the live stream's refusal of staff of a suspended
+org awaits a decision. Written as a proposal after a deep dive (coupling map, bug history,
+arm map, coverage). Nothing in
 Parts 1-3 needs a new dependency or a database change; the two items that would are
 marked "ask first".
 

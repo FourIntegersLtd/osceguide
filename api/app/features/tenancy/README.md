@@ -108,6 +108,15 @@ organisation whose `contract_ends_at` has passed and writes an
 the end date plus `restore`. Contract dates were recorded and enforced by
 nothing before this.
 
+The lapse also bites before the sweep runs: `service.org_active` (status *and*
+contract date, `domain.org_active`) is the one org check every gate composes —
+`resolve_workspace` through `OrgRef.active`, `ensure_org_active`, the S-15
+entitlement filter through `OrgSummary.active`, partner admin and workspace
+switch. `membership_active` is the separate per-frame check a stream makes; it
+does not look at the org, so a suspension leaves a running circuit's console
+open (S-29). `tests/guards/test_lifecycle_matrix.py` holds every state x
+operation answer.
+
 The invitation email is queued through `identity.service_invitations`, in the
 transaction that creates the membership.
 

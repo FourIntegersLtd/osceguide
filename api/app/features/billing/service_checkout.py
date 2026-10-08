@@ -15,6 +15,7 @@ from app.core.logging import get_logger
 from app.core.ports import CheckoutSessions, CheckoutUnavailable
 from app.core.settings import Settings, SettingsDep
 from app.features.billing import domain, errors, repository
+from app.features.catalog import service as catalog
 from app.features.entitlements import service as entitlements
 from app.features.entitlements import service_access
 from app.features.growth import service as growth
@@ -70,6 +71,9 @@ async def start_checkout(
     # A discounted plan is reached only through a code. Naming it directly
     # would be 10% off for anyone who read the plan list.
     if plan is None or domain.is_referral_plan(plan.code):
+        raise errors.PlanNotAvailable()
+    # A retired exam's library is closed, so its plan buys nothing.
+    if plan.exam_code not in await catalog.exam_codes(session):
         raise errors.PlanNotAvailable()
 
     access = await service_access.exam_access_for(session, user_id, now=now)

@@ -30,14 +30,10 @@ from app.features.identity import repository as identity_repo
 from app.features.sittings import repository as sittings_repo
 from app.features.tenancy import repository as tenancy_repo
 from app.features.voice.service import get_room_agents
-from tests.http.test_sittings_routes import (
-    a_template_version,
-    a_trainee,
-    published_station,
-)
+from tests.http.test_sittings_routes import a_template_version
 from tests.support.decisions import settle_decision
 from tests.support.fakes import FakeRoomAgents
-from tests.support.sittings import org_with_admin
+from tests.support.sittings import a_trainee, org_with_admin, published_station
 from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db

@@ -144,9 +144,30 @@ jobs:
           echo "### Promoting \`${COMMIT_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "On main, CI green, served by ${STAGING_SITE_URL}, sign-in page loads." >> "$GITHUB_STEP_SUMMARY"
 
+  # Staging smoke and journeys against the commit staging serves, before anything
+  # moves. Read-only, and skipped with a notice when the secrets are absent.
+  staging-journeys:
+    name: staging smoke and journeys
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the commit being promoted
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.check.outputs.commit_sha }}
+
+      - uses: ./.github/actions/staging-checks
+        with:
+          api-url: ${{ vars.STAGING_API_URL }}
+          web-url: ${{ env.STAGING_SITE_URL }}
+          secrets: ${{ toJSON(secrets) }}
+
   deploy:
     name: deploy
-    needs: check
+    needs: [check, staging-journeys]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production-web

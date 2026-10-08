@@ -64,6 +64,8 @@ async def list_live_history(
 @router.get(
     "/orgs/{org_slug}/live/stream",
     responses=sse_responses(schemas_live.LiveBoard, Forbidden),
+    # Checked in the handler (a stream cannot take `require_org`), so stated here.
+    openapi_extra={"x-capability": "org_staff"},
     response_class=StreamingResponse,
 )
 async def stream_live_board(
@@ -79,7 +81,9 @@ async def stream_live_board(
     from `phase_ends_at` between them rather than being told the time.
     """
     async with open_session() as session:
-        workspace = await resolve_workspace(session, principal, org_slug, predicate=may_run_circuit_policy())
+        workspace = await resolve_workspace(
+            session, principal, org_slug, predicate=may_run_circuit_policy(), now=clock.now()
+        )
     return StreamingResponse(
         service_streams.live_board_stream(
             workspace.org_id, principal, bus=bus, open_session=open_session, clock=clock

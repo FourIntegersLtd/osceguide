@@ -8,11 +8,11 @@ import { useCursorPages, useSearchQuery } from "@/foundation/hooks";
 import { formatLongDateTime } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
 import {
-  kindLabel,
   listTranscribableAttempts,
   TRANSCRIPT_PAGE_LIMIT,
   type RecentAttempt,
 } from "@/capabilities/transcripts/api";
+import { attemptKindLabel } from "@/capabilities/transcripts/kindLabel";
 
 type TranscriptRow = RecentAttempt;
 
@@ -90,7 +90,7 @@ function TranscriptTable({ attempts, more }: { attempts: RecentAttempt[]; more: 
         priority: "primary" as const,
         render: (attempt: TranscriptRow) => (
           <span className={b2cTableCellText}>
-            {attempt.exam_code.toUpperCase()} · {kindLabel(attempt.kind)}
+            {attempt.exam_code.toUpperCase()} · {attemptKindLabel(attempt.kind)}
           </span>
         ),
       },

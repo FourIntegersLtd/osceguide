@@ -15,7 +15,7 @@ from app.core.tenancy import OrgSuspended
 from app.features.tenancy import domain, repository
 from app.features.tenancy.errors import NotAMember, OrgNotFound
 from app.features.tenancy.schemas import Capabilities, WorkspaceToken
-from app.features.tenancy.service import memberships_for_token
+from app.features.tenancy.service import memberships_for_token, org_active
 
 
 async def switch_workspace(
@@ -72,7 +72,7 @@ async def switch_workspace(
     org = await repository.organization_by_slug(session, target.slug)
     if org is None:
         raise OrgNotFound()
-    if not domain.org_permits_access(org.status) and not principal.is_platform_admin:
+    if not org_active(org, now=now) and not principal.is_platform_admin:
         raise OrgSuspended()
 
     switched = Principal(

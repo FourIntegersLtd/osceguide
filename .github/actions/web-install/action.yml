@@ -1,0 +1,15 @@
+name: Install web dependencies
+description: Node 22 with the npm cache, then `npm ci` in web/. Needs the repository checked out first.
+runs:
+  using: composite
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@v5
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: web/package-lock.json
+    - name: Install dependencies
+      shell: bash
+      working-directory: web
+      run: npm ci

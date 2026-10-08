@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.billing import repository as billing_repo
 from app.features.billing import service_platform_actions
 from app.features.identity import repository as identity_repo
-from tests.http.test_billing_routes import a_customer, a_plan, checkout_event, post_event
+from tests.http.test_billing_routes import a_customer, checkout_event, post_event
+from tests.support.billing import a_plan
 from tests.support.fakes import FakeCheckoutSessions
 from tests.support.tokens import bearer
 

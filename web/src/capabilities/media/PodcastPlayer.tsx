@@ -1,5 +1,6 @@
 "use client";
 
+import { PODCAST_LENGTH_LABEL } from "@/capabilities/media/limits";
 import { useEffect, useRef, useState } from "react";
 import {
   HiOutlineChevronDown,
@@ -67,7 +68,7 @@ export function PodcastPlayer({
   const canGoPrevious = index > 0;
   const byline = `with Ben & Michelle${
     hasPlaylist ? ` · Episode ${index + 1} of ${episodes.length}` : ""
-  } · 7 to 10 min`;
+  } · ${PODCAST_LENGTH_LABEL}`;
 
   /**
    * The old player reloaded the element behind a 100ms `setTimeout`, which is
@@ -213,7 +214,7 @@ export function PodcastPlayer({
                           {episode.title}
                         </span>
                         <span className="mt-0.5 block text-osce-meta text-b2c-text-muted">
-                          7 to 10 min · with Ben &amp; Michelle
+                          {PODCAST_LENGTH_LABEL} · with Ben &amp; Michelle
                         </span>
                       </span>
                       {position === index ? (

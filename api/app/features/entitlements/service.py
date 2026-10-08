@@ -46,7 +46,7 @@ async def decide(
     handle a "no" itself rather than catch `NotEntitled`.
     """
     entitlements = await repository.for_user_and_exam(session, user_id, exam_id)
-    held = await held_by_suspended_org(session, entitlements)
+    held = await held_by_inactive_org(session, entitlements, now=now)
     return domain.decide(
         [_to_grant(entitlement) for entitlement in entitlements if entitlement.id not in held],
         now=now,
@@ -54,21 +54,16 @@ async def decide(
     )
 
 
-async def held_by_suspended_org(
-    session: AsyncSession, entitlements: Collection[Entitlement]
+async def held_by_inactive_org(
+    session: AsyncSession, entitlements: Collection[Entitlement], *, now: datetime
 ) -> set[uuid.UUID]:
-    """Ids of grants an organisation made while its own access is suspended (S-15): they open nothing."""
-    org_ids = {entitlement.org_id for entitlement in entitlements if entitlement.org_id is not None}
-    if not org_ids:
-        return set()
-    orgs = await tenancy.org_refs_by_ids(session, org_ids)
-    return {
-        entitlement.id
-        for entitlement in entitlements
-        if entitlement.org_id is not None
-        and entitlement.org_id in orgs
-        and not tenancy.org_permits_access(orgs[entitlement.org_id].status)
-    }
+    """Ids of grants from an organisation that is suspended or past its contract (S-15): they open nothing."""
+    inactive = await tenancy.inactive_org_ids(
+        session,
+        {entitlement.org_id for entitlement in entitlements if entitlement.org_id is not None},
+        now=now,
+    )
+    return {entitlement.id for entitlement in entitlements if entitlement.org_id in inactive}
 
 
 async def require(
@@ -200,7 +195,7 @@ async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datet
     """
     reads = []
     entitlements = await repository.for_user(session, user_id)
-    held = await held_by_suspended_org(session, entitlements)
+    held = await held_by_inactive_org(session, entitlements, now=now)
     for entitlement in entitlements:
         code = await catalog.exam_code_by_id(session, entitlement.exam_id)
         read = _read(entitlement, code or "", now=now)

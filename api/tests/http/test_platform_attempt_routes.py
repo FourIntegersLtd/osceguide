@@ -356,7 +356,8 @@ async def test_an_exam_slot_attempt_names_its_sitting_and_a_practice_one_does_no
     from app.features.attempts.models import Attempt
     from app.features.catalog.models import Exam
     from app.features.sittings.models import Slot
-    from tests.http.test_results_routes import a_sitting_and_trainee, org_with_admin
+    from tests.http.test_results_routes import org_with_admin
+    from tests.support.decisions import a_sitting_and_trainee
 
     root = await make_actor("root@osceguide.com", platform_admin=True)
     org_id, _ = await org_with_admin(client, make_actor)

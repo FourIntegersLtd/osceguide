@@ -268,7 +268,7 @@ async def _practice_reads(
     """Shape grants for a route, looking the people and exams up once for the whole list."""
     people = await identity.user_refs_by_ids(session, [grant.user_id for grant in grants])
     exams = await catalog.exam_refs_by_ids(session, list({grant.exam_id for grant in grants}))
-    held = await service.held_by_suspended_org(session, grants)
+    held = await service.held_by_inactive_org(session, grants, now=now)
     reads = []
     for grant in grants:
         person = people.get(grant.user_id)

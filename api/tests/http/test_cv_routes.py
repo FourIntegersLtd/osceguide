@@ -18,6 +18,7 @@ from httpx import AsyncClient
 from app.core.document_text import extract_pdf_text
 from app.core.settings import get_settings
 from app.features.cv import domain, repository, service
+from tests.support.documents import a_pdf
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -34,41 +35,15 @@ _BODY = (
 ) * 4
 
 
-def _pdf(text: str) -> bytes:
-    """A minimal one-page PDF carrying `text`, with a correct xref table."""
-    safe = text.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
-    stream = f"BT /F1 12 Tf 72 720 Td ({safe}) Tj ET".encode("latin-1", "replace")
-    objects = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
-        b"/Resources << /Font << /F1 5 0 R >> >> >>",
-        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    ]
-    out = bytearray(b"%PDF-1.4\n")
-    offsets: list[int] = []
-    for i, obj in enumerate(objects, start=1):
-        offsets.append(len(out))
-        out += f"{i} 0 obj\n".encode() + obj + b"\nendobj\n"
-    xref_pos = len(out)
-    out += f"xref\n0 {len(objects) + 1}\n".encode()
-    out += b"0000000000 65535 f \n"
-    for off in offsets:
-        out += f"{off:010d} 00000 n \n".encode()
-    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF".encode()
-    return bytes(out)
-
-
 def _upload(client: AsyncClient, token: str, *, filename: str = "My CV.pdf", content: bytes | None = None):  # type: ignore[no-untyped-def]
-    files = {"file": (filename, content if content is not None else _pdf(_BODY), "application/pdf")}
+    files = {"file": (filename, content if content is not None else a_pdf(_BODY), "application/pdf")}
     return client.post(CV, files=files, headers=bearer(token))
 
 
-async def test_pypdf_reads_the_text_back_out_of_the_built_pdf() -> None:
+async def test_pypdf_reads_the_text_back_out_of_the_builta_pdf() -> None:
     """A guard on the fixture itself: if this PDF stops parsing, every test below is meaningless."""
-    assert len(_pdf(_BODY)) > domain.MIN_BYTES
-    assert len(extract_pdf_text(_pdf(_BODY))) >= domain.MIN_TEXT_CHARS
+    assert len(a_pdf(_BODY)) > domain.MIN_BYTES
+    assert len(extract_pdf_text(a_pdf(_BODY))) >= domain.MIN_TEXT_CHARS
 
 
 async def test_uploading_a_cv_creates_a_processing_row(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
@@ -97,7 +72,7 @@ async def test_a_file_that_is_not_a_pdf_is_refused(client: AsyncClient, make_act
 async def test_a_pdf_with_nothing_to_read_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     token = await make_actor("doctor@example.com")
 
-    refused = await _upload(client, token, content=_pdf("hi"))
+    refused = await _upload(client, token, content=a_pdf("hi"))
     assert refused.status_code == 422, refused.text
     assert refused.json()["code"] == "invalid_cv_file"
 

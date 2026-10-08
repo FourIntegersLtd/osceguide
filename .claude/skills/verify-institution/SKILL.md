@@ -13,7 +13,7 @@ command and its output.
 | A backend rule or route (roster, tenancy, decisions, circuit edit) | Level 1 |
 | A permission, a role, anything tenant-scoped | Level 1 + `tests/security` |
 | A screen under `domains/assess` or `domains/platform` | Level 1 if the backend changed, then Level 2 |
-| Circuit clock, overrides, running a circuit | Level 1 + Level 2 + the circuit flow in `verify-voice-station` |
+| Circuit clock, overrides, running a circuit | Level 1 + Level 2 + the circuit flow in `verify-attempt-engine` |
 | A response schema | Level 1, regenerate types, then Level 2 |
 
 ## Level 1 — backend tests (~4 min, needs the docker services)

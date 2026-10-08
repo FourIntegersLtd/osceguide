@@ -16,10 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.voice.service import get_room_agents
 from tests.http.test_roster_edit_routes import add_trainee
 from tests.http.test_sitting_edit_routes import a_circuit, a_sitting
-from tests.http.test_sittings_routes import a_trainee, published_station
 from tests.support.fakes import FakeRoomAgents
 from tests.support.rubrics import MINIMAL_RUBRIC, PACING, SYSTEM_PROMPT, create_rubric
-from tests.support.sittings import org_with_admin
+from tests.support.sittings import a_trainee, org_with_admin, published_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

@@ -523,7 +523,7 @@ The test fails if anyone reintroduces an exam-code branch that this path needs.
   - out-of-scope touch: `dashboard/performance.py` now reads domains via
     `rubrics.service.domain_titles` (upgrade on read), else a republished v2 rubric empties it.
 
-**Stage 2: Marking and scoring** (engine + platform-api; owners: marking-owner, voice-station-owner for
+**Stage 2: Marking and scoring** (engine + platform-api; owners: marking-owner, attempt-engine-owner for
 debrief/tutor, institution-owner for the institution dashboards) **[x] Backend done 2026-09-30** (uncommitted)
 - Tasks:
   - `framework_payload` sends the rating;
@@ -569,7 +569,7 @@ debrief/tutor, institution-owner for the institution dashboards) **[x] Backend d
   - found by the e2e: `tests/conftest.py` blanked `OPENAI_API_KEY` at import, so the e2e always skipped;
     the key is kept aside and restored only by the e2e fixture. The e2e takes `PLATFORM_E2E_EXAM_CODE`.
 
-**Stage 3: Candidate feedback and dashboards** (platform-web; owner: platform-web-owner)
+**Stage 3: Candidate feedback and dashboards** (platform-web; owner: web-foundation-owner)
 - Tasks:
   - the attempt read serves rubric + display, then regenerate the types;
   - `RubricFeedback`, the dashboard rewiring and the examiner forms;
@@ -582,7 +582,7 @@ debrief/tutor, institution-owner for the institution dashboards) **[x] Backend d
   dashboard sit side by side with b2c for the same legacy attempt, and so do an institution sitting
   report and a GP-lead review.
 - Then `--env production`.
-- **[x] Frontend done 2026-09-30** (uncommitted; platform-web-owner). Local only: staging and production
+- **[x] Frontend done 2026-09-30** (uncommitted; web-foundation-owner). Local only: staging and production
   republish are still owed. `npm run ci` is green (394 tests). The local `--republish` was a no-op because
   the four rubrics already matched the seed. The browser run used the `verify` skill against the local
   platform-api, with evidence in `platform-web/.verify/2026-09-30T12-36-52-275Z-rubric-stage3` and

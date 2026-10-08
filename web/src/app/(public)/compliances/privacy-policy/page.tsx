@@ -1,4 +1,5 @@
 import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
+import { ACCOUNT_REOPEN_DAYS } from "@/foundation/config/copyNumbers";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/foundation/config/siteUrl";
 
@@ -422,19 +423,19 @@ export default function PrivacyPolicy() {
               <tbody className="bg-white divide-y divide-osce-border">
                 <tr>
                   <td className="px-6 py-4">Account Data</td>
-                  <td className="px-6 py-4">Duration of account + 30 days</td>
+                  <td className="px-6 py-4">Duration of account + {ACCOUNT_REOPEN_DAYS} days</td>
                   <td className="px-6 py-4">Service provision</td>
                 </tr>
                 <tr>
                   <td className="px-6 py-4">Transcripts</td>
-                  <td className="px-6 py-4">Duration of account + 30 days</td>
+                  <td className="px-6 py-4">Duration of account + {ACCOUNT_REOPEN_DAYS} days</td>
                   <td className="px-6 py-4">
                     Performance review and educational analysis
                   </td>
                 </tr>
                 <tr>
                   <td className="px-6 py-4">Feedback</td>
-                  <td className="px-6 py-4">Duration of account + 30 days</td>
+                  <td className="px-6 py-4">Duration of account + {ACCOUNT_REOPEN_DAYS} days</td>
                   <td className="px-6 py-4">
                     Progress tracking and personalized improvements
                   </td>
@@ -466,7 +467,7 @@ export default function PrivacyPolicy() {
               <p className="text-osce-ink-700 leading-relaxed">
                 You can close your account at any time from Settings. Closing
                 stops sign-in immediately; your name, email, transcripts and
-                AI-generated feedback are then erased automatically 30 days
+                AI-generated feedback are then erased automatically {ACCOUNT_REOPEN_DAYS} days
                 later, giving you a window to change your mind. A peer
                 practice recording is shared with the other person in it, so
                 it is deleted once both of you are erased, or immediately if

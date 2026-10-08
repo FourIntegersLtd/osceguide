@@ -70,7 +70,7 @@ stays green. A deploy does not republish; after one, staging needs the
    `OPENAI_API_KEY` set.
    Start both with `WORKER_SECRET` exported (the e2e must send the same one).
 3. Produce a finished attempt on the exam you changed — the voice e2e run
-   (`verify-voice-station`, Level 2) makes one end to end. For every exam, run
+   (`verify-attempt-engine`, Level 2) makes one end to end. For every exam, run
    it once per exam with `PLATFORM_E2E_EXAM_CODE` and that exam's published
    platform station (content with `patient_information`, or the render is
    degraded and nothing is marked). A new user's free trial allows one attempt

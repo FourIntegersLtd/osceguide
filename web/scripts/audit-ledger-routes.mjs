@@ -1,10 +1,9 @@
 // Is the ledger's map of the API still the API's map?
 //
-// `docs/BACKLOG.md` names a lot of routes. When
-// a row says a route is served, or cites one as the shape a screen waits for,
-// the reader cannot tell which is which without opening openapi.json — and the
-// failure this exists to stop is a ledger that quietly
-// understates (or overstates) what the backend already does.
+// `docs/BACKLOG.md` names a lot of routes. When a row says a route is served, or cites one as
+// the shape a screen waits for, the reader cannot tell which is which without opening
+// openapi.json — and the failure this exists to stop is a ledger that quietly understates (or
+// overstates) what the backend already does.
 //
 // So: every `METHOD /path` in that file must either exist in
 // openapi.json or be framed, in its own sentence, as absent/future. A route
@@ -22,16 +21,10 @@
 // Usage: node scripts/audit-ledger-routes.mjs
 
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
+import { normPath, root, spec } from "./lib-src.mjs";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const root = resolve(here, "..");
-const OPENAPI = resolve(root, "../api/openapi.json");
 const DOCS = ["docs/BACKLOG.md"];
-
-// A path parameterised differently ("{id}" vs "{user_id}") is the same route.
-const norm = (p) => p.replace(/\{[^}]+\}/g, "{}");
 
 // Markdown code spans are written `GET /path` and often broken across lines, so
 // a space OR a newline may sit between the verb and the path.
@@ -43,10 +36,9 @@ const ABSENT =
   /\b(would|will|need|no|not|none|never|absent|missing|open|future|until then|may call|either|cannot|can't|smallest fix|obvious shape|has no caller|nothing calls|not ported|not served|gone)\b/i;
 
 function loadServed() {
-  const spec = JSON.parse(readFileSync(OPENAPI, "utf8"));
   const set = new Set();
-  for (const path of Object.keys(spec.paths)) {
-    const n = norm(path);
+  for (const path of Object.keys(spec().paths)) {
+    const n = normPath(path);
     set.add(n);
     // The docs abbreviate by dropping the workspace prefix.
     const tail = n.replace(/^\/api\/v1/, "");
@@ -82,7 +74,7 @@ for (const doc of DOCS) {
     for (const [, method, raw] of sentence.matchAll(ROUTE)) {
       checked += 1;
       if (raw.startsWith("/api/") && !raw.startsWith("/api/v1")) continue; // legacy
-      const target = norm(raw);
+      const target = normPath(raw);
       if (target === "/api/v1/" || target === "/api/v1/{}" || target === "/api/v1") continue;
       if (matches(target, served)) continue;
       if (ABSENT.test(sentence)) continue;

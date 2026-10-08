@@ -19,9 +19,8 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tests.http.test_org_read_models import a_circuit, a_sitting, a_user
-from tests.http.test_sittings_routes import published_station
-from tests.support.sittings import org_with_admin
+from tests.http.test_org_read_models import a_circuit, a_user
+from tests.support.sittings import a_sitting, org_with_admin, published_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

@@ -145,12 +145,12 @@ def test_switching_to_a_blank_slug_is_refused() -> None:
 
 @pytest.mark.parametrize("status", ["trial", "active"])
 def test_only_trial_and_active_organisations_permit_access(status: str) -> None:
-    assert domain.org_permits_access(status)
+    assert domain.org_active(status, None, now=datetime(2026, 1, 1, tzinfo=UTC))
 
 
 @pytest.mark.parametrize("status", ["inactive", "suspended", "churned", "", None])
 def test_every_other_organisation_status_refuses_access(status: str | None) -> None:
-    assert not domain.org_permits_access(status)
+    assert not domain.org_active(status, None, now=datetime(2026, 1, 1, tzinfo=UTC))
 
 
 def day(d: int, *, tz: bool = True) -> datetime:

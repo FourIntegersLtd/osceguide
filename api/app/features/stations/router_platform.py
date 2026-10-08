@@ -262,6 +262,8 @@ async def read_library_station(
 @router.get(
     "/stations/{station_id}/versions",
     response_model=list[schemas.StationVersionRead],
+    # Checked in the service (the owning org is read off the station), so stated here.
+    openapi_extra={"x-capability": "org_admin"},
     responses=error_responses(Unauthenticated, Forbidden, errors.StationNotFound),
 )
 async def station_version_history(

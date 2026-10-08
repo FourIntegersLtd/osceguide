@@ -16,7 +16,7 @@ from app.core.account_status import bind_account_status
 from app.core.audience import bind_viewer_audiences
 from app.core.auth import bind_password_gate
 from app.core.memberships import bind_membership_lookup
-from app.core.role_policy import bind_org_access_policy, bind_role_policy
+from app.core.role_policy import bind_role_policy
 from app.core.tenancy import bind_org_lookup
 from app.features.identity.service import account_status, may_call_with_temporary_password
 from app.features.roster.service import audiences_for_viewer
@@ -26,8 +26,7 @@ from app.features.tenancy.service import (
     may_read_org,
     may_run_circuit,
     memberships_for_token,
-    org_permits_access,
-    org_ref_by_slug,
+    workspace_org,
 )
 
 
@@ -42,8 +41,7 @@ def bind_seams() -> None:
     # A deactivated account is refused on its next request, not its next
     # refresh. `identity` owns the status; the enforcement point is core's.
     bind_account_status(account_status)
-    bind_org_lookup(org_ref_by_slug)
-    bind_org_access_policy(org_permits_access)
+    bind_org_lookup(workspace_org)
     # Who can see an institution's or a group's posts. `community`,
     # `marketplace` and `peer_practice` ask through core's audience filter;
     # `roster` and `tenancy` know.

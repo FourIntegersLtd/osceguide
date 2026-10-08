@@ -1,9 +1,9 @@
 ---
-name: verify-voice-station
-description: How to prove a change to the live voice station works — assessment-platform workers and platform-api's voice, circuit and bootstrap code. Use before calling any voice change done. Lists which level of proof each kind of change needs, and the traps that make a working change look broken.
+name: verify-attempt-engine
+description: How to prove a change to the attempt engine works — the assessment workers, the tutor and assistant, and platform-api's voice, attempts and bootstrap code. Use before calling any voice change done. Lists which level of proof each kind of change needs, and the traps that make a working change look broken.
 ---
 
-# Verify the voice station
+# Verify the attempt engine
 
 Pick the **lowest level that can see your change**, run it, and report the
 command and its output. Green unit tests are not proof for a change that only

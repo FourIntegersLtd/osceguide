@@ -52,6 +52,7 @@ async def my_sittings(
         for slot in await sittings.slots_for_trainee(session, user_id)
         if slot.sitting.org_id not in removed
     ]
+    # No active check on purpose: a suspended org's running circuit stays visible to its trainee (S-17).
     orgs = await tenancy.org_refs_by_ids(session, {slot.sitting.org_id for slot in trainee_slots})
     org_slugs = {org_id: org.slug for org_id, org in orgs.items()}
     if org_slug is not None:

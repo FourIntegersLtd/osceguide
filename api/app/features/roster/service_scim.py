@@ -145,7 +145,7 @@ async def require_scim_org(
     if org is None:
         raise errors.ScimUnauthorized()
     try:
-        await tenancy.ensure_org_active(session, org.id)
+        await tenancy.ensure_org_active(session, org.id, now=clock.now())
     except OrgSuspended as exc:
         raise errors.ScimUnauthorized() from exc
     stored = await repository_scim.live_token_by_hash(session, org.id, _hash(token.strip()))

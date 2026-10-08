@@ -1,5 +1,6 @@
 "use client";
 
+import { PODCAST_LENGTH_LABEL } from "@/capabilities/media/limits";
 import { useEffect, useRef, useState } from "react";
 import { HiOutlineChevronLeft, HiOutlinePause, HiOutlinePlay } from "react-icons/hi2";
 import { Button } from "@/foundation/ui";
@@ -154,7 +155,7 @@ export function EpisodePanel({
         }
       >
         {url
-          ? "7 to 10 min · with Ben & Michelle. AI-generated: some medical terms may be mispronounced."
+          ? `${PODCAST_LENGTH_LABEL} · with Ben & Michelle. AI-generated: some medical terms may be mispronounced.`
           : "This episode has no audio attached yet."}
       </B2CHero>
 

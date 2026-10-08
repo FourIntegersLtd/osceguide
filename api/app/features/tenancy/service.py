@@ -14,6 +14,7 @@ from app.core.auth import Principal
 from app.core.tenancy import OrgRef, OrgSuspended
 from app.features.tenancy import domain, repository
 from app.features.tenancy.errors import OrgNotFound, OrgSlugTaken
+from app.features.tenancy.models import Organization
 from app.features.tenancy.schemas import AuditRead, OrganizationRead
 
 # Re-exported so routers can build their access dependencies without importing
@@ -23,20 +24,43 @@ is_institution_admin = domain.is_institution_admin
 is_assigned_staff = domain.is_assigned_staff
 may_read_org = domain.may_read_org
 may_run_circuit = domain.may_run_circuit
-org_permits_access = domain.org_permits_access
 
 
-async def ensure_org_active(session: AsyncSession, org_id: uuid.UUID) -> None:
-    """Refuse (403 `organization_suspended`) unless the organisation exists and permits access."""
+def org_active(org: Organization, *, now: datetime) -> bool:
+    """Whether this organisation may act at `now` (`domain.org_active`)."""
+    return domain.org_active(org.status, org.contract_ends_at, now=now)
+
+
+async def ensure_org_active(session: AsyncSession, org_id: uuid.UUID, *, now: datetime) -> None:
+    """Refuse (403 `organization_suspended`) unless the organisation exists and may act now."""
     org = await repository.organization_by_id(session, org_id)
-    if org is None or not domain.org_permits_access(org.status):
+    if org is None or not org_active(org, now=now):
         raise OrgSuspended()
 
 
-async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgRef | None:
+async def inactive_org_ids(
+    session: AsyncSession, org_ids: set[uuid.UUID], *, now: datetime
+) -> set[uuid.UUID]:
+    """Which of these organisations may not act at `now`, in one query."""
+    if not org_ids:
+        return set()
+    return {
+        org.id
+        for org in await repository.organizations_by_ids(session, org_ids)
+        if not org_active(org, now=now)
+    }
+
+
+async def workspace_org(session: AsyncSession, slug: str, *, now: datetime) -> OrgRef | None:
+    """What core's `resolve_workspace` needs of an organisation: bound as its org lookup."""
+    org = await repository.organization_by_slug(session, slug)
+    return None if org is None else OrgRef(id=org.id, slug=org.slug, active=org_active(org, now=now))
+
+
+async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgSummary | None:
     """The minimal organisation reference other slices use, by slug."""
     org = await repository.organization_by_slug(session, slug)
-    return None if org is None else OrgRef(id=org.id, slug=org.slug, status=org.status)
+    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name)
 
 
 async def is_partner_org(session: AsyncSession, slug: str) -> bool:
@@ -45,30 +69,29 @@ async def is_partner_org(session: AsyncSession, slug: str) -> bool:
     return org is not None and org.org_type == "partner"
 
 
-async def is_partner_admin(session: AsyncSession, *, user_id: uuid.UUID, partner: str) -> bool:
+async def is_partner_admin(session: AsyncSession, *, user_id: uuid.UUID, partner: str, now: datetime) -> bool:
     """Whether this person is a `partner_admin` of the partner organisation whose slug is `partner`.
 
     Read from the stored rows with the sign-in rule (a live membership, an organisation that
-    permits access), so a revoked admin or a suspended partner loses it before a token expires.
+    may act), so a revoked admin or a suspended partner loses it before a token expires.
     """
     return any(
         org.slug.lower() == partner.lower()
         and org.org_type == "partner"
         and membership.role == "partner_admin"
-        and domain.org_permits_access(org.status)
+        and org_active(org, now=now)
         for membership, org in await repository.live_memberships_with_orgs(session, user_id)
     )
 
 
-async def holds_live_membership(session: AsyncSession, *, user_id: uuid.UUID, org_id: uuid.UUID) -> bool:
-    """Whether this person still has a live membership in an organisation that permits access.
+async def membership_active(session: AsyncSession, *, user_id: uuid.UUID, org_id: uuid.UUID) -> bool:
+    """Whether this person still has a live (unrevoked) membership in this organisation.
 
-    The sign-in rule read from the stored rows, for a stream that outlives the token it opened with.
+    Read from the stored rows, for a stream that outlives the token it opened with. The
+    organisation's own state is `org_active`'s question, asked by whoever opened the stream:
+    a suspension lets a running circuit finish (S-29), so it does not end a console stream.
     """
-    return any(
-        org.id == org_id and domain.org_permits_access(org.status)
-        for _membership, org in await repository.live_memberships_with_orgs(session, user_id)
-    )
+    return org_id in await live_org_ids(session, user_id)
 
 
 async def live_org_ids(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
@@ -95,7 +118,6 @@ class OrgSummary:
     id: uuid.UUID
     slug: str
     name: str
-    status: str
 
 
 async def password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> bool:
@@ -104,15 +126,15 @@ async def password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, ema
 
 
 async def org_ref_by_id(session: AsyncSession, org_id: uuid.UUID) -> OrgSummary | None:
-    """An organisation's name and status, for another slice to display."""
+    """An organisation's name, for another slice to display."""
     org = await repository.organization_by_id(session, org_id)
-    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name, status=org.status)
+    return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name)
 
 
 async def org_refs_by_ids(session: AsyncSession, org_ids: set[uuid.UUID]) -> dict[uuid.UUID, OrgSummary]:
-    """Several organisations' names and statuses, in one query."""
+    """Several organisations' names, in one query."""
     return {
-        org.id: OrgSummary(id=org.id, slug=org.slug, name=org.name, status=org.status)
+        org.id: OrgSummary(id=org.id, slug=org.slug, name=org.name)
         for org in await repository.organizations_by_ids(session, org_ids)
     }
 

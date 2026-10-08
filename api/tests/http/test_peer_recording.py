@@ -15,38 +15,20 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.peer_practice import repository_sessions, service, service_recording
+from app.features.peer_practice import repository_sessions, service_recording
 from app.features.peer_practice.service_lifecycle import advance_phases_if_due
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeRoomRecorder, FakeTranscriber
-from tests.support.library import publish_library_station
-from tests.support.tokens import bearer
+from tests.support.peer_practice import matched_pair, stopped_pair
 
 pytestmark = pytest.mark.db
-
-
-async def _matched(client: AsyncClient, make_actor, db_session: AsyncSession, tag: str):  # type: ignore[no-untyped-def]
-    await publish_library_station(db_session, "sca")
-    a_token = await make_actor(f"{tag}-a@example.com")
-    b_token = await make_actor(f"{tag}-b@example.com")
-    for token in (a_token, b_token):
-        response = await client.post(
-            "/api/v1/peer-practice/queue", json={"exam_code": "sca"}, headers=bearer(token)
-        )
-        assert response.status_code == 201, response.text
-    exam = await ensure_exam(db_session, "sca")
-    assert exam is not None
-    row = await service.match_waiting(db_session, exam.id)
-    assert row is not None
-    await db_session.flush()
-    return row
 
 
 async def test_the_recording_starts_when_the_consultation_does(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     """Not when the pair were matched: preparation is somebody reading alone."""
-    row = await _matched(client, make_actor, db_session, "rec-start")
+    row = await matched_pair(client, make_actor, db_session, "rec-start")
     recorder = FakeRoomRecorder()
 
     await service_recording.start_recording(db_session, row, exam_code="sca", recorder=recorder)
@@ -61,7 +43,7 @@ async def test_a_second_start_cannot_orphan_a_running_recording(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     """Presence is a heartbeat, so this path is walked again and again."""
-    row = await _matched(client, make_actor, db_session, "rec-twice")
+    row = await matched_pair(client, make_actor, db_session, "rec-twice")
     recorder = FakeRoomRecorder()
 
     await service_recording.start_recording(db_session, row, exam_code="sca", recorder=recorder)
@@ -76,7 +58,7 @@ async def test_a_recording_that_cannot_start_does_not_end_the_session(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     """The consultation is worth more than the recording of it."""
-    row = await _matched(client, make_actor, db_session, "rec-fail")
+    row = await matched_pair(client, make_actor, db_session, "rec-fail")
 
     await service_recording.start_recording(
         db_session, row, exam_code="sca", recorder=FakeRoomRecorder(fail_start=True)
@@ -91,7 +73,7 @@ async def test_a_recording_that_cannot_start_does_not_end_the_session(
 async def test_the_phase_machine_stops_the_recording_when_the_consultation_ends(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    row = await _matched(client, make_actor, db_session, "rec-phase")
+    row = await matched_pair(client, make_actor, db_session, "rec-phase")
     recorder = FakeRoomRecorder()
     await service_recording.start_recording(db_session, row, exam_code="sca", recorder=recorder)
 
@@ -116,7 +98,7 @@ async def test_ending_early_still_stops_and_queues(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     """One of the pair pressing the button is how a consultation usually ends."""
-    row = await _matched(client, make_actor, db_session, "rec-early")
+    row = await matched_pair(client, make_actor, db_session, "rec-early")
     recorder = FakeRoomRecorder()
     await service_recording.start_recording(db_session, row, exam_code="sca", recorder=recorder)
     started = await repository_sessions.session_by_id(db_session, row.id)
@@ -138,7 +120,7 @@ async def test_an_abandoned_consultation_is_stopped_but_not_marked(
     """The End dialog promised no feedback; the egress must still stop, it costs money."""
     from sqlalchemy import text
 
-    row = await _matched(client, make_actor, db_session, "rec-abandon")
+    row = await matched_pair(client, make_actor, db_session, "rec-abandon")
     recorder = FakeRoomRecorder()
     await service_recording.start_recording(db_session, row, exam_code="sca", recorder=recorder)
     started = await repository_sessions.session_by_id(db_session, row.id)
@@ -163,7 +145,7 @@ async def test_only_the_doctor_is_told_where_their_feedback_is(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     """The patient is not scored, and must not be handed somebody else's attempt."""
-    row = await _matched(client, make_actor, db_session, "rec-read")
+    row = await matched_pair(client, make_actor, db_session, "rec-read")
     from app.features.peer_practice.service_station import session_read
 
     doctor_view = await session_read(db_session, row, viewer_id=row.doctor_user_id)
@@ -172,47 +154,6 @@ async def test_only_the_doctor_is_told_where_their_feedback_is(
     assert doctor_view.feedback_state == "none"
     assert patient_view.feedback_state == "none"
     assert patient_view.doctor_attempt_id is None
-
-
-PEER_STATION = {
-    "station_id": "sca-peer-1",
-    "station_name": "Headache in a 31-year-old",
-    "patient_information": {
-        "patient_biodata": "Amara Nwosu, 31, a teacher",
-        "gender": "female",
-        "opening_sentence": "I've had this headache for a week now.",
-        "persona": "Tired and a little worried.",
-        "expanded_history": "A week of frontal headache, worse in the evenings.",
-        "idea": ["Thinks it is eye strain."],
-        "concerns": ["Worried about a tumour."],
-        "expectation": ["Wants a scan."],
-        "questions": ["Could it be something serious?"],
-        "examination_findings": "Looks well. No focal neurology.",
-        "family_social_history": ["Lives with her partner."],
-        "past_med_history_allergies": ["No known allergies."],
-    },
-}
-
-
-async def _a_published_station(session: AsyncSession) -> None:
-    """Peer matching picks a published station; without one there is nothing to mark."""
-    from app.features.stations import repository as stations_repo
-
-    exam = await ensure_exam(session, "sca")
-    assert exam is not None
-    station = await stations_repo.create_station(
-        session, None, exam_id=exam.id, title=str(PEER_STATION["station_name"])
-    )
-    version = await stations_repo.add_version(
-        session, None, station_id=station.id, version=1, content=PEER_STATION
-    )
-    await stations_repo.set_version_status(
-        session, None, version.id, status="published", at=datetime.now(UTC), by=None
-    )
-    # The library pick reads the station's *current* version, so publishing the
-    # version alone leaves it invisible to matching.
-    await stations_repo.set_current_version(session, None, station.id, version_id=version.id)
-    await session.flush()
 
 
 async def _entitle(session: AsyncSession, user_id) -> None:  # type: ignore[no-untyped-def]
@@ -230,23 +171,6 @@ async def _entitle(session: AsyncSession, user_id) -> None:  # type: ignore[no-u
     await session.flush()
 
 
-async def _stopped(client: AsyncClient, make_actor, db_session: AsyncSession, tag: str):  # type: ignore[no-untyped-def]
-    """A pair who have finished a recorded consultation."""
-    await _a_published_station(db_session)
-    row = await _matched(client, make_actor, db_session, tag)
-    recorder = FakeRoomRecorder()
-    await service_recording.start_recording(db_session, row, exam_code="sca", recorder=recorder)
-    started = await repository_sessions.session_by_id(db_session, row.id)
-    assert started is not None
-    await service_recording.stop_recording_and_queue(
-        db_session, started, now=datetime.now(UTC), recorder=recorder
-    )
-    stopped = await repository_sessions.session_by_id(db_session, row.id)
-    assert stopped is not None
-    assert stopped.station_version_id is not None, "matching should have picked the published station"
-    return stopped
-
-
 async def test_a_recorded_consultation_becomes_an_attempt_the_doctor_can_read(
     client: AsyncClient, make_actor, db_session: AsyncSession, monkeypatch
 ) -> None:  # type: ignore[no-untyped-def]
@@ -260,7 +184,7 @@ async def test_a_recorded_consultation_becomes_an_attempt_the_doctor_can_read(
     from app.features.attempts import repository as attempts_repo
     from app.features.peer_practice import service_feedback, service_station
 
-    row = await _stopped(client, make_actor, db_session, "rec-e2e")
+    row = await stopped_pair(client, make_actor, db_session, "rec-e2e")
     await _entitle(db_session, row.doctor_user_id)
     _fake_recording_in_the_bucket(monkeypatch)
     transcriber = FakeTranscriber()
@@ -301,7 +225,7 @@ async def test_a_transcript_that_cannot_be_recovered_is_said_plainly(
     """
     from app.features.peer_practice import service_feedback
 
-    row = await _stopped(client, make_actor, db_session, "rec-notext")
+    row = await stopped_pair(client, make_actor, db_session, "rec-notext")
     _fake_recording_in_the_bucket(monkeypatch)
 
     attempt_id = await service_feedback.build_feedback(
@@ -327,7 +251,7 @@ async def test_a_recording_that_has_not_landed_yet_is_retried_not_failed(
     from app.features.peer_practice import service_feedback
     from app.features.peer_practice import service_feedback as module
 
-    row = await _stopped(client, make_actor, db_session, "rec-late")
+    row = await stopped_pair(client, make_actor, db_session, "rec-late")
     monkeypatch.setattr(module.storage, "object_exists", lambda settings, key: False)
 
     with pytest.raises(service_feedback.RecordingNotReady):

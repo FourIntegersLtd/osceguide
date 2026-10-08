@@ -119,30 +119,19 @@ you touch an `api.ts`, and regenerate with `npm run platform:types`.
 
 ## Owners
 
+Who owns which path: `.claude/OWNERS.md`. Area notes: `.claude/rules/` (traps a browser run
+has hit are in `web-foundation.md`, `exam-day.md` and `marking-results.md`).
+
 | Area | Owner agent | Proof recipe |
 |---|---|---|
-| How everything is built: foundation, surfaces, tiers, design system; `domains/train`, `domains/marketing` | `platform-web-owner` | `verify` skill (`.claude/skills/verify/`) |
-| `domains/assess`, `domains/platform` behaviour | `institution-owner` | `verify-institution`, then `verify` |
-| `foundation/session`, `capabilities/account`, `capabilities/inbox`, `staff-growth`, `domains/partner`, middleware | `access-owner` | `verify-access`, then `verify` |
-| `capabilities/stations`, `authoring`, `media`, `staff-media`, `staff-moderation`, `community`, `peer-practice` | `content-owner` | `verify-content`, then `verify` |
-| `foundation/livekit`, `capabilities/onboarding`, `help` | `voice-station-owner` | `verify-voice-station`, then `verify` |
+| How everything is built: foundation, surfaces, tiers, design system, `app/`; `domains/train`, `domains/marketing`, inbox | `web-foundation-owner` | `verify` skill (`.claude/skills/verify/`) |
+| `domains/assess`, `domains/partner`, `surfaces/hire` and `partner` | `institution-owner` | `verify-institution`, then `verify` |
+| `foundation/session`, `capabilities/account`, `attribution-dashboard`, middleware, `(auth)`, `app/billing` | `access-owner` | `verify-access`, then `verify` |
+| `capabilities/stations`, `authoring`, `media`, `community`, `peer-practice`, `fact-check` | `content-owner` | `verify-content`, then `verify` |
+| `foundation/livekit`, `capabilities/attempt-runner`, `station-runner`, `feedback`, `debrief`, `transcripts`, `onboarding`, `help` | `attempt-engine-owner` | `verify-attempt-engine`, then `verify` |
+| `domains/platform`, `app/staff`, `capabilities/staff-*` | `staff-console-owner` | `verify-staff-console`, then `verify` |
 
-Owner agents live in the workspace root's `.claude/`.
-
-## Traps a browser run has hit
-
-- `/app/me/**` shows the exam picker, not the page, while `users.exam_code` is
-  null. Set it for a local test account before you drive a consumer screen.
-- A slot's attempt must be `kind = 'exam_slot'` (the `kind_matches_reference`
-  check). To put marked work in front of an examiner locally, copy a marked
-  attempt as an exam-slot attempt: `.claude/skills/verify/features/feedback-fixture.sql`.
-- A node test cannot import a `.tsx` file (the loader strips types, not JSX). Put a pure helper a test
-  needs in a `.ts` file beside the component.
-- A local database can hold exams and rubrics but no stations or marked attempts. A review screen still
-  renders for a slot with no attempt; `features/rubric-builder.md` has a fixture that needs neither.
-- Feedback and forms are drawn from the rubric (`capabilities/feedback/rubric.ts`,
-  `domains/assess/results/reviewForm.ts`). Never branch on an exam code; a rating
-  is coloured by its position in the scale, not by its letter.
+Owner agents live in the workspace root's `.claude/`. Work through `build-feature` and `fix-bug`.
 
 ## Ask first
 

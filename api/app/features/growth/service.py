@@ -109,7 +109,9 @@ async def attribute_signup(
     )
 
 
-async def ensure_reporter(session: AsyncSession, *, partner: str, principal: Principal) -> None:
+async def ensure_reporter(
+    session: AsyncSession, *, partner: str, principal: Principal, now: datetime
+) -> None:
     """Reporting access is per partner, checked against the partner in the path
     rather than "is a reporter at all". A `partner_admin` of the partner's own
     organisation reads it without a separate reporter grant."""
@@ -117,7 +119,7 @@ async def ensure_reporter(session: AsyncSession, *, partner: str, principal: Pri
         return
     if await repository.is_reporter(session, partner=partner, email=principal.email):
         return
-    if not await tenancy.is_partner_admin(session, user_id=principal.user_id, partner=partner):
+    if not await tenancy.is_partner_admin(session, user_id=principal.user_id, partner=partner, now=now):
         raise errors.NotAReporter()
 
 
@@ -467,18 +469,16 @@ async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> No
     await repository.add_reporter(session, partner=partner_key, email=email.strip().lower())
 
 
-async def tracking_references(
-    session: AsyncSession, *, partner: str, principal: Principal
-) -> list[TrackingReference]:
+async def tracking_references(session: AsyncSession, *, partner: str) -> list[TrackingReference]:
     """The references a partner puts in its links, one per exam in the pilot.
 
     The other half of `parse_ref_id`. Saves a partner from typing a reference
     by hand, where a typo would silently attribute their traffic to nobody.
+    The router's `PartnerReporter` has already checked the caller.
     """
     partner_key = (partner or "").strip().lower()
     if partner_key not in domain.PILOT_PARTNERS:
         raise errors.UnknownPartnerError()
-    await ensure_reporter(session, partner=partner_key, principal=principal)
     pilot_exams = sorted(await catalog.pilot_exam_codes(session))
     return [
         TrackingReference(

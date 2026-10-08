@@ -30,7 +30,7 @@ from app.features.stations.station_import_drafting import (
     structure_from_imported,
 )
 from app.features.stations.station_validator import validate_station_structure
-from tests.http.test_cv_routes import _pdf
+from tests.support.documents import a_pdf
 
 _WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 
@@ -58,7 +58,7 @@ def docx(paragraphs: list[str], table_rows: list[list[str]] | None = None, *, pr
 
 
 def test_a_pdf_is_read_by_its_suffix() -> None:
-    assert "Chest pain station" in extract_text("Station 4.PDF", _pdf("Chest pain station"))
+    assert "Chest pain station" in extract_text("Station 4.PDF", a_pdf("Chest pain station"))
 
 
 def test_a_word_file_is_read_with_its_table_rows_kept_together() -> None:

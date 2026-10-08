@@ -22,8 +22,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
-from tests.http.test_sittings_routes import published_station
-from tests.support.sittings import org_with_admin
+from tests.support.sittings import org_with_admin, published_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db

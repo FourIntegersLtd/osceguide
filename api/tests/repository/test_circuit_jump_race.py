@@ -23,109 +23,15 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.features.sittings import repository, service_rescue, service_run
-from tests.support.catalog import ensure_exam
+from tests.support.committed_worlds import committed_training_circuit
 from tests.support.fakes import FakeRoomAgents
-from tests.support.rubrics import published_feedback_version
 
 pytestmark = pytest.mark.db
 
 NOW = datetime(2026, 9, 16, 12, 0, tzinfo=UTC)
-
-
-async def _a_training_circuit(session: AsyncSession) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
-    """An org, a started circuit, and one of its slots."""
-    from app.features.identity import repository as identity_repo
-    from app.features.sittings.models import Circuit, Sitting, Slot
-    from app.features.stations.models import (
-        Station,
-        StationVersion,
-    )
-    from app.features.tenancy.models import Organization
-
-    org = Organization(slug=f"race-{uuid.uuid4().hex[:8]}", name="Race", org_type="institution")
-    session.add(org)
-    await session.flush()
-
-    exam = await ensure_exam(session, "sca")
-    assert exam is not None
-    version = await published_feedback_version(session, org.id)
-    station = Station(owner_kind="org", org_id=org.id, exam_id=exam.id, title="S")
-    session.add_all([station])
-    await session.flush()
-    station_version = StationVersion(
-        station_id=station.id, org_id=org.id, version=1, content={}, status="published"
-    )
-    session.add(station_version)
-    await session.flush()
-
-    sitting = Sitting(org_id=org.id, name="S", mode="training", rubric_version_id=version.id)
-    session.add(sitting)
-    await session.flush()
-    circuit = Circuit(org_id=org.id, sitting_id=sitting.id, name="C", room_name="room-1", started_at=NOW)
-    session.add(circuit)
-    await session.flush()
-    trainee = await identity_repo.create_user(
-        session=session, email=f"t{uuid.uuid4().hex[:8]}@example.com", name="T", password_hash=None
-    )
-    slot = Slot(
-        org_id=org.id,
-        circuit_id=circuit.id,
-        slot_index=0,
-        trainee_id=trainee.id,
-        station_version_id=station_version.id,
-    )
-    session.add(slot)
-    await session.flush()
-    return org.id, circuit.id, slot.id
-
-
-async def _remove(
-    factory: async_sessionmaker[AsyncSession], org_id: uuid.UUID, circuit_id: uuid.UUID
-) -> None:
-    """Delete everything `_a_training_circuit` committed, which outlives the test transaction.
-
-    The exam above all: left behind, every later `ensure_exam("sca", structure=...)`
-    on this worker's database is handed this one, with its minimal rubric, and a
-    test that marks against a fuller rubric finds none of its domains.
-    """
-    from app.features.catalog.models import Exam
-    from app.features.identity.models import User
-    from app.features.rubrics.models import Rubric, RubricVersion
-    from app.features.sittings.models import Circuit, Sitting, Slot
-    from app.features.stations.models import Station, StationVersion
-    from app.features.tenancy.models import Organization
-
-    async with factory() as cleanup, cleanup.begin():
-        exam_ids = list(
-            (await cleanup.execute(select(Station.exam_id).where(Station.org_id == org_id))).scalars()
-        )
-        trainee_ids = list(
-            (await cleanup.execute(select(Slot.trainee_id).where(Slot.circuit_id == circuit_id))).scalars()
-        )
-        rubric_version_ids = list(
-            (await cleanup.execute(select(Exam.rubric_version_id).where(Exam.id.in_(exam_ids)))).scalars()
-        )
-        rubric_ids = list(
-            (
-                await cleanup.execute(
-                    select(RubricVersion.rubric_id).where(RubricVersion.id.in_(rubric_version_ids))
-                )
-            ).scalars()
-        )
-        await cleanup.execute(delete(Slot).where(Slot.circuit_id == circuit_id))
-        await cleanup.execute(delete(Circuit).where(Circuit.id == circuit_id))
-        await cleanup.execute(delete(Sitting).where(Sitting.org_id == org_id))
-        await cleanup.execute(delete(StationVersion).where(StationVersion.org_id == org_id))
-        await cleanup.execute(delete(Station).where(Station.org_id == org_id))
-        await cleanup.execute(delete(Organization).where(Organization.id == org_id))
-        await cleanup.execute(delete(User).where(User.id.in_(trainee_ids)))
-        await cleanup.execute(delete(Exam).where(Exam.id.in_(exam_ids)))
-        await cleanup.execute(delete(RubricVersion).where(RubricVersion.id.in_(rubric_version_ids)))
-        await cleanup.execute(delete(Rubric).where(Rubric.id.in_(rubric_ids)))
 
 
 async def test_a_jump_cannot_land_on_a_circuit_that_has_just_ended(
@@ -137,9 +43,13 @@ async def test_a_jump_cannot_land_on_a_circuit_that_has_just_ended(
 
     factory = get_session_factory()
 
-    async with factory() as setup, setup.begin():
-        org_id, circuit_id, slot_id = await _a_training_circuit(setup)
+    async with committed_training_circuit(factory) as (org_id, circuit_id, slot_id):
+        await _race(factory, org_id, circuit_id, slot_id)
 
+
+async def _race(
+    factory: async_sessionmaker[AsyncSession], org_id: uuid.UUID, circuit_id: uuid.UUID, slot_id: uuid.UUID
+) -> None:
     agents = FakeRoomAgents()
 
     async def end() -> None:
@@ -161,19 +71,15 @@ async def test_a_jump_cannot_land_on_a_circuit_that_has_just_ended(
                     now=NOW,
                 )
 
-    try:
-        await asyncio.gather(end(), jump())
+    await asyncio.gather(end(), jump())
 
-        async with factory() as check, check.begin():
-            circuit = await repository.circuit_by_id(check, org_id, circuit_id)
-            assert circuit is not None
-            if circuit.ended_at is not None:
-                assert circuit.active_slot_id is None, (
-                    "the circuit is over but still shows a candidate consulting; "
-                    "the jump wrote on top of the end"
-                )
-    finally:
-        await _remove(factory, org_id, circuit_id)
+    async with factory() as check, check.begin():
+        circuit = await repository.circuit_by_id(check, org_id, circuit_id)
+        assert circuit is not None
+        if circuit.ended_at is not None:
+            assert circuit.active_slot_id is None, (
+                "the circuit is over but still shows a candidate consulting; the jump wrote on top of the end"
+            )
 
 
 async def test_the_circuit_row_is_actually_locked(db_session: AsyncSession) -> None:
@@ -196,20 +102,18 @@ async def test_the_circuit_row_is_actually_locked(db_session: AsyncSession) -> N
 
     factory = get_session_factory()
 
-    async with factory() as setup, setup.begin():
-        org_id, circuit_id, _ = await _a_training_circuit(setup)
+    async with (
+        committed_training_circuit(factory) as (org_id, circuit_id, _),
+        factory() as holder,
+        holder.begin(),
+    ):
+        held = await repository.circuit_for_update(holder, org_id, circuit_id)
+        assert held is not None
 
-    try:
-        async with factory() as holder, holder.begin():
-            held = await repository.circuit_for_update(holder, org_id, circuit_id)
-            assert held is not None
-
-            async with factory() as other, other.begin():
-                with pytest.raises(DBAPIError) as refused:
-                    await other.execute(
-                        text("SELECT id FROM circuits WHERE id = :id FOR UPDATE NOWAIT"),
-                        {"id": circuit_id},
-                    )
-                assert "could not obtain lock" in str(refused.value).lower()
-    finally:
-        await _remove(factory, org_id, circuit_id)
+        async with factory() as other, other.begin():
+            with pytest.raises(DBAPIError) as refused:
+                await other.execute(
+                    text("SELECT id FROM circuits WHERE id = :id FOR UPDATE NOWAIT"),
+                    {"id": circuit_id},
+                )
+            assert "could not obtain lock" in str(refused.value).lower()

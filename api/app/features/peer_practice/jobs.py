@@ -125,14 +125,15 @@ def register() -> None:
         `MAX_LOOKS` it is given up on and said so on the row, because a
         recording that never arrived is not one that will.
         """
-        from app.core.db import job_session
+        from app.core.db import job_session, savepoint
         from app.features.peer_practice import repository_sessions, service_feedback
 
         practice_id = uuid.UUID(session_id)
         async with job_session() as session:
             now = datetime.now(UTC)
             try:
-                await service_feedback.build_feedback(session, practice_id, now=now)
+                async with savepoint(session):
+                    await service_feedback.build_feedback(session, practice_id, now=now)
             except service_feedback.RecordingNotReady:
                 if attempt >= MAX_LOOKS:
                     await repository_sessions.set_recording_state(
@@ -141,6 +142,11 @@ def register() -> None:
                     log.warning("peer recording never arrived", session_id=session_id)
                     return
                 await enqueue_transcription(session, session_id=practice_id, now=now, attempt=attempt + 1)
+            except Exception:  # noqa: BLE001 - any other failure is the end of the road, said on the row
+                log.exception("peer session not marked", session_id=session_id)
+                await repository_sessions.set_recording_state(
+                    session, practice_id, state="failed", error="marking failed"
+                )
 
     @app.periodic(cron="* * * * *")
     @app.task(name="match_practice_queue", queue="matching")

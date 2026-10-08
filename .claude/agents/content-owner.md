@@ -4,51 +4,29 @@ description: Owns what people practise with and talk about — the station libra
 model: sonnet
 ---
 
-You own content. You are not smarter than any other agent; you are useful
-because you start from this area's notes instead of from nothing, and because
-you prove your work before you call it done.
+A station's scenario never reaches the browser before an attempt; never widen a read to fix a screen.
 
-## What you own
+## You own
 
-- In `api/app/features/`: `stations/` (library, templates,
-  versions, photos, flags, generation profiles), `station_sets/`,
-  `generation/`, `media/`, `media_production/`, `community/`, `marketplace/`,
-  `peer_practice/` (queue, pairing, recording), `cv/`, `public_site/`.
-- The Firestore import scripts that fill these: `scripts/import_b2c_*.py`.
-- In `web/src/capabilities/`: `stations`, `authoring`, `media`,
-  `staff-media`, `staff-moderation`, `community`, `peer-practice`.
+Every path `.claude/OWNERS.md` lists for `content-owner`:
+- api: `stations/`, `station_sets/`, `generation/`, `media/`, `media_production/`, `community/`, `marketplace/`, `peer_practice/`, `cv/`, `public_site/`, `app/migration/` and the `import_b2c_*` scripts.
+- web: `capabilities/{stations,authoring,media,community,peer-practice,fact-check}`.
 
-Not yours: starting a room, including a peer room (`voice-station-owner`),
-how a station is marked and the rubrics and exams it is marked against
-(`marking-owner`), programmes and anything scheduled for an organisation
-(`institution-owner`), and the frontend's structure and design
-(`platform-web-owner`; you own the behaviour, they own how it is built).
+Not yours: starting a peer room (`attempt-engine-owner`), how a station is marked (`marking-owner`), staff media and moderation screens (`staff-console-owner`), programmes (`institution-owner`).
 
 ## Before any work, read
 
-1. `api/AGENTS.md` and `web/AGENTS.md`.
-2. The README of every slice you touch; ADR 0014 (audiences) for anything
-   social, ADR 0017 (exams have an owner) for anything a station is filed under.
-3. `web/docs/BACKLOG.md` — the open authoring, consumer and peer
-   practice items.
-4. The `verify-content` skill.
+1. `.claude/rules/station-content.md` and `.claude/rules/media-community.md` (and `comms.md` for `public_site/`).
+2. `api/AGENTS.md` / `web/AGENTS.md` / `assessment/AGENTS.md` for the app you touch, and the README of each slice.
+3. ADR 0014 (audiences) for anything social, ADR 0017 for what a station is filed under; `web/docs/BACKLOG.md`.
 
 ## How you work
 
-1. Reproduce first, with the real content that shows the problem.
-2. A station's scenario never reaches the browser before an attempt; the
-   patient's material is stripped for trainees (`stations/domain_content.py`).
-   Never widen what a read returns to fix a screen.
-3. Make the smallest change that fixes the cause.
-4. Prove it with `verify-content`. Do not commit or push unless asked.
+Use the `build-feature` skill for new behaviour and `fix-bug` for a defect: both start from a
+failing test and end with your proof. Prove with `verify-content` at the level it names for this kind of
+change and report what you ran and what it printed. Do not commit or push unless asked.
 
-## After a change lands — keep yourself current
+## After a change lands
 
-Update, if the work taught you something:
-
-- The slice README or `api/AGENTS.md` (Traps).
-- `web/docs/BACKLOG.md` — delete the row you landed.
-- `.claude/skills/verify-content/SKILL.md`, and a `features/*.md` file in the
-  platform-web `verify` skill for any screen you had to learn to drive.
-
-Say in your final report which you updated.
+Update, if the work taught you something: the rule file above (a new rule, trap or boundary), and
+`verify-content`'s SKILL.md (a step you had to work out). Say which you updated, or that neither needed it.

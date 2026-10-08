@@ -112,6 +112,7 @@ unless written in full.
 - **B-33** · ROUGH · fixed 3cc2e6e + 5ac8b6f (org admin renames and edits contact name/email, migration f0a1b2c3d4e5; SSO status readable) · Org settings read-only, no SSO tab (U-17). OrgSettings.tsx
 - **B-34** · ROUGH · fixed ca98292 (No group / No programme; Exam type and Not live are accurate and kept) · "None" literal for cohort and programme in roster rows; "Exam type" survives in TemplateGenerationPanel; "Not live" pill on platform templates. roster/support.ts:21; TemplateGenerationPanel.tsx:94; StatusPills.tsx:36
 - **B-35** · ROUGH · fixed bb24401 (cohorts created only when the import runs; Roster.tsx 131 lines) · Caused by 9e7e86f: a cohort created from the bulk import dialog stays behind when the import is cancelled; Roster.tsx is 333 lines against the 300-line warning. BulkImportDialog.tsx; Roster.tsx
+- **B-36** · ROUGH · open · Bulk revoke of team members (`/orgs/{slug}/memberships/bulk/revoke`) and bulk resend or revoke of trainees (`/orgs/{slug}/trainees/bulk/{resend-invitation,revoke}`) have api routes and no web caller; the team and roster screens act one row at a time. Allow-listed in web/scripts/check-route-callers.mjs citing this row. tenancy/router.py; roster/router_admin.py; Roster.tsx
 
 ## 3. Institution staff: run and assess (R-*)
 
@@ -234,6 +235,7 @@ unless written in full.
 - **P-26** · WRONG · fixed 27c45ce (an account with no password answers 409 password_reset_not_sent and the toast shows it) · "Password reset emailed" toast regardless of delivery. ProfileTab.tsx
 - **P-27** · WRONG · fixed c4bd1c7 (Salvage/Fail hidden under 30 minutes; inspector shows the sitting for exam_slot attempts) · Attempt inspector Salvage/Fail with no staleness check (a live consultation can be failed); no sitting context for exam_slot. AttemptInspector.tsx
 - **P-28** · WRONG · fixed 935309d + d78aace + cc153db (staff Refund refunds in Stripe, then withdraws; every unprocessed event has Try again) · Billing tab: "£12" becomes NaN then null, plan price recorded silently; retired plan offered; Record refund on refunded payments, refund does not touch Stripe; unprocessed event with no failure is "Pending" with no retry and excluded from failed_only; per-user lists unpaged; extend date unchecked. BillingTab.tsx; Payments.tsx; BillingEvents.tsx
+- **P-29** · BLOCKS · fixed (uncommitted, regression plan session; test_the_console_resends_an_invitation_only_while_it_is_pending) · Caused by d78aace: the Members tab's Resend invitation posts to `/platform/organizations/{slug}/memberships/{id}/resend-invitation`, which did not exist, so the button always 404'd. Found by the tightened check-route-callers. tenancy/router_platform_members.py; domains/platform/support/api.ts:340
 
 ## 8. Hire and partner (H-*, F-*)
 
@@ -397,3 +399,4 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | 2026-10-08 | night r7 batch 6 (institution, access, platform-web) | 188e2f8 0798a94 1474809 fc59828 258199a cc153db 4315bb3 394e2dd b3fdb7a 5ac8b6f (migration f0a1b2c3d4e5) 0c98154 927aba6 de9324e: F-3 B-33 E-1 S-14 S-21 S-13 P-28 A-16 A-14 fixed, E-6 closed, B-15 partly | opus cc153db: double refund after Record refund, outbox keeps erased address, replay without row lock -> access |
 | 2026-10-08 | night r7 batch 7 | eba69de (opus cc153db: refund locked and refused after a recorded refund, erased address scrubbed after delivery, event row locked, clawback voided not deleted); 3999ab8 P-25, b30cee1 S-20 (migration 7d3e9c1a5b42), f88e7be B-15 fixed | S-25 left; quality must-fix list for batches 5-6 routed |
 | 2026-10-08 | night r7 batch 8 | 6e9fb96 S-25 fixed; quality review fixes 93f7e26 (one receipts route, _app_url, no reminder flag, _run_event) and 74ada61 (programme_figures, owner= on streams, revision in core/db, staffRefusedOn) | every row fixed, closed or staging-only |
+| 2026-10-08 | regression plan (Parts 1-3) | P-29 (uncommitted) | B-36 open: bulk team and roster actions have no screen |

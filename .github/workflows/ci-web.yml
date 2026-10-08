@@ -17,12 +17,14 @@ on:
       - "web/**"
       - "api/openapi.json"
       - ".github/workflows/ci-web.yml"
+      - ".github/actions/**"
   push:
     branches: [main]
     paths:
       - "web/**"
       - "api/openapi.json"
       - ".github/workflows/ci-web.yml"
+      - ".github/actions/**"
 
 # Reading the code is all this workflow does.
 permissions:
@@ -45,17 +47,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      # Node 22 matches local development and the Vercel project's setting.
-      - name: Set up Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
-
-      # `npm ci` installs exactly what package-lock.json says.
-      - name: Install dependencies
-        run: npm ci
+      # Node 22 and `npm ci`, as local development and the Vercel project do.
+      - uses: ./.github/actions/web-install
 
       # Types, lint (with the tier rules), unit tests, and check:ledger, which
       # reads ../api/openapi.json.
@@ -66,3 +59,108 @@ jobs:
         run: |
           npm run platform:types
           git diff --exit-code -- src/foundation/platform-client/schema.d.ts
+
+  # The core journeys (docs/CORE-JOURNEYS.md): a real browser against a LOCAL
+  # platform-api and Postgres started here. It never points at a remote api:
+  # the specs create organisations and accounts, and e2e/support/api.ts refuses
+  # any api host that is not localhost.
+  journeys:
+    name: journeys (browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        # pgvector, as in ci-api.yml and api/docker-compose.yml.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: osce_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      APP_ENV: local
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/osce_platform
+      REDIS_DISABLED: "1"
+      WORKER_SECRET: ci-worker-secret
+      FRONTEND_URL: http://localhost:3101
+      CORS_ORIGINS: http://localhost:3101
+      # The seeded platform admin (the verify harness account) is enrolled with this TOTP secret.
+      ADMIN_TOTP_SECRET: JBSWY3DPEHPK3PXP
+      # The api the web build proxies to, and the database the e2e seam writes to.
+      LOCAL_API_URL: http://127.0.0.1:8002
+      PLATFORM_API_URL: http://127.0.0.1:8002
+      VERIFY_API_URL: http://127.0.0.1:8002
+      VERIFY_EMAIL: walkthrough@example.com
+      VERIFY_PASSWORD: correct horse battery
+      ADMIN_EMAIL: walkthrough@example.com
+      ADMIN_PASSWORD: correct horse battery
+      E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/osce_platform
+      E2E_PREBUILT: "1"
+      NEXT_DIST_DIR: .next-e2e
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@a783c322200f0519c7926aa6faa857c4e23e9263 # v1
+
+      - name: Install the api
+        working-directory: api
+        run: poetry install --no-interaction
+
+      # Migrate, author the exams and rubrics, and make the platform admin the
+      # console journey signs in as. The flag that forces a password change on
+      # first login is cleared so the sign-in returns tokens.
+      - name: Migrate and seed the api
+        working-directory: api
+        run: |
+          poetry run alembic upgrade head
+          poetry run python scripts/seed_platform.py
+          poetry run python scripts/bootstrap_admin.py --email "$ADMIN_EMAIL" --name "Walkthrough" --password "$ADMIN_PASSWORD"
+          psql "$DATABASE_URL" -c "update users set must_change_password = false where email = '$ADMIN_EMAIL'"
+
+      - name: Start the api on :8002
+        working-directory: api
+        run: |
+          nohup poetry run uvicorn app.main:app --host 127.0.0.1 --port 8002 > "$RUNNER_TEMP/api.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl --silent --fail "$LOCAL_API_URL/health" && exit 0
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/api.log"
+          echo "::error::the local api did not come up"
+          exit 1
+
+      - uses: ./.github/actions/web-install
+
+      # The /api/v1 rewrite is fixed at build time, so PLATFORM_API_URL (the
+      # local api, above) must be set for the build. Playwright then serves it.
+      - name: Build the web app against the local api
+        working-directory: web
+        run: npx next build --webpack
+
+      # The specs drive system Chrome, which the ubuntu runner image ships.
+      - name: Run the journeys
+        working-directory: web
+        run: npm run e2e
+
+      - name: Keep traces and the api log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journeys-failure
+          path: |
+            web/test-results
+            ${{ runner.temp }}/api.log
+          retention-days: 7

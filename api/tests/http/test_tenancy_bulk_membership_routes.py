@@ -14,11 +14,10 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.notifications.models import OutboundMessage
 from tests.http.test_tenancy_routes import member_token, seed_org
+from tests.support.people import invitations_to
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -34,15 +33,6 @@ async def a_membership(
     )
     assert response.status_code == 201, response.text
     return str(response.json()["id"])
-
-
-async def invitations_to(db_session: AsyncSession, recipient: str) -> list[OutboundMessage]:
-    stmt = (
-        select(OutboundMessage)
-        .where(OutboundMessage.template_key == "invitation", OutboundMessage.recipient == recipient)
-        .order_by(OutboundMessage.available_at)
-    )
-    return list((await db_session.execute(stmt)).scalars())
 
 
 # --------------------------------------------------------------------------

@@ -20,22 +20,24 @@ from app.core.db import SessionOpener
 from app.core.events import circuit_topic, org_topic, user_topic
 from app.core.ports import Clock, EventBus
 from app.core.sse import Snapshot, StreamFinished, event_stream
+from app.core.streams import still_active
 from app.features.dashboard import service_console, service_live, service_trainee
 from app.features.dashboard.errors import CircuitNotFound
 from app.features.identity import service as identity
 from app.features.tenancy import service as tenancy
 
 
-async def _still_a_member(session: AsyncSession, principal: Principal, org_id: uuid.UUID) -> None:
-    """End the stream once the person is no longer in the organisation.
+async def _watcher_still_allowed(session: AsyncSession, principal: Principal, org_id: uuid.UUID) -> None:
+    """End the stream once the person is no longer in the organisation, or has no account.
 
     A token lives up to fifteen minutes after a removal; a stream opened with it would otherwise
     keep pushing candidate names for as long as the tab stays open. A role change is not checked
     here: it takes effect on the next request.
     """
+    await still_active(session, principal.user_id)
     if principal.is_platform_admin and await identity.is_platform_admin(session, principal.user_id):
         return
-    if not await tenancy.holds_live_membership(session, user_id=principal.user_id, org_id=org_id):
+    if not await tenancy.membership_active(session, user_id=principal.user_id, org_id=org_id):
         raise StreamFinished
 
 
@@ -56,7 +58,7 @@ def console_stream(
     async def snapshot() -> Snapshot:
         """One frame: the console as it stands right now, in its own short transaction."""
         async with open_session() as session:
-            await _still_a_member(session, principal, org_id)
+            await _watcher_still_allowed(session, principal, org_id)
             try:
                 console = await service_console.build_console(session, org_id, circuit_id, now=clock.now())
             except CircuitNotFound:
@@ -94,6 +96,7 @@ def my_sittings_stream(
     async def snapshot() -> Snapshot:
         """One frame: this trainee's whole portal, as it stands right now."""
         async with open_session() as session:
+            await still_active(session, principal.user_id)
             mine = await service_trainee.my_sittings(
                 session, principal.user_id, now=clock.now(), org_slug=org_slug
             )
@@ -116,7 +119,7 @@ def live_board_stream(
     async def snapshot() -> Snapshot:
         """One frame: every circuit this organisation has running, as it stands right now."""
         async with open_session() as session:
-            await _still_a_member(session, principal, org_id)
+            await _watcher_still_allowed(session, principal, org_id)
             board = await service_live.build_live_board(session, org_id, now=clock.now())
         return Snapshot(board.model_dump_json())
 
