@@ -17,7 +17,7 @@ from app.core.openapi import fan_in_responses
 from app.core.ports import ClockDep, EventBus
 from app.core.rate_limit import USER_WRITE, TooManyRequests, caller_key, per_user
 from app.core.settings import SettingsDep
-from app.core.sse import MEDIA_TYPE, SSE_HEADERS, fan_in_stream
+from app.core.sse import MEDIA_TYPE, SSE_HEADERS, capped, fan_in_stream
 from app.core.streams import StreamPrincipal
 from app.features.identity import schemas, service, service_close_account, service_export, service_mfa
 from app.features.identity.errors import (
@@ -164,7 +164,7 @@ async def stream_my_events(
     `fan_in_stream` rather than `event_stream` — see `app.core.sse` for why.
     """
     return StreamingResponse(
-        fan_in_stream(topics=[user_topic(principal.user_id)], bus=bus),
+        capped(principal.user_id, fan_in_stream(topics=[user_topic(principal.user_id)], bus=bus)),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )

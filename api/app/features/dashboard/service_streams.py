@@ -19,7 +19,7 @@ from app.core.auth import Principal
 from app.core.db import SessionOpener
 from app.core.events import circuit_topic, org_topic, user_topic
 from app.core.ports import Clock, EventBus
-from app.core.sse import Snapshot, StreamFinished, event_stream
+from app.core.sse import Snapshot, StreamFinished, capped, event_stream
 from app.features.dashboard import service_console, service_live, service_trainee
 from app.features.dashboard.errors import CircuitNotFound
 from app.features.identity import service as identity
@@ -68,8 +68,11 @@ def console_stream(
 
     # A snapshot on every heartbeat: with the worker down nothing is announced, and a
     # snapshot is what catches a due circuit up (S-7).
-    return event_stream(
-        topics=[circuit_topic(circuit_id)], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True
+    return capped(
+        principal.user_id,
+        event_stream(
+            topics=[circuit_topic(circuit_id)], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True
+        ),
     )
 
 
@@ -96,7 +99,8 @@ def my_sittings_stream(
         # Never final: a trainee's portal outlives any one sitting.
         return Snapshot(mine.model_dump_json())
 
-    return event_stream(topics=[user_topic(principal.user_id)], snapshot=snapshot, bus=bus)
+    topics = [user_topic(principal.user_id)]
+    return capped(principal.user_id, event_stream(topics=topics, snapshot=snapshot, bus=bus))
 
 
 def live_board_stream(
@@ -115,4 +119,9 @@ def live_board_stream(
             board = await service_live.build_live_board(session, org_id, now=clock.now())
         return Snapshot(board.model_dump_json())
 
-    return event_stream(topics=[org_topic(org_id)], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True)
+    return capped(
+        principal.user_id,
+        event_stream(
+            topics=[org_topic(org_id)], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True
+        ),
+    )

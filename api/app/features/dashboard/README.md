@@ -74,7 +74,8 @@ frame carries the whole read model, identical to the `GET`, so a client renders
 a stream and a poll with the same code and can be switched between them one
 screen at a time. Circuit changes are announced after the commit — to the
 circuit's topic for the console, and to each rostered trainee's topic for the
-portal, since a trainee may not read a circuit directly.
+portal, since a trainee may not read a circuit directly. An account may hold at most
+`app.core.sse.MAX_STREAMS_PER_ACCOUNT` (10) live streams per worker; the next is refused `429 too_many_streams`.
 
 The exam-day board subscribes to the **organisation's** topic rather than to
 each circuit: an admin watching twelve candidates would otherwise hold twelve

@@ -198,3 +198,32 @@ async def test_fan_in_stream_treats_an_unshaped_message_as_an_unnamed_change() -
     await bus.publish("user:1", "circuit.started")
     assert await asyncio.wait_for(next_frame, timeout=1) == "event: circuit.started\ndata: {}\n\n"
     await stream.aclose()
+
+
+async def test_an_account_may_hold_only_so_many_streams_and_a_closed_one_frees_a_place() -> None:
+    """S-27: a tab left open per device must not hold a connection and a loop each, without end."""
+    import uuid
+
+    import pytest
+
+    from app.core.sse import MAX_STREAMS_PER_ACCOUNT, TooManyStreams, capped
+
+    me, someone_else = uuid.uuid4(), uuid.uuid4()
+
+    def open_one(owner: uuid.UUID) -> AsyncIterator[str]:
+        return capped(
+            owner, event_stream(topics=["t"], snapshot=lambda: _snapshot("{}"), bus=OneEventBus())
+        )
+
+    held = [open_one(me) for _ in range(MAX_STREAMS_PER_ACCOUNT)]
+    for stream in held:
+        await anext(stream)
+    with pytest.raises(TooManyStreams) as refused:
+        open_one(me)
+    assert refused.value.status == 429
+    await anext(open_one(someone_else))  # another account is unaffected
+
+    await held[0].aclose()
+    await anext(open_one(me))
+    for stream in held[1:]:
+        await stream.aclose()

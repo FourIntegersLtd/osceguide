@@ -21,9 +21,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass
 
+from app.core.errors import AppError
 from app.core.ports import EventBus
 
 HEARTBEAT_SECONDS = 25.0
@@ -37,6 +39,44 @@ SSE_HEADERS = {
 }
 
 MEDIA_TYPE = "text/event-stream"
+
+
+# One account holds at most this many live streams in a worker: a tab per device and a few
+# screens each is normal, a runaway client reconnecting without end is not (S-27).
+MAX_STREAMS_PER_ACCOUNT = 10
+_open_streams: dict[uuid.UUID, int] = {}
+
+
+class TooManyStreams(AppError):
+    """The account already holds as many live streams as it may."""
+
+    status = 429
+    code = "too_many_streams"
+    default_message = "Too many live connections are open for this account. Close another tab and try again."
+
+
+def capped(owner: uuid.UUID, stream: AsyncIterator[str]) -> AsyncIterator[str]:
+    """Refuse a new stream for an account already at its cap, else count it while it runs.
+
+    Called when the route builds the stream, before any bytes are sent, so the refusal is an
+    ordinary 429 and not a connection that opens and dies. A stream counts from its first frame
+    to its close, so one that never starts holds no place.
+    """
+    if _open_streams.get(owner, 0) >= MAX_STREAMS_PER_ACCOUNT:
+        raise TooManyStreams
+
+    async def counted() -> AsyncIterator[str]:
+        _open_streams[owner] = _open_streams.get(owner, 0) + 1
+        try:
+            async for item in stream:
+                yield item
+        finally:
+            _open_streams[owner] -= 1
+            if _open_streams[owner] <= 0:
+                del _open_streams[owner]
+            await stream.aclose()  # type: ignore[attr-defined]
+
+    return counted()
 
 
 class StreamFinished(Exception):
