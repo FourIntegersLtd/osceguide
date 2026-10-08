@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AsyncBoundary,
   B2CHero,
@@ -15,7 +15,9 @@ import Table, { type Column } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
 import { useAsync, useCursorPages } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
+import { humanise } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
+import { SittingFilterBar } from "@/domains/assess/SittingFilterBar";
 import { listProgrammes, listSittings, type Sitting } from "@/domains/assess/api";
 import {
   filtersActive,
@@ -83,23 +85,17 @@ const columnsFor = (hrefFor: (path: string) => string): Column<Sitting>[] => [
     key: "status" as keyof Sitting,
     render: (sitting: Sitting) => (
       <Badge variant={sittingRunning(sitting.status) ? "success" : "neutral"} dot>
-        {sitting.status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}
+        {humanise(sitting.status)}
       </Badge>
     ),
   },
 ];
 
-function matches(sitting: Sitting, term: string): boolean {
-  if (!term) return true;
-  return `${sitting.name} ${sitting.programme_name ?? ""}`.toLowerCase().includes(term);
-}
-
 /** Scheduled examinations and training sessions. */
 export function Sittings({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const { session } = useSession();
-  // Status, programme and date are the server's (R-31), so they reach every page. The endpoint
-  // takes no search, so the mode tabs and the search box narrow what has been loaded so far.
+  // Status, mode, name search, programme and date are the server's (R-31), so they reach every page.
   const [filters, setFilters] = useState<SittingFilters>(NO_SITTING_FILTERS);
   const query = sittingFilterQuery(filters);
   const queryKey = JSON.stringify(query);
@@ -109,8 +105,16 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
   );
   const programmes = useAsync((signal) => listProgrammes(orgSlug, signal), [orgSlug]);
   const columns = useMemo(() => columnsFor(hrefFor), [hrefFor]);
-  const [filter, setFilter] = useState<ModeFilter>("all");
-  const [search, setSearch] = useState("");
+  // The box answers every keystroke; the server is asked once typing pauses.
+  const [typed, setTyped] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setFilters((current) => ({ ...current, search: typed })), 300);
+    return () => clearTimeout(timer);
+  }, [typed]);
+  const changeFilters = (next: SittingFilters) => {
+    setFilters(next);
+    if (next === NO_SITTING_FILTERS) setTyped("");
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -127,9 +131,29 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
 
       <SittingFilterBar
         filters={filters}
-        onChange={setFilters}
+        onChange={changeFilters}
         programmes={programmes.data?.items ?? []}
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <B2CSegmentedTabs<ModeFilter>
+          aria-label="Filter by mode"
+          compact
+          value={filters.mode === "exam" || filters.mode === "training" ? filters.mode : "all"}
+          onChange={(mode) => setFilters({ ...filters, mode: mode === "all" ? "" : mode })}
+          items={[
+            { id: "all", label: "All" },
+            { id: "exam", label: "Exam" },
+            { id: "training", label: "Training" },
+          ]}
+        />
+        <PlatformFilterSearch
+          value={typed}
+          onChange={setTyped}
+          placeholder="Search by sitting name"
+          aria-label="Search sittings"
+        />
+      </div>
 
       <AsyncBoundary
         state={pages.state}
@@ -140,10 +164,6 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
         }}
       >
         {(sittings) => {
-          const term = search.trim().toLowerCase();
-          const rows = sittings.filter(
-            (sitting) => (filter === "all" || sitting.mode === filter) && matches(sitting, term),
-          );
           const next = nextUp(sittings);
           return (
             <div className="flex flex-col gap-4">
@@ -172,30 +192,11 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                     .join(" · ")}
                 </B2CHero>
               ) : null}
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <B2CSegmentedTabs<ModeFilter>
-                  aria-label="Filter by mode"
-                  compact
-                  value={filter}
-                  onChange={setFilter}
-                  items={[
-                    { id: "all", label: "All" },
-                    { id: "exam", label: "Exam" },
-                    { id: "training", label: "Training" },
-                  ]}
-                />
-                <PlatformFilterSearch
-                  value={search}
-                  onChange={setSearch}
-                  placeholder="Search sittings"
-                  aria-label="Search sittings"
-                />
-              </div>
               {sittingsScopeNote(sittings.length, pages.hasMore) ? (
                 <p className="text-osce-body text-b2b-mid">{sittingsScopeNote(sittings.length, pages.hasMore)}</p>
               ) : null}
               <Table<Sitting>
-                rows={rows}
+                rows={sittings}
                 more={pages}
                 themeType="b2b"
                 columns={columns}
@@ -206,67 +207,6 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
           );
         }}
       </AsyncBoundary>
-    </div>
-  );
-}
-
-const FIELD =
-  "rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-meta text-b2b-headline";
-
-const STATUSES = ["scheduled", "in_progress", "completed", "cancelled"];
-
-/** Status, programme and date, applied by the server so they cover every page. */
-function SittingFilterBar({
-  filters,
-  onChange,
-  programmes,
-}: {
-  filters: SittingFilters;
-  onChange: (next: SittingFilters) => void;
-  programmes: { id: string; exam_name: string }[];
-}) {
-  const set = (patch: Partial<SittingFilters>) => onChange({ ...filters, ...patch });
-  return (
-    <div className="flex flex-wrap items-end gap-3" role="group" aria-label="Filter sittings">
-      <label className="flex flex-col gap-1 text-osce-meta text-b2b-mid">
-        Status
-        <select className={FIELD} value={filters.status} onChange={(e) => set({ status: e.target.value })}>
-          <option value="">Any status</option>
-          {STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-osce-meta text-b2b-mid">
-        Programme
-        <select
-          className={FIELD}
-          value={filters.programmeId}
-          onChange={(e) => set({ programmeId: e.target.value })}
-        >
-          <option value="">Any programme</option>
-          {programmes.map((programme) => (
-            <option key={programme.id} value={programme.id}>
-              {programme.exam_name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-1 text-osce-meta text-b2b-mid">
-        From
-        <input type="date" className={FIELD} value={filters.from} onChange={(e) => set({ from: e.target.value })} />
-      </label>
-      <label className="flex flex-col gap-1 text-osce-meta text-b2b-mid">
-        To
-        <input type="date" className={FIELD} value={filters.to} onChange={(e) => set({ to: e.target.value })} />
-      </label>
-      {filtersActive(filters) ? (
-        <button type="button" className="text-osce-meta underline" onClick={() => onChange(NO_SITTING_FILTERS)}>
-          Clear filters
-        </button>
-      ) : null}
     </div>
   );
 }

@@ -53,7 +53,7 @@ describe("planLabel", () => {
   });
 
   it("prints an unfamiliar code readably and an absent one as no plan", () => {
-    assert.equal(planLabel("bmj_pilot"), "bmj pilot");
+    assert.equal(planLabel("bmj_pilot"), "Bmj pilot");
     assert.equal(planLabel(null), "No plan");
     assert.equal(planLabel(""), "No plan");
   });

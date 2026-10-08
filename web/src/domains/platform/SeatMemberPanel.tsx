@@ -7,7 +7,8 @@ import { useTemporaryPassword, type WithTemporaryPassword } from "@/foundation/u
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { seatMembership, type Membership } from "@/domains/platform/api";
 import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
-import { SEAT_ROLES, humanise, rolesForOrgType } from "@/domains/platform/support";
+import { humanise } from "@/foundation/format";
+import { SEAT_ROLES, rolesForOrgType } from "@/domains/platform/support";
 
 /**
  * Seat the first administrator of a freshly provisioned organisation.

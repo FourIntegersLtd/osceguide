@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { humanise } from "@/foundation/format";
 import {
   Alert,
   AsyncBoundary,
@@ -23,7 +24,6 @@ import {
 import {
   formatDetail,
   formatMoment,
-  humanise,
   jobRunningLabel,
   jobStatusTone,
   jobTaskLabel,

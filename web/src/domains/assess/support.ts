@@ -1,3 +1,4 @@
+import { humanise } from "@/foundation/format";
 import { isAdminRole, isSupervisorRole } from "@/foundation/session/roles";
 import {
   sittingTypeForMode,
@@ -154,7 +155,7 @@ const SITTING_MODE_LABEL: Record<SittingMode, string> = { training: "Training", 
 
 /** "Training" or "Exam", never the raw enum. */
 export function sittingModeLabel(mode: string): string {
-  return SITTING_MODE_LABEL[mode as SittingMode] ?? sentenceCase(mode);
+  return SITTING_MODE_LABEL[mode as SittingMode] ?? humanise(mode);
 }
 
 /** "Scheduled", "In progress": a sitting's status as a person reads it. */
@@ -171,12 +172,16 @@ export function circuitLeads<T extends { role: string }>(members: readonly T[]):
 /** The sittings list filters the server applies (R-31); an empty field means no filter. */
 export interface SittingFilters {
   status: string;
+  /** "exam", "training" or "" for both. */
+  mode: string;
+  /** Part of the sitting's name. */
+  search: string;
   programmeId: string;
   from: string;
   to: string;
 }
 
-export const NO_SITTING_FILTERS: SittingFilters = { status: "", programmeId: "", from: "", to: "" };
+export const NO_SITTING_FILTERS: SittingFilters = { status: "", mode: "", search: "", programmeId: "", from: "", to: "" };
 
 export function filtersActive(filters: SittingFilters): boolean {
   return Object.values(filters).some((value) => value !== "");
@@ -186,6 +191,8 @@ export function filtersActive(filters: SittingFilters): boolean {
 export function sittingFilterQuery(filters: SittingFilters): Record<string, string> {
   const query: Record<string, string> = {};
   if (filters.status) query.status = filters.status;
+  if (filters.mode) query.mode = filters.mode;
+  if (filters.search.trim()) query.search = filters.search.trim();
   if (filters.programmeId) query.programme_id = filters.programmeId;
   if (filters.from) query.scheduled_from = filters.from;
   if (filters.to) query.scheduled_to = filters.to;
@@ -195,7 +202,7 @@ export function sittingFilterQuery(filters: SittingFilters): Record<string, stri
 /** Said under the sittings filters while the list is only partly loaded. */
 export function sittingsScopeNote(loaded: number, hasMore: boolean): string | null {
   return hasMore
-    ? `Search and Next up cover the ${loaded} sittings loaded so far. Load more to include the rest.`
+    ? `Next up covers the ${loaded} sittings loaded so far. Load more to include the rest.`
     : null;
 }
 
@@ -206,12 +213,7 @@ export function sittingsEmptyDescription(canSchedule: boolean): string {
 }
 
 export function sittingStatusLabel(status: string): string {
-  return sentenceCase(status);
-}
-
-function sentenceCase(value: string): string {
-  const text = value.replace(/_/g, " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return humanise(status);
 }
 
 /** A copy of `set` with `id` added, or removed if it was there. */

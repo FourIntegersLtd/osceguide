@@ -14,6 +14,7 @@ import {
   Row,
   RowList,
 } from "@/foundation/ui";
+import { humanise } from "@/foundation/format";
 import { useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { kindLabel } from "@/capabilities/transcripts/api";
@@ -239,7 +240,7 @@ function Actions({
             toast.success(
               result.queued
                 ? "Sent for marking"
-                : `Not sent:  ${result.reason?.replace(/_/g, " ")}`,
+                : `Not sent:  ${humanise(result.reason ?? "")}`,
             );
             await reload();
           }}

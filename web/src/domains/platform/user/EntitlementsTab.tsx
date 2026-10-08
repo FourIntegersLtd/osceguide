@@ -23,6 +23,7 @@ import {
   type PlatformEntitlement,
 } from "@/domains/platform/support/api";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
+import { humanise } from "@/foundation/format";
 import { asContractDate, formatDay } from "@/domains/platform/support";
 
 /**
@@ -103,7 +104,7 @@ function EntitlementRow({
     <Row className="flex-col items-stretch sm:flex-row sm:items-center">
       <div className="min-w-0 flex-1">
         <p className="text-osce-data font-medium text-ink">
-          {grant.exam_code} · {grant.source.replace(/_/g, " ")}
+          {grant.exam_code} · {humanise(grant.source)}
         </p>
         <p className="text-osce-meta text-ink-subtle">
           {formatDay(grant.starts_at)} →{" "}

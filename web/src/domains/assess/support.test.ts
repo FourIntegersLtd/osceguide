@@ -13,6 +13,7 @@ import {
   sittingRunning,
   sittingsEmptyDescription,
   sittingFilterQuery,
+  NO_SITTING_FILTERS,
   sittingsScopeNote,
 } from "@/domains/assess/support";
 
@@ -188,7 +189,7 @@ test("the sittings list says when its filters cover only what has loaded", () =>
   assert.equal(sittingsScopeNote(25, false), null);
   assert.equal(
     sittingsScopeNote(25, true),
-    "Search and Next up cover the 25 sittings loaded so far. Load more to include the rest.",
+    "Next up covers the 25 sittings loaded so far. Load more to include the rest.",
   );
 });
 
@@ -214,9 +215,24 @@ test("holding a sitting for a cohort, moving it and clearing it are changes; res
 });
 
 test("only the filters that are set go to the server", () => {
-  assert.deepEqual(sittingFilterQuery({ status: "", programmeId: "", from: "", to: "" }), {});
+  assert.deepEqual(sittingFilterQuery(NO_SITTING_FILTERS), {});
   assert.deepEqual(
-    sittingFilterQuery({ status: "completed", programmeId: "p1", from: "2026-05-01", to: "2026-05-31" }),
-    { status: "completed", programme_id: "p1", scheduled_from: "2026-05-01", scheduled_to: "2026-05-31" },
+    sittingFilterQuery({
+      status: "completed",
+      mode: "exam",
+      search: " may ",
+      programmeId: "p1",
+      from: "2026-05-01",
+      to: "2026-05-31",
+    }),
+    {
+      status: "completed",
+      mode: "exam",
+      search: "may",
+      programme_id: "p1",
+      scheduled_from: "2026-05-01",
+      scheduled_to: "2026-05-31",
+    },
   );
+  assert.deepEqual(sittingFilterQuery({ ...NO_SITTING_FILTERS, search: "   " }), {});
 });

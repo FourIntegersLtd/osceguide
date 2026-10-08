@@ -5,6 +5,8 @@ import type { DirectoryFilters, DirectorySummary, DirectoryUser } from "@/domain
  * without rendering and so two screens cannot spell "not started" two ways.
  */
 
+import { humanise } from "@/foundation/format";
+
 /** The old filter modal's three states, in its order. */
 export const ACCESS_FILTERS = [
   { value: "paid", label: "Paid" },
@@ -56,7 +58,7 @@ export function planLabel(code: string | null | undefined): string {
   if (unit && Number.isFinite(number) && number > 0) {
     return `${number} ${unit}${number === 1 ? "" : "s"}`;
   }
-  return code.replace(/_/g, " ");
+  return humanise(code);
 }
 
 const WORDS: Record<string, number> = {

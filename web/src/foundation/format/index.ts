@@ -74,3 +74,9 @@ export function formatShortDateTime(iso: string | null | undefined): string {
 export function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;
 }
+
+/** Any API identifier as words: `org.mfa_policy_changed` becomes "Org mfa policy changed". */
+export function humanise(code: string): string {
+  const words = code.replace(/[._]+/g, " ").replace(/\s+/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : code;
+}

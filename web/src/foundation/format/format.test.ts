@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatLongDate, formatMoney, formatShortDateTime, parseApiDate } from "@/foundation/format";
+import { formatLongDate, formatMoney, humanise, formatShortDateTime, parseApiDate } from "@/foundation/format";
 
 describe("formatMoney", () => {
   it("writes pence as pounds by default", () => {
@@ -32,5 +32,16 @@ describe("formatShortDateTime", () => {
   });
   it("shows a dash for a missing date", () => {
     assert.equal(formatShortDateTime(null), "-");
+  });
+});
+
+describe("humanise", () => {
+  it("writes an identifier as a sentence", () => {
+    assert.equal(humanise("membership.added"), "Membership added");
+    assert.equal(humanise("org.mfa_policy_changed"), "Org mfa policy changed");
+    assert.equal(humanise("in_progress"), "In progress");
+  });
+  it("leaves an empty identifier empty", () => {
+    assert.equal(humanise(""), "");
   });
 });

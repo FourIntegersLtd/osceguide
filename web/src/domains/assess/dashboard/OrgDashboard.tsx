@@ -17,6 +17,7 @@ import {
   StepGuide,
   b2bTokens,
 } from "@/foundation/ui";
+import { humanise } from "@/foundation/format";
 import { useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
@@ -125,7 +126,7 @@ function Body({
                 }
                 trailing={
                   <Badge variant="neutral" dot>
-                    {sentenceCase(sitting.status)}
+                    {humanise(sitting.status)}
                   </Badge>
                 }
               />
@@ -135,11 +136,6 @@ function Body({
       </div>
     </>
   );
-}
-
-function sentenceCase(status: string): string {
-  const words = status.replace(/_/g, " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /**

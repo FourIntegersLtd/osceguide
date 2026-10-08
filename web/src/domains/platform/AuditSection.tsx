@@ -6,7 +6,8 @@ import {
   listOrgAuditForSupport,
   type AuditEntry,
 } from "@/domains/platform/api";
-import { formatDay, humanise } from "@/domains/platform/support";
+import { humanise } from "@/foundation/format";
+import { formatDay } from "@/domains/platform/support";
 
 export function AuditSection({ slug }: { slug: string }) {
   const pages = useCursorPages(

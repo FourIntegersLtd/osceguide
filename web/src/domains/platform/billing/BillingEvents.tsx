@@ -16,6 +16,7 @@ import {
   replayBillingEvent,
   type StripeEvent,
 } from "@/domains/platform/support/api";
+import { humanise } from "@/foundation/format";
 import { formatMoment } from "@/domains/platform/support";
 import { InlineAction } from "@/domains/platform/user/InlineAction";
 
@@ -123,7 +124,7 @@ function EventRow({
             description="Tries this payment update again. It only works once the problem is fixed, for example once the account or the plan exists."
             onConfirm={async () => {
               const result = await replayBillingEvent(event.event_id);
-              toast.success(`Replay: ${result.status.replace(/_/g, " ")}`);
+              toast.success(`Replay: ${humanise(result.status)}`);
               onChanged();
             }}
           />

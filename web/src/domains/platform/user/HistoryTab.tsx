@@ -6,7 +6,8 @@ import {
   listUserAudit,
   type PlatformAuditEntry,
 } from "@/domains/platform/support/api";
-import { formatDetail, formatMoment, humanise } from "@/domains/platform/support";
+import { humanise } from "@/foundation/format";
+import { formatDetail, formatMoment } from "@/domains/platform/support";
 
 /** What was done to this account and what it did, newest first. */
 export function HistoryTab({ userId }: { userId: string }) {

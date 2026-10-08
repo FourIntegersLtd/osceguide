@@ -6,14 +6,9 @@
  * the console should see words; the identifiers stay what the API branches on.
  */
 
+import { humanise } from "@/foundation/format";
 import { roleLabel } from "@/foundation/session/roles";
 import { hasCode, validationFields } from "@/foundation/platform-client";
-
-/** Any API identifier as words: `org.mfa_policy_changed` → "Org mfa policy changed". */
-export function humanise(code: string): string {
-  const words = code.replace(/[._]+/g, " ").replace(/\s+/g, " ").trim();
-  return words ? words.charAt(0).toUpperCase() + words.slice(1) : code;
-}
 
 /**
  * The roles worth seating a first member as: the tenant-shaped admin. An owner

@@ -6,6 +6,8 @@
  * anything — the retiring console had all three inline in a 589-line page.
  */
 
+import { humanise } from "@/foundation/format";
+
 /**
  * The statuses an organisation can be in, and what each one means for signing in.
  *
@@ -205,7 +207,7 @@ export const ATTEMPT_STATUS_LABELS: Record<string, string> = {
 };
 
 export function attemptStatusLabel(status: string): string {
-  return ATTEMPT_STATUS_LABELS[status] ?? status.replace(/_/g, " ");
+  return ATTEMPT_STATUS_LABELS[status] ?? humanise(status);
 }
 
 export function attemptStatusTone(
@@ -311,7 +313,7 @@ export const AT_RISK_LABELS: Record<string, string> = {
 };
 
 export function atRiskLabel(reason: string): string {
-  return AT_RISK_LABELS[reason] ?? reason.replace(/_/g, " ");
+  return AT_RISK_LABELS[reason] ?? humanise(reason);
 }
 
 /** "3 Sept 2026, 14:05" — for a row where the time of day matters. */

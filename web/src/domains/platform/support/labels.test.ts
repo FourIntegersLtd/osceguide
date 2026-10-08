@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { PlatformError } from "@/foundation/platform-client";
+import { humanise } from "@/foundation/format";
 import { roleLabel } from "@/foundation/session/roles";
 import {
   formatDetail,
-  humanise,
   liveFeedLabel,
   provisionFieldErrors,
   jobTaskLabel,
@@ -16,8 +16,6 @@ import {
 } from "@/domains/platform/support/labels";
 
 test("identifiers read as words", () => {
-  assert.equal(humanise("membership.added"), "Membership added");
-  assert.equal(humanise("org.mfa_policy_changed"), "Org mfa policy changed");
   assert.equal(jobTaskLabel("app.features.sittings.jobs.sweep_circuits"), "Sweep circuits");
 });
 
