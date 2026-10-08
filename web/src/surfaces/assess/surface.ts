@@ -34,22 +34,17 @@ export function assessNav({ can, href }: NavContext): NavItem[] {
     /* Team, Stations and Programmes are tabs of People and Build; they also get
      * their own entries so an admin finds them without knowing which tab holds them.
      * Each shows only to who may open it, as the tab does. */
-    return [
-      { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge },
-      { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays },
-      { key: "live", label: "Now running", href: href("/live"), icon: LuRadio },
-      { key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers },
-      ...(can("manage_team")
-        ? [{ key: "team", label: "Team", href: href("/team"), icon: LuUserCog }]
-        : []),
-      { key: "build", label: "Build", href: href("/authoring"), icon: LuPencilRuler },
-      ...(can("author_content")
-        ? [
-            { key: "stations", label: "Stations", href: href("/authoring/stations"), icon: LuBookCopy },
-            { key: "programmes", label: "Programmes", href: href("/programmes"), icon: LuListChecks },
-          ]
-        : []),
+    const staff: [permission: Parameters<NavContext["can"]>[0] | null, item: NavItem][] = [
+      [null, { key: "dashboard", label: "Overview", href: href("/dashboard"), icon: LuGauge }],
+      [null, { key: "sittings", label: "Sittings", href: href("/sittings"), icon: LuCalendarDays }],
+      [null, { key: "live", label: "Now running", href: href("/live"), icon: LuRadio }],
+      [null, { key: "trainees", label: "People", href: href("/trainees"), icon: LuUsers }],
+      ["manage_team", { key: "team", label: "Team", href: href("/team"), icon: LuUserCog }],
+      [null, { key: "build", label: "Build", href: href("/authoring"), icon: LuPencilRuler }],
+      ["author_content", { key: "stations", label: "Stations", href: href("/authoring/stations"), icon: LuBookCopy }],
+      ["author_content", { key: "programmes", label: "Programmes", href: href("/programmes"), icon: LuListChecks }],
     ];
+    return staff.filter(([permission]) => permission === null || can(permission)).map(([, item]) => item);
   }
   const items: NavItem[] = [];
   /*

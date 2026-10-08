@@ -11,15 +11,21 @@ export function isThenStation(value: string | null): boolean {
   return value === THEN_STATION;
 }
 
+function wizardPath(hrefFor: (path: string) => string, examCode?: string | null, then?: string): string {
+  const query = [examCode ? `exam=${encodeURIComponent(examCode)}` : "", then ? `then=${then}` : ""]
+    .filter(Boolean)
+    .join("&");
+  return `${stationTemplatesListPath(hrefFor)}/new${query ? `?${query}` : ""}`;
+}
+
 /** The new-template wizard, with the exam already chosen when the caller knows it. */
 export function stationTemplateNewPath(hrefFor: (path: string) => string, examCode?: string | null): string {
-  const base = `${stationTemplatesListPath(hrefFor)}/new`;
-  return examCode ? `${base}?exam=${encodeURIComponent(examCode)}` : base;
+  return wizardPath(hrefFor, examCode);
 }
 
 /** The same wizard, finishing by publishing and going back to station creation. */
 export function stationTemplateThenStationPath(hrefFor: (path: string) => string, examCode: string): string {
-  return `${stationTemplateNewPath(hrefFor, examCode)}&then=${THEN_STATION}`;
+  return wizardPath(hrefFor, examCode, THEN_STATION);
 }
 
 export function stationTemplateEditPath(
