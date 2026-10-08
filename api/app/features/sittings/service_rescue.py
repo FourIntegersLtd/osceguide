@@ -251,3 +251,27 @@ async def jump_to(
     )
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.JUMPED)
     return await read_circuit(session, org_id, circuit_id)
+
+
+async def release_slots_for_user(
+    session: AsyncSession, user_id: uuid.UUID, *, agents: RoomAgents, now: datetime, reason: str
+) -> int:
+    """A candidate's account is gone (deactivated): give up every station they have not sat.
+
+    The recording on the station in progress is failed and the patient leaves the room, as for a
+    redo, and then the station is `skipped` for good: the person is not coming back to it. The
+    circuit itself carries on. Returns how many stations were given up.
+    """
+    given_up = 0
+    for org_id, circuit_id, slot_id in await repository_run.open_slots_for_user_in_live_circuits(
+        session, user_id, statuses=domain.UNSAT_SLOT_STATUSES
+    ):
+        circuit = await live_for_update(session, org_id, circuit_id)
+        if circuit.active_slot_id == slot_id:
+            await service_steps.clear_patient(
+                session, org_id, circuit, agents=agents, now=now, station_sat=False
+            )
+        await attempts_service.fail_live_for_slot(session, slot_id=slot_id, now=now, reason=reason)
+        await repository.update_slot(session, org_id, slot_id, status=domain.SlotStatus.SKIPPED, ended_at=now)
+        given_up += 1
+    return given_up

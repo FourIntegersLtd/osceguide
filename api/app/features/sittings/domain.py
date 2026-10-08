@@ -51,6 +51,8 @@ class SlotStatus(StrEnum):
 
 # A station that will not be sat again, whichever way it ended.
 FINISHED_SLOT_STATUSES = frozenset({SlotStatus.COMPLETED, SlotStatus.SKIPPED})
+# Not yet sat, and not given up: what is left to do on a station.
+UNSAT_SLOT_STATUSES = (SlotStatus.SCHEDULED, SlotStatus.READING, SlotStatus.IN_CONSULTATION)
 
 
 class InvalidCircuit(Exception):

@@ -18,11 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audit_wording import password_reissued_summary
 from app.core.auth import Principal
+from app.core.ports import RoomAgents
 from app.features.attempts import service as attempts
 from app.features.identity import service as identity
 from app.features.identity import service_close_account, service_mfa, service_passwords
 from app.features.identity import service_invitations as invitations
 from app.features.identity import service_platform as accounts
+from app.features.sittings import service_rescue
 from app.features.tenancy import repository, repository_platform, service_memberships
 from app.features.tenancy.errors import (
     CannotRevokeOwnConsoleAccess,
@@ -41,6 +43,7 @@ from app.features.tenancy.schemas import (
     UserSummary,
 )
 from app.features.tenancy.service_platform import platform_audit_read
+from app.features.voice import service as voice
 
 _STAFF_CONSOLE_LABEL = "the OSCE Guide staff console"
 
@@ -183,12 +186,17 @@ async def read_user(session: AsyncSession, user_id: uuid.UUID) -> PlatformUserDe
     )
 
 
+# Re-exported so the router can inject it without reaching into `voice` (the same seam `sittings` uses).
+get_room_agents = voice.get_room_agents
+
+
 async def update_user(
     session: AsyncSession,
     user_id: uuid.UUID,
     *,
     changes: UpdatePlatformUser,
     actor: Principal,
+    agents: RoomAgents,
     now: datetime,
 ) -> PlatformUserDetail:
     """Correct a field, or deactivate the account.
@@ -206,6 +214,10 @@ async def update_user(
         action = "user.updated"
         status = values.get("status")
         if status == "deactivated" and before.status != "deactivated":
+            # First: it frees the slot and the room; the sweep below only fails what is left.
+            await service_rescue.release_slots_for_user(
+                session, user_id, agents=agents, now=now, reason="account_deactivated"
+            )
             await attempts.fail_unfinished_for_user(
                 session, user_id=user_id, now=now, reason="account_deactivated"
             )

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
-from app.core.ports import ClockDep
+from app.core.ports import ClockDep, RoomAgents
 from app.core.tenancy import PlatformAdmin
 from app.features.tenancy import errors, schemas, service_platform_users
 
@@ -96,12 +96,13 @@ async def update_user(
     admin: PlatformAdmin,
     session: Session,
     clock: ClockDep,
+    agents: Annotated[RoomAgents, Depends(service_platform_users.get_room_agents)],
 ) -> schemas.PlatformUserDetail:
     """Correct a name or exam, or deactivate the account — which ends its
     sessions and any consultation it has open now, not at the next refresh. Refused
     for the only active administrator of an organisation."""
     return await service_platform_users.update_user(
-        session, user_id, changes=body, actor=admin, now=clock.now()
+        session, user_id, changes=body, actor=admin, agents=agents, now=clock.now()
     )
 
 

@@ -293,3 +293,21 @@ async def record_run_history(session: AsyncSession, org_id: uuid.UUID, **values:
     """Write one finished run of a circuit. Never updated afterwards."""
     session.add(CircuitRunHistory(org_id=org_id, **values))
     await session.flush()
+
+
+async def open_slots_for_user_in_live_circuits(
+    session: AsyncSession, user_id: uuid.UUID, *, statuses: Sequence[str]
+) -> list[tuple[uuid.UUID, uuid.UUID, uuid.UUID]]:
+    """`(org_id, circuit_id, slot_id)` of this person's unsat stations on circuits that are running."""
+    stmt = (
+        select(Slot.org_id, Slot.circuit_id, Slot.id)
+        .join(Circuit, Circuit.id == Slot.circuit_id)
+        .where(
+            Slot.trainee_id == user_id,
+            Slot.status.in_(list(statuses)),
+            Circuit.started_at.is_not(None),
+            Circuit.ended_at.is_(None),
+        )
+        .order_by(Slot.circuit_id, Slot.slot_index)
+    )
+    return [(org, circuit, slot) for org, circuit, slot in (await session.execute(stmt)).all()]

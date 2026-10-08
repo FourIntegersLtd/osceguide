@@ -29,10 +29,6 @@ from app.features.sittings.service_patient import dispatch_patient as dispatch_p
 # training circuit takes one per trainee.
 _ALL_SLOTS = 1_000_000
 
-# The statuses that mean a station has not been sat yet, and so can still be
-# closed off as skipped when the circuit moves past it.
-_UNSAT = (domain.SlotStatus.SCHEDULED, domain.SlotStatus.READING, domain.SlotStatus.IN_CONSULTATION)
-
 
 async def apply_step(
     session: AsyncSession,
@@ -191,7 +187,7 @@ async def finish(session: AsyncSession, org_id: uuid.UUID, circuit: Circuit, *, 
     # A station nobody sat is `skipped`, not left looking scheduled: it is not
     # coming.
     await repository_run.mark_slots_skipped(
-        session, org_id, circuit.id, before_index=_ALL_SLOTS, statuses=_UNSAT
+        session, org_id, circuit.id, before_index=_ALL_SLOTS, statuses=domain.UNSAT_SLOT_STATUSES
     )
     circuit.ended_at = now
     circuit.phase = None
