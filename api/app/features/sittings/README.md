@@ -188,4 +188,9 @@ import another slice to pass the answer in. Editing and starting a circuit call 
 - A suspension mid-exam lets running circuits finish and stay joinable; `start_circuit` is refused
   for everyone while the organisation is suspended (S-17).
 - A retired programme keeps its scheduled sittings but starts and adds no circuit (S-28).
-- Staff run routes (pause, end, advance) still answer 403 for a suspended organisation.
+- Staff run routes (pause, end, advance, the overrides, the edit lock) work on a running circuit in a
+  suspended organisation so staff can end it; start, add-circuit and edit stay refused (S-29).
+- A retired exam is the same rule as a retired programme: sittings stay, nothing new runs (S-24).
+- SCIM deprovision skips the person's unstarted stations (`service_absence`); a running attempt
+  finishes. A manual revoke does not (S-18).
+- `POST /circuits/{id}/end` takes an optional `reason`, written onto the `circuit.ended` audit summary (R-19).

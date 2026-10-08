@@ -368,7 +368,12 @@ async def test_staff_can_end_a_running_circuit_in_a_suspended_organisation(
     station = await published_station(client, admin, "kings", "Chest pain")
     candidate = await a_user(db_session, "end-susp@example.com")
     circuit = await a_circuit(
-        client, admin, "kings", sitting_id=sitting["id"], trainee_ids=[str(candidate)], station_version_ids=[station]
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate)],
+        station_version_ids=[station],
     )
     started = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
     assert started.status_code == 200, started.text
@@ -378,3 +383,72 @@ async def test_staff_can_end_a_running_circuit_in_a_suspended_organisation(
     ended = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/end", headers=bearer(admin))
 
     assert ended.status_code == 200, ended.text
+
+
+async def test_retiring_an_exam_keeps_its_sittings_and_blocks_new_runs(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-24: same rule as a retired programme. Nothing is deleted; nothing new starts."""
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    _, admin = await org_with_admin(client, make_actor)
+    programme_id = await add_programme(client, admin, org_slug="kings")
+    sitting = (await _schedule(client, admin, programme_id)).json()
+    station = await published_station(client, admin, "kings", "Chest pain")
+    candidate = await a_user(db_session, "exam-retire@example.com")
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate)],
+        station_version_ids=[station],
+    )
+    await db_session.execute(
+        text("UPDATE exams SET status='retired' FROM org_programmes p WHERE p.exam_id=exams.id AND p.id=:p"),
+        {"p": programme_id},
+    )
+
+    await db_session.commit()
+    start = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    another = await client.post(
+        f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+        json={"name": "B", "trainee_ids": [str(candidate)], "station_version_ids": [station]},
+        headers=bearer(admin),
+    )
+    kept = await client.get(f"/api/v1/orgs/kings/sittings/{sitting['id']}", headers=bearer(admin))
+
+    assert (start.status_code, start.json()["code"]) == (409, "programme_not_active")
+    assert (another.status_code, another.json()["code"]) == (409, "programme_not_active")
+    assert kept.status_code == 200
+
+
+async def test_ending_a_circuit_records_the_reason_in_the_audit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-19: the End dialog asks why; the reason sits beside the audit row."""
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    _, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings")
+    candidate = await a_user(db_session, "reason@example.com")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate)],
+        station_version_ids=[station],
+    )
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+
+    ended = await client.post(
+        f"/api/v1/orgs/kings/circuits/{circuit['id']}/end",
+        json={"reason": "Fire alarm"},
+        headers=bearer(admin),
+    )
+    log = (await client.get("/api/v1/orgs/kings/audit", headers=bearer(admin))).json()["items"]
+
+    assert ended.status_code == 200, ended.text
+    assert [r["summary"] for r in log if r["action"] == "circuit.ended"] == [
+        f"Circuit {circuit['name']} ended by hand: Fire alarm"
+    ]

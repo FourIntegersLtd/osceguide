@@ -220,6 +220,7 @@ async def end_circuit_by(
     agents: RoomAgents,
     now: datetime,
     actor: Principal,
+    reason: str | None = None,
 ) -> CircuitRead:
     """A person ends the circuit: `end_circuit`, plus the audit row (none if it had already ended)."""
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
@@ -231,7 +232,8 @@ async def end_circuit_by(
             action="circuit.ended",
             target_type="circuit",
             target_id=str(circuit_id),
-            summary=f"Circuit {circuit.name} ended by hand",
+            summary=f"Circuit {circuit.name} ended by hand"
+            + (f": {reason.strip()}" if reason and reason.strip() else ""),
         )
     return await read_circuit(session, org_id, circuit_id)
 

@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Input } from "@/foundation/ui";
 import { Dialog } from "@/domains/assess/team/chrome";
-import { MAX_EXTEND_SECONDS, validOverrideSeconds } from "@/domains/assess/sessions/support";
+import {
+  MAX_EXTEND_SECONDS,
+  validOverrideSeconds,
+} from "@/domains/assess/sessions/support";
 
 export interface OverrideRequest {
   /** The control being confirmed, used as the busy key. */
@@ -14,8 +17,6 @@ export interface OverrideRequest {
   tone?: "commit" | "danger";
   /** Shown when the override needs a number as well as a reason. */
   seconds?: number;
-  /** False where the route keeps no reason (ending a circuit), so none is asked for. */
-  asksReason?: boolean;
   run: (input: { reason: string | null; seconds: number }) => Promise<unknown>;
 }
 
@@ -104,23 +105,21 @@ function OverrideForm({
         </label>
       ) : null}
 
-      {request.asksReason === false ? null : (
-        <label className="block">
-          <span className="text-osce-caption font-medium text-b2b-headline">
-            Reason{" "}
-            <span className="font-normal text-b2b-mid">
-              (kept with the record)
-            </span>
+      <label className="block">
+        <span className="text-osce-caption font-medium text-b2b-headline">
+          Reason{" "}
+          <span className="font-normal text-b2b-mid">
+            (kept with the record)
           </span>
-          <Input
-            value={reason}
-            maxLength={500}
-            placeholder="The fire alarm went off"
-            onChange={(event) => setReason(event.target.value)}
-            className="mt-1"
-          />
-        </label>
-      )}
+        </span>
+        <Input
+          value={reason}
+          maxLength={500}
+          placeholder="The fire alarm went off"
+          onChange={(event) => setReason(event.target.value)}
+          className="mt-1"
+        />
+      </label>
     </Dialog>
   );
 }

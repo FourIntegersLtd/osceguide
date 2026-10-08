@@ -255,7 +255,6 @@ function endRequest(slug: string, circuitId: string): OverrideRequest {
     lead: "Stations nobody has sat are recorded as skipped. This cannot be undone.",
     commitLabel: "End the circuit",
     tone: "danger",
-    asksReason: false,
-    run: () => runControls.end(slug, circuitId),
+    run: ({ reason }) => runControls.end(slug, circuitId, reason),
   };
 }

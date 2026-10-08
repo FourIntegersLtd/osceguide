@@ -64,11 +64,22 @@ async def start_circuit(
     responses=error_responses(Forbidden, errors.CircuitNotFound, errors.VoiceUnavailable),
 )
 async def end_circuit(
-    circuit_id: uuid.UUID, workspace: OrgStaffRunning, session: Session, clock: ClockDep, agents: Agents
+    circuit_id: uuid.UUID,
+    workspace: OrgStaffRunning,
+    session: Session,
+    clock: ClockDep,
+    agents: Agents,
+    body: schemas.Override | None = None,
 ) -> schemas.CircuitRead:
-    """Stop the whole examination, wherever it had got to."""
+    """Stop the whole examination, wherever it had got to. The optional reason is audited."""
     return await service_run.end_circuit_by(
-        session, workspace.org_id, circuit_id, agents=agents, now=clock.now(), actor=workspace.principal
+        session,
+        workspace.org_id,
+        circuit_id,
+        agents=agents,
+        now=clock.now(),
+        actor=workspace.principal,
+        reason=body.reason if body is not None else None,
     )
 
 

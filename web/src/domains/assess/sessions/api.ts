@@ -55,11 +55,12 @@ export function consoleStreamPath(slug: string, circuitId: string): string {
  * why it was interrupted is not a defensible one.
  * --------------------------------------------------------------------- */
 
-/** The run itself: no reason, because starting and advancing are the exam. */
+/** The run itself: starting and advancing are the exam, so they take no reason. Ending does. */
 export const runControls = {
   start: (slug: string, circuitId: string) => post<Circuit>(slug, circuitId, "start"),
   advance: (slug: string, circuitId: string) => post<Circuit>(slug, circuitId, "advance"),
-  end: (slug: string, circuitId: string) => post<Circuit>(slug, circuitId, "end"),
+  end: (slug: string, circuitId: string, reason: string | null) =>
+    post<Circuit>(slug, circuitId, "end", { reason }),
 };
 
 /** The overrides: a human stepping in, and saying why. */
