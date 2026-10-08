@@ -9,9 +9,8 @@
  * the only place that says which is which.
  */
 import type { WithTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
-import { PlatformError, platformRequest, type components } from "@/foundation/platform-client";
+import { PlatformError, collectPages, platformRequest, type components } from "@/foundation/platform-client";
 import {
-  collectPages,
   orgPath,
   pageQuery,
   type PageParams,

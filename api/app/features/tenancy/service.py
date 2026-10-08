@@ -53,6 +53,14 @@ async def org_ref_by_id(session: AsyncSession, org_id: uuid.UUID) -> OrgSummary 
     return None if org is None else OrgSummary(id=org.id, slug=org.slug, name=org.name, status=org.status)
 
 
+async def org_refs_by_ids(session: AsyncSession, org_ids: set[uuid.UUID]) -> dict[uuid.UUID, OrgSummary]:
+    """Several organisations' names and statuses, in one query."""
+    return {
+        org.id: OrgSummary(id=org.id, slug=org.slug, name=org.name, status=org.status)
+        for org in await repository.organizations_by_ids(session, org_ids)
+    }
+
+
 async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> list[TokenMembership]:
     """The claims form of a user's memberships.
 
@@ -72,11 +80,6 @@ async def memberships_for_token(session: AsyncSession, user_id: uuid.UUID) -> li
         )
         for membership, org in await repository.live_memberships_with_orgs(session, user_id)
     ]
-
-
-async def revoked_org_ids(session: AsyncSession, user_id: uuid.UUID) -> set[uuid.UUID]:
-    """Organisations this person was removed from; their rostered sittings there are hidden."""
-    return await repository.orgs_where_every_membership_is_revoked(session, user_id)
 
 
 def default_workspace_for(memberships: list[TokenMembership]) -> str | None:

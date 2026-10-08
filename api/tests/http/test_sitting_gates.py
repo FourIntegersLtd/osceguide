@@ -179,16 +179,13 @@ async def test_a_named_workspace_the_token_lacks_still_shows_rostered_sittings(
     assert [item["id"] for item in everywhere.json()["items"]] == [sitting["id"]]
 
 
-async def test_my_sittings_follow_database_membership_not_the_token(
-    client: AsyncClient, make_actor, db_session: AsyncSession
-) -> None:  # type: ignore[no-untyped-def]
-    """T-13: a revoked trainee sees nothing; a token minted before rostering still scopes by slug."""
+async def _rostered_candidate(client, make_actor, db_session, *, start: bool = False):  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
     sitting = await a_sitting(client, admin, "kings")
     station = await published_station(client, admin, "kings", "Chest pain")
     token = await make_actor("stale@example.com", memberships=())
     candidate_id = await a_user(db_session, "stale@example.com")
-    await a_circuit(
+    circuit = await a_circuit(
         client,
         admin,
         "kings",
@@ -196,20 +193,64 @@ async def test_my_sittings_follow_database_membership_not_the_token(
         trainee_ids=[str(candidate_id)],
         station_version_ids=[station],
     )
+    if start:
+        await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
 
-    async def seen(query: str) -> list[str]:
+    async def seen(query: str = "") -> list[str]:
         response = await client.get(f"/api/v1/me/sittings{query}", headers=bearer(token))
         return [item["org_slug"] for item in response.json()["items"]]
 
-    # Rostered after the token was minted: the database membership is the authority.
-    assert (await seen(""), await seen("?org_slug=kings")) == (["kings"], ["kings"])
+    return org_id, candidate_id, seen, token
 
-    membership = await tenancy_repo.add_membership(
-        db_session, org_id=org_id, user_id=candidate_id, role="trainee"
-    )
-    await tenancy_repo.set_membership_revoked(db_session, org_id, membership.id, at=datetime.now(UTC))
+
+async def _revoke_on_roster(db_session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> None:
+    from app.features.roster import repository as roster_repo
+
+    for trainee_id in await roster_repo.trainee_ids_for_user(db_session, user_id):
+        await roster_repo.set_trainee_access(db_session, org_id, trainee_id, revoked_at=datetime.now(UTC))
     await db_session.commit()
-    assert (await seen(""), await seen("?org_slug=kings")) == ([], [])
+
+
+async def test_a_token_minted_before_rostering_still_sees_the_sitting(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    _, _, seen, _ = await _rostered_candidate(client, make_actor, db_session)
+    assert (await seen(), await seen("?org_slug=kings")) == (["kings"], ["kings"])
+
+
+async def test_a_trainee_revoked_on_the_roster_sees_nothing_with_or_without_a_membership_row(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """T-13 (a): the roster's revocation is the rule, as at the join gate."""
+    org_id, candidate_id, seen, _ = await _rostered_candidate(client, make_actor, db_session)
+    await _revoke_on_roster(db_session, org_id, candidate_id)
+    assert (await seen(), await seen("?org_slug=kings")) == ([], [])
+
+
+async def test_a_revoked_trainee_who_is_also_an_examiner_still_sees_no_candidate_slots(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """T-13 (b): a live staff row does not bring back the revoked candidacy."""
+    org_id, candidate_id, seen, _ = await _rostered_candidate(client, make_actor, db_session)
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=candidate_id, role="examiner")
+    await _revoke_on_roster(db_session, org_id, candidate_id)
+    assert await seen() == []
+
+
+async def test_a_suspended_organisations_sittings_are_not_joinable(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, _, _, token = await _rostered_candidate(client, make_actor, db_session, start=True)
+    url = "/api/v1/me/sittings"
+    before = (await client.get(url, headers=bearer(token))).json()["items"][0]
+    await tenancy_repo.set_organization_status(db_session, org_id, status="suspended")
+    await db_session.commit()
+    after = (await client.get(url, headers=bearer(token))).json()["items"][0]
+    assert (before["slots"][0]["joinable"], after["slots"][0]["joinable"], after["can_join"]) == (
+        True,
+        False,
+        False,
+    )
 
 
 async def test_a_repeat_start_of_a_running_circuit_is_a_read_even_if_the_lead_was_demoted(

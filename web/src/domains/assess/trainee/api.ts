@@ -1,11 +1,12 @@
 import {
+  collectPages,
   platformDownload,
   platformRequest,
   type PlatformDownload,
   type components,
 } from "@/foundation/platform-client";
 import type { RoomGrant } from "@/foundation/livekit";
-import { collectPages, orgPath, pageQuery } from "@/domains/assess/api";
+import { orgPath, pageQuery } from "@/domains/assess/api";
 
 /**
  * Everything a rostered person reads about their own training.

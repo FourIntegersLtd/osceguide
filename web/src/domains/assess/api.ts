@@ -1,4 +1,4 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import { collectPages, platformRequest, type components } from "@/foundation/platform-client";
 import type { StationLibraryScope } from "@/capabilities/stations";
 
 export type Sitting = components["schemas"]["SittingRead"];
@@ -46,7 +46,6 @@ export interface PageParams {
 }
 
 const PAGE_LIMIT = 100;
-const MAX_PAGES = 25;
 
 /** The org prefix, so the team and roster slices spell it the same way. */
 export const orgPath = org;
@@ -57,20 +56,6 @@ export function pageQuery(page?: PageParams) {
     cursor: page?.cursor ?? undefined,
     search: page?.search?.trim() || undefined,
   };
-}
-
-export async function collectPages<T>(
-  fetchPage: (cursor: string | null) => Promise<{ items: T[]; next_cursor?: string | null }>,
-): Promise<T[]> {
-  const items: T[] = [];
-  let cursor: string | null = null;
-  for (let index = 0; index < MAX_PAGES; index += 1) {
-    const page = await fetchPage(cursor);
-    items.push(...page.items);
-    cursor = page.next_cursor ?? null;
-    if (!cursor) break;
-  }
-  return items;
 }
 
 export type TraineePage = components["schemas"]["Page_TraineeRead_"];

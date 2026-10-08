@@ -105,11 +105,11 @@ async def memberships_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
     return list((await session.execute(stmt)).scalars())
 
 
-async def orgs_where_every_membership_is_revoked(session: AsyncSession, user_id: uuid.UUID) -> set[uuid.UUID]:
-    """Organisations this person once belonged to and no longer does (every membership row revoked)."""
-    held = (await session.execute(select(Membership).where(Membership.user_id == user_id))).scalars().all()
-    live = {row.org_id for row in held if row.revoked_at is None and row.status != "revoked"}
-    return {row.org_id for row in held} - live
+async def organizations_by_ids(session: AsyncSession, org_ids: set[uuid.UUID]) -> list[Organization]:
+    """Several organisations in one query."""
+    if not org_ids:
+        return []
+    return list((await session.execute(select(Organization).where(Organization.id.in_(org_ids)))).scalars())
 
 
 async def live_memberships_with_orgs(

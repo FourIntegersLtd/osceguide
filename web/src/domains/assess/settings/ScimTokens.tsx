@@ -22,6 +22,7 @@ export function ScimTokens({ orgSlug }: { orgSlug: string }) {
   async function act(action: () => Promise<void>) {
     setBusy(true);
     setFailure(null);
+    setIssued(null);
     try {
       await action();
       tokens.reload();
@@ -41,7 +42,10 @@ export function ScimTokens({ orgSlug }: { orgSlug: string }) {
         {failure ? <Alert tone="danger">{failure}</Alert> : null}
         {issued ? (
           <Alert tone="warning">
-            Copy this token now; it cannot be shown again. <code className="break-all">{issued.token}</code>
+            Copy this token now; it cannot be shown again. <code className="break-all">{issued.token}</code>{" "}
+            <Button variant="secondary" size="sm" onClick={() => setIssued(null)}>
+              Dismiss
+            </Button>
           </Alert>
         ) : null}
         <form

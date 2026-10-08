@@ -9,6 +9,7 @@ export {
   type RequestOptions,
   type PlatformDownload,
 } from "@/foundation/platform-client/client";
+export { collectPages } from "@/foundation/platform-client/collectPages";
 export type { SseFrame } from "@/foundation/platform-client/sse";
 export {
   PlatformError,

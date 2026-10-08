@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audience import ViewerAudiences
 from app.core.audit_wording import roster_added_summary, seating_note
 from app.core.auth import Principal
+from app.core.events import publish_after_commit, user_topic
 from app.features.catalog import service as catalog
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
@@ -154,6 +155,9 @@ async def set_access(
         await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
     elif trainee.user_id is not None:
         await tenancy.grant_trainee_membership(session, org_id, trainee.user_id)
+    if trainee.user_id is not None:
+        # The trainee's portal drops (or regains) this organisation's sittings at once.
+        publish_after_commit(session, user_topic(trainee.user_id), "roster.access_changed")
     refreshed = await repository.trainee_by_id(session, org_id, trainee_id)
     return _trainee_read(refreshed)  # type: ignore[arg-type]
 
@@ -272,6 +276,11 @@ async def ensure_rosterable(session: AsyncSession, org_id: uuid.UUID, user_ids: 
             domain.ensure_rosterable(domain.TraineeState(access_revoked=trainee.access_revoked))
         except domain.TraineeRevoked as exc:
             raise errors.TraineeRevokedError(str(exc)) from exc
+
+
+async def revoked_org_ids(session: AsyncSession, user_id: uuid.UUID) -> set[uuid.UUID]:
+    """Organisations where this person's roster entry is revoked: the same rule `is_revoked` applies."""
+    return await repository.revoked_org_ids_for_user(session, user_id)
 
 
 async def is_revoked(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> bool:

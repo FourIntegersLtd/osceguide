@@ -27,7 +27,7 @@ export function WorkspaceSettings() {
           ? [
               { id: "organisation", label: "Organisation", panel: <OrganisationPanel orgSlug={orgSlug} /> },
               { id: "sso", label: "Single sign-on", panel: <SignInPanel orgSlug={orgSlug} /> },
-              { id: "provisioning", label: "Provisioning", panel: <ScimTokens orgSlug={orgSlug} /> },
+              { id: "provisioning", label: "Provisioning", panel: <ScimTokens key={orgSlug} orgSlug={orgSlug} /> },
             ]
           : []
       }

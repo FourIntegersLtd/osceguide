@@ -1,4 +1,4 @@
-import { platformRequest, type components } from "@/foundation/platform-client";
+import { collectPages, platformRequest, type components } from "@/foundation/platform-client";
 import type { AuthoringScope, Json } from "@/capabilities/authoring/api/scope";
 import type {
   StationTemplate,
@@ -66,18 +66,7 @@ export async function listStationTemplates(
   scope: AuthoringScope,
   signal?: AbortSignal,
 ): Promise<S["Page_StationTemplateRead_"]> {
-  const items: StationTemplate[] = [];
-  let cursor: string | null = null;
-  // Walk to the end: a silent stop at some page count hid templates from the picker.
-  do {
-    const result: S["Page_StationTemplateRead_"] = await listStationTemplatesPage(
-      scope,
-      { cursor, limit: 100 },
-      signal,
-    );
-    items.push(...result.items);
-    cursor = result.next_cursor ?? null;
-  } while (cursor);
+  const items = await collectPages((cursor) => listStationTemplatesPage(scope, { cursor, limit: 100 }, signal));
   return { items, next_cursor: null };
 }
 

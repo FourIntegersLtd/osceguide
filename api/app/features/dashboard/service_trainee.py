@@ -15,9 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.attempts import service_reads as attempts
 from app.features.dashboard.schemas import MySitting, MySittings, MySlot
 from app.features.results import service_candidate as results
+from app.features.roster import service as roster
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 from app.features.tenancy import service as tenancy
+from app.features.tenancy.domain import org_permits_access
 
 # A slot is finished for the candidate once the station is completed or the
 # circuit moved past it.
@@ -45,17 +47,16 @@ async def my_sittings(
     organisation, and a token minted before rostering still shows what it should. Someone rostered
     straight onto a circuit with no membership row at all stays visible.
     """
-    removed = await tenancy.revoked_org_ids(session, user_id)
+    removed = await roster.revoked_org_ids(session, user_id)
     trainee_slots = [
         slot
         for slot in await sittings.slots_for_trainee(session, user_id)
         if slot.sitting.org_id not in removed
     ]
-    org_slugs: dict[uuid.UUID, str] = {}
-    for org_id in {slot.sitting.org_id for slot in trainee_slots}:
-        org = await tenancy.org_ref_by_id(session, org_id)
-        if org is not None:
-            org_slugs[org_id] = org.slug
+    orgs = await tenancy.org_refs_by_ids(session, {slot.sitting.org_id for slot in trainee_slots})
+    org_slugs = {org_id: org.slug for org_id, org in orgs.items()}
+    # A suspended organisation's sittings stay listed but cannot be joined, as at the join gate.
+    suspended = {org_id for org_id, org in orgs.items() if not org_permits_access(org.status)}
     if org_slug is not None:
         trainee_slots = [slot for slot in trainee_slots if org_slugs.get(slot.sitting.org_id) == org_slug]
     titles = await _titles_per_org(session, trainee_slots)
@@ -70,6 +71,7 @@ async def my_sittings(
 
     grouped: dict[uuid.UUID, MySitting] = {}
     for trainee_slot in trainee_slots:
+        open_to_join = _circuit_live(trainee_slot.circuit) and trainee_slot.sitting.org_id not in suspended
         entry = grouped.get(trainee_slot.circuit.id)
         if entry is None:
             entry = MySitting(
@@ -83,7 +85,7 @@ async def my_sittings(
                 circuit_id=trainee_slot.circuit.id,
                 circuit_name=trainee_slot.circuit.name,
                 live=_circuit_live(trainee_slot.circuit),
-                can_join=_circuit_live(trainee_slot.circuit) and bool(trainee_slot.circuit.room_name),
+                can_join=open_to_join and bool(trainee_slot.circuit.room_name),
                 phase=trainee_slot.circuit.phase,
                 phase_started_at=trainee_slot.circuit.phase_started_at,
                 phase_ends_at=trainee_slot.circuit.phase_ends_at,
@@ -96,7 +98,6 @@ async def my_sittings(
             )
             grouped[trainee_slot.circuit.id] = entry
 
-        circuit_live = _circuit_live(trainee_slot.circuit)
         is_active = trainee_slot.circuit.active_slot_id == trainee_slot.slot.id
         summary = titles.get(trainee_slot.slot.station_version_id)
         attempt = live.get(trainee_slot.slot.id)
@@ -117,7 +118,7 @@ async def my_sittings(
                     trainee_slot.slot.status,
                     trainee_slot.slot.room_name,
                     trainee_slot.slot.exam_completed_at is not None,
-                    circuit_live,
+                    open_to_join,
                 ),
                 attempt_id=attempt_id,
                 is_active=is_active,
