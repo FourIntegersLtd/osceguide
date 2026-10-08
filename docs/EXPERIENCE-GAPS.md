@@ -148,7 +148,7 @@ unless written in full.
 - **R-38** · WRONG · fixed 5770d03 (test_circuit_lead.py: 409 lead_cannot_run on create and rebuild; CircuitBuilder split with TraineePicker.tsx) · Not caused by a fix (found during 53c86a8): the api accepts any member, including a trainee, as a circuit's lead; only the web dropdown now filters. sittings/service_edit.py; CircuitBuilder.tsx (also 335 lines, over the 300-line warning)
 - **R-39** · ROUGH · open · Caused by 74bbded: the candidate stepper lists the whole sitting, so a supervisor stepping to a slot they are not named on lands on the R-26 notice. SlotReview.tsx; CandidateStepper
 - **R-40** · ROUGH · open · Not caused by a fix: sign-off copies the draft's evidence snapshot, so a station re-marked between draft and sign-off is refused evidence_changed only at release. results/service.py sign_off
-- **R-41** · ROUGH · open · Found during 5770d03: circuits built before R-38 whose lead is no longer staff are not rechecked; the lead check runs only at build. sittings/service_structure.py
+- **R-41** · ROUGH · fixed 33209b7 (lead check re-runs at start for circuits built before R-38) · Found during 5770d03: circuits built before R-38 whose lead is no longer staff are not rechecked; the lead check runs only at build. sittings/service_structure.py
 
 ## 4. Institution trainee (T-*)
 
@@ -156,11 +156,12 @@ unless written in full.
 - **T-4** · WRONG · partly fixed 5770d03 (inOrganisation test: the web filters /me/sittings by workspace; the api still returns every org's sittings, T-11) · Trainee in two orgs sees both orgs' sittings in either workspace. dashboard/service_trainee.py:30
 - **T-5** · WRONG · open · No results or history entry: result reachable only via the sitting alert; self-practice attempts, transcripts and debriefs have no entry point; slot attempts get no debrief tutor. TraineeHome.tsx; service_debrief.py:32
 - **T-6** · WRONG · fixed cee07d0 (links say could not check, reload; component change, no unit test) · MyReviewLink and MyResultLink use useAsync without a boundary: an error hides the link. MySittingDetail.tsx:214,241
-- **T-7** · WRONG · open · JoinRoom: denied microphone only warns and joins; room and token errors raw. JoinRoom.tsx
+- **T-7** · WRONG · fixed 33209b7 (joinFailureCopy: denied microphone blocks with guidance; room/token errors mapped to copy) · JoinRoom: denied microphone only warns and joins; room and token errors raw. JoinRoom.tsx
 - **T-8** · ROUGH · partly fixed cee07d0 (copy only; a per-station breakdown and telling not-ready reasons apart need server data) · MyResult has no per-station breakdown and promises a notification; MyReview "Not ready yet" for any reason. MyResult.tsx; MyReview.tsx
-- **T-9** · ROUGH · open · Finished sittings never leave the list; no past/upcoming grouping. TraineeHome.tsx
-- **T-10** · ROUGH · open · Self practice empty state points to the library with no link; completeHref returns to the list not the feedback. SelfPractice.tsx
-- **T-11** · WRONG · open · Found during 5770d03, not caused by it: /me/sittings is not scoped by workspace in the api; only the web filters it. dashboard/service_trainee.py:30
+- **T-9** · ROUGH · fixed 33209b7 (splitFinished: past and upcoming groups) · Finished sittings never leave the list; no past/upcoming grouping. TraineeHome.tsx
+- **T-10** · ROUGH · partly fixed 33209b7 (empty state links to the library; completeHref to feedback not done: self-practice has no feedback route yet, see T-12) · Self practice empty state points to the library with no link; completeHref returns to the list not the feedback. SelfPractice.tsx
+- **T-11** · WRONG · fixed 33209b7 (api scopes /me/sittings by org_slug; a stale token lacking the org membership shows nothing until refresh) · Found during 5770d03, not caused by it: /me/sittings is not scoped by workspace in the api; only the web filters it. dashboard/service_trainee.py:30
+- **T-12** · ROUGH · open · Found during 33209b7, not caused by it: self practice has no feedback route, so completeHref cannot return to feedback (T-10 second half). SelfPractice
 
 ## 5. Consumer (C-*)
 
@@ -247,7 +248,7 @@ unless written in full.
 - **S-21** · WRONG · open · Anonymise: PDF, CSV, report and cohort still show the real name and email; account, transcripts untouched; live slots continue; freed email re-rosters as a new trainee. service_result_pdf.py _candidate_name; service_report.py:86-87; service_cohort.py:71-72; service_report_csv.py:102-103; roster/service_edit.py
 - **S-22** · WRONG · open · Role change or removal applies at next token (up to 15 min), SSE not closed; demoted or removed supervisor keeps leading a circuit. core/tenancy.py; service_memberships.py
 - **S-23** · WRONG · open · No self-serve email change; roster and account emails diverge (roster link, Stripe match, trainee_email).
-- **S-24** · WRONG · open · create_sitting checks neither exam nor programme status; set_programme_status enforced nowhere; retire_exam does not cascade. sittings/service.py; catalog/service_programmes.py
+- **S-24** · WRONG · partly fixed 33209b7 (create_sitting blocks a retired exam and a draft/paused programme with 409 programme_not_active; retire_exam cascade not done: deleting/cascading needs a product decision) · create_sitting checks neither exam nor programme status; set_programme_status enforced nowhere; retire_exam does not cascade. sittings/service.py; catalog/service_programmes.py
 - **S-25** · WRONG · open · Stalled job requeued once then failed silently; consumer attempt stuck in created/running has no reaper; sweep failures logged only; paused circuit force-ended at 12h; outbox drains 20 per run (500 invites ≈ 25 min); erasure batch aborts on one error. health/service.py; sittings/jobs.py; notifications
 - **S-26** · WRONG · open · Bulk import, single adds and resends share OUTBOUND_EMAIL 30/h per user: more than 30 resends in an hour 429s; rate limits handled only in MFA/2FA/help panels; retry_after never read. core/rate_limit.py
 - **S-27** · WRONG · open · collectPages stops at 25 pages silently; programmes, cohorts, groups lists first page only; SSE has no connection cap and auth is checked once at open. domains/assess/api.ts; core/sse.py
@@ -351,3 +352,4 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | 2026-10-08 | night r1 institution | R-38 R-18 R-20 R-23 fixed, R-19 T-4 partly (5770d03); 53c86a8 review fixes (RequireCapability, isSupervisorRole, DEFAULT_SIMULATION_MINUTES) were swept into the doc commit ac3d463 by a repo-wide index commit | T-11 R-41 new; /end takes no reason |
 | 2026-10-08 | night r1 marking | review fixes edbf127 56f2206 (74bbded: failed-reason copy per reason, evidence shim deleted, ReleaseAll split); R-33 T-8 partly, T-6 fixed (cee07d0); institution 576c547 (5770d03 review); access fd62033 (c6bbf14, a59e4d6 review) | T-3 and R-34 need decisions; drafts saved before 74bbded are refused evidence_changed once at release |
 | 2026-10-08 | night r1 access | A-15 A-17 fixed, A-14 A-16 A-18 partly (75ee1d7); review fixes fd62033 | already_purchased and the SAML input need the openapi regen |
+| 2026-10-08 | night r1 institution | T-7 T-9 T-11 R-41 fixed, S-24 T-10 partly (33209b7); review fixes d7e3dc1 (edbf127, 576c547) | T-12 added; openapi needs org_slug, programme_not_active, lead_cannot_run; R-19 /end has no reason field |
