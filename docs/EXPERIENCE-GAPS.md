@@ -203,6 +203,7 @@ unless written in full.
 - **A-21** · WRONG · open · Referrals tab adminOnly while checkout, T&Cs and POST /me/referral-code exist for everyone; ?tab=referrals falls back silently; ReferralDetail shows the viewer's exam not the referee's; "within 48 hours" unverifiable. Settings.tsx; ReferralDetail.tsx; ReferralsInfo.tsx
 - **A-22** · WRONG · open · CloseAccount says it permanently removes attempts and ends subscriptions; the API only sets deleted and clears the password, erasure runs 30 days later; sign-in afterwards says account_suspended. CloseAccount.tsx; router_me.py /me/close
 - **A-23** · WRONG · open · ProfilePanel invents "SCA" for users with no exam; ExamPanel "Failed to update" for every code; avatar errors raw. ProfilePanel.tsx; ExamPanel.tsx
+- **A-24** · WRONG · open · Caused by 75ee1d7 (A-17): any live purchase for the exam refuses a new checkout, so an upgrade (one_month to three_month) or an early renewal must wait for access to lapse. Product decision: extend the new grant from the current ends_at, or keep the refusal. billing/service_checkout.py:79-83
 
 ## 7. Platform staff console (P-*)
 
