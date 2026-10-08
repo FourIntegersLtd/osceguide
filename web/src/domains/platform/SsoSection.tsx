@@ -20,6 +20,7 @@ import {
 } from "@/domains/platform/api";
 import { WriteOnlyNote } from "@/domains/platform/chrome";
 import { ssoFieldErrors } from "@/domains/platform/support";
+import { SamlSection } from "@/domains/platform/sso/SamlSection";
 
 const PROVIDERS = [
   { value: "entra", label: "Microsoft Entra ID" },
@@ -94,13 +95,16 @@ export function SsoSection({ slug }: { slug: string }) {
   );
 
   return (
-    <Panel title="SSO" description={SSO_DESCRIPTION}>
-      <AsyncBoundary state={state}>
-        {({ config }) => (
-          <SsoForm slug={slug} config={config} onSaved={state.reload} />
-        )}
-      </AsyncBoundary>
-    </Panel>
+    <div className="flex flex-col gap-6">
+      <Panel title="SSO" description={SSO_DESCRIPTION}>
+        <AsyncBoundary state={state}>
+          {({ config }) => (
+            <SsoForm slug={slug} config={config} onSaved={state.reload} />
+          )}
+        </AsyncBoundary>
+      </Panel>
+      <SamlSection slug={slug} />
+    </div>
   );
 }
 

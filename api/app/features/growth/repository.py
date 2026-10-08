@@ -121,7 +121,20 @@ async def is_reporter(session: AsyncSession, *, partner: str, email: str) -> boo
 
 
 async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> PartnerReporter:
-    """Grant this email reporting access to this one partner's numbers."""
+    """Grant this email reporting access to this one partner's numbers.
+
+    One row per (partner, email): adding someone already there is a no-op, and adding
+    someone whose access was revoked makes the same row live again.
+    """
+    existing = (
+        await session.execute(
+            select(PartnerReporter).where(PartnerReporter.partner == partner, PartnerReporter.email == email)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        existing.revoked_at = None
+        await session.flush()
+        return existing
     reporter = PartnerReporter(partner=partner, email=email)
     session.add(reporter)
     await session.flush()

@@ -7,3 +7,10 @@ export function reissueTemporaryPassword(userId: string, temporaryPassword: stri
     body: { temporary_password: temporaryPassword },
   });
 }
+
+// until regenerated: POST /platform/users/{id}/reset-mfa (204).
+export function resetUserMfa(userId: string): Promise<void> {
+  return platformRequest<void>(`/api/v1/platform/users/${encodeURIComponent(userId)}/reset-mfa`, {
+    method: "POST",
+  });
+}

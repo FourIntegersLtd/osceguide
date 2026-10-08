@@ -23,6 +23,7 @@ import {
 } from "@/domains/platform/api";
 import { formatDay, formatSince } from "@/domains/platform/support";
 import { ReissuePasswordPanel } from "@/domains/platform/user/ReissuePasswordPanel";
+import { ResetMfaButton } from "@/domains/platform/user/ResetMfaButton";
 import {
   accessLabel,
   accessOf,
@@ -248,6 +249,7 @@ export function AccountTab({
             >
               {user.is_platform_admin ? "Revoke console" : "Grant console"}
             </Button>
+            <ResetMfaButton userId={user.id} email={user.email} />
           </ActionRail>
         }
       />

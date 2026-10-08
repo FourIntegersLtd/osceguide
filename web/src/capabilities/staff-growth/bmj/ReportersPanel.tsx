@@ -186,7 +186,7 @@ function AddViewerModal({
         >
           <ModalLead
             title={`Add ${label} viewer`}
-            description="They will get an email with a password. They can only see this dashboard, not the exam product."
+            description="No email is sent: tell them to sign in with this address (they can create an account with it if they have none). They can only see this dashboard, not the exam product."
           />
           <div className="mt-5">
             <Input
@@ -200,8 +200,8 @@ function AddViewerModal({
           {!error && email.includes("@") && !isPartnerAddress(email, partner) ? (
             <div className="mt-3">
               <Alert tone="warning">
-                This isn&apos;t a {label} address. Double-check it before sending: whoever receives
-                the email will be able to see this partner&apos;s commercial data.
+                This isn&apos;t a {label} address. Double-check it: whoever signs in with this
+                address will be able to see this partner&apos;s commercial data.
               </Alert>
             </div>
           ) : null}
@@ -215,7 +215,7 @@ function AddViewerModal({
               Cancel
             </ModalSecondaryButton>
             <ModalPrimaryButton type="submit" disabled={busy}>
-              {busy ? "Sending…" : "Send invite"}
+              {busy ? "Adding…" : "Add viewer"}
             </ModalPrimaryButton>
           </ModalFooterActions>
         </form>

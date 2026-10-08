@@ -798,3 +798,29 @@ async def test_the_history_search_matches_the_referees_email(
     rows = response.json()["items"]
     assert len(rows) == 1
     assert rows[0]["referee_email"] == "findable-friend@example.com"
+
+
+async def test_a_revoked_reporter_can_be_added_again_and_a_live_one_twice(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """Re-adding hit the (partner, email) unique constraint with a 500 (P-5)."""
+    root = await make_actor("root-readd@osceguide.com", platform_admin=True)
+    reporter_token = await make_actor("again@bmj.com")
+    url = "/api/v1/growth/partners/bmj/reporters"
+    funnel = "/api/v1/growth/partners/bmj/funnel"
+
+    assert (await client.post(url, json={"email": "again@bmj.com"}, headers=bearer(root))).status_code == 204
+    assert (await client.delete(f"{url}/again@bmj.com", headers=bearer(root))).status_code == 204
+    assert (await client.get(funnel, headers=bearer(reporter_token))).status_code == 403
+
+    again = await client.post(url, json={"email": "Again@bmj.com"}, headers=bearer(root))
+    assert again.status_code == 204, again.text
+    assert (await client.get(funnel, headers=bearer(reporter_token))).status_code == 200
+
+    twice = await client.post(url, json={"email": "again@bmj.com"}, headers=bearer(root))
+    assert twice.status_code == 204, twice.text
+    listed = [
+        r for r in (await client.get(url, headers=bearer(root))).json() if r["email"] == "again@bmj.com"
+    ]
+    assert len(listed) == 1
+    assert listed[0]["revoked_at"] is None
