@@ -252,6 +252,9 @@ export function jobStatusTone(
  * words a person answering the ticket needs, with the action that fixes each.
  * `null` means nothing is wrong — the marking is done or on its way.
  */
+/** A consultation can legitimately run this long; younger than this is treated as live. */
+const LIVE_WINDOW_MINUTES = 30;
+
 export function diagnoseAttempt(attempt: {
   status: string;
   transcript_complete: boolean;
@@ -259,9 +262,21 @@ export function diagnoseAttempt(attempt: {
   scoring_job: { status: string } | null;
   chunk_count?: number;
   has_definition?: boolean;
-}): { problem: string; action: "salvage" | "rescore" | "fail" | null } | null {
+  started_at?: string | null;
+  created_at?: string;
+}, now: number = Date.now()): { problem: string; action: "salvage" | "rescore" | "fail" | null } | null {
   const status = attempt.status;
   if (status === "evaluated" || status === "failed") return null;
+  if (status === "created" || status === "running") {
+    const since = Date.parse(attempt.started_at ?? attempt.created_at ?? "");
+    const minutes = Math.floor((now - since) / 60_000);
+    if (Number.isFinite(since) && minutes < LIVE_WINDOW_MINUTES) {
+      return {
+        problem: `This consultation began ${minutes < 1 ? "less than a minute" : `${minutes} minute${minutes === 1 ? "" : "s"}`} ago and may still be in progress. Failing or salvaging it now would end it for the person sitting it.`,
+        action: null,
+      };
+    }
+  }
   if (status === "created") {
     return { problem: "The room was never joined, so nothing was recorded.", action: "fail" };
   }

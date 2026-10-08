@@ -94,6 +94,14 @@ describe("the support view's diagnosis", () => {
       "rescore",
     );
   });
+  it("does not suggest failing or salvaging a consultation that began minutes ago", () => {
+    const now = Date.parse("2026-10-08T12:10:00Z");
+    const live = diagnoseAttempt({ ...base, status: "running", chunk_count: 0, started_at: "2026-10-08T12:00:00Z" }, now);
+    assert.equal(live?.action, null);
+    assert.match(live?.problem ?? "", /began 10 minutes ago and may still be in progress/);
+    const stale = diagnoseAttempt({ ...base, status: "running", chunk_count: 0, started_at: "2026-10-08T11:00:00Z" }, now);
+    assert.equal(stale?.action, "fail");
+  });
   it("says nothing is wrong when the marking is done or on its way", () => {
     assert.equal(diagnoseAttempt({ ...base, status: "evaluated" }), null);
     assert.equal(diagnoseAttempt({ ...base, status: "interaction_complete", scoring_job: { status: "todo" } }), null);

@@ -11,8 +11,14 @@ const navFor = (granted: Permission[]) =>
   hireSurface.nav({ workspace, can: (p) => granted.includes(p), href: (p) => `/app/acme${p}` }).map((i) => i.href);
 
 describe("hire navigation", () => {
-  it("shows staff the sittings and the exam builder, both of which exist", () => {
-    assert.deepEqual(navFor(["run_circuits"]), ["/app/acme/dashboard", "/app/acme/sittings", "/app/acme/authoring"]);
+  it("shows staff the sittings, the live board, the people and the exam builder, both of which exist", () => {
+    assert.deepEqual(navFor(["run_circuits"]), [
+      "/app/acme/dashboard",
+      "/app/acme/sittings",
+      "/app/acme/live",
+      "/app/acme/trainees",
+      "/app/acme/authoring",
+    ]);
     const mounted = capabilitiesFor("hire", { can: { run_circuits: true }, includeHidden: true }).map((c) => c.path);
     assert.ok(mounted.includes("/authoring"));
   });

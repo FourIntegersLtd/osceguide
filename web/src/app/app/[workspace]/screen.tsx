@@ -4,7 +4,7 @@ import { createElement, useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import { Spinner } from "@/foundation/ui";
 import { useSession } from "@/foundation/session";
-import { loadScreenComponent, resolveWorkspace, surfaceForWorkspace } from "@/surfaces";
+import { loadScreenComponent, ownsScreen, resolveWorkspace, surfaceForWorkspace } from "@/surfaces";
 import type { ScreenName } from "@/surfaces";
 import type { ScreenProps } from "@/surfaces/contract";
 import type { ComponentType } from "react";
@@ -33,6 +33,9 @@ export function Screen({
   if (!workspace) notFound();
 
   const manifest = surfaceForWorkspace(workspace);
+  // The manifest is the declared list; the screen map is the implementation. A name
+  // the manifest does not own is a 404 even if a map happens to have it.
+  if (!ownsScreen(manifest, name)) notFound();
   const surfaceKey = manifest.screensFrom ?? manifest.id;
 
   return (

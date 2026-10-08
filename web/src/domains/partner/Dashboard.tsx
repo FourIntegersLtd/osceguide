@@ -154,7 +154,7 @@ export function PartnerDashboard({ partner }: { partner: string }) {
               ) : null
             }
           </AsyncBoundary>
-          <AsyncBoundary state={signups} failure={() => null}>
+          <AsyncBoundary state={signups} failure={failure("We couldn't load sign-ups over time", "Other sections are unaffected.")}>
             {(report) =>
               report ? (
                 <CountOverTimeSection
@@ -171,7 +171,10 @@ export function PartnerDashboard({ partner }: { partner: string }) {
             }
           </AsyncBoundary>
           {filters.exam ? null : (
-            <AsyncBoundary state={summary} failure={() => null}>
+            <AsyncBoundary
+              state={summary}
+              failure={failure("We couldn't load the breakdown by exam", "Other sections are unaffected.")}
+            >
               {(data) =>
                 data ? <ExamBreakdownSection copy={copy.performance.byExam} rows={data.breakdown_by_exam} /> : null
               }
@@ -182,7 +185,7 @@ export function PartnerDashboard({ partner }: { partner: string }) {
 
       {tab === "fee" ? (
         <div className="space-y-5">
-          <AsyncBoundary state={summary} failure={() => null}>
+          <AsyncBoundary state={summary} failure={failure("We couldn't load the fee note", "Other sections are unaffected.")}>
             {(data) => (data ? <FeeDisclaimerBanner fee={data.fee} /> : null)}
           </AsyncBoundary>
           <AsyncBoundary state={fee} failure={failure("We couldn't load the fee estimate", "")}>
