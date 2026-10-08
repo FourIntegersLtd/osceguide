@@ -18,6 +18,7 @@ from app.core.memberships import MembershipLookup
 from app.core.settings import Settings
 from app.features.identity import repository
 from app.features.identity.errors import AccountSuspended
+from app.features.identity.models import User
 from app.features.identity.schemas import AuthResult
 from app.features.identity.service import _announce_registration, user_read
 from app.features.identity.service_sessions import issue
@@ -72,11 +73,14 @@ async def sign_in_external(
         await repository.disable_password_login(session, user.id)
     if user.status != "active":
         raise AccountSuspended()
-    if user.password_hash is not None and user.must_change_password:
-        # Someone else chose this password and the person never replaced it (an admin's
-        # temporary password): it must not outlive the person proving the address is theirs.
-        # Otherwise an admin who seats an address they do not own keeps a way in after the
-        # real owner arrives through SSO.
+    if user.password_hash is not None and (
+        user.must_change_password or (link is None and await _began_with_relayed_password(session, user))
+    ):
+        # Someone else chose this password (an admin's temporary password) and the person never
+        # replaced it, or replaced it only after the admin had signed in and changed it
+        # themselves (the audit log still says it began relayed): it must not outlive the
+        # person proving the address is theirs through SSO. Otherwise an admin who seats an
+        # address they do not own keeps a way in after the real owner arrives.
         await repository.clear_password(session, user.id)
         await repository.revoke_all_chains_for_user(
             session, user_id=user.id, at=now, reason="sso_replaced_temp_password"
@@ -90,3 +94,10 @@ async def sign_in_external(
     memberships = await memberships_for(session, user.id)
     tokens = await issue(session, user, settings=settings, now=now, memberships=memberships)
     return AuthResult(**tokens.model_dump(), user=user_read(user, memberships))
+
+
+async def _began_with_relayed_password(session: AsyncSession, user: User) -> bool:
+    # Imported here: `tenancy` imports this slice, and the audit log is its table.
+    from app.features.tenancy import repository as tenancy_repository
+
+    return await tenancy_repository.temporary_password_was_relayed(session, user_id=user.id, email=user.email)

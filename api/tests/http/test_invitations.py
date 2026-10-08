@@ -366,6 +366,59 @@ async def test_sso_sign_in_takes_back_an_account_someone_else_gave_a_password(
     assert refreshed.status_code == 401, refreshed.text
 
 
+async def test_sso_sign_in_takes_back_an_account_even_after_the_seater_changed_the_password(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The seater signs in and changes the temporary password, which clears the
+    must-change flag; the audit log still says the account began with a relayed password."""
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    await client.post(
+        "/api/v1/orgs/ashford/memberships",
+        json={
+            "email": "victim2@example.com",
+            "role": "supervisor",
+            "temporary_password": "Attacker-Knows-1!",
+        },
+        headers=bearer(owner),
+    )
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "victim2@example.com", "password": "Attacker-Knows-1!"}
+    )
+    changed = await client.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "Attacker-Knows-1!", "new_password": "Attacker-Chose-2@"},
+        headers=bearer(login.json()["access_token"]),
+    )
+    assert changed.status_code in (200, 204), changed.text
+
+    async def no_memberships(session: AsyncSession, user_id: uuid.UUID) -> list[Membership]:
+        del session, user_id
+        return []
+
+    await sign_in_external(
+        db_session,
+        provider="clerk",
+        subject="victim2-subject",
+        email="victim2@example.com",
+        name="Victim",
+        tenant_slug=None,
+        exam_code=None,
+        settings=get_settings(),
+        now=datetime.now(UTC),
+        memberships_for=no_memberships,
+    )
+    await db_session.commit()
+    again = await client.post(
+        "/api/v1/auth/login", json={"email": "victim2@example.com", "password": "Attacker-Chose-2@"}
+    )
+    assert again.status_code == 401, again.text
+
+
 async def test_reissue_is_for_the_console_only_and_ends_sessions(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     root, org_id = await provisioned(client, make_actor)
     seated = await client.post(

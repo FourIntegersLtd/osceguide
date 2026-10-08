@@ -223,6 +223,30 @@ async def set_membership_revoked(
 # --- audit -----------------------------------------------------------------
 
 
+async def temporary_password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> bool:
+    """Whether the audit log shows an admin gave this account a password by hand: a seat or
+    team add "(temporary password)", a roster add of this address, or a re-issue."""
+    stmt = (
+        select(AuditEntry.id)
+        .where(
+            or_(
+                (AuditEntry.action == "membership.added")
+                & (AuditEntry.target_id == str(user_id))
+                & AuditEntry.summary.like("%(temporary password)"),
+                (AuditEntry.action == "user.temporary_password_reissued")
+                & (AuditEntry.target_id == str(user_id)),
+                (AuditEntry.action == "trainee.added")
+                & (
+                    func.lower(AuditEntry.summary)
+                    == f"added {email.lower()} to the roster (temporary password)"
+                ),
+            )
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None
+
+
 async def write_audit(
     session: AsyncSession,
     *,
