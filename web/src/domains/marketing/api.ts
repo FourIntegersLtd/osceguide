@@ -9,6 +9,8 @@ import { platformRequest, type components } from "@/foundation/platform-client";
 
 import type { LivePlan } from "@/domains/marketing/support/livePlans";
 
+export type PlansPage = Omit<components["schemas"]["Page_PlanRead_"], "items"> & { items: LivePlan[] };
+
 export type SiteStatistics = components["schemas"]["SiteStatistics"];
 
 /**
@@ -27,6 +29,6 @@ export function readSiteStatistics(signal?: AbortSignal): Promise<SiteStatistics
  * The plans on sale, for the pricing section. Unauthenticated like the rest of
  * this file; the price on every card comes from these rows, not from the page.
  */
-export function readPlansOnSale(signal?: AbortSignal): Promise<{ items: LivePlan[] }> {
-  return platformRequest<{ items: LivePlan[] }>("/api/v1/billing/plans", { signal });
+export function readPlansOnSale(signal?: AbortSignal): Promise<PlansPage> {
+  return platformRequest<PlansPage>("/api/v1/billing/plans", { signal });
 }

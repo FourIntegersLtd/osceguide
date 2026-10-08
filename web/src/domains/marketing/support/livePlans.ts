@@ -1,11 +1,13 @@
-/** A plan on sale, as `GET /billing/plans` answers it (the fields a price card needs). */
-export interface LivePlan {
-  exam_code: string;
-  duration_days: number;
-  amount_pence: number;
-  /** Published stations in the plan's exam. Until regenerated: not in schema.d.ts yet. */
+import type { components } from "@/foundation/platform-client";
+
+/**
+ * A plan on sale, as `GET /billing/plans` answers it (the fields a price card needs).
+ * `station_count` (published stations in the plan's exam) is declared here until
+ * schema.d.ts is regenerated.
+ */
+export type LivePlan = Pick<components["schemas"]["PlanRead"], "exam_code" | "duration_days" | "amount_pence"> & {
   station_count?: number;
-}
+};
 
 type Tier = "monthly" | "quarterly" | "sixMonth";
 
@@ -24,7 +26,7 @@ function stationsOf(
   if (count <= 0) return {};
   return {
     stations: count,
-    features: card.features?.map((line) => line.replace(/^\d+(?= High-Yield )/, String(count))),
+    features: card.features?.map((line) => line.replace(/^(?=High-Yield )/, `${count} `)),
   };
 }
 

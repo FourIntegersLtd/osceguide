@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePartnerContext } from "@/domains/marketing/support/usePartnerContext";
-import { Button } from "@/foundation/ui";
+import { AsyncBoundary, Button } from "@/foundation/ui";
+import { useAsync, type AsyncState } from "@/foundation/hooks/useAsync";
+import { EXAM_CONFIGS, type ExamConfig } from "./pricingContent";
 import type { LandingType } from "./landingTypography";
 import { landingSectionSurfaces } from "./landingSectionSurfaces";
 import { useLandingVariant } from "./LandingVariantContext";
@@ -12,349 +14,10 @@ import { readPlansOnSale } from "@/domains/marketing/api";
 import { livePricedPlans, type LivePlan } from "@/domains/marketing/support/livePlans";
 import { REGISTER_PATH } from "@/foundation/attribution/partnerConstants";
 
-const EXAM_CONFIGS = {
-  SCA: {
-    name: "SCA",
-    label: "Structured Clinical Assessment",
-    plans: {
-      trial: {
-        name: "Free Trial",
-        stations: 3,
-        duration: "2 week",
-        price: 0,
-        features: [
-          "3 free trial stations",
-          "3 attempts per station",
-          "Two week access",
-          "Real-Time Speech Transcription",
-          "RCGP Aligned Structured Feedback",
-          "Performance Analytics (Basic)",
-          "Athena as Doctor",
-          "Podcast Feature",
-          "Debrief with Athena",
-          "A to Z (Primary Care Conditions)",
-        ],
-        cta: "Try Now",
-        ctaColor: "gray",
-      },
-      monthly: {
-        name: "1 Month",
-        stations: "Full station library",
-        price: 24.99,
-        features: [
-          "50 High-Yield Clinical Stations",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "RCGP Aligned Structured Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Podcast Feature",
-          "Debrief with Athena",
-          "A to Z (Primary Care Conditions)",
-          "Practice with Colleagues (Live Video Matching)",
-          "Video Presentations",
-          "PowerPoint Presentations",
-        ],
-        cta: "Start Now",
-        ctaColor: "gray",
-      },
-      quarterly: {
-        name: "3 Months",
-        stations: "Full station library",
-        price: 64.99,
-        isPopular: true,
-        features: [
-          "75 High-Yield Clinical Scenarios",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "RCGP Aligned Structured Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Podcast Feature",
-          "Debrief with Athena",
-          "A to Z (Primary Care Conditions)",
-          "Practice with Colleagues (Live Video Matching)",
-          "Video Presentations",
-          "PowerPoint Presentations",
-        ],
-        cta: "Get Started",
-        ctaColor: "blue",
-      },
-      sixMonth: { 
-        name: "6 Months",
-        stations: "Full station library", 
-        price: 94.99, 
-        features: [
-          "100 High-Yield Clinical Scenarios",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "RCGP Aligned Structured Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Podcast Feature",
-          "Debrief with Athena",
-          "A to Z (Primary Care Conditions)",
-          "Practice with Colleagues (Live Video Matching)",
-          "Video Presentations",
-          "PowerPoint Presentations",
-        ],
-        cta: "Go Premium", 
-        ctaColor: "gray",
-      },
-    },
-  },
-  PLAB: {
-    name: "PLAB 2",
-    label: "Professional & Linguistic Assessment",
-    plans: {
-      trial: {
-        name: "Free Trial",
-        stations: 3,
-        duration: "2 week",
-        price: 0,
-        features: [
-          "3 free trial stations",
-          "3 attempts per station",
-          "Two week access",
-          "Real-Time Speech Transcription",
-          "GMC Aligned Structured Feedback",
-          "Performance Analytics (Basic)",
-          "Athena as Doctor",
-          "Debrief with Athena",
-        ],
-        cta: "Try Now",
-        ctaColor: "gray",
-      },
-      monthly: {
-        name: "1 Month",
-        stations: "Full station library",
-        price: 24.99,
-        features: [
-          "50 High-Yield Clinical Stations",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "GMC Aligned Structured Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Debrief with Athena",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Start Now",
-        ctaColor: "gray",
-      },
-      quarterly: {
-        name: "3 Months",
-        stations: "Full station library",
-        price: 64.99,
-        isPopular: true,
-        features: [
-          "100+ High-Yield Clinical Scenarios",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "GMC Aligned Structured Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Debrief with Athena",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Get Started",
-        ctaColor: "blue",
-      },
-      sixMonth: { 
-        name: "6 Months",
-        stations: "Full station library", 
-        price: 94.99, 
-        features: [
-          "125+ High-Yield Clinical Scenarios",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "GMC Aligned Structured Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Debrief with Athena",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Go Premium",
-        ctaColor: "gray", 
-      },
-    },
-  },
-  CASC: {
-    name: "CASC",
-    label: "Clinical Assessment of Skills and Competencies",
-    plans: {
-      trial: {
-        name: "Free Trial",
-        stations: 3,
-        duration: "2 week",
-        price: 0,
-        features: [
-          "3 free trial stations",
-          "3 attempts per station",
-          "Two week access",
-          "Real-Time Speech Transcription",
-          "RCPsych CASC-Aligned Feedback",
-          "Performance Analytics (Basic)",
-          "Athena as Doctor",
-          "Debrief with Athena",
-        ],
-        cta: "Try Now",
-        ctaColor: "gray",
-      },
-      monthly: {
-        name: "1 Month",
-        stations: "Full station library",
-        price: 24.99,
-        features: [
-          "50 High-Yield Psychiatry Stations",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "RCPsych CASC-Aligned Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Debrief with Athena",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Start Now",
-        ctaColor: "gray",
-      },
-      quarterly: {
-        name: "3 Months",
-        stations: "Full station library",
-        price: 64.99,
-        isPopular: true,
-        features: [
-          "100+ High-Yield Psychiatry Scenarios",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "RCPsych CASC-Aligned Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Debrief with Athena",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Get Started",
-        ctaColor: "blue",
-      },
-      sixMonth: { 
-        name: "6 Months",
-        stations: "Full station library", 
-        price: 94.99, 
-        features: [
-          "125+ High-Yield Psychiatry Scenarios",
-          "3 attempts per station",
-          "Real-Time Speech Transcription",
-          "RCPsych CASC-Aligned Feedback",
-          "In-Depth Performance Analytics",
-          "Athena as Doctor",
-          "Debrief with Athena",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Go Premium",
-        ctaColor: "gray", 
-      },
-    },
-  },
-  ORTHO: {
-    name: "Orthopaedics",
-    label: "ST3 Interview",
-    plans: {
-      trial: {
-        name: "Free",
-        stations: 0,
-        duration: "2 week",
-        price: 0,
-        features: [
-          "Limited trial stations",
-          "Clinical, prioritisation & portfolio",
-          "Real-time speech transcription",
-          "Basic analytics",
-        ],
-        cta: "Try Now",
-        ctaColor: "gray",
-      },
-      monthly: {
-        name: "1 Month",
-        stations: "Full access",
-        price: 24.99,
-        features: [
-          "All four station types (Clinical, Prioritisation, Portfolio, Communication)",
-          "CV upload & personalised portfolio responses",
-          "Real-time transcription",
-          "In-depth analytics",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Start Now",
-        ctaColor: "gray",
-      },
-      quarterly: {
-        name: "3 Months",
-        stations: "Full access",
-        price: 64.99,
-        isPopular: true,
-        features: [
-          "All four station types",
-          "CV upload & personalised portfolio responses",
-          "Real-time transcription",
-          "In-depth analytics",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Get Started",
-        ctaColor: "blue",
-      },
-      sixMonth: {
-        name: "6 Months",
-        stations: "Full access",
-        price: 94.99,
-        features: [
-          "All four station types",
-          "CV upload & personalised portfolio responses",
-          "Real-time transcription",
-          "ST3-aligned feedback",
-          "In-depth analytics",
-          "Practice with Colleagues (Live Video Matching)",
-        ],
-        cta: "Go Premium",
-        ctaColor: "gray",
-      },
-    },
-  },
-} as const;
 
-type ExamPlan = {
-  name: string;
-  stations: number | string; 
-  duration?: string;
-  price: number;
-  originalPrice?: number;
-  isPopular?: boolean;
-  features: readonly string[];
-  cta: string;
-  ctaColor: 'gray' | 'blue';
-};
-
-type ExamConfig = {
-  name: string;
-  label: string;
-  plans?: Record<string, ExamPlan>;
-};
-
-/**
- * The plans on sale: null while loading, "failed" when they could not be read.
- * Prices on every card come from here, so a failed read shows no price at all.
- */
-function useLivePlans(): LivePlan[] | "failed" | null {
-  const [plans, setPlans] = useState<LivePlan[] | "failed" | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    readPlansOnSale(controller.signal)
-      .then((page) => setPlans(page.items))
-      .catch(() => {
-        if (!controller.signal.aborted) setPlans("failed");
-      });
-    return () => controller.abort();
-  }, []);
-  return plans;
+/** The plans on sale. Prices on every card come from here, so a failed read shows no price at all. */
+function useLivePlans() {
+  return useAsync(async (signal) => (await readPlansOnSale(signal)).items, []);
 }
 
 /** The exam's cards priced from the plans on sale, or a short line saying why not. */
@@ -367,23 +30,29 @@ function PricedExam({
 }: {
   examName: string;
   config: ExamConfig & { plans: NonNullable<ExamConfig["plans"]> };
-  live: LivePlan[] | "failed" | null;
+  live: AsyncState<LivePlan[]>;
   onSelectPlan: () => void;
   type: LandingType;
 }) {
-  if (live === null) return <p className={`text-center ${type.itemBody}`}>Loading prices…</p>;
-  if (live === "failed") {
-    return (
-      <p role="alert" className={`text-center ${type.itemBody}`}>
-        We could not load prices just now. Please refresh, or try again shortly.
-      </p>
-    );
-  }
-  const plans = livePricedPlans(config.plans, examName.toLowerCase(), live);
-  if (Object.keys(plans).length <= 1) {
-    return <PricingComingSoon examName={config.name} label={config.label} type={type} />;
-  }
-  return <PricingComparisonLayout examConfig={{ ...config, plans }} onSelectPlan={onSelectPlan} type={type} />;
+  return (
+    <AsyncBoundary
+      state={live}
+      loading={<p className={`text-center ${type.itemBody}`}>Loading prices…</p>}
+      failure={() => (
+        <p role="alert" className={`text-center ${type.itemBody}`}>
+          We could not load prices just now. Please refresh, or try again shortly.
+        </p>
+      )}
+    >
+      {(plansOnSale) => {
+        const plans = livePricedPlans(config.plans, examName.toLowerCase(), plansOnSale);
+        if (Object.keys(plans).length <= 1) {
+          return <PricingComingSoon examName={config.name} label={config.label} type={type} />;
+        }
+        return <PricingComparisonLayout examConfig={{ ...config, plans }} onSelectPlan={onSelectPlan} type={type} />;
+      }}
+    </AsyncBoundary>
+  );
 }
 
 type ExamName = keyof typeof EXAM_CONFIGS;
