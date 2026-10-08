@@ -64,7 +64,7 @@ interface CachedToken {
 }
 
 let session: CachedToken | null = null;
-let inFlight: Promise<string | null> | null = null;
+let inFlight: Promise<string | null | undefined> | null = null;
 /** Bumped on every sign-out, so a refresh that started before one can tell it must not land. */
 let generation = 0;
 
