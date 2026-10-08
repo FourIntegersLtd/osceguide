@@ -239,7 +239,7 @@ unless written in full.
 
 - **H-3** · WRONG · fixed efbdcdd (hire/surface.test.ts: Team for manage_team; staff get no My training by design) · Hire: no "My training" nav so candidates reach results only by email; /live, /trainees, /team, /mocks unlinked; ProvisionPanel hint contradicts the Employer option. surfaces/hire/surface.ts
 - **H-4** · WRONG · fixed dee4907 (reporter list with add and remove; partner nav has no dead links) · Partner: every route but dashboard, reporting, team is notFound; signups chart, byExam and fee banner failure={() => null}; "Add reporter" platform-admin only; no reporter list or revoke UI; date-range codes raw; consumer Settings tabs shown; "Build" nav shown to partner_admin. partner/Dashboard.tsx; Reporting.tsx; authoring/capability.ts
-- **F-3** · ROUGH · partly fixed 5972f95 + dee4907 (staffHiddenOn refused by URL, staffNavHiddenOn for nav only; /shared-reviews/[id] still linked from nowhere) · Screen does not consult manifest.screenNames (drift possible); staffHiddenOn pages stay reachable by URL; /circuits/[id]/edit, /mocks/list, /slots/[id]/review, /shared-reviews/[id] linked from nowhere. screen.tsx; registry.ts
+- **F-3** · ROUGH · partly fixed 5972f95 + dee4907 (staffHiddenOn refused by URL, staffNavHiddenOn for nav only); /shared-reviews/[id] deleted (sample-data screen, no api, nothing linked to it) · Screen does not consult manifest.screenNames (drift possible); staffHiddenOn pages stay reachable by URL; /circuits/[id]/edit, /mocks/list, /slots/[id]/review, /shared-reviews/[id] linked from nowhere. screen.tsx; registry.ts
 
 ## 9. State over time and scale (S-*)
 

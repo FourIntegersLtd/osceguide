@@ -96,7 +96,6 @@ export const ASSESS_SCREEN_NAMES: readonly ScreenName[] = [
   "team",
   "programmes",
   "reporting",
-  "sharedReview",
   "myTraining",
   "mySitting",
   "myResult",

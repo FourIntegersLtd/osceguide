@@ -31,7 +31,6 @@ import {
   Results,
   SelfPractice,
   SelfPracticeStation,
-  SharedReview,
   SittingDetail,
   Sittings,
   SlotReview,
@@ -128,9 +127,6 @@ function AssessSlotReview(props: ScreenProps) {
 const AssessProgrammes = (props: ScreenProps) => <Programmes orgSlug={slugOf(props)} />;
 const AssessReporting = (props: ScreenProps) => <Reporting orgSlug={slugOf(props)} />;
 
-function AssessSharedReview({ params }: ScreenProps) {
-  return <SharedReview reviewId={params?.reviewId ?? ""} />;
-}
 
 function AssessTrainees(props: ScreenProps) {
   return (
@@ -246,7 +242,6 @@ export const assessScreens: ScreenMap = {
   team: AssessTeam,
   programmes: AssessProgrammes,
   reporting: AssessReporting,
-  sharedReview: AssessSharedReview,
   myTraining: AssessMyTraining,
   mySitting: AssessMySitting,
   myResult: AssessMyResult,

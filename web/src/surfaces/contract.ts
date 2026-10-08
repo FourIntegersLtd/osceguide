@@ -39,8 +39,6 @@ export type ScreenName =
   | "trainees"
   | "team"
   | "programmes"
-  // A trainee's own practice, sent to a supervisor for a second opinion.
-  | "sharedReview"
   | "billing"
   | "audit"
   | "ops"
