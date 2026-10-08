@@ -289,8 +289,7 @@ async def is_revoked(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUI
     Asked as the clock opens their consultation (R-8): `ensure_rosterable` runs when
     a circuit is built, and a revocation after that must still stop the station.
     """
-    trainee = (await trainees_by_user_id(session, org_id, [user_id])).get(user_id)
-    return trainee is not None and trainee.access_revoked
+    return org_id in await revoked_org_ids(session, user_id)
 
 
 # --- Rostering a cohort at once.

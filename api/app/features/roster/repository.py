@@ -108,8 +108,13 @@ async def list_trainees(
 
 
 async def revoked_org_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> set[uuid.UUID]:
-    """Organisations whose roster has revoked this person's access."""
-    stmt = select(Trainee.org_id).where(Trainee.user_id == user_id, Trainee.access_revoked_at.is_not(None))
+    """Organisations where every roster entry of this person is revoked (one live entry keeps access)."""
+    stmt = (
+        select(Trainee.org_id)
+        .where(Trainee.user_id == user_id)
+        .group_by(Trainee.org_id)
+        .having(func.count(Trainee.id) == func.count(Trainee.access_revoked_at))
+    )
     return set((await session.execute(stmt)).scalars())
 
 

@@ -237,6 +237,26 @@ async def test_a_revoked_trainee_who_is_also_an_examiner_still_sees_no_candidate
     assert await seen() == []
 
 
+async def test_one_live_roster_row_keeps_the_organisation_visible_and_the_gate_agrees(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.roster import service as roster_service
+    from app.features.roster.models import Trainee
+
+    org_id, candidate_id, seen, _ = await _rostered_candidate(client, make_actor, db_session)
+    db_session.add(Trainee(org_id=org_id, user_id=candidate_id, email="second-row@example.com"))
+    await db_session.flush()
+    from app.features.roster import repository as roster_repo
+
+    first = (await roster_repo.trainee_ids_for_user(db_session, candidate_id))[0]
+    await roster_repo.set_trainee_access(db_session, org_id, first, revoked_at=datetime.now(UTC))
+    await db_session.commit()
+    assert (await seen(), await roster_service.is_revoked(db_session, org_id, candidate_id)) == (
+        ["kings"],
+        False,
+    )
+
+
 async def test_a_suspended_organisations_sittings_are_not_joinable(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

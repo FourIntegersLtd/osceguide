@@ -19,7 +19,6 @@ from app.features.roster import service as roster
 from app.features.sittings import service_reads as sittings
 from app.features.stations import service_reads as stations
 from app.features.tenancy import service as tenancy
-from app.features.tenancy.domain import org_permits_access
 
 # A slot is finished for the candidate once the station is completed or the
 # circuit moved past it.
@@ -56,7 +55,7 @@ async def my_sittings(
     orgs = await tenancy.org_refs_by_ids(session, {slot.sitting.org_id for slot in trainee_slots})
     org_slugs = {org_id: org.slug for org_id, org in orgs.items()}
     # A suspended organisation's sittings stay listed but cannot be joined, as at the join gate.
-    suspended = {org_id for org_id, org in orgs.items() if not org_permits_access(org.status)}
+    suspended = {org_id for org_id, org in orgs.items() if not tenancy.org_permits_access(org.status)}
     if org_slug is not None:
         trainee_slots = [slot for slot in trainee_slots if org_slugs.get(slot.sitting.org_id) == org_slug]
     titles = await _titles_per_org(session, trainee_slots)
