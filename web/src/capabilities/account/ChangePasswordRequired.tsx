@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthShell from "@/capabilities/account/AuthShell";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
-import { sanitizeReturnTo } from "@/capabilities/account/support/sessionEvents";
+import { sanitizeReturnTo } from "@/foundation/session/returnTo";
 import { useSession } from "@/foundation/session";
 
 /**

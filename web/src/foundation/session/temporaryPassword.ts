@@ -4,7 +4,7 @@
  * Mirrors `validate_password` in api/app/features/identity/domain.py so the admin hears
  * "too weak" before submitting, not as a 422 afterwards. Keep the two in step.
  */
-const MIN_LENGTH = 12;
+export const MIN_LENGTH = 12;
 
 /** Why this would be refused, or null: also null while nothing is typed yet. */
 export function temporaryPasswordIssue(raw: string): string | null {

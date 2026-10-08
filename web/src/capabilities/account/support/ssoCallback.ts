@@ -9,7 +9,7 @@
  */
 export type SsoCallback =
   | { ok: true; orgSlug: string; token: string; state: string | null }
-  | { ok: false; message: string; ignored?: true };
+  | { ok: false; message: string; ignored?: true; loginNotice?: "cancelled" };
 
 /** The SAML assertion consumer's code when the IdP's response failed its checks. */
 const SAML_REFUSED = "sso_verification_failed";
@@ -43,6 +43,8 @@ export function readSsoCallback(params: URLSearchParams, { signedIn = false } = 
     return {
       ok: false,
       message: "Your organisation's sign-in did not complete. Please try again.",
+      // The sign-in page words a cancellation itself (`sso_error=cancelled`).
+      ...(error === "access_denied" ? { loginNotice: "cancelled" as const } : {}),
     };
   }
   const orgSlug = params.get("org_slug");

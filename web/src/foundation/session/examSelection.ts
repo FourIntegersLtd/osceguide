@@ -23,3 +23,12 @@ export function rememberExamSelection(userId: string, exam: string | null) {
   try { localStorage.setItem(`osceguide.exam.${userId}`, code); } catch { /* Storage is optional. */ }
   window.dispatchEvent(new Event(EXAM_SELECTION_EVENT));
 }
+
+/**
+ * A login or register link's `?appType=`: where the person came from, not what they chose.
+ * It seeds the exam for someone with none yet and never replaces one they picked, else Payments
+ * would list another exam's plans and checkout would refuse them.
+ */
+export function rememberLandingExam(userId: string, exam: string | null) {
+  if (readExamSelection(userId) === null) rememberExamSelection(userId, exam);
+}

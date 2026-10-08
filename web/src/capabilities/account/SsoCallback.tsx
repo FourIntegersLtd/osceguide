@@ -49,6 +49,10 @@ export function SsoCallback() {
     const callback = readSsoCallback(params, { signedIn: status === "authenticated" });
     window.history.replaceState(null, "", window.location.pathname);
     if (!callback.ok) {
+      if (callback.loginNotice) {
+        router.replace(`/login?sso_error=${callback.loginNotice}`);
+        return;
+      }
       setIgnored(callback.ignored === true);
       setError(callback.message);
       return;

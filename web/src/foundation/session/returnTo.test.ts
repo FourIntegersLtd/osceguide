@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isPublicPath, sanitizeReturnTo } from "@/capabilities/account/support/sessionEvents";
+import { isPublicPath, sanitizeReturnTo } from "@/foundation/session/returnTo";
 
 describe("return-to sanitising", () => {
   it("keeps a same-origin path", () => {

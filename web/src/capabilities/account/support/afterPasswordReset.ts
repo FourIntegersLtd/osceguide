@@ -11,9 +11,10 @@
 export async function afterPasswordReset(deps: {
   invitation: boolean;
   endLocalSession: () => Promise<void>;
-  signIn: () => Promise<boolean>;
-}): Promise<"signed_in" | "sign_in_next"> {
+  signIn: () => Promise<"signed_in" | "second_step" | "failed">;
+}): Promise<"signed_in" | "sign_in_next" | "second_step" | "sign_in_failed"> {
   await deps.endLocalSession();
   if (!deps.invitation) return "sign_in_next";
-  return (await deps.signIn()) ? "signed_in" : "sign_in_next";
+  const outcome = await deps.signIn();
+  return outcome === "failed" ? "sign_in_failed" : outcome;
 }

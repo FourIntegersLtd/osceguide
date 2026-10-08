@@ -22,6 +22,7 @@ test("a cancelled Entra sign-in says so instead of posting nothing", () => {
   assert.deepEqual(readSsoCallback(params), {
     ok: false,
     message: "Your organisation's sign-in did not complete. Please try again.",
+    loginNotice: "cancelled",
   });
 });
 
@@ -49,4 +50,10 @@ test("someone already signed in is told the link was not used, whatever it carri
     message:
       "You're already signed in, so this organisation sign-in link was not used. To sign in as someone else, sign out first.",
   });
+});
+
+test("a cancelled Entra sign-in is handed to the sign-in page as its own notice", () => {
+  const params = new URLSearchParams("org_slug=riverside&error=access_denied&state=s");
+  const outcome = readSsoCallback(params);
+  assert.equal(outcome.ok === false && outcome.loginNotice, "cancelled");
 });

@@ -1,12 +1,14 @@
 import { z } from "zod";
+import { MIN_LENGTH, temporaryPasswordIssue } from "@/foundation/session/temporaryPassword";
 
 /**
- * Single source of truth for register, reset and change password. It must equal
- * platform-api's MIN_PASSWORD_LENGTH (features/identity/domain.py); when it said 8,
- * the form accepted passwords the server then refused as `weak_password`.
+ * Single source of truth for register, reset and change password: the rule lives in
+ * foundation/session/temporaryPassword.ts and mirrors platform-api's `validate_password`
+ * (features/identity/domain.py); when it said 8, the form accepted passwords the server
+ * then refused as `weak_password`.
  */
-export const PASSWORD_MIN_LENGTH = 12;
-export const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters.`;
+export const PASSWORD_MIN_LENGTH = MIN_LENGTH;
+export const PASSWORD_HINT = `At least ${PASSWORD_MIN_LENGTH} characters, mixing letters with numbers, punctuation or capitals.`;
 
 export const emailSchema = z
   .string()
@@ -17,7 +19,11 @@ export const emailSchema = z
 export const passwordSchema = z
   .string()
   .min(1, "Enter a password")
-  .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters`);
+  // The server's rule (length, then two kinds of character), so it is heard before submitting.
+  .superRefine((value, ctx) => {
+    const issue = temporaryPasswordIssue(value);
+    if (issue) ctx.addIssue({ code: "custom", message: issue });
+  });
 
 export const loginSchema = z.object({
   email: emailSchema,

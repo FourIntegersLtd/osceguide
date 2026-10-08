@@ -50,6 +50,7 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
   const [linkSpent, setLinkSpent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [after, setAfter] = useState<"sign_in_next" | "second_step" | "sign_in_failed">("sign_in_next");
 
 
   const handleFormSubmission = async (event: React.FormEvent) => {
@@ -75,13 +76,17 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
         },
         signIn: async () => {
           const outcome = await login(email, result.data.password).catch(() => null);
-          if (outcome?.status !== "signed_in") return false;
+          if (outcome === null) return "failed";
+          if (outcome.status !== "signed_in") return "second_step";
           await refresh();
-          return true;
+          return "signed_in";
         },
       });
       if (next === "signed_in") router.replace("/app");
-      else setDone(true);
+      else {
+        setAfter(next);
+        setDone(true);
+      }
     } catch (cause) {
       const refused = mapResetPasswordError(cause, invitation);
       setFormError(refused.formError);
@@ -102,11 +107,15 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
       <AuthShell
         variant="card"
         title="That link is incomplete"
-        subtitle="Use the most recent email, or ask for a new link."
+        subtitle={
+          invitation
+            ? "Use the link in your invitation email. If you already chose a password, sign in; otherwise ask whoever invited you to send it again."
+            : "Use the most recent email, or ask for a new link."
+        }
       >
         <p className={authFooterLink}>
-          <Link href="/forgot-password" className={authLink}>
-            Send a new link
+          <Link href={invitation ? "/login" : "/forgot-password"} className={authLink}>
+            {invitation ? "Sign in" : "Send a new link"}
           </Link>
         </p>
       </AuthShell>
@@ -117,8 +126,18 @@ export default function ResetPassword({ invitation = false }: { invitation?: boo
     return (
       <AuthShell
         variant="card"
-        title={invitation ? "Your account is ready" : "Password changed"}
-        subtitle={invitation ? "Sign in with the password you just chose." : "You can sign in with it now."}
+        title={
+          after === "sign_in_failed" ? "Password saved" : invitation ? "Your account is ready" : "Password changed"
+        }
+        subtitle={
+          after === "sign_in_failed"
+            ? "We saved it but could not sign you in just now. Sign in with the password you just chose."
+            : after === "second_step"
+              ? "Your account asks for a second step, so sign in to finish with your authenticator."
+              : invitation
+                ? "Sign in with the password you just chose."
+                : "You can sign in with it now."
+        }
       >
         <Button
           type="button"

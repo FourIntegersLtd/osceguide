@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { requestPasswordReset } from "@/foundation/platform-client";
 import { authFooterLink, authLink } from "@/foundation/ui/authTheme";
 import AuthShell from "@/capabilities/account/AuthShell";
@@ -17,6 +17,9 @@ import { z } from "zod";
 
 const schema = z.object({ email: emailSchema });
 
+/** Seconds before the same address may be sent another link. */
+const RESEND_AFTER_SECONDS = 30;
+
 /**
  * Ask for a reset link.
  *
@@ -31,9 +34,17 @@ export default function ForgotPassword() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [wait, setWait] = useState(0);
+
+  useEffect(() => {
+    if (wait <= 0) return;
+    const timer = setTimeout(() => setWait((seconds) => seconds - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [wait]);
 
   const handleFormSubmission = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (wait > 0) return;
     setFormError(null);
     const result = validateWith<{ email: string }, "email">(schema, { email });
     if (!result.success) {
@@ -45,6 +56,7 @@ export default function ForgotPassword() {
     try {
       await requestPasswordReset(result.data.email);
       setSent(true);
+      setWait(RESEND_AFTER_SECONDS);
     } catch (cause) {
       // A rate limit says to wait rather than to try again at once.
       const refused = mapAuthApiError<"email">(cause, "We couldn't send the email. Please try again.");
@@ -60,10 +72,23 @@ export default function ForgotPassword() {
       <AuthShell
         variant="card"
         title="Check your email"
-        subtitle={`If an account exists for ${email}, a reset link is on its way.`}
+        subtitle={`If ${email} has a password account, a reset link is on its way.`}
       >
         <p className={authFooterLink}>
-          The link expires shortly. Nothing arrived?{" "}
+          The link works for one hour. If your organisation signs you in with its own account, no
+          email is sent: use &ldquo;Sign in with&rdquo; on the sign-in page instead.
+        </p>
+        <p className={authFooterLink}>
+          Nothing arrived?{" "}
+          <button
+            type="button"
+            disabled={wait > 0 || isSubmitting}
+            onClick={(event) => void handleFormSubmission(event)}
+            className={authLink}
+          >
+            {wait > 0 ? `Send again in ${wait}s` : "Send again"}
+          </button>
+          {" · "}
           <button type="button" onClick={() => setSent(false)} className={authLink}>
             Try another address
           </button>

@@ -6,7 +6,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { IoIosEye, IoIosEyeOff } from "react-icons/io";
 import { Alert, Button } from "@/foundation/ui";
 import { hasCode, login, type components, type MfaChallenge } from "@/foundation/platform-client";
-import { examAuthHref, normalizeExamCode, rememberExamSelection } from "@/foundation/session/examSelection";
+import { examAuthHref, normalizeExamCode, rememberLandingExam } from "@/foundation/session/examSelection";
 import { PERSONAL_SLUG } from "@/foundation/routing/workspace";
 import { useSession } from "@/foundation/session";
 import {
@@ -20,7 +20,7 @@ import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { readSsoSignIn, startSsoSignIn, type SsoSignIn } from "@/capabilities/account/api";
 import { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
-import { sanitizeReturnTo } from "@/capabilities/account/support/sessionEvents";
+import { sanitizeReturnTo } from "@/foundation/session/returnTo";
 import {
   loginSchema,
   validateWith,
@@ -160,7 +160,7 @@ export default function Login() {
   // on their console; everyone else goes to `/app`, which decides which
   // workspace from where they were last.
   const land = async (authenticated: AuthResult) => {
-    rememberExamSelection(authenticated.user.id, examCode);
+    rememberLandingExam(authenticated.user.id, examCode);
     await refresh();
     const returnTo = sanitizeReturnTo(searchParams.get("next") ?? searchParams.get("returnTo"));
     const landing = authenticated.user.is_platform_admin

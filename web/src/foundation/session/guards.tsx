@@ -2,9 +2,10 @@
 
 import { useEffect } from "react";
 import type { ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Alert, Button, Spinner } from "@/foundation/ui";
 import { loginHref } from "@/foundation/session/loginHref";
+import { sanitizeReturnTo } from "@/foundation/session/returnTo";
 import { useSession } from "@/foundation/session/SessionProvider";
 import { can } from "@/foundation/session/types";
 import type { Permission } from "@/foundation/session/permissions";
@@ -97,10 +98,13 @@ export function RequireSession({
 export function RequireAnonymous({ children }: { children: ReactNode }) {
   const { status, ready } = useSession();
   const router = useRouter();
+  // Where `/login?next=` was heading: signed in already, go there rather than to the picker.
+  const params = useSearchParams();
+  const next = sanitizeReturnTo(params.get("next") ?? params.get("returnTo"));
 
   useEffect(() => {
-    if (ready && status === "authenticated") router.replace("/app");
-  }, [ready, status, router]);
+    if (ready && status === "authenticated") router.replace(next ?? "/app");
+  }, [ready, status, router, next]);
 
   if (ready && status === "authenticated") return <Resolving />;
   return <>{children}</>;

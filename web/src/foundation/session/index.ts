@@ -19,3 +19,4 @@ export {
   type PlatformMembership,
   type PlatformCapabilities,
 } from "@/foundation/session/types";
+export { sanitizeReturnTo, isPublicPath } from "@/foundation/session/returnTo";
