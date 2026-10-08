@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { temporaryPasswordReady } from "@/foundation/ui/TemporaryPassword";
 
-/** What the add routes answer beyond the generated type, until it is regenerated. */
+/** What the add routes answer beyond the generated type. Delete when regenerated. */
 export type WithTemporaryPassword = { temporary_password_applied?: boolean };
 
 /**

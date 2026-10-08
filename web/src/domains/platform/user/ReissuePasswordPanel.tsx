@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Alert, Button, Panel } from "@/foundation/ui";
-import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
+import { IssuedPassword, TemporaryPasswordInput } from "@/foundation/ui/TemporaryPassword";
 import { errorMessage } from "@/foundation/hooks";
 import { reissueTemporaryPassword } from "@/domains/platform/user/api";
 import { temporaryPasswordIssue } from "@/foundation/session/temporaryPassword";
@@ -44,15 +44,7 @@ export function ReissuePasswordPanel({ userId, email }: { userId: string; email:
         {issued !== null ? (
           <IssuedPassword email={email} password={issued} onDismiss={() => setIssued(null)} />
         ) : null}
-        <TemporaryPasswordField
-          toggle={false}
-          enabled
-          onEnabledChange={() => undefined}
-          value={password}
-          onChange={setPassword}
-          disabled={busy}
-          hint="At least 12 characters, mixing letters with numbers, punctuation or capitals."
-        />
+        <TemporaryPasswordInput value={password} onChange={setPassword} disabled={busy} />
         <div>
           <Button type="submit" disabled={busy || password.length === 0 || issue !== null}>
             {busy ? "Issuing…" : "Issue"}

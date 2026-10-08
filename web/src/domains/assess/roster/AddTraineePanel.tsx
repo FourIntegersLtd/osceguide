@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
 import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
@@ -49,7 +49,7 @@ export function AddTraineePanel({
   const password = useTemporaryPassword();
   const [importOpen, setImportOpen] = useState(false);
 
-  const submit = useCallback(async () => {
+  const submit = async () => {
     const address = email.trim();
     if (!address) return;
     setBusy(true);
@@ -80,7 +80,7 @@ export function AddTraineePanel({
     } finally {
       setBusy(false);
     }
-  }, [name, email, cohortId, password, orgSlug, onAdded]);
+  };
 
   if (!canManage) {
     return (
