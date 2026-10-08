@@ -109,7 +109,8 @@ async def refund(
     session: AsyncSession, payment_id: uuid.UUID, *, reason: str, actor: Principal, now: datetime
 ) -> PlatformPaymentRead:
     """Record that a payment was refunded: the access it bought is withdrawn. The payment row
-    stays, its `entitlement_id` still pointing at the revoked grant. Twice is once."""
+    stays, its `entitlement_id` still pointing at the revoked grant. Twice is once: a repeat
+    withdraws nothing and writes no audit row."""
     payment = await repository.payment_by_id(session, payment_id)
     if payment is None:
         raise errors.PaymentNotFound()
@@ -117,19 +118,19 @@ async def refund(
     async def revoke(entitlement_id: uuid.UUID) -> None:
         await entitlements.revoke(session, entitlement_id, reason=f"refund: {reason}", actor=actor, now=now)
 
-    await service_settlement.withdraw_payment(session, payment, revoke=revoke)
-    await service_audit.record(
-        session,
-        actor=actor,
-        action="billing.refund_recorded",
-        target_type="payment",
-        target_id=str(payment_id),
-        summary=reason,
-        meta={
-            "user_id": str(payment.user_id),
-            "reason": reason,
-            "entitlement_id": str(payment.entitlement_id),
-        },
-    )
+    if await service_settlement.withdraw_payment(session, payment, revoke=revoke):
+        await service_audit.record(
+            session,
+            actor=actor,
+            action="billing.refund_recorded",
+            target_type="payment",
+            target_id=str(payment_id),
+            summary=reason,
+            meta={
+                "user_id": str(payment.user_id),
+                "reason": reason,
+                "entitlement_id": str(payment.entitlement_id),
+            },
+        )
     plan = await repository.plan_by_id(session, payment.plan_id) if payment.plan_id else None
     return await service_platform.payment_read(session, payment, plan_code=plan.code if plan else None)

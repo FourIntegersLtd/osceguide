@@ -890,7 +890,11 @@ async def test_a_refund_that_arrives_before_its_checkout_is_retried_not_lost(
 
     first = await post_event(client, refund)
     assert first.status_code == 404
-    assert first.json()["code"] == "payment_not_found"
+    assert first.json()["code"] == "payment_not_yet_recorded"
+    stored = await billing_repo.event_by_id(db_session, "evt_early_refund")
+    assert stored is not None, "the refused delivery left no ledger row"
+    assert stored.processed_at is None
+    assert stored.failure is not None
 
     checkout = await post_event(client, checkout_event("evt_early_co", "early@example.com"))
     assert checkout.json()["status"] == "applied", checkout.text
@@ -932,3 +936,33 @@ async def test_a_dispute_on_one_purchase_takes_back_only_that_purchases_credit(
 
     await post_event(client, charge_event("evt_twice_first", "charge.refunded", first_intent))
     assert (await earned()).json()["earned_pence"] == 0
+
+
+async def test_a_grant_revoked_by_hand_does_not_stop_a_dispute_taking_back_the_credit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from datetime import UTC, datetime
+
+    referrer_token, buyer, intent, ent_repo = await _bought_with_a_code(
+        client, make_actor, db_session, "hand"
+    )
+    for grant in await ent_repo.for_user(db_session, buyer.id):
+        await ent_repo.revoke(db_session, grant.id, at=datetime.now(UTC))
+    await db_session.commit()
+
+    await post_event(client, charge_event("evt_hand_dispute", "charge.dispute.created", intent))
+
+    earned = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert earned.json()["earned_pence"] == 0
+
+
+async def test_a_refund_after_a_dispute_on_the_same_payment_is_ignored(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    _, _, intent, _ = await _bought_with_a_code(client, make_actor, db_session, "ignored")
+
+    first = await post_event(client, charge_event("evt_ignored_dispute", "charge.dispute.created", intent))
+    second = await post_event(client, charge_event("evt_ignored_refund", "charge.refunded", intent))
+
+    assert first.json()["status"] == "applied"
+    assert second.json()["status"] == "ignored"

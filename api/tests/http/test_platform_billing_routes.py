@@ -240,7 +240,7 @@ async def test_a_refund_withdraws_the_access_and_keeps_the_sale(
     revocations = await client.get("/api/v1/platform/audit?action=entitlement.revoked", headers=bearer(root))
     assert len(revocations.json()["items"]) == 1
     refunds = await client.get("/api/v1/platform/audit?action=billing.refund_recorded", headers=bearer(root))
-    assert len(refunds.json()["items"]) == 2
+    assert len(refunds.json()["items"]) == 1, "a repeat withdraws nothing and writes no audit row"
     assert (
         await client.post(
             f"/api/v1/platform/payments/{uuid.uuid4()}/refund", json={"reason": "x"}, headers=bearer(root)

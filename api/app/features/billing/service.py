@@ -26,8 +26,8 @@ _NO_ACCOUNT_FOR_PAYER = "No account for that email address."
 async def _apply_withdrawal(session: AsyncSession, *, event: dict[str, Any], now: datetime) -> bool:
     """A refund or a dispute: withdraw what the payment bought (`withdraw_payment`).
 
-    False when nothing changes: a partial refund that leaves the access. Raises
-    `PaymentNotFound` when no payment is recorded for the charge yet, which can be the
+    False when nothing changes: a partial refund, or a payment already withdrawn. Raises
+    `PaymentNotYetRecorded` when no payment is recorded for the charge yet, which can be the
     checkout event arriving after this one; the delivery is refused so Stripe retries it.
     Winning a dispute does not restore access; support re-grants by hand.
     """
@@ -36,13 +36,12 @@ async def _apply_withdrawal(session: AsyncSession, *, event: dict[str, Any], now
         return False
     payment = await repository.payment_by_intent(session, str(charge.get("payment_intent") or ""))
     if payment is None:
-        raise errors.PaymentNotFound()
+        raise errors.PaymentNotYetRecorded()
 
     async def revoke(entitlement_id: uuid.UUID) -> None:
         await entitlements.withdraw(session, entitlement_id, now=now)
 
-    await withdraw_payment(session, payment, revoke=revoke)
-    return True
+    return await withdraw_payment(session, payment, revoke=revoke)
 
 
 def plan_label(plan_code: str) -> str:

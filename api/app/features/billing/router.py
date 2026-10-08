@@ -42,6 +42,7 @@ async def list_plans(session: Session) -> Page[schemas.PlanRead]:
         errors.InvalidSignature,
         errors.UnknownPlanError,
         errors.PaymentNotFound,
+        errors.PaymentNotYetRecorded,
         errors.UnknownExamError,
     ),
 )

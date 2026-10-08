@@ -136,15 +136,17 @@ async def withdraw_payment(
     """Take back what a payment bought: its grant, and the referral credit it earned.
 
     One function for the Stripe webhook (refund, dispute) and the console's "Record refund".
-    `revoke` is how the caller withdraws the grant (the console audits it). Only the first
-    withdrawal does anything: once the grant is revoked, a dispute followed by a refund of
-    the same payment takes nothing more. False when there was nothing left to take back.
+    `revoke` is how the caller withdraws the grant (the console audits it). Each half is
+    idempotent on its own: the grant is revoked only if still live, and the credit is taken
+    back only if it still carries unpaid earnings, so a grant revoked by hand does not stop a
+    later dispute taking back the credit. False when there was nothing left to take back.
     """
+    withdrawn = False
     entitlement_id = payment.entitlement_id
-    if entitlement_id is None or await entitlements.revoked_ids(session, [entitlement_id]):
-        return False
-    await revoke(entitlement_id)
-    await growth.claw_back_referral_purchase(
+    if entitlement_id is not None and not await entitlements.revoked_ids(session, [entitlement_id]):
+        await revoke(entitlement_id)
+        withdrawn = True
+    clawed_back = await growth.claw_back_referral_purchase(
         session, referred_user_id=payment.user_id, paid_at=payment.paid_at
     )
-    return True
+    return withdrawn or clawed_back
