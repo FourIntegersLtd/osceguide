@@ -13,6 +13,7 @@ from app.core.errors import AppError
 from app.core.logging import get_logger
 from app.features.billing import domain, errors, receipts, repository, signature
 from app.features.billing.service_settlement import _as_plans, settle_payment
+from app.features.entitlements import service as entitlements
 from app.features.growth import service as growth
 from app.features.identity import service as identity
 
@@ -20,6 +21,30 @@ log = get_logger(__name__)
 
 
 _NO_ACCOUNT_FOR_PAYER = "No account for that email address."
+_NO_PAYMENT_FOR_REFUND = "No recorded payment for that charge."
+
+
+async def _apply_withdrawal(session: AsyncSession, *, event: dict[str, Any], now: datetime) -> bool | None:
+    """A refund or a dispute: revoke what the payment bought and take back its referral credit.
+
+    None when no payment is recorded for the charge (support reconciles it); False when nothing
+    changes, a partial refund that leaves the access. The payment row stays, as a console
+    refund leaves it. Winning a dispute does not restore access; support re-grants by hand.
+    """
+    charge = (event.get("data") or {}).get("object") or {}
+    if event.get("type") == "charge.refunded" and not domain.is_full_refund(charge):
+        return False
+    payment = await repository.payment_by_intent(session, str(charge.get("payment_intent") or ""))
+    if payment is None:
+        return None
+    if payment.entitlement_id is not None:
+        await entitlements.withdraw(session, payment.entitlement_id, now=now)
+    plan = await repository.plan_by_id(session, payment.plan_id) if payment.plan_id else None
+    if plan is not None:
+        await growth.claw_back_referral_purchase(
+            session, referred_user_id=payment.user_id, plan_code=plan.code
+        )
+    return True
 
 
 def plan_label(plan_code: str) -> str:
@@ -75,6 +100,14 @@ async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: dat
             # A concurrent delivery got there first and has committed.
             return {"status": "already_applied"}
         # Recorded by an earlier delivery that failed to apply: try again.
+
+    if domain.withdraws_access(event_type):
+        withdrawn = await _apply_withdrawal(session, event=event, now=now)
+        if withdrawn is None:
+            await repository.mark_event_failed(session, event_id=event_id, reason=_NO_PAYMENT_FOR_REFUND)
+            return {"status": "needs_attention"}
+        await repository.mark_event_processed(session, event_id=event_id, at=now)
+        return {"status": "applied" if withdrawn else "ignored"}
 
     if not domain.grants_access(event_type):
         # Acknowledged so Stripe stops delivering it, and recorded so we can see

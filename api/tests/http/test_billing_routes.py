@@ -790,3 +790,97 @@ async def test_the_receipts_for_one_checkout_session_are_found_by_its_id(
     assert other.json()["items"] == []
     theirs = await client.get(path, params={"checkout_session_id": "cs_test_1"}, headers=bearer(stranger))
     assert theirs.json()["items"] == []
+
+
+# --- S-13: a refund or a dispute takes the access back --------------------------------
+
+
+def charge_event(event_id: str, event_type: str, intent: str, *, fully_refunded: bool = True) -> dict:
+    """A `charge.refunded` or `charge.dispute.created` delivery naming the payment intent."""
+    if event_type == "charge.dispute.created":
+        return {"id": event_id, "type": event_type, "data": {"object": {"payment_intent": intent}}}
+    return {
+        "id": event_id,
+        "type": event_type,
+        "data": {
+            "object": {
+                "payment_intent": intent,
+                "amount": 2249,
+                "amount_refunded": 2249 if fully_refunded else 500,
+                "refunded": fully_refunded,
+            }
+        },
+    }
+
+
+async def _bought_with_a_code(client: AsyncClient, make_actor, db_session: AsyncSession, who: str):  # type: ignore[no-untyped-def]
+    from app.features.entitlements import repository as ent_repo
+
+    await a_plan_with_a_referral_discount(db_session)
+    referrer_token, code = await a_shared_code(client, make_actor, f"{who}-referrer@example.com")
+    await a_customer(db_session, f"{who}-buyer@example.com")
+    event_id = f"evt_{who}_checkout"
+    await post_event(
+        client,
+        referral_checkout_event(
+            event_id, f"{who}-buyer@example.com", price_id="price_one_month_referral", referral_code=code
+        ),
+    )
+    buyer = await identity_repo.user_by_email(db_session, f"{who}-buyer@example.com")
+    assert buyer is not None
+    return referrer_token, buyer, f"pi_{event_id}", ent_repo
+
+
+async def test_a_full_refund_withdraws_the_access_and_the_referral_credit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    referrer_token, buyer, intent, ent_repo = await _bought_with_a_code(
+        client, make_actor, db_session, "refund"
+    )
+    before = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert before.json()["earned_pence"] == 250
+
+    response = await post_event(client, charge_event("evt_refund_1", "charge.refunded", intent))
+
+    assert response.json()["status"] == "applied"
+    grants = await ent_repo.for_user(db_session, buyer.id)
+    assert [g.revoked_at is not None for g in grants] == [True]
+    after = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert after.json()["earned_pence"] == 0
+
+
+async def test_a_dispute_withdraws_the_access(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    _, buyer, intent, ent_repo = await _bought_with_a_code(client, make_actor, db_session, "dispute")
+
+    response = await post_event(client, charge_event("evt_dispute_1", "charge.dispute.created", intent))
+
+    assert response.json()["status"] == "applied"
+    assert [g.revoked_at is not None for g in await ent_repo.for_user(db_session, buyer.id)] == [True]
+
+
+async def test_a_partial_refund_leaves_the_access(client: AsyncClient, db_session: AsyncSession) -> None:
+    from app.features.entitlements import repository as ent_repo
+
+    await a_plan(db_session)
+    await a_customer(db_session, "partial@example.com")
+    await post_event(client, checkout_event("evt_partial_co", "partial@example.com"))
+
+    response = await post_event(
+        client, charge_event("evt_partial_1", "charge.refunded", "pi_evt_partial_co", fully_refunded=False)
+    )
+
+    assert response.json()["status"] == "ignored"
+    user = await identity_repo.user_by_email(db_session, "partial@example.com")
+    assert user is not None
+    assert [g.revoked_at for g in await ent_repo.for_user(db_session, user.id)] == [None]
+
+
+async def test_a_refund_for_a_payment_we_never_recorded_is_kept_for_support(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    response = await post_event(client, charge_event("evt_refund_none", "charge.refunded", "pi_unknown"))
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "needs_attention"

@@ -97,7 +97,8 @@ def decide(
     if trial is not None:
         if trial_available(trial, now=now):
             return Decision(allowed=True, source="trial")
-        return Decision(allowed=False, reason="trial_exhausted")
+        # Somebody who once held a grant is a lapsed subscriber, not a used-up trial.
+        return Decision(allowed=False, reason="expired" if grants else "trial_exhausted")
 
     if grants:
         return Decision(allowed=False, reason="expired")

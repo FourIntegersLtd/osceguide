@@ -82,3 +82,14 @@ def test_a_referral_discount_is_named_after_its_full_price_plan() -> None:
     assert domain.referral_plan_code("sca_1m") == "sca_1m_referral"
     assert domain.is_referral_plan("sca_1m_referral")
     assert not domain.is_referral_plan("sca_1m")
+
+
+@pytest.mark.parametrize("event_type", ["charge.refunded", "charge.dispute.created"])
+def test_a_refund_or_a_dispute_withdraws_access(event_type: str) -> None:
+    assert domain.withdraws_access(event_type)
+    assert not domain.grants_access(event_type)
+
+
+def test_only_a_full_refund_withdraws_access() -> None:
+    assert domain.is_full_refund({"amount": 2249, "amount_refunded": 2249, "refunded": True})
+    assert not domain.is_full_refund({"amount": 2249, "amount_refunded": 500, "refunded": False})

@@ -90,6 +90,16 @@ async def grant(
     return _read(entitlement, exam.code, now=entitlement.starts_at)
 
 
+async def withdraw(session: AsyncSession, entitlement_id: uuid.UUID, *, now: datetime) -> bool:
+    """Take a grant back because the money for it went back (refund, dispute). No staff actor:
+    the processor did it. False when it was already revoked or is gone; twice is once."""
+    entitlement = await repository.by_id(session, entitlement_id)
+    if entitlement is None or entitlement.revoked_at is not None:
+        return False
+    await repository.revoke(session, entitlement_id, at=now)
+    return True
+
+
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:
     """Every grant this account has ever held, revoked and lapsed ones
     included, each with `live` computed against `now`.

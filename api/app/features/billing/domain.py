@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import Any
 
 # Oracle: `b2c payment_service.PRICE_CONFIG`. Kept as the seed for the `plans`
 # table rather than as the lookup itself — what a customer bought is decided by
@@ -17,6 +18,8 @@ from datetime import datetime, timedelta
 DEFAULT_PLAN_DAYS = {"one_month": 30, "three_month": 90, "six_month": 180}
 
 ACCESS_GRANTING_EVENTS = frozenset({"checkout.session.completed"})
+# Money going back: the access it bought goes with it.
+ACCESS_WITHDRAWING_EVENTS = frozenset({"charge.refunded", "charge.dispute.created"})
 
 # A referral discount is its own plan row: the same exam and duration at 10% off,
 # on its own Stripe price, coded as the full-price plan plus this suffix (so
@@ -97,6 +100,17 @@ def grants_access(event_type: str) -> bool:
     """Everything else is acknowledged and ignored: a non-2xx to an event we will never act on
     just asks Stripe to keep delivering it."""
     return (event_type or "").strip() in ACCESS_GRANTING_EVENTS
+
+
+def withdraws_access(event_type: str) -> bool:
+    """A refund or a dispute: the payment is taken back, so the access it bought is too."""
+    return (event_type or "").strip() in ACCESS_WITHDRAWING_EVENTS
+
+
+def is_full_refund(charge: dict[str, Any]) -> bool:
+    """Whether Stripe says the whole charge is refunded. A partial refund leaves the access."""
+    amount = int(charge.get("amount") or 0)
+    return bool(charge.get("refunded")) or (amount > 0 and int(charge.get("amount_refunded") or 0) >= amount)
 
 
 # --- invoices (E-22) ----------------------------------------------------------

@@ -386,7 +386,7 @@ def test_a_station_never_sat_is_not_a_retry() -> None:
     assert counts.completed_on_this_station == 0
 
 
-def test_set_stations_and_stationless_attempts_are_each_counted_once() -> None:
+def test_a_failed_set_station_does_not_use_up_a_trial_station_but_stationless_attempts_each_do() -> None:
     sat = [
         _trial_attempt(FIRST_VERSION, kind="set_station"),
         _trial_attempt(SECOND_VERSION, kind="set_station", status="running"),
@@ -399,5 +399,5 @@ def test_set_stations_and_stationless_attempts_are_each_counted_once() -> None:
     counts = domain.count_trial_use(sat, station_by_version=STATION_BY_VERSION, starting_station_id=None)
 
     assert counts == domain.TrialCounts(
-        set_stations=2, completed_stations=3, started_this_station=False, completed_on_this_station=0
+        set_stations=1, completed_stations=3, started_this_station=False, completed_on_this_station=0
     )

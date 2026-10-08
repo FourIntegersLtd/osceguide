@@ -256,6 +256,25 @@ async def credit_referral_purchase(
     return True
 
 
+async def claw_back_referral_purchase(
+    session: AsyncSession, *, referred_user_id: uuid.UUID, plan_code: str
+) -> bool:
+    """Take back the credit a purchase earned, because it was refunded or disputed.
+
+    The redeemed row has no payment id, so it is found by buyer and plan, newest first. Only an
+    unpaid credit can be taken back (its earnings go to nothing); one already paid out is left,
+    logged, for a person to recover. False when nothing was taken back.
+    """
+    credit = await repository.latest_redemption_for(session, referred_user_id, plan_code)
+    if credit is None or credit.earned_pence == 0:
+        return False
+    if credit.payout_status != "unpaid":
+        log.warning("a refunded purchase's referral credit was already paid", referral_id=str(credit.id))
+        return False
+    await repository.void_credit(session, credit)
+    return True
+
+
 # --- A1: a referrer's own bank details for payouts --------------------------
 
 # How many digits of a stored account number are shown back to the person who

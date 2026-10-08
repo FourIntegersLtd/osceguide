@@ -184,7 +184,8 @@ def count_trial_use(
         if trial_attempt.station_version_id is not None:
             station_key = station_by_version.get(trial_attempt.station_version_id, trial_attempt.attempt_id)
         finished = trial_attempt.status in _FINISHED
-        if trial_attempt.kind == Kind.SET_STATION:
+        # A set station that failed (or was walked away from) was never sat, so it keeps its place.
+        if trial_attempt.kind == Kind.SET_STATION and trial_attempt.status != Status.FAILED:
             set_stations.add(station_key)
         if finished:
             completed_stations.add(station_key)

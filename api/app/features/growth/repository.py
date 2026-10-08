@@ -156,6 +156,30 @@ async def shareable_code(session: AsyncSession, code: str) -> Referral | None:
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
+async def latest_redemption_for(
+    session: AsyncSession, referred_user_id: uuid.UUID, plan_code: str
+) -> Referral | None:
+    """The newest redeemed row for this buyer and plan that still carries earnings."""
+    stmt = (
+        select(Referral)
+        .where(
+            Referral.referred_user_id == referred_user_id,
+            Referral.plan_code == plan_code,
+            Referral.redeemed_at.is_not(None),
+            Referral.earned_pence > 0,
+        )
+        .order_by(Referral.redeemed_at.desc())
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def void_credit(session: AsyncSession, credit: Referral) -> None:
+    """Zero a redeemed row's earnings. The row stays, so the sale is still on record."""
+    credit.earned_pence = 0
+    await session.flush()
+
+
 async def create_referral(session: AsyncSession, *, referrer_user_id: uuid.UUID, code: str) -> Referral:
     """Store a fresh, unredeemed referral code for this person to share."""
     referral = Referral(referrer_user_id=referrer_user_id, code=code.strip().upper())

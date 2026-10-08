@@ -39,3 +39,45 @@ def test_the_invitation_email_carries_the_link_and_the_board_wording() -> None:
     assert "Kings &lt;b&gt; has invited you to OSCE Guide. Set a password to get started." in html
     assert ">Set your password</a>" in html
     assert "This link expires in 7 days." in html
+
+
+def test_the_receipt_email_links_to_the_receipts_in_settings() -> None:
+    from app.features.notifications import service
+
+    html = service._render(
+        "payment_receipt",
+        {
+            "amount_total": "£22.49",
+            "receipt_id": "R-1",
+            "plan_label": "SCA 1 month",
+            "plan_end_date": "1 Nov 2026",
+        },
+    )
+    assert '/app/me/settings" style=' in html
+    assert ">Open your receipts</a>" in html
+
+
+def test_the_session_reminder_links_to_the_session_and_reads_the_time_in_words() -> None:
+    from app.features.notifications import service
+
+    html = service._render(
+        "marketplace_session_reminder",
+        {
+            "username": "Ann",
+            "partner_username": "Bo",
+            "scheduled_at": "2026-10-09T14:30:00+00:00",
+            "peer_session_id": "abc-123",
+        },
+    )
+    assert '/app/me/marketplace/session/abc-123">Open the session</a>' in html
+    assert "at Friday 9 October 2026, 14:30 UTC." in html
+    assert "2026-10-09T" not in html
+
+
+def test_an_unknown_template_key_is_an_error_not_an_email() -> None:
+    import pytest
+
+    from app.features.notifications import service
+
+    with pytest.raises(service.UnknownTemplate):
+        service._render("no_such_template", {"a": "b"})

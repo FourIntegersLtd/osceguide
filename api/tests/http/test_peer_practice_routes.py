@@ -860,3 +860,25 @@ async def test_the_accept_window_timing_out_requeues_whoever_had_accepted(
     b_view = await client.get(f"/api/v1/me/practice-sessions/{matched_id}", headers=bearer(b_token))
     # `b` never accepted, so nothing put them back in the queue.
     assert b_view.json()["requeued_entry_id"] is None
+
+
+async def test_the_same_abuse_report_sent_twice_is_one_email_but_a_new_message_is_another(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    session_id, a_token, _ = await _a_matched_session(client, make_actor, db_session, "dedupe")
+    url = f"/api/v1/me/practice-sessions/{session_id}/report-abuse"
+
+    for message in ("They were rude.", "They were rude.", "They also swore."):
+        response = await client.post(url, json={"message": message}, headers=bearer(a_token))
+        assert response.status_code == 204
+
+    queued = (
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "peer_practice_abuse_report")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert sorted(m.payload["message"] for m in queued) == ["They also swore.", "They were rude."]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,11 @@ from app.core.settings import get_settings
 from app.features.identity import service as identity
 from app.features.notifications import service as notifications
 from app.features.peer_practice import errors, repository_sessions
+
+
+def _digest(message: str | None) -> str:
+    """What makes a report the same report: a resubmitted form deduplicates, a new message does not."""
+    return hashlib.sha256((message or "").strip().encode()).hexdigest()[:16]
 
 
 async def report_abuse(
@@ -46,7 +52,7 @@ async def report_abuse(
             "reported": reported_ref.email if reported_ref else str(reported_id),
             "message": message or "",
         },
-        idempotency_key=f"peer_practice_abuse_report:{session_id}:{reporter_id}:{uuid.uuid4()}",
+        idempotency_key=f"peer_practice_abuse_report:{session_id}:{reporter_id}:{_digest(message)}",
     )
 
 
@@ -72,5 +78,5 @@ async def report_no_show(
             "reporter": reporter_ref.email if reporter_ref else str(reporter_id),
             "message": message or "",
         },
-        idempotency_key=f"peer_practice_no_show_report:{session_id}:{reporter_id}:{uuid.uuid4()}",
+        idempotency_key=f"peer_practice_no_show_report:{session_id}:{reporter_id}:{_digest(message)}",
     )

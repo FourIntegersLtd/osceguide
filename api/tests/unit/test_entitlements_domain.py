@@ -146,3 +146,10 @@ def test_an_exhausted_trial_with_no_grant_is_refused_with_an_upgrade_hint() -> N
     decision = domain.decide([], now=NOW, trial=trial(age_days=30))
     assert not decision.allowed
     assert decision.reason == "trial_exhausted"
+
+
+def test_a_lapsed_subscriber_past_the_trial_is_told_expired_not_trial_exhausted() -> None:
+    lapsed = grant(ends_at=NOW - timedelta(days=1))
+    decision = domain.decide([lapsed], now=NOW, trial=trial(age_days=30))
+    assert not decision.allowed
+    assert decision.reason == "expired"
