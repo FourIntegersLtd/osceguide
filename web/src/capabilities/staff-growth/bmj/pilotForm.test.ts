@@ -19,6 +19,8 @@ describe("pilot settings form", () => {
       reset_spend_alerts: false,
     });
     assert.equal(pilotUpdateFromForm("0.40", "500, 2000", [50000, 100000])?.reset_spend_alerts, true);
+    assert.equal(pilotUpdateFromForm("0.40", "10, 5", [500, 1000])?.reset_spend_alerts, false);
+    assert.equal(pilotUpdateFromForm("0.40", "5,10", [1000, 500])?.reset_spend_alerts, false);
   });
 
   it("refuses a rate that is not a non-negative amount", () => {

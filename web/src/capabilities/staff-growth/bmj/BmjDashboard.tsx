@@ -65,9 +65,12 @@ export function BmjDashboard() {
   // The moment the numbers on screen arrived.
   const updatedAt = useMemo(() => (summary.data ? new Date() : null), [summary.data]);
 
-  const summaryFailure = (title: string, note?: string) =>
+  // `withoutNote` drops the reassurance that nothing shown is zero, where nothing is shown as zero.
+  const summaryFailure = (title: string, withoutNote = false) =>
     function Failure(error: Error, retry: () => void) {
-      return <LoadFailure title={title} error={error} onRetry={retry} note={note} />;
+      return (
+        <LoadFailure title={title} error={error} onRetry={retry} note={withoutNote ? "" : undefined} />
+      );
     };
 
   return (
@@ -96,10 +99,7 @@ export function BmjDashboard() {
         <div className="space-y-5">
           <AsyncBoundary
             state={summary}
-            failure={summaryFailure(
-              "We couldn't load these numbers",
-              "Nothing here is zero; it just hasn't loaded.",
-            )}
+            failure={summaryFailure("We couldn't load these numbers")}
           >
             {(data) =>
               data ? (
@@ -120,7 +120,7 @@ export function BmjDashboard() {
               ) : null
             }
           </AsyncBoundary>
-          <AsyncBoundary state={funnel} failure={summaryFailure("We couldn't load the funnel", "")}>
+          <AsyncBoundary state={funnel} failure={summaryFailure("We couldn't load the funnel", true)}>
             {(data) =>
               data ? (
                 <FunnelSection
@@ -150,13 +150,13 @@ export function BmjDashboard() {
           </AsyncBoundary>
           <AsyncBoundary
             state={revenueOverTime}
-            failure={summaryFailure("We couldn't load revenue over time", "")}
+            failure={summaryFailure("We couldn't load revenue over time", true)}
           >
             {(report) =>
               report ? <RevenueOverTimeSection copy={copy.revenueOverTime} report={report} /> : null
             }
           </AsyncBoundary>
-          <AsyncBoundary state={summary} failure={summaryFailure("We couldn't load revenue by plan", "")}>
+          <AsyncBoundary state={summary} failure={summaryFailure("We couldn't load revenue by plan", true)}>
             {(data) =>
               data ? (
                 <RevenueByPlanSection copy={copy.revenueByPlan} rows={data.revenue.revenue_by_plan} />

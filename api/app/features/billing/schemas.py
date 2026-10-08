@@ -109,6 +109,8 @@ class PlatformPaymentRead(BaseModel):
     plan_starts_at: datetime | None
     plan_ends_at: datetime | None
     entitlement_id: uuid.UUID | None
+    # The grant this payment bought has been withdrawn (a refund or a dispute); the sale stays.
+    access_revoked: bool
     receipt_url: str | None
     customer_email: str | None
 

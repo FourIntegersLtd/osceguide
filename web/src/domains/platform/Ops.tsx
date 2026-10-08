@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   AsyncBoundary,
@@ -36,10 +36,11 @@ export function Ops() {
   // Straight after a tab switch the last frame is still the old tab's.
   const pushed = stream.data?.job_status === status ? stream.data : null;
   // When the figures on screen last arrived: the last pushed frame, else the first read.
-  const lastFrameAt = useMemo(
-    () => (pushed ?? initial.data ? new Date() : null),
-    [pushed, initial.data],
-  );
+  const frame = pushed ?? initial.data;
+  const [arrival, setArrival] = useState<{ frame: unknown; at: Date } | null>(null);
+  // Set while rendering, when a new frame is the first thing that differs: the clock is read once per frame.
+  if (frame && arrival?.frame !== frame) setArrival({ frame, at: new Date() });
+  const lastFrameAt = arrival?.at ?? null;
   const live = liveFeedLabel(stream.connected, lastFrameAt);
   const machinery = { ...initial, data: pushed ?? initial.data };
   const health = { ...machinery, data: machinery.data?.health ?? null };

@@ -217,6 +217,8 @@ async def test_a_refund_withdraws_the_access_and_keeps_the_sale(
     assert refunded.json()["entitlement_id"] == payment["entitlement_id"], (
         "the sale still says what it bought"
     )
+    assert payment["access_revoked"] is False
+    assert refunded.json()["access_revoked"] is True
     [grant] = (
         await client.get(f"/api/v1/platform/users/{user.id}/entitlements", headers=bearer(root))
     ).json()["items"]
@@ -244,3 +246,24 @@ async def test_a_refund_withdraws_the_access_and_keeps_the_sale(
             f"/api/v1/platform/payments/{uuid.uuid4()}/refund", json={"reason": "x"}, headers=bearer(root)
         )
     ).status_code == 404
+
+
+async def test_a_console_refund_takes_back_the_referral_credit_like_the_webhook(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from tests.http.test_billing_routes import _bought_with_a_code
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    referrer_token, buyer, _, _ = await _bought_with_a_code(client, make_actor, db_session, "console")
+    [payment] = (
+        await client.get(f"/api/v1/platform/users/{buyer.id}/payments", headers=bearer(root))
+    ).json()["items"]
+
+    for _ in range(2):
+        refunded = await client.post(
+            f"/api/v1/platform/payments/{payment['id']}/refund", json={"reason": "x"}, headers=bearer(root)
+        )
+        assert refunded.status_code == 200
+
+    mine = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert mine.json()["earned_pence"] == 0

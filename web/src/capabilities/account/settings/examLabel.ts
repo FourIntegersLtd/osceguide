@@ -1,3 +1,6 @@
+/** What stands where an exam would be when none is chosen. */
+export const NO_EXAM_LABEL = "No exam chosen yet";
+
 /**
  * How an exam reads on the settings screen.
  *

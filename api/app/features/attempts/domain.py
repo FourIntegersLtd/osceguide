@@ -141,6 +141,9 @@ class TrialAttempt:
     status: str
     # None for an attempt that ran without a station.
     station_version_id: uuid.UUID | None
+    # Whether the attempt ever got going (`started_at` set). One that failed before it did cost
+    # the candidate nothing; one abandoned or failed after it did.
+    started: bool
 
 
 @dataclass(frozen=True)
@@ -184,8 +187,9 @@ def count_trial_use(
         if trial_attempt.station_version_id is not None:
             station_key = station_by_version.get(trial_attempt.station_version_id, trial_attempt.attempt_id)
         finished = trial_attempt.status in _FINISHED
-        # A set station that failed (or was walked away from) was never sat, so it keeps its place.
-        if trial_attempt.kind == Kind.SET_STATION and trial_attempt.status != Status.FAILED:
+        # A set station that failed before it started was never sat, so it keeps its place.
+        never_started = trial_attempt.status == Status.FAILED and not trial_attempt.started
+        if trial_attempt.kind == Kind.SET_STATION and not never_started:
             set_stations.add(station_key)
         if finished:
             completed_stations.add(station_key)

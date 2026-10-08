@@ -148,6 +148,16 @@ async def revoke(session: AsyncSession, entitlement_id: uuid.UUID, *, at: dateti
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(revoked_at=at))
 
 
+async def revoked_ids(session: AsyncSession, entitlement_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
+    """Which of these grants have been withdrawn."""
+    if not entitlement_ids:
+        return set()
+    stmt = select(Entitlement.id).where(
+        Entitlement.id.in_(list(entitlement_ids)), Entitlement.revoked_at.is_not(None)
+    )
+    return set((await session.execute(stmt)).scalars())
+
+
 async def by_id(session: AsyncSession, entitlement_id: uuid.UUID) -> Entitlement | None:
     """Unscoped: for the platform console, which reads across every owner."""
     return (

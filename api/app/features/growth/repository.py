@@ -156,20 +156,18 @@ async def shareable_code(session: AsyncSession, code: str) -> Referral | None:
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def latest_redemption_for(
-    session: AsyncSession, referred_user_id: uuid.UUID, plan_code: str
+async def redemption_made_at(
+    session: AsyncSession, referred_user_id: uuid.UUID, redeemed_at: datetime
 ) -> Referral | None:
-    """The newest redeemed row for this buyer and plan that still carries earnings."""
-    stmt = (
-        select(Referral)
-        .where(
-            Referral.referred_user_id == referred_user_id,
-            Referral.plan_code == plan_code,
-            Referral.redeemed_at.is_not(None),
-            Referral.earned_pence > 0,
-        )
-        .order_by(Referral.redeemed_at.desc())
-        .limit(1)
+    """The credit one purchase earned, that still carries earnings.
+
+    A redeemed row has no payment id, but it is stamped with the same instant as the payment it
+    came from (one webhook transaction, one `now`), so buyer and instant name the purchase.
+    """
+    stmt = select(Referral).where(
+        Referral.referred_user_id == referred_user_id,
+        Referral.redeemed_at == redeemed_at,
+        Referral.earned_pence > 0,
     )
     return (await session.execute(stmt)).scalar_one_or_none()
 

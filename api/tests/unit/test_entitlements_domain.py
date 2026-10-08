@@ -153,3 +153,9 @@ def test_a_lapsed_subscriber_past_the_trial_is_told_expired_not_trial_exhausted(
     decision = domain.decide([lapsed], now=NOW, trial=trial(age_days=30))
     assert not decision.allowed
     assert decision.reason == "expired"
+
+
+def test_somebody_whose_only_purchase_was_refunded_is_not_told_expired() -> None:
+    decision = domain.decide([grant(revoked=True)], now=NOW, trial=trial(age_days=30))
+    assert decision.reason == "trial_exhausted"
+    assert domain.decide([grant(revoked=True)], now=NOW).reason == "no_entitlement"

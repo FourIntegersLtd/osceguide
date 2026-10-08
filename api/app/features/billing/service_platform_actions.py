@@ -102,7 +102,7 @@ async def record_manual_payment(
         summary=f"{plan_code} for {user.email}: {note}",
         meta={"user_id": str(user_id), "plan_code": plan_code, "reference": reference, "note": note},
     )
-    return service_platform._payment_read(payment, plan_code=plan_row.code)
+    return await service_platform.payment_read(session, payment, plan_code=plan_row.code)
 
 
 async def refund(
@@ -113,10 +113,11 @@ async def refund(
     payment = await repository.payment_by_id(session, payment_id)
     if payment is None:
         raise errors.PaymentNotFound()
-    if payment.entitlement_id is not None:
-        await entitlements.revoke(
-            session, payment.entitlement_id, reason=f"refund: {reason}", actor=actor, now=now
-        )
+
+    async def revoke(entitlement_id: uuid.UUID) -> None:
+        await entitlements.revoke(session, entitlement_id, reason=f"refund: {reason}", actor=actor, now=now)
+
+    await service_settlement.withdraw_payment(session, payment, revoke=revoke)
     await service_audit.record(
         session,
         actor=actor,
@@ -131,4 +132,4 @@ async def refund(
         },
     )
     plan = await repository.plan_by_id(session, payment.plan_id) if payment.plan_id else None
-    return service_platform._payment_read(payment, plan_code=plan.code if plan else None)
+    return await service_platform.payment_read(session, payment, plan_code=plan.code if plan else None)

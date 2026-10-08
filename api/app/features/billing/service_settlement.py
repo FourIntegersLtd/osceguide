@@ -7,6 +7,8 @@ Stripe reports, and the platform console, for a payment that did not come throug
 
 from __future__ import annotations
 
+import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.billing import domain, errors, receipts, repository
 from app.features.billing.models import Payment, Plan
 from app.features.entitlements import service as entitlements
+from app.features.growth import service as growth
 from app.features.identity import service as identity
 from app.features.notifications import service as notifications
 
@@ -122,3 +125,26 @@ async def settle_payment(
         idempotency_key=f"payment_receipt:{intent_id}",
     )
     return payment
+
+
+async def withdraw_payment(
+    session: AsyncSession,
+    payment: Payment,
+    *,
+    revoke: Callable[[uuid.UUID], Awaitable[None]],
+) -> bool:
+    """Take back what a payment bought: its grant, and the referral credit it earned.
+
+    One function for the Stripe webhook (refund, dispute) and the console's "Record refund".
+    `revoke` is how the caller withdraws the grant (the console audits it). Only the first
+    withdrawal does anything: once the grant is revoked, a dispute followed by a refund of
+    the same payment takes nothing more. False when there was nothing left to take back.
+    """
+    entitlement_id = payment.entitlement_id
+    if entitlement_id is None or await entitlements.revoked_ids(session, [entitlement_id]):
+        return False
+    await revoke(entitlement_id)
+    await growth.claw_back_referral_purchase(
+        session, referred_user_id=payment.user_id, paid_at=payment.paid_at
+    )
+    return True

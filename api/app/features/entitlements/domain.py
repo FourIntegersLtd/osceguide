@@ -91,6 +91,8 @@ def decide(
 ) -> Decision:
     """The one question every attempt-creating path asks."""
     live = [grant for grant in grants if grant.live_at(now)]
+    # A refunded purchase is not a lapsed subscription.
+    lapsed = [grant for grant in grants if grant.revoked_at is None]
     if live:
         return Decision(allowed=True, source=live[0].source)
 
@@ -98,8 +100,8 @@ def decide(
         if trial_available(trial, now=now):
             return Decision(allowed=True, source="trial")
         # Somebody who once held a grant is a lapsed subscriber, not a used-up trial.
-        return Decision(allowed=False, reason="expired" if grants else "trial_exhausted")
+        return Decision(allowed=False, reason="expired" if lapsed else "trial_exhausted")
 
-    if grants:
+    if lapsed:
         return Decision(allowed=False, reason="expired")
     return Decision(allowed=False, reason="no_entitlement")

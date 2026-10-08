@@ -22,7 +22,8 @@ export type PlatformAttemptDetail = S["PlatformAttemptDetail"];
 export type ScoringJob = S["ScoringJobRead"];
 export type RescoreResult = S["RescoreResult"];
 export type PlatformEntitlement = S["PlatformEntitlementRead"];
-export type PlatformPayment = S["PlatformPaymentRead"];
+// `access_revoked` until regenerated.
+export type PlatformPayment = S["PlatformPaymentRead"] & { access_revoked: boolean };
 export type StripeEvent = S["StripeEventRead"];
 export type PlatformPlan = S["PlatformPlanRead"];
 export type CreatePlanInput = S["CreatePlan"];

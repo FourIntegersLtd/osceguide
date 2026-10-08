@@ -20,6 +20,11 @@ export function formatRateForInput(pence: number): string {
   return (pence / 100).toFixed(2);
 }
 
+/** Thresholds as a comparable string, whatever order they were typed in. */
+function sorted(thresholds: readonly number[]): string {
+  return [...thresholds].sort((a, b) => a - b).join();
+}
+
 /**
  * The PATCH body for the pilot form, or null when the rate is not a valid amount.
  * Alert history is forgotten only when the thresholds changed: a rate-only edit
@@ -36,6 +41,6 @@ export function pilotUpdateFromForm(
   return {
     cost_per_click_pence: pence,
     spend_alert_thresholds_pence: thresholds,
-    reset_spend_alerts: thresholds.join() !== currentThresholds.join(),
+    reset_spend_alerts: sorted(thresholds) !== sorted(currentThresholds),
   };
 }

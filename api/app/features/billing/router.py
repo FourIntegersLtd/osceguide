@@ -41,6 +41,7 @@ async def list_plans(session: Session) -> Page[schemas.PlanRead]:
         errors.InvalidWebhook,
         errors.InvalidSignature,
         errors.UnknownPlanError,
+        errors.PaymentNotFound,
         errors.UnknownExamError,
     ),
 )

@@ -6,7 +6,7 @@ import Alert from "@/foundation/forms/Alert";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
-import { examLabel } from "@/capabilities/account/settings/examLabel";
+import { examLabel, NO_EXAM_LABEL } from "@/capabilities/account/settings/examLabel";
 import { settingsMeta } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 
@@ -44,7 +44,7 @@ function ExamCards({ me }: { me: Me }) {
         <Input
           label="Exam type"
           name="examType"
-          value={examLabel(name, code) ?? "No exam chosen yet"}
+          value={examLabel(name, code) ?? NO_EXAM_LABEL}
           disabled
           readOnly
         />

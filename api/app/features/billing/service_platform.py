@@ -18,6 +18,7 @@ from app.features.billing import errors, repository
 from app.features.billing.models import Payment, StripeEvent
 from app.features.billing.schemas import PlatformPaymentRead, StripeEventRead
 from app.features.billing.service import _price_id
+from app.features.entitlements import service as entitlements
 from app.features.identity import service as identity
 from app.features.identity.service import UserRef
 
@@ -39,10 +40,27 @@ async def payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[P
     for plan_id in plans:
         plan = await repository.plan_by_id(session, plan_id)
         codes[plan_id] = plan.code if plan else None
+    revoked = await entitlements.revoked_ids(
+        session, [payment.entitlement_id for payment in payments if payment.entitlement_id is not None]
+    )
     return [
-        _payment_read(payment, plan_code=codes.get(payment.plan_id) if payment.plan_id else None)
+        _payment_read(
+            payment,
+            plan_code=codes.get(payment.plan_id) if payment.plan_id else None,
+            access_revoked=payment.entitlement_id in revoked,
+        )
         for payment in payments
     ]
+
+
+async def payment_read(
+    session: AsyncSession, payment: Payment, *, plan_code: str | None
+) -> PlatformPaymentRead:
+    """One payment as the console reads it, including whether its grant has been withdrawn."""
+    revoked = payment.entitlement_id is not None and bool(
+        await entitlements.revoked_ids(session, [payment.entitlement_id])
+    )
+    return _payment_read(payment, plan_code=plan_code, access_revoked=revoked)
 
 
 async def list_events(
@@ -61,7 +79,7 @@ async def events_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Str
     return [_event_read(event) for event in await repository.events_for_email(session, user.email)]
 
 
-def _payment_read(payment: Payment, *, plan_code: str | None) -> PlatformPaymentRead:
+def _payment_read(payment: Payment, *, plan_code: str | None, access_revoked: bool) -> PlatformPaymentRead:
     """A payment row as the platform console's read model, with its plan code already resolved
     (a `Payment` row keeps only `plan_id`, an internal key support never sees)."""
     return PlatformPaymentRead(
@@ -78,6 +96,7 @@ def _payment_read(payment: Payment, *, plan_code: str | None) -> PlatformPayment
         plan_starts_at=payment.plan_starts_at,
         plan_ends_at=payment.plan_ends_at,
         entitlement_id=payment.entitlement_id,
+        access_revoked=access_revoked,
         receipt_url=payment.receipt_url,
         customer_email=payment.customer_email,
     )

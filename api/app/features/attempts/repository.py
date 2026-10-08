@@ -300,12 +300,18 @@ async def attempts_counted_by_trial(
 
     Counted per exam, not per account, so using up one exam's trial leaves another's untouched.
     """
-    stmt = select(Attempt.id, Attempt.kind, Attempt.status, Attempt.station_version_id).where(
-        Attempt.user_id == user_id, Attempt.exam_id == exam_id, Attempt.kind != str(Kind.DEBRIEF)
-    )
+    stmt = select(
+        Attempt.id, Attempt.kind, Attempt.status, Attempt.station_version_id, Attempt.started_at
+    ).where(Attempt.user_id == user_id, Attempt.exam_id == exam_id, Attempt.kind != str(Kind.DEBRIEF))
     return [
-        TrialAttempt(attempt_id=attempt_id, kind=kind, status=status, station_version_id=station_version_id)
-        for attempt_id, kind, status, station_version_id in (await session.execute(stmt)).all()
+        TrialAttempt(
+            attempt_id=attempt_id,
+            kind=kind,
+            status=status,
+            station_version_id=station_version_id,
+            started=started_at is not None,
+        )
+        for attempt_id, kind, status, station_version_id, started_at in (await session.execute(stmt)).all()
     ]
 
 

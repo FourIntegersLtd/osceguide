@@ -344,10 +344,10 @@ STATION_BY_VERSION = {FIRST_VERSION: STATION_ONE, SECOND_VERSION: STATION_ONE, O
 
 
 def _trial_attempt(
-    version_id: uuid.UUID | None, status: str = "evaluated", kind: str = "practice"
+    version_id: uuid.UUID | None, status: str = "evaluated", kind: str = "practice", started: bool = True
 ) -> domain.TrialAttempt:
     return domain.TrialAttempt(
-        attempt_id=uuid.uuid4(), kind=kind, status=status, station_version_id=version_id
+        attempt_id=uuid.uuid4(), kind=kind, status=status, station_version_id=version_id, started=started
     )
 
 
@@ -386,11 +386,11 @@ def test_a_station_never_sat_is_not_a_retry() -> None:
     assert counts.completed_on_this_station == 0
 
 
-def test_a_failed_set_station_does_not_use_up_a_trial_station_but_stationless_attempts_each_do() -> None:
+def test_a_set_station_that_failed_before_starting_is_free_but_stationless_attempts_each_count() -> None:
     sat = [
         _trial_attempt(FIRST_VERSION, kind="set_station"),
         _trial_attempt(SECOND_VERSION, kind="set_station", status="running"),
-        _trial_attempt(OTHER_VERSION, kind="set_station", status="failed"),
+        _trial_attempt(OTHER_VERSION, kind="set_station", status="failed", started=False),
         # No station at all: each of these is a station of its own.
         _trial_attempt(None),
         _trial_attempt(None),
@@ -401,3 +401,11 @@ def test_a_failed_set_station_does_not_use_up_a_trial_station_but_stationless_at
     assert counts == domain.TrialCounts(
         set_stations=1, completed_stations=3, started_this_station=False, completed_on_this_station=0
     )
+
+
+def test_a_set_station_walked_away_from_after_it_started_still_uses_a_trial_station() -> None:
+    sat = [_trial_attempt(OTHER_VERSION, kind="set_station", status="failed", started=True)]
+
+    counts = domain.count_trial_use(sat, station_by_version=STATION_BY_VERSION, starting_station_id=None)
+
+    assert counts.set_stations == 1

@@ -85,6 +85,7 @@ function PaymentRow({
   onChanged: () => void;
 }) {
   const toast = useToast();
+  const granted = payment.entitlement_id !== null && !payment.access_revoked;
   return (
     <Row>
       <div className="min-w-0 flex-1">
@@ -98,11 +99,11 @@ function PaymentRow({
         </p>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <Badge tone={payment.entitlement_id ? "success" : "neutral"}>
-          {payment.entitlement_id ? "Granted" : "No grant"}
+        <Badge tone={granted ? "success" : "neutral"}>
+          {granted ? "Granted" : payment.entitlement_id ? "Access withdrawn" : "No grant"}
         </Badge>
         {/* Nothing to revoke once the grant is gone, so a second "refund" would only look like it did something. */}
-        {payment.entitlement_id ? (
+        {granted ? (
           <InlineAction
             label="Record refund"
             tone="danger"

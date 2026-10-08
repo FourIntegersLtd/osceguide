@@ -877,10 +877,58 @@ async def test_a_partial_refund_leaves_the_access(client: AsyncClient, db_sessio
     assert [g.revoked_at for g in await ent_repo.for_user(db_session, user.id)] == [None]
 
 
-async def test_a_refund_for_a_payment_we_never_recorded_is_kept_for_support(
+async def test_a_refund_that_arrives_before_its_checkout_is_retried_not_lost(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    response = await post_event(client, charge_event("evt_refund_none", "charge.refunded", "pi_unknown"))
+    from app.features.entitlements import repository as ent_repo
 
-    assert response.status_code == 200
-    assert response.json()["status"] == "needs_attention"
+    await a_plan(db_session)
+    await a_customer(db_session, "early@example.com")
+    # Committed: the refused delivery rolls its request's transaction back, setup included.
+    await db_session.commit()
+    refund = charge_event("evt_early_refund", "charge.refunded", "pi_evt_early_co")
+
+    first = await post_event(client, refund)
+    assert first.status_code == 404
+    assert first.json()["code"] == "payment_not_found"
+
+    checkout = await post_event(client, checkout_event("evt_early_co", "early@example.com"))
+    assert checkout.json()["status"] == "applied", checkout.text
+    second = await post_event(client, refund)
+
+    assert second.status_code == 200, second.text
+    assert second.json()["status"] == "applied"
+    user = await identity_repo.user_by_email(db_session, "early@example.com")
+    assert user is not None
+    assert [g.revoked_at is not None for g in await ent_repo.for_user(db_session, user.id)] == [True]
+
+
+async def _buy_again_with_the_code(client: AsyncClient, event_id: str, who: str, code: str) -> None:
+    await post_event(
+        client,
+        referral_checkout_event(
+            event_id, f"{who}-buyer@example.com", price_id="price_one_month_referral", referral_code=code
+        ),
+    )
+
+
+async def test_a_dispute_on_one_purchase_takes_back_only_that_purchases_credit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    referrer_token, _, first_intent, _ = await _bought_with_a_code(client, make_actor, db_session, "twice")
+    code = (await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))).json()["code"]
+    await _buy_again_with_the_code(client, "evt_twice_second", "twice", code)
+    earned = lambda: client.get("/api/v1/me/referrals", headers=bearer(referrer_token))  # noqa: E731
+    assert (await earned()).json()["earned_pence"] == 500
+
+    await post_event(
+        client, charge_event("evt_twice_dispute", "charge.dispute.created", "pi_evt_twice_second")
+    )
+    assert (await earned()).json()["earned_pence"] == 250
+
+    # The same payment disputed and then refunded: the second withdrawal takes nothing more.
+    await post_event(client, charge_event("evt_twice_refund", "charge.refunded", "pi_evt_twice_second"))
+    assert (await earned()).json()["earned_pence"] == 250
+
+    await post_event(client, charge_event("evt_twice_first", "charge.refunded", first_intent))
+    assert (await earned()).json()["earned_pence"] == 0

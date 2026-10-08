@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Collection
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -90,14 +91,15 @@ async def grant(
     return _read(entitlement, exam.code, now=entitlement.starts_at)
 
 
-async def withdraw(session: AsyncSession, entitlement_id: uuid.UUID, *, now: datetime) -> bool:
+async def revoked_ids(session: AsyncSession, entitlement_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
+    """Which of these grants have been withdrawn."""
+    return await repository.revoked_ids(session, entitlement_ids)
+
+
+async def withdraw(session: AsyncSession, entitlement_id: uuid.UUID, *, now: datetime) -> None:
     """Take a grant back because the money for it went back (refund, dispute). No staff actor:
-    the processor did it. False when it was already revoked or is gone; twice is once."""
-    entitlement = await repository.by_id(session, entitlement_id)
-    if entitlement is None or entitlement.revoked_at is not None:
-        return False
+    the processor did it. Twice is once."""
     await repository.revoke(session, entitlement_id, at=now)
-    return True
 
 
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:
