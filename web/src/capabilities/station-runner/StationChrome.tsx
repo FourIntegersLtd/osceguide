@@ -200,7 +200,10 @@ export function StationHeader({
         message="Tell our team what looks wrong with this station."
         confirmText="Send report"
         isLoading={reporting}
-        onCancel={() => setReasonOpen(false)}
+        onCancel={() => {
+          setReasonOpen(false);
+          setReason("");
+        }}
         onConfirm={onFlag}
       >
         <Textarea

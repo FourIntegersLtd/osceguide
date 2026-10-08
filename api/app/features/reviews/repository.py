@@ -25,12 +25,18 @@ async def slot_review_for(
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def delete_slot_review(session: AsyncSession, review: SlotReview) -> None:
-    await session.delete(review)
-    await session.flush()
+async def slot_review_by_id(
+    session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID, review_id: uuid.UUID
+) -> SlotReview | None:
+    """One review of this slot by its id, or None if the slot has no such review."""
+    stmt = select(SlotReview).where(
+        SlotReview.org_id == org_id, SlotReview.slot_id == slot_id, SlotReview.id == review_id
+    )
+    return (await session.execute(stmt)).scalar_one_or_none()
 
 
-async def delete_gp_lead_review(session: AsyncSession, review: GpLeadReview) -> None:
+async def delete_review(session: AsyncSession, review: SlotReview | GpLeadReview) -> None:
+    """Remove a slot review or a GP-lead review."""
     await session.delete(review)
     await session.flush()
 

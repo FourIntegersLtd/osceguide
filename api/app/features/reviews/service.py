@@ -205,6 +205,12 @@ async def submit_slot_review(
     return _slot_read(slot_review, form=review_form(scoring_rubric))
 
 
+def _ensure_draft(review: SlotReview | GpLeadReview) -> None:
+    """Only a draft is withdrawn; a completed review is part of the record."""
+    if review.status == "completed":
+        raise errors.ReviewNotDraftError()
+
+
 async def withdraw_slot_review(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -220,9 +226,7 @@ async def withdraw_slot_review(
     circuit's named supervisor.
     """
     await _require_open_slot(session, org_id, slot_id)
-    review = next(
-        (row for row in await repository.slot_reviews(session, org_id, slot_id) if row.id == review_id), None
-    )
+    review = await repository.slot_review_by_id(session, org_id, slot_id, review_id)
     if review is None:
         raise errors.ReviewNotFound()
     if review.submitted_by != actor_id:
@@ -231,9 +235,8 @@ async def withdraw_slot_review(
             role=role,
             supervisor_id=await sittings_reads.supervisor_for_slot(session, org_id, slot_id),
         )
-    if review.status == "completed":
-        raise errors.ReviewNotDraftError()
-    await repository.delete_slot_review(session, review)
+    _ensure_draft(review)
+    await repository.delete_review(session, review)
 
 
 async def withdraw_gp_lead_review(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> None:
@@ -242,9 +245,8 @@ async def withdraw_gp_lead_review(session: AsyncSession, org_id: uuid.UUID, slot
     review = await repository.gp_lead_review(session, org_id, slot_id)
     if review is None:
         raise errors.ReviewNotFound()
-    if review.status == "completed":
-        raise errors.ReviewNotDraftError()
-    await repository.delete_gp_lead_review(session, review)
+    _ensure_draft(review)
+    await repository.delete_review(session, review)
 
 
 async def save_gp_lead_review(

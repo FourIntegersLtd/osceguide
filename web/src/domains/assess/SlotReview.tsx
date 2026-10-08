@@ -135,7 +135,7 @@ function Editor({
     initialRatings(form, initial?.field_values),
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [busy, setBusy] = useState<"draft" | "completed" | "retry" | null>(null);
+  const [busy, setBusy] = useState<"draft" | "completed" | "retry" | "withdraw" | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   // Its own message, shown beside the marking it belongs to and not under the marks form too.
@@ -186,7 +186,7 @@ function Editor({
 
   const withdraw = useCallback(async () => {
     if (!initial) return;
-    setBusy("draft");
+    setBusy("withdraw");
     setError(null);
     try {
       await withdrawReview(orgSlug, slotId, initial.id);
@@ -243,7 +243,7 @@ function Editor({
                 <div className="flex justify-end gap-2">
                   {initial ? (
                     <Button themeType="b2b" variant="ghost" onClick={() => void withdraw()} disabled={busy !== null}>
-                      Withdraw draft
+                      {busy === "withdraw" ? <Spinner /> : "Withdraw draft"}
                     </Button>
                   ) : null}
                   <Button themeType="b2b" variant="secondary" onClick={() => persist("draft")} disabled={busy !== null}>
