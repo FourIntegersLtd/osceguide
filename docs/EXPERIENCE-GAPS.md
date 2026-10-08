@@ -210,23 +210,23 @@ unless written in full.
 
 ## 7. Platform staff console (P-*)
 
-- **P-12** · WRONG · open · Pilot settings save always sends reset_spend_alerts=true. pilotForm.ts
-- **P-13** · WRONG · open · Revenue-by-plan section failure={() => null}. BmjDashboard.tsx
-- **P-14** · ROUGH · open · isPartnerAddress hard-codes @{partner}.com. ReportersPanel.tsx
+- **P-12** · WRONG · fixed 935309d (pilotForm.test.ts resets alert history only when thresholds changed) · Pilot settings save always sends reset_spend_alerts=true. pilotForm.ts
+- **P-13** · WRONG · fixed 935309d (revenue-by-plan shows LoadFailure) · Revenue-by-plan section failure={() => null}. BmjDashboard.tsx
+- **P-14** · ROUGH · fixed 935309d (bmj/partnerAddress.test.ts) · isPartnerAddress hard-codes @{partner}.com. ReportersPanel.tsx
 - **P-15** · WRONG · open · Referral payouts: limit 100, next_cursor ignored, totals undercount, no confirm on Paid. ReferralPayouts.tsx
 - **P-16** · WRONG · fixed 969f64b · Moderation: API caps at 100 with next_cursor None, hero says "100 posts"; no author, report count or link. router_platform.py:22-36; ModerationHome.tsx
 - **P-17** · WRONG · partly fixed 969f64b (reason text needs a column) · Station flags: limit 100 no LoadMore; no reason text or station link. platform/api.ts:449-457; StationFlags.tsx
-- **P-18** · WRONG · open · Audit (global 100, org 50) no cursor use. PlatformAudit.tsx; AuditSection.tsx
+- **P-18** · WRONG · fixed 935309d (platform and org audit load more by cursor) · Audit (global 100, org 50) no cursor use. PlatformAudit.tsx; AuditSection.tsx
 - **P-19** · ROUGH · partly fixed 969f64b · Media hand-check route has no caller; detail load error has no retry; production errors raw. media_production/router.py; MediaDetailScreen.tsx
-- **P-20** · ROUGH · open · Ops live badge "Reconnecting" with stale data and no timestamp. Ops.tsx
-- **P-21** · WRONG · open · "SSO only" hides the password form with no check against password-seated members. SsoSection.tsx; sso/service.py:109
-- **P-22** · WRONG · open · Org Members limit 50 ignores cursor; "Nobody has joined" when only trainees exist; no resend or temp-password status. MembersSection.tsx
-- **P-23** · WRONG · open · org_slug_taken shown as top alert; org_type change leaves misfit roles; Overview copy "Every organisation is active or on trial" false; at-risk list unpaged. ProvisionPanel.tsx; OrganizationSettings.tsx; Overview.tsx
+- **P-20** · ROUGH · fixed 935309d (labels.test.ts: dropped feed says how old the figures are) · Ops live badge "Reconnecting" with stale data and no timestamp. Ops.tsx
+- **P-21** · WRONG · open (needs an api guard or a product choice between blocking and warning when password-seated members exist) · "SSO only" hides the password form with no check against password-seated members. SsoSection.tsx; sso/service.py:109
+- **P-22** · WRONG · partly fixed 935309d (members page by cursor, empty copy names staff; resend and temp-password status need api fields) · Org Members limit 50 ignores cursor; "Nobody has joined" when only trainees exist; no resend or temp-password status. MembersSection.tsx
+- **P-23** · WRONG · partly fixed 935309d (taken slug shown under the field, Overview copy matches its count; role misfit on org_type change is a product decision, at-risk paging unchecked) · org_slug_taken shown as top alert; org_type change leaves misfit roles; Overview copy "Every organisation is active or on trial" false; at-risk list unpaged. ProvisionPanel.tsx; OrganizationSettings.tsx; Overview.tsx
 - **P-24** · WRONG · open (needs invitePlatformAdmin in domains/platform/api.ts, the user's uncommitted work) · Invite platform admin email-only, invitee name set to email. InvitePlatformAdminModal.tsx
 - **P-25** · WRONG · open · Users: failed facts/plans loads look empty; memberships panel shows raw role and no org name; "invited" never shows; Deactivate leaves running attempts and roles, deactivated sole admin still counts. Users.tsx; AccountTab.tsx; service_memberships.py
 - **P-26** · WRONG · open (ProfileTab.tsx is in domains/platform/user/, the user's uncommitted work) · "Password reset emailed" toast regardless of delivery. ProfileTab.tsx
 - **P-27** · WRONG · open · Attempt inspector Salvage/Fail with no staleness check (a live consultation can be failed); no sitting context for exam_slot. AttemptInspector.tsx
-- **P-28** · WRONG · open · Billing tab: "£12" becomes NaN then null, plan price recorded silently; retired plan offered; Record refund on refunded payments, refund does not touch Stripe; unprocessed event with no failure is "Pending" with no retry and excluded from failed_only; per-user lists unpaged; extend date unchecked. BillingTab.tsx; Payments.tsx; BillingEvents.tsx
+- **P-28** · WRONG · partly fixed 935309d (Record refund only while the payment holds a grant; BillingTab.tsx price parsing is in the user's uncommitted user/ folder; Stripe refund link and event retry need api work) · Billing tab: "£12" becomes NaN then null, plan price recorded silently; retired plan offered; Record refund on refunded payments, refund does not touch Stripe; unprocessed event with no failure is "Pending" with no retry and excluded from failed_only; per-user lists unpaged; extend date unchecked. BillingTab.tsx; Payments.tsx; BillingEvents.tsx
 
 ## 8. Hire and partner (H-*, F-*)
 
@@ -362,3 +362,4 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | 2026-10-08 | night r1 access | review fixes 6cb93a9 (753a70c: stale refresh can no longer wipe a new sign-in; change-password/close-account answer account_not_found) | T-14 added; HEAD guards + identity tests green |
 | 2026-10-08 | night r2 (content, access, institution) | B-16 B-17 B-21 B-22 B-24 B-26 B-27 fixed, B-18 B-34 partly (ca98292); A-21 A-22 A-23 B-32 (a0f78e3); T-13 B-31 fixed, S-27 partly (eae40fa); reasons for T-14 R-16 R-35 R-39 S-28 B-15 B-25 A-19 A-20 P-24 P-26 | P-24 P-26 T-14 blocked by the user's uncommitted files; ruff F822 NotReleased in attempts/errors.py |
 | 2026-10-08 | night r2 (marking, access) | F822 fixed 622ba71; R-40 (7e990f2), R-17 (0e0bcae) fixed, T-5 S-25 partly (96ce7b9 f083e5a); E-2 E-3 E-4 fixed, E-6 S-10 S-13 partly (b6384af); review fixes 5347f3e 44987a7 (6cb93a9) | eae40fa opus review: High, roster-revoked trainee with no membership row still sees sittings (sent back); openapi needs evidence_changed on sign-off |
+| 2026-10-08 | night r2 access | review fixes 1f4a35d (a0f78e3); P-12 P-13 P-14 P-18 P-20 fixed, P-22 P-23 P-28 partly (935309d) | P-21 needs a decision; P-24 P-26 P-28 rest blocked by the user's platform files |
