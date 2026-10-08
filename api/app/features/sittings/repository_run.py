@@ -230,7 +230,8 @@ async def mark_slots_skipped(
 async def skip_unstarted_slots_for_user(
     session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID, *, now: datetime
 ) -> int:
-    """Skip this person's stations that have not begun, in circuits that have not ended."""
+    """S-18: end this person's unstarted stations as absent results (`skipped`), in circuits that have
+    not ended. A station already under way is left to finish; the running circuit's clock carries on."""
     open_circuits = select(Circuit.id).where(Circuit.org_id == org_id, Circuit.ended_at.is_(None))
     result = await session.execute(
         update(Slot)

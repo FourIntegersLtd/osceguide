@@ -106,21 +106,12 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                       </section>
                     </>
                   ) : staleLock ? (
-                    <Alert tone="warning" title="This circuit changed while you were editing">
-                      <p>Nothing was saved. Reload to see its current state; your changes on this form will be lost.</p>
-                      <div className="mt-2">
-                        <Button
-                          themeType="b2b"
-                          variant="secondary"
-                          onClick={() => {
-                            setLockedOnSave(false);
-                            context.reload();
-                          }}
-                        >
-                          Reload the circuit
-                        </Button>
-                      </div>
-                    </Alert>
+                    <StaleCircuitNotice
+                      onReload={() => {
+                        setLockedOnSave(false);
+                        context.reload();
+                      }}
+                    />
                   ) : null
                 }
                 onSubmit={async (shape) => {
@@ -187,4 +178,18 @@ function dedupe<T>(rows: T[], key: (row: T) => string): T[] {
     seen.add(id);
     return true;
   });
+}
+
+/** A save found the circuit locked since the page loaded: nothing was saved, and a reload is the way on. */
+function StaleCircuitNotice({ onReload }: { onReload: () => void }) {
+  return (
+    <Alert tone="warning" title="This circuit changed while you were editing">
+      <p>Nothing was saved. Reload to see its current state; your changes on this form will be lost.</p>
+      <div className="mt-2">
+        <Button themeType="b2b" variant="secondary" onClick={onReload}>
+          Reload the circuit
+        </Button>
+      </div>
+    </Alert>
+  );
 }

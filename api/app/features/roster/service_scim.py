@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import Principal
 from app.core.db import get_session
 from app.core.ports import ClockDep
+from app.core.tenancy import OrgSuspended
 from app.features.roster import (
     domain_scim,
     errors,
@@ -52,7 +53,7 @@ from app.features.roster.schemas_scim import (
     ScimUserIn,
     ScimUserList,
 )
-from app.features.sittings import service_absence
+from app.features.sittings import service as sittings
 from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as tenancy_audit
 from app.features.tenancy.service_audit import SCIM_CONNECTOR
@@ -141,8 +142,12 @@ async def require_scim_org(
     if scheme.lower() != "bearer" or not token.strip():
         raise errors.ScimUnauthorized()
     org = await tenancy.org_ref_by_slug(session, org_slug)
-    if org is None or not tenancy.org_permits_access(org.status):
+    if org is None:
         raise errors.ScimUnauthorized()
+    try:
+        await tenancy.ensure_org_active(session, org.id)
+    except OrgSuspended as exc:
+        raise errors.ScimUnauthorized() from exc
     stored = await repository_scim.live_token_by_hash(session, org.id, _hash(token.strip()))
     if stored is None:
         raise errors.ScimUnauthorized()
@@ -430,7 +435,7 @@ async def _set_active(
             session, org_id, trainee.id, revoked=not active, actor=SCIM_CONNECTOR, now=now
         )
         if not active and trainee.user_id is not None:
-            await service_absence.skip_unstarted_stations(session, org_id, trainee.user_id, now=now)
+            await sittings.skip_unstarted_stations(session, org_id, trainee.user_id, now=now)
 
 
 async def _require_trainee(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> Trainee:

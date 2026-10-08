@@ -26,6 +26,11 @@ from app.features.sittings import service_reads as sittings
 EVIDENCE_VERSION = 2
 
 
+def _is_legacy(stored: Mapping[str, Any] | None) -> bool:
+    """A snapshot signed off before evidence was versioned is compared by the rule it was made under."""
+    return stored is not None and "version" not in stored
+
+
 def station_is_marked(attempt_evaluated: bool, overall_rag: object | None) -> bool:
     """A station is marked once its attempt is evaluated or a human review has rated it."""
     return attempt_evaluated or overall_rag is not None
@@ -43,7 +48,7 @@ async def current_evidence(
 
     Given the snapshot a decision was made against, it is shaped like that snapshot: like with like.
     """
-    legacy = stored is not None and "version" not in stored
+    legacy = _is_legacy(stored)
     user_id = (await roster.read_trainee(session, org_id, trainee_id)).user_id
     sitting = await sittings.sitting_ref(session, org_id, sitting_id)
     slots = [

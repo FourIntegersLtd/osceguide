@@ -154,58 +154,63 @@ def _button(link: str, label: str) -> str:
     )
 
 
+def _page(heading: str, *blocks: str) -> str:
+    """An email body: a heading, then its already-escaped paragraphs."""
+    return f"<h1>{heading}</h1>" + "".join(blocks)
+
+
 def _password_reset(escaped_fields: dict[str, str]) -> str:
     """The body for a password-reset email, linking to the reset form with its token."""
     link = f"{get_settings().frontend_url.rstrip('/')}/reset-password?token={escaped_fields.get('token', '')}"
-    return (
-        "<h1>Reset your password</h1>"
+    return _page(
+        "Reset your password",
         "<p>Use the link below to choose a new password. It expires in an hour, "
         "and using it signs you out everywhere else.</p>"
         f'<p><a href="{link}">Choose a new password</a></p>'
-        "<p>If you did not ask for this, nothing has changed and you can ignore it.</p>"
+        "<p>If you did not ask for this, nothing has changed and you can ignore it.</p>",
     )
 
 
 def _email_change(escaped_fields: dict[str, str]) -> str:
     """The body for the link that confirms a new sign-in address."""
     link = f"{get_settings().frontend_url.rstrip('/')}/confirm-email?token={escaped_fields.get('token', '')}"
-    return (
-        "<h1>Confirm your new email address</h1>"
+    return _page(
+        "Confirm your new email address",
         "<p>Use the link below to make this the address you sign in with. It expires in an hour, "
         "and using it signs you out everywhere.</p>"
         f'<p><a href="{link}">Confirm this address</a></p>'
-        "<p>If you did not ask for this, nothing has changed and you can ignore it.</p>"
+        "<p>If you did not ask for this, nothing has changed and you can ignore it.</p>",
     )
 
 
 def _email_change_requested(escaped_fields: dict[str, str]) -> str:
     """The body sent to the current address when a change to a new one is asked for."""
-    return (
-        "<h1>A change of email was requested</h1>"
+    return _page(
+        "A change of email was requested",
         "<p>Someone asked to move your OSCE Guide account to "
         f"{escaped_fields.get('new_email', 'a new address')}. Nothing changes until that address "
         "confirms.</p>"
-        "<p>If this was not you, reset your password now.</p>"
+        "<p>If this was not you, reset your password now.</p>",
     )
 
 
 def _account_reopened(escaped_fields: dict[str, str]) -> str:
     """The body sent to an owner whose closed account came back when they signed in."""
-    return (
-        "<h1>Your account is open again</h1>"
+    return _page(
+        "Your account is open again",
         "<p>You signed in to your closed OSCE Guide account, so it has been reopened and will not be "
         "erased.</p>"
-        "<p>If this was not you, reset your password straight away or contact support.</p>"
+        "<p>If this was not you, reset your password straight away or contact support.</p>",
     )
 
 
 def _email_changed_notice(escaped_fields: dict[str, str]) -> str:
     """The body sent to the old address once an account has moved to a new one."""
-    return (
-        "<h1>Your email address was changed</h1>"
+    return _page(
+        "Your email address was changed",
         "<p>Your OSCE Guide account now signs in with "
         f"{escaped_fields.get('new_email', 'a new address')}.</p>"
-        "<p>If this was not you, reset your password straight away or contact support.</p>"
+        "<p>If this was not you, reset your password straight away or contact support.</p>",
     )
 
 
@@ -216,10 +221,10 @@ def _result_released(escaped_fields: dict[str, str]) -> str:
         f"/trainee/results/{escaped_fields.get('sitting_id', '')}"
     )
     institution = escaped_fields.get("org_name") or "Your institution"
-    return (
-        "<h1>Your result is available</h1>"
+    return _page(
+        "Your result is available",
         f"<p>{institution} has released the outcome for this sitting.</p>"
-        f'<p><a href="{link}">Read your result</a></p>'
+        f'<p><a href="{link}">Read your result</a></p>',
     )
 
 
@@ -296,33 +301,33 @@ def _payment_receipt(escaped_fields: dict[str, str]) -> str:
     """
     total = escaped_fields.get("amount_total", "")
     link = f"{get_settings().frontend_url.rstrip('/')}/app/me/settings"
-    return (
-        "<h1>Your receipt</h1>"
+    return _page(
+        "Your receipt",
         f"<p>Thank you for your payment of {total}.</p>"
         f"<p>Receipt {escaped_fields.get('receipt_id', '')} — {escaped_fields.get('plan_label', '')}, "
         f"access until {escaped_fields.get('plan_end_date', '')}.</p>"
-        f"{_button(link, 'Open your receipts')}"
+        f"{_button(link, 'Open your receipts')}",
     )
 
 
 def _abuse_report(escaped_fields: dict[str, str]) -> str:
     """The body alerting support to a peer-practice abuse report."""
-    return (
-        "<h1>Peer-practice abuse report</h1>"
+    return _page(
+        "Peer-practice abuse report",
         f"<p>Session {escaped_fields.get('session_id', '')}, "
         f"reported by {escaped_fields.get('reporter', '')} "
         f"against {escaped_fields.get('reported', '')}.</p>"
-        f"<p>{escaped_fields.get('message', '') or '(no message given)'}</p>"
+        f"<p>{escaped_fields.get('message', '') or '(no message given)'}</p>",
     )
 
 
 def _no_show_report(escaped_fields: dict[str, str]) -> str:
     """The body alerting support to a peer-practice no-show report."""
-    return (
-        "<h1>Peer-practice no-show report</h1>"
+    return _page(
+        "Peer-practice no-show report",
         f"<p>Session {escaped_fields.get('session_id', '')}, "
         f"reported by {escaped_fields.get('reporter', '')}.</p>"
-        f"<p>{escaped_fields.get('message', '') or '(no message given)'}</p>"
+        f"<p>{escaped_fields.get('message', '') or '(no message given)'}</p>",
     )
 
 
@@ -332,8 +337,8 @@ def _partner_spend_alert(escaped_fields: dict[str, str]) -> str:
     Oracle: b2c `partner_spend_alert_email.html`, the same figures and the same
     disclaimer, which is what keeps it from being read as the partner's invoice.
     """
-    return (
-        f"<h1>{escaped_fields.get('partner', '')} pilot spend alert</h1>"
+    return _page(
+        f"{escaped_fields.get('partner', '')} pilot spend alert",
         f"<p>Estimated spend has reached {escaped_fields.get('estimated_spend', '')}, "
         f"past the {escaped_fields.get('threshold', '')} threshold, for "
         f"{escaped_fields.get('from_date', '')} to {escaped_fields.get('to_date', '')}.</p>"
@@ -343,7 +348,7 @@ def _partner_spend_alert(escaped_fields: dict[str, str]) -> str:
         f"<li>Gross revenue from acquired users: {escaped_fields.get('gross_revenue', '')}</li>"
         f"<li>Net margin: {escaped_fields.get('net_margin', '')}</li>"
         "</ul>"
-        f"<p><small>{escaped_fields.get('disclaimer', '')}</small></p>"
+        f"<p><small>{escaped_fields.get('disclaimer', '')}</small></p>",
     )
 
 
@@ -366,12 +371,12 @@ def _marketplace_session_reminder(escaped_fields: dict[str, str]) -> str:
         f"{get_settings().frontend_url.rstrip('/')}/app/me/marketplace/session/"
         f"{escaped_fields.get('peer_session_id', '')}"
     )
-    return (
-        "<h1>Your practice session starts in an hour</h1>"
+    return _page(
+        "Your practice session starts in an hour",
         f"<p>Hi {escaped_fields.get('username', 'there')}, you are practising with "
         f"{escaped_fields.get('partner_username', 'your partner')} at "
         f"{_in_words(escaped_fields.get('scheduled_at', ''))}.</p>"
-        f'<p><a href="{link}">Open the session</a></p>'
+        f'<p><a href="{link}">Open the session</a></p>',
     )
 
 
@@ -384,21 +389,21 @@ def _inactive_user_engagement(escaped_fields: dict[str, str]) -> str:
     link = f"{get_settings().frontend_url.rstrip('/')}/dashboard"
     exam_name = escaped_fields.get("exam_name", "")
     first_station = f"first {exam_name} station" if exam_name else "first station"
-    return (
-        f"<h1>Ready to complete your {first_station}?</h1>"
+    return _page(
+        f"Ready to complete your {first_station}?",
         f"<p>Hi {escaped_fields.get('display_name', 'Doctor')}, you signed up but have not yet "
         "run through a practice station. It only takes a few minutes to see how it works.</p>"
-        f'<p><a href="{link}">Start your first station</a></p>'
+        f'<p><a href="{link}">Start your first station</a></p>',
     )
 
 
 def _organization_contract_ended(escaped_fields: dict[str, str]) -> str:
     """The body telling an organisation's admins its contract ended and access is suspended (S-16)."""
-    return (
-        f"<h1>{escaped_fields.get('organization', 'Your organisation')}: contract ended</h1>"
+    return _page(
+        f"{escaped_fields.get('organization', 'Your organisation')}: contract ended",
         "<p>Your contract ended, so access for your organisation is suspended. Exams that are "
         "already running can finish; nothing new can be started. Contact us to renew and "
-        "we will restore access.</p>"
+        "we will restore access.</p>",
     )
 
 

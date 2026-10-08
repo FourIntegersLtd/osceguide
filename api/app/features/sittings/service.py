@@ -19,7 +19,7 @@ from app.features.identity import service as identity
 from app.features.roster import service as roster
 from app.features.roster import service_groups as roster_groups
 from app.features.rubrics import service_marking
-from app.features.sittings import domain, domain_edit, domain_run, errors, repository, repository_reads
+from app.features.sittings import domain, domain_edit, domain_run, errors, repository, repository_reads, repository_run
 from app.features.sittings.models import Circuit, Sitting, Slot
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
@@ -327,6 +327,13 @@ async def rubric_version_for_programme(
         raise errors.ExamRubricNotReady("That programme's exam has no published rubric to mark against yet.")
     await service_marking.published_version(session, org_id, exam.rubric_version_id)
     return exam.rubric_version_id
+
+
+async def skip_unstarted_stations(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID, *, now: datetime
+) -> int:
+    """For the roster: a person leaving the directory has their unstarted stations ended (S-18)."""
+    return await repository_run.skip_unstarted_slots_for_user(session, org_id, user_id, now=now)
 
 
 async def circuit_counts_by_station_version(
