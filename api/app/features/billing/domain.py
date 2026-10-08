@@ -108,6 +108,11 @@ def should_process_event(*, seen: Iterable[str], event_id: str) -> bool:
     return key not in set(seen)
 
 
+def restores_access(event_type: str, dispute: dict[str, Any]) -> bool:
+    """A dispute closed in our favour: the money stays, so the access it bought comes back."""
+    return (event_type or "").strip() == "charge.dispute.closed" and dispute.get("status") == "won"
+
+
 def grants_access(event_type: str) -> bool:
     """Everything else is acknowledged and ignored: a non-2xx to an event we will never act on
     just asks Stripe to keep delivering it."""

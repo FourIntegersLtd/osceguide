@@ -131,3 +131,7 @@ report (`revenue_for_users`) and the dashboard's revenue breakdown and
 over-time chart (`revenue_breakdown_for_users`, `revenue_over_time_for_users`,
 `payer_user_ids_among`, which takes the paid-date range: a sign-up is "paid" when that user has a payment inside the range, counted under the exam and campaign of their arrival, as in b2c); `catalog` supplies which exams are in the pilot
 (`pilot_exam_codes`); `notifications` queues the spend alert.
+
+A credit already paid out is not un-paid on a refund or dispute: `claw_back_referral_purchase`
+records a second redeemed row with the earnings negated and `clawback_of_id` set (unique, so
+once per credit). `earned_pence` totals and the settlement queue then net it off.

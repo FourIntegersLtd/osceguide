@@ -28,7 +28,13 @@ recomputed on every request and stored nowhere.
 - The free trial is consulted only when nothing is granted, and its rule is
   ported verbatim: three set stations **or** three completed attempts **or** an
   account older than fourteen days ends it, each counted separately rather than
-  summed, with a strict age comparison. Changing any of that changes somebody's
+  summed, with a strict age comparison. "Older" counts from `users.activated_at` (the
+  first sign-in, S-10), so an invited person is not charged days they never saw;
+  `created_at` stands in while it is null.
+- Access that ends mid-attempt (S-11): a consumer attempt not yet begun is
+  re-checked when the worker bootstraps it (`attempts.ensure_entitled_to_begin`);
+  one already running finishes, its turns and submission unchecked; only a new
+  attempt is refused. Changing any of that changes somebody's
   access today.
 - One error code whatever the reason; the distinction between "expired" and
   "never had one" goes in `details`, because the client shows the same prompt.

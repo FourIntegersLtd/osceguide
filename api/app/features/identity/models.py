@@ -68,6 +68,9 @@ class User(Base, UUIDPrimaryKey, Timestamps):
         Boolean, nullable=False, server_default=text("false")
     )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When this account was first used: its first sign-in. The free trial counts from here, so an
+    # invited person is not charged days they never saw. Null until then (`created_at` stands in).
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # When `close_account` closed this account. Null while the account is
     # active, or for an account closed before this column existed. The
     # scheduled erasure job reads it to find every account closed more than

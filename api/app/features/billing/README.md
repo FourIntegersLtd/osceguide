@@ -77,3 +77,11 @@ against `b2c-api/b2c/tests/unit/test_receipt_document.py`.
 Calls `entitlements` to grant access, `identity` to resolve the payer, and
 `tenancy` to name the organisation an invoice is for.
 Signatures are verified in `signature.py` against `STRIPE_WEBHOOK_SECRET`.
+
+## Refunds and disputes (S-13)
+`charge.refunded` in full and `charge.dispute.created` revoke the grant (`withdraw_payment`)
+and take back the referral credit: zeroed while unpaid, a negative row (`clawback_of_id`)
+once paid out, so the referrer's balance nets off the next payout. A partial refund changes
+nothing: the sale stands, access and credit are kept. `charge.dispute.closed` with
+`status: won` gives the grant and an unpaid credit back (`restore_payment`); a credit already
+clawed back with a negative row is left for a person.

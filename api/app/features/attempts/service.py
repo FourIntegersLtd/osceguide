@@ -127,6 +127,30 @@ async def require_entitlement(
     )
 
 
+async def ensure_entitled_to_begin(session: AsyncSession, attempt: Attempt, *, now: datetime) -> None:
+    """The start boundary (S-11): an attempt created while entitled is checked again as it begins.
+
+    Only a consumer attempt that has not begun is held to it. Once running it is never cut off:
+    access that ends mid-attempt lets that attempt finish (its turns and its submission are not
+    re-checked) and only a new attempt is refused, at `start_attempt`.
+    """
+    if attempt.kind not in _RESUMABLE_KINDS or attempt.status != "created":
+        return
+    await entitlements.require(
+        session,
+        user_id=attempt.user_id,
+        exam_id=attempt.exam_id,
+        now=now,
+        # Its own station, so a trial set station is not counted as a fourth against itself.
+        trial=await trial_state_for(
+            session,
+            user_id=attempt.user_id,
+            exam_id=attempt.exam_id,
+            station_version_id=attempt.station_version_id,
+        ),
+    )
+
+
 async def trial_state_for(
     session: AsyncSession,
     *,
@@ -164,7 +188,7 @@ async def trial_state_for(
         set_station_count=counts.set_stations,
         completed_station_count=counts.completed_stations,
         completed_on_this_station=counts.completed_on_this_station if counts.started_this_station else None,
-        account_created_at=user.created_at,
+        trial_started_at=user.trial_started_at,
     )
 
 

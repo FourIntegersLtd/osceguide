@@ -283,6 +283,43 @@ async def test_an_old_account_has_no_trial_left(
     assert response.json()["details"]["reason"] == "trial_exhausted"
 
 
+async def test_an_invited_accounts_trial_counts_from_its_first_sign_in(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """S-10: an invitation created thirty days ago and accepted today still gets its fourteen days.
+
+    The trial was measured from `created_at`, so someone invited and left waiting arrived with
+    the trial already spent.
+    """
+    from sqlalchemy import update
+
+    from app.features.identity import repository as identity_repo
+    from app.features.identity.models import User
+    from app.features.identity.service_invitations import invite_user
+    from app.features.identity.tokens import hash_password
+
+    invited = await invite_user(db_session, email="late@example.com", name="Late", invited_to="Acme", now=NOW)
+    await db_session.execute(
+        update(User)
+        .where(User.id == invited.id)
+        .values(created_at=datetime.now(UTC) - timedelta(days=30), must_change_password=False)
+    )
+    await identity_repo.set_password_hash(db_session, invited.id, hash_password("a long enough passphrase"))
+    await db_session.flush()
+
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "late@example.com", "password": "a long enough passphrase"}
+    )
+    assert login.status_code == 200, login.text
+    response = await client.post(
+        "/api/v1/attempts",
+        json={"kind": "practice", "exam_code": "sca"},
+        headers=bearer(login.json()["access_token"]),
+    )
+
+    assert response.status_code == 201, response.text
+
+
 # --------------------------------------------------------------------------
 # Abandoning
 # --------------------------------------------------------------------------

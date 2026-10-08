@@ -164,6 +164,29 @@ async def withdraw_payment(
         await entitlements.pull_stacked_purchases_forward(session, entitlement_id, now=now)
         withdrawn = True
     clawed_back = await growth.claw_back_referral_purchase(
-        session, referred_user_id=payment.user_id, paid_at=payment.paid_at
+        session, referred_user_id=payment.user_id, paid_at=payment.paid_at, now=now
     )
     return withdrawn or clawed_back
+
+
+async def restore_payment(session: AsyncSession, payment: Payment) -> bool:
+    """Give back what a payment bought, because the dispute that took it was won.
+
+    The grant keeps its original window, so a stacked purchase that was pulled forward may overlap
+    it for a while; that errs towards the buyer, who did pay for both. False when nothing was taken.
+    """
+    await repository.lock_payment(session, payment.id)
+    restored = False
+    entitlement_id = payment.entitlement_id
+    if entitlement_id is not None and await entitlements.revoked_ids(session, [entitlement_id]):
+        await entitlements.restore(session, entitlement_id)
+        restored = True
+    days = (
+        (payment.plan_ends_at - payment.plan_starts_at).days
+        if payment.plan_ends_at and payment.plan_starts_at
+        else 0
+    )
+    credited = await growth.restore_referral_purchase(
+        session, referred_user_id=payment.user_id, paid_at=payment.paid_at, plan_duration_days=days
+    )
+    return restored or credited

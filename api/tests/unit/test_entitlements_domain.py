@@ -81,7 +81,7 @@ def trial(*, set_stations: int = 0, completed: int = 0, age_days: int = 0, this_
     return domain.TrialState(
         set_station_count=set_stations,
         completed_station_count=completed,
-        account_created_at=NOW - timedelta(days=age_days),
+        trial_started_at=NOW - timedelta(days=age_days),
         completed_on_this_station=this_station,
     )
 

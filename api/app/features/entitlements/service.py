@@ -146,6 +146,13 @@ async def withdraw(session: AsyncSession, entitlement_id: uuid.UUID, *, now: dat
     await repository.revoke(session, entitlement_id, at=now)
 
 
+async def restore(session: AsyncSession, entitlement_id: uuid.UUID) -> None:
+    """Give a withdrawn grant back because the money did not go back after all (a dispute won).
+    Its window is unchanged, so it simply ends when it was always going to. A grant that has already
+    run out stays out. Twice is once."""
+    await repository.restore(session, entitlement_id)
+
+
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> list[EntitlementRead]:
     """Every grant this account has ever held, revoked and lapsed ones
     included, each with `live` computed against `now`.

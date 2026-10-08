@@ -148,6 +148,11 @@ async def revoke(session: AsyncSession, entitlement_id: uuid.UUID, *, at: dateti
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(revoked_at=at))
 
 
+async def restore(session: AsyncSession, entitlement_id: uuid.UUID) -> None:
+    """Undo a withdrawal: the grant is live again for whatever window it still has."""
+    await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(revoked_at=None))
+
+
 async def revoked_ids(session: AsyncSession, entitlement_ids: Collection[uuid.UUID]) -> set[uuid.UUID]:
     """Which of these grants have been withdrawn."""
     if not entitlement_ids:

@@ -14,6 +14,7 @@ from app.features.attempts.jobs import enqueue_scoring
 from app.features.attempts.jobs_coverage import enqueue_coverage
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import TranscriptIn, TranscriptMessageIn, WorkerBootstrap
+from app.features.attempts.service import ensure_entitled_to_begin
 from app.features.attempts.service_render import render_definition
 from app.features.catalog import service as catalog
 from app.features.station_sets import service as station_sets
@@ -78,6 +79,7 @@ async def bootstrap(
         raise errors.AttemptNotReady(str(exc)) from exc
 
     if now is not None and domain.Status(attempt.status) is domain.Status.CREATED:
+        await ensure_entitled_to_begin(session, attempt, now=now)
         await repository.set_status(session, attempt_id, status=domain.Status.RUNNING, at=now)
         await _credit_practice_set_entry(session, attempt, at=now)
 

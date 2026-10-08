@@ -174,6 +174,31 @@ async def redemption_made_at(
     return (await session.execute(stmt.order_by(Referral.id).limit(1))).scalar_one_or_none()
 
 
+async def voided_redemption_made_at(
+    session: AsyncSession, referred_user_id: uuid.UUID, redeemed_at: datetime
+) -> Referral | None:
+    """The credit one purchase earned that a refund or dispute has since zeroed (see `redemption_made_at`)."""
+    stmt = select(Referral).where(
+        Referral.referred_user_id == referred_user_id,
+        Referral.redeemed_at == redeemed_at,
+        Referral.earned_pence == 0,
+        Referral.clawback_of_id.is_(None),
+    )
+    return (await session.execute(stmt.order_by(Referral.id).limit(1))).scalar_one_or_none()
+
+
+async def set_earned(session: AsyncSession, credit: Referral, earned_pence: int) -> None:
+    """Change what a redeemed row earned its referrer, as when a won dispute gives it back."""
+    credit.earned_pence = earned_pence
+    await session.flush()
+
+
+async def clawback_of(session: AsyncSession, credit_id: uuid.UUID) -> Referral | None:
+    """The negative row that already takes this paid-out credit back, if one was recorded."""
+    stmt = select(Referral).where(Referral.clawback_of_id == credit_id)
+    return (await session.execute(stmt)).scalar_one_or_none()
+
+
 async def void_credit(session: AsyncSession, credit: Referral) -> None:
     """Zero a redeemed row's earnings. The row stays, so the sale is still on record."""
     credit.earned_pence = 0
@@ -204,6 +229,7 @@ async def record_redemption(
     earned_pence: int,
     at: datetime,
     plan_code: str | None = None,
+    clawback_of_id: uuid.UUID | None = None,
 ) -> Referral:
     """Store one purchase made with somebody's code, as a redeemed row the payout queue lists.
 
@@ -219,6 +245,7 @@ async def record_redemption(
         redeemed_at=at,
         earned_pence=earned_pence,
         plan_code=plan_code,
+        clawback_of_id=clawback_of_id,
     )
     session.add(redemption)
     await session.flush()

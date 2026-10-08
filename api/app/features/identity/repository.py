@@ -185,7 +185,13 @@ async def set_temporary_password_hash(session: AsyncSession, user_id: uuid.UUID,
 
 
 async def record_login(session: AsyncSession, user_id: uuid.UUID, at: datetime) -> None:
-    await session.execute(update(User).where(User.id == user_id).values(last_login_at=at))
+    """Note that this person has just signed in, and start their free trial if this is the first time."""
+    # The first sign-in also starts the free trial (S-10); later ones leave `activated_at` alone.
+    await session.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(last_login_at=at, activated_at=func.coalesce(User.activated_at, at))
+    )
 
 
 async def disable_password_login(session: AsyncSession, user_id: uuid.UUID) -> None:

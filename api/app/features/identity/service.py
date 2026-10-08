@@ -54,6 +54,13 @@ class UserRef:
     # purpose). A screen listing invited people shows them as "invited" until this clears.
     invitation_pending: bool = False
     must_change_password: bool = False
+    # First sign-in; None until then. The free trial counts from here (`trial_started_at`).
+    activated_at: datetime | None = None
+
+    @property
+    def trial_started_at(self) -> datetime:
+        """When the free trial began: the first sign-in, or sign-up for an account not yet used."""
+        return self.activated_at or self.created_at
 
 
 async def _announce_registration(session: AsyncSession, user_id: uuid.UUID, email: str) -> None:
@@ -317,6 +324,7 @@ def _ref(user: User) -> UserRef:
             user.password_hash is None and not user.password_login_disabled and user.last_login_at is None
         ),
         must_change_password=user.must_change_password,
+        activated_at=user.activated_at,
     )
 
 

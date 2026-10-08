@@ -73,6 +73,7 @@ class Referral(Base, UUIDPrimaryKey, Timestamps):
     __table_args__ = (
         UniqueConstraint("code", name="uq_referrals_code"),
         Index("ix_referrals_referrer", "referrer_user_id"),
+        Index("uq_referrals_clawback_of", "clawback_of_id", unique=True),
         # Redeemed rows only: the settlement queue never asks about a code
         # nobody has used, and indexing those would be indexing the majority
         # of the table for a query that excludes them.
@@ -105,6 +106,9 @@ class Referral(Base, UUIDPrimaryKey, Timestamps):
     # (`GET /me/referrals/history`) show what each referral bought without a
     # join into `billing`, which this slice does not otherwise need.
     plan_code: Mapped[str | None] = mapped_column(String(64))
+    # Set on the negative row that takes back a credit already paid out (the row it reverses).
+    # Unique, so a refund and a dispute on one payment claw it back once.
+    clawback_of_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("referrals.id", ondelete="SET NULL"))
 
 
 class ReferralPayoutDetails(Base, UUIDPrimaryKey, Timestamps):

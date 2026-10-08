@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.core.logging import get_logger
 from app.features.billing import domain, errors, receipts, repository, signature
-from app.features.billing.service_settlement import _as_plans, settle_payment, withdraw_payment
+from app.features.billing.service_settlement import (
+    _as_plans,
+    restore_payment,
+    settle_payment,
+    withdraw_payment,
+)
 from app.features.catalog import service_import as catalog_import
 from app.features.entitlements import service as entitlements
 from app.features.growth import service as growth
@@ -30,7 +35,7 @@ async def _apply_withdrawal(session: AsyncSession, *, event: dict[str, Any], now
     False when nothing changes: a partial refund, or a payment already withdrawn. Raises
     `PaymentNotYetRecorded` when no payment is recorded for the charge yet, which can be the
     checkout event arriving after this one; the delivery is refused so Stripe retries it.
-    Winning a dispute does not restore access; support re-grants by hand.
+    A dispute won is `_apply_restoration`.
     """
     charge = (event.get("data") or {}).get("object") or {}
     if event.get("type") == "charge.refunded" and not domain.is_full_refund(charge):
@@ -43,6 +48,16 @@ async def _apply_withdrawal(session: AsyncSession, *, event: dict[str, Any], now
         await entitlements.withdraw(session, entitlement_id, now=now)
 
     return await withdraw_payment(session, payment, revoke=revoke, now=now)
+
+
+async def _apply_restoration(session: AsyncSession, *, event: dict[str, Any]) -> bool:
+    """A dispute won: give the payment's access and referral credit back (`restore_payment`).
+    Refused for a retry when the payment is not recorded yet, like a withdrawal."""
+    charge = (event.get("data") or {}).get("object") or {}
+    payment = await repository.payment_by_intent(session, str(charge.get("payment_intent") or ""))
+    if payment is None:
+        raise errors.PaymentNotYetRecorded()
+    return await restore_payment(session, payment)
 
 
 def plan_label(plan_code: str) -> str:
@@ -98,6 +113,15 @@ async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: dat
             # A concurrent delivery got there first and has committed.
             return {"status": "already_applied"}
         # Recorded by an earlier delivery that failed to apply: try again.
+
+    if domain.restores_access(event_type, (event.get("data") or {}).get("object") or {}):
+        try:
+            restored = await _apply_restoration(session, event=event)
+        except AppError as exc:
+            await repository.mark_event_failed(session, event_id=event_id, reason=exc.message)
+            raise
+        await repository.mark_event_processed(session, event_id=event_id, at=now)
+        return {"status": "applied" if restored else "ignored"}
 
     if domain.withdraws_access(event_type):
         try:

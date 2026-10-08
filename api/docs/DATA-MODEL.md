@@ -93,6 +93,7 @@ names both.
 | `must_change_password` | `bool not null default false` | gates all but `ROUTES_ALLOWED_WHILE_PASSWORD_EXPIRED` |
 | `password_login_disabled` | `bool not null default false` | set once by `identity.service_sso.sign_in_external` when this person signs in through an `sso_only` organisation; `identity` sits below `sso` and cannot read that configuration at login time, so the fact is written down here instead. Never cleared automatically |
 | `last_login_at` | `timestamptz null` | |
+| `activated_at` | `timestamptz null` | first sign-in (S-10): the free trial counts from here, `created_at` standing in while null. Backfilled to `created_at` for accounts already used |
 | `closed_at` | `timestamptz null` | set by `identity.service_close_account.close_account`; the scheduled erasure job (`identity/jobs.py`) reads it to find every account closed more than 30 days ago |
 | `erased_at` | `timestamptz null` | set by `identity.service_erasure.erase_account` once the account's personal fields and content are scrubbed; also the job's idempotency check |
 | `exam_date` | `date null` | when they sit the real thing; the consumer dashboard counts down to it |
@@ -1225,6 +1226,9 @@ null default 'unpaid'` (indexed with `redeemed_at IS NOT NULL`, since the
 settlement queue never asks about a code nobody has used), `paid_at
 timestamptz null`, `paid_by_user_id` → `users.id` SET NULL, and
 `payout_reference varchar(64) null` — the bank transfer's own reference.
+`clawback_of_id` → `referrals.id` SET NULL (UNIQUE) is set only on the negative row
+that takes back a credit already paid out when its purchase is refunded or disputed
+(S-13); the referrer's balance is the sum of `earned_pence`, so it nets off the next payout.
 
 ### `referral_payout_details`
 Where a referrer sits the bank details settlement pays out to (A1), added

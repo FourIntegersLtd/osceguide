@@ -968,6 +968,72 @@ async def test_a_refund_after_a_dispute_on_the_same_payment_is_ignored(
     assert second.json()["status"] == "ignored"
 
 
+def dispute_closed_event(event_id: str, intent: str, outcome: str) -> dict:
+    return {
+        "id": event_id,
+        "type": "charge.dispute.closed",
+        "data": {"object": {"payment_intent": intent, "status": outcome}},
+    }
+
+
+async def test_a_dispute_won_restores_the_access_and_the_credit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    referrer_token, buyer, intent, ent_repo = await _bought_with_a_code(client, make_actor, db_session, "won")
+    await post_event(client, charge_event("evt_won_open", "charge.dispute.created", intent))
+
+    response = await post_event(client, dispute_closed_event("evt_won_close", intent, "won"))
+
+    assert response.json()["status"] == "applied"
+    assert [g.revoked_at for g in await ent_repo.for_user(db_session, buyer.id)] == [None]
+    earned = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert earned.json()["earned_pence"] == 250
+
+
+async def test_a_dispute_lost_leaves_the_access_withdrawn(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    _, buyer, intent, ent_repo = await _bought_with_a_code(client, make_actor, db_session, "lost")
+    await post_event(client, charge_event("evt_lost_open", "charge.dispute.created", intent))
+
+    response = await post_event(client, dispute_closed_event("evt_lost_close", intent, "lost"))
+
+    assert response.json()["status"] == "ignored"
+    assert [g.revoked_at is not None for g in await ent_repo.for_user(db_session, buyer.id)] == [True]
+
+
+async def test_a_refund_after_the_credit_was_paid_out_records_a_negative_balance_once(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from datetime import UTC, datetime
+
+    from app.features.growth import repository as growth_repo
+
+    referrer_token, _, intent, _ = await _bought_with_a_code(client, make_actor, db_session, "paidout")
+    referrer = await identity_repo.user_by_email(db_session, "paidout-referrer@example.com")
+    assert referrer is not None
+    credit = next(r for r in await growth_repo.referrals_for(db_session, referrer.id) if r.earned_pence)
+    await growth_repo.set_payout(
+        db_session,
+        credit.id,
+        payout_status="paid",
+        payout_reference="BANK-1",
+        paid_at=datetime.now(UTC),
+        paid_by_user_id=None,
+    )
+    await db_session.commit()
+
+    refunded = await post_event(client, charge_event("evt_paid_refund", "charge.refunded", intent))
+    await post_event(client, charge_event("evt_paid_dispute", "charge.dispute.created", intent))
+
+    assert refunded.json()["status"] == "applied"
+    balance = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    # 250 earned and paid, 250 taken back once: the referrer owes nothing and is owed nothing.
+    assert balance.json()["earned_pence"] == 0
+    rows = [r for r in await growth_repo.referrals_for(db_session, referrer.id) if r.redeemed_at]
+    assert sorted((r.earned_pence, r.payout_status) for r in rows) == [(-250, "unpaid"), (250, "paid")]
+
+
 async def test_a_different_plan_is_bought_while_one_is_live_and_extends_from_the_current_end(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

@@ -364,3 +364,66 @@ async def test_a_second_bootstrap_does_not_restart_the_attempt(
     assert (await client.get(url, headers=worker_headers())).status_code == 200
     again = await repository.attempt_by_id(db_session, attempt_id)
     assert again is not None and again.started_at == started
+
+
+# --------------------------------------------------------------------------
+# S-11: access that ends mid-attempt
+# --------------------------------------------------------------------------
+
+
+async def a_lapsed_learners_attempt(session: AsyncSession, *, status: str) -> tuple[uuid.UUID, uuid.UUID]:
+    """An attempt whose owner has no grant and a trial that ended: (attempt id, user id)."""
+    from datetime import timedelta
+
+    from sqlalchemy import update
+
+    from app.features.identity.models import User
+
+    attempt_id = await an_attempt(session)
+    attempt = await repository.attempt_by_id(session, attempt_id)
+    assert attempt is not None
+    await session.execute(
+        update(User).where(User.id == attempt.user_id).values(created_at=NOW - timedelta(days=30))
+    )
+    if status != "created":
+        await repository.set_status(session, attempt_id, status=status, at=NOW)
+    await session.flush()
+    return attempt_id, attempt.user_id
+
+
+async def test_an_attempt_not_yet_started_is_refused_at_bootstrap_when_access_has_ended(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    attempt_id, _ = await a_lapsed_learners_attempt(db_session, status="created")
+
+    response = await client.get(f"/api/worker/attempts/{attempt_id}", headers=worker_headers())
+
+    assert response.status_code == 403, response.text
+    assert response.json()["code"] == "not_entitled"
+
+
+async def test_an_attempt_already_running_finishes_after_access_ends_but_a_new_one_is_refused(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from app.features.attempts import service as attempts_service
+    from app.features.entitlements.errors import NotEntitled
+
+    attempt_id, user_id = await a_lapsed_learners_attempt(db_session, status="running")
+
+    reconnect = await client.get(f"/api/worker/attempts/{attempt_id}", headers=worker_headers())
+    turn = await client.post(
+        f"/api/worker/attempts/{attempt_id}/transcript-chunks",
+        json={"attempt_id": str(attempt_id), "message": chunk("m1", 0)},
+        headers=worker_headers(),
+    )
+    submit = await client.post(
+        f"/api/worker/attempts/{attempt_id}/transcript",
+        json={"attempt_id": str(attempt_id), "transcript": transcript(attempt_id)},
+        headers=worker_headers(),
+    )
+
+    assert (reconnect.status_code, turn.status_code, submit.status_code) == (200, 202, 202)
+    with pytest.raises(NotEntitled):
+        await attempts_service.start_attempt(
+            db_session, user_id=user_id, kind="practice", exam_code="sca", now=NOW
+        )

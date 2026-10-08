@@ -258,21 +258,48 @@ async def credit_referral_purchase(
 
 
 async def claw_back_referral_purchase(
-    session: AsyncSession, *, referred_user_id: uuid.UUID, paid_at: datetime
+    session: AsyncSession, *, referred_user_id: uuid.UUID, paid_at: datetime, now: datetime
 ) -> bool:
     """Take back the credit a purchase earned, because it was refunded or disputed.
 
-    The redeemed row has no payment id, so it is found by buyer and the payment's instant. Only an
-    unpaid credit can be taken back (its earnings go to nothing); one already paid out is left,
-    logged, for a person to recover. False when nothing was taken back.
+    The redeemed row has no payment id, so it is found by buyer and the payment's instant. An unpaid
+    credit's earnings go to nothing. A credit already paid out cannot be un-paid, so a second row
+    with the same amount negated is recorded against the referrer (`clawback_of_id`, once per
+    credit): their balance nets to zero and the next payout settles it. False when nothing was taken back.
     """
     credit = await repository.redemption_made_at(session, referred_user_id, paid_at)
     if credit is None or credit.earned_pence == 0:
         return False
-    if credit.payout_status != "unpaid":
-        log.warning("a refunded purchase's referral credit was already paid", referral_id=str(credit.id))
+    if credit.payout_status == "unpaid":
+        await repository.void_credit(session, credit)
+        return True
+    if await repository.clawback_of(session, credit.id) is not None:
         return False
-    await repository.void_credit(session, credit)
+    await repository.record_redemption(
+        session,
+        referrer_user_id=credit.referrer_user_id,
+        redemption_code=f"CB-{credit.code}"[:REFERRAL_CODE_MAX_LENGTH],
+        referred_user_id=referred_user_id,
+        earned_pence=-credit.earned_pence,
+        at=now,
+        plan_code=credit.plan_code,
+        clawback_of_id=credit.id,
+    )
+    return True
+
+
+async def restore_referral_purchase(
+    session: AsyncSession, *, referred_user_id: uuid.UUID, paid_at: datetime, plan_duration_days: int
+) -> bool:
+    """Give back the credit a disputed purchase had lost, now the dispute is won.
+
+    Only a credit that was zeroed while unpaid is restored, to what the plan earns. One already paid
+    out and clawed back with a negative row is left for a person: nothing here moves money.
+    """
+    credit = await repository.voided_redemption_made_at(session, referred_user_id, paid_at)
+    if credit is None:
+        return False
+    await repository.set_earned(session, credit, domain.referral_reward_pence(plan_duration_days))
     return True
 
 

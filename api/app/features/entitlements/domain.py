@@ -49,7 +49,8 @@ class TrialState:
 
     set_station_count: int
     completed_station_count: int
-    account_created_at: datetime
+    # When the free trial began (see identity `UserRef.trial_started_at`).
+    trial_started_at: datetime
     # The station being started, when it is already one of this person's trial stations:
     # how many times they have finished it. None for a station they have not started yet.
     completed_on_this_station: int | None = None
@@ -72,7 +73,7 @@ def trial_available(trial: TrialState, *, now: datetime) -> bool:
     completed stations are compared separately rather than summed, and the account age
     comparison is strict, so an account exactly fourteen days old still has its trial.
     """
-    if trial.account_created_at < now - timedelta(days=TRIAL_DAYS):
+    if trial.trial_started_at < now - timedelta(days=TRIAL_DAYS):
         return False
     if trial.completed_on_this_station is not None:
         # A retry of a station already in the trial: only its own limit applies.
