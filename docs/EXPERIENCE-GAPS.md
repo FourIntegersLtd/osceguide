@@ -322,38 +322,38 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | B3 | Fixed | Accept-invitation hydration: submit is disabled until hydrated |
 | B4 | Fixed | Trainee sees staff reads: staff routes are OrgStaff or OrgAdmin |
 | B5 | Fixed | Draft exams hidden: lists all statuses, with a "Drafts only" checkbox |
-| B6 | Partly | "No template" dead end: save is blocked, and there is a link to create a template |
+| B6 | Fixed | "No template" dead end: save is blocked, and there is a link to create a template |
 | B7 | Fixed | Admin 403 on slot review: only a 404 means "no marking yet", other errors show a retry |
 | B8 | Fixed | /app landing: order is last workspace, then first institution, then personal |
-| B9 | Partly | "None" labels, CSV name: the CSV name column is fixed, but a literal "None" still shows for cohort and programme |
+| B9 | Fixed | "None" labels, CSV name: no literal "None" is left for cohort or programme (the only one is formatWhen for a missing date, which no caller passes) |
 | B10 | Fixed | Retire on platform exams: platform exams are locked, Retire shows only for published, unlocked exams |
 | B11 | Fixed | Programme exam-code free box: a Select of published exams, with a hint |
-| B12 | Partly | Platform exams in the circuit builder: see gap B-2 (platform leg needs personal entitlements) |
+| B12 | Fixed | Platform exams in the circuit builder: B-2 fixed 0dfc592 |
 | B13 | Fixed | Results counts: tiles show Undecided and Awaiting marking |
 | B14 | Fixed | Live board errors: shows an alert and stops retrying on 401/403 |
-| B15 | Partly | Supervisor 403 buttons: sitting, sign-off and team controls are gated, but authoring buttons in ExamsSection and ProgrammesSection are not |
-| B16 | Partly | Settings Save and SSO: the dead Save is gone, the Organisation tab is read-only, and SSO shows only a paragraph and the staff-MFA rule |
+| B15 | Fixed | Supervisor 403 buttons: ExamsSection and ProgrammesSection use `write`, which AuthoringRowActions/AuthoringButton hide without canAuthor |
+| B16 | Fixed | Settings Save and SSO: B-33 fixed 3cc2e6e + 5ac8b6f (admin renames; SSO status shown) |
 | B17 | Fixed | Rubric double-create: holdOnSuccess plus disabled while busy |
 | B18 | Fixed | Runner shows no supervisor: falls back to the email, otherwise "No supervisor assigned" |
 | B19 | Fixed | Not assessed and priority: shows "No automatic score" or "Not assessed", priority is standard when there is no score |
 | B20 | Fixed | Result email link: links to /app/{org}/trainee/results/{sitting} and names the institution |
 | Confusion 1 | Fixed | Setup order: eight steps in build order |
-| Confusion 2 | Partly | Nav clutter: media, debrief and transcripts have no staffHiddenOn, not verified |
-| Confusion 3 | Partly | Two review forms: one form is open and the other is folded, but both are on the page |
-| Confusion 4 | Partly | Undecided and score column: Undecided tile added, a score column needs a staging walk |
-| Confusion 5 | Partly | Release controls: there are still 2 or 3 controls, but the confirmation modal exists |
+| Confusion 2 | Fixed | Nav clutter: surfaces/registry.test.ts asserts staff nav has none of Community, Stations, Slides, A to Z, Podcast, Articles |
+| Confusion 3 | Fixed | Two review forms: R-34 fixed af720ea (one review form) |
+| Confusion 4 | Open (Undecided tile is in; whether a score column helps needs a staging walk) | Undecided and score column |
+| Confusion 5 | Fixed | Release controls: R-34 fixed af720ea (one release control) |
 | Confusion 6 | Fixed | Sign-off with incomplete reviews: R-2 decided, candidateProgress.ts shows "Reviews not complete" as an attention step |
-| Confusion 7 | Partly | Role vocabulary: one vocabulary, but there is no examiner role |
-| Confusion 8 | Partly | Template wizard steps: "Exam type" survives in TemplateGenerationPanel.tsx |
-| Confusion 9 | Partly | Template "Not live" and New draft: hidden for platform templates, but the "Not live" pill remains at StatusPills.tsx |
+| Confusion 7 | Open (product decision: whether to add an examiner role) | Role vocabulary is one set |
+| Confusion 8 | Fixed | Template wizard steps: "Exam type" in TemplateGenerationPanel.tsx is the generation-profile field label, not a step name |
+| Confusion 9 | Fixed | Template "Not live" and New draft: an organisation is only listed published platform templates (published_only in repository_templates.py), so the pill never shows for them |
 | Confusion 10 | Fixed | Rubric versions: ExamFields.tsx shows the latest published version only |
 | Confusion 11 | Fixed | Programmes nav: a build-order tab list |
 | Confusion 12 | Fixed | Empty-state wording: covered by the AsyncBoundary changes |
 | Confusion 13 | Fixed | Supervisor "Nothing assigned": SupervisorCircuits.tsx; OrgDashboard.tsx sayWhenEmpty={!admin} |
-| Confusion 14 | Partly | Revoke/Delete/Anonymise unexplained: TraineeRowActions.tsx now has tooltips, traineeStatus shows a stage, "Exam access" is still a separate tab |
+| Confusion 14 | Open (tooltips and stage are in; folding the Exam access tab into the row is a product decision) | Revoke/Delete/Anonymise |
 | Confusion 15 | Fixed | Platform org creation: Organizations.tsx navigates to ?tab=members |
 | Confusion 16 | Fixed | Accept to workspace: ResetPassword.tsx signInAfterInvitation |
-| Confusion 17 | Partly | Self practice opens an attempt immediately: SelfPracticeStation.tsx changed in a6e37f1, probably partly addressed |
+| Confusion 17 | Open (needs a browser walk to see whether the attempt starts before the learner chooses) | Self practice opens an attempt |
 | 2026-10-07 | content r5 | 969f64b + 0d49c18 (review) | P-4 P-16 C-4 C-12 fixed; P-17 P-19 partly | P-17 reason needs a StationFlag column (migration) |
 | 2026-10-07 | access r2 | 1f7e50d | S-5 A-4 A-5 A-8 A-10 A-13 fixed; 9593584 review folded in | none |
 | 2026-10-07 | institution r4 | 1015ffb | R-11..R-15 fixed, R-7 api only; setup-step flake fixed; 80bfee0 review folded in | R-7 web buttons |
