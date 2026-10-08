@@ -15,8 +15,10 @@ from datetime import datetime
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.features.attempts.domain import Status
+from app.features.attempts.domain import Kind, Status
 from app.features.attempts.models import Attempt
+
+EXAM_SLOT = str(Kind.EXAM_SLOT)
 
 
 async def attempted_user_ids(session: AsyncSession) -> set[uuid.UUID]:
@@ -54,13 +56,19 @@ async def progress_by_version(session: AsyncSession, user_id: uuid.UUID) -> list
 
     Debriefs are attempts *about* an earlier attempt and are left out: they
     would count a station as sat when the person only talked it through.
+    Exam sittings are left out too: they belong to an institution's record,
+    not to the practice the console may reset or delete.
 
     Two queries rather than one: the newest attempt per version is picked
     with `DISTINCT ON` ordered by `(created_at, id)`, because attempts
     written in one transaction share a `created_at` and a join on the
     maximum timestamp would return all of them.
     """
-    sat = (Attempt.user_id == user_id, Attempt.station_version_id.is_not(None), Attempt.kind != "debrief")
+    sat = (
+        Attempt.user_id == user_id,
+        Attempt.station_version_id.is_not(None),
+        Attempt.kind.not_in(("debrief", EXAM_SLOT)),
+    )
     counts = (
         select(
             Attempt.station_version_id,
@@ -105,6 +113,7 @@ async def running_for_user_versions(
     stmt = select(func.count(Attempt.id)).where(
         Attempt.user_id == user_id,
         Attempt.station_version_id.in_(list(version_ids)),
+        Attempt.kind != EXAM_SLOT,
         Attempt.status == str(Status.RUNNING),
     )
     return int((await session.execute(stmt)).scalar_one())
@@ -113,14 +122,20 @@ async def running_for_user_versions(
 async def delete_for_user_versions(
     session: AsyncSession, user_id: uuid.UUID, version_ids: Collection[uuid.UUID]
 ) -> int:
-    """Remove every attempt this person made at these versions — and, through
+    """Remove every practice attempt this person made at these versions — and, through
     the foreign keys, its turns, transcript, results and debrief summary.
     Debriefs *about* one of them go too, being attempts at the same version;
     an attempt elsewhere that named one as its source keeps a null pointer.
+    An `exam_slot` attempt is never deleted: it is an institution's record of
+    an examination, with the result that was released from it.
     """
     if not version_ids:
         return 0
     deleted = await session.execute(
-        delete(Attempt).where(Attempt.user_id == user_id, Attempt.station_version_id.in_(list(version_ids)))
+        delete(Attempt).where(
+            Attempt.user_id == user_id,
+            Attempt.station_version_id.in_(list(version_ids)),
+            Attempt.kind != EXAM_SLOT,
+        )
     )
     return int(getattr(deleted, "rowcount", 0) or 0)

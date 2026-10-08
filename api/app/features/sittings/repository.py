@@ -14,6 +14,15 @@ from app.core.pagination import keyset_page
 from app.features.sittings.models import Circuit, CircuitStation, CircuitTrainee, Sitting, Slot
 
 
+async def count_open_sittings_for_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
+    """Sittings marked against this rubric version that still have a circuit not yet ended."""
+    stmt = select(func.count(func.distinct(Sitting.id))).where(
+        Sitting.rubric_version_id == rubric_version_id,
+        Sitting.id.in_(select(Circuit.sitting_id).where(Circuit.ended_at.is_(None))),
+    )
+    return int((await session.execute(stmt)).scalar_one())
+
+
 async def create_sitting(
     session: AsyncSession,
     org_id: uuid.UUID,

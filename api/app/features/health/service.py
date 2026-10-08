@@ -20,7 +20,7 @@ from app.core.settings import Settings, get_settings
 from app.core.sse import Snapshot, event_stream
 from app.features.attempts.jobs import SCORING_TASK, record_marking_gave_up
 from app.features.health import repository, repository_jobs
-from app.features.health.errors import MessageNotRetryable
+from app.features.health.errors import JobNotCancellable, JobNotFound, JobNotRetryable, MessageNotRetryable
 from app.features.health.repository_jobs import JobEventRef, JobRef
 from app.features.health.schemas import (
     CheckState,
@@ -185,6 +185,46 @@ async def reclaim_stalled_jobs(session: AsyncSession) -> tuple[list[int], list[i
                 # The job will not run again, so the attempt has to say marking gave up.
                 await record_marking_gave_up(session, uuid.UUID(job.args["attempt_id"]))
     return requeued, failed
+
+
+async def retry_job(session: AsyncSession, job_id: int, *, actor: Principal, now: datetime) -> None:
+    """Queue a failed task again. A marking is not replayed blind: it goes back through
+    its attempt, so the retry is checked against the attempt's state."""
+    job = await repository_jobs.job_by_id(session, job_id)
+    if job is None:
+        raise JobNotFound()
+    if job.status != "failed" or job.task_name == SCORING_TASK:
+        raise JobNotRetryable()
+    if job.queueing_lock and await repository_jobs.waiting_with_lock(session, job.queueing_lock):
+        raise JobNotRetryable("The same task is already waiting to run.")
+    await repository_jobs.retry_failed(session, job_id)
+    await service_audit.record(
+        session, actor=actor, action="job.retried", target_type="job", target_id=str(job_id), at=now
+    )
+
+
+async def cancel_job(session: AsyncSession, job_id: int, *, actor: Principal, now: datetime) -> None:
+    """Stop a waiting task, or a running one whose worker has gone quiet. A task a live
+    worker is still running is left alone."""
+    job = await repository_jobs.job_by_id(session, job_id)
+    if job is None:
+        raise JobNotFound()
+    if job.status == "todo":
+        await repository_jobs.cancel_waiting(session, job_id)
+    elif job.status == "doing" and job_id in {
+        stalled.id
+        for stalled in await repository_jobs.stalled_jobs(
+            session, seconds_since_heartbeat=STALLED_AFTER_SECONDS
+        )
+    }:
+        await repository_jobs.cancel_running(session, job_id)
+        if job.task_name == SCORING_TASK:
+            await record_marking_gave_up(session, uuid.UUID(job.args["attempt_id"]))
+    else:
+        raise JobNotCancellable()
+    await service_audit.record(
+        session, actor=actor, action="job.cancelled", target_type="job", target_id=str(job_id), at=now
+    )
 
 
 def _read(job: JobRef, events: list[JobEventRef]) -> JobRead:

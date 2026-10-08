@@ -340,6 +340,39 @@ export function readMachinery(status: string, signal?: AbortSignal): Promise<Mac
   return platformRequest<Machinery>(`${PLATFORM}/machinery`, { signal, query: { status } });
 }
 
+/**
+ * One page of the queue, as `GET /platform/jobs` sends it. Declared here until
+ * the generated types are regenerated; the shape is `JobsPage`.
+ */
+export interface JobsPage {
+  items: Job[];
+  next_before_id: number | null;
+}
+
+/** Tasks of one status older than `beforeId`, newest first. */
+export function listJobs(
+  status: string,
+  beforeId: number,
+  signal?: AbortSignal,
+): Promise<JobsPage> {
+  return platformRequest<JobsPage>(`${PLATFORM}/jobs`, {
+    signal,
+    query: { status, before_id: beforeId },
+  });
+}
+
+/** Queue a failed task again. Refused with `job_not_retryable` for a marking (retry it from its
+ *  attempt) or when the same task is already waiting. Declared until the types are regenerated. */
+export function retryJob(jobId: number): Promise<void> {
+  return platformRequest<void>(`${PLATFORM}/jobs/${jobId}/retry`, { method: "POST" });
+}
+
+/** Cancel a waiting task, or a running one whose worker went quiet. Refused with
+ *  `job_not_cancellable` while a live worker still holds it. */
+export function cancelJob(jobId: number): Promise<void> {
+  return platformRequest<void>(`${PLATFORM}/jobs/${jobId}/cancel`, { method: "POST" });
+}
+
 /** The machinery page's stream: health, voice capacity and one status of the queue, pushed. */
 export function machineryStreamPath(status: string): string {
   return `${PLATFORM}/machinery/stream?status=${encodeURIComponent(status)}`;

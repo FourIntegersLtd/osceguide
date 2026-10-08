@@ -39,6 +39,11 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
 }
 
 
+async def open_sittings_using_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
+    """How many sittings marked against this rubric version still have a circuit to run."""
+    return await repository.count_open_sittings_for_rubric_version(session, rubric_version_id)
+
+
 async def create_sitting(
     session: AsyncSession,
     org_id: uuid.UUID,

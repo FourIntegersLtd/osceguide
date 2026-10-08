@@ -32,6 +32,7 @@ from app.features.rubrics.schemas import (
     RubricVersionRead,
     TrialCandidateRead,
 )
+from app.features.sittings import service as sittings_service
 
 REFUSALS: dict[type[Exception], type[AppError]] = {
     lifecycle.NotEditable: errors.NotEditableError,
@@ -280,9 +281,48 @@ async def archive_version(
         )
     except Exception as exc:  # noqa: BLE001
         raise_mapped(exc, REFUSALS)
+    await _refuse_while_in_use(session, version_row.id)
     await repository.set_version_status(session, org_id, version_row.id, status=status, at=now, by=actor_id)
+    await _repoint_after_archiving(session, org_id, rubric_id, archived_version_id=version_row.id)
     await session.refresh(version_row)
     return version_read(version_row)
+
+
+async def _refuse_while_in_use(session: AsyncSession, version_id: uuid.UUID) -> None:
+    """An exam on offer, or a sitting with a circuit still to run, is marked against this exact version.
+
+    Archiving it would have every attempt there refused `rubric_version_not_published`.
+    """
+    exams = await catalog_service.live_exams_using_rubric_version(session, version_id)
+    sittings = await sittings_service.open_sittings_using_rubric_version(session, version_id)
+    if exams or sittings:
+        raise errors.NotArchivableError(
+            "This version is in use by an exam or an upcoming sitting. "
+            "Publish a new version and move them across first.",
+            details={"reason": "in_use", "exams": exams, "sittings": sittings},
+        )
+
+
+async def _repoint_after_archiving(
+    session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID, *, archived_version_id: uuid.UUID
+) -> None:
+    """Keep the rubric pointing at a version that can still be used.
+
+    New attempts are marked against `current_version_id`; left on an archived
+    version the rubric is stranded until someone publishes a fresh draft. It
+    falls back to its newest remaining published version, or stays when none is left.
+    """
+    rubric = await _own_rubric(session, org_id, rubric_id)
+    if rubric.current_version_id != archived_version_id:
+        return
+    still_published = [
+        version_row
+        for version_row in await repository.versions_for_rubric(session, org_id, rubric_id)
+        if version_row.status == str(lifecycle.Status.PUBLISHED)
+    ]
+    if still_published:
+        # `versions_for_rubric` is oldest first, so the last is the newest.
+        await repository.set_current_version(session, org_id, rubric_id, version_id=still_published[-1].id)
 
 
 async def _own_rubric(session: AsyncSession, org_id: uuid.UUID | None, rubric_id: uuid.UUID) -> Rubric:

@@ -2,6 +2,7 @@
 
 import { useCanAuthor } from "@/capabilities/authoring/hooks/useCanAuthor";
 import { READER_EMPTY_TEXT } from "@/capabilities/authoring/parts/CannotAuthor";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   HiOutlineArchiveBox,
@@ -9,7 +10,7 @@ import {
   HiOutlineArrowUpTray,
   HiOutlinePencilSquare,
 } from "react-icons/hi2";
-import { Alert, AsyncBoundary, Panel } from "@/foundation/ui";
+import { Alert, AsyncBoundary, ConfirmModal, Panel } from "@/foundation/ui";
 import { AuthoringButton } from "@/capabilities/authoring/parts/AuthoringButton";
 import {
   AuthoringIconAction,
@@ -37,6 +38,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
   const { hrefFor } = useSurface();
   const router = useRouter();
   const canAuthor = useCanAuthor();
+  const [archiving, setArchiving] = useState<{ id: string; version: number } | null>(null);
 
   return (
     <div className="space-y-4">
@@ -117,7 +119,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                           <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
                         </AuthoringIconAction>
                       ) : null}
-                      {version.status !== "archived" ? (
+                      {version.status === "published" ? (
                         <AuthoringIconAction
                           write
                           variant="warning"
@@ -125,11 +127,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                           busy={action.busy === `archive:${version.id}`}
                           busyLabel="Archiving…"
                           disabled={action.busy !== null}
-                          onClick={() =>
-                            void action.run(`archive:${version.id}`, () =>
-                              archiveRubricVersion(scope, data.id, version.version),
-                            )
-                          }
+                          onClick={() => setArchiving({ id: version.id, version: version.version })}
                         >
                           <HiOutlineArchiveBox className="h-4 w-4" aria-hidden />
                         </AuthoringIconAction>
@@ -142,6 +140,27 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
           </div>
         )}
       </AsyncBoundary>
+
+      <ConfirmModal
+        isOpen={archiving !== null}
+        onCancel={() => {
+          setArchiving(null);
+          action.clearError();
+        }}
+        onConfirm={async () => {
+          if (!archiving) return;
+          const done = await action.run(`archive:${archiving.id}`, () =>
+            archiveRubricVersion(scope, rubricId, archiving.version),
+          );
+          if (done) setArchiving(null);
+        }}
+        isLoading={action.busy !== null}
+        error={action.error}
+        tone="danger"
+        title="Archive this version?"
+        confirmText="Yes, archive"
+        message={`Version ${archiving?.version ?? ""} stops being used to mark new attempts. If it is the current version, the newest other published version takes over. It is refused while an exam or an upcoming sitting still uses it.`}
+      />
     </div>
   );
 }

@@ -25,7 +25,7 @@ from app.core.sse import MEDIA_TYPE, SSE_HEADERS
 from app.core.streams import StreamPrincipal
 from app.core.tenancy import PlatformAdmin
 from app.features.health import schemas, service
-from app.features.health.errors import MessageNotRetryable
+from app.features.health.errors import JobNotCancellable, JobNotFound, JobNotRetryable, MessageNotRetryable
 
 router = APIRouter(tags=["health"])
 
@@ -60,12 +60,34 @@ async def list_jobs(
 ) -> schemas.JobsPage:
     """The queue, newest first. `status=failed` is what to look at when something is missing.
 
-    No retry route: a failed job is re-queued through the thing it was about —
-    `POST /platform/attempts/{id}/rescore` for a marking — so the retry is
-    checked against the current state rather than replayed blind.
+    A failed marking is re-queued through its attempt —
+    `POST /platform/attempts/{id}/rescore` — so the retry is checked against the
+    current state rather than replayed blind; any other failed task is retried below.
     """
     _ = admin
     return await service.list_jobs(session, status=status, task_name=task, before_id=before_id, limit=limit)
+
+
+@router.post(
+    "/platform/jobs/{job_id}/retry",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, JobNotFound, JobNotRetryable),
+)
+async def retry_job(job_id: int, admin: PlatformAdmin, session: Session, clock: ClockDep) -> None:
+    """Queue a failed task again. `job_not_retryable` for a marking (retry it from its
+    attempt), for a task that is not failed, or when the same task is already waiting."""
+    await service.retry_job(session, job_id, actor=admin, now=clock.now())
+
+
+@router.post(
+    "/platform/jobs/{job_id}/cancel",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=error_responses(Forbidden, JobNotFound, JobNotCancellable),
+)
+async def cancel_job(job_id: int, admin: PlatformAdmin, session: Session, clock: ClockDep) -> None:
+    """Cancel a waiting task, or a running one whose worker stopped reporting. A task
+    a live worker is still running is `job_not_cancellable`."""
+    await service.cancel_job(session, job_id, actor=admin, now=clock.now())
 
 
 @router.get(

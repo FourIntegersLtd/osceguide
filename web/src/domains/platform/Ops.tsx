@@ -5,15 +5,11 @@ import {
   Alert,
   AsyncBoundary,
   B2CHero,
-  B2CSegmentedTabs,
   Badge,
   Button,
   FactList,
   Panel,
   PlatformPageHeader,
-  Row,
-  RowList,
-  type B2CSegmentedTabItem,
 } from "@/foundation/ui";
 import { errorMessage, useAsync, useEventStream } from "@/foundation/hooks";
 import {
@@ -24,39 +20,8 @@ import {
   type TutorMemoryReindex,
 } from "@/domains/platform/support/api";
 import { UndeliveredMail } from "@/domains/platform/UndeliveredMail";
-import { formatDetail, formatMoment, humanise, jobStatusTone, jobTaskLabel } from "@/domains/platform/support";
-
-type JobStatus = "failed" | "todo" | "doing" | "succeeded";
-
-const JOB_LABELS: Record<JobStatus, string> = {
-  failed: "Failed",
-  todo: "Waiting",
-  doing: "Running",
-  succeeded: "Succeeded",
-};
-
-/** procrastinate's status in the words the tabs use; an unknown one is still readable. */
-function jobLabel(status: string): string {
-  const labels: Record<string, string> = JOB_LABELS;
-  return labels[status] ?? humanise(status);
-}
-
-const JOB_TABS: B2CSegmentedTabItem<JobStatus>[] = (
-  Object.keys(JOB_LABELS) as JobStatus[]
-).map((id) => ({ id, label: JOB_LABELS[id] }));
-
-/** What procrastinate's event log says happened to a task, in words. */
-const JOB_EVENT_LABELS: Record<string, string> = {
-  deferred: "queued",
-  started: "started",
-  scheduled: "retry set",
-  deferred_for_retry: "sent back",
-  retried: "retried",
-  failed: "failed",
-  succeeded: "done",
-  cancelled: "cancelled",
-  aborted: "stopped",
-};
+import { formatMoment } from "@/domains/platform/support";
+import { BackgroundTasks, type JobStatus } from "@/domains/platform/BackgroundTasks";
 
 /**
  * Is the platform working, not only up: the queue, the worker, the Cloud cap.
@@ -155,58 +120,12 @@ export function Ops() {
         </Panel>
       </div>
 
-      <Panel
-        title="Background tasks"
-        description="A task whose worker stopped mid-run is tried once more after three minutes, then marked failed. To retry a failed marking, open the attempt it belongs to."
-        actions={
-          <B2CSegmentedTabs
-            items={JOB_TABS}
-            value={status}
-            onChange={setStatus}
-            compact
-            aria-label="Task status"
-          />
-        }
-        padding="none"
-      >
-        <AsyncBoundary
-          state={jobs}
-          isEmpty={(page) => page.items.length === 0}
-          empty={{
-            title: "No tasks",
-            description: `Nothing is ${JOB_LABELS[status].toLowerCase()}.`,
-            bare: true,
-          }}
-        >
-          {(page) => (
-            <RowList flush>
-              {page.items.map((job) => (
-                <Row key={job.id}>
-                  <div className="min-w-0">
-                    <p className="text-osce-data font-medium text-ink">
-                      #{job.id} · {jobTaskLabel(job.task_name)}
-                    </p>
-                    <p className="truncate text-osce-meta text-ink-subtle">
-                      {[formatDetail(job.args), `${job.attempts} ${job.attempts === 1 ? "run" : "runs"}`]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    {job.status === "failed" && (job.events ?? []).length > 0 ? (
-                      <p className="text-osce-meta text-ink-subtle">
-                        {(job.events ?? [])
-                          .map((event) => `${JOB_EVENT_LABELS[event.type] ?? humanise(event.type)} ${formatMoment(event.at)}`)
-                          .join(" → ")}
-                        . The error itself is in the worker log.
-                      </p>
-                    ) : null}
-                  </div>
-                  <Badge tone={jobStatusTone(job.status)}>{jobLabel(job.status)}</Badge>
-                </Row>
-              ))}
-            </RowList>
-          )}
-        </AsyncBoundary>
-      </Panel>
+      <BackgroundTasks
+        status={status}
+        onStatus={setStatus}
+        jobs={jobs}
+        reload={initial.reload}
+      />
 
       <UndeliveredMail />
 

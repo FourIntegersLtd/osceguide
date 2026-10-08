@@ -135,6 +135,14 @@ async def delete_exam(session: AsyncSession, exam_id: uuid.UUID) -> None:
     await session.flush()
 
 
+async def count_live_exams_for_rubric_version(session: AsyncSession, rubric_version_id: uuid.UUID) -> int:
+    """Exams not yet retired that are marked against this rubric version."""
+    stmt = select(func.count(Exam.id)).where(
+        Exam.rubric_version_id == rubric_version_id, Exam.status != "retired"
+    )
+    return int((await session.execute(stmt)).scalar_one())
+
+
 async def pilot_exam_codes(session: AsyncSession) -> list[str]:
     """Exams a partner attribution link may name.
 

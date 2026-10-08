@@ -77,6 +77,13 @@ async def jobs_for_arg(
     return [_ref(job_row) for job_row in job_rows]
 
 
+async def job_by_id(session: AsyncSession, job_id: int) -> JobRef | None:
+    """One job by id, or None."""
+    stmt = text(f"SELECT {_COLUMNS} FROM procrastinate_jobs WHERE id = :id")  # noqa: S608
+    job_row = (await session.execute(stmt, {"id": job_id})).first()
+    return _ref(job_row) if job_row is not None else None
+
+
 async def list_jobs(
     session: AsyncSession,
     *,
@@ -167,3 +174,26 @@ async def counts_by_status(session: AsyncSession) -> dict[str, int]:
 async def latest_worker_heartbeat(session: AsyncSession) -> datetime | None:
     """When a worker last said it was alive; None if none ever has."""
     return (await session.execute(text("SELECT max(last_heartbeat) FROM procrastinate_workers"))).scalar()
+
+
+async def waiting_with_lock(session: AsyncSession, queueing_lock: str) -> bool:
+    """Whether a waiting job already holds this queueing lock (procrastinate allows one)."""
+    stmt = text("SELECT 1 FROM procrastinate_jobs WHERE queueing_lock = :lock AND status = 'todo' LIMIT 1")
+    return (await session.execute(stmt, {"lock": queueing_lock})).first() is not None
+
+
+async def retry_failed(session: AsyncSession, job_id: int) -> None:
+    """Queue a failed job again, now."""
+    await session.execute(
+        text("SELECT procrastinate_retry_job_v2(:id, now(), NULL, NULL, NULL)"), {"id": job_id}
+    )
+
+
+async def cancel_waiting(session: AsyncSession, job_id: int) -> None:
+    """Stop a job that has not started: `cancelled`, kept for the console."""
+    await session.execute(text("SELECT procrastinate_cancel_job_v1(:id, false, false)"), {"id": job_id})
+
+
+async def cancel_running(session: AsyncSession, job_id: int) -> None:
+    """Stop a job whose worker died: `aborted`, procrastinate's word for a running job stopped."""
+    await session.execute(text("SELECT procrastinate_finish_job_v1(:id, 'aborted', false)"), {"id": job_id})
