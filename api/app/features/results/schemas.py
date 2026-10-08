@@ -73,6 +73,17 @@ class BulkReleaseResult(BaseModel):
     skipped: list[SkippedRelease] = Field(default_factory=list)
 
 
+class TraineeStationResult(BaseModel):
+    """One station of a released result, as its candidate reads it (T-8)."""
+
+    slot_id: uuid.UUID
+    station_title: str | None
+    # 0-100, or null while nothing of this station is rated.
+    score: float | None
+    # By the rubric's pass rule; null when it sets none.
+    passed: bool | None
+
+
 class TraineeResultRead(BaseModel):
     """A candidate's own view of their result.
 
@@ -92,6 +103,8 @@ class TraineeResultRead(BaseModel):
     # When this candidate confirmed they had read it. Null until they do; a new
     # revision is a new decision and needs its own acknowledgement.
     acknowledged_at: datetime | None = None
+    # Each station the candidate sat, in running order (T-8).
+    stations: list[TraineeStationResult] = Field(default_factory=list)
 
 
 class ResultAcknowledgement(BaseModel):

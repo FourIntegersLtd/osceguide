@@ -22,6 +22,7 @@ import {
   readMyResult,
   readMyReview,
   readMySittings,
+  reviewIfReady,
   type MySitting,
   type MySittings,
   type MySlot,
@@ -218,7 +219,7 @@ function MyReviewLink({ slotId }: { slotId: string }) {
 
   // A failed check is said, not hidden: no link and no reason reads as "there is no feedback".
   if (state.error) return <span className="text-osce-meta text-b2b-mid">Could not check for feedback. Reload to try again.</span>;
-  if (!state.data) return null;
+  if (!state.data || !reviewIfReady(state.data)) return null;
 
   return (
     <ButtonLink

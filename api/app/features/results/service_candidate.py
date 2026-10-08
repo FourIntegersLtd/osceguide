@@ -14,10 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.results import errors, repository
 from app.features.results.models import CandidateResultRevision
-from app.features.results.schemas import ResultAcknowledgement, TraineeResultRead
+from app.features.results.schemas import ResultAcknowledgement, TraineeResultRead, TraineeStationResult
 from app.features.reviews import service_summary as reviews
 from app.features.roster import service as roster
 from app.features.sittings import service_reads as sittings
+from app.features.stations import service_reads as stations
 
 ACKNOWLEDGED = "acknowledged"
 
@@ -70,9 +71,12 @@ async def project_released_result(
         raise errors.NotReleased()
     acknowledged_at = None
     assessment_score = None
+    station_results: list[TraineeStationResult] = []
     if user_id is not None:
         acknowledged_at = await _acknowledged_at(session, revision_row.id, user_id)
-        assessment_score = await _assessment_score(session, revision_row, user_id)
+        station_results = await _station_results(session, revision_row, user_id)
+        scores = [station.score for station in station_results if station.score is not None]
+        assessment_score = round(sum(scores) / len(scores), 1) if scores else None
     return TraineeResultRead(
         sitting_id=revision_row.sitting_id,
         assessment_outcome=revision_row.assessment_outcome,
@@ -80,6 +84,7 @@ async def project_released_result(
         released_at=revision_row.released_at,
         acknowledged_at=acknowledged_at,
         assessment_score=assessment_score,
+        stations=station_results,
     )
 
 
@@ -109,24 +114,34 @@ async def acknowledge_my_result(
     return ResultAcknowledgement(sitting_id=sitting_id, acknowledged_at=event.at)
 
 
-async def _assessment_score(
+async def _station_results(
     session: AsyncSession, revision_row: CandidateResultRevision, user_id: uuid.UUID
-) -> float | None:
-    """This person's mean station score, on the scale the cohort ranking uses.
+) -> list[TraineeStationResult]:
+    """This person's stations with each one's score on the scale the cohort ranking uses.
 
     Asked of the reviews slice rather than recomputed here, so a candidate and
     a course lead cannot be shown two different numbers for the same marking.
-    Returns None, not zero, when nothing of theirs has been marked.
+    The overall score is the mean of these, and null, not zero, when none is marked.
     """
     slots = await sittings.slots_for_sitting(session, revision_row.org_id, revision_row.sitting_id)
-    mine = [slot.id for slot in slots if slot.trainee_id == user_id]
+    mine = sorted((slot for slot in slots if slot.trainee_id == user_id), key=lambda slot: slot.slot_index)
     if not mine:
-        return None
-    outcomes = await reviews.outcomes_for_slots(session, revision_row.org_id, mine)
-    marked = [outcome.score for outcome in outcomes.values() if outcome.score is not None]
-    if not marked:
-        return None
-    return round(sum(marked) / len(marked), 1)
+        return []
+    outcomes = await reviews.outcomes_for_slots(session, revision_row.org_id, [slot.id for slot in mine])
+    titles = await stations.summaries_by_version_id(
+        session, revision_row.org_id, [slot.station_version_id for slot in mine]
+    )
+    return [
+        TraineeStationResult(
+            slot_id=slot.id,
+            station_title=(
+                titles[slot.station_version_id].title if slot.station_version_id in titles else None
+            ),
+            score=outcomes[slot.id].score,
+            passed=outcomes[slot.id].passed,
+        )
+        for slot in mine
+    ]
 
 
 async def released_revision_for_user(

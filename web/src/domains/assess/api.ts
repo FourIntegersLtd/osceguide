@@ -19,9 +19,14 @@ export function listSittings(
   slug: string,
   signal?: AbortSignal,
   page?: PageParams,
+  // until regenerated: the list also takes status, programme_id, scheduled_from and scheduled_to (R-31).
+  filters: Record<string, string> = {},
 ): Promise<SittingPage> {
   const { limit, cursor } = pageQuery(page);
-  return platformRequest<SittingPage>(`${org(slug)}/sittings`, { signal, query: { limit, cursor } });
+  return platformRequest<SittingPage>(`${org(slug)}/sittings`, {
+    signal,
+    query: { limit, cursor, ...filters },
+  });
 }
 
 export function readSitting(slug: string, sittingId: string, signal?: AbortSignal): Promise<Sitting> {

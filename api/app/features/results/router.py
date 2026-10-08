@@ -89,6 +89,7 @@ async def save_decision(
         errors.NotSignableError,
         errors.InvalidWorkflowError,
         errors.EvidenceChangedError,
+        errors.ReviewsPendingError,
     ),
 )
 async def sign_off(

@@ -19,6 +19,7 @@ from app.features.results.schemas import (
     ReleasedCandidate,
     SkippedRelease,
 )
+from app.features.reviews import service_summary as reviews
 from app.features.roster import service as roster
 from app.features.sittings import service_reads as sittings
 from app.features.tenancy import service as tenancy
@@ -152,6 +153,10 @@ async def sign_off(
     current = await service_evidence.current_evidence(
         session, org_id, sitting_id, trainee_id, stored=latest.evidence_snapshot
     )
+    if await reviews.slots_with_pending_reviews(
+        session, org_id, [uuid.UUID(station["slot_id"]) for station in current["stations"]]
+    ):
+        raise errors.ReviewsPendingError()
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.SIGNED_OFF)
         assessment = domain.Assessment(latest.assessment_outcome) if latest.assessment_outcome else None

@@ -84,6 +84,7 @@ async def my_sittings(
                 org_slug=org_slugs.get(trainee_slot.sitting.org_id),
                 circuit_id=trainee_slot.circuit.id,
                 circuit_name=trainee_slot.circuit.name,
+                released=trainee_slot.sitting.mode == "exam" and trainee_slot.sitting.id not in sealed,
                 live=_circuit_live(trainee_slot.circuit),
                 can_join=open_to_join and bool(trainee_slot.circuit.room_name),
                 phase=trainee_slot.circuit.phase,

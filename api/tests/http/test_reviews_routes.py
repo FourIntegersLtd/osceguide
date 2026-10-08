@@ -575,7 +575,16 @@ async def test_a_signed_off_result_locks_the_reviews_behind_it(
     _, sitting_id, trainee_id = await a_rostered_candidate(db_session, org_id, slot_id)
 
     review = f"/api/v1/orgs/kings/slots/{slot_id}/gp-lead-review"
-    saved = await client.put(review, json={"revision": 0, "notes": "Before"}, headers=bearer(admin))
+    saved = await client.put(
+        review,
+        json={
+            "revision": 0,
+            "notes": "Before",
+            "field_values": {"communication.score": "G"},
+            "status": "completed",
+        },
+        headers=bearer(admin),
+    )
     assert saved.status_code == 200, saved.text
     await settle_decision(client, admin, org_slug="kings", sitting_id=sitting_id, trainee_id=trainee_id)
 
@@ -674,7 +683,8 @@ async def test_a_training_review_is_shared_with_the_trainee_once_completed(
     await client.put(
         url, json={"field_values": {"communication.score": "G"}, "notes": "Draft"}, headers=bearer(admin)
     )
-    assert (await client.get(f"/api/v1/me/slots/{slot_id}/review", headers=as_trainee)).json() is None
+    waiting = await client.get(f"/api/v1/me/slots/{slot_id}/review", headers=as_trainee)
+    assert waiting.json() == {"slot_id": str(slot_id), "state": "not_marked"}
     await client.put(
         url,
         json={"field_values": {"communication.score": "G"}, "notes": "Good rapport", "status": "completed"},
@@ -683,6 +693,7 @@ async def test_a_training_review_is_shared_with_the_trainee_once_completed(
 
     shared = await client.get(f"/api/v1/me/slots/{slot_id}/review", headers=as_trainee)
     assert shared.status_code == 200, shared.text
+    assert shared.json()["state"] == "ready"
     assert shared.json()["notes"] == "Good rapport"
     assert shared.json()["summary"]["overall_rag"] == "G"
 
@@ -785,3 +796,23 @@ async def test_marking_cannot_be_retried_from_another_organisation(
     )
     assert refused.status_code == 404
     assert refused.json()["code"] == "slot_not_found"
+
+
+async def test_an_exam_review_says_whether_it_waits_for_release_or_for_marking(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """T-8: the candidate is told "not released yet" apart from "not marked yet"."""
+    org_id, admin = await org_with_admin(client, make_actor)
+    slot_id = await a_slot(db_session, org_id)
+    user_id, sitting_id, trainee_id = await a_rostered_candidate(db_session, org_id, slot_id)
+    as_trainee = bearer(mint_token(user_id=user_id, email="trainee@example.com"))
+    mine = f"/api/v1/me/slots/{slot_id}/review"
+
+    first = await client.get(mine, headers=as_trainee)
+    assert first.json() == {"slot_id": str(slot_id), "state": "not_released"}
+
+    await settle_decision(
+        client, admin, org_slug="kings", sitting_id=sitting_id, trainee_id=trainee_id, release=True
+    )
+    released = await client.get(mine, headers=as_trainee)
+    assert released.json() == {"slot_id": str(slot_id), "state": "not_marked"}

@@ -168,10 +168,34 @@ export function circuitLeads<T extends { role: string }>(members: readonly T[]):
   return members.filter((member) => isAdminRole(member.role) || isSupervisorRole(member.role));
 }
 
+/** The sittings list filters the server applies (R-31); an empty field means no filter. */
+export interface SittingFilters {
+  status: string;
+  programmeId: string;
+  from: string;
+  to: string;
+}
+
+export const NO_SITTING_FILTERS: SittingFilters = { status: "", programmeId: "", from: "", to: "" };
+
+export function filtersActive(filters: SittingFilters): boolean {
+  return Object.values(filters).some((value) => value !== "");
+}
+
+/** The query the sittings list sends: only the filters that are set. */
+export function sittingFilterQuery(filters: SittingFilters): Record<string, string> {
+  const query: Record<string, string> = {};
+  if (filters.status) query.status = filters.status;
+  if (filters.programmeId) query.programme_id = filters.programmeId;
+  if (filters.from) query.scheduled_from = filters.from;
+  if (filters.to) query.scheduled_to = filters.to;
+  return query;
+}
+
 /** Said under the sittings filters while the list is only partly loaded. */
 export function sittingsScopeNote(loaded: number, hasMore: boolean): string | null {
   return hasMore
-    ? `Filters, search and Next up cover the ${loaded} sittings loaded so far. Load more to include the rest.`
+    ? `Search and Next up cover the ${loaded} sittings loaded so far. Load more to include the rest.`
     : null;
 }
 

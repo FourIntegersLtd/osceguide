@@ -23,14 +23,15 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 
 @router.get(
     "/me/slots/{slot_id}/review",
-    response_model=schemas.MySlotReviewRead | None,
+    response_model=schemas.MySlotReviewRead | schemas.MySlotReviewWaiting,
     responses=error_responses(Unauthenticated, errors.SlotNotFound),
 )
 async def read_my_slot_review(
     slot_id: uuid.UUID, principal: CurrentPrincipal, session: Session
-) -> schemas.MySlotReviewRead | None:
+) -> schemas.MySlotReviewRead | schemas.MySlotReviewWaiting:
     """A candidate's own review of one of their slots, once their result is
-    released and the GP lead has completed one; null before. Never for a slot not theirs (404)."""
+    released and the GP lead has completed one; before that `state` says
+    `not_released` or `not_marked`. Never for a slot not theirs (404)."""
     return await service_summary.read_my_slot_review(session, slot_id=slot_id, user_id=principal.user_id)
 
 

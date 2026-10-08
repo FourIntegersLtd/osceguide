@@ -63,10 +63,26 @@ async def sitting_by_id(session: AsyncSession, org_id: uuid.UUID, sitting_id: uu
 
 
 async def list_sittings(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None = None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None = None,
+    status: str | None = None,
+    programme_id: uuid.UUID | None = None,
+    scheduled_from: datetime | None = None,
+    scheduled_to: datetime | None = None,
 ) -> tuple[list[Sitting], str | None]:
-    """A page of this organisation's sittings, newest first."""
+    """A page of this organisation's sittings, newest first, narrowed by the filters given (R-31)."""
     stmt = select(Sitting).where(Sitting.org_id == org_id)
+    if status is not None:
+        stmt = stmt.where(Sitting.status == status)
+    if programme_id is not None:
+        stmt = stmt.where(Sitting.programme_id == programme_id)
+    if scheduled_from is not None:
+        stmt = stmt.where(Sitting.scheduled_for >= scheduled_from)
+    if scheduled_to is not None:
+        stmt = stmt.where(Sitting.scheduled_for < scheduled_to)
     return await keyset_page(
         session, stmt, sort_col=Sitting.created_at, id_col=Sitting.id, limit=limit, cursor=cursor
     )

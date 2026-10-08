@@ -6,6 +6,7 @@ import {
   HiOutlineBookOpen,
   HiOutlineCalendarDays,
   HiOutlineChatBubbleLeftRight,
+  HiOutlineClock,
   HiOutlineSparkles,
 } from "react-icons/hi2";
 import {
@@ -163,6 +164,10 @@ function SittingRow({ sitting }: { sitting: MySitting }) {
           <Badge variant="success" dot>
             Open now
           </Badge>
+        ) : sitting.released ? (
+          <Badge variant="success" dot>
+            Result released
+          </Badge>
         ) : sitting.paused ? (
           <Badge variant="warning" dot>
             Paused
@@ -212,6 +217,15 @@ function Explore() {
         />
         {/* Only what this workspace mounts: a link to a page it does not (Hire has no study
             material or community) would open a 404. */}
+        {/* Every practice attempt, with its transcript and debrief, from the list the person already owns (T-5). */}
+        {mounted.includes("transcripts") ? (
+          <B2CGroupedRowLink
+            href={hrefFor("/transcripts")}
+            icon={HiOutlineClock}
+            title="Practice history"
+            meta="Past attempts, transcripts and debriefs"
+          />
+        ) : null}
         {mounted.includes("study-a-to-z") ? (
           <B2CGroupedRowLink href={hrefFor("/summary")} icon={HiOutlineBookOpen} title="A to Z" />
         ) : null}

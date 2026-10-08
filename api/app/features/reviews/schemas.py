@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -110,9 +110,17 @@ class MySlotReviewRead(BaseModel):
     reviewer's draft, and never who observed them."""
 
     slot_id: uuid.UUID
+    state: Literal["ready"] = "ready"
     summary: SlotRagSummary
     notes: str | None
     completed_at: datetime | None
+
+
+class MySlotReviewWaiting(BaseModel):
+    """Why a candidate has no review to read yet (T-8): the result is not released, or not marked."""
+
+    slot_id: uuid.UUID
+    state: Literal["not_released", "not_marked"]
 
 
 class CircuitReviewRead(BaseModel):

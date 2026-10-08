@@ -1,10 +1,20 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, B2CHero, B2CPageHeader, Button, ButtonLink } from "@/foundation/ui";
+import {
+  Alert,
+  AsyncBoundary,
+  B2CGroupedRow,
+  B2CGroupedSection,
+  B2CHero,
+  B2CPageHeader,
+  Badge,
+  Button,
+  ButtonLink,
+} from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
-import { acknowledgeResult, downloadMyResult, readMyResult } from "@/domains/assess/trainee/api";
+import { acknowledgeResult, downloadMyResult, readMyResult, stationScoreLabel } from "@/domains/assess/trainee/api";
 import { useSurface } from "@/capabilities";
 import { PERSONAL_PRACTICE_HREF } from "@/domains/assess/trainee/support";
 
@@ -120,6 +130,17 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                   <span className="whitespace-pre-wrap">{result.rationale}</span>
                 ) : null}
               </B2CHero>
+              {result.stations && result.stations.length > 0 ? (
+                <B2CGroupedSection eyebrow="By station">
+                  {result.stations.map((station) => (
+                    <B2CGroupedRow
+                      key={station.slot_id}
+                      title={station.station_title ?? "Station"}
+                      trailing={<Badge tone="neutral">{stationScoreLabel(station)}</Badge>}
+                    />
+                  ))}
+                </B2CGroupedSection>
+              ) : null}
               <B2CHero
                 eyebrow="Keep practising"
                 title="Practise on your own"

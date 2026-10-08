@@ -34,13 +34,13 @@ test.describe.serial("ASSESS-4 review, decide, release", () => {
     const w = world();
     await openPage(trainee, `/app/${w.slug}/trainee/results/${sitting.id}`);
     await expect(trainee.getByText("Not released yet")).toBeVisible();
-    // R-1: the api gives the candidate nothing either: an error, or an empty body, never the review.
+    // R-1: the api gives the candidate nothing either: an error, or the reason it is not released (T-8), never the review.
     const traineeToken = await switchWorkspace(await login(w.accounts.trainee.email, PASSWORD), w.slug);
     const answer = await call(traineeToken, `/api/v1/me/slots/${sitting.slotId}/review`).then(
       (body) => body,
       (error: ApiError) => error.status,
     );
-    expect(answer === null || typeof answer === "number").toBe(true);
+    expect(typeof answer === "number" || (answer as { state?: string } | null)?.state === "not_released").toBe(true);
   });
 
   test("the reviewer rates every domain and completes the review", async () => {

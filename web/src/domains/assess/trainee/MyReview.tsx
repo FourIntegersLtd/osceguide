@@ -13,7 +13,7 @@ import {
 import { useAsync } from "@/foundation/hooks";
 import { passWord, ratingLabel } from "@/capabilities/feedback/rubric";
 import { ratingVariant, summaryDomains } from "@/domains/assess/results/reviewForm";
-import { readMyReview } from "@/domains/assess/trainee/api";
+import { readMyReview, reviewIfReady, reviewWaitingCopy } from "@/domains/assess/trainee/api";
 
 /**
  * A candidate's own review of one station, once the GP lead has completed
@@ -37,13 +37,17 @@ export function MyReview({ slotId }: { slotId: string }) {
         title="Station feedback"
       />
 
-      {!state.loading && !state.error && state.data === null ? (
-        <Alert tone="info" title="Not ready yet">
-          Nothing is shared with you for this station yet. In practice it appears when your supervisor completes their review; in an exam, when your result is released and a review is complete.
-        </Alert>
-      ) : null}
       <AsyncBoundary state={state}>
-        {(review) => {
+        {(answer) => {
+          const review = reviewIfReady(answer);
+          if (review === null) {
+            const waiting = reviewWaitingCopy((answer as { state: "not_released" | "not_marked" }).state);
+            return (
+              <Alert tone="info" title={waiting.title}>
+                {waiting.body}
+              </Alert>
+            );
+          }
           const rating = review.summary.rating ?? null;
           const overall = review.summary.overall_rag;
           const outcome = passWord(review.summary.passed);

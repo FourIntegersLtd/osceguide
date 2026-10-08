@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -93,13 +93,34 @@ async def read_sitting(session: AsyncSession, org_id: uuid.UUID, sitting_id: uui
 
 
 async def list_sittings(
-    session: AsyncSession, org_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    limit: int,
+    cursor: dict[str, Any] | None,
+    status: str | None = None,
+    programme_id: uuid.UUID | None = None,
+    scheduled_from: date | None = None,
+    scheduled_to: date | None = None,
 ) -> tuple[list[SittingRead], str | None]:
-    """A page of this organisation's sittings, newest first."""
-    sittings, next_cursor = await repository.list_sittings(session, org_id, limit=limit, cursor=cursor)
+    """A page of this organisation's sittings, newest first; the dates are inclusive days (R-31)."""
+    sittings, next_cursor = await repository.list_sittings(
+        session,
+        org_id,
+        limit=limit,
+        cursor=cursor,
+        status=status,
+        programme_id=programme_id,
+        scheduled_from=_start_of(scheduled_from),
+        scheduled_to=_start_of(scheduled_to + timedelta(days=1)) if scheduled_to else None,
+    )
     return await _with_totals(
         session, org_id, [sitting_read(sitting, []) for sitting in sittings]
     ), next_cursor
+
+
+def _start_of(day: date | None) -> datetime | None:
+    return datetime(day.year, day.month, day.day, tzinfo=UTC) if day else None
 
 
 async def _with_totals(

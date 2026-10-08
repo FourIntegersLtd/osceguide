@@ -353,6 +353,7 @@ async def test_an_exam_candidate_reads_nothing_of_their_slot_until_release(
 
     portal = (await client.get("/api/v1/me/sittings", headers=as_candidate)).json()
     assert portal["items"][0]["slots"][0]["attempt_id"] is None
+    assert portal["items"][0]["released"] is False
     for read in ("transcript", "result", "feedback"):
         refused = await client.get(f"/api/v1/attempts/{attempt_id}/{read}", headers=as_candidate)
         assert refused.status_code == 404, (read, refused.text)
@@ -370,6 +371,7 @@ async def test_an_exam_candidate_reads_nothing_of_their_slot_until_release(
 
     portal = (await client.get("/api/v1/me/sittings", headers=as_candidate)).json()
     assert portal["items"][0]["slots"][0]["attempt_id"] == attempt_id
+    assert portal["items"][0]["released"] is True
     response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=as_candidate)
     assert response.status_code == 200, response.text
     assert len(response.json()["messages"]) == 2

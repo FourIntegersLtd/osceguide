@@ -13,11 +13,19 @@ import {
 } from "@/foundation/ui";
 import Table, { type Column } from "@/foundation/table/Table";
 import { b2cTableCellText } from "@/foundation/ui/productTokens";
-import { useCursorPages } from "@/foundation/hooks";
+import { useAsync, useCursorPages } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { listSittings, type Sitting } from "@/domains/assess/api";
-import { sittingRunning, sittingsEmptyDescription, sittingsScopeNote } from "@/domains/assess/support";
+import { listProgrammes, listSittings, type Sitting } from "@/domains/assess/api";
+import {
+  filtersActive,
+  NO_SITTING_FILTERS,
+  sittingFilterQuery,
+  sittingRunning,
+  sittingsEmptyDescription,
+  sittingsScopeNote,
+  type SittingFilters,
+} from "@/domains/assess/support";
 
 type ModeFilter = "all" | "exam" | "training";
 
@@ -90,12 +98,16 @@ function matches(sitting: Sitting, term: string): boolean {
 export function Sittings({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();
   const { session } = useSession();
-  // A server page at a time. The endpoint takes no search, so the mode filter
-  // and the search box narrow what has been loaded so far.
+  // Status, programme and date are the server's (R-31), so they reach every page. The endpoint
+  // takes no search, so the mode tabs and the search box narrow what has been loaded so far.
+  const [filters, setFilters] = useState<SittingFilters>(NO_SITTING_FILTERS);
+  const query = sittingFilterQuery(filters);
+  const queryKey = JSON.stringify(query);
   const pages = useCursorPages<Sitting>(
-    (cursor, signal) => listSittings(orgSlug, signal, { cursor }),
-    [orgSlug],
+    (cursor, signal) => listSittings(orgSlug, signal, { cursor }, query),
+    [orgSlug, queryKey],
   );
+  const programmes = useAsync((signal) => listProgrammes(orgSlug, signal), [orgSlug]);
   const columns = useMemo(() => columnsFor(hrefFor), [hrefFor]);
   const [filter, setFilter] = useState<ModeFilter>("all");
   const [search, setSearch] = useState("");
@@ -113,9 +125,15 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
         }
       />
 
+      <SittingFilterBar
+        filters={filters}
+        onChange={setFilters}
+        programmes={programmes.data?.items ?? []}
+      />
+
       <AsyncBoundary
         state={pages.state}
-        isEmpty={(sittings) => sittings.length === 0}
+        isEmpty={(sittings) => sittings.length === 0 && !filtersActive(filters)}
         empty={{
           title: "No sittings yet",
           description: sittingsEmptyDescription(can(session, "schedule_sittings")),
@@ -188,6 +206,67 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
           );
         }}
       </AsyncBoundary>
+    </div>
+  );
+}
+
+const FIELD =
+  "rounded-control border border-b2b-border bg-b2b-surface px-3 py-2 text-osce-meta text-b2b-headline";
+
+const STATUSES = ["scheduled", "in_progress", "completed", "cancelled"];
+
+/** Status, programme and date, applied by the server so they cover every page. */
+function SittingFilterBar({
+  filters,
+  onChange,
+  programmes,
+}: {
+  filters: SittingFilters;
+  onChange: (next: SittingFilters) => void;
+  programmes: { id: string; exam_name: string }[];
+}) {
+  const set = (patch: Partial<SittingFilters>) => onChange({ ...filters, ...patch });
+  return (
+    <div className="flex flex-wrap items-end gap-3" role="group" aria-label="Filter sittings">
+      <label className="flex flex-col gap-1 text-osce-meta text-b2b-mid">
+        Status
+        <select className={FIELD} value={filters.status} onChange={(e) => set({ status: e.target.value })}>
+          <option value="">Any status</option>
+          {STATUSES.map((status) => (
+            <option key={status} value={status}>
+              {status.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-osce-meta text-b2b-mid">
+        Programme
+        <select
+          className={FIELD}
+          value={filters.programmeId}
+          onChange={(e) => set({ programmeId: e.target.value })}
+        >
+          <option value="">Any programme</option>
+          {programmes.map((programme) => (
+            <option key={programme.id} value={programme.id}>
+              {programme.exam_name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 text-osce-meta text-b2b-mid">
+        From
+        <input type="date" className={FIELD} value={filters.from} onChange={(e) => set({ from: e.target.value })} />
+      </label>
+      <label className="flex flex-col gap-1 text-osce-meta text-b2b-mid">
+        To
+        <input type="date" className={FIELD} value={filters.to} onChange={(e) => set({ to: e.target.value })} />
+      </label>
+      {filtersActive(filters) ? (
+        <button type="button" className="text-osce-meta underline" onClick={() => onChange(NO_SITTING_FILTERS)}>
+          Clear filters
+        </button>
+      ) : null}
     </div>
   );
 }

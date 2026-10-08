@@ -751,3 +751,86 @@ async def test_a_draft_made_before_reviews_counted_as_marked_still_signs_off(
     response = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
 
     assert response.status_code == 200, response.text
+
+
+async def test_sign_off_is_refused_while_a_review_of_the_candidates_station_is_a_draft(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-33: a decision signed over a review still being written is refused until that review is completed."""
+    from sqlalchemy import select
+
+    from app.features.sittings.models import Slot
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    slot_id = (await db_session.execute(select(Slot).where(Slot.org_id == org_id))).scalars().one().id
+    review_url = f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine"
+    started = await client.put(
+        review_url, json={"field_values": {"consulting.score": "a"}, "status": "draft"}, headers=bearer(admin)
+    )
+    assert started.status_code == 200, started.text
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "R."},
+        headers=bearer(admin),
+    )
+
+    refused = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    assert (refused.status_code, refused.json()["code"]) == (409, "reviews_pending")
+
+    done = await client.put(
+        review_url,
+        json={"field_values": {"consulting.score": "a"}, "status": "completed"},
+        headers=bearer(admin),
+    )
+    assert done.status_code == 200, done.text
+    # Completing the review moved the evidence, so the decision is drafted again first (R-40).
+    redrafted = await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "R.", "expected_revision": 1},
+        headers=bearer(admin),
+    )
+    assert redrafted.status_code == 200, redrafted.text
+    signed = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    assert signed.status_code == 200, signed.text
+
+
+async def test_a_released_result_breaks_down_by_station(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """T-8: once released, the candidate reads each station's title and score, not only the mean."""
+    from sqlalchemy import select
+
+    from app.features.identity import repository as identity_repo
+    from app.features.roster import repository as roster_repo
+    from app.features.sittings.models import Slot
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
+    candidate = await make_actor("breakdown@example.com")
+    user = await identity_repo.user_by_email(db_session, "breakdown@example.com")
+    assert user is not None
+    await roster_repo.link_trainee_to_user(db_session, org_id, trainee, user_id=user.id)
+    await db_session.flush()
+    await seat_candidate(db_session, org_id, sitting, trainee)
+    slots = (await db_session.execute(select(Slot).where(Slot.org_id == org_id))).scalars().all()
+    slot_id = next(slot.id for slot in slots if slot.trainee_id == user.id)
+    reviewed = await client.put(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
+        json={"field_values": {"consulting.score": "a"}, "status": "completed"},
+        headers=bearer(admin),
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    await client.put(
+        url(sitting, trainee),
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
+        headers=bearer(admin),
+    )
+    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
+    await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
+
+    mine = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(candidate))
+    assert mine.status_code == 200, mine.text
+    assert mine.json()["stations"] == [
+        {"slot_id": str(slot_id), "station_title": "Sat", "score": 66.0, "passed": None}
+    ]

@@ -93,3 +93,10 @@ class NotReleased(NotFound):
 
     code = "result_not_released"
     default_message = "Your result has not been released yet"
+
+
+class ReviewsPendingError(Conflict):
+    """A review of one of the candidate's stations is still a draft, so the decision is not signed (R-33)."""
+
+    code = "reviews_pending"
+    default_message = "A review of this candidate is still in progress; complete it before signing off"

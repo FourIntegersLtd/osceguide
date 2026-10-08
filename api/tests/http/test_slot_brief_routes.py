@@ -102,11 +102,11 @@ async def test_an_org_station_brief_reads_the_same_way_and_never_for_a_stranger(
 async def test_my_slot_review_before_release_is_null_and_a_strangers_is_not_found(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:
-    """B51: an unreleased review is an ordinary state (200 null); someone else's slot is still a 404."""
+    """B51: an unreleased review is an ordinary state (200, not_released); someone else's slot is a 404."""
     _admin, candidate, _circuit_id, slot_id = await a_circuit(client, make_actor, db_session, library=False)
     mine = await client.get(f"/api/v1/me/slots/{slot_id}/review", headers=bearer(candidate))
     assert mine.status_code == 200, mine.text
-    assert mine.json() is None
+    assert mine.json() == {"slot_id": str(slot_id), "state": "not_released"}
     stranger = await make_actor("review-stranger@example.com")
     theirs = await client.get(f"/api/v1/me/slots/{slot_id}/review", headers=bearer(stranger))
     assert theirs.status_code == 404

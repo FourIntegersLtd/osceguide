@@ -8,9 +8,10 @@ circuit is `router_run.py`; overriding one is `router_overrides.py`.
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
@@ -32,10 +33,23 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(Forbidden),
 )
 async def list_sittings(
-    workspace: OrgStaff, session: Session, page: Annotated[CursorParams, Depends()]
+    workspace: OrgStaff,
+    session: Session,
+    page: Annotated[CursorParams, Depends()],
+    sitting_status: Annotated[str | None, Query(alias="status")] = None,
+    programme_id: uuid.UUID | None = None,
+    scheduled_from: date | None = None,
+    scheduled_to: date | None = None,
 ) -> Page[schemas.SittingRead]:
     sittings, next_cursor = await service.list_sittings(
-        session, workspace.org_id, limit=page.limit, cursor=page.cursor
+        session,
+        workspace.org_id,
+        limit=page.limit,
+        cursor=page.cursor,
+        status=sitting_status,
+        programme_id=programme_id,
+        scheduled_from=scheduled_from,
+        scheduled_to=scheduled_to,
     )
     return Page(items=sittings, next_cursor=next_cursor)
 

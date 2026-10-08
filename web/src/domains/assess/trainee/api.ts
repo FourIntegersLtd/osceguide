@@ -22,14 +22,44 @@ import { orgPath, pageQuery } from "@/domains/assess/api";
  */
 
 export type MySittings = components["schemas"]["MySittings"];
-export type MySitting = components["schemas"]["MySitting"];
+// `released` (T-5) is declared here until the generated types are regenerated.
+export type MySitting = components["schemas"]["MySitting"] & { released?: boolean };
 // `marking_failed` (T-3) is declared here until the generated types are regenerated.
 export type MySlot = components["schemas"]["MySlot"] & { marking_failed?: boolean };
-export type TraineeResult = components["schemas"]["TraineeResultRead"];
+// `stations` (T-8) is declared here until the generated types are regenerated.
+export type TraineeStationResult = {
+  slot_id: string;
+  station_title: string | null;
+  score: number | null;
+  passed: boolean | null;
+};
+export type TraineeResult = components["schemas"]["TraineeResultRead"] & { stations?: TraineeStationResult[] };
 export type OrgStation = components["schemas"]["StationRead"];
 
 /** A candidate's released review of one station, in the rubric's own rating kind (`summary.rating`). */
 export type MySlotReview = components["schemas"]["MySlotReviewRead"];
+
+/** Why there is no review to read yet (T-8), declared here until the generated types are regenerated. */
+export type MySlotReviewWaiting = { slot_id: string; state: "not_released" | "not_marked" };
+export type MySlotReviewAnswer = (MySlotReview & { state?: "ready" }) | MySlotReviewWaiting;
+
+/** The review itself once there is one; the waiting answer carries only its reason. */
+export function reviewIfReady(answer: MySlotReviewAnswer): MySlotReview | null {
+  return "summary" in answer ? answer : null;
+}
+
+/** What to tell a candidate whose review is not there yet, by the server's reason. */
+export function reviewWaitingCopy(state: MySlotReviewWaiting["state"]): { title: string; body: string } {
+  return state === "not_released"
+    ? {
+        title: "Not released yet",
+        body: "Your result for this sitting has not been released, so the feedback on this station is not shared yet.",
+      }
+    : {
+        title: "Not marked yet",
+        body: "Your result is out, but the review of this station is not finished yet. It appears here when it is.",
+      };
+}
 
 /** `org_slug` is declared on these routes but not yet in the generated types (until regenerated). */
 function orgQuery(orgSlug: string | null): string {
@@ -86,9 +116,9 @@ export function acknowledgeResult(sittingId: string): Promise<void> {
 }
 
 /** This candidate's own review of one of their slots once a GP lead has
- * completed it and the result is released; `null` before. */
-export function readMyReview(slotId: string, signal?: AbortSignal): Promise<MySlotReview | null> {
-  return platformRequest<MySlotReview | null>(`/api/v1/me/slots/${encodeURIComponent(slotId)}/review`, {
+ * completed it and the result is released; before that, the reason it is not there. */
+export function readMyReview(slotId: string, signal?: AbortSignal): Promise<MySlotReviewAnswer> {
+  return platformRequest<MySlotReviewAnswer>(`/api/v1/me/slots/${encodeURIComponent(slotId)}/review`, {
     signal,
   });
 }
@@ -108,4 +138,11 @@ export function listOrgStations(slug: string, signal?: AbortSignal): Promise<Org
       query: pageQuery({ cursor }),
     }),
   );
+}
+
+/** A station's score in words: the mark out of 100, and the pass word when its rubric has a pass rule. */
+export function stationScoreLabel(station: TraineeStationResult): string {
+  if (station.score === null) return "Not scored";
+  const mark = `${station.score.toFixed(0)} / 100`;
+  return station.passed === null ? mark : `${mark} · ${station.passed ? "Pass" : "Fail"}`;
 }

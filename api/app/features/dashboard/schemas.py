@@ -197,6 +197,8 @@ class MySitting(BaseModel):
     # system time is not told they have four minutes when they have one.
     remaining_seconds: int | None = None
     active_slot_id: uuid.UUID | None = None
+    # An exam sitting's result has been released to this person (T-5); false for practice, which has none.
+    released: bool = False
     slots: list[MySlot] = Field(default_factory=list)
 
 

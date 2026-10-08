@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
-import { joinCircuit, mySittingsStreamPath, readMySittings } from "@/domains/assess/trainee/api";
+import {
+  joinCircuit,
+  mySittingsStreamPath,
+  readMySittings,
+  reviewIfReady,
+  reviewWaitingCopy,
+  stationScoreLabel,
+} from "@/domains/assess/trainee/api";
 
 const realFetch = globalThis.fetch;
 
@@ -52,4 +59,17 @@ describe("one workspace's sittings", () => {
     assert.equal(mySittingsStreamPath("kings"), "/api/v1/me/sittings/stream?org_slug=kings");
     assert.equal(mySittingsStreamPath(null), "/api/v1/me/sittings/stream");
   });
+});
+
+it("a waiting review answer carries its reason, a ready one is the review", () => {
+  assert.equal(reviewIfReady({ slot_id: "s1", state: "not_released" }), null);
+  assert.deepEqual(reviewWaitingCopy("not_released").title, "Not released yet");
+  assert.deepEqual(reviewWaitingCopy("not_marked").title, "Not marked yet");
+});
+
+it("a station's score reads as a mark and a pass word only when the rubric has a rule", () => {
+  const base = { slot_id: "s1", station_title: "Chest pain" };
+  assert.equal(stationScoreLabel({ ...base, score: null, passed: null }), "Not scored");
+  assert.equal(stationScoreLabel({ ...base, score: 66, passed: null }), "66 / 100");
+  assert.equal(stationScoreLabel({ ...base, score: 41.4, passed: false }), "41 / 100 · Fail");
 });

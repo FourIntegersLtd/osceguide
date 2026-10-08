@@ -15,7 +15,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import service_reads as attempts
 from app.features.reviews import errors, repository, scoring
-from app.features.reviews.schemas import MySlotReviewRead, SlotRagSummary, SlotReviewsRead
+from app.features.reviews.schemas import (
+    MySlotReviewRead,
+    MySlotReviewWaiting,
+    SlotRagSummary,
+    SlotReviewsRead,
+)
 from app.features.reviews.service import _slot_read, review_form, slot_rubric
 from app.features.rubrics import service_marking as rubrics
 from app.features.rubrics import service_scoring as rubric_scoring
@@ -35,8 +40,8 @@ class SlotOutcome:
 
 async def read_my_slot_review(
     session: AsyncSession, *, slot_id: uuid.UUID, user_id: uuid.UUID
-) -> MySlotReviewRead | None:
-    """A candidate's own read of their slot's review; `None` until there is one to share.
+) -> MySlotReviewRead | MySlotReviewWaiting:
+    """A candidate's own read of their slot's review; says why there is none to share yet.
 
     A training slot's review is shared the moment a reviewer completes it: practice has no
     sign-off or release (R-36). An exam slot's feeds the decision, so it waits for the result
@@ -56,20 +61,30 @@ async def read_my_slot_review(
 
     if found is not None and found[1].mode != "exam":
         if not completed:
-            return None
+            return MySlotReviewWaiting(slot_id=slot_id, state="not_marked")
         notes = "\n\n".join(review.notes for review in completed if review.notes) or None
         completed_at = max((review.completed_at for review in completed if review.completed_at), default=None)
     else:
         if await results_candidate.read_my_result(session, circuit.sitting_id, user_id) is None:
-            return None
+            return MySlotReviewWaiting(slot_id=slot_id, state="not_released")
         lead_review = await repository.gp_lead_review(session, slot.org_id, slot_id)
         if lead_review is None or lead_review.status != "completed":
-            return None
+            return MySlotReviewWaiting(slot_id=slot_id, state="not_marked")
         notes, completed_at = lead_review.notes, lead_review.completed_at
 
     scoring_rubric = await slot_rubric(session, slot.org_id, slot_id)
     summary = _summary(slot_id, scoring_rubric, [dict(review.field_values or {}) for review in completed])
     return MySlotReviewRead(slot_id=slot_id, summary=summary, notes=notes, completed_at=completed_at)
+
+
+async def slots_with_pending_reviews(
+    session: AsyncSession, org_id: uuid.UUID, slot_ids: Sequence[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Which of these slots have a review, or a GP-lead review, still a draft (R-33)."""
+    by_slot = await repository.slot_reviews_for_slots(session, org_id, slot_ids)
+    pending = {slot_id for slot_id, rows in by_slot.items() if any(row.status != "completed" for row in rows)}
+    lead = await repository.gp_lead_reviews_for_slots(session, org_id, slot_ids)
+    return pending | {slot_id for slot_id, row in lead.items() if row.status != "completed"}
 
 
 async def read_slot_reviews(session: AsyncSession, org_id: uuid.UUID, slot_id: uuid.UUID) -> SlotReviewsRead:
