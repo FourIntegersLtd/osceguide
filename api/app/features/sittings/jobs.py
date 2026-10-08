@@ -43,11 +43,6 @@ log = get_logger(__name__)
 SWEEP_QUEUE = "circuits"
 SWEEP_TASK = "sweep_circuits"
 
-# How far past its deadline a phase must be before the sweeper steps in. Short
-# enough that a candidate does not wait, long enough that the scheduled
-# transition gets its moment first and the two do not race for every phase.
-SWEEP_GRACE_SECONDS = service_catchup.OVERDUE_GRACE_SECONDS
-
 # How long a dispatched patient may take to start recording before the sweeper
 # sends a fresh one, once per station (R-17). Well past the board's 20s alert.
 PATIENT_RESEND_AFTER_SECONDS = 60
@@ -105,7 +100,9 @@ async def sweep_now(
     opener = open_session or job_session
 
     async with opener() as session:  # type: ignore[operator]
-        due = await repository_run.overdue_circuits(session, now=now, grace_seconds=SWEEP_GRACE_SECONDS)
+        due = await repository_run.overdue_circuits(
+            session, now=now, grace_seconds=service_catchup.OVERDUE_GRACE_SECONDS
+        )
         stale = await repository_run.stale_circuits(session, quiet_since=now - service_run.STALE_AFTER)
         silent = await repository_run.silent_patient_circuits(
             session,

@@ -20,7 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts.models import Attempt
-from app.features.sittings import jobs, repository, service_clock, service_run
+from app.features.sittings import jobs, repository, service_catchup, service_clock, service_run
 from app.features.sittings.models import Circuit, Sitting, Slot
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeRoomAgents
@@ -459,7 +459,7 @@ async def test_the_sweeper_moves_on_a_circuit_the_clock_got_ahead_of(
     await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
 
     due = await repository_run.overdue_circuits(
-        db_session, now=NOW + timedelta(minutes=10), grace_seconds=jobs.SWEEP_GRACE_SECONDS
+        db_session, now=NOW + timedelta(minutes=10), grace_seconds=service_catchup.OVERDUE_GRACE_SECONDS
     )
 
     assert [row.circuit_id for row in due] == [circuit_id]
@@ -478,7 +478,7 @@ async def test_the_sweeper_leaves_a_phase_that_has_only_just_expired(
     due = await repository_run.overdue_circuits(
         db_session,
         now=NOW + timedelta(minutes=3, seconds=2),
-        grace_seconds=jobs.SWEEP_GRACE_SECONDS,
+        grace_seconds=service_catchup.OVERDUE_GRACE_SECONDS,
     )
 
     assert due == []
@@ -492,7 +492,7 @@ async def test_the_sweeper_leaves_a_paused_circuit_alone(db_session: AsyncSessio
     await repository.update_circuit(db_session, org_id, circuit_id, paused_at=NOW)
 
     due = await repository_run.overdue_circuits(
-        db_session, now=NOW + timedelta(hours=2), grace_seconds=jobs.SWEEP_GRACE_SECONDS
+        db_session, now=NOW + timedelta(hours=2), grace_seconds=service_catchup.OVERDUE_GRACE_SECONDS
     )
 
     assert due == []

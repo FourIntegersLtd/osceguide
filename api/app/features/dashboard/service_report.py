@@ -18,6 +18,7 @@ from app.features.dashboard.schemas_report import (
 )
 from app.features.identity import service as identity
 from app.features.results import service as results
+from app.features.results import service_evidence
 from app.features.reviews import service_summary as reviews
 from app.features.roster import service as roster
 from app.features.rubrics import service_marking as rubrics
@@ -59,9 +60,9 @@ async def build_sitting_report(
             outcome = outcomes[slot.id]
             attempt = live.get(slot.id)
             title = titles.get(slot.station_version_id)
-            marked = (
-                attempt is not None and attempt.status == "evaluated"
-            ) or summary.overall_rag is not None
+            marked = service_evidence.station_is_marked(
+                attempt is not None and attempt.status == "evaluated", summary.overall_rag
+            )
             station_reports.append(
                 StationReport(
                     slot_id=slot.id,

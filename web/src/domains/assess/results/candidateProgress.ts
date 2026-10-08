@@ -21,9 +21,14 @@ export interface ProgressCandidate {
   } | null;
 }
 
+/** The stations a candidate is owed marking and review for: an absent one (skipped, never sat) is not. */
+export function owedMarking<T extends { absent?: boolean }>(stations: readonly T[]): T[] {
+  return stations.filter((station) => !station.absent);
+}
+
 export function candidateProgress(candidate: ProgressCandidate): CandidateProgressStep[] {
   // A skipped station nobody marked is an absent result: it is not owed marking or review.
-  const stations = (candidate.stations ?? []).filter((station) => !station.absent);
+  const stations = owedMarking(candidate.stations ?? []);
   const decision = candidate.decision;
   const total = stations.length;
   const marked = stations.filter((station) => station.marked).length;

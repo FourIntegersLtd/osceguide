@@ -16,6 +16,7 @@ lease, a claim table or a second lock. The mechanics of one step live in
 from __future__ import annotations
 
 import uuid
+from contextlib import nullcontext
 from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +27,6 @@ from app.core.errors import raise_mapped
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings
-from app.core.tenancy import OrgSuspended
 from app.features.sittings import (
     announcements,
     domain,
@@ -88,9 +88,7 @@ async def start_circuit(
     ensure_sitting_not_cancelled(sitting)
     await ensure_sitting_programme_active(session, org_id, sitting)
     # S-17: nothing new starts for a suspended organisation, whoever asks.
-    org = await tenancy.org_ref_by_id(session, org_id)
-    if org is None or not tenancy.org_permits_access(org.status):
-        raise OrgSuspended()
+    await tenancy.ensure_org_active(session, org_id)
     # R-41: a lead who lost the role since the circuit was built cannot run it.
     await ensure_lead_may_run(session, org_id, circuit.supervisor_user_id)
 
@@ -156,19 +154,19 @@ async def advance(
     if not circuit.auto_advance and not by_human:
         return False
 
-    if by_human:
-        await _step_forward(session, org_id, circuit, agents=agents, settings=settings, now=now)
-    else:
-        try:
-            async with savepoint(session):
-                await _step_forward(session, org_id, circuit, agents=agents, settings=settings, now=now)
-        except VoiceUnavailable:
-            # R-16: the circuit stays where it was for the next try, and says why, so the
-            # board can tell a voice fault from a worker that is not running.
-            await repository.update_circuit(session, org_id, circuit_id, voice_fault_at=now)
-            circuit.voice_fault_at = now
-            log.warning("voice unavailable; circuit left for the next try", circuit_id=str(circuit_id))
-            return False
+    try:
+        # A person is told of a refusal; a job rolls the step back and retries on its next pass.
+        async with nullcontext() if by_human else savepoint(session):
+            await _step_forward(session, org_id, circuit, agents=agents, settings=settings, now=now)
+    except VoiceUnavailable:
+        if by_human:
+            raise
+        # R-16: the circuit stays where it was for the next try, and says why, so the
+        # board can tell a voice fault from a worker that is not running.
+        await repository.update_circuit(session, org_id, circuit_id, voice_fault_at=now)
+        circuit.voice_fault_at = now
+        log.warning("voice unavailable; circuit left for the next try", circuit_id=str(circuit_id))
+        return False
     if circuit.voice_fault_at is not None:
         await repository.update_circuit(session, org_id, circuit_id, voice_fault_at=None)
         circuit.voice_fault_at = None

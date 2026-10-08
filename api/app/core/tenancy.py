@@ -204,7 +204,8 @@ OrgReader = Annotated[Workspace, Depends(require_org(policy("may_read_org")))]
 # `OrgReader`, which admits the trainee sitting the circuit.
 OrgStaff = Annotated[Workspace, Depends(require_org(policy("may_run_circuit")))]
 # S-29: a suspension lets running circuits finish, so the routes that run or end one still admit
-# staff of a suspended organisation. Starting a circuit stays on `OrgStaff` (and is refused again in the service).
+# staff of a suspended organisation. Starting a circuit stays on `OrgStaff`, and the service
+# refuses it again.
 OrgStaffRunning = Annotated[Workspace, Depends(require_org(policy("may_run_circuit"), allow_suspended=True))]
 OrgAdmin = Annotated[Workspace, Depends(require_org(policy("is_org_admin"), allow_platform_admin=False))]
 OrgInstitutionAdmin = Annotated[

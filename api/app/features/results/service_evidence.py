@@ -21,10 +21,14 @@ from app.features.rubrics import service_marking as rubrics
 from app.features.rubrics import service_scoring as scoring
 from app.features.sittings import service_reads as sittings
 
-
 # Version 2 (R-42): a completed human review counts a station as marked. Snapshots stored before
 # it carry no version and are compared the old way, so they do not read as re-marked (R-43).
 EVIDENCE_VERSION = 2
+
+
+def station_is_marked(attempt_evaluated: bool, overall_rag: object | None) -> bool:
+    """A station is marked once its attempt is evaluated or a human review has rated it."""
+    return attempt_evaluated or overall_rag is not None
 
 
 async def current_evidence(
@@ -54,8 +58,10 @@ async def current_evidence(
         (
             {
                 "slot_id": str(slot.id),
-                "marked": (slot.id in live and live[slot.id].status == "evaluated")
-                or (not legacy and summaries[slot.id].overall_rag is not None),
+                "marked": station_is_marked(
+                    slot.id in live and live[slot.id].status == "evaluated",
+                    None if legacy else summaries[slot.id].overall_rag,
+                ),
                 "overall_rag": summaries[slot.id].overall_rag,
             }
             for slot in slots

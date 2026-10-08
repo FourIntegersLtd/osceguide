@@ -45,6 +45,7 @@ async def advance_due(
     due = await repository_run.overdue_circuits(
         session, org_id=org_id, circuit_id=circuit_id, now=now, grace_seconds=OVERDUE_GRACE_SECONDS
     )
+    agents, settings = service_run.get_room_agents(), get_settings()
     moved = 0
     for row in due:
         try:
@@ -56,8 +57,8 @@ async def advance_due(
                     row.org_id,
                     row.circuit_id,
                     expected_seq=row.phase_seq,
-                    agents=service_run.get_room_agents(),
-                    settings=get_settings(),
+                    agents=agents,
+                    settings=settings,
                     now=now,
                 ):
                     moved += 1

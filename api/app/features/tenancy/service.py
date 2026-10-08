@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership as TokenMembership
 from app.core.auth import Principal
-from app.core.tenancy import OrgRef
+from app.core.tenancy import OrgRef, OrgSuspended
 from app.features.tenancy import domain, repository
 from app.features.tenancy.errors import OrgNotFound, OrgSlugTaken
 from app.features.tenancy.schemas import AuditRead, OrganizationRead
@@ -24,6 +24,13 @@ is_assigned_staff = domain.is_assigned_staff
 may_read_org = domain.may_read_org
 may_run_circuit = domain.may_run_circuit
 org_permits_access = domain.org_permits_access
+
+
+async def ensure_org_active(session: AsyncSession, org_id: uuid.UUID) -> None:
+    """Refuse (403 `organization_suspended`) unless the organisation exists and permits access."""
+    org = await repository.organization_by_id(session, org_id)
+    if org is None or not domain.org_permits_access(org.status):
+        raise OrgSuspended()
 
 
 async def org_ref_by_slug(session: AsyncSession, slug: str) -> OrgRef | None:
