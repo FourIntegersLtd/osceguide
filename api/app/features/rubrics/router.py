@@ -176,9 +176,7 @@ async def edit_platform_version(
 async def publish_platform_version(
     rubric_id: uuid.UUID, version: int, admin: PlatformAdmin, session: Session, clock: ClockDep
 ) -> schemas.RubricVersionRead:
-    return await service.publish_version(
-        session, None, rubric_id, version, actor=admin, now=clock.now()
-    )
+    return await service.publish_version(session, None, rubric_id, version, actor=admin, now=clock.now())
 
 
 # Retire this platform version from use. Only a published version can be archived.

@@ -121,7 +121,5 @@ def live_board_stream(
 
     return capped(
         principal.user_id,
-        event_stream(
-            topics=[org_topic(org_id)], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True
-        ),
+        event_stream(topics=[org_topic(org_id)], snapshot=snapshot, bus=bus, snapshot_on_heartbeat=True),
     )
