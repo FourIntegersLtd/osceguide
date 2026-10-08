@@ -185,3 +185,11 @@ function sentenceCase(value: string): string {
   const text = value.replace(/_/g, " ");
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
+
+/** A copy of `set` with `id` added, or removed if it was there. */
+export function toggleInSet<T>(set: ReadonlySet<T>, id: T): Set<T> {
+  const next = new Set(set);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  return next;
+}

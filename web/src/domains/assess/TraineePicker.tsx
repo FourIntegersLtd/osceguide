@@ -2,7 +2,15 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { Input, Panel, cn } from "@/foundation/ui";
-import type { TraineeRow } from "@/domains/assess/CircuitBuilder";
+import { toggleInSet } from "@/domains/assess/support";
+
+export type TraineeRow = {
+  id: string;
+  user_id: string | null;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+};
 
 /** Who sits a circuit: the organisation's signed-in trainees, searchable, picked by user id. */
 export function TraineePicker({
@@ -80,14 +88,7 @@ export function TraineePicker({
                           ? "An exam circuit is one candidate's sitting. Deselect the current candidate to pick another."
                           : undefined
                       }
-                      onClick={() =>
-                        setPicked((current) => {
-                          const next = new Set(current);
-                          if (next.has(userId)) next.delete(userId);
-                          else next.add(userId);
-                          return next;
-                        })
-                      }
+                      onClick={() => setPicked((current) => toggleInSet(current, userId))}
                       className={cn(
                         "rounded-full border px-3 py-1.5 text-sm",
                         on

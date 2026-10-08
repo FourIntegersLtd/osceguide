@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, Button, Input, Spinner, cn, Panel } from "@/foundation/ui";
+import { Alert, Button, Input, Spinner, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import {
   StationLibrary,
@@ -10,17 +10,15 @@ import {
 } from "@/capabilities/stations";
 import type { CircuitShape } from "@/domains/assess/api";
 import { circuitLeads } from "@/domains/assess/support";
-import { TraineePicker } from "@/domains/assess/TraineePicker";
+import { TraineePicker, type TraineeRow } from "@/domains/assess/TraineePicker";
+import { BreaksPanel, DurationFields } from "@/domains/assess/TimingFields";
 import {
-  BREAK_MINUTES_BOUNDS,
   DEFAULT_BREAK_MINUTES,
   DEFAULT_READING_MINUTES,
   DEFAULT_SIMULATION_MINUTES,
-  READING_MINUTES_BOUNDS,
   clampReadingMinutes,
   MAX_EXAM_CANDIDATES,
   MAX_EXAM_STATIONS,
-  breakPositions,
   clampBreakMinutes,
   clampBreaks,
   modeSupportsBreaks,
@@ -52,14 +50,6 @@ import {
  * would be a lie that nothing would catch.
  */
 export type PickedStation = { version_id: string; title: string };
-
-export type TraineeRow = {
-  id: string;
-  user_id: string | null;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-};
 
 export type StaffRow = { user_id: string; email?: string | null; role: string };
 
@@ -128,7 +118,6 @@ export function CircuitBuilder({
   const isExam = modeSupportsBreaks(mode);
   const candidatesFull = isExam && picked.size >= MAX_EXAM_CANDIDATES;
   const tooManyStations = isExam && stations.length > MAX_EXAM_STATIONS;
-  const gaps = breakPositions(stations.length);
 
   const submit = useCallback(async () => {
     setBusy(true);
@@ -204,81 +193,23 @@ export function CircuitBuilder({
               ))}
             </select>
           </label>
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Reading (minutes)"
-              type="number"
-              min={READING_MINUTES_BOUNDS.min}
-              max={READING_MINUTES_BOUNDS.max}
-              value={reading}
-              onChange={(event) => setReading(Number(event.target.value))}
-            />
-            <Input
-              label="Consultation (minutes)"
-              type="number"
-              min={1}
-              value={simulation}
-              onChange={(event) => setSimulation(Number(event.target.value))}
-            />
-          </div>
+          <DurationFields
+            reading={reading}
+            setReading={setReading}
+            simulation={simulation}
+            setSimulation={setSimulation}
+          />
         </div>
       </Panel>
 
       {isExam ? (
-        <Panel
-          title="Breaks"
-          description="A break goes between two stations, never after the last one. Everyone on the circuit pauses during it."
-        >
-          <div className="flex flex-col gap-4">
-            <div className="max-w-[13rem]">
-              <Input
-                label="Break length (minutes)"
-                type="number"
-                min={BREAK_MINUTES_BOUNDS.min}
-                max={BREAK_MINUTES_BOUNDS.max}
-                value={breakMinutes}
-                onChange={(event) =>
-                  setBreakMinutes(Number(event.target.value))
-                }
-              />
-            </div>
-            {gaps.length === 0 ? (
-              <p className="text-sm text-ink-muted">
-                Add a second station before adding a break.
-              </p>
-            ) : (
-              <ul className="flex flex-wrap gap-2">
-                {gaps.map((position) => {
-                  const on = breaks.has(position);
-                  return (
-                    <li key={position}>
-                      <button
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() =>
-                          setBreaks((current) => {
-                            const next = new Set(current);
-                            if (next.has(position)) next.delete(position);
-                            else next.add(position);
-                            return next;
-                          })
-                        }
-                        className={cn(
-                          "rounded-full border px-3 py-1.5 text-sm",
-                          on
-                            ? "border-b2b-headline bg-b2b-headline text-ink-inverse"
-                            : "border-b2b-border bg-b2b-surface text-b2b-mid hover:text-b2b-headline",
-                        )}
-                      >
-                        After station {position}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </Panel>
+        <BreaksPanel
+          stationCount={stations.length}
+          breakMinutes={breakMinutes}
+          setBreakMinutes={setBreakMinutes}
+          breaks={breaks}
+          setBreaks={setBreaks}
+        />
       ) : null}
 
       <TraineePicker

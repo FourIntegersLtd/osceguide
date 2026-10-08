@@ -137,6 +137,7 @@ function Runner({
             orgSlug={orgSlug}
             circuitId={circuitId}
             busy={run.busy}
+            reconnecting={run.reconnecting}
             failure={run.failure}
             run={run.run}
             onDismissFailure={run.dismissFailure}

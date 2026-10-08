@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/foundation/ui";
 import { Dialog } from "@/domains/assess/team/chrome";
-import { validOverrideSeconds } from "@/domains/assess/sessions/support";
+import { MAX_EXTEND_SECONDS, validOverrideSeconds } from "@/domains/assess/sessions/support";
 
 export interface OverrideRequest {
   /** The control being confirmed, used as the busy key. */
@@ -96,7 +96,7 @@ function OverrideForm({
           <Input
             type="number"
             min={1}
-            max={3600}
+            max={MAX_EXTEND_SECONDS}
             value={seconds}
             onChange={(event) => setSeconds(Number(event.target.value))}
             className="mt-1"

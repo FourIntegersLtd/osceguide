@@ -266,6 +266,7 @@ export function pickFrame<T>(
 }
 
 /** `extend-clock` takes 1-3600 whole seconds. */
+export const MAX_EXTEND_SECONDS = 3600;
 export function validOverrideSeconds(seconds: number): boolean {
-  return Number.isInteger(seconds) && seconds >= 1 && seconds <= 3600;
+  return Number.isInteger(seconds) && seconds >= 1 && seconds <= MAX_EXTEND_SECONDS;
 }

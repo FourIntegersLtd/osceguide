@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { errorMessage, useAsync, useEventStream, type AsyncState } from "@/foundation/hooks";
 import type { RoomGrant } from "@/foundation/livekit";
 import {
@@ -22,6 +22,8 @@ export interface CircuitRun {
   activeSlot: ConsoleSlot | null;
   /** The name of the control being awaited, or null. */
   busy: string | null;
+  /** The stream is down on a circuit that is still running. */
+  reconnecting: boolean;
   failure: string | null;
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
   dismissFailure: () => void;
@@ -65,21 +67,16 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
 
   // The answer to the last action, drawn until the stream pushes something newer (R-18).
   const [fetched, setFetched] = useState<{ frame: CircuitConsole; over: CircuitConsole | null } | null>(null);
-  const streamFrame = useRef(stream.data);
-  useEffect(() => {
-    streamFrame.current = stream.data;
-  }, [stream.data]);
   const data = pickFrame(stream.data, fetched, initial.data);
-  useEffect(() => {
-    if (data?.circuit.ended_at != null) setEnded(true);
-  }, [data]);
+  // Latched in render, not an effect: the stream stops replacing the last frame once it has ended.
+  if (data?.circuit.ended_at != null && !ended) setEnded(true);
   const slots = useMemo(() => (data ? orderedSlots(data) : []), [data]);
   const activeSlot = useMemo(
     () => slots.find((slot) => slot.id === data?.circuit.active_slot_id) ?? null,
     [slots, data],
   );
 
-  const reload = initial.reload;
+  const streamed = stream.data;
   const run = useCallback(
     async (name: string, action: () => Promise<unknown>) => {
       setBusy(name);
@@ -88,16 +85,14 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
         await action();
         // The stream will push the new state within the moment, but a frame it sent
         // before the action must not be drawn over the answer: fetch it and keep it.
-        const over = streamFrame.current;
-        setFetched({ frame: await readConsole(orgSlug, circuitId), over });
-        reload();
+        setFetched({ frame: await readConsole(orgSlug, circuitId), over: streamed });
       } catch (cause) {
         setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
       } finally {
         setBusy(null);
       }
     },
-    [reload, orgSlug, circuitId],
+    [streamed, orgSlug, circuitId],
   );
 
   return {
@@ -106,8 +101,8 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
     connected: stream.connected,
     slots,
     activeSlot,
-    // No control is offered while the stream is down: it would act on a screen that may be stale.
-    busy: busy ?? (stream.connected || ended ? null : "reconnecting"),
+    busy,
+    reconnecting: !stream.connected && !ended,
     failure,
     run,
     dismissFailure: useCallback(() => setFailure(null), []),

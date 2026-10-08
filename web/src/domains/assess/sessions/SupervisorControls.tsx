@@ -27,6 +27,7 @@ export function SupervisorControls({
   orgSlug,
   circuitId,
   busy,
+  reconnecting,
   failure,
   run,
   onDismissFailure,
@@ -35,27 +36,30 @@ export function SupervisorControls({
   orgSlug: string;
   circuitId: string;
   busy: string | null;
+  /** The stream is down: nothing is offered that would act on a stale screen. */
+  reconnecting: boolean;
   failure: string | null;
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
   onDismissFailure: () => void;
 }) {
   const { session } = useSession();
-  const [request, setRequestRaw] = useState<OverrideRequest | null>(null);
+  const [request, setRequest] = useState<OverrideRequest | null>(null);
   // A new dialog must not open on the last action's failure.
-  const setRequest = (next: OverrideRequest | null) => {
-    if (next) onDismissFailure();
-    setRequestRaw(next);
+  const openRequest = (next: OverrideRequest) => {
+    onDismissFailure();
+    setRequest(next);
   };
+  const closeRequest = () => setRequest(null);
   const circuit = data.circuit;
   const started = circuit.started_at !== null;
   const ended = circuit.ended_at !== null;
-  const working = busy !== null;
+  const working = busy !== null || reconnecting;
 
   async function commit(input: { reason: string | null; seconds: number }) {
     if (!request) return;
     const pending = request;
     await run(pending.name, () => pending.run(input));
-    setRequestRaw(null);
+    closeRequest();
   }
 
   if (ended) {
@@ -114,7 +118,7 @@ export function SupervisorControls({
               variant="secondary"
               disabled={working}
               onClick={() =>
-                setRequest(circuit.paused ? resumeRequest(orgSlug, circuitId) : pauseRequest(orgSlug, circuitId))
+                openRequest(circuit.paused ? resumeRequest(orgSlug, circuitId) : pauseRequest(orgSlug, circuitId))
               }
             >
               {circuit.paused ? (
@@ -129,7 +133,7 @@ export function SupervisorControls({
               themeType="b2b"
               variant="secondary"
               disabled={working}
-              onClick={() => setRequest(extendRequest(orgSlug, circuitId))}
+              onClick={() => openRequest(extendRequest(orgSlug, circuitId))}
             >
               <HiOutlineClock className="h-4 w-4 shrink-0" aria-hidden /> Extend the clock
             </Button>
@@ -138,7 +142,7 @@ export function SupervisorControls({
               themeType="b2b"
               variant="secondary"
               disabled={working}
-              onClick={() => setRequest(resetRequest(orgSlug, circuitId))}
+              onClick={() => openRequest(resetRequest(orgSlug, circuitId))}
             >
               Reset the clock
             </Button>
@@ -147,7 +151,7 @@ export function SupervisorControls({
               themeType="b2b"
               variant="secondary"
               disabled={working}
-              onClick={() => setRequest(resendRequest(orgSlug, circuitId))}
+              onClick={() => openRequest(resendRequest(orgSlug, circuitId))}
             >
               <HiArrowPathRoundedSquare className="h-4 w-4 shrink-0" aria-hidden /> Resend the
               patient
@@ -157,7 +161,7 @@ export function SupervisorControls({
               themeType="b2b"
               variant="danger"
               disabled={working}
-              onClick={() => setRequest(endRequest(orgSlug, circuitId))}
+              onClick={() => openRequest(endRequest(orgSlug, circuitId))}
             >
               <HiStop className="h-4 w-4 shrink-0" aria-hidden /> End circuit
             </Button>
@@ -186,7 +190,7 @@ export function SupervisorControls({
         request={request}
         busy={working}
         error={failure}
-        onClose={() => setRequestRaw(null)}
+        onClose={closeRequest}
         onCommit={(input) => void commit(input)}
       />
     </div>

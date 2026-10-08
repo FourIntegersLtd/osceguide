@@ -7,11 +7,8 @@ import { useAsync } from "@/foundation/hooks";
 import type { StationLibraryScope } from "@/capabilities/stations";
 import { useSurface } from "@/capabilities";
 import { createCircuit, listActiveMembers, listActiveTrainees, readSitting, sittingLibraryScope } from "@/domains/assess/api";
-import {
-  CircuitBuilder,
-  type StaffRow,
-  type TraineeRow,
-} from "@/domains/assess/CircuitBuilder";
+import { CircuitBuilder, type StaffRow } from "@/domains/assess/CircuitBuilder";
+import type { TraineeRow } from "@/domains/assess/TraineePicker";
 
 /**
  * Put a circuit on a sitting: who sits it, at which stations, for how long.

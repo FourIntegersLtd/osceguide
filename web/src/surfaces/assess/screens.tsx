@@ -49,7 +49,16 @@ import {
  */
 
 /** Building a sitting or circuit is the administrator's; a supervisor who lands here by URL is told so rather than shown a form the server refuses. */
-const adminsOnly = <EmptyState title="Administrators only" description="Ask an administrator to make this change." />;
+function AdminsOnly({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireCapability
+      permission="schedule_sittings"
+      fallback={<EmptyState title="Administrators only" description="Ask an administrator to make this change." />}
+    >
+      {children}
+    </RequireCapability>
+  );
+}
 
 const slugOf = ({ workspace }: ScreenProps) => workspace.orgSlug ?? "";
 
@@ -70,17 +79,17 @@ function AssessSittingDetail(props: ScreenProps) {
 
 function AssessNewSitting(props: ScreenProps) {
   return (
-    <RequireCapability permission="schedule_sittings" fallback={adminsOnly}>
+    <AdminsOnly>
       <NewSitting orgSlug={slugOf(props)} />
-    </RequireCapability>
+    </AdminsOnly>
   );
 }
 
 function AssessNewCircuit(props: ScreenProps) {
   return (
-    <RequireCapability permission="schedule_sittings" fallback={adminsOnly}>
+    <AdminsOnly>
       <NewCircuit orgSlug={slugOf(props)} sittingId={props.params?.sittingId ?? ""} />
-    </RequireCapability>
+    </AdminsOnly>
   );
 }
 
@@ -94,9 +103,9 @@ function AssessCircuitRunner(props: ScreenProps) {
 
 function AssessCircuitEdit(props: ScreenProps) {
   return (
-    <RequireCapability permission="schedule_sittings" fallback={adminsOnly}>
+    <AdminsOnly>
       <EditCircuit orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />
-    </RequireCapability>
+    </AdminsOnly>
   );
 }
 

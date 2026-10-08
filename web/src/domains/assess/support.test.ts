@@ -3,6 +3,7 @@ import test from "node:test";
 import type { Programme, Sitting, SittingMode } from "@/domains/assess/api";
 import type { SittingFormValues } from "@/domains/assess/support";
 import {
+  toggleInSet,
   circuitLeads,
   fieldDateTime,
   hasChanges,
@@ -186,4 +187,11 @@ test("the sittings list says when its filters cover only what has loaded", () =>
 test("only somebody who can schedule is told to schedule", () => {
   assert.equal(sittingsEmptyDescription(true), "Schedule your first one to get started.");
   assert.equal(sittingsEmptyDescription(false), "An administrator schedules sittings; they will appear here.");
+});
+
+test("toggleInSet adds a missing id, removes a present one and leaves the original alone", () => {
+  const original = new Set(["a"]);
+  assert.deepEqual([...toggleInSet(original, "b")], ["a", "b"]);
+  assert.deepEqual([...toggleInSet(original, "a")], []);
+  assert.deepEqual([...original], ["a"]);
 });
