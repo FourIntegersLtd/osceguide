@@ -40,7 +40,7 @@
 > https://claude.ai/artifact/DdGp1umMckFMvBiiMaLPWQ
 
 
-77 tables across 24 slices. Every table's classes live in `app/features/<slice>/models.py`
+79 tables across 25 slices. Every table's classes live in `app/features/<slice>/models.py`
 and never leave that slice's repository.
 
 ## Conventions
@@ -525,7 +525,7 @@ team never saw one at all.
 | `station_id` | `uuid not null` → `stations.id` CASCADE | what the report is about, which is why this is a table of its own rather than a column on `users` |
 | `user_id` | `uuid not null` → `users.id` CASCADE | who reported it |
 | `status` | `varchar(16) not null default 'open'` | `open` \| `resolved` |
-| `resolution_note` | `text null` | what staff wrote when they closed it; never shown to the reporter — a queue, not an inbox |
+| `resolution_note` | `text null` | what staff wrote when they closed it. Sent to the reporter as an inbox message when the report is closed (open to resolved only) |
 | `resolved_by` | `uuid null` → `users.id` SET NULL | |
 | `resolved_at` | `timestamptz null` | cleared when a report is reopened, so an `open` row never answers twice |
 
@@ -565,6 +565,36 @@ were dropped 2026-09-24, migration `45481a44b73d`: authored but never
 mounted in `main.py`, never called by any live route, service or frontend
 caller, confirmed by a whole-tree grep before deletion. A sitting's rubric
 comes via its programme instead — see `attempts.rubric_version_id` below.
+
+## inbox — 2 tables
+
+### `user_messages`
+One in-app message to one person, or an announcement to everybody.
+
+| Field | Type | Notes |
+|---|---|---|
+| `recipient_user_id` | `uuid null` → `users.id` CASCADE | null only for an announcement |
+| `sender_user_id` | `uuid null` → `users.id` SET NULL | the staff member; never shown to the recipient |
+| `kind` | `varchar(32) not null` | CHECK `ck_user_messages_kind`: `report_answer`, `reply`, `note` or `announcement` |
+| `subject` | `varchar(200) not null` | |
+| `body` | `text not null` | |
+| `station_flag_id` | `uuid null` → `station_flags.id` SET NULL | the report a `report_answer` closes |
+| `site_message_id` | `uuid null` → `site_messages.id` SET NULL | the message a `reply` answers |
+| `withdrawn_at` | `timestamptz null` | announcements only: hidden from every inbox without losing the row |
+
+CHECK `ck_user_messages_audience`: `(kind = 'announcement') = (recipient_user_id IS NULL)`, so an
+announcement has no recipient and nothing else lacks one. INDEX `(recipient_user_id, created_at, id)`
+for one person's inbox; partial INDEX `(created_at, id) WHERE recipient_user_id IS NULL` for
+announcements. An announcement is visible to accounts created at or before it, so a new sign-up does
+not inherit history.
+
+### `user_message_reads`
+That one person opened one message.
+
+| Field | Type | Notes |
+|---|---|---|
+| `user_id`, `message_id` | `uuid not null` → `users.id`, `user_messages.id` CASCADE | composite primary key. Written only when somebody reads: an announcement is never fanned out into a row per user |
+| `read_at` | `timestamptz not null default now()` | |
 
 ## station_sets — 2 tables
 

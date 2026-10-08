@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import { LuChevronRight, LuSearch } from "react-icons/lu";
+import Link from "next/link";
+import { LuChevronRight, LuInbox, LuSearch } from "react-icons/lu";
 import { isNavActive } from "@/foundation/navigation/isNavActive";
+import { inboxAriaLabel } from "@/capabilities/inbox";
 import type { NavItem } from "@/surfaces/contract";
 import { WorkspaceJumpTo } from "@/surfaces/WorkspaceJumpTo";
 
@@ -28,6 +30,9 @@ export interface WorkspaceToolbarProps {
   rootLabel: string;
   sectionLabels: Record<string, string>;
   basePath: string;
+  /** Where the inbox lives; null on arms without one. */
+  inboxHref?: string | null;
+  unread?: number;
 }
 
 /**
@@ -39,6 +44,8 @@ export function WorkspaceToolbar({
   rootLabel,
   sectionLabels,
   basePath,
+  inboxHref = null,
+  unread = 0,
 }: WorkspaceToolbarProps) {
   const pathname = usePathname() ?? "";
   const [jumpOpen, setJumpOpen] = useState(false);
@@ -92,6 +99,18 @@ export function WorkspaceToolbar({
       >
         <LuSearch className="h-4 w-4" aria-hidden />
       </button>
+      {inboxHref ? (
+        <Link
+          href={inboxHref}
+          aria-label={inboxAriaLabel(unread)}
+          className="relative inline-flex h-[30px] w-[30px] items-center justify-center rounded-osce-md text-b2c-text-secondary hover:bg-b2c-secondary"
+        >
+          <LuInbox className="h-4 w-4" aria-hidden />
+          {unread > 0 ? (
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-osce-accent" aria-hidden />
+          ) : null}
+        </Link>
+      ) : null}
       {jumpOpen ? <WorkspaceJumpTo items={items} onClose={() => setJumpOpen(false)} /> : null}
     </div>
   );

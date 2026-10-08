@@ -13,8 +13,10 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.features.identity import service as identity
-from app.features.stations import errors, repository
+from app.features.inbox import service as inbox
+from app.features.stations import domain, errors, repository
 from app.features.stations import repository_flags as flags
 from app.features.stations.models import StationFlag
 from app.features.stations.schemas import StationFlagRead, UpdateStationFlag
@@ -79,29 +81,39 @@ async def decide(
     flag_id: uuid.UUID,
     *,
     body: UpdateStationFlag,
-    actor_id: uuid.UUID,
+    actor: Principal,
     now: datetime,
 ) -> StationFlagRead:
     """Close a report, or put it back on the queue.
 
     `resolved_at` is cleared on reopen rather than left to read as history: a
     row that says `open` and carries a resolution timestamp answers to nobody.
+    Closing an open report sends the reporter the answer in their inbox; reopening
+    and re-resolving send nothing.
     """
     flag = await flags.by_id(session, flag_id)
     if flag is None:
         raise errors.StationFlagNotFound()
-    return _read(
-        await flags.set_resolved(
-            session,
-            flag,
-            status=body.status,
-            note=body.note,
-            actor_id=actor_id,
-            resolved_at=now if body.status == "resolved" else None,
-        ),
-        (await flags.titles_by_ids(session, [flag.station_id])).get(flag.station_id),
-        None,
+    was_open = flag.status == "open"
+    updated = await flags.set_resolved(
+        session,
+        flag,
+        status=body.status,
+        note=body.note,
+        actor_id=actor.user_id,
+        resolved_at=now if body.status == "resolved" else None,
     )
+    title = (await flags.titles_by_ids(session, [flag.station_id])).get(flag.station_id)
+    if domain.should_notify_reporter(was_open=was_open, status=body.status):
+        await inbox.deliver_report_answer(
+            session,
+            actor=actor,
+            flag_id=flag.id,
+            recipient_id=flag.user_id,
+            station_title=title,
+            note=body.note,
+        )
+    return _read(updated, title, None)
 
 
 def _read(flag: StationFlag, station_title: str | None, reporter_name: str | None) -> StationFlagRead:

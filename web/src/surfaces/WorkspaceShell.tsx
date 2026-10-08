@@ -11,6 +11,7 @@ import {
   NAV_SECTIONS,
   NAV_SECTION_LABELS,
 } from "@/capabilities";
+import { InboxUnreadProvider, useInboxUnread } from "@/capabilities/inbox";
 import ChooseExam from "@/capabilities/account/ChooseExam";
 import { LazyB2CHelpDock } from "@/capabilities/help/LazyB2CHelpDock";
 import { PeerPracticeProvider } from "@/capabilities/peer-practice/PeerPracticeProvider";
@@ -73,15 +74,24 @@ export function WorkspaceShell({
     return [...own, ...mounted];
   }, [manifest, workspace, session, href, basePath, examCode]);
 
+  // Only an arm that mounts the inbox asks for the count; staff and
+  // institution shells never make the request.
+  const inboxItem = items.find((item) => item.key === "inbox");
+  const unread = useInboxUnread(Boolean(inboxItem));
+  const countedItems = useMemo<NavItem[]>(
+    () => items.map((item) => (item.key === "inbox" ? { ...item, count: unread.count } : item)),
+    [items, unread.count],
+  );
+
   const groups = useMemo(() => {
-    const ungrouped = items.filter((item) => !item.section);
+    const ungrouped = countedItems.filter((item) => !item.section);
     const sections = NAV_SECTIONS.map((section) => ({
       section,
       label: NAV_SECTION_LABELS[section],
-      items: items.filter((item) => item.section === section),
+      items: countedItems.filter((item) => item.section === section),
     })).filter((group) => group.items.length > 0);
     return { ungrouped, sections };
-  }, [items]);
+  }, [countedItems]);
 
   const helpNav = useMemo<HelpNavItem[]>(
     () => items.map((item) => ({ key: item.key, label: item.label, path: item.href })),
@@ -94,6 +104,7 @@ export function WorkspaceShell({
 
   return (
     <SurfaceProvider surface={manifest.id} orgSlug={workspace.orgSlug ?? null} basePath={basePath}>
+      <InboxUnreadProvider value={unread} enabled={Boolean(inboxItem)}>
       <div
         data-surface={manifest.id}
         data-b2c-shell=""
@@ -126,6 +137,7 @@ export function WorkspaceShell({
             onNavCollapsedChange={setNavCollapsed}
             menuOpen={menuOpen}
             onMenuOpenChange={setMenuOpen}
+            unread={unread.count}
           />
         </div>
 
@@ -135,6 +147,8 @@ export function WorkspaceShell({
             rootLabel={isTrain ? "Practice" : staff ? "Platform console" : workspace.name}
             sectionLabels={NAV_SECTION_LABELS}
             basePath={basePath}
+            inboxHref={inboxItem?.href ?? null}
+            unread={unread.count}
           />
           <main
             id="main"
@@ -157,6 +171,7 @@ export function WorkspaceShell({
           setIsWide={setHelpWide}
         />
       </div>
+      </InboxUnreadProvider>
     </SurfaceProvider>
   );
 }

@@ -102,4 +102,4 @@ async def decide_station_flag(
     clock: ClockDep,
 ) -> schemas.StationFlagRead:
     """Close a report with a note, or reopen a closed one."""
-    return await service_flags.decide(session, flag_id, body=body, actor_id=admin.user_id, now=clock.now())
+    return await service_flags.decide(session, flag_id, body=body, actor=admin, now=clock.now())

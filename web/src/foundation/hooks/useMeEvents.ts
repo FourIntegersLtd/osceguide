@@ -14,7 +14,8 @@ export type MeEventName =
   | "media.updated"
   | "station_import.updated"
   | "station.updated"
-  | "coverage";
+  | "coverage"
+  | "message.received";
 
 /** A synthetic event this hook invents, never sent by the server: "go re-read your own state". */
 export type MeSignal = MeEventName | "resync";
@@ -111,6 +112,7 @@ class MeEventHub {
         "station_import.updated",
         "station.updated",
         "coverage",
+        "message.received",
         "connected",
         "ping",
       ] satisfies (MeEventName | "connected" | "ping")[]

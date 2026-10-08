@@ -145,8 +145,13 @@ palette.
 The kit paints with **semantic colours** (`text-ink`, `text-ink-subtle`,
 `border-border`, `bg-surface`, `bg-accent-subtle`) and the **`text-osce-*` type
 scale**; staff screens compose the kit and carry no raw colour or radius
-classes of their own. One card primitive on the console: `Panel` — never the
-generic `Card` or a ported `B2C*` card. Tabs are `B2CSegmentedTabs` directly
+classes of their own. Queue and list screens (Users, Referral payouts,
+Moderation, and the inbox and report screens as they move) use the **quiet
+kit**: `B2CPageHeader`, one `B2CHero` with a one-line state headline, `B2CGroupedSection`
+rows with a trailing `Badge` as the only colour, and the opened item as a
+`QuietCard` (title, subtitle, actions, body; the one wrapper over `B2CPanelCard`); `consoleDesign.test.ts` forbids `Panel`, `RowList`, `StatTile`
+and `PlatformPageHeader` in them. `Panel` remains for screens not yet moved —
+never the generic `Card`. Tabs are `B2CSegmentedTabs` directly
 under a `PlatformPageHeader` (or via `PlatformTabbedScreen`).
 
 - **Shell** (`surfaces/platform/PlatformStaffShell.tsx`, `PlatformSidebar.tsx`):

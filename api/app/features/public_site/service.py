@@ -14,11 +14,13 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.core.errors import AppError, raise_mapped
 from app.core.pagination import CursorParams, Page
 from app.core.redis import get_redis
 from app.features.attempts import service_reads as attempts
 from app.features.identity import service as identity
+from app.features.inbox import service as inbox
 from app.features.public_site import domain, errors, repository, schemas
 from app.features.stations import service_reads as stations
 
@@ -118,6 +120,30 @@ async def mark_handled(
     message = await repository.mark_handled(session, message_id=message_id, by=by, at=at)
     if message is None:
         raise errors.MessageNotFound()
+    return _read(message)
+
+
+async def reply(
+    session: AsyncSession, *, message_id: uuid.UUID, body: str, actor: Principal, at: datetime
+) -> schemas.MessageRead:
+    """Answer a message in the sender's inbox and take it out of the queue.
+
+    Marked handled first, which is also the lookup. A sender who was not signed in has no inbox, and
+    the refusal rolls the request back, so nothing stays marked.
+    """
+    message = await repository.mark_handled(session, message_id=message_id, by=actor.user_id, at=at)
+    if message is None:
+        raise errors.MessageNotFound()
+    if message.user_id is None:
+        raise errors.CannotReplyInApp()
+    await inbox.deliver_reply(
+        session,
+        actor=actor,
+        site_message_id=message.id,
+        recipient_id=message.user_id,
+        original_subject=message.subject,
+        body=body,
+    )
     return _read(message)
 
 

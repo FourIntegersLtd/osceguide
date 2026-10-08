@@ -189,10 +189,10 @@ async def test_mail_abandoned_in_an_outage_is_listed_and_sent_again_on_retry(
 
     from sqlalchemy import select
 
-    from app.features.tenancy.models import AuditEntry
     from app.features.notifications import domain
     from app.features.notifications import repository as outbox
     from app.features.notifications import service as notifications
+    from app.features.tenancy.models import AuditEntry
     from tests.support.fakes import RecordingEmailSender
 
     root = await make_actor("root@osceguide.com", platform_admin=True)

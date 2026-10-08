@@ -5,6 +5,7 @@ import { LuShieldCheck } from "react-icons/lu";
 import {
   AsyncBoundary,
   Badge,
+  Button,
   B2CSegmentedTabs,
   PlatformPageHeader,
   type B2CSegmentedTabItem,
@@ -14,6 +15,7 @@ import { useSurface } from "@/capabilities";
 import { readDirectoryUser, readUser, type PlatformUserDetail } from "@/domains/platform/api";
 import { formatDay } from "@/domains/platform/support";
 import { accessLabel, accessOf, accessTone, userStatusTone } from "@/domains/platform/users/vocabulary";
+import { SendMessageModal } from "@/domains/platform/user/SendMessageModal";
 import { AccountTab } from "@/domains/platform/user/AccountTab";
 import { AttemptsTab } from "@/domains/platform/user/AttemptsTab";
 import { BillingTab } from "@/domains/platform/user/BillingTab";
@@ -48,6 +50,9 @@ export function UserDetail({ userId }: { userId: string }) {
   // The directory's row: paid, plan, live access, signed in. Its own load so a
   // hiccup in one of four slices does not take the profile down with it.
   const facts = useAsync((signal) => readDirectoryUser(userId, signal), [userId]);
+  const [messaging, setMessaging] = useState(false);
+  // Bumped after a message is sent, so History is re-read and shows the audit row.
+  const [historyKey, setHistoryKey] = useState(0);
   const [fresh, setFresh] = useState<PlatformUserDetail | null>(null);
   const user = fresh ?? state.data;
 
@@ -74,6 +79,9 @@ export function UserDetail({ userId }: { userId: string }) {
                 back={{ href: hrefFor("/users"), label: "Users" }}
                 actions={
                   <span className="flex flex-wrap items-center gap-1.5">
+                    <Button variant="secondary" size="sm" onClick={() => setMessaging(true)}>
+                      Send message
+                    </Button>
                     <Badge tone={userStatusTone(current.status)}>
                       {current.status === "deactivated" ? "Deactivated" : "Active"}
                     </Badge>
@@ -109,7 +117,14 @@ export function UserDetail({ userId }: { userId: string }) {
               {tab === "account" ? (
                 <AccountTab user={current} facts={facts.data} onChanged={changed} onOpenTab={setTab} />
               ) : null}
-              {tab === "history" ? <HistoryTab userId={current.id} /> : null}
+              {tab === "history" ? <HistoryTab key={historyKey} userId={current.id} /> : null}
+              {messaging ? (
+                <SendMessageModal
+                  userId={current.id}
+                  onClose={() => setMessaging(false)}
+                  onSent={() => setHistoryKey((key) => key + 1)}
+                />
+              ) : null}
             </>
           );
         }}

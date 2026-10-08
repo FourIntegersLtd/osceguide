@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { LuCreditCard, LuUserRound, LuUsers } from "react-icons/lu";
 import {
   AsyncBoundary,
-  PlatformPageHeader,
-  StatGrid,
-  StatTile,
+  B2CHero,
+  B2CPageHeader,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
+import { plural } from "@/foundation/format";
 import { useSurface } from "@/capabilities";
 import { listPlans } from "@/capabilities/account/api";
 import {
@@ -57,14 +56,14 @@ export function Users() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
-        title="Users"
-      />
+      <B2CPageHeader title="Users" />
 
       <AsyncBoundary state={summary}>
         {(counts) => (
           <>
-            <SummaryStrip summary={counts} />
+            <B2CHero title={plural(counts.total, "account")}>
+              {counts.paid} paid · {counts.trial} on trial
+            </B2CHero>
             <DirectoryFilters
               exams={counts.exams}
               plans={plans.data ?? []}
@@ -155,15 +154,5 @@ function Groups({
         </p>
       ) : null}
     </>
-  );
-}
-
-function SummaryStrip({ summary }: { summary: DirectorySummary }) {
-  return (
-    <StatGrid>
-      <StatTile label="Accounts" value={summary.total} icon={LuUsers} />
-      <StatTile label="Paid" value={summary.paid} icon={LuCreditCard} />
-      <StatTile label="On trial" value={summary.trial} icon={LuUserRound} />
-    </StatGrid>
   );
 }

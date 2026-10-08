@@ -87,3 +87,8 @@ def ensure_usable_in_circuit(station_version: VersionRef) -> None:
     """
     if station_version.status is not Status.PUBLISHED:
         raise StationNotPublished("A circuit can only use a published station.")
+
+
+def should_notify_reporter(*, was_open: bool, status: str) -> bool:
+    """A reporter hears back when an open report is closed, and not on a reopen or a note edit."""
+    return was_open and status == "resolved"

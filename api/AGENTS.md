@@ -122,7 +122,7 @@ make guards                                    # tests/guards only, fast
 | `voice/`, `assistant/`, `tutor_memory/`, `attempts/` apart from scoring, and the parts of `sittings/` and `peer_practice/` that start a room or receive a transcript | `voice-station-owner` | `verify-voice-station` skill |
 | Scoring (`attempts/` evaluator, jobs, renderer), `rubrics/`, `catalog/` exams, `reviews/scoring.py`, outcome computation in `results/`, the legacy oracles | `marking-owner` | `verify-marking` skill |
 | `sittings/` (circuits, clock, edit), `roster/`, `tenancy/`, the review and decision workflow, programmes, org read models in `dashboard/` | `institution-owner` | `verify-institution` skill |
-| `identity/`, `sso/`, `entitlements/`, `billing/`, `growth/`, `notifications/` | `access-owner` | `verify-access` skill |
+| `identity/`, `sso/`, `entitlements/`, `billing/`, `growth/`, `notifications/`, `inbox/` | `access-owner` | `verify-access` skill |
 | `stations/`, `station_sets/`, `generation/`, `media/`, `media_production/`, `community/`, `marketplace/`, `peer_practice/`, `cv/`, `public_site/`, the `import_b2c_*` scripts | `content-owner` | `verify-content` skill |
 | Learner read models in `dashboard/` | `platform-web-owner` | platform-web `verify` skill |
 

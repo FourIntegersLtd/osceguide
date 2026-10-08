@@ -434,6 +434,61 @@ export function markMessageHandled(messageId: string): Promise<SiteMessage> {
   );
 }
 
+/**
+ * Answer a message in its sender's inbox, and take it out of the queue.
+ * A sender who wrote without signing in has no inbox: that is a 409 with the
+ * code `message_not_repliable`, and the screen offers their email instead.
+ */
+export function replyToSiteMessage(messageId: string, body: string): Promise<SiteMessage> {
+  return platformRequest<SiteMessage>(
+    `${PLATFORM}/site/messages/${encodeURIComponent(messageId)}/reply`,
+    { method: "POST", body: { body } satisfies components["schemas"]["ReplyToSiteMessage"] },
+  );
+}
+
+/* ---------- notes and announcements in learners' inboxes ---------- */
+
+export type SentInboxMessage = components["schemas"]["SentInboxMessage"];
+export type Announcement = components["schemas"]["PlatformAnnouncementRead"];
+export type AnnouncementPage = components["schemas"]["Page_PlatformAnnouncementRead_"];
+
+/** A note to one person's inbox. In-app only; no email is sent. */
+export function sendUserNote(
+  userId: string,
+  input: { subject: string; body: string },
+): Promise<SentInboxMessage> {
+  return platformRequest<SentInboxMessage>(
+    `${PLATFORM}/users/${encodeURIComponent(userId)}/messages`,
+    { method: "POST", body: input satisfies components["schemas"]["SendUserNote"] },
+  );
+}
+
+/** Every announcement, withdrawn ones included, with how many people read it. */
+export function listAnnouncements(
+  query: { cursor?: string | null; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<AnnouncementPage> {
+  return platformRequest<AnnouncementPage>(`${PLATFORM}/announcements`, {
+    signal,
+    query: { cursor: query.cursor ?? undefined, limit: query.limit ?? 25 },
+  });
+}
+
+/** Tell every learner something. Reaches accounts that exist now; later sign-ups do not see it. */
+export function postAnnouncement(input: { subject: string; body: string }): Promise<SentInboxMessage> {
+  return platformRequest<SentInboxMessage>(`${PLATFORM}/announcements`, {
+    method: "POST",
+    body: input satisfies components["schemas"]["PostAnnouncement"],
+  });
+}
+
+export function withdrawAnnouncement(messageId: string): Promise<Announcement> {
+  return platformRequest<Announcement>(
+    `${PLATFORM}/announcements/${encodeURIComponent(messageId)}/withdraw`,
+    { method: "POST" },
+  );
+}
+
 /* ---------- the station report queue ---------- */
 
 export type StationFlag = components["schemas"]["StationFlagRead"];

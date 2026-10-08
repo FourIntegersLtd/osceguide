@@ -33,6 +33,7 @@ from the slices that own the rows.
 | `POST /site/messages` | Anyone; rate-limited per caller |
 | `GET /platform/site/messages` | Platform admin |
 | `POST /platform/site/messages/{id}/handled` | Platform admin |
+| `POST /platform/site/messages/{id}/reply` | Platform admin; answers into the sender's inbox, 409 `message_not_repliable` when they were not signed in |
 
 ## Jobs
 
@@ -42,6 +43,6 @@ when that grows a channel for it.
 
 ## Cross-slice dependencies
 
-Through services only, and only to count: `attempts` (consultations and
+Through services only. `inbox` (a reply is delivered there). To count: `attempts` (consultations and
 debriefs), `identity` (users), `stations` (the platform catalogue). This slice
 reads no table but its own.

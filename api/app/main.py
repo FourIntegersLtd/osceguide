@@ -58,6 +58,7 @@ from app.features.growth.router import router as growth_router
 from app.features.health.router_platform import router as platform_health_router
 from app.features.identity.router import router as identity_router
 from app.features.identity.router_me import router as identity_me_router
+from app.features.inbox.router import router as inbox_router
 from app.features.marketplace.router import router as marketplace_router
 from app.features.media.router import router as media_router
 from app.features.media_production.router import router as media_production_router
@@ -167,6 +168,7 @@ def api_v1_router() -> APIRouter:
     router.include_router(media_router)
     router.include_router(media_production_router)
     router.include_router(sso_router)
+    router.include_router(inbox_router)
     router.include_router(public_site_router)
     router.include_router(tutor_memory_router)
     return router

@@ -207,6 +207,30 @@ async def test_closing_a_report_sticks_and_reopening_clears_it(client: AsyncClie
     assert answered.json()["items"] == []
 
 
+async def test_closing_a_report_tells_the_reporter_on_closing_only(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    station_id = await a_station(client, admin)
+    reader = await make_actor("told@example.com")
+    await client.post("/api/v1/me/station-flags", json={"station_id": station_id}, headers=bearer(reader))
+    root = await make_actor(f"queue-{uuid.uuid4().hex[:8]}@osceguide.com", platform_admin=True)
+    flag_id = (await client.get("/api/v1/platform/station-flags", headers=bearer(root))).json()["items"][0][
+        "id"
+    ]
+    url = f"/api/v1/platform/station-flags/{flag_id}"
+
+    await client.patch(url, json={"status": "resolved", "note": "Wording fixed."}, headers=bearer(root))
+    inbox = (await client.get("/api/v1/me/messages", headers=bearer(reader))).json()["items"]
+    assert [(m["kind"], m["subject"], m["body"]) for m in inbox] == [
+        ("report_answer", "About your report: Wheezy child", "Wording fixed.")
+    ]
+
+    # Editing the note of a closed report, and reopening it, say nothing new.
+    await client.patch(url, json={"status": "resolved", "note": "Reworded."}, headers=bearer(root))
+    await client.patch(url, json={"status": "open"}, headers=bearer(root))
+    after = (await client.get("/api/v1/me/messages", headers=bearer(reader))).json()["items"]
+    assert len(after) == 1
+
+
 async def test_an_unknown_report_cannot_be_closed(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     root = await make_actor(f"queue-{uuid.uuid4().hex[:8]}@osceguide.com", platform_admin=True)
     response = await client.patch(

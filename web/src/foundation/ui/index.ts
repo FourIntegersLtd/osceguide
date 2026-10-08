@@ -79,6 +79,7 @@ export {
   type B2CSegmentedTabItem,
   type B2CSegmentedTabsProps,
 } from "@/foundation/ui/B2CSegmentedTabs";
+export { QuietCard } from "@/foundation/ui/QuietCard";
 export { B2CSkeleton } from "@/foundation/ui/B2CSkeleton";
 export { default as Back } from "@/foundation/ui/Back";
 export { default as Confetti } from "@/foundation/ui/Confetti";

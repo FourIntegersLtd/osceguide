@@ -28,6 +28,7 @@ TAGS: list[dict[str, str]] = [
     {"name": "identity", "description": "Accounts, sessions and passwords"},
     {"name": "tenancy", "description": "Organisations, membership and access"},
     {"name": "sso", "description": "Which organisation a visitor signs in through"},
+    {"name": "inbox", "description": "In-app messages to a person, and announcements to everybody"},
     {"name": "public-site", "description": "What the marketing site reads, and what visitors send us"},
     {"name": "catalog", "description": "Exams and the programmes that offer them"},
     {"name": "rubrics", "description": "What a candidate is marked against, and who wrote it"},
@@ -185,11 +186,13 @@ class MeEventEnvelope(BaseModel):
     """One frame of the `/me/events` fan-in stream: a named event and its small id payload.
 
     Every other stream's frame is the same shape as its `GET`'s response model, named by
-    `sse_responses`. `/me/events` multiplexes many differently-shaped events (`attempt`,
-    `practice.session_updated`, `cv.read`, `media.updated`, `station_import.updated`, `coverage`,
-    ...) onto one connection, so there is no single response model to point at. This envelope documents
-    the shape every frame shares instead: the event's name, and a small object of the ids
-    naming what changed — never the changed data itself, which the client re-fetches.
+    `sse_responses`. `/me/events` multiplexes many differently-shaped events onto one connection, so
+    there is no single response model to point at. This envelope documents the shape every frame
+    shares instead: the event's name, and a small object of the ids naming what changed — never the
+    changed data itself, which the client re-fetches.
+
+    The events: `attempt`, `practice.session_updated`, `practice.matched`, `practice.accepted`,
+    `cv.read`, `media.updated`, `station_import.updated`, `message.received`, `coverage`.
     """
 
     event: str
@@ -207,9 +210,7 @@ def fan_in_responses(*errors: type[Any]) -> dict[int | str, dict[str, Any]]:
     responses[200] = {
         "description": (
             "An SSE stream multiplexing this user's own events onto one connection: "
-            "`connected`, then a named event (`attempt`, `practice.session_updated`, "
-            "`cv.read`, `media.updated`, `station_import.updated`, `coverage`, ...) each time "
-            "something changes, "
+            "`connected`, then a named event (listed on `MeEventEnvelope`) each time something changes, "
             "whose shape is `MeEventEnvelope`, and `ping` every 25 seconds."
         ),
         "content": {SSE_MEDIA_TYPE: {"schema": {"$ref": "#/components/schemas/MeEventEnvelope"}}},

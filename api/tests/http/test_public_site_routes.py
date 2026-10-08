@@ -118,3 +118,43 @@ async def test_the_inbox_filters_on_handled_and_pages(client: AsyncClient, make_
     )
     assert len(rest.json()["items"]) == 1
     assert rest.json()["items"][0]["id"] != one.json()["items"][0]["id"]
+
+
+async def test_a_reply_lands_in_the_senders_inbox_and_handles_the_message(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor
+) -> None:
+    asker = await make_actor("asker@example.com")
+    sent = await client.post(
+        MESSAGES,
+        json={"kind": "product_feedback", "subject": "Timer", "body": "Too small."},
+        headers=bearer(asker),
+    )
+    message_id = sent.json()["id"]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+
+    replied = await client.post(
+        f"/api/v1/platform/site/messages/{message_id}/reply",
+        json={"body": "Fixed in the next release."},
+        headers=bearer(root),
+    )
+    assert replied.status_code == 200, replied.text
+    assert replied.json()["handled_at"] is not None
+
+    inbox = (await client.get("/api/v1/me/messages", headers=bearer(asker))).json()["items"]
+    assert [(m["kind"], m["subject"], m["body"]) for m in inbox] == [
+        ("reply", "Re: Timer", "Fixed in the next release.")
+    ]
+
+
+async def test_an_anonymous_message_cannot_be_replied_to_in_app(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    sent = await client.post(
+        MESSAGES, json={"kind": "contact", "email": "visitor@example.com", "body": "Student rate?"}
+    )
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    refused = await client.post(
+        f"/api/v1/platform/site/messages/{sent.json()['id']}/reply",
+        json={"body": "Yes."},
+        headers=bearer(root),
+    )
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "message_not_repliable"

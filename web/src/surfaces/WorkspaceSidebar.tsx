@@ -28,6 +28,8 @@ export interface WorkspaceSidebarProps {
   onNavCollapsedChange: (collapsed: boolean) => void;
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
+  /** Unread inbox messages: a dot on the phone menu button. */
+  unread?: number;
 }
 
 /**
@@ -46,6 +48,7 @@ export function WorkspaceSidebar({
   onNavCollapsedChange,
   menuOpen,
   onMenuOpenChange,
+  unread = 0,
 }: WorkspaceSidebarProps) {
   const ariaLabel = `${label} sections`;
   const standalone = useStandaloneDisplay();
@@ -61,9 +64,12 @@ export function WorkspaceSidebar({
           onClick={() => onMenuOpenChange(!menuOpen)}
           aria-expanded={menuOpen}
           aria-label={menuOpen ? "Close menu" : "Open menu"}
-          className={b2cIconButton}
+          className={`${b2cIconButton} relative`}
         >
           {menuOpen ? <MdClose className="h-5 w-5" /> : <MdMenu className="h-5 w-5" />}
+          {unread > 0 && !menuOpen ? (
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-osce-accent" aria-hidden />
+          ) : null}
         </button>
         <Logo variant="light" interactive={false} />
         {/* The installed app has no browser toolbar, so no way to reload a

@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/foundation/format";
 import { BsLightningChargeFill, BsStarFill, BsTrophyFill } from "react-icons/bs";
 import { HiOutlineInformationCircle, HiOutlinePlay } from "react-icons/hi2";
 import { B2CPageHeader, ButtonLink, cn, productTokens } from "@/foundation/ui";
@@ -175,10 +176,6 @@ function BadgeTile({
       {caption ? <span className="font-mono text-osce-meta tabular-nums text-b2c-text-muted">{caption}</span> : null}
     </li>
   );
-}
-
-function plural(count: number, word: string): string {
-  return `${count} ${word}${count === 1 ? "" : "s"}`;
 }
 
 function numberWord(value: number): string {

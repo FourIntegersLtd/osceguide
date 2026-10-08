@@ -152,8 +152,7 @@ async def stream_my_events(
     """One stream, every kind of thing that happens to this person.
 
     The one live-update connection a signed-in tab holds. Each frame names
-    what happened (`attempt`, `practice.session_updated`, `practice.matched`,
-    `practice.accepted`, `cv.read`, `media.updated`, `station_import.updated`, `coverage`, ...) and
+    what happened (the events are listed on `MeEventEnvelope`) and
     carries just enough of a payload — an id — for a screen to tell whether it
     is the one being talked about; it still re-reads its own resource rather
     than trusting the frame's content as truth. Every screen that waits on

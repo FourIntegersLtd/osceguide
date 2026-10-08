@@ -69,3 +69,8 @@ export function formatShortDateTime(iso: string | null | undefined): string {
     minute: "2-digit",
   });
 }
+
+/** "1 station", "3 stations"; pass `many` for an irregular plural. */
+export function plural(count: number, one: string, many = `${one}s`): string {
+  return `${count} ${count === 1 ? one : many}`;
+}

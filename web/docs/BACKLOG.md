@@ -8,6 +8,10 @@ differently on purpose. It replaces `port-gaps.md`, `parity-fix-plan.md`,
 Rows with an ID keep it, so the code comments that cite one still resolve.
 Don't start another list in another repo. Add a row here.
 
+**Breakage list:** everything that breaks, misleads or dead-ends a user is in
+`docs/EXPERIENCE-GAPS.md` at the repository root, with the fix loop in
+`.claude/skills/fix-experience-gaps/SKILL.md`. Rows here that it absorbs carry its ID.
+
 **Rules for this file**
 
 - Only open work. When an item lands, delete its row in the same commit.

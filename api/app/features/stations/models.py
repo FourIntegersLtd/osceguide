@@ -175,9 +175,8 @@ class StationFlag(Base, UUIDPrimaryKey, Timestamps):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'open'"))
 
-    # What staff wrote when they closed it. Not shown to the reporter: a flag is
-    # a work queue, not a conversation, and an inbox nobody answers is worse
-    # than none.
+    # What staff wrote when they closed it. Sent to the reporter as an inbox
+    # message when the report is closed.
     resolution_note: Mapped[str | None] = mapped_column(Text)
     resolved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

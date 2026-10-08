@@ -123,7 +123,7 @@ you touch an `api.ts`, and regenerate with `npm run platform:types`.
 |---|---|---|
 | How everything is built: foundation, surfaces, tiers, design system; `domains/train`, `domains/marketing` | `platform-web-owner` | `verify` skill (`.claude/skills/verify/`) |
 | `domains/assess`, `domains/platform` behaviour | `institution-owner` | `verify-institution`, then `verify` |
-| `foundation/session`, `capabilities/account`, `staff-growth`, `domains/partner`, middleware | `access-owner` | `verify-access`, then `verify` |
+| `foundation/session`, `capabilities/account`, `capabilities/inbox`, `staff-growth`, `domains/partner`, middleware | `access-owner` | `verify-access`, then `verify` |
 | `capabilities/stations`, `authoring`, `media`, `staff-media`, `staff-moderation`, `community`, `peer-practice` | `content-owner` | `verify-content`, then `verify` |
 | `foundation/livekit`, `capabilities/onboarding`, `help` | `voice-station-owner` | `verify-voice-station`, then `verify` |
 

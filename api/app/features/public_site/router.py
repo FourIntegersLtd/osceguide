@@ -101,3 +101,19 @@ async def mark_handled(
 ) -> schemas.MessageRead:
     """Answered, or read and nothing to do. Either way it leaves the queue."""
     return await service.mark_handled(session, message_id=message_id, by=admin.user_id, at=clock.now())
+
+
+@router.post(
+    "/platform/site/messages/{message_id}/reply",
+    response_model=schemas.MessageRead,
+    responses=error_responses(Unauthenticated, Forbidden, errors.MessageNotFound, errors.CannotReplyInApp),
+)
+async def reply_to_message(
+    message_id: uuid.UUID,
+    body: schemas.ReplyToSiteMessage,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+) -> schemas.MessageRead:
+    """Answer in the sender's inbox, which needs a signed-in sender, and take the message out of the queue."""
+    return await service.reply(session, message_id=message_id, body=body.body, actor=admin, at=clock.now())

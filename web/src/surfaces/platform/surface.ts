@@ -5,6 +5,7 @@ import {
   LuGauge,
   LuHandCoins,
   LuInbox,
+  LuMegaphone,
   LuReceipt,
   LuScrollText,
   LuShieldCheck,
@@ -46,6 +47,13 @@ function nav({ href }: NavContext): NavItem[] {
       label: "Messages",
       href: href("/messages"),
       icon: LuInbox,
+      section: "customers",
+    },
+    {
+      key: "announcements",
+      label: "Announcements",
+      href: href("/announcements"),
+      icon: LuMegaphone,
       section: "customers",
     },
     {
@@ -112,5 +120,6 @@ export const platformSurface: SurfaceManifest = {
     "ops",
     "stationFlags",
     "referralPayouts",
+    "announcements",
   ],
 };

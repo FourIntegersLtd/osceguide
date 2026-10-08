@@ -54,3 +54,7 @@ class MessageRead(BaseModel):
     user_id: uuid.UUID | None
     created_at: datetime
     handled_at: datetime | None
+
+
+class ReplyToSiteMessage(BaseModel):
+    body: str = Field(min_length=1, max_length=5_000)

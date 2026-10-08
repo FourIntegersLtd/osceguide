@@ -50,6 +50,8 @@ export type ScreenName =
   | "messages"
   // Referrals are settled by hand outside the product; this is the record.
   | "referralPayouts"
+  // Staff posts to every learner's inbox.
+  | "announcements"
   | "myTraining"
   | "mySitting"
   | "myResult"
@@ -68,6 +70,8 @@ export interface NavItem {
   icon?: ComponentType<{ className?: string }>;
   /** Which group this sits in. Ungrouped items render above the groups. */
   section?: NavSection;
+  /** Unread things behind this item, shown as a pill. Zero or absent shows nothing. */
+  count?: number;
 }
 
 export interface NavContext {

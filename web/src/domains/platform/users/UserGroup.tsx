@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Panel } from "@/foundation/ui";
+import { Button, QuietCard } from "@/foundation/ui";
 import type { DirectoryFilters } from "@/domains/platform/api";
 import { DirectoryUsersTable } from "@/domains/platform/users/DirectoryUsersTable";
 
@@ -30,7 +30,7 @@ export function UserGroup({
   const narrowed = Boolean(filters.q || filters.access || filters.status || filters.planCode);
 
   return (
-    <Panel title={title} description={description}>
+    <QuietCard title={title} subtitle={description}>
       <DirectoryUsersTable
         filters={filters}
         hrefFor={hrefFor}
@@ -52,6 +52,6 @@ export function UserGroup({
               }
         }
       />
-    </Panel>
+    </QuietCard>
   );
 }

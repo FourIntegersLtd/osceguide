@@ -1,26 +1,32 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   AsyncBoundary,
+  B2CGroupedRow,
+  B2CGroupedSection,
+  B2CHero,
+  B2CPageHeader,
   B2CSegmentedTabs,
   Badge,
   Button,
   Checkbox,
   LoadMore,
-  Panel,
-  PlatformPageHeader,
-  Row,
-  RowList,
+  QuietCard,
+  Textarea,
+  TextLink,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
 import { errorMessage, useCursorPages, useToast } from "@/foundation/hooks";
+import { hasCode } from "@/foundation/platform-client";
 import {
   listSiteMessages,
   markMessageHandled,
+  replyToSiteMessage,
   type SiteMessage,
 } from "@/domains/platform/api";
+import { canReplyInApp, mailtoFor, waitingHeadline } from "@/domains/platform/queues";
 import { formatDay, messageSourceLabel } from "@/domains/platform/support";
 
 /** A page at a time from the server. */
@@ -34,19 +40,125 @@ const KIND_TABS: B2CSegmentedTabItem<Kind>[] = [
   { id: "product_feedback", label: "Product feedback" },
 ];
 
+const kindLabel = (message: SiteMessage) =>
+  message.kind === "product_feedback" ? "Product feedback" : "Contact";
+const subjectOf = (message: SiteMessage) =>
+  message.subject ?? (message.kind === "contact" ? "Contact" : "Suggestion");
+const senderOf = (message: SiteMessage) => message.name ?? message.email ?? "Anonymous";
+
+/** The opened message: what they wrote, and a reply to their inbox when they have one. */
+function MessageCard({
+  message,
+  onChanged,
+  onClose,
+}: {
+  message: SiteMessage;
+  onChanged: () => void;
+  onClose: () => void;
+}) {
+  const toast = useToast();
+  const [reply, setReply] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [noAccount, setNoAccount] = useState(false);
+  const inApp = canReplyInApp(message) && !noAccount;
+  const mailto = mailtoFor(message);
+
+  const run = async (action: () => Promise<unknown>, done: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      toast.success(done);
+      onChanged();
+      onClose();
+    } catch (cause) {
+      // Stay in the queue: a row that says "handled" when the write failed is
+      // how a message gets lost.
+      if (hasCode(cause, "message_not_repliable")) setNoAccount(true);
+      else setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <QuietCard
+      title={subjectOf(message)}
+      subtitle={`${kindLabel(message)} · ${senderOf(message)} · ${formatDay(message.created_at)}${
+        message.source ? ` · ${messageSourceLabel(message.source)}` : ""
+      }`}
+      actions={
+        <>
+          {inApp && !message.handled_at ? (
+            <Button
+              variant="primary"
+              size="sm"
+              isLoading={busy}
+              disabled={!reply.trim()}
+              onClick={() => run(() => replyToSiteMessage(message.id, reply.trim()), "Reply sent")}
+            >
+              Send reply
+            </Button>
+          ) : null}
+          {message.handled_at ? null : (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => run(() => markMessageHandled(message.id), "Marked handled")}
+            >
+              Mark handled
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-4 whitespace-pre-wrap text-osce-body text-ink">{message.body}</p>
+      {error ? (
+        <Alert tone="danger" className="mb-3">
+          {error}
+        </Alert>
+      ) : null}
+      {message.handled_at ? null : inApp ? (
+        <Textarea
+          label="Reply"
+          value={reply}
+          maxLength={5000}
+          hint="Goes to the sender's inbox in the app."
+          onChange={(event) => setReply(event.target.value)}
+        />
+      ) : (
+        <Alert tone="info" className="mb-3">
+          Sent without signing in, so there is no inbox to reply to.
+          {mailto ? (
+            <>
+              {" "}
+              Reply by email to <TextLink href={mailto}>{message.email}</TextLink>.
+            </>
+          ) : null}
+        </Alert>
+      )}
+    </QuietCard>
+  );
+}
+
 /**
  * The contact and feedback inbox.
  *
  * A person writes to us from the public contact form or the "Help us improve"
- * box inside the product, and `POST /site/messages` files it. The two kinds
- * are separated because they have different endings — a contact note wants a
- * reply, a product suggestion wants triage — and "Handled" is deliberately the
- * only action: the platform sends no outbound mail through this slice.
+ * box inside the product, and `POST /site/messages` files it. A signed-in
+ * sender gets the reply in their inbox in the app; one who wrote signed out
+ * has no inbox, so staff answer by email.
  */
 export function MessagesInbox() {
   const [kind, setKind] = useState<Kind>("all");
   // Unticked asks the server only for open messages; ticked asks for both.
   const [showHandled, setShowHandled] = useState(false);
+  const [opened, setOpened] = useState<SiteMessage | null>(null);
   const pages = useCursorPages(
     (cursor, signal) =>
       listSiteMessages(
@@ -64,16 +176,26 @@ export function MessagesInbox() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PlatformPageHeader
-        title="Messages"
-        description="What people have written to the platform."
-      />
+      <B2CPageHeader title="Messages" subtitle="What people have written to the platform." />
 
+      {state.data ? (
+        <B2CHero
+          title={waitingHeadline(
+            state.data.filter((message) => !message.handled_at).length,
+            pages.hasMore,
+          )}
+        >
+          Replies go to the sender&apos;s inbox in the app.
+        </B2CHero>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <B2CSegmentedTabs
           items={KIND_TABS}
           value={kind}
-          onChange={setKind}
+          onChange={(next) => {
+            setKind(next);
+            setOpened(null);
+          }}
           compact
           aria-label="Message kind"
         />
@@ -83,7 +205,14 @@ export function MessagesInbox() {
           onChange={(event) => setShowHandled(event.target.checked)}
         />
       </div>
-
+      {opened ? (
+        <MessageCard
+          key={opened.id}
+          message={opened}
+          onChanged={state.reload}
+          onClose={() => setOpened(null)}
+        />
+      ) : null}
       <AsyncBoundary
         state={state}
         isEmpty={(items) => items.length === 0}
@@ -95,92 +224,30 @@ export function MessagesInbox() {
         }}
       >
         {(items) => (
-          <Panel padding="none">
-            <RowList flush>
+          <>
+            <B2CGroupedSection eyebrow="Messages">
               {items.map((message) => (
-                <MessageRow
+                <B2CGroupedRow
                   key={message.id}
-                  message={message}
-                  onReload={state.reload}
+                  active={opened?.id === message.id}
+                  onClick={() => setOpened(message)}
+                  title={subjectOf(message)}
+                  meta={`${kindLabel(message)} · ${senderOf(message)} · ${formatDay(message.created_at)}${
+                    message.source ? ` · ${messageSourceLabel(message.source)}` : ""
+                  }`}
+                  trailing={message.handled_at ? <Badge tone="neutral">Handled</Badge> : undefined}
                 />
               ))}
-            </RowList>
+            </B2CGroupedSection>
             <LoadMore
               hasMore={pages.hasMore}
               busy={pages.loadingMore}
               onLoad={pages.loadMore}
               error={pages.moreError}
             />
-          </Panel>
+          </>
         )}
       </AsyncBoundary>
     </div>
-  );
-}
-
-function MessageRow({
-  message,
-  onReload,
-}: {
-  message: SiteMessage;
-  onReload: () => void;
-}) {
-  const toast = useToast();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handle = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await markMessageHandled(message.id);
-      toast.success("Marked handled");
-      onReload();
-    } catch (cause) {
-      // Stay in the queue. A row that says "handled" when the write failed is
-      // how a message gets lost.
-      setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  }, [message.id, onReload, toast]);
-
-  const kindLabel =
-    message.kind === "product_feedback" ? "Product feedback" : "Contact";
-  const sender = message.name ?? message.email ?? "Anonymous";
-
-  return (
-    <Row className="items-start">
-      <div className="min-w-0 flex-1">
-        <p className="text-osce-data font-semibold text-ink">
-          {message.subject ??
-            (message.kind === "contact" ? "Contact" : "Suggestion")}
-        </p>
-        <p className="mt-0.5 text-osce-meta text-ink-subtle">
-          {kindLabel} · {sender} · {formatDay(message.created_at)}
-          {message.source ? ` · ${messageSourceLabel(message.source)}` : ""}
-        </p>
-        <p className="mt-2 whitespace-pre-wrap text-osce-body text-ink-muted">
-          {message.body}
-        </p>
-        {error ? (
-          <Alert tone="danger" className="mt-3">
-            {error}
-          </Alert>
-        ) : null}
-      </div>
-      {message.handled_at ? (
-        <Badge tone="neutral">Handled {formatDay(message.handled_at)}</Badge>
-      ) : (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => handle()}
-          disabled={busy}
-        >
-          {busy ? "Saving…" : "Mark handled"}
-        </Button>
-      )}
-    </Row>
   );
 }

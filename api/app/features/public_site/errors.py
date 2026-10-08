@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.errors import InvalidInput, NotFound
+from app.core.errors import Conflict, InvalidInput, NotFound
 
 
 class InvalidMessageError(InvalidInput):
@@ -17,3 +17,10 @@ class MessageNotFound(NotFound):
 
     code = "message_not_found"
     default_message = "No such message"
+
+
+class CannotReplyInApp(Conflict):
+    """The sender was not signed in, so there is no inbox to reply into."""
+
+    code = "message_not_repliable"
+    default_message = "That message was sent without signing in; reply by email"

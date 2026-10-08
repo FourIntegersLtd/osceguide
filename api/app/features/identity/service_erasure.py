@@ -27,6 +27,7 @@ from app.core.logging import get_logger
 from app.core.settings import Settings, get_settings
 from app.features.attempts import service_privacy as attempts_privacy
 from app.features.identity import repository
+from app.features.inbox import service as inbox_service
 from app.features.media_production import service as media_production
 from app.features.peer_practice import service_privacy as peer_practice_privacy
 from app.features.tutor_memory import service as tutor_memory_service
@@ -94,6 +95,7 @@ async def erase_account(session: AsyncSession, user_id: uuid.UUID, *, now: datet
     attempts_scrubbed = await attempts_privacy.erase_content_for_user(session, user_id)
     recordings_deleted = await _erase_peer_recordings(session, get_settings(), user_id)
     await tutor_memory_service.forget_everything(session, user_id=user_id, include_debriefs=True)
+    await inbox_service.erase_for_user(session, user_id)
     log.info(
         "account erased",
         user_id=str(user_id),

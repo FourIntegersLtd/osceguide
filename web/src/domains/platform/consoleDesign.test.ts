@@ -32,7 +32,7 @@ const banned: { pattern: RegExp; use: string }[] = [
     use: "rounded-osce-* or a kit component",
   },
   { pattern: /\btext-(xs|sm|base|lg|xl)\b/, use: "the text-osce-* type scale" },
-  { pattern: /<Card\b|B2CPanelCard/, use: "Panel" },
+  { pattern: /<Card\b/, use: "B2CPanelCard or Panel" },
   { pattern: /<select\b/, use: "Select" },
   { pattern: /<textarea\b/, use: "Textarea" },
   { pattern: /type="checkbox"/, use: "Checkbox" },
@@ -64,4 +64,59 @@ test("the staff console, authoring and settings are built only from the foundati
     }
   }
   assert.deepEqual(violations, []);
+});
+
+// Queue and list screens on the quiet kit (B2CHero, B2CGroupedSection, QuietCard)
+// may not slide back to the console kit's Panel, rows, tiles or page header.
+const quietKitScreens = [
+  "domains/platform/Users.tsx",
+  "domains/platform/users/UserGroup.tsx",
+  "domains/platform/ReferralPayouts.tsx",
+  "capabilities/staff-moderation/ModerationHome.tsx",
+  "domains/platform/StationFlags.tsx",
+  "domains/platform/MessagesInbox.tsx",
+  "domains/platform/Announcements.tsx",
+];
+
+const consoleKitNames = [
+  "Panel",
+  "RowList",
+  "Row",
+  "RowLink",
+  "StatTile",
+  "StatGrid",
+  "FoldSection",
+  "PlatformPageHeader",
+];
+
+function importedNames(source: string): string[] {
+  const names: string[] = [];
+  for (const match of source.matchAll(
+    /import\s+(?:type\s+)?\{([^}]*)\}\s+from/g,
+  )) {
+    for (const part of (match[1] ?? "").split(",")) {
+      const name = part.trim().split(/\s+as\s+/)[0];
+      if (name) names.push(name);
+    }
+  }
+  return names;
+}
+
+test("queue screens on the quiet kit do not import the console kit's panels, rows or tiles", () => {
+  const violations: string[] = [];
+  for (const file of quietKitScreens) {
+    const path = join(srcRoot, file);
+    for (const name of importedNames(readFileSync(path, "utf8"))) {
+      if (consoleKitNames.includes(name))
+        violations.push(`${file} imports ${name}`);
+    }
+  }
+  assert.deepEqual(violations, []);
+});
+
+test("importedNames sees a console-kit import", () => {
+  const names = importedNames(
+    'import { Button, Panel as P } from "@/foundation/ui";',
+  );
+  assert.deepEqual(names, ["Button", "Panel"]);
 });
