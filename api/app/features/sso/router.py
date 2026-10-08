@@ -16,7 +16,7 @@ from app.core.openapi import SAML_METADATA_MEDIA_TYPE
 from app.core.ports import ClockDep
 from app.core.rate_limit import SAML_ACS, SSO_CALLBACK, TooManyRequests, caller_key, check
 from app.core.settings import SettingsDep
-from app.core.tenancy import OrgNotFound, PlatformAdmin
+from app.core.tenancy import OrgAdmin, OrgNotFound, PlatformAdmin
 from app.features.sso import errors, schemas, service, service_login, service_saml
 
 router = APIRouter(tags=["sso"])
@@ -125,6 +125,16 @@ async def sso_callback(
         now=clock.now(),
         memberships_for=memberships_for,
     )
+
+
+@router.get(
+    "/orgs/{org_slug}/sso-status",
+    response_model=schemas.SsoStatusRead,
+    responses=error_responses(Unauthenticated, Forbidden),
+)
+async def read_status(workspace: OrgAdmin, session: Session) -> schemas.SsoStatusRead:
+    """For the org admin's Settings tab: connected or not, never the issuer or the bindings."""
+    return await service.read_status(session, workspace.org_id)
 
 
 @router.get(

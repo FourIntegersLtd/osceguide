@@ -26,6 +26,7 @@ from app.features.tenancy import (
     service,
     service_bulk,
     service_memberships,
+    service_platform,
     service_workspace,
 )
 from app.features.tenancy.schemas import InvitationRead
@@ -75,6 +76,24 @@ async def read_organization(workspace: OrgReader, session: Session) -> schemas.O
 InstitutionOrPlatform = Annotated[
     Workspace, Depends(require_org(policy("is_institution_admin"), allow_platform_admin=True))
 ]
+
+
+# An organisation's own admin renames it. The slug, type and contract stay with platform staff.
+@router.patch(
+    "/orgs/{org_slug}",
+    response_model=schemas.OrganizationRead,
+    responses=error_responses(Forbidden, errors.OrgNotFound),
+)
+async def rename_organization(
+    body: schemas.RenameOrganization, workspace: OrgAdmin, session: Session, clock: ClockDep
+) -> schemas.OrganizationRead:
+    return await service_platform.update_organization(
+        session,
+        workspace.org_id,
+        changes=schemas.UpdateOrganization(name=body.name),
+        actor=workspace.principal,
+        now=clock.now(),
+    )
 
 
 # Institution admins of this organisation, and platform admins, require staff MFA.

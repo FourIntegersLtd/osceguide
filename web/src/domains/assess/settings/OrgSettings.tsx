@@ -1,11 +1,18 @@
 "use client";
 
-import { AsyncBoundary, Badge, Input, Panel } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { useState } from "react";
+import { Alert, AsyncBoundary, Badge, Button, Input, Panel } from "@/foundation/ui";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { Settings } from "@/capabilities/account";
-import { readOrganization } from "@/domains/assess/api";
+import {
+  readOrganization,
+  readSsoStatus,
+  renameOrganization,
+  type Organization,
+} from "@/domains/assess/api";
+import { describeSsoStatus } from "@/domains/assess/settings/ssoStatus";
 import { ScimTokens } from "@/domains/assess/settings/ScimTokens";
 
 /**
@@ -35,44 +42,76 @@ export function WorkspaceSettings() {
   );
 }
 
-/**
- * The organisation's name and address, read-only.
- *
- * There is no route to change an organisation (U-17 in the backlog), so the
- * fields are shown as they are and changes go through support.
- */
+/** The organisation's name, which its admin may change; the web address is fixed and changes go through support. */
 function OrganisationPanel({ orgSlug }: { orgSlug: string }) {
   const state = useAsync((signal) => readOrganization(orgSlug, signal), [orgSlug]);
   return (
     <AsyncBoundary state={state}>
-      {(org) => (
-        <Panel title="Organisation" description="Contact support to change these.">
-          <div className="flex max-w-xl flex-col gap-4">
-            <Input label="Name" readOnly value={org.name} />
-            <Input label="Web address" readOnly value={`/${org.slug}`} />
-          </div>
-        </Panel>
-      )}
+      {(org) => <RenameForm key={org.name} org={org} onSaved={state.reload} />}
     </AsyncBoundary>
+  );
+}
+
+function RenameForm({ org, onSaved }: { org: Organization; onSaved: () => void }) {
+  const [name, setName] = useState(org.name);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const changed = name.trim() !== "" && name.trim() !== org.name;
+
+  async function save() {
+    setBusy(true);
+    setFailure(null);
+    try {
+      await renameOrganization(org.slug, name.trim());
+      onSaved();
+    } catch (cause) {
+      setFailure(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Panel title="Organisation" description="The web address is fixed. Contact support to change it.">
+      <div className="flex max-w-xl flex-col gap-4">
+        {failure ? <Alert tone="danger">{failure}</Alert> : null}
+        <Input label="Name" value={name} maxLength={200} onChange={(event) => setName(event.target.value)} />
+        <Input label="Web address" readOnly value={`/${org.slug}`} />
+        <div>
+          <Button onClick={save} disabled={!changed || busy}>
+            {busy ? "Saving…" : "Save name"}
+          </Button>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
 /**
  * How the organisation's people sign in.
  *
- * Single sign-on is set up by OSCE Guide staff, and its routes answer only to
- * them, so an organisation cannot yet see whether it is connected. What it
- * can see is its two-step rule, which is on the organisation itself.
+ * Single sign-on is set up by OSCE Guide staff; the organisation sees whether
+ * it is connected, read-only, beside its own two-step rule.
  */
 function SignInPanel({ orgSlug }: { orgSlug: string }) {
   const state = useAsync((signal) => readOrganization(orgSlug, signal), [orgSlug]);
+  const sso = useAsync((signal) => readSsoStatus(orgSlug, signal), [orgSlug]);
   return (
     <div className="flex flex-col gap-5">
-      <Panel title="Single sign-on">
-        <p className="max-w-xl text-osce-body text-b2b-mid">
-          Your staff and trainees can sign in with your organisation&apos;s own accounts. OSCE Guide sets this up
-          with you, and whether it is connected cannot be shown here yet. Contact support to set it up or change it.
-        </p>
+      <Panel title="Single sign-on" description="OSCE Guide sets this up with you. Contact support to change it.">
+        <AsyncBoundary state={sso}>
+          {(status) => {
+            const view = describeSsoStatus(status);
+            return (
+              <div className="flex items-center justify-between gap-3">
+                <p className="max-w-xl text-osce-body text-b2b-mid">{view.detail}</p>
+                <Badge variant={view.tone} dot>
+                  {view.badge}
+                </Badge>
+              </div>
+            );
+          }}
+        </AsyncBoundary>
       </Panel>
       <Panel title="Two-step sign-in for staff">
         <AsyncBoundary state={state}>

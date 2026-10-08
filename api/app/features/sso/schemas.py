@@ -28,6 +28,15 @@ class SsoConfigRead(BaseModel):
     bindings: list[SsoBinding] = Field(default_factory=list)
 
 
+class SsoStatusRead(BaseModel):
+    """Whether sign-in through the organisation's own accounts is connected, and nothing of how."""
+
+    configured: bool
+    enabled: bool
+    sso_only: bool
+    sign_in_label: str | None
+
+
 class SaveSsoConfig(BaseModel):
     provider: str
     issuer: str | None = Field(default=None, max_length=255)

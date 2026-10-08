@@ -92,6 +92,16 @@ async def read_config(session: AsyncSession, org_slug: str) -> schemas.SsoConfig
     return await _read(session, config, org_slug=org.slug)
 
 
+async def read_status(session: AsyncSession, org_id: uuid.UUID) -> schemas.SsoStatusRead:
+    """The organisation's own view: whether SSO is connected, with none of the configuration."""
+    config = await repository.config_for_org(session, org_id)
+    if config is None:
+        return schemas.SsoStatusRead(configured=False, enabled=False, sso_only=False, sign_in_label=None)
+    return schemas.SsoStatusRead(
+        configured=True, enabled=config.enabled, sso_only=config.sso_only, sign_in_label=config.sign_in_label
+    )
+
+
 async def save_config(
     session: AsyncSession, org_slug: str, body: schemas.SaveSsoConfig
 ) -> schemas.SsoConfigRead:

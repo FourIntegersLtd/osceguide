@@ -10,6 +10,18 @@ const org = (slug: string) => `/api/v1/orgs/${encodeURIComponent(slug)}`;
 
 export type Organization = components["schemas"]["OrganizationRead"];
 
+// until regenerated: GET /orgs/{slug}/sso-status (B-33).
+export type SsoStatus = { configured: boolean; enabled: boolean; sso_only: boolean; sign_in_label: string | null };
+
+export function readSsoStatus(slug: string, signal?: AbortSignal): Promise<SsoStatus> {
+  return platformRequest<SsoStatus>(`${org(slug)}/sso-status`, { signal });
+}
+
+/** An organisation's own admin renames it; the web address and contract are staff's (B-33). */
+export function renameOrganization(slug: string, name: string): Promise<Organization> {
+  return platformRequest<Organization>(org(slug), { method: "PATCH", body: { name } });
+}
+
 /** The organisation itself: its name, type and sign-in rules. */
 export function readOrganization(slug: string, signal?: AbortSignal): Promise<Organization> {
   return platformRequest<Organization>(org(slug), { signal });

@@ -647,3 +647,27 @@ async def test_an_administrator_can_be_revoked_while_another_remains(client: Asy
 
     assert revoked.status_code == 200, revoked.text
     assert revoked.json()["status"] == "revoked"
+
+
+async def test_an_org_admin_renames_their_organisation_but_not_its_address(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """B-33: name is theirs to change; the slug is the URL and stays."""
+    org_id = await seed_org(client, make_actor)
+    admin = await member_token(make_actor, org_id, "kings", "institution_admin")
+    supervisor = await member_token(make_actor, org_id, "kings", "supervisor")
+
+    renamed = await client.patch(
+        "/api/v1/orgs/kings",
+        json={"name": "King's Medical School", "slug": "elsewhere"},
+        headers=bearer(admin),
+    )
+    refused = await client.patch("/api/v1/orgs/kings", json={"name": "Mine"}, headers=bearer(supervisor))
+    audit = await client.get("/api/v1/orgs/kings/audit", headers=bearer(admin))
+
+    assert renamed.status_code == 200, renamed.text
+    assert (renamed.json()["name"], renamed.json()["slug"]) == ("King's Medical School", "kings")
+    assert refused.status_code == 403
+    assert [r["action"] for r in audit.json()["items"] if r["action"] == "organization.updated"] == [
+        "organization.updated"
+    ]

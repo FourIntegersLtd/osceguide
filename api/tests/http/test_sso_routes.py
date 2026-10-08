@@ -238,3 +238,33 @@ async def test_switching_to_sso_only_lists_the_members_who_sign_in_with_a_passwo
     # Already SSO-only: saving again is not a new lock-out and asks nothing.
     again = await client.put("/api/v1/platform/orgs/p21/sso", json=a_config(), headers=bearer(root))
     assert again.status_code == 200, again.text
+
+
+async def test_an_org_admin_reads_whether_sso_is_connected_but_not_how(
+    client: AsyncClient,
+    make_actor,  # type: ignore[no-untyped-def]
+) -> None:
+    """B-33: the Settings tab shows the state; the issuer and bindings stay with staff."""
+    from tests.http.test_sittings_routes import org_with_admin
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    _, admin = await org_with_admin(client, make_actor)
+    other_org, other_admin = await org_with_admin(client, make_actor, slug="guys")
+    path = "/api/v1/orgs/kings/sso-status"
+
+    none_yet = await client.get(path, headers=bearer(admin))
+    await client.put("/api/v1/platform/orgs/kings/sso", json=a_config(), headers=bearer(root))
+    connected = await client.get(path, headers=bearer(admin))
+    refused = await client.get(path, headers=bearer(other_admin))
+
+    assert (none_yet.status_code, none_yet.json()) == (
+        200,
+        {"configured": False, "enabled": False, "sso_only": False, "sign_in_label": None},
+    )
+    assert connected.json() == {
+        "configured": True,
+        "enabled": True,
+        "sso_only": True,
+        "sign_in_label": "Sign in with BMJ",
+    }
+    assert refused.status_code == 403

@@ -64,6 +64,7 @@ per-handler checks and a `find_slot_by_id_global` that bypassed org scoping enti
 |---|---|---|---|
 | POST | `/api/v1/auth/switch-workspace` | bearer | re-issues the token; `forbidden` (403) if not a member |
 | GET | `/api/v1/orgs/{org_slug}` | org member | |
+| PATCH | `/api/v1/orgs/{org_slug}` | org admin | rename only (B-33); slug, type and contract stay with platform staff |
 | GET | `/api/v1/orgs/{org_slug}/memberships` | org admin | cursor-paginated |
 | POST | `/api/v1/orgs/{org_slug}/memberships` | org admin | `membership_exists` (409); an unknown address is **invited** (`invited: true`) with no display name until they set one, so nothing greets them by email (B39) |
 | POST | `/api/v1/orgs/{org_slug}/memberships/bulk` | org admin | up to 500 rows; a person already holding the role is reported in `skipped`, never fatal. Each row is the single act above it |
