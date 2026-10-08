@@ -145,7 +145,7 @@ test("the spotlight label leads with the thing that needs doing now", () => {
   assert.equal(continueLabel(sitting({ live: true, paused: true })), "Paused by your supervisor");
   assert.equal(
     continueLabel(sitting({ slots: [slot({ id: "a", status: "completed" })] })),
-    "Finished",
+    "Finished: open it for your result and feedback",
   );
   assert.equal(continueLabel(sitting()), "Not started");
 });

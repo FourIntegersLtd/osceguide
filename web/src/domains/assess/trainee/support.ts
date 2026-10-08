@@ -195,7 +195,7 @@ export function continueLabel(sitting: MySitting): string {
   if (sitting.paused) return "Paused by your supervisor";
   if (sitting.live) return "Running now";
   const { completed, total } = progressOf(sitting);
-  if (total > 0 && completed === total) return "Finished";
+  if (total > 0 && completed === total) return "Finished: open it for your result and feedback";
   if (completed > 0) return "Continue";
   return "Not started";
 }
