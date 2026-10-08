@@ -51,6 +51,8 @@ export function editRubricVersion(
     structure: Json;
     pacing: Json;
     marking_layout?: Json | null;
+    /** The revision the editor read; an older one is refused `stale_revision`. */
+    revision: number;
   },
 ): Promise<RubricVersion> {
   return platformRequest(`${scope.base}/rubrics/${pathId(rubric)}/versions/${version}`, {

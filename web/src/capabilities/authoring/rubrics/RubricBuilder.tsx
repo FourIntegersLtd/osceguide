@@ -47,6 +47,7 @@ export function RubricBuilder({
   readOnly,
   dashboardPreview,
   onPublished,
+  onStale,
 }: {
   scope: AuthoringScope;
   rubric: Rubric;
@@ -54,8 +55,10 @@ export function RubricBuilder({
   readOnly: boolean;
   dashboardPreview?: RubricDashboardPreview;
   onPublished: () => void;
+  /** Someone else saved this version first; reload it. */
+  onStale: () => void;
 }) {
-  const draft = useRubricDraft(scope, rubric.id, version);
+  const draft = useRubricDraft(scope, rubric.id, version, onStale);
   const trial = useTrialMark(scope, rubric.id);
   const action = useAction();
   const [tab, setTab] = useState<EditorTab>("structure");

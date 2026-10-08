@@ -26,6 +26,7 @@ import {
   type Exam,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
+import { staleRefusal } from "@/capabilities/authoring/api/stale";
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { ListCard } from "@/capabilities/authoring/parts/ListCard";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
@@ -221,15 +222,25 @@ export function ExamsSection() {
         onCommit={() =>
           void action.run("edit", async () => {
             if (!editing) return;
-            await updateExam(scope, editing.id, {
-              name: form.name.trim(),
-              default_reading_seconds: Number(form.reading),
-              default_simulation_seconds: Number(form.simulation),
-              station_attempt_limit: Number(form.attempts),
-              partner_pilot: form.partnerPilot,
-              rubric_version_id: form.rubricVersionId || null,
-              settings: form.settings,
-            });
+            try {
+              await updateExam(scope, editing.id, {
+                revision: editing.revision,
+                name: form.name.trim(),
+                default_reading_seconds: Number(form.reading),
+                default_simulation_seconds: Number(form.simulation),
+                station_attempt_limit: Number(form.attempts),
+                partner_pilot: form.partnerPilot,
+                rubric_version_id: form.rubricVersionId || null,
+                settings: form.settings,
+              });
+            } catch (cause) {
+              const stale = staleRefusal(cause, "exam");
+              if (!stale) throw cause;
+              // Close the form: reopened, it reads their version.
+              setEditing(null);
+              exams.reload();
+              throw stale;
+            }
             setEditing(null);
           })
         }

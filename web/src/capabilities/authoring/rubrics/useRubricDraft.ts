@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAsync } from "@/foundation/hooks";
 import {
   editRubricVersion,
@@ -9,6 +9,7 @@ import {
   type RubricPreview,
   type RubricVersion,
 } from "@/capabilities/authoring/api";
+import { staleRefusal } from "@/capabilities/authoring/api/stale";
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 import type { Problem } from "@/capabilities/authoring/rubrics/problems";
 import type { RubricStructure } from "@/capabilities/authoring/rubrics/rubricEdits";
@@ -63,7 +64,15 @@ function layoutForSave(markingLayout: StationStructure) {
  * preview (a sample result). The last answer is kept while the next loads, so
  * problems do not flicker away on every keystroke.
  */
-export function useRubricDraft(scope: AuthoringScope, rubricId: string, version: RubricVersion): RubricDraft {
+export function useRubricDraft(
+  scope: AuthoringScope,
+  rubricId: string,
+  version: RubricVersion,
+  /** Someone else saved first: reload the version, so the builder starts over on theirs. */
+  onStale: () => void,
+): RubricDraft {
+  // The revision this draft last read or wrote, so a second save is not mistaken for a stale one.
+  const revision = useRef(version.revision);
   const [structure, setStructure] = useState<RubricStructure>(() => ({ ...(version.structure ?? {}) }));
   const [systemPrompt, setSystemPrompt] = useState(version.system_prompt ?? "");
   const [pacing, setPacing] = useState<Pacing>(() => ({ ...(version.pacing ?? {}) }));
@@ -95,15 +104,24 @@ export function useRubricDraft(scope: AuthoringScope, rubricId: string, version:
   }, [refused, preview.data, version.problems]);
 
   const save = useCallback(async () => {
-    const updated = await editRubricVersion(scope, rubricId, version.version, {
-      system_prompt: systemPrompt,
-      structure,
-      pacing,
-      marking_layout: layoutForSave(markingLayout),
-    });
-    setSaved(snapshotOf(structure, systemPrompt, pacing, markingLayout));
-    return updated;
-  }, [scope, rubricId, version.version, systemPrompt, structure, pacing, markingLayout]);
+    try {
+      const updated = await editRubricVersion(scope, rubricId, version.version, {
+        system_prompt: systemPrompt,
+        structure,
+        pacing,
+        marking_layout: layoutForSave(markingLayout),
+        revision: revision.current,
+      });
+      revision.current = updated.revision;
+      setSaved(snapshotOf(structure, systemPrompt, pacing, markingLayout));
+      return updated;
+    } catch (cause) {
+      const stale = staleRefusal(cause, "marking scheme");
+      if (!stale) throw cause;
+      onStale();
+      throw stale;
+    }
+  }, [scope, rubricId, version.version, systemPrompt, structure, pacing, markingLayout, onStale]);
 
   return {
     structure,

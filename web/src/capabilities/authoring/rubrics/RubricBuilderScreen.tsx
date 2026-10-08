@@ -58,14 +58,16 @@ export function RubricBuilderScreen({
               />
               {found ? (
                 <RubricBuilder
-                  // A publish changes what may be edited, so the builder starts over on the new status.
-                  key={`${found.id}:${found.status}`}
+                  // A publish changes what may be edited, and a save by someone else changes what is
+                  // there: either way the builder starts over on the reloaded version.
+                  key={`${found.id}:${found.status}:${found.revision}`}
                   scope={scope}
                   rubric={data}
                   version={found}
                   readOnly={!editable || found.status !== "draft"}
                   dashboardPreview={dashboardPreview}
                   onPublished={rubric.reload}
+                  onStale={rubric.reload}
                 />
               ) : (
                 <Alert tone="warning">This marking scheme has no version {version}.</Alert>

@@ -47,7 +47,10 @@ export function createExam(
 export function updateExam(
   scope: AuthoringScope,
   exam: string,
-  body: Partial<{
+  body: {
+    /** The revision the editor read; an older one is refused `stale_revision`. */
+    revision: number;
+  } & Partial<{
     name: string;
     default_reading_seconds: number;
     default_simulation_seconds: number;
