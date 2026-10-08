@@ -19,7 +19,7 @@ import AuthSubmitButton from "@/capabilities/account/AuthSubmitButton";
 import AuthFormField from "@/capabilities/account/AuthFormField";
 import AuthQuotePanel from "@/capabilities/account/AuthQuotePanel";
 import { readSsoSignIn, startSsoSignIn, type SsoSignIn } from "@/capabilities/account/api";
-import { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import { sanitizeReturnTo } from "@/foundation/session/returnTo";
 import {
   loginSchema,

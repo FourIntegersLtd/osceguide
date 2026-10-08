@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { holdsPaidAccess, paidAccess } from "@/capabilities/account/access";
+import { holdsPaidAccess, paidAccess, latestLiveEnd } from "@/capabilities/account/access";
 import type { Entitlement } from "@/capabilities/account/api";
 
 function grant(over: Partial<Entitlement>): Entitlement {
@@ -42,4 +42,14 @@ test("an organisation's grant counts as access", () => {
 test("with no exam chosen yet, any paid grant counts", () => {
   assert.equal(holdsPaidAccess([grant({ exam_code: "plab" })], null), true);
   assert.equal(holdsPaidAccess([], null), false);
+});
+
+test("the end of access is the latest live end, by date, and open-ended wins", () => {
+  const ends = (...values: (string | null)[]) => values.map((ends_at) => grant({ ends_at }));
+  assert.equal(
+    latestLiveEnd(ends("2027-01-05T00:00:00+01:00", "2027-01-04T22:00:00Z")),
+    "2027-01-05T00:00:00+01:00",
+  );
+  assert.equal(latestLiveEnd(ends("2027-01-05T00:00:00Z", null)), null);
+  assert.equal(latestLiveEnd([grant({ live: false, ends_at: "2030-01-01T00:00:00Z" })]), null);
 });

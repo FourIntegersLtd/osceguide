@@ -165,9 +165,11 @@ async def save_connection(
     # schema's default (the claim URIs Entra sends).
     saved = await repository.saml_connection_for_org(session, org.id)
     names = {
-        name: getattr(saved, name)
-        if saved is not None and name not in body.model_fields_set
-        else getattr(body, name)
+        name: _stripped(
+            getattr(saved, name)
+            if saved is not None and name not in body.model_fields_set
+            else getattr(body, name)
+        )
         for name in (
             "email_attribute",
             "first_name_attribute",
@@ -193,6 +195,11 @@ async def save_connection(
         summary=f"Saved the SAML connection for {org_slug} ({'enabled' if body.enabled else 'disabled'})",
     )
     return _read(connection, org_slug, settings)
+
+
+def _stripped(value: str | None) -> str | None:
+    """A claim name pasted with spaces around it never matches the IdP's, so none are stored."""
+    return value.strip() if value else value
 
 
 async def _enabled_connection(session: AsyncSession, org_id: uuid.UUID) -> OrganizationSamlConnection:

@@ -25,3 +25,14 @@ export function holdsPaidAccess(
     (entitlement) => examCode === null || entitlement.exam_code === examCode,
   );
 }
+
+/**
+ * When the live access ends: the latest end among live grants, or null when none is live or any is
+ * open-ended (open-ended outlasts every date).
+ */
+export function latestLiveEnd(entitlements: readonly Entitlement[]): string | null {
+  const live = entitlements.filter((entitlement) => entitlement.live);
+  const ends = live.flatMap((entitlement) => (entitlement.ends_at === null ? [] : [entitlement.ends_at]));
+  if (ends.length === 0 || ends.length < live.length) return null;
+  return ends.reduce((latest, value) => (new Date(value) > new Date(latest) ? value : latest));
+}

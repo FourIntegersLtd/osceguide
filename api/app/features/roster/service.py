@@ -13,8 +13,8 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audience import ViewerAudiences
+from app.core.audit_wording import roster_added_summary, seating_note
 from app.core.auth import Principal
-from app.core.relayed_password import RELAYED_PASSWORD_NOTE
 from app.features.catalog import service as catalog
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
@@ -78,7 +78,7 @@ async def add_trainee(
             temporary_password=temporary_password,
             now=now,
         )
-        how = RELAYED_PASSWORD_NOTE if relayed else " (invited)"
+        how = seating_note(relayed=relayed)
     if actor is not None:  # None: a directory connector (SCIM), which is no person to name
         await tenancy_audit.record_for_org(
             session,
@@ -87,7 +87,7 @@ async def add_trainee(
             action="trainee.added",
             target_type="trainee",
             target_id=str(trainee.id),
-            summary=f"Added {email} to the roster{how}",
+            summary=roster_added_summary(email, how),
         )
     await repository.link_trainee_to_user(session, org_id, trainee.id, user_id=existing.id)
     await tenancy.grant_trainee_membership(session, org_id, existing.id)

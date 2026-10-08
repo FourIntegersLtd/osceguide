@@ -8,9 +8,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit_wording import seating_note
 from app.core.auth import Principal
 from app.core.errors import Forbidden, InvalidInput
-from app.core.relayed_password import RELAYED_PASSWORD_NOTE
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
 from app.features.roster.schemas import InvitationRead
@@ -138,7 +138,7 @@ async def add_membership(
     membership = await repository.add_membership(
         session, org_id=org_id, user_id=user_id, role=role, product_surface=product_surface
     )
-    how = "" if not invited else RELAYED_PASSWORD_NOTE if relayed else " (invited)"
+    how = seating_note(relayed=relayed) if invited else ""
     await repository.write_audit(
         session,
         org_id=org_id,

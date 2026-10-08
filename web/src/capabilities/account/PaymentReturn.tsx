@@ -13,9 +13,10 @@ import { productTokens } from "@/foundation/ui";
 import { PERSONAL_SLUG, workspaceBasePath } from "@/foundation/routing";
 import { useOptionalSurface } from "@/capabilities";
 import { listEntitlements, listReceiptIdsForSession } from "@/capabilities/account/api";
+import { latestLiveEnd } from "@/capabilities/account/access";
 import { confirmPayment, type PaymentOutcome } from "@/capabilities/account/paymentConfirmation";
 import { loginHref } from "@/foundation/session/loginHref";
-import { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 
 const { b2cButtonPrimary, b2cButtonSecondary, b2cCardPlain, b2cGhostButton } = productTokens;
 
@@ -77,92 +78,105 @@ export default function PaymentReturn() {
         role="status"
         aria-live="polite"
       >
-        {state === "confirming" ? (
-          <>
-            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
-              <HiOutlineArrowPath className="h-6 w-6 animate-spin text-osce-accent" aria-hidden />
-            </span>
-            <h1 className="mb-2 text-osce-title font-semibold text-ink">
-              Confirming your payment
-            </h1>
-            <p className="text-osce-body text-ink-subtle">
-              This takes a few seconds. Please keep this page open.
-            </p>
-          </>
-        ) : state === "paid" ? (
-          <>
-            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
-              <HiOutlineCheckCircle className="h-6 w-6 text-osce-success-text" aria-hidden />
-            </span>
-            <h1 className="mb-2 text-osce-title font-semibold text-ink">
-              Payment confirmed
-            </h1>
-            <p className="mb-8 text-osce-body text-ink-subtle">
-              {endsAt
-                ? `Your access runs until ${formatDay(endsAt)}.`
-                : "Your payment has been recorded and your access is active."}
-            </p>
-            <Link href={`${home}/dashboard`} className={b2cButtonPrimary}>
-              Go to dashboard
-            </Link>
-          </>
-        ) : state === "signed_out" ? (
-          <>
-            <h1 className="mb-2 text-osce-title font-semibold text-ink">Sign in to see your payment</h1>
-            <p className="mb-6 text-osce-body text-ink-subtle">
-              We can only confirm a payment for the account that made it. Sign in and this page will check
-              again.
-            </p>
-            <Link
-              href={loginHref(`/billing/complete?session_id=${encodeURIComponent(sessionId ?? "")}`, true)}
-              className={b2cButtonPrimary}
-            >
-              Sign in
-            </Link>
-          </>
-        ) : state === "unknown" ? (
-          <>
-            <h1 className="mb-2 text-osce-title font-semibold text-ink">Nothing to confirm here</h1>
-            <p className="mb-6 text-osce-body text-ink-subtle">
-              This page needs the link Stripe sends after a payment. Your plan and receipts are under
-              Payments in your settings.
-            </p>
-            <Link href={`${home}/settings?tab=payments`} className={b2cButtonPrimary}>
-              Go to payments
-            </Link>
-          </>
-        ) : (
-          <>
-            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
-              <HiOutlineClock className="h-6 w-6 text-osce-warning-icon" aria-hidden />
-            </span>
-            <h1 className="mb-2 text-osce-title font-semibold text-ink">
-              Payment received
-            </h1>
-            <p className="mb-6 text-osce-body text-ink-subtle">
-              Your access is being activated. This can take a minute. If it isn&apos;t
-              active shortly, email{" "}
-              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-osce-accent underline">
-                {SUPPORT_EMAIL}
-              </a>{" "}
-              and we&apos;ll sort it.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className={b2cButtonSecondary}
-              >
-                Check again
-              </button>
-              <Link href={`${home}/dashboard`} className={b2cGhostButton}>
-                Go to dashboard
-              </Link>
-            </div>
-          </>
-        )}
+        <ReturnBody state={state} endsAt={endsAt} sessionId={sessionId} home={home} />
       </div>
     </div>
+  );
+}
+
+/** What the card says for each outcome; one early return per state. */
+function ReturnBody({
+  state,
+  endsAt,
+  sessionId,
+  home,
+}: {
+  state: ConfirmState;
+  endsAt: string | null;
+  sessionId: string | null;
+  home: string;
+}) {
+  if (state === "confirming") {
+    return (
+      <>
+        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
+          <HiOutlineArrowPath className="h-6 w-6 animate-spin text-osce-accent" aria-hidden />
+        </span>
+        <h1 className="mb-2 text-osce-title font-semibold text-ink">Confirming your payment</h1>
+        <p className="text-osce-body text-ink-subtle">This takes a few seconds. Please keep this page open.</p>
+      </>
+    );
+  }
+  if (state === "paid") {
+    return (
+      <>
+        <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
+          <HiOutlineCheckCircle className="h-6 w-6 text-osce-success-text" aria-hidden />
+        </span>
+        <h1 className="mb-2 text-osce-title font-semibold text-ink">Payment confirmed</h1>
+        <p className="mb-8 text-osce-body text-ink-subtle">
+          {endsAt
+            ? `Your access runs until ${formatDay(endsAt)}.`
+            : "Your payment has been recorded and your access is active."}
+        </p>
+        <Link href={`${home}/dashboard`} className={b2cButtonPrimary}>
+          Go to dashboard
+        </Link>
+      </>
+    );
+  }
+  if (state === "signed_out") {
+    return (
+      <>
+        <h1 className="mb-2 text-osce-title font-semibold text-ink">Sign in to see your payment</h1>
+        <p className="mb-6 text-osce-body text-ink-subtle">
+          We can only confirm a payment for the account that made it. Sign in and this page will check again.
+        </p>
+        <Link
+          href={loginHref(`/billing/complete?session_id=${encodeURIComponent(sessionId ?? "")}`, true)}
+          className={b2cButtonPrimary}
+        >
+          Sign in
+        </Link>
+      </>
+    );
+  }
+  if (state === "unknown") {
+    return (
+      <>
+        <h1 className="mb-2 text-osce-title font-semibold text-ink">Nothing to confirm here</h1>
+        <p className="mb-6 text-osce-body text-ink-subtle">
+          This page needs the link Stripe sends after a payment. Your plan and receipts are under Payments in
+          your settings.
+        </p>
+        <Link href={`${home}/settings?tab=payments`} className={b2cButtonPrimary}>
+          Go to payments
+        </Link>
+      </>
+    );
+  }
+  return (
+    <>
+      <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
+        <HiOutlineClock className="h-6 w-6 text-osce-warning-icon" aria-hidden />
+      </span>
+      <h1 className="mb-2 text-osce-title font-semibold text-ink">Payment received</h1>
+      <p className="mb-6 text-osce-body text-ink-subtle">
+        Your access is being activated. This can take a minute. If it isn&apos;t active shortly, email{" "}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-osce-accent underline">
+          {SUPPORT_EMAIL}
+        </a>{" "}
+        and we&apos;ll sort it.
+      </p>
+      <div className="flex flex-wrap justify-center gap-3">
+        <button type="button" onClick={() => window.location.reload()} className={b2cButtonSecondary}>
+          Check again
+        </button>
+        <Link href={`${home}/dashboard`} className={b2cGhostButton}>
+          Go to dashboard
+        </Link>
+      </div>
+    </>
   );
 }
 
@@ -212,14 +226,6 @@ export function CheckoutCancelled() {
 function useHomeHref(): string {
   const surface = useOptionalSurface();
   return surface ? surface.basePath : workspaceBasePath(PERSONAL_SLUG);
-}
-
-/** The latest end among live grants, or null when none is live or one is open-ended. */
-function latestLiveEnd(entitlements: { live: boolean; ends_at: string | null }[]): string | null {
-  const live = entitlements.filter((entitlement) => entitlement.live);
-  if (live.length === 0 || live.some((entitlement) => entitlement.ends_at === null)) return null;
-  return live.reduce((latest, entitlement) =>
-    (entitlement.ends_at ?? "") > latest ? (entitlement.ends_at ?? latest) : latest, "") || null;
 }
 
 function formatDay(value: string): string {

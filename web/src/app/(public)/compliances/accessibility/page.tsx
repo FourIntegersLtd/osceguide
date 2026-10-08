@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { SITE_URL } from "@/foundation/config/siteUrl";
-import { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 
 export const metadata: Metadata = {
   title: "OSCE Guide - Accessibility Statement",

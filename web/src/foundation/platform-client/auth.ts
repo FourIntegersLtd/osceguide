@@ -279,8 +279,9 @@ export async function platformAccessToken(): Promise<string | null> {
  * request asks the token route again, which refreshes or ends the session.
  */
 export function forgetAccessToken(): void {
+  // `inFlight` stays: a refresh already under way spends the single-use refresh token, and a
+  // second ask beside it would spend it again.
   session = null;
-  inFlight = null;
 }
 
 /**

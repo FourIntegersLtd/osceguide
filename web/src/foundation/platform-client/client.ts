@@ -180,7 +180,9 @@ async function platformFetch(
       if (last || !GATEWAY_STATUSES.has(response.status)) {
         // Sign-in and the other /auth routes answer 401 for a wrong password or code, which says
         // nothing about a session; and with no token sent there was no session to lose.
-        if (response.status === 401 && token && !path.startsWith("/api/v1/auth/")) onUnauthorized?.();
+        if (response.status === 401 && token && !path.startsWith("/api/v1/auth/")) {
+          if (!(await isCredentialRefusal(response))) onUnauthorized?.();
+        }
         return response;
       }
     } catch (cause) {
@@ -188,6 +190,18 @@ async function platformFetch(
       if (last) throw new PlatformTransportError("Could not reach the server", cause);
     }
     await pause(retries[attempt] ?? 0, signal);
+  }
+}
+
+/** A 401 that answers a wrong code or password typed on a screen, not a refused session. */
+const CREDENTIAL_CODES = new Set(["invalid_credentials", "invalid_mfa_code"]);
+
+async function isCredentialRefusal(response: Response): Promise<boolean> {
+  try {
+    const body = (await response.clone().json()) as { code?: unknown };
+    return typeof body.code === "string" && CREDENTIAL_CODES.has(body.code);
+  } catch {
+    return false;
   }
 }
 

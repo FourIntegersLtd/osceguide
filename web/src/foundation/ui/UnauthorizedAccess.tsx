@@ -4,9 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "@/foundation/session";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import { b2cButtonPrimary, b2cButtonSecondary } from "@/foundation/ui/productTokens";
 
-const SUPPORT_EMAIL = "hello@fourintegers.com";
 
 type UnauthorizedAccessProps = {
   title?: string;

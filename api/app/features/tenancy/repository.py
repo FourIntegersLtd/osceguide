@@ -16,8 +16,8 @@ from typing import Any
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.audit_wording import RELAYED_PASSWORD_NOTE, roster_added_summary
 from app.core.pagination import keyset_page
-from app.core.relayed_password import RELAYED_PASSWORD_NOTE
 from app.core.search import contains_text
 from app.features.tenancy.domain import END_USER_ROLES
 from app.features.tenancy.models import AuditEntry, Membership, Organization
@@ -239,7 +239,7 @@ async def temporary_password_was_relayed(session: AsyncSession, *, user_id: uuid
                 (AuditEntry.action == "trainee.added")
                 & (
                     func.lower(AuditEntry.summary)
-                    == f"added {email.lower()} to the roster{RELAYED_PASSWORD_NOTE}"
+                    == roster_added_summary(email, RELAYED_PASSWORD_NOTE).lower()
                 ),
             )
         )

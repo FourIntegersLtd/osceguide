@@ -153,9 +153,13 @@ async def record_payment(
     return payment
 
 
-async def payments_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Payment]:
-    """This person's payments, most recent first."""
+async def payments_for_user(
+    session: AsyncSession, user_id: uuid.UUID, *, checkout_session_id: str | None = None
+) -> list[Payment]:
+    """This person's payments, most recent first; only one Stripe checkout session's when given."""
     stmt = select(Payment).where(Payment.user_id == user_id).order_by(Payment.paid_at.desc())
+    if checkout_session_id is not None:
+        stmt = stmt.where(Payment.checkout_session_id == checkout_session_id)
     return list((await session.execute(stmt)).scalars())
 
 

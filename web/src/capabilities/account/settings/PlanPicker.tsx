@@ -5,6 +5,7 @@ import { HiOutlineArrowPath } from "react-icons/hi2";
 import { PiSparkle } from "react-icons/pi";
 import { Button, Checkbox, Input, ModalContent, ModalHelper, cn, productTokens } from "@/foundation/ui";
 import { formatMoney } from "@/foundation/format";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import { startCheckout, type Plan } from "@/capabilities/account/api";
 import { checkoutErrorMessage } from "@/capabilities/account/settings/checkoutErrors";
 import { CONSENT_DOCUMENT, CONSENT_REQUIRED } from "@/capabilities/account/settings/checkoutConsent";
@@ -207,8 +208,6 @@ export default function PlanPicker({
     </ModalContent>
   );
 }
-
-export const SUPPORT_EMAIL = "hello@fourintegers.com";
 
 /** Months, because a plan is sold in months and stored in days. */
 function planMonths(plan: Plan): number {

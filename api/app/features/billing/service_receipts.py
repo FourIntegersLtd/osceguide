@@ -57,9 +57,10 @@ async def list_my_receipts(
     session when its id is given (the page Stripe returns to asks whether it was paid)."""
     return [
         payment.receipt_id
-        for payment in await repository.payments_for_user(session, user_id)
+        for payment in await repository.payments_for_user(
+            session, user_id, checkout_session_id=checkout_session_id
+        )
         if payment.receipt_id is not None
-        and (checkout_session_id is None or payment.checkout_session_id == checkout_session_id)
     ]
 
 

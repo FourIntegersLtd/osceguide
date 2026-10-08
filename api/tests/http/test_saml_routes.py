@@ -298,3 +298,23 @@ async def test_a_claim_attribute_left_out_defaults_on_create_and_keeps_what_is_s
 
     again = await client.put("/api/v1/platform/orgs/kings/sso/saml", json=body, headers=bearer(root))
     assert (again.json()["email_attribute"], again.json()["first_name_attribute"]) == ("mail", "given")
+
+
+async def test_a_claim_name_pasted_with_spaces_is_stored_without_them(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    idp = TestIdentityProvider()
+    await a_saml_org(client, make_actor, idp)
+    root = await make_actor("root-saml-pad@osceguide.com", platform_admin=True)
+    saved = await client.put(
+        "/api/v1/platform/orgs/kings/sso/saml",
+        json={
+            "idp_entity_id": IDP_ENTITY_ID,
+            "idp_sso_url": IDP_SSO_URL,
+            "idp_x509_cert": idp.cert_pem,
+            "email_attribute": "  mail \n",
+            "first_name_attribute": " given ",
+        },
+        headers=bearer(root),
+    )
+    assert (saved.json()["email_attribute"], saved.json()["first_name_attribute"]) == ("mail", "given")

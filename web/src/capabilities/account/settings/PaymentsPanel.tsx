@@ -13,8 +13,9 @@ import {
   type Plan,
   type Receipt,
 } from "@/capabilities/account/api";
-import { paidAccess } from "@/capabilities/account/access";
-import PlanPicker, { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
+import { latestLiveEnd, paidAccess } from "@/capabilities/account/access";
+import PlanPicker from "@/capabilities/account/settings/PlanPicker";
+import { SUPPORT_EMAIL } from "@/foundation/support";
 import ReceiptList from "@/capabilities/account/settings/ReceiptList";
 import { DotEyebrow, SettingsRow, SettingsRows, StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
@@ -99,8 +100,7 @@ function ActivePlan({
   unreadable: number;
 }) {
   const latest = receipts[0] ?? null;
-  const openEnded = live.some((entitlement) => entitlement.ends_at === null);
-  const endsAt = openEnded ? null : latestEnd(live);
+  const endsAt = latestLiveEnd(live);
   const plan = latest?.plan_label ?? grantLabel(live);
 
   const purchased = live.some((entitlement) => entitlement.source === "purchase");
@@ -239,14 +239,6 @@ function daysLeftLabel(days: number): string {
 function plansForExam(plans: Plan[], examCode: string | null): Plan[] {
   if (examCode === null) return plans;
   return plans.filter((plan) => plan.exam_code === examCode);
-}
-
-function latestEnd(live: Entitlement[]): string | null {
-  const ends = live
-    .map((entitlement) => entitlement.ends_at)
-    .filter((value): value is string => value !== null);
-  if (ends.length === 0) return null;
-  return ends.reduce((latest, value) => (new Date(value) > new Date(latest) ? value : latest));
 }
 
 /**

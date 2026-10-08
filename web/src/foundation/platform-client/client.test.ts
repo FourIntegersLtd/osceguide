@@ -232,3 +232,15 @@ test("a 401 from sign-in, or with no token sent, is not a lost session", async (
   assert.equal(told, 0);
   setUnauthorizedHandler(null);
 });
+
+test("a wrong authenticator code on a signed-in screen is not a lost session", async () => {
+  let told = 0;
+  setUnauthorizedHandler(() => {
+    told += 1;
+  });
+  setPlatformTokenSource(() => "fine");
+  respondWith(401, JSON.stringify({ code: "invalid_mfa_code", message: "Wrong code" }));
+  await assert.rejects(platformRequest("/api/v1/me/mfa/disable", { method: "POST" }), PlatformError);
+  assert.equal(told, 0);
+  setUnauthorizedHandler(null);
+});
