@@ -9,23 +9,16 @@ import {
   LeaveConfirmModal,
   PlatformTabbedScreen,
 } from "@/foundation/ui";
-import { isPlatformAdmin, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import ProfilePanel, { type ProfilePart } from "@/capabilities/account/settings/ProfilePanel";
+import ProfilePanel from "@/capabilities/account/settings/ProfilePanel";
+import { tabsFor, type SettingsTab } from "@/capabilities/account/settings/settingsTabs";
+
+export type { SettingsTab };
 import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
 import ExamPanel from "@/capabilities/account/settings/ExamPanel";
 import PaymentsPanel from "@/capabilities/account/settings/PaymentsPanel";
 import ReferralsPanel from "@/capabilities/account/settings/ReferralsPanel";
 import TutorMemoryPanel from "@/capabilities/account/settings/TutorMemoryPanel";
-
-export type SettingsTab =
-  | "profile"
-  | "preferences"
-  | "exam"
-  | "payments"
-  | "referrals"
-  | "memory"
-  | ProfilePart;
 
 /** A tab an arm adds beside the account's own. */
 export interface ExtraSettingsTab {
@@ -37,33 +30,6 @@ export interface ExtraSettingsTab {
 const NO_EXTRA_TABS: ExtraSettingsTab[] = [];
 
 
-/**
- * The retiring client's tabs, in its order, plus the tutor's memory.
- *
- * Referrals is admin-only, as it was there: the old `SettingsCore` pushed the
- * tab for `role === "admin"` and bounced `?tab=referrals` to Profile for
- * everybody else.
- */
-const TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
-  { id: "profile", label: "Profile" },
-  { id: "preferences", label: "Preferences" },
-  { id: "exam", label: "Exam" },
-  { id: "payments", label: "Payments" },
-  { id: "referrals", label: "Referrals", adminOnly: true },
-  { id: "memory", label: "Memory" },
-];
-
-/**
- * Staff settings: staff have no exam, plan, referrals or tutor, so they get
- * the Profile tab's three parts and nothing that would only say "upgrade".
- */
-const PLATFORM_TABS: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
-  { id: "account", label: "Account" },
-  { id: "security", label: "Security" },
-  { id: "data", label: "Data" },
-];
-
-const tabsFor = (surface: string) => (surface === "platform" ? PLATFORM_TABS : TABS);
 const firstTabFor = (surface: string): SettingsTab => (surface === "platform" ? "account" : "profile");
 
 /** Organisation admins open on their organisation; everyone else on their own first tab. */
@@ -96,14 +62,12 @@ export function Settings({ extraTabs = NO_EXTRA_TABS }: { extraTabs?: ExtraSetti
 function SettingsTabs({ extraTabs }: { extraTabs: ExtraSettingsTab[] }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { session } = useSession();
-  const isAdmin = isPlatformAdmin(session);
   const { surface } = useSurface();
   const tabs = tabsFor(surface);
   const requested = searchParams.get("tab");
   const [fallback, setFallback] = useState<string>(openingTab(surface, extraTabs));
   const known =
-    tabs.some((entry) => entry.id === requested && (!entry.adminOnly || isAdmin)) ||
+    tabs.some((entry) => entry.id === requested) ||
     extraTabs.some((entry) => entry.id === requested);
   const tab = requested !== null && known ? requested : fallback;
 
@@ -131,8 +95,6 @@ function SettingsFrame({
   extraTabs: ExtraSettingsTab[];
 }) {
   const { surface } = useSurface();
-  const { session } = useSession();
-  const isAdmin = isPlatformAdmin(session);
   // The old screen's unsaved-changes guard: an edited, unsaved username stops
   // a tab switch (and a page unload) until the person says so.
   const [isDirty, setDirty] = useState(false);
@@ -164,7 +126,7 @@ function SettingsFrame({
   };
 
   const items: B2CSegmentedTabItem<string>[] = [
-    ...tabsFor(surface).filter((entry) => !entry.adminOnly || isAdmin),
+    ...tabsFor(surface),
     ...extraTabs,
   ].map(({ id, label }) => ({ id, label }));
 
@@ -177,7 +139,7 @@ function SettingsFrame({
       {tab === "preferences" ? <PreferencesPanel /> : null}
       {tab === "exam" ? <ExamPanel /> : null}
       {tab === "payments" ? <PaymentsPanel /> : null}
-      {isAdmin && tab === "referrals" ? <ReferralsPanel /> : null}
+      {tab === "referrals" ? <ReferralsPanel /> : null}
       {tab === "memory" ? <TutorMemoryPanel /> : null}
       {extraTabs.map((entry) => (tab === entry.id ? <div key={entry.id}>{entry.panel}</div> : null))}
     </>

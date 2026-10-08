@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { AsyncBoundary, Back, LoadingSpinner, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatLongDateTime } from "@/foundation/format";
-import { useCurrentExam } from "@/foundation/session";
 import { readReferralHistory, type ReferralHistoryRow } from "@/capabilities/account/api";
 import { StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
@@ -85,8 +84,6 @@ function ReferralMissing() {
 }
 
 function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
-  // The old page printed the viewer's own app type here, not the referee's.
-  const { code: examCode } = useCurrentExam();
   return (
     <div className="mx-auto w-full max-w-[1100px] space-y-6">
       <div className="space-y-2">
@@ -98,7 +95,6 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
           <dl className={FACTS}>
             <Fact label="Date created">{formatLongDateTime(referral.redeemed_at)}</Fact>
             <Fact label="Code used">{referral.code}</Fact>
-            <Fact label="App type">{examCode}</Fact>
           </dl>
         </Panel>
 

@@ -7,6 +7,6 @@
  */
 export function examLabel(name: string | null | undefined, code: string | null | undefined): string {
   if (name) return name;
-  if (!code) return "";
+  if (!code) return "No exam chosen yet";
   return code.toUpperCase();
 }

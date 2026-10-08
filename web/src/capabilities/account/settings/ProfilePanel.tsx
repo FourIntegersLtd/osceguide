@@ -70,7 +70,7 @@ export default function ProfilePanel({
                 key={user.id}
                 user={user}
                 // The split (staff) screen has its own Security tab, and staff hold no exam.
-                exam={part ? null : examLabel(examName, user.exam_code ?? codes[0] ?? "sca")}
+                exam={part ? null : examLabel(examName, user.exam_code ?? codes[0])}
                 passwordHere={part === undefined}
                 onSaved={() => me.reload()}
                 onDirtyChange={onDirtyChange}

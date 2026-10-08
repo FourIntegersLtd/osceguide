@@ -1,5 +1,7 @@
 import type { Trainee } from "@/domains/assess/api";
 import type { Cohort } from "@/domains/assess/roster/api";
+import { errorMessage } from "@/foundation/hooks/useAsync";
+import { hasCode } from "@/foundation/platform-client";
 
 /** A trainee exists before they have ever signed in, so a name may be absent. */
 export function fullName(trainee: Trainee): string | null {
@@ -149,4 +151,13 @@ export function deleteLead(name: string, stationsSat: number): string {
   if (stationsSat <= 0) return base;
   const stations = `${stationsSat} station${stationsSat === 1 ? "" : "s"}`;
   return `${name} has sat ${stations}, so deleting is likely to be refused once a result is decided. Revoke their access instead to keep their records.`;
+}
+
+/** What to tell an admin whose add or resend was refused: the two answers they can act on, said plainly. */
+export function rosterErrorMessage(cause: unknown, email: string): string {
+  if (hasCode(cause, "trainee_exists")) return `${email} is already on this roster.`;
+  if (hasCode(cause, "too_many_requests")) {
+    return "You have sent a lot of invitation emails just now. Wait a minute, then try again.";
+  }
+  return errorMessage(cause);
 }

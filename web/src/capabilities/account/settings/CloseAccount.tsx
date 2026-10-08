@@ -14,8 +14,9 @@ const { b2cInputBase } = productTokens;
 /**
  * The grey block that ends the Profile tab: close the signed-in account.
  *
- * The row stays, so consultations and payments still have someone they
- * belonged to. Sign-in stops, and the password is cleared. The backend asks
+ * The row stays for 30 days, then erasure runs (`service_erasure`), so
+ * consultations and payments still have someone they belonged to until
+ * then. Sign-in stops at once, and the password is cleared. The backend asks
  * for the password when the account has one and for the word "delete" when it
  * does not (organisation sign-in), so the modal collects both and sends both.
  * Platform admins are refused here, as they were on the old screen.
@@ -56,7 +57,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
         <div className="min-w-0 flex-1">
           <h2 className="text-osce-subheading font-semibold text-danger">Delete your account</h2>
           <p className={settingsSub}>
-            This cannot be undone and you will not be able to restore your account.
+            You are signed out straight away and cannot sign in again. Your details and practice are erased 30 days later.
           </p>
           {isAdmin ? (
             <p className={`mt-1 ${settingsMeta}`}>Admin accounts cannot be deleted from Settings.</p>
@@ -87,7 +88,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
         onCancel={reset}
         onConfirm={() => close()}
         title="Delete your account?"
-        message="This permanently removes your account, your attempts and all your feedback. Any active subscription ends. Type DELETE to confirm."
+        message="You will be signed out now, and your details, attempts and feedback are erased after 30 days. Closing does not cancel a subscription or refund a payment: email support first if you want that. Type DELETE to confirm."
         confirmText="Delete my account"
         cancelText="Keep account"
         tone="danger"

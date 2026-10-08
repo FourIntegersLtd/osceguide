@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AsyncBoundary, Button, Input, Panel } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
-import { useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
 import { readMe, updateMe, type Me } from "@/capabilities/account/api";
 import { examLabel } from "@/capabilities/account/settings/examLabel";
@@ -35,8 +35,8 @@ export default function ExamPanel() {
 function ExamCards({ me }: { me: Me }) {
   const { codes, name, settings } = useCurrentExam();
   // What they signed up to sit, or — if they have since bought others — what
-  // they hold. The old screen fell back to "sca" when nothing was set.
-  const code = me.exam_code ?? codes[0] ?? "sca";
+  // they hold. With neither, the label says so rather than inventing one.
+  const code = me.exam_code ?? codes[0];
 
   return (
     <>
@@ -87,8 +87,8 @@ function ExamDateCard({
     try {
       await updateMe({ exam_date: examDate, exam_time: examTime ? `${examTime}:00` : null });
       setSuccessMessage(`${dateLabel} updated`);
-    } catch {
-      setError(`Failed to update ${dateLabel.toLowerCase()}`);
+    } catch (cause) {
+      setError(errorMessage(cause));
     } finally {
       setSaving(false);
     }
@@ -104,8 +104,8 @@ function ExamDateCard({
       setExamDate("");
       setExamTime("");
       setSuccessMessage(`${dateLabel} cleared`);
-    } catch {
-      setError(`Failed to clear ${dateLabel.toLowerCase()}`);
+    } catch (cause) {
+      setError(errorMessage(cause));
     } finally {
       setClearing(false);
     }

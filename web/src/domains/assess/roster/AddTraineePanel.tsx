@@ -5,7 +5,7 @@ import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
 import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
 import { useTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
-import { errorMessage } from "@/foundation/hooks";
+import { rosterErrorMessage } from "@/domains/assess/roster/support";
 import { addTrainee, type Cohort } from "@/domains/assess/roster/api";
 import { BulkImportDialog } from "@/domains/assess/roster/BulkImportDialog";
 
@@ -76,7 +76,7 @@ export function AddTraineePanel({
       setEmail("");
       onAdded();
     } catch (cause) {
-      setError(errorMessage(cause));
+      setError(rosterErrorMessage(cause, address));
     } finally {
       setBusy(false);
     }

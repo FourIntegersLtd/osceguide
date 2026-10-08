@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
-import { deleteLead, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
+import { PlatformError } from "@/foundation/platform-client";
+import { deleteLead, rosterErrorMessage, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
 import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {
@@ -86,4 +87,18 @@ test("a reload fetches only the lists marked stale", async () => {
   calls.length = 0;
   await loadRoster(cache, "other", new Set<RosterPart>(["groups"]), fetchers);
   assert.deepEqual(calls, ["trainees", "cohorts", "groups"]);
+});
+
+test("a duplicate add and a rate-limited resend are said plainly", () => {
+  const refused = (status: number, code: string) =>
+    new PlatformError(status, { code, message: "raw server text" } as never);
+  assert.equal(
+    rosterErrorMessage(refused(409, "trainee_exists"), "ada@example.com"),
+    "ada@example.com is already on this roster.",
+  );
+  assert.equal(
+    rosterErrorMessage(refused(429, "too_many_requests"), "ada@example.com"),
+    "You have sent a lot of invitation emails just now. Wait a minute, then try again.",
+  );
+  assert.equal(rosterErrorMessage(refused(500, "internal_error"), "a@b.c"), "raw server text");
 });

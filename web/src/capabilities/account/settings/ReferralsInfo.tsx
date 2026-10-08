@@ -69,7 +69,7 @@ export default function ReferralsInfo() {
         for complete terms and conditions.
       </AboutInfoNote>
       <AboutInfoCallout label="Tip">
-        Add your bank details to receive referral rewards within 48 hours of a successful referral.
+        Add your bank details to receive referral rewards once a referral has paid.
       </AboutInfoCallout>
     </AboutInfo>
   );

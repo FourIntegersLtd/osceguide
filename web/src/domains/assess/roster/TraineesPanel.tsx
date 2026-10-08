@@ -26,7 +26,7 @@ import {
 } from "@/domains/assess/roster/api";
 import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
 import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
-import { accessActive, cohortName, deleteLead, displayName, traineeCountLabel, traineeStatus } from "@/domains/assess/roster/support";
+import { accessActive, cohortName, deleteLead, displayName, rosterErrorMessage, traineeCountLabel, traineeStatus } from "@/domains/assess/roster/support";
 
 type Pending = { kind: "revoke" | "restore" | "delete" | "anonymise"; trainee: Trainee } | null;
 
@@ -157,7 +157,7 @@ export function TraineesPanel({
             text: `${displayName(trainee)}  has already set up their account, so there is no invitation to resend.`,
           });
         } else {
-          setNotice({ tone: "danger", text: errorMessage(cause) });
+          setNotice({ tone: "danger", text: rosterErrorMessage(cause, trainee.email) });
         }
       } finally {
         setResending(null);
