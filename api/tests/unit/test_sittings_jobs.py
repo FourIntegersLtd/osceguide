@@ -27,6 +27,14 @@ async def fake_session() -> AsyncIterator[object]:
     yield object()
 
 
+@pytest.fixture(autouse=True)
+def no_silent_patients(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def silent(session: object, **_: object) -> list[SimpleNamespace]:
+        return []
+
+    monkeypatch.setattr(repository_run, "silent_patient_circuits", silent)
+
+
 def a_circuit() -> SimpleNamespace:
     return SimpleNamespace(org_id=uuid.uuid4(), circuit_id=uuid.uuid4(), phase_seq=1)
 

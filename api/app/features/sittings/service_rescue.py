@@ -16,6 +16,7 @@ from app.core.errors import raise_mapped
 from app.core.ports import RoomAgents
 from app.core.settings import Settings
 from app.features.attempts import service as attempts_service
+from app.features.attempts import service_reads as attempts_reads
 from app.features.sittings import (
     announcements,
     domain,
@@ -26,6 +27,7 @@ from app.features.sittings import (
     service_steps,
 )
 from app.features.sittings.overrides import (
+    AUTO_RESEND_PATIENT,
     JUMP_TO,
     REDO_STATION,
     RESEND_PATIENT,
@@ -46,6 +48,7 @@ async def resend_patient(
     settings: Settings,
     actor: Actor,
     now: datetime,
+    action: str = RESEND_PATIENT,
 ) -> DispatchResult:
     """Put a fresh patient into the room, for the station already running.
 
@@ -79,7 +82,7 @@ async def resend_patient(
         session,
         org_id,
         circuit,
-        action=RESEND_PATIENT,
+        action=action,
         actor=actor,
         before=before,
         now=now,
@@ -93,6 +96,46 @@ async def resend_patient(
         agent_name=agent_name,
         stale_agents_removed=removed,
     )
+
+
+# Statuses that mean the patient arrived, as `domain_alerts` reads them.
+_ARRIVED = frozenset({"running", "interaction_complete", "evaluated"})
+
+_AUTO_RESEND_REASON = "The patient had not arrived; the sweeper sent a fresh one."
+
+
+async def resend_if_silent(
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    circuit_id: uuid.UUID,
+    *,
+    agents: RoomAgents,
+    settings: Settings,
+    now: datetime,
+) -> bool:
+    """The sweeper's one automatic retry (R-17): resend the patient if still no recording.
+
+    Re-checked under the lock, since the patient may have arrived since the
+    sweeper looked. True when a patient was sent.
+    """
+    circuit = await live_for_update(session, org_id, circuit_id)
+    if circuit.phase != domain_run.RunPhase.SIMULATION or circuit.active_slot_id is None:
+        return False
+    live = await attempts_reads.live_attempts_for_slots(session, [circuit.active_slot_id])
+    attempt = live.get(circuit.active_slot_id)
+    if attempt is not None and attempt.status in _ARRIVED:
+        return False
+    await resend_patient(
+        session,
+        org_id,
+        circuit_id,
+        agents=agents,
+        settings=settings,
+        actor=Actor(user_id=None, reason=_AUTO_RESEND_REASON),
+        now=now,
+        action=AUTO_RESEND_PATIENT,
+    )
+    return True
 
 
 async def redo_station(

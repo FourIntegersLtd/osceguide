@@ -94,6 +94,40 @@ async def overdue_circuits(session: AsyncSession, *, now: datetime, grace_second
     ]
 
 
+async def silent_patient_circuits(
+    session: AsyncSession, *, dispatched_before: datetime, auto_action: str
+) -> list[DueCircuit]:
+    """Circuits in a consultation whose patient was dispatched long ago and not yet auto-resent (R-17).
+
+    Not org-scoped, like the other sweeper queries. Whether the patient truly
+    never arrived is judged by the caller from the attempt, under the lock.
+    The `auto_action` intervention since the phase began is what keeps this to
+    one automatic retry per station.
+    """
+    already = (
+        select(CircuitIntervention.id)
+        .where(
+            CircuitIntervention.circuit_id == Circuit.id,
+            CircuitIntervention.action == auto_action,
+            CircuitIntervention.at >= Circuit.phase_started_at,
+        )
+        .exists()
+    )
+    stmt = select(Circuit.org_id, Circuit.id, Circuit.phase_seq).where(
+        _live(),
+        Circuit.paused_at.is_(None),
+        Circuit.phase == "simulation",
+        Circuit.active_slot_id.is_not(None),
+        Circuit.agent_dispatched_at.is_not(None),
+        Circuit.agent_dispatched_at < dispatched_before,
+        ~already,
+    )
+    return [
+        DueCircuit(org_id=org_id, circuit_id=circuit_id, phase_seq=seq)
+        for org_id, circuit_id, seq in (await session.execute(stmt)).all()
+    ]
+
+
 async def stale_circuits(session: AsyncSession, *, quiet_since: datetime) -> list[DueCircuit]:
     """Circuits left running long after anybody went home.
 

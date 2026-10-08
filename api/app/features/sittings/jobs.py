@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from typing import Any, TypeVar
 
@@ -26,7 +26,14 @@ from app.core.jobs import get_jobs_app
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings, get_settings
-from app.features.sittings import repository_run, service_clock, service_patient, service_run
+from app.features.sittings import (
+    overrides,
+    repository_run,
+    service_clock,
+    service_patient,
+    service_rescue,
+    service_run,
+)
 
 T = TypeVar("T")
 
@@ -39,6 +46,10 @@ SWEEP_TASK = "sweep_circuits"
 # enough that a candidate does not wait, long enough that the scheduled
 # transition gets its moment first and the two do not race for every phase.
 SWEEP_GRACE_SECONDS = 15
+
+# How long a dispatched patient may take to start recording before the sweeper
+# sends a fresh one, once per station (R-17). Well past the board's 20s alert.
+PATIENT_RESEND_AFTER_SECONDS = 60
 
 # Doubling waits, 12 tries: about 2 hours of LiveKit outage before the job gives up.
 CLEAR_ROOM_RETRY = RetryStrategy(max_attempts=12, exponential_wait=2)
@@ -95,6 +106,11 @@ async def sweep_now(
     async with opener() as session:  # type: ignore[operator]
         due = await repository_run.overdue_circuits(session, now=now, grace_seconds=SWEEP_GRACE_SECONDS)
         stale = await repository_run.stale_circuits(session, quiet_since=now - service_run.STALE_AFTER)
+        silent = await repository_run.silent_patient_circuits(
+            session,
+            dispatched_before=now - timedelta(seconds=PATIENT_RESEND_AFTER_SECONDS),
+            auto_action=overrides.AUTO_RESEND_PATIENT,
+        )
 
     advanced = 0
     ended = 0
@@ -138,6 +154,25 @@ async def sweep_now(
         else:
             ended += 1
             log.info("ended a circuit left running overnight", circuit_id=str(stale_circuit.circuit_id))
+
+    for silent_circuit in silent:
+        completed, resent = await _one_circuit(
+            "resending patient",
+            silent_circuit.circuit_id,
+            partial(
+                service_rescue.resend_if_silent,
+                org_id=silent_circuit.org_id,
+                circuit_id=silent_circuit.circuit_id,
+                agents=agents,
+                settings=settings,
+                now=now,
+            ),
+            opener=opener,
+        )
+        if not completed:
+            failed += 1
+        elif resent:
+            log.info("sent a fresh patient to a silent room", circuit_id=str(silent_circuit.circuit_id))
 
     if advanced or ended or failed:
         log.info("circuits swept", advanced=advanced, ended=ended, failed=failed)

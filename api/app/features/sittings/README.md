@@ -141,7 +141,8 @@ scheduled job cannot cover: the worker was down when a phase ended, a transition
 rolled back, or a deploy landed mid-examination. It also ends circuits whose clock has
 had nothing to count for twelve hours (measured from `phase_ends_at`, so a long
 day is not abandoned), never a paused one, and writes an `auto_end`
-intervention so the history says the reaper did it (R-15).
+intervention so the history says the reaper did it (R-15). A consultation whose patient was
+dispatched over 60s ago and has no recording gets one `auto_resend_patient` per station (R-17).
 Each circuit is its own transaction and its own try/except: one that raises (a
 LiveKit dispatch failing) is logged with its id and counted in `failed`, never
 allowed to stop the sweep, so the job succeeds and the rest still advance.

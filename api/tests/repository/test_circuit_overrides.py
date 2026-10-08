@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts.models import Attempt
@@ -229,6 +229,62 @@ async def test_resending_the_patient_keeps_the_clock_where_it_was(
     assert result.attempt_id is not None
     total = await db_session.scalar(select(func.count()).select_from(Attempt))
     assert total == 2, "the silence is kept as evidence beside the retry"
+
+
+async def test_a_patient_who_never_arrives_is_resent_once_by_the_sweeper(
+    db_session: AsyncSession,
+) -> None:
+    """R-17: no human needed for the first retry, and never a second automatic one."""
+    from app.features.sittings.models import CircuitIntervention
+
+    agents = FakeRoomAgents()
+    org_id, circuit_id = await _running(db_session)
+    await service_control.advance_now(
+        db_session, org_id, circuit_id, agents=agents, settings=_settings(), actor=ANYONE, now=NOW
+    )
+
+    async def silent(at: datetime) -> set[uuid.UUID]:
+        rows = await repository_run.silent_patient_circuits(
+            db_session, dispatched_before=at, auto_action="auto_resend_patient"
+        )
+        return {row.circuit_id for row in rows}
+
+    assert circuit_id not in await silent(NOW - timedelta(seconds=1))
+    assert circuit_id in await silent(NOW + timedelta(seconds=60))
+
+    resent = await service_rescue.resend_if_silent(
+        db_session, org_id, circuit_id, agents=agents, settings=_settings(), now=NOW + timedelta(seconds=60)
+    )
+
+    assert resent is True
+    assert await db_session.scalar(select(func.count()).select_from(Attempt)) == 2
+    rows = (
+        await db_session.execute(
+            select(CircuitIntervention.action, CircuitIntervention.actor_user_id).where(
+                CircuitIntervention.circuit_id == circuit_id
+            )
+        )
+    ).all()
+    assert [tuple(row) for row in rows if row[0].endswith("resend_patient")] == [
+        ("auto_resend_patient", None)
+    ]
+    assert circuit_id not in await silent(NOW + timedelta(minutes=10))
+
+
+async def test_the_sweeper_does_not_resend_a_patient_who_has_arrived(db_session: AsyncSession) -> None:
+    agents = FakeRoomAgents()
+    org_id, circuit_id = await _running(db_session)
+    await service_control.advance_now(
+        db_session, org_id, circuit_id, agents=agents, settings=_settings(), actor=ANYONE, now=NOW
+    )
+    await db_session.execute(update(Attempt).values(status="running"))
+
+    resent = await service_rescue.resend_if_silent(
+        db_session, org_id, circuit_id, agents=agents, settings=_settings(), now=NOW + timedelta(minutes=2)
+    )
+
+    assert resent is False
+    assert await db_session.scalar(select(func.count()).select_from(Attempt)) == 1
 
 
 async def test_resending_the_patient_during_a_break_is_refused(

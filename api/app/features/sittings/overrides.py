@@ -27,6 +27,8 @@ RESUME = "resume"
 EXTEND_CLOCK = "extend_clock"
 RESET_CLOCK = "reset_clock"
 RESEND_PATIENT = "resend_patient"
+# The sweeper re-dispatching a patient who never arrived, once per station (R-17).
+AUTO_RESEND_PATIENT = "auto_resend_patient"
 REDO_STATION = "redo_station"
 JUMP_TO = "jump_to"
 ADVANCE = "advance"
