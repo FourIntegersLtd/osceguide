@@ -16,6 +16,7 @@ import { isPlatformAdmin, useSession } from "@/foundation/session";
 import { useCurrentExam } from "@/foundation/session/useCurrentExam";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { readMe, updateMe, uploadAvatar, type Me } from "@/capabilities/account/api";
+import type { ProfilePart } from "@/capabilities/account/settings/settingsTabs";
 import { examLabel } from "@/capabilities/account/settings/examLabel";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
@@ -28,6 +29,7 @@ import { TwoFactorPanel } from "@/capabilities/account/settings/TwoFactorPanel";
 /** The retiring client's `profileSchema`, kept as numbers so the copy is one string. */
 const NAME_MIN = 3;
 const NAME_MAX = 50;
+const NO_EXAM = "No exam chosen yet";
 
 /**
  * Who you are, and the two things about it you can change.
@@ -45,7 +47,6 @@ const NAME_MAX = 50;
  * (Account, Security, Data) because staff have no exam, plan or tutor, so
  * Profile was the only tab with anything of theirs on it.
  */
-export type ProfilePart = "account" | "security" | "data";
 
 export default function ProfilePanel({
   onDirtyChange,
@@ -70,7 +71,7 @@ export default function ProfilePanel({
                 key={user.id}
                 user={user}
                 // The split (staff) screen has its own Security tab, and staff hold no exam.
-                exam={part ? null : examLabel(examName, user.exam_code ?? codes[0])}
+                exam={part ? null : examLabel(examName, user.exam_code ?? codes[0]) ?? NO_EXAM}
                 passwordHere={part === undefined}
                 onSaved={() => me.reload()}
                 onDirtyChange={onDirtyChange}

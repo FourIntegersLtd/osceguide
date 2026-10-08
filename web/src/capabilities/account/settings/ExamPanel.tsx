@@ -44,7 +44,7 @@ function ExamCards({ me }: { me: Me }) {
         <Input
           label="Exam type"
           name="examType"
-          value={examLabel(name, code)}
+          value={examLabel(name, code) ?? "No exam chosen yet"}
           disabled
           readOnly
         />

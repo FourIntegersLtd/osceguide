@@ -1,4 +1,5 @@
-import type { ProfilePart } from "@/capabilities/account/settings/ProfilePanel";
+/** Staff settings split the Profile tab in three; `ProfilePanel` renders one part. */
+export type ProfilePart = "account" | "security" | "data";
 
 export type SettingsTab =
   | "profile"
@@ -10,8 +11,6 @@ export type SettingsTab =
   | ProfilePart;
 
 /**
- * The retiring client's tabs, in its order, plus the tutor's memory.
- *
  * Referrals is for everyone: checkout accepts a code from any buyer and
  * `POST /me/referral-code` issues one to any signed-in account. (The old
  * screen hid it from non-admins, which left a referee with no way to find

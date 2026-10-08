@@ -5,8 +5,8 @@
  * institution's own included, so this is a fallback for the moment before
  * that name has loaded rather than a second source of exam names.
  */
-export function examLabel(name: string | null | undefined, code: string | null | undefined): string {
+export function examLabel(name: string | null | undefined, code: string | null | undefined): string | null {
   if (name) return name;
-  if (!code) return "No exam chosen yet";
+  if (!code) return null;
   return code.toUpperCase();
 }
