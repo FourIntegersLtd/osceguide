@@ -98,3 +98,10 @@ class InvalidExamSettings(InvalidInput):
 
     code = "invalid_exam_settings"
     default_message = "Those exam settings name a prompt that does not exist"
+
+
+class ProgrammeNotActive(Conflict):
+    """A sitting was scheduled against a programme that is not running, or whose exam is retired."""
+
+    code = "programme_not_active"
+    default_message = "That programme is not active, so nothing can be scheduled against it"

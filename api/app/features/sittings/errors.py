@@ -99,7 +99,7 @@ class StationNotOnCircuitError(Conflict):
 # so both slices' errors are this slice's vocabulary too. Re-exported rather
 # than redefined: local classes here were previously never raised, so routes
 # advertised codes that could not happen.
-from app.features.catalog.errors import ProgrammeNotFound  # noqa: E402
+from app.features.catalog.errors import ProgrammeNotActive, ProgrammeNotFound  # noqa: E402
 from app.features.rubrics.errors import (  # noqa: E402
     RubricVersionNotFound,
     RubricVersionNotPublished,
@@ -138,13 +138,6 @@ class ExamRubricNotReady(Conflict):
 
     code = "exam_rubric_not_ready"
     default_message = "That programme's exam is not ready to mark against yet"
-
-
-class ProgrammeNotActive(Conflict):
-    """A sitting was scheduled against a programme that is not running, or whose exam is retired."""
-
-    code = "programme_not_active"
-    default_message = "That programme is not active, so nothing can be scheduled against it"
 
 
 class CircuitNotStarted(Conflict):

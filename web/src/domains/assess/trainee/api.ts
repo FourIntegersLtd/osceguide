@@ -29,17 +29,19 @@ export type OrgStation = components["schemas"]["StationRead"];
 /** A candidate's released review of one station, in the rubric's own rating kind (`summary.rating`). */
 export type MySlotReview = components["schemas"]["MySlotReviewRead"];
 
+/** `org_slug` is declared on these routes but not yet in the generated types (until regenerated). */
+function orgQuery(orgSlug: string | null): string {
+  return orgSlug ? `?org_slug=${encodeURIComponent(orgSlug)}` : "";
+}
+
 /** Pushed, not polled. The old detail screen re-fetched every five seconds. */
 export function mySittingsStreamPath(orgSlug: string | null): string {
-  const base = "/api/v1/me/sittings/stream";
-  return orgSlug ? `${base}?org_slug=${encodeURIComponent(orgSlug)}` : base;
+  return `/api/v1/me/sittings/stream${orgQuery(orgSlug)}`;
 }
 
 /** One workspace's sittings (a trainee in two organisations sees each in its own), or all when none is named. */
 export function readMySittings(orgSlug: string | null, signal?: AbortSignal): Promise<MySittings> {
-  // `org_slug` is declared on the route but not yet in the generated types.
-  const query = orgSlug ? `?org_slug=${encodeURIComponent(orgSlug)}` : "";
-  return platformRequest<MySittings>(`/api/v1/me/sittings${query}`, { signal });
+  return platformRequest<MySittings>(`/api/v1/me/sittings${orgQuery(orgSlug)}`, { signal });
 }
 
 /** Join the room for a circuit I am rostered onto. */

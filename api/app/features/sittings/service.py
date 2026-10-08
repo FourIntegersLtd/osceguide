@@ -289,11 +289,7 @@ async def rubric_version_for_programme(
     session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID
 ) -> uuid.UUID:
     """The published rubric version this programme's exam is marked with."""
-    exam_id = await catalog.programme_exam_id(session, org_id, programme_id)
-    exam = await catalog.exam_row(session, exam_id)
-    # S-24: a paused or retired programme, or one whose exam was retired, is not scheduled against.
-    if await catalog.programme_status(session, org_id, programme_id) != "active" or exam.status == "retired":
-        raise errors.ProgrammeNotActive()
+    exam = await catalog.ensure_programme_active(session, org_id, programme_id)
     if exam.rubric_version_id is None:
         raise errors.ExamRubricNotReady("That programme's exam has no published rubric to mark against yet.")
     await service_marking.published_version(session, org_id, exam.rubric_version_id)

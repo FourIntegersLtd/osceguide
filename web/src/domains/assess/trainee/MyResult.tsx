@@ -5,8 +5,8 @@ import { Alert, AsyncBoundary, B2CHero, B2CPageHeader, Button, ButtonLink } from
 import { errorMessage, useAsync } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
 import { acknowledgeResult, downloadMyResult, readMyResult } from "@/domains/assess/trainee/api";
-import { workspaceBasePath } from "@/foundation/routing";
 import { useSurface } from "@/capabilities";
+import { PERSONAL_PRACTICE_HREF } from "@/domains/assess/trainee/support";
 
 /**
  * A candidate's own result, once it has been released and not before.
@@ -137,7 +137,7 @@ export function MyResult({ sittingId }: { sittingId: string }) {
                       themeType="b2b"
                       variant="secondary"
                       size="sm"
-                      href={`${workspaceBasePath("me")}/dashboard`}
+                      href={PERSONAL_PRACTICE_HREF}
                     >
                       Open personal practice
                     </ButtonLink>

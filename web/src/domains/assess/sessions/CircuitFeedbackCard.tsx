@@ -29,12 +29,15 @@ export function CircuitFeedbackCard({
   orgSlug,
   circuitId,
   busy,
+  offline,
   run,
 }: {
   data: CircuitConsole;
   orgSlug: string;
   circuitId: string;
   busy: string | null;
+  /** The live stream is down, so the marks on screen may be stale. */
+  offline: boolean;
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
 }) {
   const slots = data.slots ?? [];
@@ -54,6 +57,7 @@ export function CircuitFeedbackCard({
           marked={slots.filter((slot) => slot.has_review).length}
           total={slots.length}
           busy={busy}
+          offline={offline}
           publish={async (notes) => {
             // `run` keeps a failure for the runner's banner rather than
             // throwing, so success is recorded from inside the action.
@@ -76,12 +80,14 @@ function FeedbackForm({
   marked,
   total,
   busy,
+  offline,
   publish,
 }: {
   current: CircuitReviewState;
   marked: number;
   total: number;
   busy: string | null;
+  offline: boolean;
   publish: (notes: string | null) => Promise<boolean>;
 }) {
   const [notes, setNotes] = useState(current.review?.merged_notes ?? "");
@@ -128,7 +134,7 @@ function FeedbackForm({
         themeType="b2b"
         variant="secondary"
         isLoading={busy === "publish"}
-        disabled={busy !== null || marked === 0}
+        disabled={busy !== null || offline || marked === 0}
         onClick={() => publish(notes.trim() || null)}
       >
         <HiCheckCircle className="h-4 w-4 shrink-0 text-b2b-success-text" aria-hidden />

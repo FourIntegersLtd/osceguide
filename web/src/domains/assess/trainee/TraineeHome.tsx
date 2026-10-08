@@ -21,7 +21,6 @@ import {
 } from "@/foundation/ui";
 import { useAsync, useEventStream } from "@/foundation/hooks";
 import { activeMembership, useSession } from "@/foundation/session";
-import { workspaceBasePath } from "@/foundation/routing";
 import { capabilitiesFor, useSurface } from "@/capabilities";
 import { LiveTurnBanner } from "@/domains/assess/trainee/LiveTurnBanner";
 import {
@@ -36,6 +35,7 @@ import {
   greeting,
   isExam,
   liveSittings,
+  PERSONAL_PRACTICE_HREF,
   progressOf,
   sittingForSlot,
   slotById,
@@ -93,7 +93,6 @@ function Overview({
   const { hrefFor } = useSurface();
   const live = liveSittings(sittings);
   const { current, past } = splitFinished(sortSittings(sittings));
-  const ordered = current;
   // An emailed join link named a slot, and only the list this person has
   // already loaded can say which sitting owns it. Not finding it is an answer
   // rather than a fault: the slot was taken off them, or the link was never
@@ -121,14 +120,14 @@ function Overview({
       <LiveTurnBanner sittings={live} />
 
       <section aria-label="Your sittings">
-        {ordered.length === 0 && past.length === 0 ? (
+        {current.length === 0 && past.length === 0 ? (
           <EmptyState
             title="You are not booked on anything yet"
             description="When your organisation adds you to a sitting it appears here, and you are told when it opens."
           />
         ) : (
           <B2CGroupedSection eyebrow="Your sittings">
-            {ordered.map((sitting) => (
+            {current.map((sitting) => (
               <SittingRow key={`${sitting.id}-${sitting.circuit_id}`} sitting={sitting} />
             ))}
           </B2CGroupedSection>
@@ -196,7 +195,7 @@ function Explore() {
             themeType="b2b"
             variant="secondary"
             size="sm"
-            href={`${workspaceBasePath("me")}/dashboard`}
+            href={PERSONAL_PRACTICE_HREF}
           >
             Open personal practice
           </ButtonLink>

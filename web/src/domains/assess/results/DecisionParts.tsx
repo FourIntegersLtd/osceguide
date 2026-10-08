@@ -9,7 +9,9 @@ import {
   ASSESSMENT_OUTCOMES,
   OUTCOME_HINT,
   OUTCOME_LABEL,
-  RECRUITMENT_LABEL, RECRUITMENT_OUTCOMES, recruitmentLabel,
+  RECRUITMENT_LABEL,
+  RECRUITMENT_OUTCOMES,
+  recruitmentLabel,
   type AssessmentOutcome,
 } from "@/domains/assess/results/support";
 
@@ -121,7 +123,7 @@ export function ReleaseButton({
 }
 
 /** The assessment outcome choices; locked once the decision is signed off. */
-export function OutcomePicker({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (outcome: AssessmentOutcome) => void }) {
+export function OutcomePicker({ value, disabled, onChange }: { value: AssessmentOutcome | ""; disabled: boolean; onChange: (outcome: AssessmentOutcome) => void }) {
   return (
     <fieldset className="space-y-2" disabled={disabled}>
       <legend className="mb-2 text-osce-meta font-medium text-b2b-headline">Outcome</legend>

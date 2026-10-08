@@ -14,6 +14,7 @@ import {
   type Decision,
 } from "@/domains/assess/results/api";
 import {
+  outcomeChoice,
   releasable,
   releaseRefusal,
   signOffBlockers,
@@ -100,7 +101,7 @@ function Form({
   decision: Decision | null;
   onChanged: () => void;
 }) {
-  const [outcome, setOutcome] = useState(decision?.assessment_outcome ?? "");
+  const [outcome, setOutcome] = useState(outcomeChoice(decision?.assessment_outcome));
   const [recruitment, setRecruitment] = useState(decision?.recruitment_outcome ?? "");
   const [rationale, setRationale] = useState(decision?.rationale ?? "");
   const [busy, setBusy] = useState<string | null>(null);

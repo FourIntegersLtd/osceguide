@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exam_settings import ExamSettings
 from app.features.catalog import domain, repository
-from app.features.catalog.errors import ProgrammeNotFound, UnknownExamError
+from app.features.catalog.errors import ProgrammeNotActive, ProgrammeNotFound, UnknownExamError
 from app.features.catalog.models import Exam
 from app.features.catalog.schemas import ExamRead
 
@@ -228,20 +228,19 @@ async def _published(session: AsyncSession, org_id: uuid.UUID | None = None) -> 
     return await repository.list_exams(session, org_id, statuses=[domain.ExamStatus.PUBLISHED])
 
 
-async def programme_exam_id(session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID) -> uuid.UUID:
-    """The exam this programme offers, or the refusal."""
+async def ensure_programme_active(session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID) -> Exam:
+    """The exam a programme offers, if the programme is running and its exam still published (S-24)."""
     programme = await repository.programme_by_id(session, org_id, programme_id)
     if programme is None:
         raise ProgrammeNotFound()
-    return programme.exam_id
-
-
-async def programme_status(session: AsyncSession, org_id: uuid.UUID, programme_id: uuid.UUID) -> str:
-    """Whether this programme is being run (`active`), or the refusal."""
-    programme = await repository.programme_by_id(session, org_id, programme_id)
-    if programme is None:
-        raise ProgrammeNotFound()
-    return programme.status
+    exam = await exam_row(session, programme.exam_id)
+    try:
+        domain.ensure_offerable(exam.status)
+    except domain.NotOfferable as exc:
+        raise ProgrammeNotActive() from exc
+    if not domain.ProgrammeRef(exam_code=exam.code, status=programme.status).is_offerable:
+        raise ProgrammeNotActive()
+    return exam
 
 
 async def programme_exams(

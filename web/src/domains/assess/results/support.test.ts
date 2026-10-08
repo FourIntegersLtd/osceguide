@@ -8,6 +8,7 @@ import {
   readoutAsMarkdown,
   readoutFilename,
   recruitmentLabel,
+  outcomeChoice,
   releasable,
   splitByAccount,
   suggestedOutcome,
@@ -237,4 +238,10 @@ test("the marks propose an outcome, and say nothing when they cannot (R-33)", ()
   // A station with no pass rule or no marks yet means there is nothing to propose.
   assert.equal(suggestedOutcome(candidate({ stations: [sat(true), sat(null)] })), null);
   assert.equal(suggestedOutcome(candidate({ stations: [] })), null);
+});
+
+test("a stored outcome becomes a pick only when this screen knows it", () => {
+  assert.equal(outcomeChoice("pass"), "pass");
+  assert.equal(outcomeChoice("borderline-ish"), "");
+  assert.equal(outcomeChoice(null), "");
 });

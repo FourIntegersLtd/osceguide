@@ -31,6 +31,7 @@ export function AddTraineesDialog({
   orgSlug,
   circuitId,
   busy,
+  offline,
   failure,
   run,
   onClose,
@@ -40,6 +41,8 @@ export function AddTraineesDialog({
   orgSlug: string;
   circuitId: string;
   busy: string | null;
+  /** The live stream is down, so the roster on screen may be stale. */
+  offline: boolean;
   failure: string | null;
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
   onClose: () => void;
@@ -93,7 +96,7 @@ export function AddTraineesDialog({
       title="Add somebody to this circuit"
       lead="They are given a station at the end of the circuit, in the room that is already open."
       error={refusal ?? failure}
-      busy={busy !== null}
+      busy={busy !== null || offline}
       commitLabel={picked.size > 1 ? `Add ${picked.size} people` : "Add them"}
       busyLabel="Adding…"
       commitDisabled={picked.size === 0}

@@ -1,5 +1,6 @@
 import { PlatformError } from "@/foundation/platform-client";
 import { errorMessage } from "@/foundation/hooks/useAsync";
+import { workspaceBasePath } from "@/foundation/routing";
 import type { MySitting, MySlot, OrgStation } from "@/domains/assess/trainee/api";
 
 /**
@@ -72,6 +73,9 @@ export function activeSlot(sitting: MySitting): MySlot | null {
   return (sitting.slots ?? []).find((slot) => slot.is_active) ?? null;
 }
 
+/** Where a trainee goes to practise on their own, outside any organisation. */
+export const PERSONAL_PRACTICE_HREF = `${workspaceBasePath("me")}/dashboard`;
+
 /** Whether this person may enter a room right now, as the backend decided. */
 export function joinable(sitting: MySitting): boolean {
   return sitting.can_join === true;
@@ -87,6 +91,13 @@ export function isExam(sitting: MySitting): boolean {
 
 export function modeLabel(sitting: MySitting): string {
   return isExam(sitting) ? "Examination" : "Practice circuit";
+}
+
+/** A sitting in one of these is over: it sorts last and belongs under "Past" (T-9). */
+const FINISHED_STATUSES: readonly string[] = ["completed", "ended", "cancelled"];
+
+function isOver(sitting: MySitting): boolean {
+  return FINISHED_STATUSES.includes(sitting.status);
 }
 
 /**
@@ -107,7 +118,7 @@ export function sortSittings(sittings: readonly MySitting[]): MySitting[] {
 function priority(sitting: MySitting): number {
   if (sitting.live) return 0;
   if (sitting.status === "scheduled" || sitting.status === "created") return 1;
-  if (sitting.status === "completed" || sitting.status === "ended") return 3;
+  if (isOver(sitting)) return 3;
   return 2;
 }
 
@@ -269,8 +280,7 @@ export function firstName(name: string | null | undefined): string | null {
 
 /** Sittings still to sit or being sat, and the ones that are over (T-9). */
 export function splitFinished(sittings: readonly MySitting[]): { current: MySitting[]; past: MySitting[] } {
-  const over = (sitting: MySitting) => ["completed", "ended", "cancelled"].includes(sitting.status);
-  return { current: sittings.filter((s) => !over(s)), past: sittings.filter(over) };
+  return { current: sittings.filter((s) => !isOver(s)), past: sittings.filter(isOver) };
 }
 
 const JOIN_REFUSALS: Record<string, string> = {

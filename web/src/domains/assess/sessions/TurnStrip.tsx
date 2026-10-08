@@ -21,6 +21,7 @@ export function TurnStrip({
   orgSlug,
   circuitId,
   busy,
+  offline,
   failure,
   run,
 }: {
@@ -28,6 +29,8 @@ export function TurnStrip({
   orgSlug: string;
   circuitId: string;
   busy: string | null;
+  /** The live stream is down, so what is on screen may be stale. */
+  offline: boolean;
   failure: string | null;
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
 }) {
@@ -35,7 +38,7 @@ export function TurnStrip({
   const circuit = data.circuit;
   const slots = (data.slots ?? []).slice().sort((a, b) => a.slot_index - b.slot_index);
   const live = circuit.started_at !== null && circuit.ended_at === null;
-  const canJump = live && busy === null;
+  const canJump = live && busy === null && !offline;
 
   async function commit(input: { reason: string | null; seconds: number }) {
     if (!request) return;
@@ -80,7 +83,7 @@ export function TurnStrip({
 
       <OverrideDialog
         request={request}
-        busy={busy !== null}
+        busy={busy !== null || offline}
         error={failure}
         onClose={() => setRequest(null)}
         onCommit={(input) => void commit(input)}

@@ -23,6 +23,11 @@ import type {
 export const ASSESSMENT_OUTCOMES = ["pass", "fail", "inconclusive", "withheld"] as const;
 export type AssessmentOutcome = (typeof ASSESSMENT_OUTCOMES)[number];
 
+/** A stored outcome as a pick, or "" when none is chosen (or the server sent one this screen does not know). */
+export function outcomeChoice(raw: string | null | undefined): AssessmentOutcome | "" {
+  return ASSESSMENT_OUTCOMES.find((outcome) => outcome === raw) ?? "";
+}
+
 export const OUTCOME_LABEL: Record<AssessmentOutcome, string> = {
   pass: "Pass",
   fail: "Fail",

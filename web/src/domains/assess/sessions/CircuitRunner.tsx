@@ -164,6 +164,7 @@ function Runner({
           orgSlug={orgSlug}
           circuitId={circuitId}
           busy={run.busy}
+          offline={run.reconnecting}
           failure={run.failure}
           run={run.run}
         />
@@ -185,6 +186,7 @@ function Runner({
         orgSlug={orgSlug}
         circuitId={circuitId}
         busy={run.busy}
+        offline={run.reconnecting}
         run={run.run}
       />
 
@@ -197,6 +199,7 @@ function Runner({
           orgSlug={orgSlug}
           circuitId={circuitId}
           busy={run.busy}
+          offline={run.reconnecting}
           failure={run.failure}
           run={run.run}
           onClose={() => setAdding(false)}

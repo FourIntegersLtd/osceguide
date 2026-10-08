@@ -6,36 +6,85 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from app.features.tenancy import repository as tenancy_repo
+from app.features.voice.service import get_room_agents
 from tests.http.test_examiner_transcript_routes import an_examiner
 from tests.http.test_org_read_models import a_circuit, a_sitting, a_user
 from tests.http.test_sittings_routes import org_with_admin, published_station
+from tests.support.catalog import create_exam
+from tests.support.fakes import FakeRoomAgents
 from tests.support.sittings import add_programme, create_sitting_body
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 
 
-async def test_a_retired_or_unactivated_programme_cannot_be_scheduled(
-    client: AsyncClient, make_actor
+async def _schedule(client: AsyncClient, admin: str, programme_id: uuid.UUID):  # type: ignore[no-untyped-def]
+    return await client.post(
+        "/api/v1/orgs/kings/sittings",
+        json=create_sitting_body(name="S", programme_id=programme_id, mode="exam"),
+        headers=bearer(admin),
+    )
+
+
+async def _set_programme(client: AsyncClient, admin: str, programme_id: uuid.UUID, status: str):  # type: ignore[no-untyped-def]
+    return await client.patch(
+        f"/api/v1/orgs/kings/programmes/{programme_id}", json={"status": status}, headers=bearer(admin)
+    )
+
+
+async def test_a_retired_programme_cannot_be_scheduled(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    programme_id = await add_programme(client, admin, org_slug="kings")
+    assert (await _schedule(client, admin, programme_id)).status_code == 201
+
+    retired = await _set_programme(client, admin, programme_id, "retired")
+    assert (retired.status_code, retired.json()["status"]) == (200, "retired")
+    refused = await _schedule(client, admin, programme_id)
+    assert (refused.status_code, refused.json()["code"]) == (409, "programme_not_active")
+
+
+async def test_a_draft_or_paused_programme_cannot_be_scheduled(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    draft = await add_programme(client, admin, org_slug="kings", active=False)
+    refused = await _schedule(client, admin, draft)
+    assert (refused.status_code, refused.json()["code"]) == (409, "programme_not_active")
+
+    await _set_programme(client, admin, draft, "active")
+    assert (await _schedule(client, admin, draft)).status_code == 201
+    await _set_programme(client, admin, draft, "draft")
+    paused = await _schedule(client, admin, draft)
+    assert (paused.status_code, paused.json()["code"]) == (409, "programme_not_active")
+
+
+async def test_a_programme_whose_exam_was_retired_cannot_be_scheduled(
+    client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     _, admin = await org_with_admin(client, make_actor)
-    url = "/api/v1/orgs/kings/sittings"
-
     programme_id = await add_programme(client, admin, org_slug="kings")
-    ok = await client.post(
-        url, json=create_sitting_body(name="A", programme_id=programme_id, mode="exam"), headers=bearer(admin)
+    await db_session.execute(
+        text("UPDATE exams SET status='retired' FROM org_programmes p WHERE p.exam_id=exams.id AND p.id=:p"),
+        {"p": programme_id},
     )
-    assert ok.status_code == 201, ok.text
+    refused = await _schedule(client, admin, programme_id)
+    assert (refused.status_code, refused.json()["code"]) == (409, "programme_not_active")
 
-    await client.patch(
-        f"/api/v1/orgs/kings/programmes/{programme_id}", json={"status": "retired"}, headers=bearer(admin)
-    )
-    refused = await client.post(
-        url, json=create_sitting_body(name="B", programme_id=programme_id, mode="exam"), headers=bearer(admin)
+
+async def test_a_sitting_cannot_be_moved_onto_an_inactive_programme(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings")
+    root = await make_actor("root-edit@osceguide.com", platform_admin=True)
+    await create_exam(client, root, code="plab")
+    paused = await add_programme(client, admin, org_slug="kings", exam_code="plab", active=False)
+
+    refused = await client.put(
+        f"/api/v1/orgs/kings/sittings/{sitting['id']}",
+        json={"programme_id": str(paused)},
+        headers=bearer(admin),
     )
     assert (refused.status_code, refused.json()["code"]) == (409, "programme_not_active")
 
@@ -99,3 +148,58 @@ async def test_my_sittings_can_be_scoped_to_one_workspace(
     here = (await client.get("/api/v1/me/sittings?org_slug=kings", headers=bearer(token))).json()
     there = (await client.get("/api/v1/me/sittings?org_slug=elsewhere", headers=bearer(token))).json()
     assert (len(everywhere["items"]), len(here["items"]), there["items"]) == (1, 1, [])
+
+
+async def test_another_workspace_or_none_shows_no_sittings(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    # Rostered in kings, but this token no longer carries a kings membership.
+    token = await make_actor(
+        "left@example.com",
+        memberships=(),
+    )
+    candidate_id = await a_user(db_session, "left@example.com")
+    await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate_id)],
+        station_version_ids=[station],
+    )
+    scoped = await client.get("/api/v1/me/sittings?org_slug=kings", headers=bearer(token))
+    nowhere = await client.get("/api/v1/me/sittings?org_slug=nowhere", headers=bearer(token))
+    everywhere = await client.get("/api/v1/me/sittings", headers=bearer(token))
+    assert [(r.status_code, r.json()["items"]) for r in (scoped, nowhere, everywhere)] == [(200, [])] * 3
+
+
+async def test_a_repeat_start_of_a_running_circuit_is_a_read_even_if_the_lead_was_demoted(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    candidate = await a_user(db_session, "cand2@example.com")
+    lead, _ = await an_examiner(db_session, org_id, "lead2@example.com")
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate)],
+        station_version_ids=[station],
+        supervisor_user_id=str(lead),
+    )
+    url = f"/api/v1/orgs/kings/circuits/{circuit['id']}/start"
+    first = await client.post(url, headers=bearer(admin))
+    assert first.status_code == 200, first.text
+    for membership in await tenancy_repo.memberships_for_user_in_org(db_session, org_id, lead):
+        await tenancy_repo.set_membership_role(db_session, org_id, membership.id, role="trainee")
+    await db_session.flush()
+
+    again = await client.post(url, headers=bearer(admin))
+    assert (again.status_code, again.json()["started_at"]) == (200, first.json()["started_at"])

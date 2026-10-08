@@ -46,9 +46,12 @@ async def my_sittings(
     memberships are already in the JWT, and a slug is display, not access.
     """
     trainee_slots = await sittings.slots_for_trainee(session, user_id)
-    if org_slug is not None:
-        # One workspace's sittings (T-11); a slug the caller holds no membership in shows nothing.
-        trainee_slots = [slot for slot in trainee_slots if org_slugs.get(slot.sitting.org_id) == org_slug]
+    # Only workspaces the token still holds a membership in (T-11); `org_slug` narrows to one.
+    trainee_slots = [
+        slot
+        for slot in trainee_slots
+        if slot.sitting.org_id in org_slugs and org_slug in (None, org_slugs[slot.sitting.org_id])
+    ]
     titles = await _titles_per_org(session, trainee_slots)
     live = await attempts.live_attempts_for_slots(
         session, [trainee_slot.slot.id for trainee_slot in trainee_slots]

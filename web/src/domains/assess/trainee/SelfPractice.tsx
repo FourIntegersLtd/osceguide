@@ -13,10 +13,9 @@ import {
   SectionSearchField,
 } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { workspaceBasePath } from "@/foundation/routing";
 import { useSurface } from "@/capabilities";
 import { listOrgStations, type OrgStation } from "@/domains/assess/trainee/api";
-import { practisable } from "@/domains/assess/trainee/support";
+import { PERSONAL_PRACTICE_HREF, practisable } from "@/domains/assess/trainee/support";
 
 /**
  * An organisation's own stations, sat alone — list only; the four-step runner
@@ -41,7 +40,7 @@ export function SelfPractice({ orgSlug }: { orgSlug: string }) {
           description:
             "Your organisation has not added any stations yet. Until it does, you can still practise with the OSCE Guide library.",
           action: (
-            <ButtonLink themeType="b2b" variant="secondary" size="sm" href={`${workspaceBasePath("me")}/dashboard`}>
+            <ButtonLink themeType="b2b" variant="secondary" size="sm" href={PERSONAL_PRACTICE_HREF}>
               Open personal practice
             </ButtonLink>
           ),
@@ -88,7 +87,7 @@ function StationList({ stations }: { stations: readonly OrgStation[] }) {
             themeType="b2b"
             variant="secondary"
             size="sm"
-            href={`${workspaceBasePath("me")}/dashboard`}
+            href={PERSONAL_PRACTICE_HREF}
           >
             Open personal practice
           </ButtonLink>

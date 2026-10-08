@@ -192,6 +192,11 @@ test("finished sittings are set apart from the ones still to come", () => {
   assert.deepEqual(split.past.map((item) => item.id), ["b", "d"]);
 });
 
+test("a cancelled sitting sorts after one still to sit", () => {
+  const sorted = sortSittings([sitting({ id: "x", status: "cancelled" }), sitting({ id: "y", status: "scheduled" })]);
+  assert.deepEqual(sorted.map((item) => item.id), ["y", "x"]);
+});
+
 test("a join refusal is said in words a candidate can act on", () => {
   assert.equal(joinFailureCopy(new PlatformError(409, { code: "circuit_not_live", message: "raw" })), "This circuit is not open yet. You will be let in when your supervisor starts it.");
   assert.equal(joinFailureCopy(new PlatformError(503, { code: "voice_unavailable", message: "raw" })), "The voice service is not available right now. Wait a minute and try again.");
