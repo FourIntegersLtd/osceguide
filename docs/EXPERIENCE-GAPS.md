@@ -84,12 +84,12 @@ unless written in full.
 
 ## 2. Institution staff: build (B-*)
 
-- **B-9** · WRONG · open · Exam access tab 403s for supervisors (route OrgAdmin, tab gated only on the grant form). Roster.tsx:25-31; AccessPanel.tsx:48-52; entitlements/router.py:38-44
-- **B-10** · WRONG · open · Org practice-access routes (list, grant, bulk, revoke, expiry) have no web caller; the web uses the older /entitlements routes. entitlements/router.py:91-152
-- **B-11** · ROUGH · open · CSV preview counts duplicate emails as importable; unmatched cohort imports with no cohort and nothing offers to create it; only a missing email column is detected (semicolons, BOM give a misleading message). csv.ts:105-160; BulkImportDialog.tsx:68-152
-- **B-12** · ROUGH · open · Delete offered beside Revoke with no hint which applies until the 409. TraineesPanel.tsx:120-124
-- **B-13** · ROUGH · open · Cohort delete does not say how many sittings detach (D9); group delete message only after the attempt. CohortEditDialogs.tsx:188; GroupEditDialogs.tsx:173
-- **B-14** · ROUGH · open · Roster pages the whole roster on every reload and refetches three lists per write. Roster.tsx:41-52
+- **B-9** · WRONG · fixed 9e7e86f (roster tabs test: a supervisor is not offered the Exam access tab) · Exam access tab 403s for supervisors (route OrgAdmin, tab gated only on the grant form). Roster.tsx:25-31; AccessPanel.tsx:48-52; entitlements/router.py:38-44
+- **B-10** · WRONG · open (by design: practice-access lacks ends_at, paging and search the Exam access tab needs, so both route sets stay, see entitlements/README.md; invite-unknown-address and bulk grant still have no screen) · Org practice-access routes (list, grant, bulk, revoke, expiry) have no web caller; the web uses the older /entitlements routes. entitlements/router.py:91-152
+- **B-11** · ROUGH · fixed 9e7e86f (csv.test.ts BOM, delimiter, duplicates; Create those cohorts button) · CSV preview counts duplicate emails as importable; unmatched cohort imports with no cohort and nothing offers to create it; only a missing email column is detected (semicolons, BOM give a misleading message). csv.ts:105-160; BulkImportDialog.tsx:68-152
+- **B-12** · ROUGH · fixed 9e7e86f (deleteLead test; Delete stays on every row, the prompt says Revoke applies once stations are sat) · Delete offered beside Revoke with no hint which applies until the 409. TraineesPanel.tsx:120-124
+- **B-13** · ROUGH · partly fixed 9e7e86f (group delete disabled while it has members, cohort prompt says sittings detach; the count needs a cohort field on SittingRead) · Cohort delete does not say how many sittings detach (D9); group delete message only after the attempt. CohortEditDialogs.tsx:188; GroupEditDialogs.tsx:173
+- **B-14** · ROUGH · partly fixed 9e7e86f (writes refetch only the lists they change; the first load still pages the whole roster, needs a count endpoint) · Roster pages the whole roster on every reload and refetches three lists per write. Roster.tsx:41-52
 - **B-15** · ROUGH · open · Roster, sitting, circuit, rubric draft and exam edits carry no revision: last write wins. roster/router_admin.py:25-56; sittings/service_edit.py; catalog update_exam
 - **B-16** · WRONG · open · StationTemplateEditScreen shows "Template not found" for any load failure. StationTemplateEditScreen.tsx:26-62
 - **B-17** · ROUGH · open · listStationTemplates stops at 20 pages of 100 silently. authoring/api/templates.ts:56-80
@@ -110,6 +110,7 @@ unless written in full.
 - **B-32** · ROUGH · open · Resend invitation 429 and trainee_exists shown raw. router_admin.py:130-136; AddTraineePanel.tsx:60-70
 - **B-33** · ROUGH · open · Org settings read-only, no SSO tab (U-17). OrgSettings.tsx
 - **B-34** · ROUGH · open · "None" literal for cohort and programme in roster rows; "Exam type" survives in TemplateGenerationPanel; "Not live" pill on platform templates. roster/support.ts:21; TemplateGenerationPanel.tsx:94; StatusPills.tsx:36
+- **B-35** · ROUGH · open · Caused by 9e7e86f: a cohort created from the bulk import dialog stays behind when the import is cancelled; Roster.tsx is 333 lines against the 300-line warning. BulkImportDialog.tsx; Roster.tsx
 
 ## 3. Institution staff: run and assess (R-*)
 
@@ -336,3 +337,4 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | 2026-10-08 | marking r1 | R-5, S-2, S-8 fixed 1b2f457 (retry with backoff, marking_failed flag, staff retry route, slot refused when unmarkable) | none in batch; types hand-declared until regenerated |
 | 2026-10-08 | institution r5 | R-7 web cancel/delete fixed e717819; 1015ffb review folded in (rewrap reverted, NotDecidable base, ensure_sitting_open, CLEAR_ROOM_RETRY) | order-dependent log-capture flake in test_circuit_run (structlog cache) noted |
 | 2026-10-08 | night r1 (access, institution, marking) | B-1 P-1 P-8 (610efab); P-6, H-1 partly (c3983f0); P-2 P-3 P-7 (a451a1e) | S-7 needs a design choice; openapi regen blocked by the user's dirty openapi.json |
+| 2026-10-08 | night r1 institution | B-9 B-11 B-12 fixed, B-13 B-14 partly (9e7e86f); review fixes 85c0f5b (c3983f0), 23f925e (a451a1e), b6ee5ea (610efab) | B-10 stays by design; B-35 new (caused by 9e7e86f) |
