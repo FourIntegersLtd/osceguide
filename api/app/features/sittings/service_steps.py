@@ -114,8 +114,8 @@ async def begin_consultation(
         raise RuntimeError("A consultation cannot start without a way to put the patient in the room.")
     try:
         await dispatch_patient(session, org_id, circuit, slot, agents=agents, settings=settings, now=now)
-    except errors.TraineeRevokedError:
-        await _skip_revoked_slot(session, org_id, slot, now=now)
+    except (errors.TraineeRevokedError, errors.MarkingNotReady):
+        await _skip_unrunnable_slot(session, org_id, slot, now=now)
         dispatched_at = None
     else:
         await repository.update_slot(session, org_id, slot.id, status=domain.SlotStatus.IN_CONSULTATION)
@@ -132,8 +132,11 @@ async def begin_consultation(
     )
 
 
-async def _skip_revoked_slot(session: AsyncSession, org_id: uuid.UUID, slot: Slot, *, now: datetime) -> None:
+async def _skip_unrunnable_slot(
+    session: AsyncSession, org_id: uuid.UUID, slot: Slot, *, now: datetime
+) -> None:
     """R-8: the candidate's access was revoked after the circuit was built.
+    S-2: or the station's rubric stopped being published, so it could not be marked.
 
     The clock carries on for everyone else; this station is skipped, with no
     patient and no recording to mark.

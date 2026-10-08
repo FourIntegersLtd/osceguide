@@ -64,6 +64,9 @@ async def rescore(
     attempt = await _require(session, attempt_id)
     if domain.Status(attempt.status) not in jobs.MARKABLE:
         raise errors.InvalidAttemptState(f"An attempt that is {attempt.status} has nothing to mark.")
+    if not jobs.can_mark(attempt):
+        # A migrated legacy attempt has no frozen rubric. Queueing it would fail it and free its slot.
+        raise errors.InvalidAttemptState("This attempt has no rubric frozen on it, so it cannot be marked.")
     _, frozen = jobs.policy_for(attempt)
     version = policy_version or frozen
     if version in await transcripts.scored_policy_versions(session, attempt_id):
@@ -78,7 +81,7 @@ async def rescore(
         if job.status == "todo" and job.args.get("policy_version") == version
     ]
     queued = not waiting
-    if jobs.marking_failed(attempt):
+    if domain.marking_failed(attempt.status, attempt.failed_reason):
         await repository.set_scoring_failure(session, attempt_id, reason=None)
     if queued:
         await jobs.enqueue_scoring(session, attempt, now=now, policy_version=version)

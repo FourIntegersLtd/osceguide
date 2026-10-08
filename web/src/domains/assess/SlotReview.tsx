@@ -187,7 +187,7 @@ function Editor({
     initialRatings(form, initial?.field_values),
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
-  const [busy, setBusy] = useState<"draft" | "completed" | null>(null);
+  const [busy, setBusy] = useState<"draft" | "completed" | "retry" | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
 
@@ -198,18 +198,16 @@ function Editor({
     hasRubric: Boolean(feedback?.rubric),
     markingFailed: feedback?.marking_failed === true,
   });
-  const [retrying, setRetrying] = useState(false);
-  const [retryError, setRetryError] = useState<Error | null>(null);
   const retryMarking = useCallback(async () => {
-    setRetrying(true);
-    setRetryError(null);
+    setBusy("retry");
+    setError(null);
     try {
       await retrySlotMarking(orgSlug, slotId);
       onSaved();
     } catch (cause) {
-      setRetryError(cause instanceof Error ? cause : new Error(String(cause)));
+      setError(cause instanceof Error ? cause : new Error(String(cause)));
     } finally {
-      setRetrying(false);
+      setBusy(null);
     }
   }, [orgSlug, slotId, onSaved]);
   const steps = slotReviewSteps({
@@ -313,11 +311,11 @@ function Editor({
               {marking === "failed" && (
                 <div className="mt-3 flex flex-col gap-2">
                   <div>
-                    <Button variant="secondary" onClick={retryMarking} disabled={retrying}>
-                      {retrying ? "Retrying..." : "Retry marking"}
+                    <Button variant="secondary" onClick={retryMarking} disabled={busy !== null}>
+                      {busy === "retry" ? "Retrying..." : "Retry marking"}
                     </Button>
                   </div>
-                  {retryError && <Alert tone="danger">{errorMessage(retryError)}</Alert>}
+                  {error && busy === null && <Alert tone="danger">{errorMessage(error)}</Alert>}
                 </div>
               )}
             </Panel>

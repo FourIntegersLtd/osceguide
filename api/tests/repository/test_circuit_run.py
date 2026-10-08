@@ -232,6 +232,58 @@ async def test_a_revoked_candidate_is_skipped_not_examined(db_session: AsyncSess
     assert slots[0].status == "skipped"
 
 
+async def _unpublish_the_rubric(session: AsyncSession, org_id: uuid.UUID) -> None:
+    from sqlalchemy import update
+
+    from app.features.rubrics.models import RubricVersion
+
+    bound = select(Sitting.rubric_version_id).where(Sitting.org_id == org_id).scalar_subquery()
+    await session.execute(update(RubricVersion).where(RubricVersion.id == bound).values(status="draft"))
+    await session.flush()
+
+
+async def test_a_station_that_can_no_longer_be_marked_is_skipped_not_retried_for_ever(
+    db_session: AsyncSession,
+) -> None:
+    """S-2 follow-up: `marking_not_ready` at dispatch left the circuit in Reading on every advance."""
+    agents = FakeRoomAgents()
+    org_id, circuit_id = await a_circuit(db_session, stations=2)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+    await _unpublish_the_rubric(db_session, org_id)
+
+    await _advance(db_session, org_id, circuit_id, agents, seq=1, at=NOW + timedelta(minutes=3))
+
+    assert "dispatch" not in [c[0] for c in agents.calls]
+    assert await db_session.scalar(select(func.count()).select_from(Attempt)) == 0
+    slots = await repository.slots_for_circuit(db_session, org_id, circuit_id)
+    assert slots[0].status == "skipped"
+    circuit = await repository.circuit_by_id(db_session, org_id, circuit_id)
+    assert circuit is not None and circuit.phase == "simulation", "the circuit moved on"
+
+
+async def test_the_sweeper_skips_a_station_that_can_no_longer_be_marked(
+    db_session: AsyncSession,
+) -> None:
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def open_session():  # type: ignore[no-untyped-def]
+        yield db_session
+
+    agents = FakeRoomAgents()
+    org_id, circuit_id = await a_circuit(db_session, stations=2)
+    await service_run.start_circuit(db_session, org_id, circuit_id, now=NOW)
+    await _unpublish_the_rubric(db_session, org_id)
+
+    result = await jobs.sweep_now(
+        agents=agents, settings=_settings(), now=NOW + timedelta(minutes=10), open_session=open_session
+    )
+
+    assert result == (1, 0, 0)
+    slots = await repository.slots_for_circuit(db_session, org_id, circuit_id)
+    assert slots[0].status == "skipped"
+
+
 async def test_a_break_falls_between_the_stations_that_asked_for_it(
     db_session: AsyncSession,
 ) -> None:

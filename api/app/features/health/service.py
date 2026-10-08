@@ -18,6 +18,7 @@ from app.core.logging import get_logger
 from app.core.ports import EventBus
 from app.core.settings import Settings, get_settings
 from app.core.sse import Snapshot, event_stream
+from app.features.attempts.jobs import SCORING_TASK, record_marking_gave_up
 from app.features.health import repository, repository_jobs
 from app.features.health.errors import MessageNotRetryable
 from app.features.health.repository_jobs import JobEventRef, JobRef
@@ -180,6 +181,9 @@ async def reclaim_stalled_jobs(session: AsyncSession) -> tuple[list[int], list[i
         else:
             await repository_jobs.fail(session, job.id)
             failed.append(job.id)
+            if job.task_name == SCORING_TASK:
+                # The job will not run again, so the attempt has to say marking gave up.
+                await record_marking_gave_up(session, uuid.UUID(job.args["attempt_id"]))
     return requeued, failed
 
 

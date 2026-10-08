@@ -29,7 +29,6 @@ from app.features.attempts import (
     service_reads,
     service_stream,
 )
-from app.features.results.errors import NotReleased
 
 router = APIRouter(tags=["attempts"])
 
@@ -116,7 +115,9 @@ async def read_attempt(
 @router.get(
     "/attempts/{attempt_id}/transcript",
     response_model=schemas.TranscriptRead,
-    responses=error_responses(Unauthenticated, errors.AttemptNotFound, errors.AttemptNotYours, NotReleased),
+    responses=error_responses(
+        Unauthenticated, errors.AttemptNotFound, errors.AttemptNotYours, errors.NotReleased
+    ),
 )
 async def read_transcript(
     attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
@@ -134,7 +135,9 @@ async def read_transcript(
 @router.get(
     "/attempts/{attempt_id}/result",
     response_model=Page[schemas.AssessmentResultRead],
-    responses=error_responses(Unauthenticated, errors.AttemptNotFound, errors.AttemptNotYours, NotReleased),
+    responses=error_responses(
+        Unauthenticated, errors.AttemptNotFound, errors.AttemptNotYours, errors.NotReleased
+    ),
 )
 async def read_results(
     attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session
@@ -155,7 +158,9 @@ async def read_results(
 @router.get(
     "/attempts/{attempt_id}/feedback",
     response_model=schemas.AttemptFeedbackRead,
-    responses=error_responses(Unauthenticated, errors.AttemptNotFound, errors.AttemptNotYours, NotReleased),
+    responses=error_responses(
+        Unauthenticated, errors.AttemptNotFound, errors.AttemptNotYours, errors.NotReleased
+    ),
 )
 async def read_feedback(
     attempt_id: uuid.UUID, principal: CurrentPrincipal, session: Session

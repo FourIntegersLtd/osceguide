@@ -26,6 +26,17 @@ class Status(StrEnum):
     FAILED = "failed"
 
 
+# Why a finished attempt carries a `failed_reason`. The first leaves the transcript markable (the
+# scorer gave up; staff can retry); the second fails the attempt, which has nothing to be marked against.
+SCORING_FAILED = "scoring_failed"
+NO_MARKING_RUBRIC = "no_marking_rubric"
+
+
+def marking_failed(status: str, failed_reason: str | None) -> bool:
+    """The scorer gave up on a finished attempt whose transcript is still held (R-5)."""
+    return status == Status.INTERACTION_COMPLETE and failed_reason == SCORING_FAILED
+
+
 class Kind(StrEnum):
     """Why this attempt exists, which decides the one reference it may carry (see the glossary)."""
 

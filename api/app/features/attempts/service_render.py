@@ -79,7 +79,9 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
     except RenderFailed as exc:
         raise errors.AttemptNotReady(str(exc)) from exc
 
-    rubric = await _marking_snapshot(session, attempt, exam)
+    rubric = await _marking_snapshot(
+        session, exam, org_id=attempt.org_id, slot_id=attempt.slot_id, attempt_id=attempt.id
+    )
 
     scenario = domain_definition.scenario_payload(
         scenario_id=str(station.version_id),
@@ -118,28 +120,30 @@ async def render_definition(session: AsyncSession, attempt: Attempt, *, now: dat
     return definition
 
 
-async def _marking_snapshot(session: AsyncSession, attempt: Attempt, exam: Any) -> dict[str, Any] | None:
-    """The rubric this attempt will be marked against, frozen onto it.
-
-    A missing or unpublished rubric is not fatal here: the session still runs
-    and is still recorded, and `enqueue_scoring` fails the attempt with
-    `no_marking_rubric` rather than queue a marking it cannot perform. A slot
-    never gets this far unmarkable: `ensure_slot_markable` refuses it first.
-    """
-    return await _snapshot_for(session, attempt.org_id, attempt.slot_id, exam)
-
-
-async def _snapshot_for(
-    session: AsyncSession, org_id: uuid.UUID | None, slot_id: uuid.UUID | None, exam: Any
+async def _marking_snapshot(
+    session: AsyncSession,
+    exam: Any,
+    *,
+    org_id: uuid.UUID | None,
+    slot_id: uuid.UUID | None,
+    attempt_id: uuid.UUID | None = None,
 ) -> dict[str, Any] | None:
-    """Slot attempts use the sitting's bound rubric version; everything else the exam's published one."""
+    """The rubric an attempt will be marked against, frozen onto it.
+
+    Slot attempts use the sitting's bound rubric version; everything else uses the exam's published
+    one. A missing or unpublished rubric is not fatal here: the session still runs and is still
+    recorded, and the first `enqueue_scoring` fails the attempt with `no_marking_rubric`. A slot
+    never gets that far unmarkable: `ensure_slot_markable` refuses it before anyone sits it.
+    """
     rubric_version_id = exam.rubric_version_id
     if slot_id is not None and org_id is not None:
         bound = await sittings_service.rubric_version_for_slot(session, org_id, slot_id)
         if bound is not None:
             rubric_version_id = bound
     if rubric_version_id is None:
-        log.warning("attempt has no rubric to be marked against", slot_id=str(slot_id))
+        log.warning(
+            "attempt has no rubric to be marked against", attempt_id=str(attempt_id), slot_id=str(slot_id)
+        )
         return None
     try:
         return await rubrics.marking_snapshot(
@@ -149,7 +153,12 @@ async def _snapshot_for(
             field_selection=None,
         )
     except AppError as exc:
-        log.warning("rubric unavailable for attempt", slot_id=str(slot_id), reason=str(exc))
+        log.warning(
+            "rubric unavailable for attempt",
+            attempt_id=str(attempt_id),
+            slot_id=str(slot_id),
+            reason=str(exc),
+        )
         return None
 
 
@@ -158,7 +167,7 @@ async def ensure_slot_markable(
 ) -> None:
     """Refuse (`marking_not_ready`) a slot whose marking snapshot cannot be built, before anyone sits it."""
     exam = await catalog.exam_for_attempt(session, exam_id)
-    if await _snapshot_for(session, org_id, slot_id, exam) is None:
+    if await _marking_snapshot(session, exam, org_id=org_id, slot_id=slot_id) is None:
         raise errors.MarkingNotReady()
 
 

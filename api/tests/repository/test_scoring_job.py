@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from contextlib import nullcontext
 from datetime import UTC, datetime
 
 import pytest
@@ -11,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.ports import EvaluationFailed
 from app.features.attempts import repository
 from app.features.attempts import repository_transcript as transcripts
-from app.features.attempts.jobs import PLATFORM_DEFAULT_POLICY, score_attempt_now
+from app.features.attempts.domain import NO_MARKING_RUBRIC, SCORING_FAILED
+from app.features.attempts.jobs import PLATFORM_DEFAULT_POLICY, score_attempt_job, score_attempt_now
 from app.features.identity import repository as identity_repo
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeEvaluator
@@ -154,25 +156,25 @@ async def test_the_last_failed_try_marks_the_attempt_marking_failed_and_says_why
     """R-5: after the last try the failure is recorded, not re-raised into a queue nobody reads.
     The attempt keeps its transcript and stays markable, so staff can retry it."""
     attempt_id = await completed_attempt(db_session)
-    scored = await score_attempt_now(
-        db_session,
+    scored = await score_attempt_job(
         attempt_id,
-        evaluator=FakeEvaluator(fail_times=1),
+        build_evaluator=lambda: FakeEvaluator(fail_times=1),
         policy_version=PLATFORM_DEFAULT_POLICY,
         framework_id="sca-rcgp-v1",
         now=NOW,
         last_try=True,
+        open_session=lambda: nullcontext(db_session),
     )
     await db_session.flush()
     assert scored is False
     attempt = await repository.attempt_by_id(db_session, attempt_id)
     assert attempt is not None
-    assert (attempt.status, attempt.failed_reason) == ("interaction_complete", "scoring_failed")
+    assert (attempt.status, attempt.failed_reason) == ("interaction_complete", SCORING_FAILED)
 
 
 async def test_a_mark_after_a_failed_one_clears_the_failure(db_session: AsyncSession) -> None:
     attempt_id = await completed_attempt(db_session)
-    await repository.set_scoring_failure(db_session, attempt_id, reason="scoring_failed")
+    await repository.set_scoring_failure(db_session, attempt_id, reason=SCORING_FAILED)
     assert await score(db_session, attempt_id, FakeEvaluator())
     await db_session.flush()
     attempt = await repository.attempt_by_id(db_session, attempt_id)
@@ -181,12 +183,150 @@ async def test_a_mark_after_a_failed_one_clears_the_failure(db_session: AsyncSes
     assert (attempt.status, attempt.failed_reason) == ("evaluated", None)
 
 
-async def test_the_scoring_job_is_retried_with_backoff_before_it_gives_up() -> None:
+async def test_the_scoring_job_runs_four_times_and_only_the_fourth_is_the_last_try() -> None:
+    """procrastinate counts `attempts` as failed runs so far: it retries while attempts < 3, so a job
+    runs 1 + 3 times, 4 s, 16 s then 64 s apart, and only the run it will not retry is the last."""
+    from types import SimpleNamespace
+
     from app.core.jobs import get_jobs_app
-    from app.features.attempts.jobs import SCORING_TASK
+    from app.features.attempts.jobs import SCORING_TASK, is_last_try
 
     strategy = get_jobs_app().tasks[SCORING_TASK].retry_strategy
-    assert (strategy.max_attempts, strategy.exponential_wait) == (3, 4)  # type: ignore[union-attr]
+    assert strategy is not None
+    waits: list[int] = []
+    last_tries: list[bool] = []
+    attempts = 0
+    while True:
+        job = SimpleNamespace(attempts=attempts)
+        decision = strategy.get_retry_decision(exception=RuntimeError("boom"), job=job)  # type: ignore[arg-type]
+        last_tries.append(is_last_try(job))  # type: ignore[arg-type]
+        if decision is None:
+            break
+        assert decision.retry_at is not None
+        waits.append(round((decision.retry_at - datetime.now(UTC)).total_seconds()))
+        attempts += 1
+    assert waits == [4, 16, 64]
+    assert last_tries == [False, False, False, True]
+
+
+async def test_any_error_on_the_last_try_is_recorded_not_just_a_failed_evaluation(
+    db_session: AsyncSession,
+) -> None:
+    class Broken:
+        async def evaluate(self, **_: object) -> dict:  # type: ignore[type-arg]
+            raise RuntimeError("the evaluator could not be built")
+
+    attempt_id = await completed_attempt(db_session)
+    scored = await score_attempt_job(
+        attempt_id,
+        build_evaluator=Broken,  # type: ignore[arg-type]
+        policy_version=PLATFORM_DEFAULT_POLICY,
+        framework_id="sca-rcgp-v1",
+        now=NOW,
+        last_try=True,
+        open_session=lambda: nullcontext(db_session),
+    )
+    await db_session.flush()
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert scored is False and attempt is not None
+    assert (attempt.status, attempt.failed_reason) == ("interaction_complete", SCORING_FAILED)
+
+
+async def test_a_failed_second_policy_does_not_mark_an_evaluated_attempt_failed(
+    db_session: AsyncSession,
+) -> None:
+    attempt_id = await completed_attempt(db_session)
+    assert await score(db_session, attempt_id, FakeEvaluator())
+    await score_attempt_job(
+        attempt_id,
+        build_evaluator=lambda: FakeEvaluator(fail_times=1),
+        policy_version="other@1",
+        framework_id="sca-rcgp-v1",
+        now=NOW,
+        last_try=True,
+        open_session=lambda: nullcontext(db_session),
+    )
+    await db_session.flush()
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    await db_session.refresh(attempt)
+    assert (attempt.status, attempt.failed_reason) == ("evaluated", None)
+
+
+async def test_a_stale_failure_is_cleared_when_the_policy_is_already_scored(
+    db_session: AsyncSession,
+) -> None:
+    attempt_id = await completed_attempt(db_session)
+    assert await score(db_session, attempt_id, FakeEvaluator())
+    await repository.set_scoring_failure(db_session, attempt_id, reason=SCORING_FAILED)
+
+    assert await score(db_session, attempt_id, FakeEvaluator()) is False
+
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    await db_session.refresh(attempt)
+    assert attempt.failed_reason is None
+
+
+async def test_the_reaper_giving_up_on_a_marking_job_says_so_on_the_attempt(
+    db_session: AsyncSession,
+) -> None:
+    from sqlalchemy import text
+
+    from app.features.attempts.jobs import enqueue_scoring
+    from app.features.health.service import reclaim_stalled_jobs
+
+    attempt_id = await completed_attempt(db_session)
+    attempt = await repository.attempt_by_id(db_session, attempt_id)
+    assert attempt is not None
+    await enqueue_scoring(db_session, attempt, now=NOW)
+    job_id = (
+        await db_session.execute(
+            text("SELECT id FROM procrastinate_jobs WHERE args->>'attempt_id' = :id"),
+            {"id": str(attempt_id)},
+        )
+    ).scalar_one()
+
+    async def dies_while_running() -> None:
+        await db_session.execute(
+            text("UPDATE procrastinate_jobs SET status = 'doing', worker_id = NULL WHERE id = :id"),
+            {"id": job_id},
+        )
+
+    await dies_while_running()
+    assert job_id in (await reclaim_stalled_jobs(db_session))[0]
+    await dies_while_running()
+    assert job_id in (await reclaim_stalled_jobs(db_session))[1]
+
+    await db_session.refresh(attempt)
+    assert (attempt.status, attempt.failed_reason) == ("interaction_complete", SCORING_FAILED)
+
+
+async def test_a_rescore_of_an_attempt_with_no_rubric_is_refused_and_leaves_it_alone(
+    db_session: AsyncSession,
+) -> None:
+    """A migrated legacy attempt has no frozen rubric: rescoring it must not fail it and free its slot."""
+    from app.core.auth import Principal
+    from app.features.attempts import errors, service_platform_actions
+
+    user = await identity_repo.create_user(
+        session=db_session, email=f"u{uuid.uuid4().hex[:8]}@example.com", name="U", password_hash=None
+    )
+    exam = await ensure_exam(db_session, "sca")
+    assert exam is not None
+    attempt = await repository.create_attempt(db_session, kind="practice", user_id=user.id, exam_id=exam.id)
+    await repository.set_status(db_session, attempt.id, status="running", at=NOW)
+    await repository.set_status(db_session, attempt.id, status="interaction_complete", at=NOW)
+    await db_session.flush()
+    staff = Principal(user_id=user.id, email="root@osceguide.com", is_platform_admin=True)
+
+    with pytest.raises(errors.InvalidAttemptState):
+        await service_platform_actions.rescore(
+            db_session, attempt.id, policy_version=None, actor=staff, now=NOW
+        )
+
+    await db_session.refresh(attempt)
+    assert (attempt.status, attempt.failed_reason) == ("interaction_complete", None)
 
 
 async def test_an_attempt_with_no_frozen_rubric_is_failed_when_its_marking_is_queued(
@@ -209,4 +349,4 @@ async def test_an_attempt_with_no_frozen_rubric_is_failed_when_its_marking_is_qu
     stored = await repository.attempt_by_id(db_session, attempt_id)
     assert stored is not None
     await db_session.refresh(stored)
-    assert (stored.status, stored.failed_reason) == ("failed", "no_marking_rubric")
+    assert (stored.status, stored.failed_reason) == ("failed", NO_MARKING_RUBRIC)

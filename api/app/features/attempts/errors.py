@@ -17,7 +17,21 @@ from app.features.stations.errors import StationNotFound, StationNotPublishedErr
 # exist or belongs to another organisation. The two are one refusal on
 # purpose: "no such station" and "not yours" must not be distinguishable,
 # or the route becomes a way to enumerate another tenant's library.
-__all__ = ["NotEntitled", "StationNotFound", "StationNotPublishedError"]
+__all__ = ["NotEntitled", "NotReleased", "StationNotFound", "StationNotPublishedError"]
+
+
+def __getattr__(name: str) -> type[NotFound]:
+    """`NotReleased`, re-exported lazily.
+
+    `results.errors` reaches `sittings.errors`, which reaches `voice.errors`, which imports
+    `AttemptNotFound` from this module, so a top-level import here is a cycle. The router reads
+    the name after every module has loaded.
+    """
+    if name == "NotReleased":
+        from app.features.results.errors import NotReleased
+
+        return NotReleased
+    raise AttributeError(name)
 
 
 class AttemptNotFound(NotFound):

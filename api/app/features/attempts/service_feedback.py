@@ -19,9 +19,8 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
-from app.features.attempts import domain_definition, errors, repository, service_access
+from app.features.attempts import domain, domain_definition, errors, repository, service_access
 from app.features.attempts import repository_transcript as transcripts
-from app.features.attempts.jobs import marking_failed
 from app.features.attempts.models import Attempt
 from app.features.attempts.schemas import AttemptFeedbackRead, MarkedResultRead, MarkingRubricRead
 from app.features.catalog import service as catalog
@@ -60,7 +59,7 @@ async def read_feedback(
     stored_results = await transcripts.results_for(session, attempt.id)
     return AttemptFeedbackRead(
         attempt_id=attempt.id,
-        marking_failed=marking_failed(attempt) and not stored_results,
+        marking_failed=domain.marking_failed(attempt.status, attempt.failed_reason) and not stored_results,
         rubric=MarkingRubricRead(
             version_id=scoring_rubric.version_id,
             structure=scoring_rubric.raw_structure,
