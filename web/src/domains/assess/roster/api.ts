@@ -8,7 +8,6 @@
  * across instead. Both spellings are live in the same API and the schema is
  * the only place that says which is which.
  */
-import type { WithTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { PlatformError, collectPages, platformRequest, type components } from "@/foundation/platform-client";
 import {
   orgPath,
@@ -18,8 +17,7 @@ import {
   type TraineePage,
 } from "@/domains/assess/api";
 
-// until regenerated: a cohort also answers `sitting_count`, the sittings a delete would detach from it.
-export type Cohort = components["schemas"]["CohortRead"] & { sitting_count?: number };
+export type Cohort = components["schemas"]["CohortRead"];
 export type TraineeGroup = components["schemas"]["GroupRead"];
 export type BulkTraineesResult = components["schemas"]["BulkTraineesResult"];
 export type SkippedTrainee = components["schemas"]["SkippedTrainee"];
@@ -72,8 +70,7 @@ function traineeBody(input: TraineeInput) {
 }
 
 /** An address with no account is invited and linked in the same call. */
-// until regenerated: the add route answers with `temporary_password_applied`.
-export type AddedTrainee = Trainee & WithTemporaryPassword;
+export type AddedTrainee = Trainee;
 
 /**
  * `temporaryPassword` (when the invitation email cannot be delivered) gives a

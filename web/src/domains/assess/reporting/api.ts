@@ -1,19 +1,8 @@
-import { platformRequest } from "@/foundation/platform-client";
+import { platformRequest, type components } from "@/foundation/platform-client";
 import { orgPath } from "@/domains/assess/api";
 
-// until regenerated: GET /orgs/{slug}/reporting (R-32).
-export interface ProgrammeReportRow {
-  programme_id: string;
-  exam_name: string;
-  sittings: number;
-  candidates: number;
-  released: number;
-  passed: number;
-  pass_rate: number | null;
-}
-export interface OrgReporting {
-  programmes: ProgrammeReportRow[];
-}
+export type ProgrammeReportRow = components["schemas"]["ProgrammeReportRow"];
+export type OrgReporting = components["schemas"]["OrgReporting"];
 
 /** Sittings, candidates and pass rate per programme, across every sitting. */
 export function readOrgReporting(slug: string, signal?: AbortSignal): Promise<OrgReporting> {

@@ -3,9 +3,6 @@
 import { useState } from "react";
 import { temporaryPasswordReady } from "@/foundation/ui/TemporaryPassword";
 
-/** What the add routes answer beyond the generated type. Delete when regenerated. */
-export type WithTemporaryPassword = { temporary_password_applied?: boolean };
-
 /**
  * The state every "hand over a password instead of emailing a link" form shares: the
  * checkbox, the typed password, and the password just issued (kept to copy until dismissed).

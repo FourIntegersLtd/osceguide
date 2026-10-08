@@ -61,7 +61,7 @@ export function reviewWaitingCopy(state: MySlotReviewWaiting["state"]): { title:
       };
 }
 
-/** `org_slug` is declared on these routes but not yet in the generated types (until regenerated). */
+/** `org_slug` narrows the sittings list and its stream to one workspace. */
 function orgQuery(orgSlug: string | null): string {
   return orgSlug ? `?org_slug=${encodeURIComponent(orgSlug)}` : "";
 }

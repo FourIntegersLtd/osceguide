@@ -6,10 +6,7 @@ import { isPlatformError, type PlatformErrorCode } from "@/foundation/platform-c
  * (EXPERIENCE-GAPS section 11). Keyed by code, never by the server's sentence; a code with no entry
  * shows the server's own message, and a typo in a key fails the type check.
  */
-// until regenerated: codes the API now answers with that schema.d.ts does not list yet.
-type AssessErrorCode = PlatformErrorCode | "reviews_pending" | "review_not_draft" | "review_not_found";
-
-const ASSESS_ERROR_COPY: Partial<Record<AssessErrorCode, string>> = {
+const ASSESS_ERROR_COPY: Partial<Record<PlatformErrorCode, string>> = {
   // decisions and results
   evidence_changed: "The marking changed after this was signed off. Review it and sign it off again before releasing.",
   decision_revised: "Somebody else changed this decision. Reload it and check it before saving again.",

@@ -13,7 +13,7 @@ export function failureText(cause: unknown, fallback: string): string {
 const JOIN_REFUSALS: ReadonlySet<string> = new Set([
   "not_entitled",
   "unknown_exam",
-  "no_stations_for_exam", // until regenerated
+  "no_stations_for_exam",
 ]);
 
 /** What the join toast says: the server's sentence for a refusal that retrying cannot fix. */

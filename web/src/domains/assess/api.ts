@@ -1,8 +1,7 @@
 import { collectPages, platformRequest, type components } from "@/foundation/platform-client";
 import type { StationLibraryScope } from "@/capabilities/stations";
 
-// until regenerated: a sitting also answers `cohort_id`, the intake it is held for.
-export type Sitting = components["schemas"]["SittingRead"] & { cohort_id?: string | null };
+export type Sitting = components["schemas"]["SittingRead"];
 export type SittingPage = components["schemas"]["Page_SittingRead_"];
 export type Trainee = components["schemas"]["TraineeRead"];
 
@@ -10,8 +9,7 @@ const org = (slug: string) => `/api/v1/orgs/${encodeURIComponent(slug)}`;
 
 export type Organization = components["schemas"]["OrganizationRead"];
 
-// until regenerated: GET /orgs/{slug}/sso-status (B-33).
-export type SsoStatus = { configured: boolean; enabled: boolean; sso_only: boolean; sign_in_label: string | null };
+export type SsoStatus = components["schemas"]["SsoStatusRead"];
 
 export function readSsoStatus(slug: string, signal?: AbortSignal): Promise<SsoStatus> {
   return platformRequest<SsoStatus>(`${org(slug)}/sso-status`, { signal });
@@ -31,7 +29,6 @@ export function listSittings(
   slug: string,
   signal?: AbortSignal,
   page?: PageParams,
-  // until regenerated: the list also takes status, programme_id, scheduled_from and scheduled_to (R-31).
   filters: Record<string, string> = {},
 ): Promise<SittingPage> {
   const { limit, cursor } = pageQuery(page);
@@ -76,8 +73,7 @@ export function pageQuery(page?: PageParams) {
   };
 }
 
-// until regenerated: the roster page also answers `total_count`, every match rather than this page.
-export type TraineePage = components["schemas"]["Page_TraineeRead_"] & { total_count?: number };
+export type TraineePage = components["schemas"]["TraineePage"];
 export type MembershipPage = components["schemas"]["Page_MembershipRead_"];
 
 /** `accessRevoked: false` narrows to trainees who still have access, in SQL. */

@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Alert, Button, Input, Panel, Select } from "@/foundation/ui";
 import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
-import { useTemporaryPassword, type WithTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
+import { useTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { errorMessage, useToast } from "@/foundation/hooks";
-import { seatMembership, type Membership } from "@/domains/platform/api";
+import { seatMembership } from "@/domains/platform/api";
 import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
 import { humanise } from "@/foundation/format";
 import { SEAT_ROLES, rolesForOrgType } from "@/domains/platform/support";
@@ -57,7 +57,7 @@ export function SeatMemberPanel({
         role,
         ...(password.typed ? { temporaryPassword: password.typed } : {}),
       });
-      const applied = (membership as Membership & WithTemporaryPassword).temporary_password_applied === true;
+      const applied = membership.temporary_password_applied === true;
       password.finish(address, applied);
       toast.success(
         `${address} added as ${roleLabel(role, humanise(role)).toLowerCase()}`,
