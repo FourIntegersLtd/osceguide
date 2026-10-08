@@ -52,6 +52,7 @@ from app.features.roster.schemas_scim import (
     ScimUserIn,
     ScimUserList,
 )
+from app.features.sittings import service_absence
 from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as tenancy_audit
 from app.features.tenancy.service_audit import SCIM_CONNECTOR
@@ -428,6 +429,8 @@ async def _set_active(
         await service.set_access(
             session, org_id, trainee.id, revoked=not active, actor=SCIM_CONNECTOR, now=now
         )
+        if not active and trainee.user_id is not None:
+            await service_absence.skip_unstarted_stations(session, org_id, trainee.user_id, now=now)
 
 
 async def _require_trainee(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> Trainee:

@@ -227,6 +227,24 @@ async def mark_slots_skipped(
     )
 
 
+async def skip_unstarted_slots_for_user(
+    session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID, *, now: datetime
+) -> int:
+    """Skip this person's stations that have not begun, in circuits that have not ended."""
+    open_circuits = select(Circuit.id).where(Circuit.org_id == org_id, Circuit.ended_at.is_(None))
+    result = await session.execute(
+        update(Slot)
+        .where(
+            Slot.org_id == org_id,
+            Slot.trainee_id == user_id,
+            Slot.status == "scheduled",
+            Slot.circuit_id.in_(open_circuits),
+        )
+        .values(status="skipped", ended_at=now)
+    )
+    return int(result.rowcount or 0)  # type: ignore[attr-defined]
+
+
 async def record_intervention(
     session: AsyncSession,
     org_id: uuid.UUID,

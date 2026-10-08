@@ -231,3 +231,44 @@ async def test_a_trainee_cannot_issue_a_scim_token(client: AsyncClient, make_act
         "/api/v1/orgs/kings/scim/tokens", json={"label": "x"}, headers=bearer(stranger)
     )
     assert refused.status_code == 403
+
+
+async def test_a_deprovisioned_user_is_absent_from_unstarted_stations(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-18: the directory dropped them, but their stations in circuits still to run stayed scheduled."""
+    from app.features.sittings.models import Slot
+    from tests.http.test_org_read_models import a_circuit, a_sitting
+    from tests.http.test_sittings_routes import org_with_admin, published_station
+
+    _, admin = await org_with_admin(client, make_actor)
+    issued = await client.post(
+        "/api/v1/orgs/kings/scim/tokens", json={"label": "Entra"}, headers=bearer(admin)
+    )
+    headers = bearer(issued.json()["token"])
+    created = await client.post(f"{SCIM}/Users", json=scim_user("gone@nhs.net"), headers=headers)
+    trainee = (await client.get("/api/v1/orgs/kings/trainees", headers=bearer(admin))).json()["items"][0]
+    sitting = await a_sitting(client, admin, "kings", mode="exam")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[trainee["user_id"]],
+        station_version_ids=[station],
+    )
+
+    patched = await client.patch(
+        f"{SCIM}/Users/{created.json()['id']}",
+        json={
+            "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+            "Operations": [{"op": "Replace", "path": "active", "value": "False"}],
+        },
+        headers=headers,
+    )
+    assert patched.status_code == 200, patched.text
+
+    db_session.expire_all()
+    statuses = (await db_session.execute(select(Slot.status))).scalars().all()
+    assert list(statuses) == ["skipped"]
