@@ -125,12 +125,12 @@ unless written in full.
 - **R-15** · WRONG · fixed 1015ffb · 12h stale auto-close ends paused circuits silently and marks unsat slots skipped. service_run.py:41; jobs.py:93
 - **R-16** · WRONG · open · begin_consultation VoiceUnavailable leaves Reading with only the sweeper retrying; board shows clock_overdue not a voice fault. sittings/jobs.py; service_steps.py
 - **R-17** · WRONG · open · No auto re-dispatch when the patient never arrives; manual resend only. domain_alerts.py; assessment session.py:87-99
-- **R-18** · WRONG · open · useCircuitRun prefers a stale stream frame over a fresh fetch after an action; controls stay enabled while "Reconnecting". useCircuitRun.ts:~85-100; CircuitRunner.tsx:~95-101
-- **R-19** · ROUGH/WRONG · open · End dialog records no reason; stale failure string reappears in the next dialog; override seconds NaN/0 sent unchecked; "stations can still be marked" shown to supervisors who cannot reach results; Edit offered to supervisors (rebuild is OrgAdmin). SupervisorControls.tsx; OverrideDialog.tsx; CircuitRunner.tsx:~85
-- **R-20** · WRONG · open · /live: stream only with run_circuits so others see "Reconnecting" forever; "Open console" always opens circuits[0]; dead "deleted circuit" copy. LiveBoard.tsx
+- **R-18** · WRONG · fixed 5770d03 (pickFrame test: a fresh fetch wins over a stale stream frame; controls disabled while reconnecting) · useCircuitRun prefers a stale stream frame over a fresh fetch after an action; controls stay enabled while "Reconnecting". useCircuitRun.ts:~85-100; CircuitRunner.tsx:~95-101
+- **R-19** · ROUGH/WRONG · partly fixed 5770d03 (validOverrideSeconds test, stale failure cleared; End records no reason because the /end route takes none) · End dialog records no reason; stale failure string reappears in the next dialog; override seconds NaN/0 sent unchecked; "stations can still be marked" shown to supervisors who cannot reach results; Edit offered to supervisors (rebuild is OrgAdmin). SupervisorControls.tsx; OverrideDialog.tsx; CircuitRunner.tsx:~85
+- **R-20** · WRONG · fixed 5770d03 (LiveBoard: no test, web only) · /live: stream only with run_circuits so others see "Reconnecting" forever; "Open console" always opens circuits[0]; dead "deleted circuit" copy. LiveBoard.tsx
 - **R-21** · WRONG · fixed 40b599b (support.test.ts in_progress is running) · SittingDetail report load .catch(() => null): 0 marked, 0 decided, no error; status badge treats only "live" as running (backend writes in_progress). SittingDetail.tsx:42,83
 - **R-22** · WRONG · fixed 40b599b (sittingSteps.test.ts, three cases) · StepGuide: supervisors without sign_off_results see "Marking is not finished" forever; "Run" step has no link and false "start a new circuit" copy; Decide and Release shown for training sittings. sittingSteps.ts W (re-check: other session edits this file)
-- **R-23** · WRONG · open · ReleaseAll drops candidates without trainee_id silently; remount in finally discards the "N released, M refused" alert; "Nobody has sat this yet" hides tiles while decisions exist. Results.tsx:~120-236
+- **R-23** · WRONG · fixed 5770d03 (splitByAccount test; the N released, M refused alert survives the refresh; tiles shown before anyone sat) · ReleaseAll drops candidates without trainee_id silently; remount in finally discards the "N released, M refused" alert; "Nobody has sat this yet" hides tiles while decisions exist. Results.tsx:~120-236
 - **R-24** · WRONG · fixed 74bbded (test_a_withheld_or_inconclusive_outcome_is_not_released_or_emailed: 409 outcome_not_releasable, bulk skips it, no email) · Withheld or inconclusive outcomes are released and emailed "Your result is available". results/service.py:219-227; support.ts:38
 - **R-25** · WRONG · fixed 74bbded (test_release_ignores_evidence_the_client_invents; evidence built server-side in results/service_evidence.py, the posted field is ignored) · Release evidence fingerprint is client-supplied. results/router.py:140-155
 - **R-26** · WRONG · fixed 74bbded (web only: a 403 reading marks shows the slot review with a not-named notice; server access unchanged per R-9) · Unnamed OrgStaff reviewer gets a hard error reading marks on a slot they may review. service_access.py:48; SlotReview.tsx:62
@@ -145,20 +145,22 @@ unless written in full.
 - **R-35** · ROUGH · open · Decision, review, sitting and circuit error codes shown raw (see section 11). CandidateDecision.tsx:140-146; SlotReview.tsx:214; AddTraineesDialog.tsx:215-221; GpLeadReview.tsx:131-135 (double message on conflict)
 - **R-36** · WRONG · fixed 80bfee0 (test_a_training_review_is_shared_with_the_trainee_once_completed) · Training sittings: no share step; copy "once your supervisor shares it" false. MySittingDetail.tsx:116; reviews/service_summary.py:48. 
 - **R-37** · ROUGH · fixed 74bbded (test_slot_review_failed_attempt.py: attempt_failed_reason on slot reviews; retry error shown once) · After a slot attempt fails with no_marking_rubric the slot review says nobody took the station, and a failed marking retry shows its error twice (marks form and marking panel). Caused by fix 1b2f457. results slot row has no attempt id for failed attempts; SlotReview.tsx
-- **R-38** · WRONG · open · Not caused by a fix (found during 53c86a8): the api accepts any member, including a trainee, as a circuit's lead; only the web dropdown now filters. sittings/service_edit.py; CircuitBuilder.tsx (also 335 lines, over the 300-line warning)
+- **R-38** · WRONG · fixed 5770d03 (test_circuit_lead.py: 409 lead_cannot_run on create and rebuild; CircuitBuilder split with TraineePicker.tsx) · Not caused by a fix (found during 53c86a8): the api accepts any member, including a trainee, as a circuit's lead; only the web dropdown now filters. sittings/service_edit.py; CircuitBuilder.tsx (also 335 lines, over the 300-line warning)
 - **R-39** · ROUGH · open · Caused by 74bbded: the candidate stepper lists the whole sitting, so a supervisor stepping to a slot they are not named on lands on the R-26 notice. SlotReview.tsx; CandidateStepper
 - **R-40** · ROUGH · open · Not caused by a fix: sign-off copies the draft's evidence snapshot, so a station re-marked between draft and sign-off is refused evidence_changed only at release. results/service.py sign_off
+- **R-41** · ROUGH · open · Found during 5770d03: circuits built before R-38 whose lead is no longer staff are not rechecked; the lead check runs only at build. sittings/service_structure.py
 
 ## 4. Institution trainee (T-*)
 
 - **T-3** · WRONG · open · Failed slot attempt has no record link (live_attempts_for_slots excludes failed); created/running attempt shows "being prepared" forever. attempts/repository.py:433; feedback/api.ts:63
-- **T-4** · WRONG · open · Trainee in two orgs sees both orgs' sittings in either workspace. dashboard/service_trainee.py:30
+- **T-4** · WRONG · partly fixed 5770d03 (inOrganisation test: the web filters /me/sittings by workspace; the api still returns every org's sittings, T-11) · Trainee in two orgs sees both orgs' sittings in either workspace. dashboard/service_trainee.py:30
 - **T-5** · WRONG · open · No results or history entry: result reachable only via the sitting alert; self-practice attempts, transcripts and debriefs have no entry point; slot attempts get no debrief tutor. TraineeHome.tsx; service_debrief.py:32
 - **T-6** · WRONG · open · MyReviewLink and MyResultLink use useAsync without a boundary: an error hides the link. MySittingDetail.tsx:214,241
 - **T-7** · WRONG · open · JoinRoom: denied microphone only warns and joins; room and token errors raw. JoinRoom.tsx
 - **T-8** · ROUGH · open · MyResult has no per-station breakdown and promises a notification; MyReview "Not ready yet" for any reason. MyResult.tsx; MyReview.tsx
 - **T-9** · ROUGH · open · Finished sittings never leave the list; no past/upcoming grouping. TraineeHome.tsx
 - **T-10** · ROUGH · open · Self practice empty state points to the library with no link; completeHref returns to the list not the feedback. SelfPractice.tsx
+- **T-11** · WRONG · open · Found during 5770d03, not caused by it: /me/sittings is not scoped by workspace in the api; only the web filters it. dashboard/service_trainee.py:30
 
 ## 5. Consumer (C-*)
 
@@ -345,3 +347,4 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | 2026-10-08 | night r1 institution | review fixes bb24401 (9e7e86f, 85c0f5b; B-35 fixed there); B-28 R-28 R-29 fixed, R-30 R-31 partly (53c86a8) | B-29 needs a nav decision; R-38 new |
 | 2026-10-08 | night r1 access | A-6 A-7 A-9 A-11 A-12 (68f967f); SSO review fixes a59e4d6 (second provider keeps the chosen password, TOTP cleared, SAML save audited) | an own-password account linking SSO for the first time after a relayed seat still loses its password (audit cannot tell; reset recovers) |
 | 2026-10-08 | night r1 marking | R-24 R-25 R-26 R-27 R-37 (74bbded); review fixes 6425e2b (23f925e) | R-39 new (caused by 74bbded), R-40 new; openapi needs attempt_failed_reason and outcome_not_releasable |
+| 2026-10-08 | night r1 institution | R-38 R-18 R-20 R-23 fixed, R-19 T-4 partly (5770d03); 53c86a8 review fixes (RequireCapability, isSupervisorRole, DEFAULT_SIMULATION_MINUTES) were swept into the doc commit ac3d463 by a repo-wide index commit | T-11 R-41 new; /end takes no reason |
