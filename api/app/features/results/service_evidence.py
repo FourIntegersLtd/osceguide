@@ -15,15 +15,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.attempts import service_reads as attempts
 from app.features.reviews import service_summary as reviews
+from app.features.roster import service as roster
 from app.features.rubrics import service_marking as rubrics
 from app.features.rubrics import service_scoring as scoring
 from app.features.sittings import service_reads as sittings
 
 
 async def current_evidence(
-    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, user_id: uuid.UUID | None
+    session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID, trainee_id: uuid.UUID
 ) -> dict[str, Any]:
     """The candidate's stations in this sitting as they are marked right now."""
+    user_id = (await roster.read_trainee(session, org_id, trainee_id)).user_id
     sitting = await sittings.sitting_ref(session, org_id, sitting_id)
     slots = [
         slot

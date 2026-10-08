@@ -15,7 +15,7 @@ from app.core.auth import Membership
 from app.features.sittings.models import Slot
 from app.features.tenancy.models import AuditEntry
 from tests.http.test_org_read_models import a_circuit, a_sitting
-from tests.http.test_results_routes import EVIDENCE, a_sitting_and_trainee, org_with_admin, url
+from tests.http.test_results_routes import a_sitting_and_trainee, org_with_admin, url
 from tests.http.test_sittings_routes import published_station
 from tests.support.decisions import seat_candidate
 from tests.support.tokens import bearer
@@ -102,7 +102,7 @@ async def _draft(client: AsyncClient, make_actor, db_session: AsyncSession, emai
     await seat_candidate(db_session, org_id, sitting, trainee)
     saved = await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Draft.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Draft."},
         headers=bearer(admin),
     )
     assert saved.status_code == 200, saved.text
@@ -155,14 +155,11 @@ async def test_a_released_result_pdf_names_the_candidate_and_another_org_is_refu
             "assessment_outcome": "pass",
             "rationale": "Safe and thorough",
             "moderation_notes": "SECRET-MODERATION",
-            "evidence": EVIDENCE,
         },
         headers=bearer(admin),
     )
     await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
-    released = await client.post(
-        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
-    )
+    released = await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
     assert released.status_code == 200, released.text
 
     admin_pdf = await client.get(
@@ -238,7 +235,7 @@ async def test_a_released_decision_is_a_row_of_the_csv(
     )
     saved = await client.put(
         url(sitting["id"], trainee_id),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
         headers=bearer(admin),
     )
     assert saved.status_code == 200, saved.text
@@ -249,7 +246,6 @@ async def test_a_released_decision_is_a_row_of_the_csv(
     assert signed.status_code == 200, signed.text
     released = await client.post(
         url(sitting["id"], trainee_id, "/release"),
-        json={"evidence": EVIDENCE},
         headers=bearer(admin),
     )
     assert released.status_code == 200, released.text

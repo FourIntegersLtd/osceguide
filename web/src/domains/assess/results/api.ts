@@ -16,7 +16,6 @@ export type GpLeadReview = components["schemas"]["GpLeadReviewRead"];
 export type SlotReviews = components["schemas"]["SlotReviewsRead"];
 
 /** What a decision was made against, sent so the backend can tell if it moved. */
-export type Evidence = Record<string, unknown>;
 
 export function readSittingReport(
   slug: string,
@@ -124,8 +123,8 @@ export function readDecision(
  * Save a draft.
  *
  * A PUT, and it was being sent as a POST — which 405s, so nothing recorded a
- * decision at all. `evidence` is the marking the outcome was judged against;
- * the backend fingerprints it at sign-off and re-checks it at release.
+ * decision at all. The backend reads the marking the outcome is judged
+ * against itself, fingerprints it at sign-off and re-checks it at release.
  *
  * `expectedRevision` is the revision this screen last read, or 0 when it read
  * nothing. The table is append-only, so a stale save looked harmless and was
@@ -142,7 +141,6 @@ export function saveDecision(
     /** Only an exam-mode sitting takes one; the server refuses it on a training sitting. */
     recruitmentOutcome: string | null;
     rationale: string | null;
-    evidence: Evidence;
     expectedRevision: number;
   },
 ): Promise<Decision> {
@@ -152,7 +150,6 @@ export function saveDecision(
       assessment_outcome: input.assessmentOutcome,
       recruitment_outcome: input.recruitmentOutcome,
       rationale: input.rationale,
-      evidence: input.evidence,
       expected_revision: input.expectedRevision,
     },
   });
@@ -172,11 +169,9 @@ export function releaseDecision(
   slug: string,
   sittingId: string,
   traineeId: string,
-  evidence: Evidence,
 ): Promise<Decision> {
   return platformRequest<Decision>(`${decisionPath(slug, sittingId, traineeId)}/release`, {
     method: "POST",
-    body: { evidence },
   });
 }
 
@@ -186,24 +181,21 @@ export type BulkReleaseResult = components["schemas"]["BulkReleaseResult"];
  * Release several candidates' decisions in one request.
  *
  * The backend loops them through the single release, so each keeps its own
- * evidence re-check and its own `candidate_result_released` email, and a
+ * server-side evidence re-check and its own `candidate_result_released` email, and a
  * refused candidate comes back under `skipped` with its code rather than
  * failing the rest.
  */
 export function releaseDecisions(
   slug: string,
   sittingId: string,
-  candidates: { traineeId: string; evidence: Evidence }[],
+  candidates: { traineeId: string }[],
 ): Promise<BulkReleaseResult> {
   return platformRequest<BulkReleaseResult>(
     `${orgPath(slug)}/sittings/${encodeURIComponent(sittingId)}/decisions/release`,
     {
       method: "POST",
       body: {
-        candidates: candidates.map((candidate) => ({
-          trainee_id: candidate.traineeId,
-          evidence: candidate.evidence,
-        })),
+        candidates: candidates.map((candidate) => ({ trainee_id: candidate.traineeId })),
       },
     },
   );

@@ -103,7 +103,7 @@ async def save_draft(
             str(exc), details={"current_revision": latest.revision if latest else 0}
         ) from exc
 
-    evidence = await service_evidence.current_evidence(session, org_id, sitting_id, trainee.user_id)
+    evidence = await service_evidence.current_evidence(session, org_id, sitting_id, trainee_id)
     assessment = domain.Assessment(assessment_outcome) if assessment_outcome else None
     recruitment = domain.Recruitment(recruitment_outcome) if recruitment_outcome else None
     if recruitment is not None:
@@ -198,8 +198,7 @@ async def release(
     pressed the button and never the candidate.
     """
     latest = await _require(session, org_id, sitting_id, trainee_id)
-    trainee = await roster.read_trainee(session, org_id, trainee_id)
-    current = await service_evidence.current_evidence(session, org_id, sitting_id, trainee.user_id)
+    current = await service_evidence.current_evidence(session, org_id, sitting_id, trainee_id)
     try:
         domain.transition(domain.Workflow(latest.workflow_state), domain.Workflow.RELEASED)
         domain.ensure_releasable(latest.assessment_outcome)

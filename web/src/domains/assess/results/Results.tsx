@@ -12,7 +12,7 @@ import { ReleaseButton } from "@/domains/assess/results/DecisionParts";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
 import { countsFromReport, sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import { can, useSession } from "@/foundation/session";
-import { evidenceFor, releasable, releaseRefusal, splitByAccount } from "@/domains/assess/results/support";
+import { releasable, releaseRefusal, splitByAccount } from "@/domains/assess/results/support";
 
 /**
  * What a course lead reads back after an examination.
@@ -237,22 +237,17 @@ function ReleaseAll({
     setBusy(true);
     setFailures([]);
     setReleased(null);
-    const entries = chosen.flatMap((candidate) =>
-      candidate.trainee_id ? [{ traineeId: candidate.trainee_id, candidate }] : [],
-    );
-    const byTrainee = new Map(entries.map((entry) => [entry.traineeId, entry.candidate]));
+    const { traineeIds, unlinked } = splitByAccount(chosen);
+    const byTrainee = new Map(chosen.map((candidate) => [candidate.trainee_id, candidate]));
     try {
       const result = await releaseDecisions(
         orgSlug,
         sittingId,
-        entries.map(({ traineeId, candidate }) => ({
-          traineeId,
-          evidence: evidenceFor(candidate),
-        })),
+        traineeIds.map((traineeId) => ({ traineeId })),
       );
       setReleased((result.released ?? []).length);
       setFailures([
-        ...splitByAccount(chosen).unlinked,
+        ...unlinked,
         ...(result.skipped ?? []).map((skip) => {
           const candidate = byTrainee.get(skip.trainee_id);
           const name = candidate?.name ?? candidate?.email ?? "A candidate";

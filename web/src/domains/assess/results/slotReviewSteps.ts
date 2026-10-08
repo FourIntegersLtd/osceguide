@@ -13,8 +13,8 @@ export type SlotStep = RailStep<SlotStepId>;
 /**
  * `none`: nobody took the station. `pending`: taken, marking not finished. `failed`: marking
  * gave up after its retries; a reviewer can queue it again.
- * `unmarkable`: taken, but the attempt failed for want of a marking scheme, so there is nothing to
- * retry; the station has to be sat again.
+ * `unmarkable`: taken, but the attempt itself failed (no marking scheme, an empty transcript), so
+ * there is nothing to retry.
  * `unavailable`: marked without a marking scheme, so there are no automatic
  * marks and there will not be. `ready`: marks to read.
  */
@@ -36,7 +36,7 @@ export function markingState(input: {
 }
 
 /** What the automatic marking panel says when there is nothing to show. */
-export function markingNotice(state: MarkingState): string | null {
+export function markingNotice(state: MarkingState, failedReason?: string | null): string | null {
   switch (state) {
     case "none":
       return "Nobody has taken this station, so there is no automatic marking.";
@@ -45,7 +45,9 @@ export function markingNotice(state: MarkingState): string | null {
     case "failed":
       return "Automatic marking failed. Retry it, or mark this station without it.";
     case "unmarkable":
-      return "This station was taken, but it could not be marked because its exam had no marking scheme. It needs to be sat again; you can still record your own marks.";
+      return failedReason === "no_marking_rubric"
+        ? "This station was taken, but it could not be marked because its exam had no marking scheme. It needs to be sat again; you can still record your own marks."
+        : `This station was taken, but it could not be marked (${failedReason ?? "unknown reason"}). You can still record your own marks.`;
     case "unavailable":
       return "This station was taken before the exam had a marking scheme, so there are no automatic marks and there will not be.";
     case "ready":

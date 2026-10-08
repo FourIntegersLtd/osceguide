@@ -141,7 +141,6 @@ async def release_many(
 async def release(
     sitting_id: uuid.UUID,
     trainee_id: uuid.UUID,
-    body: schemas.SaveDecision,
     workspace: OrgInstitutionAdmin,
     session: Session,
     clock: ClockDep,

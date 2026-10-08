@@ -1,18 +1,18 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Alert, AsyncBoundary, Badge, Button, ButtonLink, B2CPageHeader, FoldSection, Spinner, Panel, StepGuide } from "@/foundation/ui";
+import { Alert, AsyncBoundary, Badge, Button, B2CPageHeader, FoldSection, Spinner, Panel, StepGuide } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
-import { isPlatformError } from "@/foundation/platform-client";
-import { readFeedback, RubricFeedback, type AttemptFeedbackRead } from "@/capabilities/feedback";
+import { type AttemptFeedbackRead } from "@/capabilities/feedback";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
 import { readMySlotReview, retrySlotMarking, saveReview } from "@/domains/assess/api";
-import { useSurface } from "@/capabilities";
+import { readMarking } from "@/domains/assess/readMarking";
+import { CandidateStepper } from "@/domains/assess/CandidateStepper";
+import { MarkingPanel } from "@/domains/assess/MarkingPanel";
 import { can, useSession } from "@/foundation/session";
-import { GpLeadReview, SlotReviewers, readSittingReport, readSlotReviews } from "@/domains/assess/results";
-import { candidateSteps, reviewPath } from "@/domains/assess/results/candidateNeighbours";
-import { markingNotice, markingState, openForm, slotNextLine, slotReviewSteps } from "@/domains/assess/results/slotReviewSteps";
+import { GpLeadReview, SlotReviewers, readSlotReviews } from "@/domains/assess/results";
+import { markingState, openForm, slotNextLine, slotReviewSteps } from "@/domains/assess/results/slotReviewSteps";
 import type { SlotReviews } from "@/domains/assess/results";
 import { ReviewFields } from "@/domains/assess/results/ReviewFields";
 import { fieldValuesFor, initialRatings } from "@/domains/assess/results/reviewForm";
@@ -32,27 +32,6 @@ import { fieldValuesFor, initialRatings } from "@/domains/assess/results/reviewF
  * The backend refuses a submit that leaves a required domain unrated, so that
  * rule is shown, not enforced, in the browser.
  */
-/** Only "not found" means "no marking yet"; every other error is rethrown. */
-function notFoundAsNull(err: unknown): null {
-  if (isPlatformError(err) && err.status === 404) return null;
-  throw err;
-}
-
-/**
- * Staff who are not named on the station's circuit may open its review but not read the automatic
- * marking (a 403). That is a fact about them, not a failure of the page (R-26): the marking is
- * left out and the screen says so.
- */
-async function readMarking(attemptId: string | null, signal: AbortSignal) {
-  if (!attemptId) return { feedback: null, hidden: false };
-  try {
-    return { feedback: await readFeedback(attemptId, signal), hidden: false };
-  } catch (err) {
-    if (isPlatformError(err) && err.status === 403) return { feedback: null, hidden: true };
-    return { feedback: notFoundAsNull(err), hidden: false };
-  }
-}
-
 /** `attempt_failed_reason` is declared here until the generated types carry it. */
 type SlotReviewsRead = SlotReviews & { attempt_failed_reason?: string | null };
 
@@ -96,16 +75,6 @@ export function SlotReview({
         subtitle="The automatic marking, your marks and the admin's review."
         action={sittingId ? <CandidateStepper orgSlug={orgSlug} sittingId={sittingId} slotId={slotId} /> : undefined}
       />
-      {attemptId || state.data?.reviews.attempt_failed_reason ? null : (
-        /*
-         * Without an attempt there is no engine marking to set the form
-         * beside, and a bare form reads as "the machine has not finished"
-         * rather than "this candidate was never dispatched". Say which it is.
-         */
-        <Alert tone="warning">
-          Nobody has taken this station yet, so there is nothing to mark.
-        </Alert>
-      )}
       {state.data?.hidden ? (
         <Alert tone="warning">
           You are not named on this station&apos;s circuit, so its automatic marking is not shown to you.
@@ -124,50 +93,6 @@ export function SlotReview({
           />
         )}
       </AsyncBoundary>
-    </div>
-  );
-}
-
-/**
- * Previous and next candidate on the same station.
- *
- * Read off the sitting's report rather than asked of a route of its own. It is
- * a convenience beside the form, so while it loads there is nothing to show,
- * and a failure says so without taking the form down with it.
- */
-function CandidateStepper({ orgSlug, sittingId, slotId }: { orgSlug: string; sittingId: string; slotId: string }) {
-  const { hrefFor } = useSurface();
-  const report = useAsync((signal) => readSittingReport(orgSlug, sittingId, signal), [orgSlug, sittingId]);
-
-  if (report.error) return <p className="text-osce-meta text-b2b-mid">Could not load the other candidates.</p>;
-  const steps = report.data ? candidateSteps(report.data.candidates ?? [], slotId) : null;
-  if (!steps || steps.total < 2) return null;
-
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-osce-meta tabular-nums text-b2b-mid">
-        Candidate {steps.position} of {steps.total}
-      </span>
-      {steps.previous ? (
-        <ButtonLink
-          href={hrefFor(reviewPath(steps.previous.slotId, steps.previous.attemptId, sittingId))}
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
-        >
-          Previous
-        </ButtonLink>
-      ) : null}
-      {steps.next ? (
-        <ButtonLink
-          href={hrefFor(reviewPath(steps.next.slotId, steps.next.attemptId, sittingId))}
-          themeType="b2b"
-          variant="secondary"
-          size="sm"
-        >
-          Next candidate
-        </ButtonLink>
-      ) : null}
     </div>
   );
 }
@@ -327,24 +252,15 @@ function Editor({
         </div>
 
         <div className="flex flex-col gap-4">
-          {/* The same feedback the candidate reads, drawn from the same rubric. */}
-          {result && feedback?.rubric ? (
-            <RubricFeedback rubric={feedback.rubric} result={result} heading="Automatic marking" narrow />
-          ) : (
-            <Panel padding="md">
-              <p className="text-osce-body text-b2b-mid">{markingNotice(marking)}</p>
-              {marking === "failed" && (
-                <div className="mt-3 flex flex-col gap-2">
-                  <div>
-                    <Button variant="secondary" onClick={retryMarking} disabled={busy !== null}>
-                      {busy === "retry" ? "Retrying..." : "Retry marking"}
-                    </Button>
-                  </div>
-                  {retryError && busy === null && <Alert tone="danger">{errorMessage(retryError)}</Alert>}
-                </div>
-              )}
-            </Panel>
-          )}
+          <MarkingPanel
+            marking={marking}
+            failedReason={reviews.attempt_failed_reason}
+            feedback={feedback}
+            busy={busy === "retry"}
+            disabled={busy !== null}
+            error={retryError}
+            onRetry={retryMarking}
+          />
           {/* The marking is the machine's reading of the consultation; this is
             the consultation. A marker is asked to agree or disagree with the
             first, which is not a judgement they can make from a score alone. */}

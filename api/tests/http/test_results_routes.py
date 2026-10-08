@@ -17,8 +17,6 @@ from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 
-EVIDENCE = {"slots": ["a", "b"], "scores": {"communication": "G"}}
-
 
 async def org_with_admin(client: AsyncClient, make_actor, slug: str = "kings"):  # type: ignore[no-untyped-def]
     root = await make_actor(f"root-{slug}@osceguide.com", platform_admin=True)
@@ -80,7 +78,6 @@ async def test_a_decision_is_saved_as_a_revision(
         json={
             "assessment_outcome": "pass",
             "rationale": "Met the standard.",
-            "evidence": EVIDENCE,
             "expected_revision": 0,
         },
         headers=bearer(admin),
@@ -93,7 +90,6 @@ async def test_a_decision_is_saved_as_a_revision(
         json={
             "assessment_outcome": "pass",
             "rationale": "Revised.",
-            "evidence": EVIDENCE,
             "expected_revision": 1,
         },
         headers=bearer(admin),
@@ -110,7 +106,7 @@ async def test_a_save_against_a_revision_you_never_read_is_refused(
     took whichever draft landed last."""
     org_id, admin = await org_with_admin(client, make_actor)
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
-    body = {"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE}
+    body = {"assessment_outcome": "pass", "rationale": "Met the standard."}
 
     await client.put(url(sitting, trainee), json={**body, "expected_revision": 0}, headers=bearer(admin))
 
@@ -138,7 +134,7 @@ async def test_incompatible_outcomes_are_refused(
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     response = await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "fail", "recruitment_outcome": "hired", "evidence": EVIDENCE},
+        json={"assessment_outcome": "fail", "recruitment_outcome": "hired"},
         headers=bearer(admin),
     )
     assert response.status_code == 422
@@ -152,7 +148,7 @@ async def test_signing_off_requires_a_rationale(
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass"},
         headers=bearer(admin),
     )
     response = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
@@ -166,16 +162,14 @@ async def test_the_full_workflow(client: AsyncClient, make_actor, db_session: As
 
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
         headers=bearer(admin),
     )
     signed = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
     assert signed.json()["workflow_state"] == "signed_off"
     assert signed.json()["signed_off_at"] is not None
 
-    released = await client.post(
-        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
-    )
+    released = await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
     assert released.json()["workflow_state"] == "released"
 
 
@@ -186,12 +180,10 @@ async def test_a_draft_cannot_be_released_directly(
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "R.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "R."},
         headers=bearer(admin),
     )
-    response = await client.post(
-        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
-    )
+    response = await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
     assert response.status_code == 409
     assert response.json()["code"] == "invalid_workflow"
 
@@ -206,37 +198,15 @@ async def test_release_is_refused_if_the_evidence_moved(
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "R.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "R."},
         headers=bearer(admin),
     )
     await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
     await _mark_the_station(db_session, org_id, sitting)
 
-    response = await client.post(
-        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
-    )
+    response = await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
     assert response.status_code == 409
     assert response.json()["code"] == "evidence_changed"
-
-
-async def test_release_ignores_evidence_the_client_invents(
-    client: AsyncClient, make_actor, db_session: AsyncSession
-) -> None:  # type: ignore[no-untyped-def]
-    org_id, admin = await org_with_admin(client, make_actor)
-    sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
-    await client.put(
-        url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "R.", "evidence": EVIDENCE},
-        headers=bearer(admin),
-    )
-    await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
-
-    response = await client.post(
-        url(sitting, trainee, "/release"),
-        json={"evidence": {"slots": ["z"], "scores": {"communication": "R"}}},
-        headers=bearer(admin),
-    )
-    assert response.status_code == 200, response.text
 
 
 async def _mark_the_station(db_session: AsyncSession, org_id: uuid.UUID, sitting_id: uuid.UUID) -> None:
@@ -275,7 +245,7 @@ async def test_a_withheld_or_inconclusive_outcome_is_not_released_or_emailed(
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": outcome, "rationale": "Held.", "evidence": EVIDENCE},
+        json={"assessment_outcome": outcome, "rationale": "Held."},
         headers=bearer(admin),
     )
     signed = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
@@ -321,13 +291,11 @@ async def test_a_candidate_reads_their_released_result(
 
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
         headers=bearer(admin),
     )
     await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
-    released = await client.post(
-        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
-    )
+    released = await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
     assert released.status_code == 200, released.text
 
     mine = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(candidate))
@@ -350,11 +318,11 @@ async def test_another_candidate_cannot_read_it(
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Met.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met."},
         headers=bearer(admin),
     )
     await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
-    await client.post(url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin))
+    await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
 
     stranger = await make_actor("stranger-result@example.com")
     response = await client.get(f"/api/v1/me/results/{sitting}", headers=bearer(stranger))
@@ -369,7 +337,7 @@ async def test_a_candidate_sees_nothing_before_release(
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "fail", "rationale": "Did not meet.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "fail", "rationale": "Did not meet."},
         headers=bearer(admin),
     )
     candidate = await make_actor("candidate@example.com")
@@ -420,13 +388,11 @@ async def a_released_result(client: AsyncClient, make_actor, db_session: AsyncSe
 
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
         headers=bearer(admin),
     )
     await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
-    released = await client.post(
-        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
-    )
+    released = await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
     assert released.status_code == 200, released.text
     return sitting, candidate
 
@@ -466,7 +432,7 @@ async def test_nothing_unreleased_can_be_acknowledged(
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Met.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met."},
         headers=bearer(admin),
     )
     candidate = await make_actor("unreleased-ack@example.com")
@@ -495,13 +461,11 @@ async def test_releasing_writes_to_the_candidate_and_not_the_administrator(
 
     await client.put(
         url(sitting, trainee),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
         headers=bearer(admin),
     )
     await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
-    released = await client.post(
-        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
-    )
+    released = await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
     assert released.status_code == 200
 
     queued = (
@@ -541,7 +505,7 @@ async def test_a_users_id_here_is_refused_not_a_crash(
 
     refused = await client.put(
         url(sitting, somebody.id),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
         headers=bearer(admin),
     )
 
@@ -560,7 +524,7 @@ async def test_another_orgs_trainee_is_not_decidable(
 
     refused = await client.put(
         url(sitting, theirs),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
         headers=bearer(admin),
     )
 
@@ -590,7 +554,7 @@ async def test_a_bulk_release_emails_each_candidate_and_skips_the_unready(
     for seated in (second, draft):
         await seat_candidate(db_session, org_id, sitting, seated)
 
-    decision = {"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE}
+    decision = {"assessment_outcome": "pass", "rationale": "Met the standard."}
     for trainee in (first, second, draft):
         await client.put(url(sitting, trainee), json=decision, headers=bearer(admin))
     for trainee in (first, second):
@@ -598,11 +562,7 @@ async def test_a_bulk_release_emails_each_candidate_and_skips_the_unready(
 
     bulk = await client.post(
         f"/api/v1/orgs/kings/sittings/{sitting}/decisions/release",
-        json={
-            "candidates": [
-                {"trainee_id": str(trainee), "evidence": EVIDENCE} for trainee in (first, second, draft)
-            ]
-        },
+        json={"candidates": [{"trainee_id": str(trainee)} for trainee in (first, second, draft)]},
         headers=bearer(admin),
     )
     assert bulk.status_code == 200, bulk.text
@@ -636,15 +596,12 @@ async def test_a_released_exam_decision_carries_the_recruitment_outcome(
             "assessment_outcome": "pass",
             "recruitment_outcome": "reserve",
             "rationale": "Strong, but one post.",
-            "evidence": EVIDENCE,
         },
         headers=bearer(admin),
     )
     assert saved.status_code == 200, saved.text
     await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
-    released = await client.post(
-        url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin)
-    )
+    released = await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
 
     assert released.json()["workflow_state"] == "released"
     assert released.json()["recruitment_outcome"] == "reserve"
@@ -671,7 +628,7 @@ async def test_a_training_sitting_takes_no_decision_at_all(
     # a refusal rolls back the shared test session, and the fixtures with it.
     response = await client.put(
         url(practice.id, trainee),
-        json={"assessment_outcome": "pass", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass"},
         headers=bearer(admin),
     )
 
@@ -692,7 +649,7 @@ async def test_a_candidate_who_sat_nothing_takes_no_decision(
 
     response = await client.put(
         url(sitting, absent.id),
-        json={"assessment_outcome": "fail", "evidence": EVIDENCE},
+        json={"assessment_outcome": "fail"},
         headers=bearer(admin),
     )
 
@@ -705,7 +662,7 @@ async def test_a_signed_off_decision_goes_back_to_draft_until_it_is_released(
     """Saving a signed-off decision again is "back to draft"; a released one is final."""
     org_id, admin = await org_with_admin(client, make_actor)
     sitting, trainee = await a_sitting_and_trainee(db_session, org_id)
-    body = {"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE}
+    body = {"assessment_outcome": "pass", "rationale": "Met the standard."}
     await client.put(url(sitting, trainee), json=body, headers=bearer(admin))
     signed = await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
 
@@ -718,7 +675,7 @@ async def test_a_signed_off_decision_goes_back_to_draft_until_it_is_released(
     assert reopened.json()["workflow_state"] == "draft"
 
     await client.post(url(sitting, trainee, "/sign-off"), headers=bearer(admin))
-    await client.post(url(sitting, trainee, "/release"), json={"evidence": EVIDENCE}, headers=bearer(admin))
+    await client.post(url(sitting, trainee, "/release"), headers=bearer(admin))
     final = await client.get(url(sitting, trainee), headers=bearer(admin))
     after_release = await client.put(
         url(sitting, trainee),

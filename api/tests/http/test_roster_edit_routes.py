@@ -530,7 +530,6 @@ async def test_deleting_a_trainee_with_a_decision_is_refused(
     """`roster` sits below `results` in the layer contract and cannot check
     for a decision itself — the database's `RESTRICT` is the refusal,
     mapped to a clean 409 rather than a raw 500."""
-    from tests.http.test_results_routes import EVIDENCE
     from tests.http.test_results_routes import a_sitting_and_trainee as a_decided_sitting_and_trainee
     from tests.http.test_results_routes import org_with_admin as org_with_institution_admin
 
@@ -541,7 +540,6 @@ async def test_deleting_a_trainee_with_a_decision_is_refused(
         json={
             "assessment_outcome": "pass",
             "rationale": "Met the standard.",
-            "evidence": EVIDENCE,
             "expected_revision": 0,
         },
         headers=bearer(admin),
@@ -558,7 +556,7 @@ async def test_anonymising_a_decided_trainee_scrubs_the_person_and_keeps_the_dec
 ) -> None:  # type: ignore[no-untyped-def]
     """The GDPR path for exactly the row `delete` above refuses: anonymise,
     never delete, a trainee with a decision on record."""
-    from tests.http.test_results_routes import EVIDENCE, a_sitting_and_named_trainee
+    from tests.http.test_results_routes import a_sitting_and_named_trainee
     from tests.http.test_results_routes import org_with_admin as org_with_institution_admin
 
     org_id, admin = await org_with_institution_admin(client, make_actor, "gdprorg")
@@ -568,7 +566,6 @@ async def test_anonymising_a_decided_trainee_scrubs_the_person_and_keeps_the_dec
         json={
             "assessment_outcome": "pass",
             "rationale": "Met the standard.",
-            "evidence": EVIDENCE,
             "expected_revision": 0,
         },
         headers=bearer(admin),

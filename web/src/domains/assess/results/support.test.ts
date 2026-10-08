@@ -1,37 +1,20 @@
 import assert from "node:assert/strict";
 import test, { describe, it } from "node:test";
-import type { CandidateReport, SittingReadout, StationReport } from "@/domains/assess/results/api";
+import type { CandidateReport, SittingReadout } from "@/domains/assess/results/api";
 import {
   releaseRefusal,
   ASSESSMENT_OUTCOMES,
-  evidenceFor,
   outcomeTone,
   readoutAsMarkdown,
   readoutFilename,
   recruitmentLabel,
   releasable,
   splitByAccount,
-  heldBack,
   signOffBlockers,
   formatScore,
   outcomeLabel,
   workflowLabel,
 } from "@/domains/assess/results/support";
-
-function station(over: Partial<StationReport> & { slot_id: string }): StationReport {
-  return {
-    circuit_id: "c1",
-    circuit_name: "Morning circuit",
-    slot_index: 0,
-    station_title: "Hip pain",
-    slot_status: "completed",
-    attempt_status: "evaluated",
-    marked: true,
-    overall_rag: "G",
-    by_domain: {},
-    ...over,
-  } as StationReport;
-}
 
 function candidate(over: Partial<CandidateReport> = {}): CandidateReport {
   return {
@@ -67,27 +50,6 @@ test("sign-off is blocked until there is both an outcome and a reason", () => {
   // Whitespace is not a rationale.
   assert.equal(signOffBlockers({ outcome: "pass", rationale: "   " }).length, 1);
   assert.equal(signOffBlockers({ outcome: null, rationale: null }).length, 2);
-});
-
-test("the evidence is the marking, and the same marking hashes the same", () => {
-  const one = candidate({
-    stations_marked: 2,
-    overall_rag: "A",
-    stations: [station({ slot_id: "b", overall_rag: "A" }), station({ slot_id: "a" })],
-  });
-  const other = candidate({
-    stations_marked: 2,
-    overall_rag: "A",
-    // Same stations, arriving the other way round.
-    stations: [station({ slot_id: "a" }), station({ slot_id: "b", overall_rag: "A" })],
-  });
-  assert.deepEqual(evidenceFor(one), evidenceFor(other));
-});
-
-test("a station re-marked after sign-off changes the evidence", () => {
-  const before = candidate({ stations: [station({ slot_id: "a", overall_rag: "G" })] });
-  const after = candidate({ stations: [station({ slot_id: "a", overall_rag: "R" })] });
-  assert.notDeepEqual(evidenceFor(before), evidenceFor(after));
 });
 
 test("only a signed-off decision that is not yet out can be released", () => {
@@ -247,8 +209,6 @@ test("a withheld or inconclusive outcome is not offered for release (R-24)", () 
   assert.equal(releasable(signed("withheld")), false);
   assert.equal(releasable(signed("inconclusive")), false);
   assert.equal(releasable(signed("fail")), true);
-  assert.equal(heldBack("withheld"), true);
-  assert.equal(heldBack("pass"), false);
   assert.equal(releaseRefusal("outcome_not_releasable"), "a withheld or inconclusive outcome is not sent to the candidate");
 });
 

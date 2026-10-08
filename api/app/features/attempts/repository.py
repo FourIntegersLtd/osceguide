@@ -445,11 +445,10 @@ async def live_attempts_for_slots(session: AsyncSession, slot_ids: Sequence[uuid
 
 async def failed_reason_for_untaken_slot(session: AsyncSession, slot_id: uuid.UUID) -> str | None:
     """Why the latest attempt on a slot failed, when it has no live attempt to show instead."""
-    if await live_attempt_for_slot(session, slot_id) is not None:
-        return None
+    live = select(Attempt.id).where(Attempt.slot_id == slot_id, Attempt.status != "failed")
     stmt = (
         select(Attempt.failed_reason)
-        .where(Attempt.slot_id == slot_id, Attempt.status == "failed")
+        .where(Attempt.slot_id == slot_id, Attempt.status == "failed", ~live.exists())
         .order_by(Attempt.created_at.desc())
         .limit(1)
     )

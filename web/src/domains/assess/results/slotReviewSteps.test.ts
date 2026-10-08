@@ -67,6 +67,9 @@ test("marking that failed says so in the rail and in the panel, and is not 'not 
 test("a station whose attempt failed for want of a marking scheme was taken but cannot be marked (R-37)", () => {
   const state = markingState({ attemptId: null, hasResult: false, hasRubric: false, failedReason: "no_marking_rubric" });
   assert.equal(state, "unmarkable");
-  assert.match(markingNotice(state) ?? "", /had no marking scheme/);
+  assert.match(markingNotice(state, "no_marking_rubric") ?? "", /had no marking scheme/);
   assert.equal(markingState({ attemptId: null, hasResult: false, hasRubric: false, failedReason: null }), "none");
+  // Any other reason is named, not blamed on the marking scheme.
+  const dead = markingState({ attemptId: null, hasResult: false, hasRubric: false, failedReason: "empty_transcript" });
+  assert.equal(markingNotice(dead, "empty_transcript"), "This station was taken, but it could not be marked (empty_transcript). You can still record your own marks.");
 });

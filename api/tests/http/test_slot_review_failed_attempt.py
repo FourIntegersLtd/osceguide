@@ -37,16 +37,17 @@ async def _slot_reviews(client: AsyncClient, admin: str, db_session: AsyncSessio
     return await client.get(f"/api/v1/orgs/kings/slots/{slot.id}/reviews", headers=bearer(token))
 
 
+@pytest.mark.parametrize("reason", ["no_marking_rubric", "empty_transcript"])
 async def test_the_slot_review_says_why_marking_failed(
-    client: AsyncClient, make_actor, db_session: AsyncSession
+    client: AsyncClient, make_actor, db_session: AsyncSession, reason: str
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
     await a_sitting_and_trainee(db_session, org_id)
 
-    response = await _slot_reviews(client, (org_id, admin), db_session, "no_marking_rubric")
+    response = await _slot_reviews(client, (org_id, admin), db_session, reason)
 
     assert response.status_code == 200, response.text
-    assert response.json()["attempt_failed_reason"] == "no_marking_rubric"
+    assert response.json()["attempt_failed_reason"] == reason
 
 
 async def test_a_slot_nobody_took_has_no_failed_reason(

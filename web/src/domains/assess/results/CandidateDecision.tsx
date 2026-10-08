@@ -17,8 +17,8 @@ import {
   ASSESSMENT_OUTCOMES,
   OUTCOME_HINT,
   OUTCOME_LABEL,
-  evidenceFor,
-  heldBack,
+  releasable,
+  releaseRefusal,
   signOffBlockers,
   workflowLabel,
   workflowTone,
@@ -31,9 +31,8 @@ import { RecruitmentField, ReleaseButton, ReleasedDecision, ReopenButton } from 
  * One candidate's outcome: draft, signed off, released.
  *
  * The backend holds the order — a draft cannot be released directly and a
- * released decision is final — and it re-checks at release that the marking
- * the outcome was judged against has not moved since sign-off. This screen
- * sends that evidence, which is what makes the check mean anything.
+ * released decision is final — and it re-checks at release, from the marking
+ * itself, that what the outcome was judged against has not moved since sign-off.
  */
 export function CandidateDecision({
   orgSlug,
@@ -75,7 +74,6 @@ export function CandidateDecision({
         orgSlug={orgSlug}
         sittingId={sittingId}
         traineeId={traineeId}
-        candidate={candidate}
         hire={hire}
         decision={stored.data}
         onChanged={() => {
@@ -91,7 +89,6 @@ function Form({
   orgSlug,
   sittingId,
   traineeId,
-  candidate,
   hire,
   decision,
   onChanged,
@@ -99,7 +96,6 @@ function Form({
   orgSlug: string;
   sittingId: string;
   traineeId: string;
-  candidate: CandidateReport;
   hire: boolean;
   decision: Decision | null;
   onChanged: () => void;
@@ -120,13 +116,13 @@ function Form({
     assessmentOutcome: outcome || null,
     recruitmentOutcome: hire ? recruitment || null : null,
     rationale: rationale.trim() || null,
-    evidence: evidenceFor(candidate),
     expectedRevision,
   };
 
   const state = decision?.workflow_state ?? "draft";
   const released = state === "released";
   const signedOff = state === "signed_off";
+  const canRelease = releasable({ decision });
   const blockers = signOffBlockers({ outcome: outcome || null, rationale });
 
   const run = useCallback(async (label: string, action: () => Promise<unknown>, said: string) => {
@@ -281,13 +277,13 @@ function Form({
             />
             <ReleaseButton
               busy={busy === "release"}
-              disabled={busy !== null || heldBack(outcome)}
+              disabled={busy !== null || !canRelease}
               count={1}
               label="Release to the candidate"
               onConfirm={() =>
                 void run(
                   "release",
-                  () => releaseDecision(orgSlug, sittingId, traineeId, evidenceFor(candidate)),
+                  () => releaseDecision(orgSlug, sittingId, traineeId),
                   "Released. The candidate can read it now.",
                 )
               }
@@ -296,6 +292,9 @@ function Form({
         )}
       </div>
 
+      {signedOff && !canRelease ? (
+        <Alert tone="warning">Cannot be released: {releaseRefusal("outcome_not_releasable")}.</Alert>
+      ) : null}
       {signedOff ? (
         <p className="text-osce-caption text-b2b-mid">
           Sign-off covers the marks as they were at the time. If a station is re-marked afterwards, the result must be reviewed and signed off again before it can be released.

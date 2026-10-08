@@ -1,7 +1,6 @@
 import type {
   CandidateReport,
   CohortCandidate,
-  Evidence,
   SittingReadout,
 } from "@/domains/assess/results/api";
 
@@ -131,35 +130,6 @@ export function cohortSubtitle(candidate: CohortCandidate): string {
 }
 
 /* ------------------------------------------------------------------------
- * The evidence.
- *
- * What the outcome was judged against, sent with the draft and again at
- * release. The backend fingerprints it at sign-off and refuses a release whose
- * evidence no longer matches — a station re-marked in between would otherwise
- * send a candidate an outcome nobody approved.
- *
- * The retiring client never sent any, so that check compared two empty objects
- * and passed every time. Only the marking goes in: the shape has to be stable,
- * or an unrelated edit elsewhere in the report would read as tampering.
- * --------------------------------------------------------------------- */
-
-export function evidenceFor(candidate: CandidateReport): Evidence {
-  const stations = (candidate.stations ?? [])
-    .map((station) => ({
-      slot_id: station.slot_id,
-      marked: station.marked,
-      overall_rag: station.overall_rag ?? null,
-    }))
-    .sort((a, b) => a.slot_id.localeCompare(b.slot_id));
-
-  return {
-    stations,
-    stations_marked: candidate.stations_marked,
-    overall_rag: candidate.overall_rag ?? null,
-  };
-}
-
-/* ------------------------------------------------------------------------
  * What a decision needs before anybody puts their name to it.
  *
  * The backend is the authority — `ensure_signable` refuses a sign-off without
@@ -179,15 +149,16 @@ export function signOffBlockers(input: {
   return blockers;
 }
 
-/** A withheld outcome is held back and an inconclusive one is undecided: neither is sent to the candidate (R-24). */
-export function heldBack(outcome: string | null | undefined): boolean {
-  return outcome === "withheld" || outcome === "inconclusive";
-}
-
-/** A candidate whose sign-off is done, whose release is not, and whose outcome may be sent. */
-export function releasable(candidate: CandidateReport): boolean {
+/**
+ * A decision that is signed off, not yet released, and whose outcome may be sent. A withheld outcome
+ * is held back and an inconclusive one is undecided: neither goes to the candidate (R-24).
+ */
+export function releasable(candidate: {
+  decision?: { signed_off_at?: string | null; released_at?: string | null; assessment_outcome?: string | null } | null;
+}): boolean {
   const decision = candidate.decision;
-  return Boolean(decision?.signed_off_at) && !decision?.released_at && !heldBack(decision?.assessment_outcome);
+  const heldBack = decision?.assessment_outcome === "withheld" || decision?.assessment_outcome === "inconclusive";
+  return Boolean(decision?.signed_off_at) && !decision?.released_at && !heldBack;
 }
 
 /** Splits a chosen release into the accounts the server can release and the people it cannot name an account for. */

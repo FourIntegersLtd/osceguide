@@ -9,8 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.support.tokens import bearer
 
-EVIDENCE = {"slots": ["a", "b"], "scores": {"communication": "G"}}
-
 
 async def settle_decision(
     client: AsyncClient,
@@ -28,7 +26,6 @@ async def settle_decision(
         json={
             "assessment_outcome": "pass",
             "rationale": "Met the standard.",
-            "evidence": EVIDENCE,
             "expected_revision": 0,
         },
         headers=bearer(admin),
@@ -37,9 +34,7 @@ async def settle_decision(
     signed = await client.post(f"{decision}/sign-off", headers=bearer(admin))
     assert signed.status_code == 200, signed.text
     if release:
-        released = await client.post(
-            f"{decision}/release", json={"evidence": EVIDENCE}, headers=bearer(admin)
-        )
+        released = await client.post(f"{decision}/release", headers=bearer(admin))
         assert released.status_code == 200, released.text
     return decision
 
