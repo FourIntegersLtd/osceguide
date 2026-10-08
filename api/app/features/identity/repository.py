@@ -205,6 +205,12 @@ async def link_identity(
     return identity
 
 
+async def has_external_identity(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether this account has ever been linked to any external provider."""
+    stmt = select(UserIdentity.id).where(UserIdentity.user_id == user_id).limit(1)
+    return (await session.execute(stmt)).first() is not None
+
+
 async def identity_by_subject(session: AsyncSession, provider: str, subject: str) -> UserIdentity | None:
     """Which account this provider's subject is linked to, or None if it has
     never signed in here before."""

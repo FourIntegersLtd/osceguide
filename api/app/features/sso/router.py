@@ -242,8 +242,8 @@ async def read_saml_connection(
 async def save_saml_connection(
     org_slug: str,
     body: schemas.SaveSamlConnection,
-    _admin: PlatformAdmin,
+    admin: PlatformAdmin,
     session: Session,
     settings: SettingsDep,
 ) -> schemas.SamlConnectionRead:
-    return await service_saml.save_connection(session, org_slug, body, settings=settings)
+    return await service_saml.save_connection(session, org_slug, body, actor=admin, settings=settings)

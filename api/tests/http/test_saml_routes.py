@@ -258,3 +258,22 @@ async def test_the_idp_is_not_believed_for_an_address_outside_the_organisations_
     refused = await client.post("/api/v1/auth/sso/callback", json={"org_slug": "kings", "token": token})
     assert refused.status_code == 422
     assert refused.json()["code"] == "sso_verification_failed"
+
+
+async def test_saving_a_saml_connection_is_audited_and_needs_https(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    idp = TestIdentityProvider()
+    await a_saml_org(client, make_actor, idp)
+    root = await make_actor("root-saml-audit@osceguide.com", platform_admin=True)
+    body = {"idp_entity_id": IDP_ENTITY_ID, "idp_x509_cert": idp.cert_pem, "enabled": True}
+
+    insecure = await client.put(
+        "/api/v1/platform/orgs/kings/sso/saml",
+        json={**body, "idp_sso_url": "http://idp.example.com/sso"},
+        headers=bearer(root),
+    )
+    assert insecure.status_code == 422, insecure.text
+
+    audit = await client.get("/api/v1/platform/audit", headers=bearer(root))
+    rows = [r for r in audit.json()["items"] if r["action"] == "sso.saml_saved"]
+    assert [r["summary"] for r in rows] == ["Saved the SAML connection for kings (enabled)"]
+    assert rows[0]["actor_email"] == "root-saml@osceguide.com"

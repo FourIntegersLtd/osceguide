@@ -17,12 +17,14 @@ from urllib.parse import urlencode
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.core.ports import SsoIdentity
 from app.core.settings import Settings
 from app.features.sso import errors, repository, saml, schemas
 from app.features.sso import state as sso_state
 from app.features.sso.models import OrganizationSamlConnection
 from app.features.tenancy import service as tenancy
+from app.features.tenancy import service_audit
 
 # Where the connection's two URLs live under the public API address.
 CONNECTION_PATH = "/api/v1/sso/saml/{connection_id}"
@@ -146,7 +148,12 @@ async def read_connection(
 
 
 async def save_connection(
-    session: AsyncSession, org_slug: str, body: schemas.SaveSamlConnection, *, settings: Settings
+    session: AsyncSession,
+    org_slug: str,
+    body: schemas.SaveSamlConnection,
+    *,
+    actor: Principal,
+    settings: Settings,
 ) -> schemas.SamlConnectionRead:
     """Write an organisation's SAML connection. Platform admin only, as the rest of SSO is."""
     org = await tenancy.org_ref_by_slug(session, org_slug)
@@ -165,6 +172,14 @@ async def save_connection(
         last_name_attribute=body.last_name_attribute,
         display_name_attribute=body.display_name_attribute,
         enabled=body.enabled,
+    )
+    await service_audit.record(
+        session,
+        actor=actor,
+        action="sso.saml_saved",
+        target_type="organization",
+        target_id=str(org.id),
+        summary=f"Saved the SAML connection for {org_slug} ({'enabled' if body.enabled else 'disabled'})",
     )
     return _read(connection, org_slug, settings)
 

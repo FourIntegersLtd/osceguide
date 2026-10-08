@@ -74,14 +74,21 @@ async def sign_in_external(
     if user.status != "active":
         raise AccountSuspended()
     if user.password_hash is not None and (
-        user.must_change_password or (link is None and await _began_with_relayed_password(session, user))
+        user.must_change_password
+        or (
+            not await repository.has_external_identity(session, user.id)
+            and await _began_with_relayed_password(session, user)
+        )
     ):
         # Someone else chose this password (an admin's temporary password) and the person never
         # replaced it, or replaced it only after the admin had signed in and changed it
         # themselves (the audit log still says it began relayed): it must not outlive the
-        # person proving the address is theirs through SSO. Otherwise an admin who seats an
+        # person first proving the address is theirs through SSO (the first link of any provider;
+        # a later provider must not undo a password they chose since). Otherwise an admin who seats an
         # address they do not own keeps a way in after the real owner arrives.
+        # Anyone holding that password could also have enrolled an authenticator of their own.
         await repository.clear_password(session, user.id)
+        await repository.delete_mfa(session, user.id)
         await repository.revoke_all_chains_for_user(
             session, user_id=user.id, at=now, reason="sso_replaced_temp_password"
         )

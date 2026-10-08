@@ -642,3 +642,148 @@ async def test_a_second_institution_naming_the_same_person_does_not_reinvite(
 
     invitations = await queued_invitations(db_session)
     assert [m.recipient for m in invitations] == ["shared@nhs.uk"]
+
+
+async def _external(db_session: AsyncSession, *, provider: str, subject: str, email: str) -> None:
+    async def no_memberships(session: AsyncSession, user_id: uuid.UUID) -> list[Membership]:
+        del session, user_id
+        return []
+
+    await sign_in_external(
+        db_session,
+        provider=provider,
+        subject=subject,
+        email=email,
+        name="Person",
+        tenant_slug=None,
+        exam_code=None,
+        settings=get_settings(),
+        now=datetime.now(UTC),
+        memberships_for=no_memberships,
+    )
+    await db_session.commit()
+
+
+async def test_a_second_sso_provider_does_not_take_back_the_password_the_person_then_chose(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """The takeover defence runs when an address is first linked to any external identity; a
+    person who then set their own password keeps it when they add another provider."""
+    from app.features.identity import repository as identity_repository
+    from app.features.identity.tokens import hash_password
+
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    seated = await client.post(
+        "/api/v1/orgs/ashford/memberships",
+        json={"email": "twice@example.com", "role": "supervisor", "temporary_password": "Relayed-Passw0rd!"},
+        headers=bearer(owner),
+    )
+    user_id = uuid.UUID(seated.json()["user_id"])
+    await _external(db_session, provider="clerk", subject="twice-1", email="twice@example.com")
+    assert (
+        await client.post(
+            "/api/v1/auth/login", json={"email": "twice@example.com", "password": "Relayed-Passw0rd!"}
+        )
+    ).status_code == 401
+
+    await identity_repository.set_password_hash(db_session, user_id, hash_password("Their-Own-Passw0rd!"))
+    await db_session.commit()
+    await _external(db_session, provider="entra", subject="twice-2", email="twice@example.com")
+    kept = await client.post(
+        "/api/v1/auth/login", json={"email": "twice@example.com", "password": "Their-Own-Passw0rd!"}
+    )
+    assert kept.status_code == 200, kept.text
+
+
+async def test_sso_sign_in_also_removes_an_authenticator_enrolled_on_a_relayed_account(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.identity import repository as identity_repository
+
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    seated = await client.post(
+        "/api/v1/orgs/ashford/memberships",
+        json={"email": "totp@example.com", "role": "supervisor", "temporary_password": "Relayed-Passw0rd!"},
+        headers=bearer(owner),
+    )
+    user_id = uuid.UUID(seated.json()["user_id"])
+    await identity_repository.save_pending_mfa_secret(
+        db_session, user_id, secret_ciphertext="x", now=datetime.now(UTC)
+    )
+    await db_session.commit()
+    await _external(db_session, provider="clerk", subject="totp-1", email="totp@example.com")
+    assert await identity_repository.mfa_by_user(db_session, user_id) is None
+
+
+async def test_every_path_that_relays_a_password_leaves_the_audit_row_the_sso_check_reads(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """`temporary_password_was_relayed` matches audit text. Pin each producer to it, so a
+    reworded summary fails here rather than silently reopening the takeover."""
+    from app.features.identity import repository as identity_repository
+    from app.features.tenancy import repository as tenancy_repository
+
+    root, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    seat = await client.post(
+        "/api/v1/platform/organizations/ashford/memberships",
+        json={
+            "email": "pin-seat@example.com",
+            "role": "supervisor",
+            "temporary_password": "Relayed-Passw0rd!",
+        },
+        headers=bearer(root),
+    )
+    team = await client.post(
+        "/api/v1/orgs/ashford/memberships",
+        json={
+            "email": "pin-team@example.com",
+            "role": "supervisor",
+            "temporary_password": "Relayed-Passw0rd!",
+        },
+        headers=bearer(owner),
+    )
+    roster = await client.post(
+        "/api/v1/orgs/ashford/trainees",
+        json={"email": "pin-roster@example.com", "temporary_password": "Relayed-Passw0rd!"},
+        headers=bearer(owner),
+    )
+    reissue_target = await client.post(
+        "/api/v1/platform/organizations/ashford/memberships",
+        json={
+            "email": "pin-reissue@example.com",
+            "role": "supervisor",
+            "temporary_password": "Relayed-Passw0rd!",
+        },
+        headers=bearer(root),
+    )
+    for response in (seat, team, roster, reissue_target):
+        assert response.status_code in (200, 201), response.text
+    reissued = await client.post(
+        f"/api/v1/platform/users/{reissue_target.json()['user_id']}/temporary-password",
+        json={"temporary_password": "Second-Passw0rd!"},
+        headers=bearer(root),
+    )
+    assert reissued.status_code in (200, 204), reissued.text
+
+    for email in ("pin-seat", "pin-team", "pin-roster", "pin-reissue"):
+        address = f"{email}@example.com"
+        user = await identity_repository.user_by_email(db_session, address)
+        assert user is not None
+        assert await tenancy_repository.temporary_password_was_relayed(
+            db_session, user_id=user.id, email=address
+        ), email
