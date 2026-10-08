@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import { HiOutlineCloudArrowUp } from "react-icons/hi2";
 import { Alert, Select, Spinner, TextLink } from "@/foundation/ui";
+import { importStatusLine, uploadFailureMessage } from "@/capabilities/authoring/imports/importCopy";
 import { errorMessage, useAsync, useMeEvents } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import {
@@ -194,7 +195,7 @@ function ImportStationDialogBody({
       try {
         await uploadStationImport(scope, { file, examCode, templateVersionId: versionId || null });
       } catch (cause) {
-        refused.push(`${file.name}: ${errorMessage(cause)}`);
+        refused.push(`${file.name}: ${uploadFailureMessage(cause)}`);
       }
     }
     setFiles([]);
@@ -354,7 +355,7 @@ function ImportRow({
         </p>
         <p className="flex items-center gap-2 text-osce-meta text-ink-subtle" role="status">
           {drafting ? <Spinner label="Working" /> : null}
-          {statusLine(status)}
+          {importStatusLine(status, templatePublished)}
         </p>
       </div>
 
@@ -462,23 +463,6 @@ function platformStandard(templates: readonly StationTemplate[]): StationTemplat
         latestOf(template.versions).published !== null,
     ) ?? null
   );
-}
-
-function statusLine(status: string): string {
-  switch (status) {
-    case "drafting_template":
-      return "Reading the file and drafting a template. This takes about a minute.";
-    case "template_ready":
-      return "Template drafted. Review it, then create the station.";
-    case "drafting_station":
-      return "Copying the file into the template. This takes about a minute.";
-    case "completed":
-      return "Draft station created. It is in your Stations list.";
-    case "failed":
-      return "Could not be imported";
-    default:
-      return status;
-  }
 }
 
 /** A block id is a slug of its label, so spaces read better than separators. */

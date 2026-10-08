@@ -54,6 +54,13 @@ class FeedbackNotOpenError(Conflict):
     default_message = "Feedback opens once a session you took part in has finished"
 
 
+class NoStationsForExam(Conflict):
+    """The exam has no published library station, so a pairing would have nothing to practise."""
+
+    code = "no_stations_for_exam"
+    default_message = "There are no stations to practise for that exam yet"
+
+
 class PartnerUnavailableError(Conflict):
     """The other side of the accept handshake is no longer there.
 

@@ -217,7 +217,9 @@ async def edit_version(
 @router.post(
     "/orgs/{org_slug}/stations/{station_id}/versions/{version}/publish",
     response_model=schemas.StationVersionRead,
-    responses=error_responses(Forbidden, errors.VersionNotFound, errors.AlreadyPublishedError),
+    responses=error_responses(
+        Forbidden, errors.VersionNotFound, errors.AlreadyPublishedError, errors.StationEmptyError
+    ),
 )
 async def publish_version(
     station_id: uuid.UUID, version: int, workspace: OrgAdmin, session: Session, clock: ClockDep

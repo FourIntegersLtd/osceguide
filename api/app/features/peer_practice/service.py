@@ -38,6 +38,7 @@ from app.features.peer_practice.service_lifecycle import (
 from app.features.peer_practice.service_match import expire_if_due
 from app.features.peer_practice.service_station import session_read as _session_read
 from app.features.peer_practice.station_pick import pick_station_version_id
+from app.features.stations import service_reads as stations
 
 # What the queue stream reacts to. Named here because this is where it happens.
 MATCHED = "practice.matched"
@@ -69,6 +70,8 @@ async def join_queue(
     await attempts.require_entitlement(session, user_id=user_id, exam_id=exam.id, now=now)
     ensure_may_address(audience, await audiences_for(session, user_id))
     existing = await repository.live_entry(session, user_id, exam.id)
+    if existing is None and not await stations.published_library_version_ids(session, exam_id=exam.id):
+        raise errors.NoStationsForExam()
     # Re-read on a losing race rather than failing: two taps arriving together
     # both found an empty queue, both inserted, and the loser got a 500.
     expires_at = now + timedelta(minutes=QUEUE_WAIT_MINUTES)

@@ -119,6 +119,25 @@ async def test_publishing_a_draft_makes_it_usable(client: AsyncClient, make_acto
     assert response.json()["status"] == "published"
 
 
+async def test_an_emptied_draft_cannot_be_published(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """B-20: a stale form that saved nothing over the content must not put a blank station live."""
+    org_id = await seed_org(client, make_actor)
+    token = await member(make_actor, org_id, "kings", "owner")
+    station = await make_station(client, token)
+    base = f"/api/v1/orgs/kings/stations/{station['id']}/versions/1"
+    blanked = await client.patch(
+        base, json={"content": {"patient_information": {}, "notes": ""}}, headers=bearer(token)
+    )
+    assert blanked.status_code == 200, blanked.text
+
+    refused = await client.post(f"{base}/publish", headers=bearer(token))
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "station_empty"
+
+    await client.patch(base, json={"content": CONTENT}, headers=bearer(token))
+    assert (await client.post(f"{base}/publish", headers=bearer(token))).status_code == 200
+
+
 async def test_publishing_twice_conflicts(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     org_id = await seed_org(client, make_actor)
     token = await member(make_actor, org_id, "kings", "owner")

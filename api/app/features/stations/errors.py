@@ -35,6 +35,13 @@ class NotEditableError(Conflict):
     default_message = "Published content cannot be edited; create a new version"
 
 
+class StationEmptyError(Conflict):
+    """A draft with nothing written in it was asked to go live."""
+
+    code = "station_empty"
+    default_message = "This station has no content yet. Write it before publishing."
+
+
 class FactCheckRunning(Conflict):
     """A fact check of this version is already running; its result is on its way."""
 

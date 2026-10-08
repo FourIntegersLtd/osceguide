@@ -19,13 +19,14 @@ from app.features.peer_practice import repository_sessions, service, service_rec
 from app.features.peer_practice.service_lifecycle import advance_phases_if_due
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeRoomRecorder, FakeTranscriber
+from tests.support.library import publish_library_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
 
 
 async def _matched(client: AsyncClient, make_actor, db_session: AsyncSession, tag: str):  # type: ignore[no-untyped-def]
-    await ensure_exam(db_session, "sca")
+    await publish_library_station(db_session, "sca")
     a_token = await make_actor(f"{tag}-a@example.com")
     b_token = await make_actor(f"{tag}-b@example.com")
     for token in (a_token, b_token):

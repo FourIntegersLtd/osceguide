@@ -32,6 +32,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
     responses=error_responses(
         TooManyRequests,
         errors.UnknownExamError,
+        errors.NoStationsForExam,
         errors.NotEntitled,
         Unauthenticated,
         InvalidAudience,

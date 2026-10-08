@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
 from tests.support.catalog import ensure_exam
+from tests.support.library import publish_library_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -30,7 +31,7 @@ LATER = (datetime.now(UTC) + timedelta(days=1)).isoformat()
 @pytest.fixture(autouse=True)
 async def an_exam_for_the_room(db_session: AsyncSession) -> None:
     """Slots, questions and queue places are all addressed to an exam."""
-    await ensure_exam(db_session, "sca")
+    await publish_library_station(db_session, "sca")
 
 
 async def an_org(client: AsyncClient, make_actor, slug: str):  # type: ignore[no-untyped-def]

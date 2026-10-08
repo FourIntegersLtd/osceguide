@@ -353,8 +353,9 @@ async def test_me_events_names_a_declined_match_with_its_session_id(
     """
     from app.features.peer_practice import service as peer_service
     from tests.support.catalog import ensure_exam
+    from tests.support.library import publish_library_station
 
-    await ensure_exam(db_session, "sca")
+    await publish_library_station(db_session, "sca")
     a_token = await make_actor("stream-decline-a@example.com")
     b_token = await make_actor("stream-decline-b@example.com")
     await client.post("/api/v1/peer-practice/queue", json={"exam_code": "sca"}, headers=bearer(a_token))

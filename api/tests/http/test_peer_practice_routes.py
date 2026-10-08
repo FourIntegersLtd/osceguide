@@ -11,6 +11,7 @@ from app.features.notifications.models import OutboundMessage
 from app.features.peer_practice import service
 from tests.support.catalog import ensure_exam
 from tests.support.fakes import FakeVoiceTokens
+from tests.support.library import publish_library_station
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -33,7 +34,7 @@ async def an_exam_to_queue_for(db_session: AsyncSession) -> None:
     Autouse because it is a precondition of the whole file rather than of one
     test: there is no peer practice without something to practise.
     """
-    await ensure_exam(db_session, "sca")
+    await publish_library_station(db_session, "sca")
 
 
 async def join(client: AsyncClient, token: str) -> dict:
@@ -56,6 +57,19 @@ async def test_joining_gives_a_place_in_the_queue(client: AsyncClient, make_acto
     status = await join(client, token)
     assert status["status"] == "waiting"
     assert status["position"] == 1
+
+
+async def test_joining_for_an_exam_with_no_stations_is_refused(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """C-15: nobody is paired into a room with nothing to practise."""
+    await ensure_exam(db_session, "casc")
+    token = await make_actor("nostations@example.com")
+    response = await client.post(
+        "/api/v1/peer-practice/queue", json={"exam_code": "casc"}, headers=bearer(token)
+    )
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "no_stations_for_exam"
 
 
 async def test_joining_twice_keeps_the_same_place(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

@@ -101,6 +101,8 @@ async def publish_version(
     attempt, so this is also what makes the version schedulable in a circuit.
     """
     station_version = await _version(session, org_id, station_id, version)
+    if not _has_content(station_version.content):
+        raise errors.StationEmptyError()
     try:
         new_status = domain.publish(
             domain.VersionRef(number=station_version.version, status=domain.Status(station_version.status))
@@ -115,6 +117,18 @@ async def publish_version(
     await repository.set_current_version(session, org_id, station_id, version_id=station_version.id)
     await _refresh_tutor_material(session, org_id)
     return _version_read(await _version(session, org_id, station_id, version))
+
+
+def _has_content(value: Any) -> bool:
+    """Whether anything at all is written: a blank string, empty list or object nested in
+    nothing but blanks counts as nothing."""
+    if isinstance(value, dict):
+        return any(_has_content(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_has_content(item) for item in value)
+    if isinstance(value, str):
+        return bool(value.strip())
+    return value is not None
 
 
 async def archive_version(
