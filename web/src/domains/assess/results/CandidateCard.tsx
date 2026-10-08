@@ -86,7 +86,7 @@ export function CandidateCard({
             <div className="min-w-0">
               <p className={b2bTokens.b2bGroupedRowTitle}>{name}</p>
               <p className={b2bTokens.b2bGroupedRowSubtitle}>
-                {candidate.stations_marked} of {stations.length} stations marked
+                {candidate.stations_marked} of {stations.filter((station) => !station.absent).length} stations marked
                 {candidate.overall_rag !== null ? ` · overall ${ratingLabel(rating, candidate.overall_rag)}` : ""}
               </p>
             </div>
@@ -213,7 +213,7 @@ function StationRow({
           </Badge>
         ) : (
           <Badge variant="neutral" dot>
-            {station.marked ? "Awaiting review" : "Not marked"}
+            {station.marked ? "Awaiting review" : station.absent ? "Absent" : "Not marked"}
           </Badge>
         )
       }

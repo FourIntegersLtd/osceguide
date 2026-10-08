@@ -40,3 +40,9 @@ test("a released result is complete, and nobody sat is not marked", () => {
   assert.equal(candidateStage(released), "Released");
   assert.equal(candidateStage({ stations: [], decision: null }), "Not marked");
 });
+
+test("a skipped station nobody marked is absent, not owed marking", () => {
+  const absent = { marked: false, absent: true, overall_rag: null };
+  const steps = candidateProgress({ stations: [marked, absent], decision: null });
+  assert.deepEqual(steps.slice(0, 1).map((step) => [step.state, step.note]), [["done", "1 of 1 marked"]]);
+});

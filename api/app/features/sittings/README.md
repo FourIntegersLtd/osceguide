@@ -179,3 +179,13 @@ decision on the sitting is signed off or released before a circuit or trainee is
 The import is function-local because `results` imports `sittings`, and a router may not
 import another slice to pass the answer in. Editing and starting a circuit call the sync
 `ensure_sitting_not_cancelled`: they only refuse a cancelled sitting.
+
+## Rules added with the experience gaps
+
+- A circuit that cannot reach the voice room (`VoiceUnavailable` on begin) keeps its place and
+  records `voice_fault_at`; the board says `voice_fault`, not `clock_overdue` (R-16). The next
+  successful advance clears it.
+- A suspension mid-exam lets running circuits finish and stay joinable; `start_circuit` is refused
+  for everyone while the organisation is suspended (S-17).
+- A retired programme keeps its scheduled sittings but starts and adds no circuit (S-28).
+- Staff run routes (pause, end, advance) still answer 403 for a suspended organisation.

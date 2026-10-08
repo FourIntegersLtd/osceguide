@@ -39,7 +39,8 @@ async def current_evidence(
         (
             {
                 "slot_id": str(slot.id),
-                "marked": slot.id in live and live[slot.id].status == "evaluated",
+                "marked": (slot.id in live and live[slot.id].status == "evaluated")
+                or summaries[slot.id].overall_rag is not None,
                 "overall_rag": summaries[slot.id].overall_rag,
             }
             for slot in slots

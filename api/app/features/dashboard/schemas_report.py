@@ -28,8 +28,11 @@ class StationReport(BaseModel):
     attempt_id: uuid.UUID | None
     # The live attempt's status, or null if the station was never dispatched.
     attempt_status: str | None
-    # Marked by the engine: the attempt reached `evaluated`.
+    # Marked: the engine evaluated the attempt, or a human review was completed.
     marked: bool
+    # A skipped station nobody marked: a deliberate absent result, left out of
+    # the "all marked" count rather than counted as unmarked (R-42).
+    absent: bool = False
     # What the completed human reviews agreed, in the rubric's own rating: per
     # domain the reviewers combined, overall the worst domain. The name keeps
     # `rag` until the web app reads the rubric's own rating fields.

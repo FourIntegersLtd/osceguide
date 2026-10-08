@@ -12,7 +12,8 @@ export type CandidateStepId = "marked" | "reviewed" | "decided" | "signed_off" |
 export type CandidateProgressStep = RailStep<CandidateStepId>;
 
 export interface ProgressCandidate {
-  stations?: { marked: boolean; overall_rag: unknown }[];
+  // `absent` (R-42) is declared here until the generated types are regenerated.
+  stations?: { marked: boolean; absent?: boolean; overall_rag: unknown }[];
   decision: {
     assessment_outcome: string | null;
     signed_off_at: string | null;
@@ -21,7 +22,8 @@ export interface ProgressCandidate {
 }
 
 export function candidateProgress(candidate: ProgressCandidate): CandidateProgressStep[] {
-  const stations = candidate.stations ?? [];
+  // A skipped station nobody marked is an absent result: it is not owed marking or review.
+  const stations = (candidate.stations ?? []).filter((station) => !station.absent);
   const decision = candidate.decision;
   const total = stations.length;
   const marked = stations.filter((station) => station.marked).length;

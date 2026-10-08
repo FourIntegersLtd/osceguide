@@ -59,6 +59,9 @@ async def build_sitting_report(
             outcome = outcomes[slot.id]
             attempt = live.get(slot.id)
             title = titles.get(slot.station_version_id)
+            marked = (
+                attempt is not None and attempt.status == "evaluated"
+            ) or summary.overall_rag is not None
             station_reports.append(
                 StationReport(
                     slot_id=slot.id,
@@ -69,7 +72,8 @@ async def build_sitting_report(
                     slot_status=slot.status,
                     attempt_id=attempt.id if attempt else None,
                     attempt_status=attempt.status if attempt else None,
-                    marked=attempt is not None and attempt.status == "evaluated",
+                    marked=marked,
+                    absent=slot.status == "skipped" and not marked,
                     overall_rag=summary.overall_rag,
                     by_domain=dict(summary.by_domain),
                     score=outcome.score,
@@ -119,7 +123,9 @@ async def build_sitting_report(
         rating=rubrics.rating_read(scoring_rubric.structure),
         totals=ReportTotals(
             candidates=len(candidates),
-            stations=len(slots),
+            stations=sum(
+                1 for candidate in candidates for station in candidate.stations if not station.absent
+            ),
             stations_marked=sum(candidate.stations_marked for candidate in candidates),
             awaiting_marking=sum(
                 1

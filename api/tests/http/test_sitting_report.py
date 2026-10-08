@@ -70,7 +70,7 @@ async def test_the_report_lists_every_candidate_with_marking_ratings_and_decisio
     assert body["totals"] == {
         "candidates": 1,
         "stations": 2,
-        "stations_marked": 0,
+        "stations_marked": 1,
         "decisions_released": 0,
         "awaiting_marking": 0,
     }
@@ -152,3 +152,52 @@ async def test_the_report_is_for_staff_and_this_organisation_only(
     elsewhere = await client.get(f"/api/v1/orgs/guys/sittings/{sitting['id']}/report", headers=bearer(other))
     assert elsewhere.status_code == 404
     assert elsewhere.json()["code"] == "sitting_not_found"
+
+
+async def test_a_skipped_station_is_absent_until_a_human_review_marks_it(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """R-42: a skipped slot is an absent result, not an unmarked one; a completed review counts as marked."""
+    from app.features.voice.service import get_room_agents
+    from tests.support.fakes import FakeRoomAgents
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings", mode="exam")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    rostered = await client.post(
+        "/api/v1/orgs/kings/trainees",
+        json={"email": "cand@example.com", "first_name": "Ada", "last_name": "Lovelace"},
+        headers=bearer(admin),
+    )
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[rostered.json()["user_id"]],
+        station_version_ids=[station],
+    )
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    ended = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/end", headers=bearer(admin))
+    assert ended.status_code == 200, ended.text
+    slot_id = circuit["slots"][0]["id"]
+    url = f"/api/v1/orgs/kings/sittings/{sitting['id']}/report"
+
+    body = (await client.get(url, headers=bearer(admin))).json()
+    [row] = body["candidates"]
+    assert row["stations"][0]["slot_status"] == "skipped"
+    assert row["stations"][0]["absent"] is True
+    assert (body["totals"]["stations"], body["totals"]["stations_marked"]) == (0, 0)
+
+    reviewed = await client.put(
+        f"/api/v1/orgs/kings/slots/{slot_id}/reviews/mine",
+        json={"field_values": {"consulting.score": "a"}, "status": "completed"},
+        headers=bearer(admin),
+    )
+    assert reviewed.status_code == 200, reviewed.text
+
+    body = (await client.get(url, headers=bearer(admin))).json()
+    [row] = body["candidates"]
+    assert (row["stations"][0]["marked"], row["stations"][0]["absent"]) == (True, False)
+    assert (body["totals"]["stations"], body["totals"]["stations_marked"]) == (1, 1)

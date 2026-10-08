@@ -7,8 +7,11 @@ import {
 import { orgPath } from "@/domains/assess/api";
 
 export type SittingReport = components["schemas"]["SittingReport"];
-export type CandidateReport = components["schemas"]["CandidateReport"];
-export type StationReport = components["schemas"]["StationReport"];
+// `absent` (R-42) is declared here until the generated types are regenerated.
+export type StationReport = components["schemas"]["StationReport"] & { absent?: boolean };
+export type CandidateReport = Omit<components["schemas"]["CandidateReport"], "stations"> & {
+  stations?: StationReport[];
+};
 export type CohortSummary = components["schemas"]["CohortSummary"];
 export type CohortCandidate = components["schemas"]["CohortCandidate"];
 export type Decision = components["schemas"]["DecisionRead"];
