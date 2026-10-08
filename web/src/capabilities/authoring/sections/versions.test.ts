@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { canManageTemplate, latestOf } from "@/capabilities/authoring/sections/versions";
+import { canManageTemplate, latestOf, stationConfirmCopy } from "@/capabilities/authoring/sections/versions";
 
 const v = (version: number, status: string) => ({ version, status });
 
@@ -36,5 +36,15 @@ describe("canManageTemplate", () => {
 
   it("offers an organisation no publish, archive or delete on a platform template", () => {
     assert.equal(canManageTemplate("org", "platform"), false);
+  });
+});
+
+describe("stationConfirmCopy", () => {
+  it("does not promise the station leaves the library when an older version may take over", () => {
+    assert.match(stationConfirmCopy("archive"), /older version is still published/);
+    assert.doesNotMatch(stationConfirmCopy("archive"), /is removed from the live library/);
+  });
+  it("warns that deleting the only version deletes the station", () => {
+    assert.match(stationConfirmCopy("delete"), /only version, the station is deleted/);
   });
 });

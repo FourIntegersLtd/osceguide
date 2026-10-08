@@ -20,9 +20,10 @@ export function AuthoringExamSelect({
   emptyLabel?: string;
   className?: string;
 }) {
-  const { options, loading } = useAuthoringExamCatalog();
+  const { options, loading, error, reload } = useAuthoringExamCatalog();
 
   return (
+    <>
     <Select
       id={id}
       value={value}
@@ -31,7 +32,9 @@ export function AuthoringExamSelect({
       className={className ?? "mt-1"}
     >
       {allowEmpty ? (
-        <option value="">{loading ? "Loading exams…" : emptyLabel}</option>
+        <option value="">
+          {loading ? "Loading exams…" : error ? "Exams could not be loaded" : emptyLabel}
+        </option>
       ) : null}
       {options.map((exam) => (
         <option key={exam.code} value={exam.code}>
@@ -39,5 +42,14 @@ export function AuthoringExamSelect({
         </option>
       ))}
     </Select>
+    {error ? (
+      <p role="alert" className="mt-1 text-osce-caption text-danger">
+        {error}{" "}
+        <button type="button" onClick={reload} className="underline">
+          Try again
+        </button>
+      </p>
+    ) : null}
+    </>
   );
 }

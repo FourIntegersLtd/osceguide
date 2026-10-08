@@ -137,13 +137,21 @@ export function ExamFields({
             onChange={(e) => set({ rubricVersionId: e.target.value })}
             className="mt-1"
           >
-            <option value="">None yet</option>
+            <option value="">{rubrics.error ? "Marking schemes could not be loaded" : "None yet"}</option>
             {versions.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.label}
               </option>
             ))}
           </Select>
+          {rubrics.error ? (
+            <p role="alert" className="mt-1 text-osce-caption text-danger">
+              {rubrics.error.message}{" "}
+              <button type="button" onClick={rubrics.reload} className="underline">
+                Try again
+              </button>
+            </p>
+          ) : null}
         </Field>
       </div>
       <ExamSettingsFields value={value.settings} onChange={setSettings} />

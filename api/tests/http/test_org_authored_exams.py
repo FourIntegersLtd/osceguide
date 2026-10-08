@@ -392,6 +392,34 @@ async def test_deleting_an_exam_with_a_station_on_it_is_refused(client: AsyncCli
     assert response.json()["code"] == "exam_in_use"
 
 
+async def test_a_draft_exam_can_have_its_rubric_cleared_and_a_published_one_cannot(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """B-24: an explicit null clears the marking scheme on a draft; a published exam keeps one."""
+    org_id = await seed_org(client, make_actor, "ashford")
+    token = await org_admin(make_actor, org_id, "ashford")
+    draft = await author_exam(client, token, "ashford", code="drafty", publish=False)
+    assert draft["rubric_version_id"] is not None
+
+    cleared = await client.patch(
+        f"/api/v1/orgs/ashford/exams/{draft['id']}", json={"rubric_version_id": None}, headers=bearer(token)
+    )
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["rubric_version_id"] is None
+
+    renamed = await client.patch(
+        f"/api/v1/orgs/ashford/exams/{draft['id']}", json={"name": "Renamed"}, headers=bearer(token)
+    )
+    assert renamed.json()["name"] == "Renamed"
+
+    live = await author_exam(client, token, "ashford", code="livey")
+    refused = await client.patch(
+        f"/api/v1/orgs/ashford/exams/{live['id']}", json={"rubric_version_id": None}, headers=bearer(token)
+    )
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "exam_not_publishable"
+
+
 async def test_a_school_cannot_delete_the_platforms_exam(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """The platform's own catalogue answers the same `unknown_exam` a stranger's
     exam id would — an institution must not be able to tell the two apart."""

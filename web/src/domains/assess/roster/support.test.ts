@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
 import { PlatformError } from "@/foundation/platform-client";
-import { deleteLead, rosterErrorMessage, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
+import { cohortName, deleteLead, rosterErrorMessage, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
 import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {
@@ -101,4 +101,8 @@ test("a duplicate add and a rate-limited resend are said plainly", () => {
     "You have sent a lot of invitation emails just now. Wait a minute, then try again.",
   );
   assert.equal(rosterErrorMessage(refused(500, "internal_error"), "a@b.c"), "raw server text");
+});
+
+test("a trainee with no group reads 'No group', not None", () => {
+  assert.equal(cohortName([], null), "No group");
 });

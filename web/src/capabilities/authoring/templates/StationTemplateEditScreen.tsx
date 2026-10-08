@@ -13,7 +13,7 @@ import {
   listStationTemplates,
 } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
-import { useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 import { stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterEndClass } from "@/capabilities/authoring/templates/wizardFooter";
@@ -54,7 +54,8 @@ export function StationTemplateEditScreen({
   }, [match]);
 
   const loading = templates.loading && !templates.data;
-  const missing = !loading && !match;
+  const failed = !loading && templates.error !== null;
+  const missing = !loading && !failed && !match;
 
   return (
     <PlatformTemplateWizardPageLayout
@@ -69,6 +70,15 @@ export function StationTemplateEditScreen({
     >
       {loading ? (
         <p className="px-5 py-8 text-osce-body text-ink-muted">Loading template…</p>
+      ) : failed ? (
+        <div className="space-y-3 px-5 py-8">
+          <Alert tone="danger">
+            {templates.error ? errorMessage(templates.error) : null}
+          </Alert>
+          <Button variant="secondary" onClick={templates.reload}>
+            Try again
+          </Button>
+        </div>
       ) : missing ? (
         <p className="px-5 py-8 text-osce-body text-ink-muted">
           Template not found. It may have been removed.

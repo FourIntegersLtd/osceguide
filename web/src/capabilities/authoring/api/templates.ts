@@ -53,8 +53,6 @@ export function listStationTemplatesPage(
   });
 }
 
-const TEMPLATE_MAX_PAGES = 20;
-
 /**
  * Every template in this scope.
  *
@@ -70,12 +68,16 @@ export async function listStationTemplates(
 ): Promise<S["Page_StationTemplateRead_"]> {
   const items: StationTemplate[] = [];
   let cursor: string | null = null;
-  for (let page = 0; page < TEMPLATE_MAX_PAGES; page += 1) {
-    const result = await listStationTemplatesPage(scope, { cursor, limit: 100 }, signal);
+  // Walk to the end: a silent stop at some page count hid templates from the picker.
+  do {
+    const result: S["Page_StationTemplateRead_"] = await listStationTemplatesPage(
+      scope,
+      { cursor, limit: 100 },
+      signal,
+    );
     items.push(...result.items);
     cursor = result.next_cursor ?? null;
-    if (!cursor) break;
-  }
+  } while (cursor);
   return { items, next_cursor: null };
 }
 

@@ -123,8 +123,15 @@ async def update_exam(
     """
     exam = await _owned_exam(session, exam_id, org_id)
     changes = {field: value for field, value in fields.items() if value is not None}
-    if "rubric_version_id" in changes:
-        await _usable_rubric(session, org_id, changes["rubric_version_id"])
+    if "rubric_version_id" in fields:
+        # An explicit null clears the marking scheme, but only on a draft: a published exam with
+        # none could not be marked.
+        if fields["rubric_version_id"] is None:
+            if exam.status != "draft":
+                raise ExamNotPublishable("A published exam must keep its marking scheme version.")
+            changes["rubric_version_id"] = None
+        else:
+            await _usable_rubric(session, org_id, changes["rubric_version_id"])
     if "settings" in changes:
         changes["settings"] = _storable_settings(ExamSettings.model_validate(changes["settings"]))
     if org_id is not None:

@@ -36,3 +36,14 @@ export function latestOf<T extends VersionLike>(versions: readonly T[]): {
 export function canManageTemplate(scopeKind: "org" | "platform", ownerKind: string): boolean {
   return !(scopeKind === "org" && ownerKind === "platform");
 }
+
+/**
+ * What archiving or deleting a version does to its station, in words that stay
+ * true: archiving falls back to an older published version if there is one,
+ * and deleting the only version deletes the station.
+ */
+export function stationConfirmCopy(kind: "archive" | "delete"): string {
+  return kind === "delete"
+    ? "The draft is removed. Published versions are untouched. If this is the station's only version, the station is deleted with it."
+    : "Past attempts stay intact. If an older version is still published, the station stays in the live library on that one; otherwise it is retired from the live library.";
+}

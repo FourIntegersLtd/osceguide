@@ -37,7 +37,7 @@ export function AuthoringCatalogFilterBar({
   trailing?: ReactNode;
   className?: string;
 }) {
-  const { options, loading } = useAuthoringExamCatalog();
+  const { options, loading, error } = useAuthoringExamCatalog();
 
   return (
     <PlatformFilterBar leading={leading} trailing={trailing} className={className}>
@@ -47,7 +47,7 @@ export function AuthoringCatalogFilterBar({
         onChange={onExamCodeChange}
         className="min-w-[9rem] sm:min-w-[11rem]"
       >
-        <option value={AUTHORING_ALL_EXAMS}>{loading ? "Loading exams…" : "All exams"}</option>
+        <option value={AUTHORING_ALL_EXAMS}>{loading ? "Loading exams…" : error ? "Exams unavailable" : "All exams"}</option>
         {options.map((exam) => (
           <option key={exam.code} value={exam.code}>
             {exam.label}

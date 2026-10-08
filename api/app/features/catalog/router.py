@@ -97,6 +97,7 @@ async def create_exam(body: schemas.CreateExam, admin: PlatformAdmin, session: S
         errors.UnknownExamError,
         errors.InvalidExamSettings,
         errors.RubricVersionNotFound,
+        errors.ExamNotPublishable,
     ),
 )
 async def update_exam(
@@ -215,7 +216,11 @@ async def create_org_exam(
     "/orgs/{org_slug}/exams/{exam_id}",
     response_model=schemas.ExamRead,
     responses=error_responses(
-        Forbidden, errors.UnknownExamError, errors.InvalidExamSettings, errors.RubricVersionNotFound
+        Forbidden,
+        errors.UnknownExamError,
+        errors.InvalidExamSettings,
+        errors.RubricVersionNotFound,
+        errors.ExamNotPublishable,
     ),
 )
 async def update_org_exam(

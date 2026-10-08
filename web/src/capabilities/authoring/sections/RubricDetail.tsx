@@ -28,6 +28,7 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { useSurface } from "@/capabilities";
+import { rubricVersionActions } from "@/capabilities/authoring/sections/rubricActions";
 import { rubricEditPath } from "@/capabilities/authoring/templates/paths";
 
 /** A rubric's versions, and the writes against each one. */
@@ -81,7 +82,12 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
 
             {[...(data.versions ?? [])]
               .sort((a, b) => b.version - a.version)
-              .map((version) => (
+              .map((version) => {
+                const actions = rubricVersionActions(version.status, {
+                  platformOwned: data.owner_kind === "platform",
+                  orgScope: scope.kind === "org",
+                });
+                return (
                 <Panel key={version.id} padding="md">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -102,7 +108,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                       >
                         <HiOutlinePencilSquare className="h-4 w-4" aria-hidden />
                       </AuthoringIconAction>
-                      {version.status !== "published" ? (
+                      {actions.publish ? (
                         <AuthoringIconAction
                           write
                           variant="primary"
@@ -119,7 +125,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                           <HiOutlineArrowUpTray className="h-4 w-4" aria-hidden />
                         </AuthoringIconAction>
                       ) : null}
-                      {version.status === "published" ? (
+                      {actions.archive ? (
                         <AuthoringIconAction
                           write
                           variant="warning"
@@ -135,7 +141,8 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
                     </AuthoringRowActions>
                   </div>
                 </Panel>
-              ))}
+                );
+              })}
 
           </div>
         )}

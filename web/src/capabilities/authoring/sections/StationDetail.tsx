@@ -75,6 +75,7 @@ import Link from "next/link";
 import { useSurface } from "@/capabilities";
 import { stationTemplateNewPath } from "@/capabilities/authoring/templates/paths";
 import { legacyB2cStationStructure } from "@/capabilities/authoring/lib/legacyB2cStationStructure";
+import { stationConfirmCopy } from "@/capabilities/authoring/sections/versions";
 
 function structureForTemplateVersion(
   templates: StationTemplate[],
@@ -437,9 +438,7 @@ export function StationDetail({
           <>
             {confirming !== null ? <StationUsedBy stationId={station.id} version={version} /> : null}
             <span className="mt-1 block">
-              {confirming === "delete"
-                ? "The draft is removed. Published versions are untouched."
-                : "Past attempts stay intact. The station is removed from the live library."}
+              {stationConfirmCopy(confirming === "delete" ? "delete" : "archive")}
             </span>
           </>
         }

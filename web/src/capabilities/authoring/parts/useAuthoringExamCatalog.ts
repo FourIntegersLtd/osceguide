@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { listExams } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
-import { useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync } from "@/foundation/hooks";
 
 export function useAuthoringExamCatalog() {
   const scope = useAuthoringScope();
@@ -32,6 +32,9 @@ export function useAuthoringExamCatalog() {
     exams: items,
     options,
     loading: exams.loading && !exams.data,
+    /** A failed load is not an empty list; callers say so. */
+    error: exams.error ? errorMessage(exams.error) : null,
+    reload: exams.reload,
     rubricVersionIdForExam,
   };
 }

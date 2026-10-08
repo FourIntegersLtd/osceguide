@@ -20,7 +20,7 @@ export function displayName(trainee: Trainee): string {
  * label on two hundred people — which is what this map replaces.
  */
 export function cohortName(cohorts: Cohort[], cohortId: string | null): string {
-  if (!cohortId) return "None";
+  if (!cohortId) return "No group";
   return cohorts.find((cohort) => cohort.id === cohortId)?.name ?? "Unknown group";
 }
 

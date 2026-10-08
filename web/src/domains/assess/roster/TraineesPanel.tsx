@@ -205,7 +205,7 @@ export function TraineesPanel({
         key: "programme_names" as keyof Trainee,
         render: (trainee: Trainee) => (
           <span className={cn(b2cTableCellText, "text-b2b-mid")}>
-            {trainee.programme_names?.length ? trainee.programme_names.join(", ") : "None"}
+            {trainee.programme_names?.length ? trainee.programme_names.join(", ") : "No programme"}
           </span>
         ),
       },

@@ -210,7 +210,7 @@ async def list_for_org(
 async def _station_page(
     session: AsyncSession, stmt: Select[Any], *, limit: int, cursor: dict[str, Any] | None
 ) -> tuple[list[Station], str | None]:
-    """Apply the shared keyset pagination to a stations query, oldest first."""
+    """Apply the shared keyset pagination to a stations query, newest first."""
     return await keyset_page(
         session,
         stmt,
@@ -218,7 +218,7 @@ async def _station_page(
         id_col=Station.id,
         limit=limit,
         cursor=cursor,
-        descending=False,
+        descending=True,
     )
 
 

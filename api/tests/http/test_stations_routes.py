@@ -224,6 +224,40 @@ async def test_another_orgs_stations_are_invisible(client: AsyncClient, make_act
     assert response.json()["items"] == []
 
 
+async def test_an_org_station_list_pages_newest_first(client: AsyncClient, make_actor, db_session) -> None:  # type: ignore[no-untyped-def]
+    """B-22: the author's list opens on what they wrote last, and the next page goes back in time."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import update
+
+    from app.features.stations.models import Station
+
+    org_id = await seed_org(client, make_actor)
+    token = await member(make_actor, org_id, "kings", "owner")
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    for day, title in enumerate(("First", "Second", "Third")):
+        made = await client.post(
+            "/api/v1/orgs/kings/stations",
+            json={"title": title, "exam_code": "sca", "content": CONTENT},
+            headers=bearer(token),
+        )
+        await db_session.execute(
+            update(Station)
+            .where(Station.id == uuid.UUID(made.json()["id"]))
+            .values(created_at=base + timedelta(days=day))
+        )
+    await db_session.flush()
+
+    first = await client.get("/api/v1/orgs/kings/stations", params={"limit": 2}, headers=bearer(token))
+    assert [s["title"] for s in first.json()["items"]] == ["Third", "Second"]
+    rest = await client.get(
+        "/api/v1/orgs/kings/stations",
+        params={"limit": 2, "cursor": first.json()["next_cursor"]},
+        headers=bearer(token),
+    )
+    assert [s["title"] for s in rest.json()["items"]] == ["First"]
+
+
 async def test_an_org_station_search_matches_a_title_fragment(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     """In SQL, not in the browser: a term must match the whole catalogue, not
 
