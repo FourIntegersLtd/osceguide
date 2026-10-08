@@ -150,7 +150,7 @@ async def test_my_sittings_can_be_scoped_to_one_workspace(
     assert (len(everywhere["items"]), len(here["items"]), there["items"]) == (1, 1, [])
 
 
-async def test_another_workspace_or_none_shows_no_sittings(
+async def test_a_named_workspace_the_token_lacks_shows_no_sittings(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
     org_id, admin = await org_with_admin(client, make_actor)
@@ -172,8 +172,10 @@ async def test_another_workspace_or_none_shows_no_sittings(
     )
     scoped = await client.get("/api/v1/me/sittings?org_slug=kings", headers=bearer(token))
     nowhere = await client.get("/api/v1/me/sittings?org_slug=nowhere", headers=bearer(token))
+    assert [(r.status_code, r.json()["items"]) for r in (scoped, nowhere)] == [(200, [])] * 2
+    # Without a slug the roster is the authority: a token minted before the roster entry still sees it.
     everywhere = await client.get("/api/v1/me/sittings", headers=bearer(token))
-    assert [(r.status_code, r.json()["items"]) for r in (scoped, nowhere, everywhere)] == [(200, [])] * 3
+    assert [item["id"] for item in everywhere.json()["items"]] == [sitting["id"]]
 
 
 async def test_a_repeat_start_of_a_running_circuit_is_a_read_even_if_the_lead_was_demoted(

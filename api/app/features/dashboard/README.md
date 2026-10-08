@@ -49,7 +49,7 @@ exists as its own slice rather than as fields grafted onto `attempts`.
 |---|---|---|---|
 | GET | `/api/v1/me/dashboard` | bearer | entitlements, per-exam progress, recent attempts, sets |
 | GET | `/api/v1/me/performance` | bearer | per-domain scores, pass/fail/critical rates and a trend for one exam; `?exam_code=`, defaulting to the last attempted; `unknown_exam` (404) |
-| GET | `/api/v1/me/sittings` | bearer | what a trainee is rostered onto, whether each slot is joinable, its `attempt_id` once dispatched, and the server clock; only workspaces the token still holds a membership in; `?org_slug=` keeps one (the stream takes it too) |
+| GET | `/api/v1/me/sittings` | bearer | what a trainee is rostered onto, whether each slot is joinable, its `attempt_id` once dispatched, and the server clock; `?org_slug=` keeps one workspace the token holds a membership in; without it, everything rostered (the stream takes it too) |
 | GET | `/api/v1/orgs/{org_slug}/dashboard` | org member | counts, setup state, recent sittings |
 | GET | `/api/v1/orgs/{org_slug}/supervisor/circuits` | org member | the circuits assigned to the caller |
 | GET | `/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console` | org member | the whole live-examination screen, with each slot's live `attempt_id` and clock |
