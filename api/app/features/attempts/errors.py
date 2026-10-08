@@ -17,7 +17,7 @@ from app.features.stations.errors import StationNotFound, StationNotPublishedErr
 # exist or belongs to another organisation. The two are one refusal on
 # purpose: "no such station" and "not yours" must not be distinguishable,
 # or the route becomes a way to enumerate another tenant's library.
-__all__ = ["NotEntitled", "NotReleased", "StationNotFound", "StationNotPublishedError"]
+__all__ = ["NotEntitled", "StationNotFound", "StationNotPublishedError"]
 
 
 def __getattr__(name: str) -> type[NotFound]:
