@@ -23,6 +23,7 @@ from app.features.sittings import (
     repository,
     repository_reads,
     service,
+    service_notify,
 )
 from app.features.sittings.models import Circuit, Slot
 from app.features.sittings.reads import state as _state
@@ -101,6 +102,7 @@ async def append_trainees(
         ],
         room_name=circuit.room_name,
     )
+    await service_notify.trainees_scheduled(session, org_id, sitting, trainee_ids)
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.TRAINEES_APPENDED)
     return await service.read_circuit(session, org_id, circuit_id)
 
@@ -235,5 +237,7 @@ async def rebuild_circuit(
         ],
         room_name=circuit.room_name,
     )
+    await service_notify.trainees_scheduled(session, org_id, sitting, trainee_ids)
+    await service_notify.reviewer_assigned(session, org_id, sitting, circuit)
     await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.REBUILT)
     return await service.read_circuit(session, org_id, circuit_id)

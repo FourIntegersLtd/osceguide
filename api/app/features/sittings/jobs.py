@@ -213,6 +213,18 @@ def register() -> None:
 
         await clear_agents_from_room(agents=get_room_agents(), room=room)
 
+    @app.periodic(cron="0 * * * *")
+    @app.task(name="send_exam_day_reminders", queue="notifications")
+    async def send_exam_day_reminders(timestamp: int = 0) -> None:
+        """Hourly: queue the morning-of email for today's sittings (each person gets it once)."""
+        from app.core.db import job_session
+        from app.features.sittings.service_notify import send_exam_day_reminders as send
+
+        async with job_session() as session:
+            sittings = await send(session, now=datetime.now(UTC))
+            if sittings:
+                log.info("exam-day reminders checked", sittings=sittings)
+
     @app.periodic(cron="* * * * *")
     @app.task(name=SWEEP_TASK, queue=SWEEP_QUEUE)
     async def sweep_circuits(timestamp: int = 0) -> None:

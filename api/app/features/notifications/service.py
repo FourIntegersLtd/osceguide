@@ -251,6 +251,51 @@ def _result_released(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _trainee_sitting_link(escaped_fields: dict[str, str]) -> str:
+    """Where a trainee opens the sitting an email is about."""
+    return (
+        f"{get_settings().frontend_url.rstrip('/')}/app/{escaped_fields.get('org_slug', '')}"
+        f"/trainee/sittings/{escaped_fields.get('sitting_id', '')}"
+    )
+
+
+def _sitting_scheduled(escaped_fields: dict[str, str]) -> str:
+    """The body telling a trainee they have been placed on a dated sitting."""
+    when = _in_words(escaped_fields.get("scheduled_at", ""))
+    return _page(
+        "You are scheduled for a sitting",
+        f"<p>{escaped_fields.get('org_name') or 'Your institution'} has scheduled you for "
+        f"{escaped_fields.get('sitting_name', 'a sitting')} on {when}.</p>"
+        f'<p><a href="{_trainee_sitting_link(escaped_fields)}">Open the sitting</a></p>',
+    )
+
+
+def _exam_day_reminder(escaped_fields: dict[str, str]) -> str:
+    """The body sent on the morning of a sitting to everyone on it."""
+    when = _in_words(escaped_fields.get("scheduled_at", ""))
+    return _page(
+        "Your sitting is today",
+        f"<p>{escaped_fields.get('sitting_name', 'Your sitting')} with "
+        f"{escaped_fields.get('org_name') or 'your institution'} takes place today, {when}.</p>"
+        f'<p><a href="{_trainee_sitting_link(escaped_fields)}">Open the sitting</a></p>',
+    )
+
+
+def _review_assigned(escaped_fields: dict[str, str]) -> str:
+    """The body telling a supervisor a circuit's reviews are theirs."""
+    link = (
+        f"{get_settings().frontend_url.rstrip('/')}/app/{escaped_fields.get('org_slug', '')}"
+        f"/circuits/{escaped_fields.get('circuit_id', '')}"
+    )
+    return _page(
+        "You are the reviewer for a circuit",
+        f"<p>{escaped_fields.get('org_name') or 'Your institution'} has named you as the reviewer for "
+        f"{escaped_fields.get('circuit_name', 'a circuit')} in "
+        f"{escaped_fields.get('sitting_name', 'a sitting')}.</p>"
+        f'<p><a href="{link}">Open the circuit</a></p>',
+    )
+
+
 def _invitation(escaped_fields: dict[str, str]) -> str:
     """The body inviting a new account holder to set a password and sign in."""
     link = (
@@ -479,6 +524,9 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "payment_receipt": _payment_receipt,
     "entitlement_expiring": _entitlement_expiring,
     "invitation": _invitation,
+    "sitting_scheduled": _sitting_scheduled,
+    "exam_day_reminder": _exam_day_reminder,
+    "review_assigned": _review_assigned,
     "invitation_reminder": _invitation_reminder,
     "referral_redeemed": _referral_redeemed,
     "practice_access_invitation": _practice_access_invitation,

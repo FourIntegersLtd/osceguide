@@ -27,6 +27,7 @@ from app.features.sittings import (
     repository,
     repository_reads,
     repository_run,
+    service_notify,
 )
 from app.features.sittings.models import Circuit, Sitting, Slot
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
@@ -217,6 +218,8 @@ async def add_circuit(
             for slot in planned
         ],
     )
+    await service_notify.trainees_scheduled(session, org_id, sitting, trainee_ids)
+    await service_notify.reviewer_assigned(session, org_id, sitting, circuit)
     return circuit_read(circuit, slots)
 
 
