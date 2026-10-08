@@ -3,12 +3,24 @@
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { HiOutlineArrowUpTray } from "react-icons/hi2";
-import { Alert, Button, b2bTokens } from "@/foundation/ui";
+import { Alert, Checkbox, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
-import { addCohort, bulkAddTrainees, type BulkTraineesResult, type Cohort } from "@/domains/assess/roster/api";
-import { parseTraineeCsv, skipReason, type CsvParse } from "@/domains/assess/roster/csv";
-import { ImportInstructions, ImportOutcome } from "@/domains/assess/roster/ImportParts";
+import {
+  addCohort,
+  bulkAddTrainees,
+  type BulkTraineesResult,
+  type Cohort,
+} from "@/domains/assess/roster/api";
+import {
+  parseTraineeCsv,
+  skipReason,
+  type CsvParse,
+} from "@/domains/assess/roster/csv";
+import {
+  ImportInstructions,
+  ImportOutcome,
+} from "@/domains/assess/roster/ImportParts";
 
 /**
  * The spreadsheet import.
@@ -59,40 +71,32 @@ export function BulkImportDialog({
     },
   });
 
-  // Cohorts made from this dialog; the roster behind it is reloaded after the import.
-  const [made, setMade] = useState<Cohort[]>([]);
+  // Ticked: the cohorts the file names are created as part of the import, not before it.
+  const [createMissing, setCreateMissing] = useState(false);
   const byName = useMemo(
-    () => new Map([...cohorts, ...made].map((cohort) => [cohort.name.trim().toLowerCase(), cohort.id])),
-    [cohorts, made],
+    () =>
+      new Map(
+        cohorts.map((cohort) => [cohort.name.trim().toLowerCase(), cohort.id]),
+      ),
+    [cohorts],
   );
-  const unknownCohorts = parsed
-    ? [
-        ...new Set(
-          parsed.rows
-            .map((row) => row.cohort)
-            .filter((label): label is string => Boolean(label))
-            .filter((label) => !byName.has(label.trim().toLowerCase())),
-        ),
-      ]
-    : [];
-
-  const createCohorts = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      for (const name of unknownCohorts) {
-        const cohort = await addCohort(orgSlug, { name, academicYear: null });
-        setMade((current) => [...current, cohort]);
-      }
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const unknownCohorts = useMemo(
+    () =>
+      parsed
+        ? [
+            ...new Set(
+              parsed.rows
+                .map((row) => row.cohort)
+                .filter((label): label is string => Boolean(label))
+                .filter((label) => !byName.has(label.trim().toLowerCase())),
+            ),
+          ]
+        : [],
+    [parsed, byName],
+  );
 
   const reset = () => {
-    setMade([]);
+    setCreateMissing(false);
     setFile(null);
     setParsed(null);
     setResult(null);
@@ -110,13 +114,24 @@ export function BulkImportDialog({
     setBusy(true);
     setError(null);
     try {
+      const ids = new Map(byName);
+      if (createMissing) {
+        for (const name of unknownCohorts) {
+          ids.set(
+            name.trim().toLowerCase(),
+            (await addCohort(orgSlug, { name, academicYear: null })).id,
+          );
+        }
+      }
       const outcome = await bulkAddTrainees(
         orgSlug,
         parsed.rows.map((row) => ({
           email: row.email,
           firstName: row.firstName,
           lastName: row.lastName,
-          cohortId: row.cohort ? (byName.get(row.cohort.trim().toLowerCase()) ?? null) : null,
+          cohortId: row.cohort
+            ? (ids.get(row.cohort.trim().toLowerCase()) ?? null)
+            : null,
         })),
       );
       setResult(outcome);
@@ -126,9 +141,10 @@ export function BulkImportDialog({
     } finally {
       setBusy(false);
     }
-  }, [parsed, orgSlug, byName, onImported]);
+  }, [parsed, orgSlug, byName, createMissing, unknownCohorts, onImported]);
 
-  const ready = parsed != null && parsed.error == null && parsed.rows.length > 0;
+  const ready =
+    parsed != null && parsed.error == null && parsed.rows.length > 0;
 
   return (
     <Dialog
@@ -138,7 +154,11 @@ export function BulkImportDialog({
       error={error}
       busy={busy}
       commitLabel={
-        result ? "Done" : ready ? `Import ${parsed.rows.length} trainee${parsed.rows.length === 1 ? "" : "s"}` : "Import trainees"
+        result
+          ? "Done"
+          : ready
+            ? `Import ${parsed.rows.length} trainee${parsed.rows.length === 1 ? "" : "s"}`
+            : "Import trainees"
       }
       busyLabel="Importing…"
       commitDisabled={!ready && !result}
@@ -150,7 +170,9 @@ export function BulkImportDialog({
       <div
         {...getRootProps({
           className: `flex cursor-pointer flex-col items-center gap-2 rounded-panel border border-dashed p-6 text-center transition-colors ${
-            isDragActive ? "border-b2b-accent bg-b2b-accent-bg" : "border-b2b-border bg-b2b-cream/60"
+            isDragActive
+              ? "border-b2b-accent bg-b2b-accent-bg"
+              : "border-b2b-border bg-b2b-cream/60"
           }`,
         })}
       >
@@ -167,36 +189,50 @@ export function BulkImportDialog({
       {parsed?.error ? <Alert tone="danger">{parsed.error}</Alert> : null}
 
       {ready && !result ? (
-        <div className={`${b2bTokens.b2bGroupedShell} p-4 text-osce-body text-b2b-graphite`}>
+        <div
+          className={`${b2bTokens.b2bGroupedShell} p-4 text-osce-body text-b2b-graphite`}
+        >
           <p className="font-medium text-b2b-headline">
-            {parsed.rows.length} row{parsed.rows.length === 1 ? "" : "s"} ready to import.
+            {parsed.rows.length} row{parsed.rows.length === 1 ? "" : "s"} ready
+            to import.
           </p>
           {parsed.skippedLines.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
-              No email address on line{parsed.skippedLines.length === 1 ? "" : "s"}{" "}
+              No email address on line
+              {parsed.skippedLines.length === 1 ? "" : "s"}{" "}
               {parsed.skippedLines.join(", ")}, so those rows are left out.
             </p>
           ) : null}
           {parsed.invalidLines.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
-              Line{parsed.invalidLines.length === 1 ? "" : "s"} {parsed.invalidLines.join(", ")}:
-              not a valid email address, so {parsed.invalidLines.length === 1 ? "that row is" : "those rows are"} left out.
+              Line{parsed.invalidLines.length === 1 ? "" : "s"}{" "}
+              {parsed.invalidLines.join(", ")}: not a valid email address, so{" "}
+              {parsed.invalidLines.length === 1
+                ? "that row is"
+                : "those rows are"}{" "}
+              left out.
             </p>
           ) : null}
           {parsed.duplicateLines.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
-              Line{parsed.duplicateLines.length === 1 ? "" : "s"} {parsed.duplicateLines.join(", ")}:
-              the address already appears earlier in the file, so {parsed.duplicateLines.length === 1 ? "it is" : "they are"} counted once.
+              Line{parsed.duplicateLines.length === 1 ? "" : "s"}{" "}
+              {parsed.duplicateLines.join(", ")}: the address already appears
+              earlier in the file, so{" "}
+              {parsed.duplicateLines.length === 1 ? "it is" : "they are"}{" "}
+              counted once.
             </p>
           ) : null}
           {unknownCohorts.length > 0 ? (
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-osce-caption text-b2b-warning-text/90">
-              <span>
-                No cohort here is called {unknownCohorts.join(", ")}. Without it those people are added with no cohort.
-              </span>
-              <Button themeType="b2b" variant="secondary" size="sm" disabled={busy} onClick={() => void createCohorts()}>
-                Create {unknownCohorts.length === 1 ? "that cohort" : "those cohorts"}
-              </Button>
+            <div className="mt-1 text-osce-caption text-b2b-warning-text/90">
+              <p>No cohort here is called {unknownCohorts.join(", ")}.</p>
+              <Checkbox
+                label={`Create ${unknownCohorts.length === 1 ? "that cohort" : "those cohorts"} when importing`}
+                checked={createMissing}
+                onChange={() => setCreateMissing((on) => !on)}
+              />
+              {createMissing ? null : (
+                <p>Otherwise those people are added with no cohort.</p>
+              )}
             </div>
           ) : null}
         </div>

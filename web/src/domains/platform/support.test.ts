@@ -7,6 +7,7 @@ import {
   asContractDate,
   contractDatesError,
   localDay,
+  renewalDateError,
   ssoFieldErrors,
   permitsSignIn,
   slugError,
@@ -135,16 +136,13 @@ describe("ssoFieldErrors", () => {
   });
 });
 
-describe("contractDatesError for a renewal", () => {
-  const none = { startsAt: "", endsAt: "" };
-
-  it("refuses an end date that is today or earlier, only when a renewal day is given", () => {
+describe("renewalDateError", () => {
+  it("refuses an end date that is today or earlier", () => {
     const refused = "A renewal must end in the future";
-    assert.equal(contractDatesError("", "2026-10-07", none, "2026-10-08"), refused);
-    assert.equal(contractDatesError("", "2026-10-08", none, "2026-10-08"), refused);
-    assert.equal(contractDatesError("", "2026-10-09", none, "2026-10-08"), null);
-    assert.equal(contractDatesError("", "", none, "2026-10-08"), null);
-    assert.equal(contractDatesError("", "2026-10-07", none), null);
+    assert.equal(renewalDateError("2026-10-07", "2026-10-08"), refused);
+    assert.equal(renewalDateError("2026-10-08", "2026-10-08"), refused);
+    assert.equal(renewalDateError("2026-10-09", "2026-10-08"), null);
+    assert.equal(renewalDateError("", "2026-10-08"), null);
   });
 
   it("reads today in local time", () => {

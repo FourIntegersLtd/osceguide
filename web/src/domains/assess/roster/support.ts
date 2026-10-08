@@ -1,5 +1,5 @@
 import type { Trainee } from "@/domains/assess/api";
-import type { Cohort, TraineeGroup } from "@/domains/assess/roster/api";
+import type { Cohort } from "@/domains/assess/roster/api";
 
 /** A trainee exists before they have ever signed in, so a name may be absent. */
 export function fullName(trainee: Trainee): string | null {
@@ -149,34 +149,4 @@ export function deleteLead(name: string, stationsSat: number): string {
   if (stationsSat <= 0) return base;
   const stations = `${stationsSat} station${stationsSat === 1 ? "" : "s"}`;
   return `${name} has sat ${stations}, so deleting is likely to be refused once a result is decided. Revoke their access instead to keep their records.`;
-}
-
-export interface RosterData {
-  trainees: Trainee[];
-  cohorts: Cohort[];
-  groups: TraineeGroup[];
-}
-
-type RosterPart = keyof RosterData;
-
-/**
- * Load the roster screen's three lists, refetching only the ones marked stale.
- *
- * A write changes one or two of them; the whole roster is paged cursor by cursor, so
- * refetching it for a group rename is the expensive way to be sure. A different
- * organisation discards the cache.
- */
-export async function loadRoster(
-  cache: { slug?: string; data?: RosterData },
-  slug: string,
-  stale: Set<RosterPart>,
-  fetchers: { [K in RosterPart]: () => Promise<RosterData[K]> },
-): Promise<RosterData> {
-  const previous = cache.slug === slug ? cache.data : undefined;
-  const pick = async <K extends RosterPart>(part: K): Promise<RosterData[K]> =>
-    previous && !stale.has(part) ? previous[part] : fetchers[part]();
-  const [trainees, cohorts, groups] = await Promise.all([pick("trainees"), pick("cohorts"), pick("groups")]);
-  cache.slug = slug;
-  cache.data = { trainees, cohorts, groups };
-  return cache.data;
 }

@@ -1,21 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { AsyncBoundary, Button, B2CHero, B2CPageHeader, TextLink } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { TabStrip } from "@/domains/assess/team/chrome";
-import { listAllTrainees, listCohorts, listTraineeGroups } from "@/domains/assess/roster/api";
 import { TraineesPanel } from "@/domains/assess/roster/TraineesPanel";
 import { AddTraineePanel } from "@/domains/assess/roster/AddTraineePanel";
 import { GroupsPanel } from "@/domains/assess/roster/GroupsPanel";
 import { AccessPanel } from "@/domains/assess/roster/AccessPanel";
 import type { Trainee } from "@/domains/assess/api";
-import { loadRoster, rosterTabs, sectionSubtitle, type RosterData } from "@/domains/assess/roster/support";
+import { rosterTabs, sectionSubtitle } from "@/domains/assess/roster/support";
+import { useRosterData } from "@/domains/assess/roster/useRosterData";
 
 type Section = "trainees" | "add" | "groups" | "access";
-type Part = keyof RosterData;
 
 /**
  * The roster: who the organisation examines.
@@ -23,8 +21,7 @@ type Part = keyof RosterData;
  * Separate from Team, which is the staff who run the examination. The three
  * lists are loaded once for the whole screen rather than per tab — the old
  * client had each of these as its own route and refetched the roster on every
- * visit — and every write reloads all three, because adding a trainee changes
- * a group's count and granting access changes nothing else on the page.
+ * visit — and a write reloads only the lists it changed (`useRosterData`).
  */
 export function Trainees({ orgSlug }: { orgSlug: string }) {
   const { session } = useSession();
@@ -32,31 +29,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
   const [section, setSection] = useState<Section>("trainees");
   const canManage = can(session, "manage_team");
 
-  // Lists a write has changed; the rest are served from the last load (see `loadRoster`).
-  const cache = useRef<{ slug?: string; data?: RosterData }>({});
-  const stale = useRef<Set<Part>>(new Set(["trainees", "cohorts", "groups"]));
-  const state = useAsync(
-    async (signal) => {
-      const parts = new Set(stale.current);
-      stale.current = new Set();
-      try {
-        return await loadRoster(cache.current, orgSlug, parts, {
-          trainees: () => listAllTrainees(orgSlug, signal),
-          cohorts: async () => (await listCohorts(orgSlug, signal)).items,
-          groups: async () => (await listTraineeGroups(orgSlug, signal)).items,
-        });
-      } catch (cause) {
-        // Nothing was cached, so the next attempt must fetch what this one meant to.
-        parts.forEach((part) => stale.current.add(part));
-        throw cause;
-      }
-    },
-    [orgSlug],
-  );
-  const reloadAfter = (...parts: Part[]) => () => {
-    parts.forEach((part) => stale.current.add(part));
-    state.reload();
-  };
+  const { state, reloadAfter } = useRosterData(orgSlug);
 
   return (
     <div className="flex flex-col gap-6">
@@ -106,7 +79,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
                 orgSlug={orgSlug}
                 cohorts={data.cohorts}
                 canManage={canManage}
-                onAdded={reloadAfter("trainees", "groups")}
+                onAdded={reloadAfter("trainees", "groups", "cohorts")}
               />
             ) : null}
 
@@ -121,8 +94,8 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
               />
             ) : null}
 
-            {section === "access" && canManage ? (
-              <AccessPanel orgSlug={orgSlug} trainees={data.trainees} canManage />
+            {section === "access" ? (
+              <AccessPanel orgSlug={orgSlug} trainees={data.trainees} canManage={canManage} />
             ) : null}
           </>
         )}

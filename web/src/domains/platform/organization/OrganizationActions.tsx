@@ -5,7 +5,7 @@ import { ActionRail, Alert, Button, ConfirmModal, Input } from "@/foundation/ui"
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { restoreOrganization, suspendOrganization, type Organization } from "@/domains/platform/api";
 import { renewContract } from "@/domains/platform/support/api";
-import { asContractDate, contractDatesError, localDay, permitsSignIn } from "@/domains/platform/support";
+import { asContractDate, contractDatesError, localDay, permitsSignIn, renewalDateError } from "@/domains/platform/support";
 
 /**
  * Renew, then the one lever over access past the divider.
@@ -28,12 +28,11 @@ export function OrganizationActions({
   const [confirmingSuspend, setConfirmingSuspend] = useState(false);
   const suspended = !permitsSignIn(organization.status);
   // Renewing sets the end date, so it may not fall before the stored start, nor in the past.
-  const orderError = contractDatesError(
-    "",
-    endsAt,
-    { startsAt: organization.contract_starts_at?.slice(0, 10) ?? "", endsAt: "" },
-    localDay(),
-  );
+  const orderError =
+    contractDatesError("", endsAt, {
+      startsAt: organization.contract_starts_at?.slice(0, 10) ?? "",
+      endsAt: "",
+    }) ?? renewalDateError(endsAt, localDay());
 
   const run = useCallback(
     async (

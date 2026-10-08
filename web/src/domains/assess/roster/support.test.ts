@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Trainee } from "@/domains/assess/api";
-import { traineeStatus } from "@/domains/assess/roster/support";
+import { deleteLead, rosterTabs, traineeStatus } from "@/domains/assess/roster/support";
+import { loadRoster, type RosterData, type RosterPart } from "@/domains/assess/roster/useRosterData";
 
 function trainee(over: Partial<Trainee> = {}): Trainee {
   return {
@@ -58,7 +59,6 @@ test("revoked access is flagged whatever step was reached", () => {
   assert.equal(traineeStatus(trainee({ access_revoked: true, programme_names: ["SCA"] })).attention, "Access revoked");
 });
 
-import { deleteLead, rosterTabs, loadRoster, type RosterData } from "@/domains/assess/roster/support";
 
 test("a supervisor is not offered the Exam access tab, which the API closes to admins", () => {
   assert.deepEqual(rosterTabs(false).map((t) => t.key), ["trainees", "add", "groups"]);
@@ -78,12 +78,12 @@ test("a reload fetches only the lists marked stale", async () => {
     groups: async () => (calls.push("groups"), [] as RosterData["groups"]),
   };
   const cache: { slug?: string; data?: RosterData } = {};
-  await loadRoster(cache, "kings", new Set(["trainees", "cohorts", "groups"]), fetchers);
+  await loadRoster(cache, "kings", new Set<RosterPart>(["trainees", "cohorts", "groups"]), fetchers);
   assert.deepEqual(calls, ["trainees", "cohorts", "groups"]);
   calls.length = 0;
-  await loadRoster(cache, "kings", new Set(["groups"]), fetchers);
+  await loadRoster(cache, "kings", new Set<RosterPart>(["groups"]), fetchers);
   assert.deepEqual(calls, ["groups"]);
   calls.length = 0;
-  await loadRoster(cache, "other", new Set(["groups"]), fetchers);
+  await loadRoster(cache, "other", new Set<RosterPart>(["groups"]), fetchers);
   assert.deepEqual(calls, ["trainees", "cohorts", "groups"]);
 });

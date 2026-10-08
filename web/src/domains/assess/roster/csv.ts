@@ -82,9 +82,13 @@ export function splitCsvLine(line: string, delimiter = ","): string[] {
 
 /** Comma, semicolon or tab, whichever splits the header row into the most columns. */
 function detectDelimiter(header: string): string {
-  return [",", ";", "\t"].reduce((best, candidate) =>
-    splitCsvLine(header, candidate).length > splitCsvLine(header, best).length ? candidate : best,
-  );
+  let best = ",";
+  let columns = splitCsvLine(header, best).length;
+  for (const candidate of [";", "\t"]) {
+    const count = splitCsvLine(header, candidate).length;
+    if (count > columns) [best, columns] = [candidate, count];
+  }
+  return best;
 }
 
 /** The file's lines, trailing space trimmed. Blank lines are dropped but every line keeps its file number. */
@@ -114,24 +118,28 @@ function pick(row: Record<string, string>, keys: string[]): string | null {
   return null;
 }
 
+const refused = (error: string): CsvParse => ({
+  rows: [],
+  skippedLines: [],
+  invalidLines: [],
+  duplicateLines: [],
+  error,
+});
+
 export function parseTraineeCsv(text: string): CsvParse {
   const lines = numberedLines(text.replace(/^\uFEFF/, ""));
 
   const header = lines[0]?.text ?? "";
   if (header.trim() === "") {
-    return { rows: [], skippedLines: [], invalidLines: [], duplicateLines: [], error: "That file is empty." };
+    return refused("That file is empty.");
   }
 
   const delimiter = detectDelimiter(header);
   const headers = splitCsvLine(header, delimiter).map(normalise);
   if (!hasEmailColumn(headers)) {
-    return {
-      rows: [],
-      skippedLines: [],
-      invalidLines: [],
-      duplicateLines: [],
-      error: `The first row must name the columns, and one of them must be \`email\` (found: ${headers.filter(Boolean).join(", ") || "nothing"}).`,
-    };
+    return refused(
+      `The first row must name the columns, and one of them must be \`email\` (found: ${headers.filter(Boolean).join(", ") || "nothing"}).`,
+    );
   }
 
   const rows: CsvRow[] = [];
