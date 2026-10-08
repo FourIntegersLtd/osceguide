@@ -178,9 +178,11 @@ function Slot({ slot, exam }: { slot: MySlot; exam: boolean }) {
           slot.station_title ? ` · ${slot.station_title}` : ""
         }`}
         meta={
-          status.done
-            ? "Read this one back below. A finished station cannot be re-entered."
-            : undefined
+          slot.marking_failed
+            ? "This station could not be marked; your school has been told."
+            : status.done
+              ? "Read this one back below. A finished station cannot be re-entered."
+              : undefined
         }
         trailing={
           <Badge variant={status.tone} dot>

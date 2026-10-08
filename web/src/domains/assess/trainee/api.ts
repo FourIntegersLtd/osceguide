@@ -23,7 +23,8 @@ import { orgPath, pageQuery } from "@/domains/assess/api";
 
 export type MySittings = components["schemas"]["MySittings"];
 export type MySitting = components["schemas"]["MySitting"];
-export type MySlot = components["schemas"]["MySlot"];
+// `marking_failed` (T-3) is declared here until the generated types are regenerated.
+export type MySlot = components["schemas"]["MySlot"] & { marking_failed?: boolean };
 export type TraineeResult = components["schemas"]["TraineeResultRead"];
 export type OrgStation = components["schemas"]["StationRead"];
 

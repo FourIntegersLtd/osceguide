@@ -404,3 +404,32 @@ async def test_nobody_signed_in_reads_nothing(
     response = await client.get(f"/api/v1/attempts/{attempt_id}/transcript")
 
     assert response.status_code == 401
+
+
+async def test_a_trainee_sees_a_failed_station_as_not_marked_with_no_transcript(
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    agents: FakeRoomAgents,  # type: ignore[no-untyped-def]
+) -> None:
+    """T-3: a slot whose only attempt failed says marking failed, and links no attempt."""
+    from sqlalchemy import update
+
+    from app.features.attempts.models import Attempt
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    candidate, _, attempt_id = await a_consultation(client, db_session, admin, examiner=None)
+    as_candidate = bearer(mint_token(user_id=uuid.UUID(candidate), email="candidate@example.com"))
+    before = (await client.get("/api/v1/me/sittings", headers=as_candidate)).json()
+    assert before["items"][0]["slots"][0]["marking_failed"] is False
+
+    await db_session.execute(
+        update(Attempt)
+        .where(Attempt.id == uuid.UUID(attempt_id))
+        .values(status="failed", failed_reason="empty_transcript")
+    )
+    await db_session.flush()
+
+    slot = (await client.get("/api/v1/me/sittings", headers=as_candidate)).json()["items"][0]["slots"][0]
+    assert slot["marking_failed"] is True
+    assert slot["attempt_id"] is None

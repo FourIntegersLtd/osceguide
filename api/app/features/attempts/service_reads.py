@@ -202,6 +202,11 @@ async def live_attempts_for_slots(
     return {attempt.slot_id: _ref(attempt) for attempt in attempts if attempt.slot_id is not None}
 
 
+async def slots_marking_failed(session: AsyncSession, slot_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+    """Slots whose attempt failed and which have no live attempt, for the trainee's portal (T-3)."""
+    return await repository.slots_with_only_failed_attempts(session, list(slot_ids))
+
+
 async def failed_reason_for_slot(session: AsyncSession, slot_id: uuid.UUID) -> str | None:
     """Why a slot's last attempt failed (`no_marking_rubric`); None with a live attempt or none at all.
 

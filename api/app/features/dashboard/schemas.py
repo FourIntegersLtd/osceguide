@@ -160,6 +160,9 @@ class MySlot(BaseModel):
     # is one. The voice token is issued per attempt, so without this a
     # candidate had no way to ask for one.
     attempt_id: uuid.UUID | None = None
+    # The slot was taken but could not be marked; the school has been told (T-3).
+    # No attempt is linked, so no transcript is offered.
+    marking_failed: bool = False
     # The circuit's clock, shown against the station it is on and null for the
     # rest. Derived, because the clock belongs to the circuit.
     phase: str | None = None

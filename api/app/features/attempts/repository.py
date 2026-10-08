@@ -449,6 +449,19 @@ async def live_attempts_for_slots(session: AsyncSession, slot_ids: Sequence[uuid
     return list((await session.execute(stmt)).scalars())
 
 
+async def slots_with_only_failed_attempts(
+    session: AsyncSession, slot_ids: Sequence[uuid.UUID]
+) -> set[uuid.UUID]:
+    """Which of these slots had an attempt fail and have no live one since."""
+    if not slot_ids:
+        return set()
+    live = select(Attempt.slot_id).where(Attempt.slot_id.in_(list(slot_ids)), Attempt.status != "failed")
+    stmt = select(Attempt.slot_id).where(
+        Attempt.slot_id.in_(list(slot_ids)), Attempt.status == "failed", Attempt.slot_id.not_in(live)
+    )
+    return {slot_id for slot_id in (await session.execute(stmt)).scalars() if slot_id is not None}
+
+
 async def failed_reason_for_untaken_slot(session: AsyncSession, slot_id: uuid.UUID) -> str | None:
     """Why the latest attempt on a slot failed, when it has no live attempt to show instead."""
     live = select(Attempt.id).where(Attempt.slot_id == slot_id, Attempt.status != "failed")

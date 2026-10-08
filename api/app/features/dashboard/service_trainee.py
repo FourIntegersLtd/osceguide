@@ -60,6 +60,9 @@ async def my_sittings(
     live = await attempts.live_attempts_for_slots(
         session, [trainee_slot.slot.id for trainee_slot in trainee_slots]
     )
+    marking_failed = await attempts.slots_marking_failed(
+        session, [trainee_slot.slot.id for trainee_slot in trainee_slots]
+    )
     # An exam sitting's attempts are not linked before release: the transcript and marks
     # are refused until then (`attempts.service_access`), so a link would only lead to a refusal (R-1).
     sealed = await results.sealed_sittings(
@@ -118,6 +121,7 @@ async def my_sittings(
                     open_to_join,
                 ),
                 attempt_id=attempt_id,
+                marking_failed=trainee_slot.slot.id in marking_failed,
                 is_active=is_active,
                 phase=trainee_slot.circuit.phase if is_active else None,
                 phase_started_at=trainee_slot.circuit.phase_started_at if is_active else None,
