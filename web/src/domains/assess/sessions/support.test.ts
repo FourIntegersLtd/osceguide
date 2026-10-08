@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { CircuitConsole, ConsoleSlot } from "@/domains/assess/sessions/api";
 import {
+  pickFrame,
+  validOverrideSeconds,
   alertCopy,
   observerSubtitle,
   orderedSlots,
@@ -187,4 +189,19 @@ test("a circuit of two trainees counts them instead of naming the first", () => 
   });
   assert.equal(observerSubtitle(data), "Not started · 2 trainees");
   assert.equal(observerSubtitle(console_({ slots: [slot({ id: "a", slot_index: 0 })] })), "Person a · Not started");
+});
+
+test("a frame fetched after an action wins until the stream pushes a newer one", () => {
+  assert.equal(pickFrame("pushed-1", { frame: "fetched", over: "pushed-1" }, "first"), "fetched");
+  assert.equal(pickFrame("pushed-2", { frame: "fetched", over: "pushed-1" }, "first"), "pushed-2");
+  assert.equal(pickFrame(null, null, "first"), "first");
+  assert.equal(pickFrame(null, { frame: "fetched", over: null }, "first"), "fetched");
+});
+
+test("an override's seconds must be a whole number the server accepts", () => {
+  assert.equal(validOverrideSeconds(60), true);
+  assert.equal(validOverrideSeconds(0), false);
+  assert.equal(validOverrideSeconds(Number.NaN), false);
+  assert.equal(validOverrideSeconds(3601), false);
+  assert.equal(validOverrideSeconds(1.5), false);
 });

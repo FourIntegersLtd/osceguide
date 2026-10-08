@@ -15,6 +15,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from app.features.tenancy import repository as tenancy_repo
 from tests.http.test_sittings_routes import (
     org_with_admin,
     published_station,
@@ -329,6 +330,7 @@ async def test_a_supervisor_sees_only_the_circuits_they_are_named_on(
     sitting = await a_sitting(client, admin, "kings")
     station = await published_station(client, admin, "kings", "S1")
     supervisor_id = await a_user(db_session, "sup@example.com")
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=supervisor_id, role="supervisor")
     supervisor = await make_actor(
         "sup2@example.com",
         memberships=(Membership(org_id=org_id, org_slug="kings", role="supervisor"),),
@@ -389,6 +391,7 @@ async def test_a_started_circuit_reads_as_in_progress(
     sitting = await a_sitting(client, admin, "kings")
     station = await published_station(client, admin, "kings", "S1")
     supervisor_id = await a_user(db_session, "sup@example.com")
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=supervisor_id, role="supervisor")
     circuit = await a_circuit(
         client,
         admin,
@@ -424,6 +427,7 @@ async def test_the_console_names_every_candidate_and_station_once(
     # circuit's roster check needs; no separate add-trainee call is required.
     candidate = await a_user(db_session, "cand@example.com")
     supervisor_id = await a_user(db_session, "sup@example.com")
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=supervisor_id, role="supervisor")
     circuit = await a_circuit(
         client,
         admin,

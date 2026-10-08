@@ -50,9 +50,9 @@ import {
 export function LiveBoard({ orgSlug }: { orgSlug: string }) {
   const initial = useAsync((signal) => readLiveBoard(orgSlug, signal), [orgSlug]);
   const { session } = useSession();
-  const stream = useEventStream<Board>(liveBoardStreamPath(orgSlug), {
-    enabled: can(session, "run_circuits"),
-  });
+  // Only staff are let into the stream; for anybody else it would read "Reconnecting" for ever.
+  const streaming = can(session, "run_circuits");
+  const stream = useEventStream<Board>(liveBoardStreamPath(orgSlug), { enabled: streaming });
   const board = stream.data ?? initial.data;
   const { hrefFor } = useSurface();
 
@@ -62,9 +62,11 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
         title="Now running"
         subtitle="Every circuit that is live in your organisation."
         action={
-          <Badge variant={stream.connected ? "success" : "warning"} dot>
-            {stream.connected ? "Live" : "Reconnecting"}
-          </Badge>
+          streaming ? (
+            <Badge variant={stream.connected ? "success" : "warning"} dot>
+              {stream.connected ? "Live" : "Reconnecting"}
+            </Badge>
+          ) : null
         }
       />
 
@@ -94,7 +96,7 @@ export function LiveBoard({ orgSlug }: { orgSlug: string }) {
                     themeType="b2b"
                     variant="commit"
                   >
-                    Open console
+                    Open {circuits[0]!.circuit_name}
                   </ButtonLink>
                 }
               >
@@ -127,8 +129,7 @@ const timeOf = (iso: string) =>
  *
  * The board above is now only, so once a circuit ended it vanished and "what
  * ran this morning" had no answer short of opening each sitting. Each row
- * opens the circuit's own console, where its record and feedback are, unless
- * the circuit has since been deleted.
+ * opens the circuit's own console, where its record and feedback are.
  */
 function Earlier({ orgSlug }: { orgSlug: string }) {
   const { hrefFor } = useSurface();

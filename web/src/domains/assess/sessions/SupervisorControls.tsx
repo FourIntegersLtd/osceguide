@@ -10,6 +10,7 @@ import {
   HiStop,
 } from "react-icons/hi2";
 import { Alert, Button } from "@/foundation/ui";
+import { can, useSession } from "@/foundation/session";
 import { overrides, runControls, setAutoAdvance } from "@/domains/assess/sessions/api";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { OverrideDialog, type OverrideRequest } from "@/domains/assess/sessions/OverrideDialog";
@@ -38,7 +39,13 @@ export function SupervisorControls({
   run: (name: string, action: () => Promise<unknown>) => Promise<void>;
   onDismissFailure: () => void;
 }) {
-  const [request, setRequest] = useState<OverrideRequest | null>(null);
+  const { session } = useSession();
+  const [request, setRequestRaw] = useState<OverrideRequest | null>(null);
+  // A new dialog must not open on the last action's failure.
+  const setRequest = (next: OverrideRequest | null) => {
+    if (next) onDismissFailure();
+    setRequestRaw(next);
+  };
   const circuit = data.circuit;
   const started = circuit.started_at !== null;
   const ended = circuit.ended_at !== null;
@@ -48,14 +55,15 @@ export function SupervisorControls({
     if (!request) return;
     const pending = request;
     await run(pending.name, () => pending.run(input));
-    setRequest(null);
+    setRequestRaw(null);
   }
 
   if (ended) {
     return (
       <div className="rounded-panel border border-b2b-border bg-canvas/40 px-4 py-3">
         <p className="text-osce-body text-b2b-mid">
-          This circuit has ended. Its stations can still be marked and its record read.
+          This circuit has ended.
+          {can(session, "sign_off_results") ? " Its stations can still be marked and its record read." : ""}
         </p>
       </div>
     );
@@ -178,7 +186,7 @@ export function SupervisorControls({
         request={request}
         busy={working}
         error={failure}
-        onClose={() => setRequest(null)}
+        onClose={() => setRequestRaw(null)}
         onCommit={(input) => void commit(input)}
       />
     </div>
@@ -243,6 +251,7 @@ function endRequest(slug: string, circuitId: string): OverrideRequest {
     lead: "Stations nobody has sat are recorded as skipped. This cannot be undone.",
     commitLabel: "End the circuit",
     tone: "danger",
+    asksReason: false,
     run: () => runControls.end(slug, circuitId),
   };
 }

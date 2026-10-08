@@ -34,6 +34,7 @@ import {
   continueLabel,
   firstName,
   greeting,
+  inOrganisation,
   isExam,
   liveSittings,
   progressOf,
@@ -56,6 +57,7 @@ import {
  */
 export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
   const { session } = useSession();
+  const { orgSlug } = useSurface();
   const initial = useAsync((signal) => readMySittings(signal), []);
   const stream = useEventStream<MySittings>(MY_SITTINGS_STREAM);
   const data = stream.data ?? initial.data;
@@ -75,7 +77,7 @@ export function TraineeHome({ slotId = null }: { slotId?: string | null }) {
       />
 
       <AsyncBoundary state={initial}>
-        {() => <Overview sittings={data?.items ?? []} slotId={slotId} />}
+        {() => <Overview sittings={inOrganisation(data?.items ?? [], orgSlug)} slotId={slotId} />}
       </AsyncBoundary>
     </div>
   );

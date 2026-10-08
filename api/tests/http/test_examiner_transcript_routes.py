@@ -262,23 +262,20 @@ async def test_another_organisations_examiner_is_refused(
 ) -> None:
     """An examiner from elsewhere cannot reach in, and cannot be named into it either.
 
-    The second half matters more than the first: the permission is being named on
-    *this* circuit, so naming somebody who is not this organisation's staff has to
-    stay a refusal rather than becoming a cross-tenant grant.
+    Naming somebody who is not this organisation's staff is refused when the circuit is
+    built (R-38), and a read from the other organisation is refused as well.
     """
     _, kings = await org_with_admin(client, make_actor, "kings")
     guys_id, _ = await org_with_admin(client, make_actor, "guys")
     outsider, token = await an_examiner(db_session, guys_id, "guys-watcher@guys.example")
-    _, circuit_id, attempt_id = await a_consultation(client, db_session, kings, examiner=outsider)
+    _, _, attempt_id = await a_consultation(client, db_session, kings, examiner=None)
     await a_delivered_transcript(db_session, attempt_id)
 
-    # The name went on, because a supervisor id is a plain user reference; the
-    # read is what refuses, on the organisation that owns the attempt.
     named_elsewhere = await client.get(f"/api/v1/attempts/{attempt_id}/transcript", headers=bearer(token))
 
     assert named_elsewhere.status_code == 403, named_elsewhere.text
     assert named_elsewhere.json()["code"] == "attempt_not_yours"
-    assert circuit_id
+    assert outsider
 
 
 async def test_moving_the_name_moves_the_read(

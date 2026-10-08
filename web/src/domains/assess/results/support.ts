@@ -190,6 +190,20 @@ export function releasable(candidate: CandidateReport): boolean {
   return Boolean(decision?.signed_off_at) && !decision?.released_at && !heldBack(decision?.assessment_outcome);
 }
 
+/** Splits a chosen release into the accounts the server can release and the people it cannot name an account for. */
+export function splitByAccount(chosen: CandidateReport[]): { traineeIds: string[]; unlinked: string[] } {
+  const traineeIds: string[] = [];
+  const unlinked: string[] = [];
+  for (const candidate of chosen) {
+    if (candidate.trainee_id) traineeIds.push(candidate.trainee_id);
+    else
+      unlinked.push(
+        `${candidate.name ?? candidate.email ?? "A candidate"}: has no linked account, so the result cannot be released`,
+      );
+  }
+  return { traineeIds, unlinked };
+}
+
 /**
  * The read-out file's name: the sitting it came from, then what it is.
  *

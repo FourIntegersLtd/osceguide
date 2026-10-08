@@ -264,3 +264,8 @@ export function firstName(name: string | null | undefined): string | null {
   // Accounts invited before 2026-10-06 stored their address as the name; it is not one.
   return first && !first.includes("@") ? first : null;
 }
+
+/** One organisation's sittings: a trainee in two sees each workspace's own, not both. */
+export function inOrganisation(sittings: readonly MySitting[], orgSlug: string | null): MySitting[] {
+  return orgSlug ? sittings.filter((sitting) => sitting.org_slug === orgSlug) : [...sittings];
+}

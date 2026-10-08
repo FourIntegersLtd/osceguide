@@ -12,7 +12,7 @@ import { ReleaseButton } from "@/domains/assess/results/DecisionParts";
 import { CohortRanking } from "@/domains/assess/results/CohortRanking";
 import { countsFromReport, sittingNext, sittingSteps, type SittingStepsInput } from "@/domains/assess/sittingSteps";
 import { can, useSession } from "@/foundation/session";
-import { evidenceFor, releasable, releaseRefusal } from "@/domains/assess/results/support";
+import { evidenceFor, releasable, releaseRefusal, splitByAccount } from "@/domains/assess/results/support";
 
 /**
  * What a course lead reads back after an examination.
@@ -106,17 +106,15 @@ function Report({
       />
       {downloadError ? <Alert tone="danger">{downloadError}</Alert> : null}
 
+      <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />
       {candidates.length === 0 ? (
         <EmptyState title="Nobody has sat this yet." />
       ) : (
         <>
-          <OutcomeTiles candidates={candidates} awaitingMarking={report.totals.awaiting_marking} />
 
           {waiting.length === 0 ? <StepGuide steps={sittingSteps(progress)} line={sittingNext(progress).line} /> : null}
           {waiting.length > 0 ? (
             <ReleaseAll
-              // A fresh selection whenever who is waiting changes (after a release).
-              key={waiting.map((candidate) => candidate.user_id).join(",")}
               orgSlug={orgSlug}
               sittingId={sittingId}
               waiting={waiting}
@@ -220,17 +218,15 @@ function ReleaseAll({
   const [busy, setBusy] = useState(false);
   const [failures, setFailures] = useState<string[]>([]);
   const [released, setReleased] = useState<number | null>(null);
-  const [picked, setPicked] = useState<Set<string>>(
-    () => new Set(waiting.map((candidate) => candidate.user_id)),
-  );
-  const chosen = useMemo(
-    () => waiting.filter((candidate) => picked.has(candidate.user_id)),
-    [waiting, picked],
-  );
+  // Who is held back, not who is ticked: a release shrinks `waiting` and the
+  // selection follows, so the result alert below survives it (no remount).
+  const [held, setHeld] = useState<Set<string>>(new Set());
+  const picked = useMemo(() => new Set(waiting.filter((c) => !held.has(c.user_id)).map((c) => c.user_id)), [waiting, held]);
+  const chosen = useMemo(() => waiting.filter((candidate) => picked.has(candidate.user_id)), [waiting, picked]);
   const allPicked = chosen.length === waiting.length;
 
   const toggle = (userId: string) =>
-    setPicked((current) => {
+    setHeld((current) => {
       const next = new Set(current);
       if (next.has(userId)) next.delete(userId);
       else next.add(userId);
@@ -255,13 +251,14 @@ function ReleaseAll({
         })),
       );
       setReleased((result.released ?? []).length);
-      setFailures(
-        (result.skipped ?? []).map((skip) => {
+      setFailures([
+        ...splitByAccount(chosen).unlinked,
+        ...(result.skipped ?? []).map((skip) => {
           const candidate = byTrainee.get(skip.trainee_id);
           const name = candidate?.name ?? candidate?.email ?? "A candidate";
           return `${name}: ${releaseRefusal(skip.code)}`;
         }),
-      );
+      ]);
     } catch (cause) {
       setFailures([errorMessage(cause instanceof Error ? cause : new Error(String(cause)))]);
     } finally {
@@ -294,9 +291,7 @@ function ReleaseAll({
               checked={allPicked}
               disabled={busy}
               onChange={() =>
-                setPicked(
-                  allPicked ? new Set() : new Set(waiting.map((candidate) => candidate.user_id)),
-                )
+                setHeld(allPicked ? new Set(waiting.map((candidate) => candidate.user_id)) : new Set())
               }
             />
             All {waiting.length}

@@ -251,3 +251,21 @@ export function editLockNotice(circuit: {
   const code = circuit.edit_block ?? "";
   return EDIT_BLOCK_COPY[code] ?? "This circuit cannot be restructured right now.";
 }
+
+/**
+ * The frame to draw. A frame fetched right after an action beats the stream's older one,
+ * until the stream pushes something newer (`over` is the stream frame it was fetched over).
+ */
+export function pickFrame<T>(
+  stream: T | null,
+  fetched: { frame: T; over: T | null } | null,
+  initial: T | null,
+): T | null {
+  if (fetched && fetched.over === stream) return fetched.frame;
+  return stream ?? initial;
+}
+
+/** `extend-clock` takes 1-3600 whole seconds. */
+export function validOverrideSeconds(seconds: number): boolean {
+  return Number.isInteger(seconds) && seconds >= 1 && seconds <= 3600;
+}

@@ -10,6 +10,7 @@ import {
   readoutFilename,
   recruitmentLabel,
   releasable,
+  splitByAccount,
   heldBack,
   signOffBlockers,
   formatScore,
@@ -249,4 +250,12 @@ test("a withheld or inconclusive outcome is not offered for release (R-24)", () 
   assert.equal(heldBack("withheld"), true);
   assert.equal(heldBack("pass"), false);
   assert.equal(releaseRefusal("outcome_not_releasable"), "a withheld or inconclusive outcome is not sent to the candidate");
+});
+
+test("a candidate with no linked account is named, not dropped from a bulk release", () => {
+  const linked = candidate({ user_id: "u1", trainee_id: "t1", name: "Ada" });
+  const orphan = candidate({ user_id: "u2", trainee_id: null, name: "Ben" });
+  const split = splitByAccount([linked, orphan]);
+  assert.deepEqual(split.traineeIds, ["t1"]);
+  assert.deepEqual(split.unlinked, ["Ben: has no linked account, so the result cannot be released"]);
 });

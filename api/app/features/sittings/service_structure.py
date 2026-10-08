@@ -27,7 +27,13 @@ from app.features.sittings.models import Circuit, Slot
 from app.features.sittings.reads import state as _state
 from app.features.sittings.reads import timing_json
 from app.features.sittings.schemas import CircuitRead, TimingIn
-from app.features.sittings.service import _REFUSALS, _require_circuit, _require_sitting, ensure_sitting_open
+from app.features.sittings.service import (
+    _REFUSALS,
+    _require_circuit,
+    _require_sitting,
+    ensure_lead_may_run,
+    ensure_sitting_open,
+)
 from app.features.sittings.service_circuit import _any_slot_reviewed
 
 
@@ -178,6 +184,7 @@ async def rebuild_circuit(
         raise errors.CircuitLockedError("A station on this circuit has already been run.")
 
     await roster.ensure_rosterable(session, org_id, trainee_ids)
+    await ensure_lead_may_run(session, org_id, supervisor_user_id)
     mode = domain.Mode(sitting.mode)
     try:
         planned = domain.build_slots(

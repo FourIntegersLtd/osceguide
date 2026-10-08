@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Input } from "@/foundation/ui";
 import { Dialog } from "@/domains/assess/team/chrome";
+import { validOverrideSeconds } from "@/domains/assess/sessions/support";
 
 export interface OverrideRequest {
   /** The control being confirmed, used as the busy key. */
@@ -13,6 +14,8 @@ export interface OverrideRequest {
   tone?: "commit" | "danger";
   /** Shown when the override needs a number as well as a reason. */
   seconds?: number;
+  /** False where the route keeps no reason (ending a circuit), so none is asked for. */
+  asksReason?: boolean;
   run: (input: { reason: string | null; seconds: number }) => Promise<unknown>;
 }
 
@@ -76,6 +79,9 @@ function OverrideForm({
       lead={request.lead}
       error={error}
       busy={busy}
+      commitDisabled={
+        request.seconds !== undefined && !validOverrideSeconds(seconds)
+      }
       tone={request.tone ?? "commit"}
       commitLabel={request.commitLabel}
       busyLabel="Working…"
@@ -84,7 +90,9 @@ function OverrideForm({
     >
       {request.seconds !== undefined ? (
         <label className="block">
-          <span className="text-osce-caption font-medium text-b2b-headline">Seconds to add</span>
+          <span className="text-osce-caption font-medium text-b2b-headline">
+            Seconds to add
+          </span>
           <Input
             type="number"
             min={1}
@@ -96,18 +104,23 @@ function OverrideForm({
         </label>
       ) : null}
 
-      <label className="block">
-        <span className="text-osce-caption font-medium text-b2b-headline">
-          Reason <span className="font-normal text-b2b-mid">(kept with the record)</span>
-        </span>
-        <Input
-          value={reason}
-          maxLength={500}
-          placeholder="The fire alarm went off"
-          onChange={(event) => setReason(event.target.value)}
-          className="mt-1"
-        />
-      </label>
+      {request.asksReason === false ? null : (
+        <label className="block">
+          <span className="text-osce-caption font-medium text-b2b-headline">
+            Reason{" "}
+            <span className="font-normal text-b2b-mid">
+              (kept with the record)
+            </span>
+          </span>
+          <Input
+            value={reason}
+            maxLength={500}
+            placeholder="The fire alarm went off"
+            onChange={(event) => setReason(event.target.value)}
+            className="mt-1"
+          />
+        </label>
+      )}
     </Dialog>
   );
 }

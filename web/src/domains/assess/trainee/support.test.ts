@@ -5,6 +5,7 @@ import {
   continueLabel,
   greeting,
   greetingFor,
+  inOrganisation,
   firstName,
   liveSittings,
   orderedSlots,
@@ -175,4 +176,13 @@ test("the greeting follows the clock, and a missing name is not a blank hello", 
   assert.equal(firstName("tutor@ashford.ac.uk"), null);
   assert.equal(greetingFor("Amara Okafor", new Date(2026, 8, 19, 9)), "Good morning, Amara.");
   assert.equal(greetingFor(null, new Date(2026, 8, 19, 20)), "Good evening.");
+});
+
+test("a workspace shows only its own organisation's sittings", () => {
+  const all = [
+    sitting({ id: "a", org_slug: "kings" }),
+    sitting({ id: "b", org_slug: "guys" }),
+  ];
+  assert.deepEqual(inOrganisation(all, "guys").map((item) => item.id), ["b"]);
+  assert.deepEqual(inOrganisation(all, null).map((item) => item.id), ["a", "b"]);
 });

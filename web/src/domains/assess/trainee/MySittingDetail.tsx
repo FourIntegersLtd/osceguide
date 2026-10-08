@@ -28,6 +28,7 @@ import {
 } from "@/domains/assess/trainee/api";
 import {
   activeSlot,
+  inOrganisation,
   isExam,
   modeLabel,
   orderedSlots,
@@ -52,7 +53,8 @@ export function MySittingDetail({ sittingId }: { sittingId: string }) {
   const initial = useAsync((signal) => readMySittings(signal), []);
   const stream = useEventStream<MySittings>(MY_SITTINGS_STREAM);
   const data = stream.data ?? initial.data;
-  const mine = (data?.items ?? []).filter((sitting) => sitting.id === sittingId);
+  const { orgSlug } = useSurface();
+  const mine = inOrganisation(data?.items ?? [], orgSlug).filter((sitting) => sitting.id === sittingId);
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-6">

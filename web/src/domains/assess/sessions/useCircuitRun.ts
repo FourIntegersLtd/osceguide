@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errorMessage, useAsync, useEventStream, type AsyncState } from "@/foundation/hooks";
 import type { RoomGrant } from "@/foundation/livekit";
 import {
@@ -10,7 +10,7 @@ import {
   type CircuitConsole,
   type ConsoleSlot,
 } from "@/domains/assess/sessions/api";
-import { orderedSlots } from "@/domains/assess/sessions/support";
+import { orderedSlots, pickFrame } from "@/domains/assess/sessions/support";
 
 export interface CircuitRun {
   /** The frame the screen draws: the stream's if it is up, the fetch's until then. */
@@ -63,7 +63,13 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
   const [busy, setBusy] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
-  const data = stream.data ?? initial.data;
+  // The answer to the last action, drawn until the stream pushes something newer (R-18).
+  const [fetched, setFetched] = useState<{ frame: CircuitConsole; over: CircuitConsole | null } | null>(null);
+  const streamFrame = useRef(stream.data);
+  useEffect(() => {
+    streamFrame.current = stream.data;
+  }, [stream.data]);
+  const data = pickFrame(stream.data, fetched, initial.data);
   useEffect(() => {
     if (data?.circuit.ended_at != null) setEnded(true);
   }, [data]);
@@ -80,8 +86,10 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
       setFailure(null);
       try {
         await action();
-        // The stream will push the new state within the moment; reloading is
-        // what makes the screen right if it happens to be down.
+        // The stream will push the new state within the moment, but a frame it sent
+        // before the action must not be drawn over the answer: fetch it and keep it.
+        const over = streamFrame.current;
+        setFetched({ frame: await readConsole(orgSlug, circuitId), over });
         reload();
       } catch (cause) {
         setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
@@ -89,7 +97,7 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
         setBusy(null);
       }
     },
-    [reload],
+    [reload, orgSlug, circuitId],
   );
 
   return {
@@ -98,7 +106,8 @@ export function useCircuitRun(orgSlug: string, circuitId: string): CircuitRun {
     connected: stream.connected,
     slots,
     activeSlot,
-    busy,
+    // No control is offered while the stream is down: it would act on a screen that may be stale.
+    busy: busy ?? (stream.connected || ended ? null : "reconnecting"),
     failure,
     run,
     dismissFailure: useCallback(() => setFailure(null), []),

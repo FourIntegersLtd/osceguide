@@ -22,6 +22,7 @@ from app.features.sittings import domain, domain_edit, domain_run, errors, repos
 from app.features.sittings.models import Circuit, Sitting, Slot
 from app.features.sittings.reads import circuit_read, sitting_read, timing_json
 from app.features.sittings.schemas import CircuitRead, SittingRead, TimingIn
+from app.features.tenancy import service as tenancy
 
 # One place mapping a domain refusal to its API code — the running rules
 # included, so an override and a structural edit cannot answer differently for
@@ -112,6 +113,12 @@ async def _with_totals(
     return reads
 
 
+async def ensure_lead_may_run(session: AsyncSession, org_id: uuid.UUID, lead: uuid.UUID | None) -> None:
+    """R-38: a circuit's lead runs it, so a trainee or a stranger cannot be named."""
+    if lead is not None and not await tenancy.may_run_circuits(session, org_id, lead):
+        raise errors.LeadCannotRun()
+
+
 async def add_circuit(
     session: AsyncSession,
     org_id: uuid.UUID,
@@ -129,6 +136,7 @@ async def add_circuit(
     mode = domain.Mode(sitting.mode)
     # R3: a revoked trainee is not scheduled into an examination.
     await roster.ensure_rosterable(session, org_id, trainee_ids)
+    await ensure_lead_may_run(session, org_id, supervisor_user_id)
 
     try:
         planned = domain.build_slots(

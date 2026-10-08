@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { can, useSession } from "@/foundation/session";
 import { useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, AsyncBoundary, B2CPageHeader, Badge, Button, b2bTokens } from "@/foundation/ui";
@@ -73,6 +74,7 @@ function Runner({
   sittingId?: string;
 }) {
   const { hrefFor } = useSurface();
+  const { session } = useSession();
   const observer = useObserverRoom(orgSlug, circuitId);
   const [adding, setAdding] = useState(false);
   const circuit = data.circuit;
@@ -95,7 +97,7 @@ function Runner({
             {/* Offered only while the circuit's slots can still be rebuilt, which
                 is the backend's rule: it sends `editable` with the frame so a
                 supervisor is not invited to delete a consultation in progress. */}
-            {circuit.editable ? (
+            {circuit.editable && can(session, "schedule_sittings") ? (
               <Link href={hrefFor(`/circuits/${circuitId}/edit`)} className={b2bTokens.b2bLink}>
                 Edit
               </Link>

@@ -8,6 +8,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.tenancy import repository as tenancy_repo
 from tests.http.test_org_read_models import a_circuit, a_user
 from tests.http.test_sittings_routes import org_with_admin, published_station
 from tests.support.sittings import add_programme, create_sitting_body
@@ -71,7 +72,7 @@ async def test_sittings_carry_their_programme_name_and_candidate_count(
 async def test_circuits_carry_trainee_count_and_supervisor_name(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    _, admin = await org_with_admin(client, make_actor)
+    org_id, admin = await org_with_admin(client, make_actor)
     programme_id = await add_programme(client, admin, org_slug="kings")
     sitting = await _sitting(client, admin, programme_id, "Mock A")
     stations = [
@@ -81,6 +82,7 @@ async def test_circuits_carry_trainee_count_and_supervisor_name(
     ada = await a_user(db_session, "ada@example.com")
     bob = await a_user(db_session, "bob@example.com")
     lead = await a_user(db_session, "lead@example.com")
+    await tenancy_repo.add_membership(db_session, org_id=org_id, user_id=lead, role="supervisor")
     await a_circuit(
         client,
         admin,

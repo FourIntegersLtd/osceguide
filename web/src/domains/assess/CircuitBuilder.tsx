@@ -3,13 +3,19 @@
 import { useCallback, useState } from "react";
 import { Alert, Button, Input, Spinner, cn, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { StationLibrary, type LibraryStation, type StationLibraryScope } from "@/capabilities/stations";
+import {
+  StationLibrary,
+  type LibraryStation,
+  type StationLibraryScope,
+} from "@/capabilities/stations";
 import type { CircuitShape } from "@/domains/assess/api";
 import { circuitLeads } from "@/domains/assess/support";
+import { TraineePicker } from "@/domains/assess/TraineePicker";
 import {
   BREAK_MINUTES_BOUNDS,
   DEFAULT_BREAK_MINUTES,
   DEFAULT_READING_MINUTES,
+  DEFAULT_SIMULATION_MINUTES,
   READING_MINUTES_BOUNDS,
   clampReadingMinutes,
   MAX_EXAM_CANDIDATES,
@@ -93,18 +99,25 @@ export function CircuitBuilder({
   scope: StationLibraryScope;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [stations, setStations] = useState<PickedStation[]>(initial?.stations ?? []);
+  const [stations, setStations] = useState<PickedStation[]>(
+    initial?.stations ?? [],
+  );
   const [picked, setPicked] = useState<Set<string>>(
     () => new Set(initial?.traineeIds ?? []),
   );
-  const [traineeSearch, setTraineeSearch] = useState("");
   const [supervisor, setSupervisor] = useState(initial?.supervisorUserId ?? "");
-  const [reading, setReading] = useState(initial?.timing.readingMinutes ?? DEFAULT_READING_MINUTES);
-  const [simulation, setSimulation] = useState(initial?.timing.simulationMinutes ?? 10);
+  const [reading, setReading] = useState(
+    initial?.timing.readingMinutes ?? DEFAULT_READING_MINUTES,
+  );
+  const [simulation, setSimulation] = useState(
+    initial?.timing.simulationMinutes ?? DEFAULT_SIMULATION_MINUTES,
+  );
   const [breakMinutes, setBreakMinutes] = useState(
     initial?.timing.breakMinutes ?? DEFAULT_BREAK_MINUTES,
   );
-  const [breaks, setBreaks] = useState<Set<number>>(() => new Set(initial?.timing.breaks ?? []));
+  const [breaks, setBreaks] = useState<Set<number>>(
+    () => new Set(initial?.timing.breaks ?? []),
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -224,7 +237,9 @@ export function CircuitBuilder({
                 min={BREAK_MINUTES_BOUNDS.min}
                 max={BREAK_MINUTES_BOUNDS.max}
                 value={breakMinutes}
-                onChange={(event) => setBreakMinutes(Number(event.target.value))}
+                onChange={(event) =>
+                  setBreakMinutes(Number(event.target.value))
+                }
               />
             </div>
             {gaps.length === 0 ? (
@@ -266,86 +281,13 @@ export function CircuitBuilder({
         </Panel>
       ) : null}
 
-      <Panel
-        title="Trainees"
-        description={`${picked.size} of ${trainees.length} selected. ${
-          isExam
-            ? "An exam circuit is one candidate's sitting: they go through every station."
-            : "Each trainee is paired with one station, then they rotate."
-        }`}
-      >
-        {trainees.length === 0 ? (
-          <p className="text-sm text-ink-muted">Add trainees to your organisation first.</p>
-        ) : (
-          <>
-          <div className="mb-3 max-w-sm">
-            <Input
-              label="Find a trainee"
-              value={traineeSearch}
-              onChange={(event) => setTraineeSearch(event.target.value)}
-            />
-          </div>
-          <ul className="flex flex-wrap gap-2">
-            {trainees
-              .filter((trainee) =>
-                `${trainee.first_name ?? ""} ${trainee.last_name ?? ""} ${trainee.email}`
-                  .toLowerCase()
-                  .includes(traineeSearch.trim().toLowerCase()),
-              )
-              .map((trainee) => {
-              const userId = trainee.user_id;
-              const on = userId !== null && picked.has(userId);
-              const label =
-                [trainee.first_name, trainee.last_name].filter(Boolean).join(" ") || trainee.email;
-              // Somebody who has never signed in has no user row, and a slot
-              // names a user. Saying so beats a foreign key error on submit.
-              if (userId === null) {
-                return (
-                  <li key={trainee.id}>
-                    <span
-                      title="They have not signed in yet, so they cannot be put on a circuit."
-                      className="inline-block cursor-not-allowed rounded-full border border-dashed border-border px-3 py-1.5 text-sm text-ink-subtle"
-                    >
-                      {label} · not signed in
-                    </span>
-                  </li>
-                );
-              }
-              return (
-                <li key={trainee.id}>
-                  <button
-                    type="button"
-                    aria-pressed={on}
-                    disabled={!on && candidatesFull}
-                    title={
-                      !on && candidatesFull
-                        ? "An exam circuit is one candidate's sitting. Deselect the current candidate to pick another."
-                        : undefined
-                    }
-                    onClick={() =>
-                      setPicked((current) => {
-                        const next = new Set(current);
-                        if (next.has(userId)) next.delete(userId);
-                        else next.add(userId);
-                        return next;
-                      })
-                    }
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-sm",
-                      on
-                        ? "border-b2b-headline bg-b2b-headline text-ink-inverse"
-                        : "border-b2b-border bg-b2b-surface text-b2b-mid hover:text-b2b-headline",
-                    )}
-                  >
-                    {label}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          </>
-        )}
-      </Panel>
+      <TraineePicker
+        trainees={trainees}
+        picked={picked}
+        setPicked={setPicked}
+        isExam={isExam}
+        candidatesFull={candidatesFull}
+      />
 
       <Panel title={`Stations (${stations.length})`}>
         <div className="flex flex-col gap-4">
@@ -357,7 +299,9 @@ export function CircuitBuilder({
                     type="button"
                     onClick={() =>
                       setStations((current) =>
-                        current.filter((item) => item.version_id !== station.version_id),
+                        current.filter(
+                          (item) => item.version_id !== station.version_id,
+                        ),
                       )
                     }
                     className="rounded-full border border-border px-3 py-1 text-sm text-ink-muted hover:border-danger hover:text-danger"
@@ -374,11 +318,16 @@ export function CircuitBuilder({
               setStations((current) =>
                 current.some((item) => item.version_id === station.version_id)
                   ? current
-                  : [...current, { version_id: station.version_id, title: station.title }],
+                  : [
+                      ...current,
+                      { version_id: station.version_id, title: station.title },
+                    ],
               )
             }
             pickLabel="Add"
-            selectedVersionIds={new Set(stations.map((station) => station.version_id))}
+            selectedVersionIds={
+              new Set(stations.map((station) => station.version_id))
+            }
           />
         </div>
       </Panel>
@@ -388,7 +337,13 @@ export function CircuitBuilder({
           themeType="b2b"
           variant="commit"
           onClick={submit}
-          disabled={disabled || busy || stations.length === 0 || picked.size === 0 || tooManyStations}
+          disabled={
+            disabled ||
+            busy ||
+            stations.length === 0 ||
+            picked.size === 0 ||
+            tooManyStations
+          }
         >
           {busy ? <Spinner label={submitLabel} /> : submitLabel}
         </Button>

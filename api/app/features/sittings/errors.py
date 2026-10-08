@@ -40,6 +40,13 @@ class InvalidCircuitError(Conflict):
     default_message = "That circuit cannot be built as described"
 
 
+class LeadCannotRun(Conflict):
+    """The person named to lead a circuit holds no staff role that may run circuits."""
+
+    code = "lead_cannot_run"
+    default_message = "A circuit's lead must be an administrator or supervisor of this organisation"
+
+
 class CircuitLockedError(Conflict):
     """A structural edit was refused because a station is running or has feedback."""
 

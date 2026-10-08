@@ -42,6 +42,11 @@ class OrgSummary:
     status: str
 
 
+async def password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> bool:
+    """Whether an admin gave this account its password by hand, as the audit log records it."""
+    return await repository.temporary_password_was_relayed(session, user_id=user_id, email=email)
+
+
 async def org_ref_by_id(session: AsyncSession, org_id: uuid.UUID) -> OrgSummary | None:
     """An organisation's name and status, for another slice to display."""
     org = await repository.organization_by_id(session, org_id)
@@ -251,6 +256,16 @@ def _org_read(org: Any) -> OrganizationRead:
         contract_ends_at=org.contract_ends_at,
         require_staff_mfa=org.require_staff_mfa,
         parent_org_id=org.parent_org_id,
+    )
+
+
+async def may_run_circuits(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    """Whether this person holds a live staff role that may run circuits here (the `run_circuits` rule)."""
+    held = await repository.memberships_for_user_in_org(session, org_id, user_id)
+    return any(
+        membership.revoked_at is None
+        and (domain.is_org_admin(membership.role) or domain.is_assigned_staff(membership.role))
+        for membership in held
     )
 
 
