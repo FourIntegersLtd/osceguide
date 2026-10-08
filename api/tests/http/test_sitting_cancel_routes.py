@@ -11,7 +11,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.http.test_org_read_models import a_circuit, a_sitting
-from tests.http.test_results_routes import EVIDENCE, a_sitting_and_trainee, url
+from tests.http.test_results_routes import a_sitting_and_trainee, url
 from tests.http.test_sittings_routes import org_with_admin, published_station
 from tests.support.tokens import bearer
 
@@ -100,7 +100,7 @@ async def test_nobody_new_is_examined_once_a_result_is_signed_off(
     sitting, candidate = await a_sitting_and_trainee(db_session, org_id)
     saved = await client.put(
         url(sitting, candidate),
-        json={"assessment_outcome": "pass", "rationale": "Met the standard.", "evidence": EVIDENCE},
+        json={"assessment_outcome": "pass", "rationale": "Met the standard."},
         headers=bearer(admin),
     )
     assert saved.status_code == 200, saved.text
