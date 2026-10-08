@@ -284,7 +284,11 @@ def test_a_run_is_complete_only_when_every_station_was_sat() -> None:
 
 
 async def test_reading_the_board_advances_a_circuit_the_worker_left_behind(
-    client: AsyncClient, make_actor, db_session: AsyncSession, clock: FakeClock, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient,
+    make_actor,
+    db_session: AsyncSession,
+    clock: FakeClock,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """S-7: the worker is down, so the read moves the circuit on, once, and says the worker is down."""
     from app.features.voice import service as voice
