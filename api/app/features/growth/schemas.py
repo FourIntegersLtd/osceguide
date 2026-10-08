@@ -115,6 +115,14 @@ class ReferralAdminRead(BaseModel):
     payout_details: PayoutDetailsAdminRead | None = None
 
 
+class ReferralOwedRead(BaseModel):
+    """What the whole settlement queue still owes, however many pages it spans."""
+
+    owed_pence: int
+    referrals: int
+    referrers: int
+
+
 class SetReferralPayout(BaseModel):
     payout_status: str = Field(pattern="^(unpaid|paid)$")
     payout_reference: str | None = Field(default=None, max_length=64)

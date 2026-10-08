@@ -228,6 +228,17 @@ async def list_referrals(
     return Page(items=referrals, next_cursor=next_cursor)
 
 
+@router.get(
+    "/growth/referrals/owed",
+    response_model=schemas.ReferralOwedRead,
+    responses=error_responses(Forbidden),
+)
+async def read_owed_referrals(admin: PlatformAdmin, session: Session) -> schemas.ReferralOwedRead:
+    """The total still owed to referrers across every page of the queue. Platform admin only."""
+    _ = admin
+    return await service_payouts.owed_total(session)
+
+
 @router.post(
     "/growth/referrals/{referral_id}/payout",
     response_model=schemas.ReferralAdminRead,

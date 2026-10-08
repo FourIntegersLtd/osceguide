@@ -590,6 +590,11 @@
             "title": "Attempt Id",
             "type": "string"
           },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
           "exam_code": {
             "title": "Exam Code",
             "type": "string"
@@ -609,6 +614,11 @@
             "title": "Sections",
             "type": "array"
           },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
           "set_entry_id": {
             "anyOf": [
               {
@@ -620,6 +630,18 @@
               }
             ],
             "title": "Set Entry Id"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
           },
           "station_id": {
             "format": "uuid",
@@ -648,6 +670,8 @@
           "station_id",
           "station_version_id",
           "station_title",
+          "created_at",
+          "server_time",
           "patient"
         ],
         "title": "AttemptBriefRead",
@@ -660,6 +684,11 @@
             "format": "uuid",
             "title": "Attempt Id",
             "type": "string"
+          },
+          "marking_failed": {
+            "default": false,
+            "title": "Marking Failed",
+            "type": "boolean"
           },
           "results": {
             "items": {
@@ -818,6 +847,11 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "marking_failed": {
+            "default": false,
+            "title": "Marking Failed",
+            "type": "boolean"
           },
           "room_name": {
             "anyOf": [
@@ -1418,13 +1452,12 @@
         "type": "object"
       },
       "BulkCreateTrainees": {
-        "description": "A spreadsheet's worth of trainees in one request.\n\nThe browser parses the file; the API takes rows. Capped so one request\ncannot invite a whole university at once by accident.",
+        "description": "A spreadsheet's worth of trainees in one request.\n\nThe browser parses the file and sends it in chunks of `MAX_BULK_TRAINEES`.\nMore than that in one request is refused `too_many_trainees` by the service,\nwhose message names the limit (a schema `max_length` answered a bare\n\"The request was not valid\").",
         "properties": {
           "trainees": {
             "items": {
               "$ref": "#/components/schemas/CreateTrainee"
             },
-            "maxItems": 500,
             "minItems": 1,
             "title": "Trainees",
             "type": "array"
@@ -1605,11 +1638,6 @@
       },
       "BulkReleaseCandidate": {
         "properties": {
-          "evidence": {
-            "additionalProperties": true,
-            "title": "Evidence",
-            "type": "object"
-          },
           "trainee_id": {
             "format": "uuid",
             "title": "Trainee Id",
@@ -2530,6 +2558,11 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "sitting_count": {
+            "default": 0,
+            "title": "Sitting Count",
+            "type": "integer"
           },
           "status": {
             "title": "Status",
@@ -3689,7 +3722,7 @@
           },
           "org_type": {
             "default": "institution",
-            "pattern": "^(institution|partner)$",
+            "pattern": "^(institution|partner|employer)$",
             "title": "Org Type",
             "type": "string"
           },
@@ -3940,6 +3973,18 @@
       },
       "CreateSitting": {
         "properties": {
+          "cohort_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cohort Id"
+          },
           "mode": {
             "default": "training",
             "pattern": "^(training|exam)$",
@@ -4113,6 +4158,19 @@
               }
             ],
             "title": "Last Name"
+          },
+          "temporary_password": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temporary Password"
           }
         },
         "required": [
@@ -5117,6 +5175,55 @@
         "title": "EditRubricVersion",
         "type": "object"
       },
+      "EmailChangeConfirm": {
+        "properties": {
+          "token": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "EmailChangeConfirm",
+        "type": "object"
+      },
+      "EmailChangeRequest": {
+        "properties": {
+          "current_password": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_email": {
+            "format": "email",
+            "title": "New Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "new_email",
+          "current_password"
+        ],
+        "title": "EmailChangeRequest",
+        "type": "object"
+      },
+      "EmailChanged": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "EmailChanged",
+        "type": "object"
+      },
       "EndSession": {
         "properties": {
           "reason": {
@@ -5323,8 +5430,10 @@
         "properties": {
           "code": {
             "enum": [
+              "account_not_found",
               "account_suspended",
               "already_published",
+              "already_purchased",
               "already_queued",
               "announcement_not_found",
               "assistant_session_not_found",
@@ -5341,9 +5450,12 @@
               "attempt_not_yours",
               "audience_not_yours",
               "av_already_running",
+              "av_not_running",
               "av_unavailable",
               "billing_event_not_found",
+              "candidate_did_not_sit",
               "cannot_claim_own_post",
+              "cannot_revoke_own_console_access",
               "checkout_failed",
               "circuit_already_ended",
               "circuit_locked",
@@ -5352,6 +5464,7 @@
               "circuit_not_paused",
               "circuit_not_started",
               "circuit_paused",
+              "circuit_review_finalized",
               "claim_outside_item",
               "cohort_exists",
               "cohort_in_use",
@@ -5359,8 +5472,10 @@
               "conflict",
               "content_too_long",
               "contract_dates_out_of_order",
+              "contract_end_in_past",
               "cv_not_found",
               "debrief_not_found",
+              "decision_outside_exam",
               "decision_revised",
               "draft_exists",
               "email_taken",
@@ -5398,6 +5513,7 @@
               "invalid_cv_file",
               "invalid_date_range",
               "invalid_email",
+              "invalid_email_change_token",
               "invalid_exam_code",
               "invalid_exam_settings",
               "invalid_import_file",
@@ -5420,28 +5536,37 @@
               "invalid_webhook",
               "invalid_workflow",
               "invitation_not_pending",
+              "invitation_pending",
               "invoice_not_editable",
               "invoice_not_found",
+              "job_not_cancellable",
+              "job_not_found",
+              "job_not_retryable",
               "knowledge_unavailable",
               "last_admin",
+              "lead_cannot_run",
               "legacy_account_not_imported",
               "legacy_exchange_unavailable",
               "marker_unavailable",
+              "marking_not_ready",
               "media_already_published",
               "media_being_produced",
               "media_not_deletable",
               "media_not_editable",
               "media_not_found",
+              "media_not_published",
               "media_wrong_kind",
               "membership_exists",
               "membership_not_found",
               "message_not_found",
               "message_not_repliable",
+              "message_not_retryable",
               "mfa_already_enrolled",
               "mfa_challenge_expired",
               "mfa_not_enrolled",
               "mfa_required_by_policy",
               "no_active_station",
+              "no_stations_for_exam",
               "not_a_media_block",
               "not_a_member",
               "not_a_partner_reporter",
@@ -5453,17 +5578,23 @@
               "not_found",
               "not_permitted_in_mode",
               "not_signable",
+              "not_slot_reviewer",
               "not_your_post",
               "nothing_to_debrief",
               "nothing_to_review",
               "org_not_found",
               "org_slug_taken",
               "organization_suspended",
+              "outcome_not_releasable",
               "partner_unavailable",
+              "password_already_chosen",
               "password_change_required",
               "password_login_disabled",
+              "password_not_set",
+              "password_reset_not_sent",
               "payment_already_recorded",
               "payment_not_found",
+              "payment_not_yet_recorded",
               "payout_account_number_required",
               "peer_session_not_found",
               "peer_session_not_open",
@@ -5483,6 +5614,7 @@
               "practice_session_not_found",
               "price_creation_failed",
               "programme_exists",
+              "programme_not_active",
               "programme_not_found",
               "programme_required",
               "queue_entry_not_found",
@@ -5497,6 +5629,10 @@
               "result_not_released",
               "review_conflict",
               "review_incomplete",
+              "review_locked",
+              "review_not_draft",
+              "review_not_found",
+              "reviews_pending",
               "rubric_not_found",
               "rubric_version_not_found",
               "rubric_version_not_published",
@@ -5523,9 +5659,11 @@
               "sso_login_unavailable",
               "sso_not_configurable",
               "sso_not_configured",
+              "sso_only_password_members",
               "sso_provider_unsupported",
               "sso_verification_failed",
               "station_being_produced",
+              "station_empty",
               "station_flag_not_found",
               "station_has_no_template",
               "station_import_not_found",
@@ -5539,7 +5677,9 @@
               "template_not_published",
               "too_early_to_join",
               "too_many_requests",
+              "too_many_streams",
               "too_many_tags",
+              "too_many_trainees",
               "tool_arguments_invalid",
               "trainee_already_on_circuit",
               "trainee_exists",
@@ -6303,6 +6443,18 @@
       "FlagStationBody": {
         "description": "A report that one station is wrong.\n\nWas served by `identity` with a docstring saying persistence is TODO, so the\nbutton in the runner confirmed a report that went nowhere.",
         "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
           "station_id": {
             "format": "uuid",
             "title": "Station Id",
@@ -7268,6 +7420,18 @@
             "format": "email",
             "title": "Email",
             "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
           }
         },
         "required": [
@@ -7830,6 +7994,11 @@
             },
             "title": "Circuits",
             "type": "array"
+          },
+          "worker_running": {
+            "default": true,
+            "title": "Worker Running",
+            "type": "boolean"
           }
         },
         "required": [
@@ -8389,6 +8558,36 @@
         "title": "MarkedResultRead",
         "type": "object"
       },
+      "MarkingRetryRead": {
+        "description": "What asking for a slot's automatic marking again answered: whether it was queued, and why not.",
+        "properties": {
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "queued",
+          "policy_version"
+        ],
+        "title": "MarkingRetryRead",
+        "type": "object"
+      },
       "MarkingRubricRead": {
         "description": "The rubric an attempt was marked with, frozen on it: what a feedback screen draws from.",
         "properties": {
@@ -8934,6 +9133,38 @@
         "title": "MyDataExport",
         "type": "object"
       },
+      "MyEntitlements": {
+        "description": "A person's grants, with the limits of the free trial they fall back on.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/EntitlementRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "trial": {
+            "$ref": "#/components/schemas/TrialLimits"
+          }
+        },
+        "required": [
+          "items",
+          "trial"
+        ],
+        "title": "MyEntitlements",
+        "type": "object"
+      },
       "MySitting": {
         "properties": {
           "active_slot_id": {
@@ -9035,6 +9266,11 @@
               }
             ],
             "title": "Phase Started At"
+          },
+          "released": {
+            "default": false,
+            "title": "Released",
+            "type": "boolean"
           },
           "remaining_seconds": {
             "anyOf": [
@@ -9150,6 +9386,11 @@
           },
           "joinable": {
             "title": "Joinable",
+            "type": "boolean"
+          },
+          "marking_failed": {
+            "default": false,
+            "title": "Marking Failed",
             "type": "boolean"
           },
           "phase": {
@@ -9299,6 +9540,12 @@
             "title": "Slot Id",
             "type": "string"
           },
+          "state": {
+            "const": "ready",
+            "default": "ready",
+            "title": "State",
+            "type": "string"
+          },
           "summary": {
             "$ref": "#/components/schemas/SlotRagSummary"
           }
@@ -9310,6 +9557,30 @@
           "completed_at"
         ],
         "title": "MySlotReviewRead",
+        "type": "object"
+      },
+      "MySlotReviewWaiting": {
+        "description": "Why a candidate has no review to read yet (T-8): the result is not released, or not marked.",
+        "properties": {
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "not_released",
+              "not_marked"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slot_id",
+          "state"
+        ],
+        "title": "MySlotReviewWaiting",
         "type": "object"
       },
       "NoteRead": {
@@ -9500,6 +9771,22 @@
           "setup"
         ],
         "title": "OrgDashboard",
+        "type": "object"
+      },
+      "OrgReporting": {
+        "properties": {
+          "programmes": {
+            "items": {
+              "$ref": "#/components/schemas/ProgrammeReportRow"
+            },
+            "title": "Programmes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "programmes"
+        ],
+        "title": "OrgReporting",
         "type": "object"
       },
       "OrgSetup": {
@@ -11683,6 +11970,11 @@
               }
             ],
             "title": "Referral Amount Pence"
+          },
+          "station_count": {
+            "default": 0,
+            "title": "Station Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -11843,6 +12135,11 @@
             "title": "Kind",
             "type": "string"
           },
+          "marking_failed": {
+            "default": false,
+            "title": "Marking Failed",
+            "type": "boolean"
+          },
           "org_id": {
             "anyOf": [
               {
@@ -11882,6 +12179,29 @@
                 "type": "null"
               }
             ]
+          },
+          "sitting_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sitting Id"
+          },
+          "sitting_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sitting Name"
           },
           "started_at": {
             "anyOf": [
@@ -12002,6 +12322,11 @@
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "marking_failed": {
+            "default": false,
+            "title": "Marking Failed",
+            "type": "boolean"
           },
           "org_id": {
             "anyOf": [
@@ -12523,6 +12848,10 @@
       "PlatformPaymentRead": {
         "description": "A payment as the console reads it: raw amounts, both references, what it bought.",
         "properties": {
+          "access_revoked": {
+            "title": "Access Revoked",
+            "type": "boolean"
+          },
           "amount_tax_pence": {
             "title": "Amount Tax Pence",
             "type": "integer"
@@ -12660,6 +12989,7 @@
           "plan_starts_at",
           "plan_ends_at",
           "entitlement_id",
+          "access_revoked",
           "receipt_url",
           "customer_email"
         ],
@@ -12952,7 +13282,9 @@
             "enum": [
               "invited",
               "active",
-              "revoked"
+              "revoked",
+              "expired",
+              "suspended"
             ],
             "title": "Status",
             "type": "string"
@@ -13330,6 +13662,57 @@
           "source"
         ],
         "title": "ProgrammeRead",
+        "type": "object"
+      },
+      "ProgrammeReportRow": {
+        "properties": {
+          "candidates": {
+            "title": "Candidates",
+            "type": "integer"
+          },
+          "exam_name": {
+            "title": "Exam Name",
+            "type": "string"
+          },
+          "pass_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Rate"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "programme_id": {
+            "format": "uuid",
+            "title": "Programme Id",
+            "type": "string"
+          },
+          "released": {
+            "title": "Released",
+            "type": "integer"
+          },
+          "sittings": {
+            "title": "Sittings",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "programme_id",
+          "exam_name",
+          "sittings",
+          "candidates",
+          "released",
+          "passed",
+          "pass_rate"
+        ],
+        "title": "ProgrammeReportRow",
         "type": "object"
       },
       "QueueStatus": {
@@ -14024,6 +14407,30 @@
         "title": "ReferralHistoryRead",
         "type": "object"
       },
+      "ReferralOwedRead": {
+        "description": "What the whole settlement queue still owes, however many pages it spans.",
+        "properties": {
+          "owed_pence": {
+            "title": "Owed Pence",
+            "type": "integer"
+          },
+          "referrals": {
+            "title": "Referrals",
+            "type": "integer"
+          },
+          "referrers": {
+            "title": "Referrers",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "owed_pence",
+          "referrals",
+          "referrers"
+        ],
+        "title": "ReferralOwedRead",
+        "type": "object"
+      },
       "ReferralRead": {
         "properties": {
           "code": {
@@ -14141,6 +14548,21 @@
         "title": "ReindexReport",
         "type": "object"
       },
+      "ReissueTemporaryPassword": {
+        "properties": {
+          "temporary_password": {
+            "maxLength": 512,
+            "minLength": 1,
+            "title": "Temporary Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "temporary_password"
+        ],
+        "title": "ReissueTemporaryPassword",
+        "type": "object"
+      },
       "ReleasedCandidate": {
         "properties": {
           "decision": {
@@ -14172,6 +14594,22 @@
           "photo_url"
         ],
         "title": "RemoveStationPhoto",
+        "type": "object"
+      },
+      "RenameOrganization": {
+        "description": "What an organisation's own admin may change about it: its name. Not the address or contract.",
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameOrganization",
         "type": "object"
       },
       "RenameRubric": {
@@ -15206,11 +15644,6 @@
             ],
             "title": "Assessment Outcome"
           },
-          "evidence": {
-            "additionalProperties": true,
-            "title": "Evidence",
-            "type": "object"
-          },
           "expected_revision": {
             "default": 0,
             "minimum": 0.0,
@@ -15304,7 +15737,7 @@
         "type": "object"
       },
       "SaveSamlConnection": {
-        "description": "What an institution's IdP metadata says, and which attributes carry the address and name.\n\nThe attribute defaults are the claim URIs Entra sends.",
+        "description": "What an institution's IdP metadata says, and which attributes carry the address and name.\n\nThe attribute defaults are the claim URIs Entra sends. Text is stripped before it is\nchecked, so an `email_attribute` of only spaces is a 422. The optional name attributes\nare not required, so a blank one is stored as empty and read as unset.",
         "properties": {
           "display_name_attribute": {
             "anyOf": [
@@ -15387,6 +15820,11 @@
       },
       "SaveSsoConfig": {
         "properties": {
+          "confirm_password_members": {
+            "default": false,
+            "title": "Confirm Password Members",
+            "type": "boolean"
+          },
           "default_exam_code": {
             "anyOf": [
               {
@@ -16206,7 +16644,7 @@
         "type": "object"
       },
       "SeatMembership": {
-        "description": "The platform console's add, which may hand a new account a temporary password.\n\nOnly for an address with no account yet, and only because the invitation email\ncannot always be delivered. The person must change it at first sign-in. Ignored for\nan address that already has an account: the console never resets anyone's password.",
+        "description": "An add by an admin that may hand a new account a temporary password (the platform\nconsole's seat route and an organisation's team invite).\n\nOnly for an address with no account yet, and only because the invitation email\ncannot always be delivered. The person must change it at first sign-in. Ignored for\nan address that already has an account: the console never resets anyone's password.",
         "properties": {
           "email": {
             "format": "email",
@@ -16742,6 +17180,18 @@
             },
             "title": "Circuits",
             "type": "array"
+          },
+          "cohort_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cohort Id"
           },
           "exam_code": {
             "anyOf": [
@@ -17304,6 +17754,17 @@
       },
       "SlotReviewsRead": {
         "properties": {
+          "attempt_failed_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt Failed Reason"
+          },
           "form": {
             "anyOf": [
               {
@@ -17559,6 +18020,42 @@
         "title": "SsoSignIn",
         "type": "object"
       },
+      "SsoStatusRead": {
+        "description": "Whether sign-in through the organisation's own accounts is connected, and nothing of how.",
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "sign_in_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign In Label"
+          },
+          "sso_only": {
+            "title": "Sso Only",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "configured",
+          "enabled",
+          "sso_only",
+          "sign_in_label"
+        ],
+        "title": "SsoStatusRead",
+        "type": "object"
+      },
       "StaffMfaPolicy": {
         "description": "Whether this organisation's staff must sign in with a second factor.",
         "properties": {
@@ -17680,6 +18177,17 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
           },
           "reporter_name": {
             "anyOf": [
@@ -18102,6 +18610,11 @@
       },
       "StationReport": {
         "properties": {
+          "absent": {
+            "default": false,
+            "title": "Absent",
+            "type": "boolean"
+          },
           "attempt_id": {
             "anyOf": [
               {
@@ -19142,6 +19655,39 @@
         "title": "TraineeAccess",
         "type": "object"
       },
+      "TraineePage": {
+        "description": "A roster page that also says how many people match, so the first load need not walk it all.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TraineeRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total_count"
+        ],
+        "title": "TraineePage",
+        "type": "object"
+      },
       "TraineeRead": {
         "properties": {
           "access_revoked": {
@@ -19217,6 +19763,11 @@
             "default": 0,
             "title": "Stations Sat",
             "type": "integer"
+          },
+          "temporary_password_applied": {
+            "default": false,
+            "title": "Temporary Password Applied",
+            "type": "boolean"
           },
           "user_id": {
             "anyOf": [
@@ -19307,6 +19858,13 @@
             "format": "uuid",
             "title": "Sitting Id",
             "type": "string"
+          },
+          "stations": {
+            "items": {
+              "$ref": "#/components/schemas/TraineeStationResult"
+            },
+            "title": "Stations",
+            "type": "array"
           }
         },
         "required": [
@@ -19316,6 +19874,57 @@
           "released_at"
         ],
         "title": "TraineeResultRead",
+        "type": "object"
+      },
+      "TraineeStationResult": {
+        "description": "One station of a released result, as its candidate reads it (T-8).",
+        "properties": {
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "slot_id": {
+            "format": "uuid",
+            "title": "Slot Id",
+            "type": "string"
+          },
+          "station_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Title"
+          }
+        },
+        "required": [
+          "slot_id",
+          "station_title",
+          "score",
+          "passed"
+        ],
+        "title": "TraineeStationResult",
         "type": "object"
       },
       "TranscriptIn": {
@@ -19549,6 +20158,30 @@
         "title": "TrialCandidateRead",
         "type": "object"
       },
+      "TrialLimits": {
+        "description": "What the free trial allows, so a screen never hard-codes it.",
+        "properties": {
+          "attempts_per_station": {
+            "title": "Attempts Per Station",
+            "type": "integer"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "stations": {
+            "title": "Stations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stations",
+          "days",
+          "attempts_per_station"
+        ],
+        "title": "TrialLimits",
+        "type": "object"
+      },
       "TrialMarkRead": {
         "description": "One snapshot of a trial mark: marking, then marked or failed. Nothing is stored.",
         "properties": {
@@ -19690,6 +20323,81 @@
           "debrief_summaries"
         ],
         "title": "TutorMemoryRead",
+        "type": "object"
+      },
+      "UndeliveredMail": {
+        "description": "The newest abandoned emails, and whether older ones were left off.",
+        "properties": {
+          "has_more": {
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/UndeliveredMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages",
+          "has_more"
+        ],
+        "title": "UndeliveredMail",
+        "type": "object"
+      },
+      "UndeliveredMessage": {
+        "description": "An email the outbox gave up on after its last attempt, as the console lists it.",
+        "properties": {
+          "abandoned_at": {
+            "format": "date-time",
+            "title": "Abandoned At",
+            "type": "string"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "template_key": {
+            "title": "Template Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "recipient",
+          "subject",
+          "template_key",
+          "attempts",
+          "last_error",
+          "abandoned_at"
+        ],
+        "title": "UndeliveredMessage",
         "type": "object"
       },
       "UpdateBrief": {
@@ -20337,6 +21045,18 @@
       "UpdateSitting": {
         "description": "Fields to change on a sitting. An omitted field is left alone.\n\n`status` is not offered here: that belongs to the run machine, not this\nroute.",
         "properties": {
+          "cohort_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cohort Id"
+          },
           "mode": {
             "anyOf": [
               {
@@ -21091,6 +21811,18 @@
             "title": "Reply Count",
             "type": "integer"
           },
+          "station_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Station Id"
+          },
           "tags": {
             "items": {
               "type": "string"
@@ -21115,6 +21847,7 @@
           "kind",
           "parent_id",
           "author_id",
+          "station_id",
           "author_name",
           "title",
           "body",
@@ -21575,6 +22308,33 @@
             "title": "Invited",
             "type": "boolean"
           },
+          "must_change_password": {
+            "default": false,
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
+          "org_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Name"
+          },
+          "org_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Slug"
+          },
           "product_surface": {
             "anyOf": [
               {
@@ -21605,6 +22365,11 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "temporary_password_applied": {
+            "default": false,
+            "title": "Temporary Password Applied",
+            "type": "boolean"
           },
           "user_id": {
             "format": "uuid",
@@ -22572,9 +23337,10 @@
                 }
               }
             },
-            "description": "attempt_not_found",
+            "description": "attempt_not_found, result_not_released",
             "x-codes": [
-              "attempt_not_found"
+              "attempt_not_found",
+              "result_not_released"
             ]
           },
           "422": {
@@ -22661,9 +23427,10 @@
                 }
               }
             },
-            "description": "attempt_not_found",
+            "description": "attempt_not_found, result_not_released",
             "x-codes": [
-              "attempt_not_found"
+              "attempt_not_found",
+              "result_not_released"
             ]
           },
           "422": {
@@ -23070,9 +23837,10 @@
                 }
               }
             },
-            "description": "attempt_not_found",
+            "description": "attempt_not_found, result_not_released",
             "x-codes": [
-              "attempt_not_found"
+              "attempt_not_found",
+              "result_not_released"
             ]
           },
           "422": {
@@ -23542,7 +24310,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__features__identity__schemas__Accepted"
+                  "$ref": "#/components/schemas/TokenPair"
                 }
               }
             },
@@ -23556,9 +24324,25 @@
                 }
               }
             },
-            "description": "invalid_credentials",
+            "description": "account_not_found, invalid_credentials, password_login_disabled, account_suspended",
             "x-codes": [
-              "invalid_credentials"
+              "account_not_found",
+              "invalid_credentials",
+              "password_login_disabled",
+              "account_suspended"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "password_not_set",
+            "x-codes": [
+              "password_not_set"
             ]
           },
           "422": {
@@ -23581,6 +24365,63 @@
           }
         ],
         "summary": "Change Password",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
+    "/api/v1/auth/email-change/confirm": {
+      "post": {
+        "operationId": "identity_confirm_email_change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailChanged"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_email_change_token",
+            "x-codes": [
+              "invalid_email_change_token"
+            ]
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "summary": "Confirm Email Change",
         "tags": [
           "identity"
         ]
@@ -24699,6 +25540,25 @@
       "post": {
         "description": "Begin paying for a plan, at 10% off with somebody's referral code. The client names a plan\ncode, never a price or an amount.",
         "operationId": "billing_start_checkout",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -24747,6 +25607,19 @@
               "plan_not_available",
               "referral_not_found",
               "referral_discount_unavailable"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "already_purchased",
+            "x-codes": [
+              "already_purchased"
             ]
           },
           "422": {
@@ -24855,9 +25728,10 @@
                 }
               }
             },
-            "description": "unknown_plan, unknown_exam",
+            "description": "unknown_plan, payment_not_yet_recorded, unknown_exam",
             "x-codes": [
               "unknown_plan",
+              "payment_not_yet_recorded",
               "unknown_exam"
             ]
           },
@@ -28554,6 +29428,46 @@
         ]
       }
     },
+    "/api/v1/growth/referrals/owed": {
+      "get": {
+        "description": "The total still owed to referrers across every page of the queue. Platform admin only.",
+        "operationId": "growth_read_owed_referrals",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralOwedRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Owed Referrals",
+        "tags": [
+          "growth"
+        ]
+      }
+    },
     "/api/v1/growth/referrals/{referral_id}/payout": {
       "post": {
         "description": "Record a settlement made outside the product.\n\nNothing here moves money \u2014 it records who said it happened, and when.",
@@ -29542,10 +30456,11 @@
                 }
               }
             },
-            "description": "unauthenticated, account_suspended",
+            "description": "unauthenticated, account_suspended, account_not_found",
             "x-codes": [
               "unauthenticated",
-              "account_suspended"
+              "account_suspended",
+              "account_not_found"
             ]
           }
         },
@@ -29591,10 +30506,11 @@
                 }
               }
             },
-            "description": "unauthenticated, account_suspended",
+            "description": "unauthenticated, account_suspended, account_not_found",
             "x-codes": [
               "unauthenticated",
-              "account_suspended"
+              "account_suspended",
+              "account_not_found"
             ]
           },
           "404": {
@@ -29936,10 +30852,11 @@
                 }
               }
             },
-            "description": "unauthenticated, account_suspended",
+            "description": "unauthenticated, account_suspended, account_not_found",
             "x-codes": [
               "unauthenticated",
-              "account_suspended"
+              "account_suspended",
+              "account_not_found"
             ]
           },
           "422": {
@@ -30061,6 +30978,19 @@
               "account_suspended"
             ]
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "organization_suspended",
+            "x-codes": [
+              "organization_suspended"
+            ]
+          },
           "404": {
             "content": {
               "application/json": {
@@ -30082,9 +31012,12 @@
                 }
               }
             },
-            "description": "circuit_not_live",
+            "description": "circuit_not_live, trainee_revoked, marking_not_ready, trainee_not_on_roster",
             "x-codes": [
-              "circuit_not_live"
+              "circuit_not_live",
+              "trainee_revoked",
+              "marking_not_ready",
+              "trainee_not_on_roster"
             ]
           },
           "422": {
@@ -30148,10 +31081,11 @@
                 }
               }
             },
-            "description": "unauthenticated, account_suspended, invalid_credentials",
+            "description": "unauthenticated, account_suspended, account_not_found, invalid_credentials",
             "x-codes": [
               "unauthenticated",
               "account_suspended",
+              "account_not_found",
               "invalid_credentials"
             ]
           },
@@ -30435,6 +31369,94 @@
         ]
       }
     },
+    "/api/v1/me/email-change": {
+      "post": {
+        "operationId": "identity_begin_email_change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__identity__schemas__Accepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "account_not_found, invalid_credentials, password_login_disabled, account_suspended",
+            "x-codes": [
+              "account_not_found",
+              "invalid_credentials",
+              "password_login_disabled",
+              "account_suspended"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "password_not_set",
+            "x-codes": [
+              "password_not_set"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_requests",
+            "x-codes": [
+              "too_many_requests"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Begin Email Change",
+        "tags": [
+          "identity"
+        ]
+      }
+    },
     "/api/v1/me/entitlements": {
       "get": {
         "description": "Expired grants are included with `live` computed, because \"your access\nended on the 3rd\" is a more useful answer than an empty list.",
@@ -30444,7 +31466,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_EntitlementRead_"
+                  "$ref": "#/components/schemas/MyEntitlements"
                 }
               }
             },
@@ -30581,23 +31603,11 @@
                 }
               }
             },
-            "description": "unauthenticated, account_suspended",
+            "description": "unauthenticated, account_suspended, account_not_found",
             "x-codes": [
               "unauthenticated",
-              "account_suspended"
-            ]
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "user_not_found",
-            "x-codes": [
-              "user_not_found"
+              "account_suspended",
+              "account_not_found"
             ]
           }
         },
@@ -32704,8 +33714,27 @@
     },
     "/api/v1/me/receipts": {
       "get": {
-        "description": "The receipt ids for this person's payments, newest first.",
+        "description": "The receipt ids for this person's payments, newest first. `checkout_session_id` keeps only\nthe payment made by that Stripe checkout session.",
         "operationId": "billing_list_my_receipts",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "checkout_session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Checkout Session Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -32730,6 +33759,16 @@
               "unauthenticated",
               "account_suspended"
             ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -33428,6 +34467,26 @@
       "get": {
         "description": "What a trainee is rostered onto, and whether it is their turn.",
         "operationId": "dashboard_read_my_sittings",
+        "parameters": [
+          {
+            "description": "Only this workspace's sittings.",
+            "in": "query",
+            "name": "org_slug",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this workspace's sittings.",
+              "title": "Org Slug"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -33452,6 +34511,16 @@
               "unauthenticated",
               "account_suspended"
             ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -33470,6 +34539,24 @@
         "description": "The trainee portal, pushed. Replaces a five-second poll of two lists.",
         "operationId": "dashboard_stream_my_sittings",
         "parameters": [
+          {
+            "description": "Only this workspace's sittings.",
+            "in": "query",
+            "name": "org_slug",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this workspace's sittings.",
+              "title": "Org Slug"
+            }
+          },
           {
             "description": "A stream ticket from POST /auth/stream-ticket",
             "in": "query",
@@ -33638,7 +34725,7 @@
     },
     "/api/v1/me/slots/{slot_id}/review": {
       "get": {
-        "description": "A candidate's own review of one of their slots, once their result is\nreleased and the GP lead has completed one; null before. Never for a slot not theirs (404).",
+        "description": "A candidate's own review of one of their slots, once their result is\nreleased and the GP lead has completed one; before that `state` says\n`not_released` or `not_marked`. Never for a slot not theirs (404).",
         "operationId": "reviews_read_my_slot_review",
         "parameters": [
           {
@@ -33662,7 +34749,7 @@
                       "$ref": "#/components/schemas/MySlotReviewRead"
                     },
                     {
-                      "type": "null"
+                      "$ref": "#/components/schemas/MySlotReviewWaiting"
                     }
                   ],
                   "title": "Response Reviews Read My Slot Review"
@@ -36218,9 +37305,10 @@
                 }
               }
             },
-            "description": "media_already_published",
+            "description": "media_already_published, media_being_produced",
             "x-codes": [
-              "media_already_published"
+              "media_already_published",
+              "media_being_produced"
             ]
           },
           "422": {
@@ -36420,6 +37508,180 @@
         "summary": "Stop Producing Media",
         "tags": [
           "media-production"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/unlock": {
+      "post": {
+        "operationId": "media_production_unlock_media",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__media_production__schemas__MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "av_not_running",
+            "x-codes": [
+              "av_not_running"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unlock Media",
+        "tags": [
+          "media-production"
+        ]
+      }
+    },
+    "/api/v1/media/{item_id}/unpublish": {
+      "post": {
+        "operationId": "media_unpublish",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__features__media__schemas__MediaRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_found",
+            "x-codes": [
+              "media_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "media_not_published",
+            "x-codes": [
+              "media_not_published"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unpublish",
+        "tags": [
+          "media"
         ]
       }
     },
@@ -36671,6 +37933,90 @@
         "tags": [
           "tenancy"
         ]
+      },
+      "patch": {
+        "operationId": "tenancy_rename_organization",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameOrganization"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "org_not_found",
+            "x-codes": [
+              "org_not_found"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename Organization",
+        "tags": [
+          "tenancy"
+        ]
       }
     },
     "/api/v1/orgs/{org_slug}/audit": {
@@ -36803,6 +38149,96 @@
       }
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}": {
+      "delete": {
+        "operationId": "sittings_delete_circuit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "circuit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Circuit Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_locked",
+            "x-codes": [
+              "circuit_locked"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Circuit",
+        "tags": [
+          "sittings"
+        ]
+      },
       "put": {
         "description": "Change who is on a circuit and which stations they sit.\n\nRefused with `circuit_locked` (409) if a consultation is in progress, if\nfeedback has been recorded, or if any station has already been run.",
         "operationId": "sittings_rebuild_circuit",
@@ -36886,12 +38322,14 @@
                 }
               }
             },
-            "description": "circuit_already_ended, circuit_locked, invalid_circuit, trainee_revoked, trainee_not_on_roster",
+            "description": "circuit_already_ended, circuit_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster",
             "x-codes": [
               "circuit_already_ended",
               "circuit_locked",
+              "lead_cannot_run",
               "invalid_circuit",
               "trainee_revoked",
+              "marking_not_ready",
               "trainee_not_on_roster"
             ]
           },
@@ -37124,14 +38562,16 @@
                 }
               }
             },
-            "description": "circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_already_on_circuit, station_not_on_circuit, trainee_revoked, trainee_not_on_roster",
+            "description": "circuit_already_ended, not_permitted_in_mode, invalid_circuit, trainee_already_on_circuit, station_not_on_circuit, sitting_locked, trainee_revoked, marking_not_ready, trainee_not_on_roster",
             "x-codes": [
               "circuit_already_ended",
               "not_permitted_in_mode",
               "invalid_circuit",
               "trainee_already_on_circuit",
               "station_not_on_circuit",
+              "sitting_locked",
               "trainee_revoked",
+              "marking_not_ready",
               "trainee_not_on_roster"
             ]
           },
@@ -37269,7 +38709,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console": {
       "get": {
-        "description": "The screen an examination is run from: session, stations, trainees, staff and feedback state.",
+        "description": "The screen an examination is run from: session, stations, trainees, staff and feedback state.\n\nReading it may advance this circuit if its clock ran out (S-7), like the live board.",
         "operationId": "dashboard_read_circuit_console",
         "parameters": [
           {
@@ -37356,7 +38796,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/console/stream": {
       "get": {
-        "description": "The console, pushed. Every frame is a whole `CircuitConsole`, so a client renders a\nstream and a poll with the same code.\n\nAccess is resolved against a short session of its own, not the request session, so the\ntransaction does not stay open for as long as the client's connection does.",
+        "description": "The console, pushed. Every frame is a whole `CircuitConsole`, so a client renders a\nstream and a poll with the same code.\n\nAccess is resolved against a short session of its own, not the request session, so the\ntransaction does not stay open for as long as the client's connection does. Staff only, as\nthe REST console is: every frame names each candidate on the circuit.",
         "operationId": "dashboard_stream_circuit_console",
         "parameters": [
           {
@@ -37556,7 +38996,7 @@
     },
     "/api/v1/orgs/{org_slug}/circuits/{circuit_id}/end": {
       "post": {
-        "description": "Stop the whole examination, wherever it had got to.",
+        "description": "Stop the whole examination, wherever it had got to. The optional reason is audited.",
         "operationId": "sittings_end_circuit",
         "parameters": [
           {
@@ -37581,6 +39021,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Override"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -38395,10 +39852,12 @@
                 }
               }
             },
-            "description": "circuit_not_live, no_active_station",
+            "description": "circuit_not_live, no_active_station, trainee_revoked, marking_not_ready",
             "x-codes": [
               "circuit_not_live",
-              "no_active_station"
+              "no_active_station",
+              "trainee_revoked",
+              "marking_not_ready"
             ]
           },
           "422": {
@@ -38793,10 +40252,38 @@
                 }
               }
             },
-            "description": "forbidden, organization_suspended",
+            "description": "forbidden, not_slot_reviewer, organization_suspended",
             "x-codes": [
               "forbidden",
+              "not_slot_reviewer",
               "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_not_found",
+            "x-codes": [
+              "circuit_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "circuit_review_finalized, review_locked",
+            "x-codes": [
+              "circuit_review_finalized",
+              "review_locked"
             ]
           },
           "422": {
@@ -38894,9 +40381,12 @@
                 }
               }
             },
-            "description": "circuit_already_ended",
+            "description": "circuit_already_ended, sitting_locked, lead_cannot_run, programme_not_active",
             "x-codes": [
-              "circuit_already_ended"
+              "circuit_already_ended",
+              "sitting_locked",
+              "lead_cannot_run",
+              "programme_not_active"
             ]
           },
           "422": {
@@ -40132,6 +41622,19 @@
               "rubric_version_not_found"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "exam_not_publishable",
+            "x-codes": [
+              "exam_not_publishable"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -40647,7 +42150,7 @@
     },
     "/api/v1/orgs/{org_slug}/live": {
       "get": {
-        "description": "Every examination this organisation has running, in one request.\n\nThe screen that did not exist: a course lead on the morning of an OSCE\ncould open one circuit's console, or a list of sittings that did not say\nwhich were live.",
+        "description": "Every examination this organisation has running, in one request.\n\nThe screen that did not exist: a course lead on the morning of an OSCE\ncould open one circuit's console, or a list of sittings that did not say\nwhich were live.\n\nReading the board may advance a circuit whose clock ran out (S-7): the api catches up\nwhat the job worker did not.",
         "operationId": "dashboard_read_live_board",
         "parameters": [
           {
@@ -41022,7 +42525,7 @@
         ]
       },
       "post": {
-        "description": "Put somebody in this organisation, by the address an administrator knows.\n\nAn address with no account is invited: the account is created and the\nperson is emailed a link to choose a password. `invited` says which.",
+        "description": "Put somebody in this organisation, by the address an administrator knows.\n\nAn address with no account is invited: the account is created and the\nperson is emailed a link to choose a password. `invited` says which.\n`temporary_password` is the fallback when that email cannot be delivered: a\nbrand-new account gets it instead and must change it at first sign-in; an\nexisting account is never touched (`temporary_password_applied` says which).",
         "operationId": "tenancy_add_membership",
         "parameters": [
           {
@@ -41041,7 +42544,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateMembership"
+                "$ref": "#/components/schemas/SeatMembership"
               }
             }
           },
@@ -41089,11 +42592,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "weak_password",
+            "x-codes": [
+              "weak_password"
+            ]
           },
           "429": {
             "content": {
@@ -42470,6 +43976,70 @@
         "summary": "Update Programme",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/reporting": {
+      "get": {
+        "description": "Sittings, candidates and pass rate per programme, across every sitting.",
+        "operationId": "dashboard_read_org_reporting",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgReporting"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Org Reporting",
+        "tags": [
+          "dashboard"
         ]
       }
     },
@@ -45614,6 +47184,109 @@
             }
           },
           {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "description": "exam or training",
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "exam or training",
+              "title": "Mode"
+            }
+          },
+          {
+            "description": "Part of the sitting name",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the sitting name",
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "programme_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Programme Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scheduled_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scheduled From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scheduled_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scheduled To"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -45748,10 +47421,11 @@
                 }
               }
             },
-            "description": "programme_not_found, rubric_version_not_found",
+            "description": "programme_not_found, rubric_version_not_found, cohort_not_found",
             "x-codes": [
               "programme_not_found",
-              "rubric_version_not_found"
+              "rubric_version_not_found",
+              "cohort_not_found"
             ]
           },
           "409": {
@@ -45762,9 +47436,10 @@
                 }
               }
             },
-            "description": "programme_required, exam_rubric_not_ready, rubric_version_not_published",
+            "description": "programme_required, programme_not_active, exam_rubric_not_ready, rubric_version_not_published",
             "x-codes": [
               "programme_required",
+              "programme_not_active",
               "exam_rubric_not_ready",
               "rubric_version_not_published"
             ]
@@ -45946,9 +47621,10 @@
                 }
               }
             },
-            "description": "sitting_not_found, programme_not_found, rubric_version_not_found",
+            "description": "sitting_not_found, cohort_not_found, programme_not_found, rubric_version_not_found",
             "x-codes": [
               "sitting_not_found",
+              "cohort_not_found",
               "programme_not_found",
               "rubric_version_not_found"
             ]
@@ -45961,10 +47637,11 @@
                 }
               }
             },
-            "description": "sitting_locked, invalid_circuit, exam_rubric_not_ready, rubric_version_not_published",
+            "description": "sitting_locked, invalid_circuit, programme_not_active, exam_rubric_not_ready, rubric_version_not_published",
             "x-codes": [
               "sitting_locked",
               "invalid_circuit",
+              "programme_not_active",
               "exam_rubric_not_ready",
               "rubric_version_not_published"
             ]
@@ -45986,6 +47663,106 @@
           }
         ],
         "summary": "Update Sitting",
+        "tags": [
+          "sittings"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/cancel": {
+      "post": {
+        "description": "Refused with `sitting_locked` once any circuit has started: end those circuits instead.",
+        "operationId": "sittings_cancel_sitting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sitting_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Sitting Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SittingRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_not_found",
+            "x-codes": [
+              "sitting_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "sitting_locked",
+            "x-codes": [
+              "sitting_locked"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Sitting",
         "tags": [
           "sittings"
         ]
@@ -46175,8 +47952,10 @@
                 }
               }
             },
-            "description": "invalid_workflow, decision_revised",
+            "description": "decision_outside_exam, candidate_did_not_sit, invalid_workflow, decision_revised",
             "x-codes": [
+              "decision_outside_exam",
+              "candidate_did_not_sit",
               "invalid_workflow",
               "decision_revised"
             ]
@@ -46244,16 +48023,6 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SaveDecision"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "content": {
@@ -46300,10 +48069,11 @@
                 }
               }
             },
-            "description": "evidence_changed, invalid_workflow",
+            "description": "evidence_changed, invalid_workflow, outcome_not_releasable",
             "x-codes": [
               "evidence_changed",
-              "invalid_workflow"
+              "invalid_workflow",
+              "outcome_not_releasable"
             ]
           },
           "422": {
@@ -46410,9 +48180,11 @@
                 }
               }
             },
-            "description": "invalid_workflow",
+            "description": "invalid_workflow, evidence_changed, reviews_pending",
             "x-codes": [
-              "invalid_workflow"
+              "invalid_workflow",
+              "evidence_changed",
+              "reviews_pending"
             ]
           },
           "422": {
@@ -46621,11 +48393,15 @@
                 }
               }
             },
-            "description": "invalid_circuit, trainee_revoked, trainee_not_on_roster",
+            "description": "sitting_locked, lead_cannot_run, invalid_circuit, trainee_revoked, marking_not_ready, trainee_not_on_roster, programme_not_active",
             "x-codes": [
+              "sitting_locked",
+              "lead_cannot_run",
               "invalid_circuit",
               "trainee_revoked",
-              "trainee_not_on_roster"
+              "marking_not_ready",
+              "trainee_not_on_roster",
+              "programme_not_active"
             ]
           },
           "422": {
@@ -46915,7 +48691,7 @@
     },
     "/api/v1/orgs/{org_slug}/sittings/{sitting_id}/report": {
       "get": {
-        "description": "The whole sitting, per candidate: stations sat, marking, reviewers' ratings and decision\nstatus. Org admin only \u2014 carries decisions not yet released.",
+        "description": "The whole sitting, per candidate: stations sat, marking, reviewers' ratings and decision\nstatus. Every staff role reads it: a supervisor reviews these slots and already reads the\ncohort ranked by score, and the decision appears only as its outcome and stage (no\nrationale or notes). Recording, signing off and releasing stay institution admin.",
         "operationId": "dashboard_read_sitting_report",
         "parameters": [
           {
@@ -47088,6 +48864,99 @@
       }
     },
     "/api/v1/orgs/{org_slug}/slots/{slot_id}/gp-lead-review": {
+      "delete": {
+        "description": "Withdraw the GP lead's draft review of a slot.",
+        "operationId": "reviews_withdraw_gp_lead_review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "slot_not_found, review_not_found",
+            "x-codes": [
+              "slot_not_found",
+              "review_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "review_not_draft, review_locked",
+            "x-codes": [
+              "review_not_draft",
+              "review_locked"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw Gp Lead Review",
+        "tags": [
+          "reviews"
+        ]
+      },
       "get": {
         "operationId": "reviews_read_gp_lead_review",
         "parameters": [
@@ -47249,11 +49118,12 @@
                 }
               }
             },
-            "description": "review_conflict, review_incomplete, nothing_to_review",
+            "description": "review_conflict, review_incomplete, nothing_to_review, review_locked",
             "x-codes": [
               "review_conflict",
               "review_incomplete",
-              "nothing_to_review"
+              "nothing_to_review",
+              "review_locked"
             ]
           },
           "422": {
@@ -47276,6 +49146,107 @@
           }
         ],
         "summary": "Save Gp Lead Review",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/slots/{slot_id}/marking/retry": {
+      "post": {
+        "description": "Queue the automatic marking of this slot's attempt again, after it failed. Twice is once.",
+        "operationId": "reviews_retry_slot_marking",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkingRetryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "slot_not_found, attempt_not_found",
+            "x-codes": [
+              "slot_not_found",
+              "attempt_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_attempt_state",
+            "x-codes": [
+              "invalid_attempt_state"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retry Slot Marking",
         "tags": [
           "reviews"
         ]
@@ -47503,9 +49474,10 @@
                 }
               }
             },
-            "description": "forbidden, organization_suspended",
+            "description": "forbidden, not_slot_reviewer, organization_suspended",
             "x-codes": [
               "forbidden",
+              "not_slot_reviewer",
               "organization_suspended"
             ]
           },
@@ -47517,9 +49489,10 @@
                 }
               }
             },
-            "description": "slot_not_found",
+            "description": "slot_not_found, trainee_not_found",
             "x-codes": [
-              "slot_not_found"
+              "slot_not_found",
+              "trainee_not_found"
             ]
           },
           "409": {
@@ -47530,10 +49503,11 @@
                 }
               }
             },
-            "description": "review_incomplete, nothing_to_review",
+            "description": "review_incomplete, nothing_to_review, review_locked",
             "x-codes": [
               "review_incomplete",
-              "nothing_to_review"
+              "nothing_to_review",
+              "review_locked"
             ]
           },
           "422": {
@@ -47558,6 +49532,190 @@
         "summary": "Submit My Review",
         "tags": [
           "reviews"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/slots/{slot_id}/reviews/{review_id}": {
+      "delete": {
+        "description": "Withdraw a draft review: its author, an administrator or the circuit's supervisor may.",
+        "operationId": "reviews_withdraw_review",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "review_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Review Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, not_slot_reviewer, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "not_slot_reviewer",
+              "organization_suspended"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "slot_not_found, review_not_found",
+            "x-codes": [
+              "slot_not_found",
+              "review_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "review_not_draft, review_locked",
+            "x-codes": [
+              "review_not_draft",
+              "review_locked"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw Review",
+        "tags": [
+          "reviews"
+        ]
+      }
+    },
+    "/api/v1/orgs/{org_slug}/sso-status": {
+      "get": {
+        "description": "For the org admin's Settings tab: connected or not, never the issuer or the bindings.",
+        "operationId": "sso_read_status",
+        "parameters": [
+          {
+            "description": "Organisation slug",
+            "in": "path",
+            "name": "org_slug",
+            "required": true,
+            "schema": {
+              "description": "Organisation slug",
+              "title": "Org Slug",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SsoStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unauthenticated, account_suspended",
+            "x-codes": [
+              "unauthenticated",
+              "account_suspended"
+            ]
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden, organization_suspended",
+            "x-codes": [
+              "forbidden",
+              "organization_suspended"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Status",
+        "tags": [
+          "sso"
         ]
       }
     },
@@ -50116,9 +52274,10 @@
                 }
               }
             },
-            "description": "already_published",
+            "description": "already_published, station_empty",
             "x-codes": [
-              "already_published"
+              "already_published",
+              "station_empty"
             ]
           },
           "422": {
@@ -50771,7 +52930,7 @@
     },
     "/api/v1/orgs/{org_slug}/trainees": {
       "get": {
-        "description": "Readable by staff who run circuits; a trainee cannot read the roster.",
+        "description": "Readable by staff who run circuits; a trainee cannot read the roster.\n\n`total_count` is every match, not this page's size.",
         "operationId": "roster_list_trainees",
         "parameters": [
           {
@@ -50857,7 +53016,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Page_TraineeRead_"
+                  "$ref": "#/components/schemas/TraineePage"
                 }
               }
             },
@@ -50966,11 +53125,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "weak_password",
+            "x-codes": [
+              "weak_password"
+            ]
           },
           "429": {
             "content": {
@@ -51053,11 +53215,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "too_many_trainees",
+            "x-codes": [
+              "too_many_trainees"
+            ]
           },
           "429": {
             "content": {
@@ -51876,6 +54041,19 @@
             "description": "unknown_exam",
             "x-codes": [
               "unknown_exam"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "no_stations_for_exam",
+            "x-codes": [
+              "no_stations_for_exam"
             ]
           },
           "422": {
@@ -54203,6 +56381,19 @@
               "rubric_version_not_found"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "exam_not_publishable",
+            "x-codes": [
+              "exam_not_publishable"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -54934,7 +57125,7 @@
     },
     "/api/v1/platform/jobs": {
       "get": {
-        "description": "The queue, newest first. `status=failed` is what to look at when something is missing.\n\nNo retry route: a failed job is re-queued through the thing it was about \u2014\n`POST /platform/attempts/{id}/rescore` for a marking \u2014 so the retry is\nchecked against the current state rather than replayed blind.",
+        "description": "The queue, newest first. `status=failed` is what to look at when something is missing.\n\nA failed marking is re-queued through its attempt \u2014\n`POST /platform/attempts/{id}/rescore` \u2014 so the retry is checked against the\ncurrent state rather than replayed blind; any other failed task is retried below.",
         "operationId": "health_list_jobs",
         "parameters": [
           {
@@ -55045,6 +57236,166 @@
           }
         ],
         "summary": "List Jobs",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/platform/jobs/{job_id}/cancel": {
+      "post": {
+        "description": "Cancel a waiting task, or a running one whose worker stopped reporting. A task\na live worker is still running is `job_not_cancellable`.",
+        "operationId": "health_cancel_job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "job_not_found",
+            "x-codes": [
+              "job_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "job_not_cancellable",
+            "x-codes": [
+              "job_not_cancellable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Cancel Job",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/platform/jobs/{job_id}/retry": {
+      "post": {
+        "description": "Queue a failed task again. `job_not_retryable` for a marking (retry it from its\nattempt), for a task that is not failed, or when the same task is already waiting.",
+        "operationId": "health_retry_job",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "job_not_found",
+            "x-codes": [
+              "job_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "job_not_retryable",
+            "x-codes": [
+              "job_not_retryable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retry Job",
         "tags": [
           "health"
         ]
@@ -55239,12 +57590,30 @@
             }
           },
           {
+            "description": "Opaque cursor from a previous page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page",
+              "title": "Cursor"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 100,
-              "maximum": 200,
+              "default": 25,
+              "maximum": 100,
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
@@ -55773,9 +58142,10 @@
                 }
               }
             },
-            "description": "contract_dates_out_of_order",
+            "description": "contract_dates_out_of_order, contract_end_in_past",
             "x-codes": [
-              "contract_dates_out_of_order"
+              "contract_dates_out_of_order",
+              "contract_end_in_past"
             ]
           }
         },
@@ -56715,9 +59085,10 @@
                 }
               }
             },
-            "description": "sso_binding_taken",
+            "description": "sso_binding_taken, sso_only_password_members",
             "x-codes": [
-              "sso_binding_taken"
+              "sso_binding_taken",
+              "sso_only_password_members"
             ]
           },
           "422": {
@@ -56930,6 +59301,114 @@
         "summary": "Save Saml Connection",
         "tags": [
           "sso"
+        ]
+      }
+    },
+    "/api/v1/platform/outbox/undelivered": {
+      "get": {
+        "description": "Email the outbox abandoned after its last attempt: an invitation,\na reset or a receipt that never left. Newest first, one page, with\n`has_more` when older ones were left off.",
+        "operationId": "health_list_undelivered_mail",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndeliveredMail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Undelivered Mail",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/api/v1/platform/outbox/{message_id}/retry": {
+      "post": {
+        "description": "Queue an abandoned email again with a fresh set of attempts.\n`message_not_retryable` when it is no longer abandoned, so a second press\nnever sends it twice.",
+        "operationId": "health_retry_undelivered_mail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "message_not_retryable",
+            "x-codes": [
+              "message_not_retryable"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retry Undelivered Mail",
+        "tags": [
+          "health"
         ]
       }
     },
@@ -61949,7 +64428,7 @@
         ]
       },
       "patch": {
-        "description": "Correct a name or exam, or deactivate the account \u2014 which ends its\nsessions now, not at the next refresh.",
+        "description": "Correct a name or exam, or deactivate the account \u2014 which ends its\nsessions and any consultation it has open now, not at the next refresh. Refused\nfor the only active administrator of an organisation.",
         "operationId": "tenancy_update_user",
         "parameters": [
           {
@@ -62008,6 +64487,19 @@
             "description": "user_not_found",
             "x-codes": [
               "user_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "last_admin",
+            "x-codes": [
+              "last_admin"
             ]
           },
           "422": {
@@ -62831,6 +65323,19 @@
               "user_not_found"
             ]
           },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "cannot_revoke_own_console_access",
+            "x-codes": [
+              "cannot_revoke_own_console_access"
+            ]
+          },
           "422": {
             "content": {
               "application/json": {
@@ -62977,6 +65482,19 @@
             "description": "user_not_found",
             "x-codes": [
               "user_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "password_reset_not_sent",
+            "x-codes": [
+              "password_reset_not_sent"
             ]
           },
           "422": {
@@ -63272,6 +65790,101 @@
         "summary": "Reset Station Attempts For Support",
         "tags": [
           "station-sets"
+        ]
+      }
+    },
+    "/api/v1/platform/users/{user_id}/temporary-password": {
+      "post": {
+        "description": "Replace a relayed password that was lost, for an account that has not yet\nchanged it. Ends the account's sessions. Refused once they chose their own.",
+        "operationId": "tenancy_reissue_temporary_password",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReissueTemporaryPassword"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden",
+            "x-codes": [
+              "forbidden"
+            ]
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "user_not_found",
+            "x-codes": [
+              "user_not_found"
+            ]
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "password_already_chosen, invitation_pending",
+            "x-codes": [
+              "password_already_chosen",
+              "invitation_pending"
+            ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "weak_password",
+            "x-codes": [
+              "weak_password"
+            ]
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reissue Temporary Password",
+        "tags": [
+          "tenancy"
         ]
       }
     },

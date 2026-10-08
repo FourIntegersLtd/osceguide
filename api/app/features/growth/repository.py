@@ -308,6 +308,17 @@ async def redeemed_referrals_page(
     )
 
 
+async def owed_referral_totals(session: AsyncSession) -> tuple[int, int, int]:
+    """Pence owed, referrals owed and distinct referrers owed, over every redeemed unpaid row."""
+    stmt = select(
+        func.coalesce(func.sum(Referral.earned_pence), 0),
+        func.count(),
+        func.count(func.distinct(Referral.referrer_user_id)),
+    ).where(Referral.redeemed_at.is_not(None), Referral.payout_status == "unpaid")
+    owed, referrals, referrers = (await session.execute(stmt)).one()
+    return int(owed), int(referrals), int(referrers)
+
+
 async def referral_by_id(session: AsyncSession, referral_id: uuid.UUID) -> Referral | None:
     """One referral by its id, or nothing if it does not exist."""
     stmt = select(Referral).where(Referral.id == referral_id)

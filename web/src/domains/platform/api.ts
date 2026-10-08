@@ -537,8 +537,15 @@ export type ReferralPayoutPage = components["schemas"]["Page_ReferralAdminRead_"
  * Unredeemed codes are not here: an outstanding code is neither paid nor
  * unpaid.
  */
+export type ReferralOwed = components["schemas"]["ReferralOwedRead"];
+
+/** What the whole queue still owes, counted by the server across every page. */
+export function readOwedReferrals(signal?: AbortSignal): Promise<ReferralOwed> {
+  return platformRequest<ReferralOwed>("/api/v1/growth/referrals/owed", { signal });
+}
+
 export function listReferralPayouts(
-  query: { payoutStatus?: string | null; cursor?: string | null } = {},
+  query: { payoutStatus?: string | null; cursor?: string | null; limit?: number } = {},
   signal?: AbortSignal,
 ): Promise<ReferralPayoutPage> {
   return platformRequest<ReferralPayoutPage>("/api/v1/growth/referrals", {
@@ -546,7 +553,7 @@ export function listReferralPayouts(
     query: {
       payout_status: query.payoutStatus || undefined,
       cursor: query.cursor || undefined,
-      limit: 100,
+      limit: query.limit ?? 25,
     },
   });
 }

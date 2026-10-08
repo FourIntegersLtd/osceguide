@@ -17,7 +17,7 @@ from app.core.secrets_at_rest import decrypt_text
 from app.core.settings import get_settings
 from app.features.growth import domain, errors, repository
 from app.features.growth.models import ReferralPayoutDetails
-from app.features.growth.schemas import PayoutDetailsAdminRead, ReferralAdminRead
+from app.features.growth.schemas import PayoutDetailsAdminRead, ReferralAdminRead, ReferralOwedRead
 from app.features.identity import service as identity
 
 
@@ -38,6 +38,12 @@ def _admin_payout_details(stored: ReferralPayoutDetails | None) -> PayoutDetails
         account_number=decrypt_text(stored.account_number_ciphertext, key=get_settings().payout_details_key),
         updated_at=stored.updated_at,
     )
+
+
+async def owed_total(session: AsyncSession) -> ReferralOwedRead:
+    """What is owed across the whole queue, so the headline never depends on which page is loaded."""
+    owed_pence, referrals, referrers = await repository.owed_referral_totals(session)
+    return ReferralOwedRead(owed_pence=owed_pence, referrals=referrals, referrers=referrers)
 
 
 async def list_redeemed_referrals(

@@ -824,3 +824,27 @@ async def test_a_revoked_reporter_can_be_added_again_and_a_live_one_twice(
     ]
     assert len(listed) == 1
     assert listed[0]["revoked_at"] is None
+
+
+async def test_the_owed_total_comes_from_the_server_across_every_page(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The screen shows the first page only; the headline must still count all of it (P-15)."""
+    await _a_redeemed_referral(client, db_session, make_actor, "one")
+    await _a_redeemed_referral(client, db_session, make_actor, "two")
+    admin = await make_actor("owed-admin@osceguide.com", platform_admin=True)
+    ids = [
+        row["id"]
+        for row in (await client.get("/api/v1/growth/referrals", headers=bearer(admin))).json()["items"]
+    ]
+    await client.post(
+        f"/api/v1/growth/referrals/{ids[0]}/payout", json={"payout_status": "paid"}, headers=bearer(admin)
+    )
+
+    owed = await client.get("/api/v1/growth/referrals/owed", headers=bearer(admin))
+
+    assert owed.status_code == 200, owed.text
+    assert owed.json() == {"owed_pence": 500, "referrals": 1, "referrers": 1}
+    assert (
+        await client.get("/api/v1/growth/referrals/owed", headers=bearer(await make_actor()))
+    ).status_code == 403

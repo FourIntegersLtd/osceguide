@@ -19,6 +19,7 @@ function trainee(over: Partial<Trainee> = {}): Trainee {
     is_member: true,
     programme_names: [],
     stations_sat: 0,
+    temporary_password_applied: false,
     ...over,
   };
 }

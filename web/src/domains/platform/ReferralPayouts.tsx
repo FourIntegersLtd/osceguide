@@ -11,13 +11,16 @@ import {
   B2CSegmentedTabs,
   Badge,
   Button,
+  ConfirmModal,
   Input,
+  LoadMore,
   QuietCard,
   type B2CSegmentedTabItem,
 } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync, useCursorPages } from "@/foundation/hooks";
 import {
   listReferralPayouts,
+  readOwedReferrals,
   setReferralPayout,
   type ReferralPayout,
 } from "@/domains/platform/api";
@@ -223,29 +226,28 @@ function SettleCard({
 
 export function ReferralPayouts() {
   const [status, setStatus] = useState<PayoutFilter>("unpaid");
-  const queue = useAsync(
-    (signal) =>
+  const queue = useCursorPages(
+    (cursor, signal) =>
       listReferralPayouts(
-        { payoutStatus: status === "all" ? null : status },
+        { payoutStatus: status === "all" ? null : status, cursor },
         signal,
       ),
     [status],
   );
-  // The hero's "owed" figure is the queue itself on the Owed tab; the other
-  // tabs fetch the unpaid page separately.
-  const owed = useAsync(
-    (signal) =>
-      status === "unpaid"
-        ? Promise.resolve(null)
-        : listReferralPayouts({ payoutStatus: "unpaid" }, signal),
-    [status],
-  );
+  // The headline comes from the server's own total, so it is right on every tab
+  // and however many pages of the list are loaded.
+  const owed = useAsync((signal) => readOwedReferrals(signal), []);
   const [settling, setSettling] = useState<ReferralPayout | null>(null);
   const [reference, setReference] = useState("");
   const close = () => {
     setSettling(null);
     setReference("");
   };
+  // A payment recorded as sent is what stops it being sent again, so it is confirmed first.
+  const [confirming, setConfirming] = useState<{
+    payoutStatus: "paid" | "unpaid";
+    payoutReference?: string | null;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const copyFailed = () =>
@@ -262,7 +264,7 @@ export function ReferralPayouts() {
     try {
       await setReferralPayout(referral.id, input);
       close();
-      queue.reload();
+      queue.state.reload();
       owed.reload();
     } catch (cause) {
       setFailure(
@@ -273,13 +275,6 @@ export function ReferralPayouts() {
     }
   };
 
-  const hero = (page: { items: ReferralPayout[] }) => (
-    <B2CHero title={owedHeadline(page.items)}>
-      Payments are made outside OSCE Guide, by bank transfer. This page records
-      whether each one was sent; it does not send money.
-    </B2CHero>
-  );
-
   return (
     <div className="flex flex-col gap-6">
       <B2CPageHeader
@@ -287,13 +282,14 @@ export function ReferralPayouts() {
         subtitle="What referrers are owed, and what has been sent to them."
       />
       {failure ? <Alert tone="danger">{failure}</Alert> : null}
-      {status === "unpaid" ? (
-        <AsyncBoundary state={queue}>{hero}</AsyncBoundary>
-      ) : (
-        <AsyncBoundary state={owed}>
-          {(page) => (page ? hero(page) : null)}
-        </AsyncBoundary>
-      )}
+      <AsyncBoundary state={owed}>
+        {(totals) => (
+          <B2CHero title={owedHeadline(totals)}>
+            Payments are made outside OSCE Guide, by bank transfer. This page
+            records whether each one was sent; it does not send money.
+          </B2CHero>
+        )}
+      </AsyncBoundary>
       <B2CSegmentedTabs
         items={FILTERS}
         value={status}
@@ -310,14 +306,32 @@ export function ReferralPayouts() {
           reference={reference}
           busy={busy}
           onReference={setReference}
-          onRecord={(input) => record(settling, input)}
+          onRecord={(input) =>
+            input.payoutStatus === "paid"
+              ? setConfirming(input)
+              : record(settling, input)
+          }
           onClose={close}
           onCopyFailed={copyFailed}
         />
       ) : null}
+      {settling ? (
+        <ConfirmModal
+          isOpen={confirming !== null}
+          onCancel={() => setConfirming(null)}
+          onConfirm={async () => {
+            if (confirming) await record(settling, confirming);
+            setConfirming(null);
+          }}
+          isLoading={busy}
+          title="Record this payment as sent?"
+          message={`${formatMoney(settling.earned_pence)} to ${settling.referrer_email}. This marks it settled and takes it off the owed list. You can undo it afterwards.`}
+          confirmText="Yes, it was sent"
+        />
+      ) : null}
       <AsyncBoundary
-        state={queue}
-        isEmpty={(page) => page.items.length === 0}
+        state={queue.state}
+        isEmpty={(items) => items.length === 0}
         empty={{
           title: status === "unpaid" ? "Nothing owed" : "Nothing here",
           description:
@@ -326,44 +340,52 @@ export function ReferralPayouts() {
               : "No referrals match this filter yet.",
         }}
       >
-        {(page) => (
-          <B2CGroupedSection
-            eyebrow={FILTERS.find((f) => f.id === status)?.label}
-          >
-            {page.items.map((referral) => (
-              <B2CGroupedRow
-                key={referral.id}
-                active={settling?.id === referral.id}
-                onClick={() => {
-                  setSettling(referral);
-                  setReference("");
-                }}
-                title={`${referral.referrer_email} · ${formatMoney(referral.earned_pence)}`}
-                meta={`referred ${referral.referred_email ?? "someone"} · ${
-                  referral.redeemed_at
-                    ? formatMoment(referral.redeemed_at)
-                    : "not redeemed"
-                }${referral.paid_at ? ` · paid ${formatMoment(referral.paid_at)}` : ""}`}
-                trailing={
-                  <span className="flex shrink-0 items-center gap-2">
-                    {referral.payout_status === "unpaid" &&
-                    !referral.payout_details ? (
-                      <Badge tone="warning">No bank details</Badge>
-                    ) : null}
-                    <Badge
-                      tone={
-                        referral.payout_status === "paid"
-                          ? "success"
-                          : "warning"
-                      }
-                    >
-                      {referral.payout_status === "paid" ? "Settled" : "Owed"}
-                    </Badge>
-                  </span>
-                }
-              />
-            ))}
-          </B2CGroupedSection>
+        {(items) => (
+          <>
+            <B2CGroupedSection
+              eyebrow={FILTERS.find((f) => f.id === status)?.label}
+            >
+              {items.map((referral) => (
+                <B2CGroupedRow
+                  key={referral.id}
+                  active={settling?.id === referral.id}
+                  onClick={() => {
+                    setSettling(referral);
+                    setReference("");
+                  }}
+                  title={`${referral.referrer_email} · ${formatMoney(referral.earned_pence)}`}
+                  meta={`referred ${referral.referred_email ?? "someone"} · ${
+                    referral.redeemed_at
+                      ? formatMoment(referral.redeemed_at)
+                      : "not redeemed"
+                  }${referral.paid_at ? ` · paid ${formatMoment(referral.paid_at)}` : ""}`}
+                  trailing={
+                    <span className="flex shrink-0 items-center gap-2">
+                      {referral.payout_status === "unpaid" &&
+                      !referral.payout_details ? (
+                        <Badge tone="warning">No bank details</Badge>
+                      ) : null}
+                      <Badge
+                        tone={
+                          referral.payout_status === "paid"
+                            ? "success"
+                            : "warning"
+                        }
+                      >
+                        {referral.payout_status === "paid" ? "Settled" : "Owed"}
+                      </Badge>
+                    </span>
+                  }
+                />
+              ))}
+            </B2CGroupedSection>
+            <LoadMore
+              hasMore={queue.hasMore}
+              busy={queue.loadingMore}
+              onLoad={queue.loadMore}
+              error={queue.moreError}
+            />
+          </>
         )}
       </AsyncBoundary>
     </div>
