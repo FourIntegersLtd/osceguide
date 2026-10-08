@@ -108,22 +108,16 @@ export async function listReceipts(signal?: AbortSignal): Promise<Receipt[]> {
   return receipts;
 }
 
-/** The receipt ids made by one Stripe checkout session; empty until its payment has been recorded. */
-export async function listReceiptIdsForSession(
+/** The receipts made by one Stripe checkout session; empty until its payment has been recorded. */
+export async function listReceiptsForSession(
   checkoutSessionId: string,
   signal?: AbortSignal,
-): Promise<string[]> {
-  const page = await platformRequest<components["schemas"]["Page_str_"]>("/api/v1/me/receipts", {
+): Promise<Receipt[]> {
+  const page = await platformRequest<components["schemas"]["Page_ReceiptRead_"]>("/api/v1/me/receipts-full", {
     query: { checkout_session_id: checkoutSessionId },
     signal,
   });
   return page.items;
-}
-
-export function readReceipt(receiptId: string, signal?: AbortSignal): Promise<Receipt> {
-  return platformRequest<Receipt>(`/api/v1/me/receipts/${encodeURIComponent(receiptId)}`, {
-    signal,
-  });
 }
 
 /**

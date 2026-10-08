@@ -296,10 +296,10 @@ async def test_a_purchase_mints_a_receipt_the_buyer_can_read(
     buyer = await make_actor("receipt@example.com")
     await post_event(client, checkout_event("evt_r1", "receipt@example.com"))
 
-    listed = await client.get("/api/v1/me/receipts", headers=bearer(buyer))
+    listed = await client.get("/api/v1/me/receipts-full", headers=bearer(buyer))
     assert listed.status_code == 200, listed.text
     assert len(listed.json()["items"]) == 1
-    receipt_id = listed.json()["items"][0]
+    receipt_id = listed.json()["items"][0]["receipt_id"]
 
     receipt = await client.get(f"/api/v1/me/receipts/{receipt_id}", headers=bearer(buyer))
     assert receipt.status_code == 200, receipt.text
@@ -310,7 +310,7 @@ async def test_a_purchase_mints_a_receipt_the_buyer_can_read(
     assert body["amount_total"] == "£24.99"
 
 
-async def test_receipts_page_by_cursor_and_come_back_whole_in_one_call(
+async def test_receipts_page_by_cursor_and_come_back_whole(
     client: AsyncClient, db_session: AsyncSession, make_actor
 ) -> None:  # type: ignore[no-untyped-def]
     from tests.support.tokens import bearer
@@ -320,19 +320,18 @@ async def test_receipts_page_by_cursor_and_come_back_whole_in_one_call(
     for event_id in ("evt_pg1", "evt_pg2", "evt_pg3"):
         await post_event(client, checkout_event(event_id, "pages@example.com"))
 
-    first = (await client.get("/api/v1/me/receipts", params={"limit": 2}, headers=bearer(buyer))).json()
+    first = (await client.get("/api/v1/me/receipts-full", params={"limit": 2}, headers=bearer(buyer))).json()
     second = (
         await client.get(
-            "/api/v1/me/receipts", params={"limit": 2, "cursor": first["next_cursor"]}, headers=bearer(buyer)
+            "/api/v1/me/receipts-full",
+            params={"limit": 2, "cursor": first["next_cursor"]},
+            headers=bearer(buyer),
         )
     ).json()
     assert (len(first["items"]), len(second["items"]), second["next_cursor"]) == (2, 1, None)
-    assert len(set(first["items"] + second["items"])) == 3
-
-    whole = (await client.get("/api/v1/me/receipts-full", params={"limit": 2}, headers=bearer(buyer))).json()
-    assert [receipt["receipt_id"] for receipt in whole["items"]] == first["items"]
-    assert whole["items"][0]["amount_total"] == "£24.99"
-    assert whole["next_cursor"] == first["next_cursor"]
+    ids = [receipt["receipt_id"] for receipt in first["items"] + second["items"]]
+    assert len(set(ids)) == 3
+    assert first["items"][0]["amount_total"] == "£24.99"
 
 
 async def test_a_receipt_is_read_by_its_owner_only(
@@ -346,14 +345,16 @@ async def test_a_receipt_is_read_by_its_owner_only(
     buyer = await make_actor("owner@example.com")
     stranger = await make_actor("stranger@example.com")
     await post_event(client, checkout_event("evt_r2", "owner@example.com"))
-    receipt_id = (await client.get("/api/v1/me/receipts", headers=bearer(buyer))).json()["items"][0]
+    receipt_id = (await client.get("/api/v1/me/receipts-full", headers=bearer(buyer))).json()["items"][0][
+        "receipt_id"
+    ]
 
     refused = await client.get(f"/api/v1/me/receipts/{receipt_id}", headers=bearer(stranger))
     assert refused.status_code == 404
     assert refused.json()["code"] == "receipt_not_found"
-    assert (await client.get("/api/v1/me/receipts", headers=bearer(stranger))).json()["items"] == []
+    assert (await client.get("/api/v1/me/receipts-full", headers=bearer(stranger))).json()["items"] == []
 
-    assert (await client.get("/api/v1/me/receipts")).status_code == 401
+    assert (await client.get("/api/v1/me/receipts-full")).status_code == 401
 
 
 async def test_a_payment_taken_before_receipts_existed_is_not_listed(
@@ -383,7 +384,7 @@ async def test_a_payment_taken_before_receipts_existed_is_not_listed(
     )
     await db_session.flush()
 
-    listed = await client.get("/api/v1/me/receipts", headers=bearer(buyer))
+    listed = await client.get("/api/v1/me/receipts-full", headers=bearer(buyer))
     assert listed.status_code == 200
     assert listed.json()["items"] == []
 
@@ -835,7 +836,7 @@ async def test_the_receipts_for_one_checkout_session_are_found_by_its_id(
     buyer = await make_actor("session@example.com")
     stranger = await make_actor("not-the-buyer@example.com")
     await post_event(client, checkout_event("evt_cs", "session@example.com"))
-    path = "/api/v1/me/receipts"
+    path = "/api/v1/me/receipts-full"
 
     mine = await client.get(path, params={"checkout_session_id": "cs_test_1"}, headers=bearer(buyer))
     assert len(mine.json()["items"]) == 1

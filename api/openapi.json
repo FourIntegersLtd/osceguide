@@ -11199,33 +11199,6 @@
         "title": "Page[UserSummary]",
         "type": "object"
       },
-      "Page_str_": {
-        "properties": {
-          "items": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "next_cursor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Cursor"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "title": "Page[str]",
-        "type": "object"
-      },
       "PartnerAnomaly": {
         "properties": {
           "code": {
@@ -33903,10 +33876,10 @@
         ]
       }
     },
-    "/api/v1/me/receipts": {
+    "/api/v1/me/receipts-full": {
       "get": {
-        "description": "The receipt ids for this person's payments, newest first, a page at a time.\n`checkout_session_id` keeps only the payment made by that Stripe checkout session.",
-        "operationId": "billing_list_my_receipts",
+        "description": "This person's receipts, rendered, newest first, a page at a time, so a screen needs one\ncall and not one per receipt. `checkout_session_id` keeps only the payment made by that Stripe\ncheckout session. Scoped to the caller like every receipt route.",
+        "operationId": "billing_list_my_receipts_whole",
         "parameters": [
           {
             "in": "query",
@@ -33925,92 +33898,6 @@
               "title": "Checkout Session Id"
             }
           },
-          {
-            "description": "Opaque cursor from a previous page",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Opaque cursor from a previous page",
-              "title": "Cursor"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 25,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Page_str_"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "unauthenticated, account_suspended",
-            "x-codes": [
-              "unauthenticated",
-              "account_suspended"
-            ]
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "invalid_input",
-            "x-codes": [
-              "invalid_input"
-            ]
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "summary": "List My Receipts",
-        "tags": [
-          "billing"
-        ]
-      }
-    },
-    "/api/v1/me/receipts-full": {
-      "get": {
-        "description": "The same page of receipts as `/me/receipts`, rendered, so a screen needs one call and not\none per receipt. Scoped to the caller like every receipt route.",
-        "operationId": "billing_list_my_receipts_whole",
-        "parameters": [
           {
             "description": "Opaque cursor from a previous page",
             "in": "query",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Awaitable
 from datetime import datetime
 from typing import Any
 
@@ -116,21 +117,13 @@ async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: dat
         # concurrent retry waits for this one instead of applying the event a second time.
 
     if domain.restores_access(event_type, (event.get("data") or {}).get("object") or {}):
-        try:
-            restored = await _apply_restoration(session, event=event)
-        except AppError as exc:
-            await repository.mark_event_failed(session, event_id=event_id, reason=exc.message)
-            raise
-        await repository.mark_event_processed(session, event_id=event_id, at=now)
+        restored = await _run_event(session, event_id, _apply_restoration(session, event=event), now=now)
         return {"status": "applied" if restored else "ignored"}
 
     if domain.withdraws_access(event_type):
-        try:
-            withdrawn = await _apply_withdrawal(session, event=event, now=now)
-        except AppError as exc:
-            await repository.mark_event_failed(session, event_id=event_id, reason=exc.message)
-            raise
-        await repository.mark_event_processed(session, event_id=event_id, at=now)
+        withdrawn = await _run_event(
+            session, event_id, _apply_withdrawal(session, event=event, now=now), now=now
+        )
         return {"status": "applied" if withdrawn else "ignored"}
 
     if not domain.grants_access(event_type):
@@ -153,6 +146,17 @@ async def handle_event(session: AsyncSession, *, event: dict[str, Any], now: dat
         return {"status": "needs_attention"}
     await repository.mark_event_processed(session, event_id=event_id, at=now)
     return {"status": "applied"}
+
+
+async def _run_event(session: AsyncSession, event_id: str, action: Awaitable[bool], *, now: datetime) -> bool:
+    """Run one event's action: a failure is marked on the event and re-raised; success marks it processed."""
+    try:
+        outcome = await action
+    except AppError as exc:
+        await repository.mark_event_failed(session, event_id=event_id, reason=exc.message)
+        raise
+    await repository.mark_event_processed(session, event_id=event_id, at=now)
+    return outcome
 
 
 def _price_id(checkout_payload: dict[str, Any]) -> str:

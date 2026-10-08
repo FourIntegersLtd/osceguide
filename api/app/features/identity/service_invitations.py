@@ -127,38 +127,61 @@ async def reissue_invitation(
     invited_to: str,
     now: datetime,
     practice_exam_title: str | None = None,
-    reminder: bool = False,
 ) -> bool:
     """Send the choose-a-password link again, to an account that never used the first one.
 
     Only the token's hash is stored, so the first link cannot be repeated; this mints a
     fresh one through the same path and spends the old one, so only one ever stays live.
 
-    `reminder` sends it as the five-day reminder rather than a plain invitation.
-
     Returns False when there is nothing to re-send: the account already has a password, or
     the account is gone.
     """
+    user = await _user_awaiting_password(session, user_id, now=now)
+    if user is None:
+        return False
+    await _queue_invitation(
+        session, user=user, invited_to=invited_to, now=now, practice_exam_title=practice_exam_title
+    )
+    return True
+
+
+async def _send_reminder(
+    session: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    invited_to: str,
+    now: datetime,
+    practice_exam_title: str | None,
+) -> bool:
+    """The five-day reminder: a fresh link under the reminder wording. False when nothing is due."""
+    user = await _user_awaiting_password(session, user_id, now=now)
+    if user is None:
+        return False
+    await _queue_token_email(
+        session,
+        user=user,
+        now=now,
+        template_key="invitation_reminder",
+        subject=f"Your invitation to {invited_to} is still waiting",
+        payload={"invited_to": invited_to, "exam_title": practice_exam_title or ""},
+    )
+    return True
+
+
+async def _user_awaiting_password(session: AsyncSession, user_id: uuid.UUID, *, now: datetime) -> User | None:
+    """The account still waiting to choose a password, with its unused links spent; else None."""
     user = await repository.user_by_id(session, user_id)
     if user is None or user.password_hash is not None:
-        return False
+        return None
     # SEC-011: an SSO-only account has no password on purpose, not because it is
     # still waiting to choose one. Re-issuing an invitation to it would mint a
     # set-password token and reopen the password door `password_login_disabled`
     # was set to close. `confirm_password_reset` refuses the same account as a
     # second line; this stops the link ever being sent.
     if user.password_login_disabled:
-        return False
+        return None
     await repository.mark_unused_reset_tokens_used(session, user_id=user.id, at=now)
-    await _queue_invitation(
-        session,
-        user=user,
-        invited_to=invited_to,
-        now=now,
-        practice_exam_title=practice_exam_title,
-        reminder=reminder,
-    )
-    return True
+    return user
 
 
 async def _queue_invitation(
@@ -168,7 +191,6 @@ async def _queue_invitation(
     invited_to: str,
     now: datetime,
     practice_exam_title: str | None = None,
-    reminder: bool = False,
 ) -> None:
     """The token and the message, which is all an invitation is.
 
@@ -176,6 +198,36 @@ async def _queue_invitation(
     With `practice_exam_title` it is the practice-access wording (`practice_access_invitation`),
     otherwise the plain one; either way the link finishes through `password-reset/confirm`.
     """
+    if practice_exam_title is None:
+        await _queue_token_email(
+            session,
+            user=user,
+            now=now,
+            template_key="invitation",
+            subject=f"You have been invited to {invited_to}",
+            payload={"invited_to": invited_to},
+        )
+        return
+    await _queue_token_email(
+        session,
+        user=user,
+        now=now,
+        template_key="practice_access_invitation",
+        subject=f"{invited_to} has given you practice access to {practice_exam_title}",
+        payload={"invited_to": invited_to, "exam_title": practice_exam_title},
+    )
+
+
+async def _queue_token_email(
+    session: AsyncSession,
+    *,
+    user: User,
+    now: datetime,
+    template_key: str,
+    subject: str,
+    payload: dict[str, str],
+) -> None:
+    """Mint the choose-a-password token and queue the email that carries it."""
     raw, token_hash = new_token()
     await repository.create_reset_token(
         session,
@@ -183,32 +235,12 @@ async def _queue_invitation(
         token_hash=token_hash,
         expires_at=now + timedelta(days=INVITATION_TTL_DAYS),
     )
-    if reminder:
-        await notifications.enqueue_email(
-            session,
-            recipient=user.email,
-            subject=f"Your invitation to {invited_to} is still waiting",
-            template_key="invitation_reminder",
-            payload={"token": raw, "invited_to": invited_to, "exam_title": practice_exam_title or ""},
-            idempotency_key=f"invitation:{token_hash}",
-        )
-        return
-    if practice_exam_title is None:
-        await notifications.enqueue_email(
-            session,
-            recipient=user.email,
-            subject=f"You have been invited to {invited_to}",
-            template_key="invitation",
-            payload={"token": raw, "invited_to": invited_to},
-            idempotency_key=f"invitation:{token_hash}",
-        )
-        return
     await notifications.enqueue_email(
         session,
         recipient=user.email,
-        subject=f"{invited_to} has given you practice access to {practice_exam_title}",
-        template_key="practice_access_invitation",
-        payload={"token": raw, "invited_to": invited_to, "exam_title": practice_exam_title},
+        subject=subject,
+        template_key=template_key,
+        payload={"token": raw, **payload},
         idempotency_key=f"invitation:{token_hash}",
     )
 
@@ -230,13 +262,12 @@ async def send_due_invitation_reminders(session: AsyncSession, *, now: datetime)
         if original is None or original[0] not in _REMINDABLE_TEMPLATES:
             continue
         payload = original[1]
-        if await reissue_invitation(
+        if await _send_reminder(
             session,
             user_id=user.id,
             invited_to=str(payload.get("invited_to", "")),
             now=now,
             practice_exam_title=payload.get("exam_title"),
-            reminder=True,
         ):
             reminded += 1
     return reminded

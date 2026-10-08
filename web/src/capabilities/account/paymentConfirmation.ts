@@ -22,7 +22,7 @@ export type PaymentOutcome = "paid" | "signed_out" | "pending";
  * after paying. A 401 ends the wait at once; any other failure is retried like an empty answer.
  */
 export async function confirmPayment(
-  receiptsForSession: () => Promise<readonly string[]>,
+  receiptsForSession: () => Promise<readonly unknown[]>,
   wait: (ms: number) => Promise<void>,
   isCancelled: () => boolean,
 ): Promise<PaymentOutcome> {

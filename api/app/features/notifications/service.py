@@ -166,6 +166,16 @@ _BODY = "margin:0 0 16px;color:#1D1D1F"
 _META = "margin:16px 0 0;color:#6E6E73;font-size:13px"
 
 
+def _app_url(path: str) -> str:
+    """An absolute address on the web app; `path` starts with a slash."""
+    return f"{get_settings().frontend_url.rstrip('/')}{path}"
+
+
+def _token_link(path: str, escaped_fields: dict[str, str]) -> str:
+    """A link to `path` carrying the email's single-use token."""
+    return _app_url(f"{path}?token={escaped_fields.get('token', '')}")
+
+
 def _button(link: str, label: str) -> str:
     """The email's one primary action, the only place the institution colour appears."""
     return (
@@ -182,7 +192,7 @@ def _page(heading: str, *blocks: str) -> str:
 
 def _password_reset(escaped_fields: dict[str, str]) -> str:
     """The body for a password-reset email, linking to the reset form with its token."""
-    link = f"{get_settings().frontend_url.rstrip('/')}/reset-password?token={escaped_fields.get('token', '')}"
+    link = _token_link("/reset-password", escaped_fields)
     return _page(
         "Reset your password",
         "<p>Use the link below to choose a new password. It expires in an hour, "
@@ -194,7 +204,7 @@ def _password_reset(escaped_fields: dict[str, str]) -> str:
 
 def _email_change(escaped_fields: dict[str, str]) -> str:
     """The body for the link that confirms a new sign-in address."""
-    link = f"{get_settings().frontend_url.rstrip('/')}/confirm-email?token={escaped_fields.get('token', '')}"
+    link = _token_link("/confirm-email", escaped_fields)
     return _page(
         "Confirm your new email address",
         "<p>Use the link below to make this the address you sign in with. It expires in an hour, "
@@ -248,9 +258,8 @@ def _email_changed_notice(escaped_fields: dict[str, str]) -> str:
 
 def _result_released(escaped_fields: dict[str, str]) -> str:
     """The body telling a candidate their sitting's outcome is ready to read."""
-    link = (
-        f"{get_settings().frontend_url.rstrip('/')}/app/{escaped_fields.get('org_slug', '')}"
-        f"/trainee/results/{escaped_fields.get('sitting_id', '')}"
+    link = _app_url(
+        f"/app/{escaped_fields.get('org_slug', '')}/trainee/results/{escaped_fields.get('sitting_id', '')}"
     )
     institution = escaped_fields.get("org_name") or "Your institution"
     return _page(
@@ -262,9 +271,8 @@ def _result_released(escaped_fields: dict[str, str]) -> str:
 
 def _trainee_sitting_link(escaped_fields: dict[str, str]) -> str:
     """Where a trainee opens the sitting an email is about."""
-    return (
-        f"{get_settings().frontend_url.rstrip('/')}/app/{escaped_fields.get('org_slug', '')}"
-        f"/trainee/sittings/{escaped_fields.get('sitting_id', '')}"
+    return _app_url(
+        f"/app/{escaped_fields.get('org_slug', '')}/trainee/sittings/{escaped_fields.get('sitting_id', '')}"
     )
 
 
@@ -292,9 +300,8 @@ def _exam_day_reminder(escaped_fields: dict[str, str]) -> str:
 
 def _review_assigned(escaped_fields: dict[str, str]) -> str:
     """The body telling a supervisor a circuit's reviews are theirs."""
-    link = (
-        f"{get_settings().frontend_url.rstrip('/')}/app/{escaped_fields.get('org_slug', '')}"
-        f"/circuits/{escaped_fields.get('circuit_id', '')}"
+    link = _app_url(
+        f"/app/{escaped_fields.get('org_slug', '')}/circuits/{escaped_fields.get('circuit_id', '')}"
     )
     return _page(
         "You are the reviewer for a circuit",
@@ -307,9 +314,7 @@ def _review_assigned(escaped_fields: dict[str, str]) -> str:
 
 def _invitation(escaped_fields: dict[str, str]) -> str:
     """The body inviting a new account holder to set a password and sign in."""
-    link = (
-        f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
-    )
+    link = _token_link("/accept-invitation", escaped_fields)
     return (
         f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
         f"You are invited to {escaped_fields.get('invited_to', '')}</h1>"
@@ -327,9 +332,7 @@ def _invitation_reminder(escaped_fields: dict[str, str]) -> str:
     Carries a fresh link (the first cannot be repeated). With `exam_title` it says which
     practice access is waiting.
     """
-    link = (
-        f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
-    )
+    link = _token_link("/accept-invitation", escaped_fields)
     waiting = (
         f"your practice access to {escaped_fields['exam_title']}"
         if escaped_fields.get("exam_title")
@@ -350,7 +353,7 @@ def _referral_redeemed(escaped_fields: dict[str, str]) -> str:
 
     It does not name the buyer: the referrer is told the amount, not who paid.
     """
-    link = f"{get_settings().frontend_url.rstrip('/')}/account"
+    link = _app_url("/account")
     return _page(
         "Someone used your referral code",
         f"<p>A purchase with your code earned you {escaped_fields.get('earned', '')}. "
@@ -365,9 +368,7 @@ def _practice_access_invitation(escaped_fields: dict[str, str]) -> str:
     Same token and link as `_invitation`: choosing the password is what accepts it, and the
     practice access is already attached to the account waiting behind the link.
     """
-    link = (
-        f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
-    )
+    link = _token_link("/accept-invitation", escaped_fields)
     return (
         f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
         f"{escaped_fields.get('invited_to', '')} has given you practice access</h1>"
@@ -382,7 +383,7 @@ def _practice_access_invitation(escaped_fields: dict[str, str]) -> str:
 def _practice_access_granted(escaped_fields: dict[str, str]) -> str:
     """The body telling an existing account holder an organisation gave them an exam to practise."""
     # The practice area, not /login: a signed-in person lands there, and sign-in sends the rest back.
-    link = f"{get_settings().frontend_url.rstrip('/')}/app/me"
+    link = _app_url("/app/me")
     return (
         f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
         f"{escaped_fields.get('granted_by', '')} has given you practice access</h1>"
@@ -394,7 +395,7 @@ def _practice_access_granted(escaped_fields: dict[str, str]) -> str:
 
 def _entitlement_expiring(escaped_fields: dict[str, str]) -> str:
     """The body warning that bought access ends soon (S-12)."""
-    link = f"{get_settings().frontend_url.rstrip('/')}/app/me/settings"
+    link = _app_url("/app/me/settings")
     return (
         f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
         f"Your {escaped_fields.get('exam_title', '')} access ends on {escaped_fields.get('ends_on', '')}</h1>"
@@ -415,7 +416,7 @@ def _payment_receipt(escaped_fields: dict[str, str]) -> str:
     every value is still escaped here like any other template.
     """
     total = escaped_fields.get("amount_total", "")
-    link = f"{get_settings().frontend_url.rstrip('/')}/app/me/settings"
+    link = _app_url("/app/me/settings")
     return _page(
         "Your receipt",
         f"<p>Thank you for your payment of {total}.</p>"
@@ -482,10 +483,7 @@ def _marketplace_session_reminder(escaped_fields: dict[str, str]) -> str:
     `escaped_fields` carries the payload `service_reminders.py` builds: the recipient's
     own display name, their partner's, when the session starts, and which exam it is for.
     """
-    link = (
-        f"{get_settings().frontend_url.rstrip('/')}/app/me/marketplace/session/"
-        f"{escaped_fields.get('peer_session_id', '')}"
-    )
+    link = _app_url(f"/app/me/marketplace/session/{escaped_fields.get('peer_session_id', '')}")
     return _page(
         "Your practice session starts in an hour",
         f"<p>Hi {escaped_fields.get('username', 'there')}, you are practising with "
@@ -501,7 +499,7 @@ def _inactive_user_engagement(escaped_fields: dict[str, str]) -> str:
     `escaped_fields` carries the payload `identity.service_engagement` builds: the
     recipient's display name and the exam their account is set to.
     """
-    link = f"{get_settings().frontend_url.rstrip('/')}/dashboard"
+    link = _app_url("/dashboard")
     exam_name = escaped_fields.get("exam_name", "")
     first_station = f"first {exam_name} station" if exam_name else "first station"
     return _page(

@@ -38,6 +38,8 @@ REFERRAL_CODE_BYTES = 4
 # The random part of a redemption's own code, and the column's width.
 REDEMPTION_SUFFIX_BYTES = 3
 REFERRAL_CODE_MAX_LENGTH = 32
+# Prefix of the redemption that records a credit being taken back after a dispute.
+CREDIT_REVERSAL_PREFIX = "CB-"
 
 
 async def record_arrival(
@@ -296,7 +298,7 @@ async def claw_back_referral_purchase(
     await repository.record_redemption(
         session,
         referrer_user_id=credit.referrer_user_id,
-        redemption_code=f"CB-{credit.code}"[:REFERRAL_CODE_MAX_LENGTH],
+        redemption_code=f"{CREDIT_REVERSAL_PREFIX}{credit.code}"[:REFERRAL_CODE_MAX_LENGTH],
         referred_user_id=referred_user_id,
         earned_pence=-credit.earned_pence,
         at=now,

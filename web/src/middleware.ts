@@ -92,11 +92,7 @@ function route(request: NextRequest, requestHeaders: Headers): NextResponse {
     request.cookies.has(SESSION_COOKIES.refresh),
   );
   if (signIn) {
-    const url = request.nextUrl.clone();
-    const separator = signIn.indexOf("?");
-    url.pathname = signIn.slice(0, separator);
-    url.search = signIn.slice(separator + 1);
-    return NextResponse.redirect(url, 307);
+    return NextResponse.redirect(new URL(signIn, request.nextUrl.origin), 307);
   }
 
   const destination = legacyDestination(request.nextUrl.pathname);

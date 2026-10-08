@@ -2273,27 +2273,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/receipts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List My Receipts
-         * @description The receipt ids for this person's payments, newest first, a page at a time.
-         *     `checkout_session_id` keeps only the payment made by that Stripe checkout session.
-         */
-        get: operations["billing_list_my_receipts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/me/receipts-full": {
         parameters: {
             query?: never;
@@ -2303,8 +2282,9 @@ export interface paths {
         };
         /**
          * List My Receipts Whole
-         * @description The same page of receipts as `/me/receipts`, rendered, so a screen needs one call and not
-         *     one per receipt. Scoped to the caller like every receipt route.
+         * @description This person's receipts, rendered, newest first, a page at a time, so a screen needs one
+         *     call and not one per receipt. `checkout_session_id` keeps only the payment made by that Stripe
+         *     checkout session. Scoped to the caller like every receipt route.
          */
         get: operations["billing_list_my_receipts_whole"];
         put?: never;
@@ -12479,13 +12459,6 @@ export interface components {
         Page_UserSummary_: {
             /** Items */
             items: components["schemas"]["UserSummary"][];
-            /** Next Cursor */
-            next_cursor?: string | null;
-        };
-        /** Page[str] */
-        Page_str_: {
-            /** Items */
-            items: string[];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -23770,52 +23743,10 @@ export interface operations {
             };
         };
     };
-    billing_list_my_receipts: {
-        parameters: {
-            query?: {
-                checkout_session_id?: string | null;
-                /** @description Opaque cursor from a previous page */
-                cursor?: string | null;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Page_str_"];
-                };
-            };
-            /** @description unauthenticated, account_suspended */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description invalid_input */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-        };
-    };
     billing_list_my_receipts_whole: {
         parameters: {
             query?: {
+                checkout_session_id?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;

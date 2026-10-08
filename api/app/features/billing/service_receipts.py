@@ -56,26 +56,19 @@ async def read_receipt_document(session: AsyncSession, user_id: uuid.UUID, recei
     return render_receipt_html(receipt.model_dump())
 
 
-async def list_my_receipts(
+async def list_my_receipts_whole(
     session: AsyncSession,
     user_id: uuid.UUID,
     *,
     limit: int,
     cursor: dict[str, Any] | None,
     checkout_session_id: str | None = None,
-) -> tuple[list[str], str | None]:
-    """A page of this person's receipt ids, newest first, and the cursor for the next page."""
+) -> tuple[list[ReceiptRead], str | None]:
+    """A page of this person's rendered receipts, newest first, so a screen needs no call per id.
+    `checkout_session_id` keeps only the payment made by that Stripe checkout session."""
     payments, next_cursor = await repository.payments_page(
         session, user_id, limit=limit, cursor=cursor, checkout_session_id=checkout_session_id
     )
-    return [str(payment.receipt_id) for payment in payments], next_cursor
-
-
-async def list_my_receipts_whole(
-    session: AsyncSession, user_id: uuid.UUID, *, limit: int, cursor: dict[str, Any] | None
-) -> tuple[list[ReceiptRead], str | None]:
-    """A page of this person's rendered receipts in one go, so the account page needs no call per id."""
-    payments, next_cursor = await repository.payments_page(session, user_id, limit=limit, cursor=cursor)
     return [await _receipt_of(session, payment, str(payment.receipt_id)) for payment in payments], next_cursor
 
 

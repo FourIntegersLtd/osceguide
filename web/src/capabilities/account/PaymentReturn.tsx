@@ -12,7 +12,7 @@ import {
 import { productTokens } from "@/foundation/ui";
 import { PERSONAL_SLUG, workspaceBasePath } from "@/foundation/routing";
 import { useOptionalSurface } from "@/capabilities";
-import { listEntitlements, listReceiptIdsForSession } from "@/capabilities/account/api";
+import { listEntitlements, listReceiptsForSession } from "@/capabilities/account/api";
 import { latestLiveEnd } from "@/capabilities/account/access";
 import { confirmPayment, type PaymentOutcome } from "@/capabilities/account/paymentConfirmation";
 import { loginHref } from "@/foundation/session/loginHref";
@@ -51,7 +51,7 @@ export default function PaymentReturn() {
     let cancelled = false;
     void (async () => {
       const outcome = await confirmPayment(
-        () => listReceiptIdsForSession(sessionId),
+        () => listReceiptsForSession(sessionId),
         (ms) => new Promise((resolve) => window.setTimeout(resolve, ms)),
         () => cancelled,
       );
