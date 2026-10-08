@@ -251,7 +251,8 @@ async def test_one_live_roster_row_keeps_the_organisation_visible_and_the_gate_a
     first = (await roster_repo.trainee_ids_for_user(db_session, candidate_id))[0]
     await roster_repo.set_trainee_access(db_session, org_id, first, revoked_at=datetime.now(UTC))
     await db_session.commit()
-    assert (await seen(), await roster_service.is_revoked(db_session, org_id, candidate_id)) == (
+    revoked = await roster_service.is_revoked(db_session, org_id, candidate_id)
+    assert (await seen(), revoked) == (
         ["kings"],
         False,
     )
