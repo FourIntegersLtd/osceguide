@@ -18,7 +18,7 @@ import {
   type PickedStation,
 } from "@/domains/assess/CircuitBuilder";
 import { editLockNotice } from "@/domains/assess/sessions/support";
-import { DEFAULT_BREAK_MINUTES } from "@/domains/assess/timing";
+import { DEFAULT_BREAK_MINUTES, DEFAULT_READING_MINUTES } from "@/domains/assess/timing";
 
 /**
  * Change a circuit that has already been built.
@@ -93,10 +93,10 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                       <Alert tone="warning">{blocked}</Alert>
                       <section className="rounded-panel bg-canvas p-5">
                         <h2 className="text-osce-subheading font-semibold text-b2b-headline">
-                          What you can still change
+                          While the circuit is locked
                         </h2>
                         <p className="mt-1 text-osce-body text-b2b-mid">
-                          You can still change the name, supervisor and timings. Only the stations and who takes them are fixed. While the circuit is running, change its timings from the live circuit screen.
+                          Nothing on this form can be saved while the circuit is locked. While it is running, change its timings from the live circuit screen.
                         </p>
                       </section>
                     </>
@@ -145,7 +145,7 @@ function draftFrom(console_: CircuitConsole): CircuitDraft {
     traineeIds: people.map((person) => person.user_id ?? ""),
     supervisorUserId: console_.circuit.supervisor?.user_id ?? null,
     timing: {
-      readingMinutes: console_.circuit.timing?.reading_minutes ?? 2,
+      readingMinutes: console_.circuit.timing?.reading_minutes ?? DEFAULT_READING_MINUTES,
       simulationMinutes: console_.circuit.timing?.simulation_minutes ?? 10,
       breakMinutes: console_.circuit.timing?.break_minutes ?? DEFAULT_BREAK_MINUTES,
       breaks: console_.circuit.timing?.breaks ?? [],

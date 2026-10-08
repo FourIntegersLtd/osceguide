@@ -1,3 +1,4 @@
+import { isAdminRole } from "@/foundation/session/roles";
 import {
   sittingTypeForMode,
   type Programme,
@@ -156,6 +157,24 @@ export function sittingModeLabel(mode: string): string {
 /** A sitting under way: the backend writes `in_progress`; `live` is the retiring label for the same. */
 export function sittingRunning(status: string): boolean {
   return status === "in_progress" || status === "live";
+}
+
+/** Who a circuit's lead can be: staff, not the trainees an organisation also lists. */
+export function circuitLeads<T extends { role: string }>(members: readonly T[]): T[] {
+  return members.filter((member) => isAdminRole(member.role) || member.role.toLowerCase() === "supervisor");
+}
+
+/** Said under the sittings filters while the list is only partly loaded. */
+export function sittingsScopeNote(loaded: number, hasMore: boolean): string | null {
+  return hasMore
+    ? `Filters, search and Next up cover the ${loaded} sittings loaded so far. Load more to include the rest.`
+    : null;
+}
+
+export function sittingsEmptyDescription(canSchedule: boolean): string {
+  return canSchedule
+    ? "Schedule your first one to get started."
+    : "An administrator schedules sittings; they will appear here.";
 }
 
 export function sittingStatusLabel(status: string): string {

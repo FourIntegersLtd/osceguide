@@ -58,8 +58,12 @@ export function setupSteps(setup: OrgSetup): SetupStep[] {
 
 export type SetupAction = { step: SetupStepId; line: string; label: string; path: string };
 
-/** The single thing to do next, or null when every step is done. */
-export function nextSetupAction(setup: OrgSetup): SetupAction | null {
+/**
+ * The single thing to do next, or null when every step is done. Setup is building work
+ * (marking schemes, programmes, the team): only somebody who may author is sent to it.
+ */
+export function nextSetupAction(setup: OrgSetup, authors: boolean): SetupAction | null {
+  if (!authors) return null;
   const step = SETUP.find((item) => !item.done(setup));
   return step ? { step: step.id, path: step.path, line: step.line, label: step.action } : null;
 }

@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   BREAK_MINUTES_BOUNDS,
+  DEFAULT_READING_MINUTES,
   MAX_EXAM_STATIONS,
   breakPositions,
   clampBreakMinutes,
   clampBreaks,
+  clampReadingMinutes,
   modeSupportsBreaks,
 } from "@/domains/assess/timing";
 
@@ -44,4 +46,12 @@ test("only an examination has breaks", () => {
 
 test("the exam station cap matches the number the warning copy prints", () => {
   assert.equal(MAX_EXAM_STATIONS, 12);
+});
+
+test("reading time is held to what the server keeps, and defaults to its default", () => {
+  assert.equal(DEFAULT_READING_MINUTES, 3);
+  assert.equal(clampReadingMinutes(0), 1);
+  assert.equal(clampReadingMinutes(99), 30);
+  assert.equal(clampReadingMinutes(2), 2);
+  assert.equal(clampReadingMinutes(Number.NaN), 3);
 });

@@ -69,15 +69,15 @@ test("a fresh organisation sees the eight steps in build order, all to do", () =
 });
 
 test("the one action is the first step not done, in order", () => {
-  assert.deepEqual(nextSetupAction(setup()), {
+  assert.deepEqual(nextSetupAction(setup(), true), {
     step: "rubric",
     path: "/authoring/rubrics",
     label: "Write a marking scheme",
     line: "Start with a marking scheme: what candidates are marked against.",
   });
-  assert.equal(nextSetupAction(setup({ rubric_published: true }))?.step, "exam");
+  assert.equal(nextSetupAction(setup({ rubric_published: true }), true)?.step, "exam");
   // Done out of order, the earliest gap still leads.
-  assert.equal(nextSetupAction(setup({ rubric_published: true, exam_published: true, team_invited: true }))?.step, "programme");
+  assert.equal(nextSetupAction(setup({ rubric_published: true, exam_published: true, team_invited: true }), true)?.step, "programme");
 });
 
 test("nothing is left to do once every step is done", () => {
@@ -91,7 +91,7 @@ test("nothing is left to do once every step is done", () => {
     trainees_added: true,
     sitting_scheduled: true,
   });
-  assert.equal(nextSetupAction(all), null);
+  assert.equal(nextSetupAction(all, true), null);
   assert.equal(setupSteps(all).every((step) => step.state === "done" && step.note === "Done"), true);
 });
 
@@ -165,4 +165,8 @@ test("finished runs are headed by the day they ended, newest first", () => {
       ["Tuesday 22 September", ["last week"]],
     ],
   );
+});
+
+test("somebody who cannot author is never sent to the screens that build things", () => {
+  assert.equal(nextSetupAction(setup(), false), null);
 });

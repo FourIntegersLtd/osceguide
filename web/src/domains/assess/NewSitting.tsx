@@ -23,7 +23,7 @@ export function NewSitting({ orgSlug }: { orgSlug: string }) {
       <B2CPageHeader
         back={{ href: hrefFor("/sittings"), label: "Sittings" }}
         title="Schedule a sitting"
-        subtitle="A session is a training sitting with one trainee, a group session is a training sitting with several, and an exam is an exam-mode sitting that is marked, signed off and released. Add circuits next."
+        subtitle="A training sitting rotates a group through stations; an exam sitting is one candidate, marked, signed off and released. Add circuits next."
       />
       <AsyncBoundary state={programmes}>
         {(items) => (

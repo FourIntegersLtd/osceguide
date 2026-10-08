@@ -64,7 +64,7 @@ function Body({
 }) {
   const { hrefFor } = useSurface();
   const { session } = useSession();
-  const step = nextSetupAction(data.setup);
+  const step = nextSetupAction(data.setup, can(session, "author_content"));
   const sittings = data.recent_sittings ?? [];
 
   return (
@@ -153,7 +153,8 @@ function Setup({ data }: { data: Data }) {
   const { hrefFor } = useSurface();
   const router = useRouter();
   const steps = setupSteps(data.setup);
-  const next = nextSetupAction(data.setup);
+  const { session } = useSession();
+  const next = nextSetupAction(data.setup, can(session, "author_content"));
   if (!next) return null;
 
   return (

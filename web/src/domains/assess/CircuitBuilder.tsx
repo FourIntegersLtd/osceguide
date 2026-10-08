@@ -5,9 +5,13 @@ import { Alert, Button, Input, Spinner, cn, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { StationLibrary, type LibraryStation, type StationLibraryScope } from "@/capabilities/stations";
 import type { CircuitShape } from "@/domains/assess/api";
+import { circuitLeads } from "@/domains/assess/support";
 import {
   BREAK_MINUTES_BOUNDS,
   DEFAULT_BREAK_MINUTES,
+  DEFAULT_READING_MINUTES,
+  READING_MINUTES_BOUNDS,
+  clampReadingMinutes,
   MAX_EXAM_CANDIDATES,
   MAX_EXAM_STATIONS,
   breakPositions,
@@ -95,7 +99,7 @@ export function CircuitBuilder({
   );
   const [traineeSearch, setTraineeSearch] = useState("");
   const [supervisor, setSupervisor] = useState(initial?.supervisorUserId ?? "");
-  const [reading, setReading] = useState(initial?.timing.readingMinutes ?? 2);
+  const [reading, setReading] = useState(initial?.timing.readingMinutes ?? DEFAULT_READING_MINUTES);
   const [simulation, setSimulation] = useState(initial?.timing.simulationMinutes ?? 10);
   const [breakMinutes, setBreakMinutes] = useState(
     initial?.timing.breakMinutes ?? DEFAULT_BREAK_MINUTES,
@@ -126,7 +130,7 @@ export function CircuitBuilder({
         traineeIds: [...picked],
         supervisorUserId: supervisor || null,
         timing: {
-          readingMinutes: reading,
+          readingMinutes: clampReadingMinutes(reading),
           simulationMinutes: simulation,
           // Clamped here as well as on the server: the selection set can hold a
           // position that stopped existing when a station came off the circuit,
@@ -180,7 +184,7 @@ export function CircuitBuilder({
               className="h-10 rounded-control border border-border-strong bg-surface px-3 text-sm text-ink"
             >
               <option value="">Unassigned</option>
-              {staff.map((member) => (
+              {circuitLeads(staff).map((member) => (
                 <option key={member.user_id} value={member.user_id}>
                   {member.email ?? member.user_id} ({member.role})
                 </option>
@@ -191,7 +195,8 @@ export function CircuitBuilder({
             <Input
               label="Reading (minutes)"
               type="number"
-              min={0}
+              min={READING_MINUTES_BOUNDS.min}
+              max={READING_MINUTES_BOUNDS.max}
               value={reading}
               onChange={(event) => setReading(Number(event.target.value))}
             />

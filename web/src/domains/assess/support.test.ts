@@ -3,12 +3,15 @@ import test from "node:test";
 import type { Programme, Sitting, SittingMode } from "@/domains/assess/api";
 import type { SittingFormValues } from "@/domains/assess/support";
 import {
+  circuitLeads,
   fieldDateTime,
   hasChanges,
   programmeChoices,
   sittingChanges,
   sittingEditLock,
   sittingRunning,
+  sittingsEmptyDescription,
+  sittingsScopeNote,
 } from "@/domains/assess/support";
 
 /** The smallest thing `sittingEditLock` can be asked about. */
@@ -160,4 +163,27 @@ test("a sitting the backend marks in_progress is running", () => {
   assert.equal(sittingRunning("in_progress"), true);
   assert.equal(sittingRunning("scheduled"), false);
   assert.equal(sittingRunning("completed"), false);
+});
+
+test("only people who can run a circuit are offered as its lead", () => {
+  const staff = [
+    { user_id: "a", role: "owner" },
+    { user_id: "b", role: "supervisor" },
+    { user_id: "c", role: "trainee" },
+    { user_id: "d", role: "practice_user" },
+  ];
+  assert.deepEqual(circuitLeads(staff).map((member) => member.user_id), ["a", "b"]);
+});
+
+test("the sittings list says when its filters cover only what has loaded", () => {
+  assert.equal(sittingsScopeNote(25, false), null);
+  assert.equal(
+    sittingsScopeNote(25, true),
+    "Filters, search and Next up cover the 25 sittings loaded so far. Load more to include the rest.",
+  );
+});
+
+test("only somebody who can schedule is told to schedule", () => {
+  assert.equal(sittingsEmptyDescription(true), "Schedule your first one to get started.");
+  assert.equal(sittingsEmptyDescription(false), "An administrator schedules sittings; they will appear here.");
 });

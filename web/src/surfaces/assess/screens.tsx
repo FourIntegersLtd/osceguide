@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+import { EmptyState } from "@/foundation/ui";
 import { PeopleTabs } from "@/domains/assess/PeopleTabs";
 import { can, useSession } from "@/foundation/session";
 import type { ScreenMap, ScreenProps } from "@/surfaces/contract";
@@ -47,6 +49,13 @@ import {
  * never reaches here: `surfaceForWorkspace` would have chosen Train.
  */
 
+/** Building a sitting or circuit is the administrator's; a supervisor who lands here by URL is told so rather than shown a form the server refuses. */
+function ForAdmins({ children }: { children: ReactNode }) {
+  const { session } = useSession();
+  if (can(session, "schedule_sittings")) return <>{children}</>;
+  return <EmptyState title="Administrators only" description="Ask an administrator to make this change." />;
+}
+
 const slugOf = ({ workspace }: ScreenProps) => workspace.orgSlug ?? "";
 
 function AssessDashboard(props: ScreenProps) {
@@ -65,11 +74,19 @@ function AssessSittingDetail(props: ScreenProps) {
 }
 
 function AssessNewSitting(props: ScreenProps) {
-  return <NewSitting orgSlug={slugOf(props)} />;
+  return (
+    <ForAdmins>
+      <NewSitting orgSlug={slugOf(props)} />
+    </ForAdmins>
+  );
 }
 
 function AssessNewCircuit(props: ScreenProps) {
-  return <NewCircuit orgSlug={slugOf(props)} sittingId={props.params?.sittingId ?? ""} />;
+  return (
+    <ForAdmins>
+      <NewCircuit orgSlug={slugOf(props)} sittingId={props.params?.sittingId ?? ""} />
+    </ForAdmins>
+  );
 }
 
 function AssessLiveBoard(props: ScreenProps) {
@@ -81,7 +98,11 @@ function AssessCircuitRunner(props: ScreenProps) {
 }
 
 function AssessCircuitEdit(props: ScreenProps) {
-  return <EditCircuit orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />;
+  return (
+    <ForAdmins>
+      <EditCircuit orgSlug={slugOf(props)} circuitId={props.params?.circuitId ?? ""} />
+    </ForAdmins>
+  );
 }
 
 function AssessResults(props: ScreenProps) {

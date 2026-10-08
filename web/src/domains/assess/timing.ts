@@ -21,6 +21,19 @@
 /** `domain.DEFAULT_BREAK_MINUTES`. */
 export const DEFAULT_BREAK_MINUTES = 5;
 
+/** `domain.DEFAULT_READING_MINUTES` and `READING_BOUNDS`. */
+export const DEFAULT_READING_MINUTES = 3;
+export const READING_MINUTES_BOUNDS = { min: 1, max: 30 } as const;
+
+/** Clamp reading time into what the server will keep, defaulting when unusable. */
+export function clampReadingMinutes(minutes: number): number {
+  if (!Number.isFinite(minutes)) return DEFAULT_READING_MINUTES;
+  return Math.min(
+    READING_MINUTES_BOUNDS.max,
+    Math.max(READING_MINUTES_BOUNDS.min, Math.round(minutes)),
+  );
+}
+
 /** `domain.BREAK_BOUNDS`. */
 export const BREAK_MINUTES_BOUNDS = { min: 1, max: 60 } as const;
 

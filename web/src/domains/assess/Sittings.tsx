@@ -17,7 +17,7 @@ import { useCursorPages } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { listSittings, type Sitting } from "@/domains/assess/api";
-import { sittingRunning } from "@/domains/assess/support";
+import { sittingRunning, sittingsEmptyDescription, sittingsScopeNote } from "@/domains/assess/support";
 
 type ModeFilter = "all" | "exam" | "training";
 
@@ -118,7 +118,7 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
         isEmpty={(sittings) => sittings.length === 0}
         empty={{
           title: "No sittings yet",
-          description: "Schedule your first one to get started.",
+          description: sittingsEmptyDescription(can(session, "schedule_sittings")),
         }}
       >
         {(sittings) => {
@@ -173,6 +173,9 @@ export function Sittings({ orgSlug }: { orgSlug: string }) {
                   aria-label="Search sittings"
                 />
               </div>
+              {sittingsScopeNote(sittings.length, pages.hasMore) ? (
+                <p className="text-osce-body text-b2b-mid">{sittingsScopeNote(sittings.length, pages.hasMore)}</p>
+              ) : null}
               <Table<Sitting>
                 rows={rows}
                 more={pages}
