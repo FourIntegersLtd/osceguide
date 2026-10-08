@@ -25,7 +25,9 @@ function resolvePublishedVersion(
   versionId: string,
 ): { examCode: string; structure: StationStructure } | null {
   for (const template of templates) {
-    const version = template.versions.find((v) => v.id === versionId && v.status === "published");
+    const version = template.versions.find(
+      (v) => v.id === versionId && v.status === "published",
+    );
     if (version) {
       const examCode = template.exam_code?.trim() ?? "";
       return {
@@ -94,34 +96,37 @@ export function useCreateStationForm({
     setError(null);
   }, []);
 
-  function handleTemplateSelect(versionId: string) {
-    setTemplateVersionId(versionId);
-    setError(null);
-    if (!versionId) {
-      setStructure(null);
-      setExamCode("");
+  const handleTemplateSelect = useCallback(
+    (versionId: string) => {
+      setTemplateVersionId(versionId);
+      setError(null);
+      if (!versionId) {
+        setStructure(null);
+        setExamCode("");
+        setContent({});
+        return;
+      }
+      const resolved = resolvePublishedVersion(templates, versionId);
+      if (!resolved) {
+        setStructure(null);
+        setExamCode("");
+        setContent({});
+        setError("Could not load template.");
+        return;
+      }
+      if (!resolved.examCode) {
+        setStructure(null);
+        setExamCode("");
+        setContent({});
+        setError("This template has no exam assigned.");
+        return;
+      }
+      setStructure(resolved.structure);
+      setExamCode(resolved.examCode);
       setContent({});
-      return;
-    }
-    const resolved = resolvePublishedVersion(templates, versionId);
-    if (!resolved) {
-      setStructure(null);
-      setExamCode("");
-      setContent({});
-      setError("Could not load template.");
-      return;
-    }
-    if (!resolved.examCode) {
-      setStructure(null);
-      setExamCode("");
-      setContent({});
-      setError("This template has no exam assigned.");
-      return;
-    }
-    setStructure(resolved.structure);
-    setExamCode(resolved.examCode);
-    setContent({});
-  }
+    },
+    [templates],
+  );
 
   async function handleGenerateDraft() {
     setError(null);
@@ -241,7 +246,8 @@ export function useCreateStationForm({
     handleTemplateSelect,
     structure: effectiveStructure,
     /** True when the exam has no built-in layout and no template was chosen. */
-    needsTemplateForLayout: !structure && Boolean(examCode) && effectiveStructure === null,
+    needsTemplateForLayout:
+      !structure && Boolean(examCode) && effectiveStructure === null,
     content,
     setContent,
     prompt,

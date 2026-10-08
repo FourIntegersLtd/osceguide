@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { stationTemplateNewPath } from "@/capabilities/authoring/templates/paths";
+import { isThenStation, stationTemplateNewPath, stationTemplateThenStationPath } from "@/capabilities/authoring/templates/paths";
 import { stationNewPath } from "@/capabilities/authoring/stations/paths";
 
 const hrefFor = (path: string) => `/org/kings${path}`;
@@ -21,7 +21,7 @@ describe("stationTemplateNewPath", () => {
 describe("template to station round trip", () => {
   it("asks the wizard to return to station creation", () => {
     assert.equal(
-      stationTemplateNewPath(hrefFor, "my exam", { thenStation: true }),
+      stationTemplateThenStationPath(hrefFor, "my exam"),
       "/org/kings/authoring/station-templates/new?exam=my%20exam&then=station",
     );
   });
@@ -32,5 +32,13 @@ describe("template to station round trip", () => {
       "/org/kings/authoring/stations/new?templateVersion=ver-1",
     );
     assert.equal(stationNewPath(hrefFor), "/org/kings/authoring/stations/new");
+  });
+});
+
+describe("isThenStation", () => {
+  it("reads the return marker", () => {
+    assert.equal(isThenStation("station"), true);
+    assert.equal(isThenStation(null), false);
+    assert.equal(isThenStation("other"), false);
   });
 });

@@ -24,7 +24,7 @@ import {
 import { useSurface } from "@/capabilities";
 import { createStationTemplate, publishStationTemplate } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
-import { stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
+import { isThenStation, stationTemplatesListPath } from "@/capabilities/authoring/templates/paths";
 import { stationNewPath } from "@/capabilities/authoring/stations/paths";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
@@ -37,8 +37,9 @@ function StationTemplateNewScreenForm() {
   const searchParams = useSearchParams();
   const examCode = searchParams.get("exam")?.trim() || null;
   // Opened from station creation: finish by publishing and going back there.
-  const thenStation = searchParams.get("then") === "station";
-  // A save that created the template but failed to publish it must not create a second one on retry.
+  const thenStation = isThenStation(searchParams.get("then"));
+  // Set once the template exists. If publishing then fails, the retry publishes this one
+  // instead of creating a second template.
   const createdId = useRef<string | null>(null);
   const listHref = stationTemplatesListPath(hrefFor);
   const orgKey = orgSlug ?? "platform";

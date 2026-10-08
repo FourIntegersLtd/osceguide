@@ -1,27 +1,25 @@
 "use client";
 
 import { RequireAuthor } from "@/capabilities/authoring/parts/RequireAuthor";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Alert, Button, getInputClassName, Select, Textarea, FoldSection } from "@/foundation/ui";
 import { b2bWizardTabActive, b2bWizardTabInactive } from "@/capabilities/authoring/structure/b2b/theme/b2bUi";
 import { useSurface } from "@/capabilities";
-import { listStationTemplates, type Station } from "@/capabilities/authoring/api";
+import { type Station } from "@/capabilities/authoring/api";
 import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringScope";
 import { supportsPromptGeneration } from "@/capabilities/authoring/api/scope";
-import { useAsync } from "@/foundation/hooks";
-import { hasPublishedVersion } from "@/capabilities/authoring/sections/StationsSection";
+import { GeneratedDraft, hasDraftContent } from "@/capabilities/authoring/stations/GeneratedDraft";
 import { StationDetail } from "@/capabilities/authoring/sections/StationDetail";
 import { StationInstanceContentPanel } from "@/capabilities/authoring/sections/StationInstanceContentPanel";
-import { useCreateStationForm } from "@/capabilities/authoring/hooks/useCreateStationForm";
+import { useCreateStationChoices } from "@/capabilities/authoring/parts/useCreateStationChoices";
 import { PlatformTemplateWizardPageLayout } from "@/capabilities/authoring/templates/PlatformTemplateWizardPageLayout";
 import { platformTemplateWizardFooterClass } from "@/capabilities/authoring/templates/wizardFooter";
-import { stationTemplateNewPath } from "@/capabilities/authoring/templates/paths";
+import { stationTemplateThenStationPath } from "@/capabilities/authoring/templates/paths";
 import { stationsListPath } from "@/capabilities/authoring/stations/paths";
 import { stationListUrl } from "@/capabilities/authoring/parts/stationListUrl";
 import { LoadError } from "@/capabilities/authoring/parts/LoadError";
-import { useAuthoringExamCatalog } from "@/capabilities/authoring/parts/useAuthoringExamCatalog";
 
 function CreateStationScreenForm() {
   const scope = useAuthoringScope();
@@ -31,59 +29,16 @@ function CreateStationScreenForm() {
   const { hrefFor } = useSurface();
   const router = useRouter();
   const listHref = stationsListPath(hrefFor);
-  const preselected = useSearchParams().get("templateVersion");
-
-  const templates = useAsync((signal) => listStationTemplates(scope, signal), [scope.base]);
-  const published = useMemo(
-    () => (templates.data?.items ?? []).filter(hasPublishedVersion),
-    [templates.data],
-  );
-
   // Once saved, the draft opens on its steps (draft, check facts, publish), as a new deck does.
   const [created, setCreated] = useState<Station | null>(null);
-  const form = useCreateStationForm({
+  const { form, templates, examCatalog, stationSubtypes, choices, published } = useCreateStationChoices({
     scope,
-    templates: published,
     onCreated: (station) => {
       setCreated(station);
       // Its own address, replacing /new so Back never returns to a blank form.
       router.replace(stationListUrl(listHref, { status: "active", station: station.id }));
     },
   });
-
-  // Which sub-types the template-less exam offers, if any. Sourced from the
-  // exam's own settings rather than a hardcoded list, so a new exam that
-  // declares `station_subtypes` gets the picker for free.
-  const examCatalog = useAuthoringExamCatalog();
-  const stationSubtypes = useMemo(
-    () =>
-      examCatalog.exams.find((exam) => exam.code === form.examCode)?.settings?.station_subtypes ??
-      [],
-    [examCatalog.exams, form.examCode],
-  );
-
-  const choices = useMemo(
-    () =>
-      published.flatMap((t) =>
-        t.versions
-          .filter((v) => v.status === "published")
-          .map((v) => ({
-            id: v.id,
-            label: `${t.title} (v${v.version})`,
-          })),
-      ),
-    [published],
-  );
-
-  // Back from the template wizard: the template it just published is already chosen.
-  const { templateVersionId, handleTemplateSelect } = form;
-  useEffect(() => {
-    if (preselected && !templateVersionId && choices.some((c) => c.id === preselected)) {
-      handleTemplateSelect(preselected);
-    }
-    // handleTemplateSelect is recreated every render; choosing once per arrival is the point.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preselected, choices]);
 
   const aiAvailable = promptGeneration || Boolean(form.templateVersionId);
   const aiMode = form.mode === "ai" && aiAvailable;
@@ -300,7 +255,7 @@ function CreateStationScreenForm() {
                 <>
                   This exam has no built-in station layout. Create a station template for this exam
                   here. It is published when you save it, and you come straight back to this station.{" "}
-                  <Link href={stationTemplateNewPath(hrefFor, form.examCode, { thenStation: true })} className="font-semibold text-accent underline">
+                  <Link href={stationTemplateThenStationPath(hrefFor, form.examCode)} className="font-semibold text-accent underline">
                     Create a station template
                   </Link>
                 </>
@@ -325,33 +280,6 @@ function CreateStationScreenForm() {
         </Button>
       </div>
     </PlatformTemplateWizardPageLayout>
-  );
-}
-
-function hasDraftContent(content: Record<string, unknown>): boolean {
-  return Object.keys(content).length > 0;
-}
-
-function GeneratedDraft({ content }: { content: Record<string, unknown> }) {
-  return (
-    <div className="rounded-osce-lg border border-border bg-white p-4">
-      <p className="text-osce-body font-semibold text-ink">Generated draft</p>
-      <p className="mt-1 text-osce-body text-ink-muted">
-        Read this before you publish. It is not live until you save.
-      </p>
-      <dl className="mt-4 space-y-3">
-        {Object.entries(content).map(([key, value]) => (
-          <div key={key}>
-            <dt className="text-osce-meta font-medium text-ink-muted">{key}</dt>
-            <dd className="mt-1 whitespace-pre-wrap text-osce-body text-ink">
-              {typeof value === "string" || typeof value === "number"
-                ? String(value)
-                : JSON.stringify(value, null, 2)}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
   );
 }
 

@@ -4,18 +4,22 @@ export function stationTemplatesListPath(hrefFor: (path: string) => string): str
   return `${hrefFor("/authoring")}/station-templates`;
 }
 
+/** Query marker: the wizard was opened from station creation and returns there when saved. */
+const THEN_STATION = "station";
+
+export function isThenStation(value: string | null): boolean {
+  return value === THEN_STATION;
+}
+
 /** The new-template wizard, with the exam already chosen when the caller knows it. */
-export function stationTemplateNewPath(
-  hrefFor: (path: string) => string,
-  examCode?: string | null,
-  options: { thenStation?: boolean } = {},
-): string {
+export function stationTemplateNewPath(hrefFor: (path: string) => string, examCode?: string | null): string {
   const base = `${stationTemplatesListPath(hrefFor)}/new`;
-  const query = [
-    examCode ? `exam=${encodeURIComponent(examCode)}` : "",
-    options.thenStation ? "then=station" : "",
-  ].filter(Boolean);
-  return query.length ? `${base}?${query.join("&")}` : base;
+  return examCode ? `${base}?exam=${encodeURIComponent(examCode)}` : base;
+}
+
+/** The same wizard, finishing by publishing and going back to station creation. */
+export function stationTemplateThenStationPath(hrefFor: (path: string) => string, examCode: string): string {
+  return `${stationTemplateNewPath(hrefFor, examCode)}&then=${THEN_STATION}`;
 }
 
 export function stationTemplateEditPath(
