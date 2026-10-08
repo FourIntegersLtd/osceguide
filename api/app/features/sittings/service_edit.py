@@ -45,7 +45,7 @@ async def update_sitting(
     changing = {field for field in sent if _requested(body, sitting, field)}
 
     # A cancelled sitting is a record of what was called off, not a draft (R-7).
-    await service.ensure_sitting_open(session, org_id, sitting, check_settled=False)
+    service.ensure_sitting_not_cancelled(sitting)
     try:
         if "mode" in changing:
             # Asked before the freeze below, and refused for a sitting with any

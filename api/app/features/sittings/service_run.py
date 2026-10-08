@@ -40,7 +40,7 @@ from app.features.sittings.service import (
     _REFUSALS,
     _require_circuit,
     _require_sitting,
-    ensure_sitting_open,
+    ensure_sitting_not_cancelled,
     read_circuit,
 )
 from app.features.voice import service as voice
@@ -77,7 +77,7 @@ async def start_circuit(
     if current.started:
         return await read_circuit(session, org_id, circuit_id)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
-    await ensure_sitting_open(session, org_id, sitting, check_settled=False)
+    ensure_sitting_not_cancelled(sitting)
 
     room = f"circuit_{circuit.id}"
     await repository.update_circuit(

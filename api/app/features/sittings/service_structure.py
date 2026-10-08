@@ -55,7 +55,7 @@ async def append_trainees(
         domain.ensure_can_append_trainees(domain.Mode(sitting.mode))
     except (domain.CircuitAlreadyEnded, domain.NotPermittedInMode) as exc:
         raise_mapped(exc, _REFUSALS)
-    await ensure_sitting_open(session, org_id, sitting, check_settled=True)
+    await ensure_sitting_open(session, org_id, sitting)
 
     await roster.ensure_rosterable(session, org_id, trainee_ids)
 
