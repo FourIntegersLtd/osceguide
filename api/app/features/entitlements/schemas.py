@@ -12,7 +12,7 @@ from app.core.pagination import Page
 
 # What a practice-access row says about the person: invited (the account is waiting for them
 # to choose a password), active, or revoked (no longer grants anything).
-PracticeAccessStatus = Literal["invited", "active", "revoked"]
+PracticeAccessStatus = Literal["invited", "active", "revoked", "expired", "suspended"]
 
 # What happened to one row of a bulk grant.
 PracticeAccessOutcome = Literal["granted", "invited", "already_active", "invalid_email", "unknown_exam"]

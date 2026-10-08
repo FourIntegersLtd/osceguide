@@ -14,6 +14,7 @@ from app.features.entitlements import domain, repository
 from app.features.entitlements.errors import NotEntitled
 from app.features.entitlements.models import Entitlement
 from app.features.entitlements.schemas import EntitlementRead
+from app.features.tenancy import service as tenancy
 
 # Re-exported so a caller above this slice can build one without reaching into
 # its domain module: `attempts` counts the attempts, this slice owns the rule.
@@ -45,7 +46,29 @@ async def decide(
     handle a "no" itself rather than catch `NotEntitled`.
     """
     entitlements = await repository.for_user_and_exam(session, user_id, exam_id)
-    return domain.decide([_to_grant(entitlement) for entitlement in entitlements], now=now, trial=trial)
+    held = await held_by_suspended_org(session, entitlements)
+    return domain.decide(
+        [_to_grant(entitlement) for entitlement in entitlements if entitlement.id not in held],
+        now=now,
+        trial=trial,
+    )
+
+
+async def held_by_suspended_org(
+    session: AsyncSession, entitlements: Collection[Entitlement]
+) -> set[uuid.UUID]:
+    """Ids of grants an organisation made while its own access is suspended (S-15): they open nothing."""
+    org_ids = {entitlement.org_id for entitlement in entitlements if entitlement.org_id is not None}
+    if not org_ids:
+        return set()
+    orgs = await tenancy.org_refs_by_ids(session, org_ids)
+    return {
+        entitlement.id
+        for entitlement in entitlements
+        if entitlement.org_id is not None
+        and entitlement.org_id in orgs
+        and not tenancy.org_permits_access(orgs[entitlement.org_id].status)
+    }
 
 
 async def require(
@@ -131,9 +154,12 @@ async def list_for_user(session: AsyncSession, user_id: uuid.UUID, *, now: datet
     must filter on `live` itself rather than assume every row here is current.
     """
     reads = []
-    for entitlement in await repository.for_user(session, user_id):
+    entitlements = await repository.for_user(session, user_id)
+    held = await held_by_suspended_org(session, entitlements)
+    for entitlement in entitlements:
         code = await catalog.exam_code_by_id(session, entitlement.exam_id)
-        reads.append(_read(entitlement, code or "", now=now))
+        read = _read(entitlement, code or "", now=now)
+        reads.append(read.model_copy(update={"live": False}) if entitlement.id in held else read)
     return reads
 
 

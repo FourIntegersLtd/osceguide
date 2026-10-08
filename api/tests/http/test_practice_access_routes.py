@@ -350,3 +350,59 @@ async def create_exam_for_org(client: AsyncClient, admin: str, *, slug: str) -> 
     )
     assert published.status_code == 200, published.text
     return str(created.json()["id"])
+
+
+async def _one_grant(client: AsyncClient, make_actor, email: str):  # type: ignore[no-untyped-def]
+    org_id, admin, exam_id = await partner_with_admin(client, make_actor)
+    student = await registered(client, email)
+    access_id = (
+        await client.post(
+            "/api/v1/orgs/medrev/practice-access",
+            json={"email": email, "exam_id": exam_id},
+            headers=bearer(admin),
+        )
+    ).json()["item"]["access_id"]
+    return org_id, admin, student, uuid.UUID(access_id)
+
+
+async def test_a_lapsed_grant_is_expired_not_revoked(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-15: a grant whose end date passed said "revoked", as if an administrator had withdrawn it."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.features.entitlements import repository
+
+    _, admin, student, access_id = await _one_grant(client, make_actor, "lapsed@example.com")
+    await repository.set_ends_at(db_session, access_id, ends_at=datetime.now(UTC) - timedelta(days=1))
+    await db_session.flush()
+
+    listed = (await client.get("/api/v1/orgs/medrev/practice-access", headers=bearer(admin))).json()["items"]
+
+    assert [(row["status"], row["revoked_at"]) for row in listed] == [("expired", None)]
+    assert await may_open(client, student) == 403
+
+
+async def test_a_suspended_organisation_withdraws_its_practice_access(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-15: the grant kept opening the library after the organisation that gave it was suspended."""
+    from app.features.tenancy import repository as tenancy_repo
+
+    org_id, _, student, _ = await _one_grant(client, make_actor, "held@example.com")
+    assert await may_open(client, student) == 200
+    await tenancy_repo.set_organization_status(db_session, org_id, status="suspended")
+    await db_session.commit()
+
+    assert await may_open(client, student) == 403
+    from datetime import UTC, datetime
+
+    from app.features.entitlements import service_practice_access
+
+    db_session.expire_all()
+    listed = await service_practice_access.list_practice_access(db_session, org_id, now=datetime.now(UTC))
+    assert [row.status for row in listed] == ["suspended"]
+
+    await tenancy_repo.set_organization_status(db_session, org_id, status="active")
+    await db_session.commit()
+    assert await may_open(client, student) == 200

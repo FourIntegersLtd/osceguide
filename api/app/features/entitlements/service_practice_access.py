@@ -73,7 +73,7 @@ async def list_practice_access(
 ) -> list[PracticeAccessRead]:
     """Everything this organisation has granted as practice access, newest first.
 
-    Revoked and lapsed rows are included and marked `revoked`: this is the history an
+    Revoked, expired and suspended rows are included, each marked as such: this is the history an
     administrator reads, not a gate. The gate is `service.require`.
     """
     grants = await repository.grants_by_source_for_org(session, org_id, source=PRACTICE_ACCESS_SOURCE)
@@ -268,11 +268,12 @@ async def _practice_reads(
     """Shape grants for a route, looking the people and exams up once for the whole list."""
     people = await identity.user_refs_by_ids(session, [grant.user_id for grant in grants])
     exams = await catalog.exam_refs_by_ids(session, list({grant.exam_id for grant in grants}))
+    held = await service.held_by_suspended_org(session, grants)
     reads = []
     for grant in grants:
         person = people.get(grant.user_id)
         exam = exams.get(grant.exam_id)
-        status, revoked_at = _practice_status(grant, person, now=now)
+        status, revoked_at = _practice_status(grant, person, now=now, suspended=grant.id in held)
         reads.append(
             PracticeAccessRead(
                 access_id=grant.id,
@@ -290,18 +291,20 @@ async def _practice_reads(
 
 
 def _practice_status(
-    grant: Entitlement, person: UserRef | None, *, now: datetime
+    grant: Entitlement, person: UserRef | None, *, now: datetime, suspended: bool
 ) -> tuple[PracticeAccessStatus, datetime | None]:
-    """Which of the three states a grant is in, and when it stopped if it has.
+    """Which state a grant is in, and when an administrator withdrew it if one did.
 
-    A grant that is no longer live is `revoked` whether an administrator withdrew it or its
-    end date passed (the latter reports the end date as `revoked_at`); either way it grants
+    `revoked` is an administrator's act. A grant whose end date passed is `expired`, and one
+    made by an organisation that is currently suspended is `suspended` (S-15); all grant
     nothing. A live grant to an account nobody has used yet is `invited`.
     """
     if grant.revoked_at is not None:
         return "revoked", grant.revoked_at
     if not service._to_grant(grant).live_at(now):
-        return "revoked", grant.ends_at
+        return "expired", None
+    if suspended:
+        return "suspended", None
     if person is not None and person.invitation_pending:
         return "invited", None
     return "active", None
