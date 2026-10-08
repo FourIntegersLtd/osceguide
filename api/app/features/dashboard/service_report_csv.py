@@ -78,7 +78,7 @@ async def export_sitting_results(
     report = await build_sitting_report(session, org_id, sitting_id)
     payload = render_sitting_results_csv(report)
     filename = f"{_filename_stem(report.sitting.name, report.sitting.id)}-results.csv"
-    await audit.record_for_org(
+    await audit.record_for_owner(
         session,
         org_id=org_id,
         actor=actor,

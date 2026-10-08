@@ -168,14 +168,23 @@ async def end_circuit(
     retried job rather than dropped (R-13).
     """
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
-    if circuit.ended_at is None:
-        if not await service_steps.clear_patient(
-            session, org_id, circuit, agents=agents, now=now, station_sat=True
-        ):
-            await service_steps.clear_patient_later(session, circuit)
-        await service_steps.finish(session, org_id, circuit, now=now)
-        await announcements.circuit_changed(session, org_id, circuit_id, name=announcements.ENDED)
+    await _end_if_open(session, org_id, circuit, agents=agents, now=now)
     return await read_circuit(session, org_id, circuit_id)
+
+
+async def _end_if_open(
+    session: AsyncSession, org_id: uuid.UUID, circuit: Circuit, *, agents: RoomAgents, now: datetime
+) -> bool:
+    """End a loaded, locked circuit if it is still running; whether this call ended it."""
+    if circuit.ended_at is not None:
+        return False
+    if not await service_steps.clear_patient(
+        session, org_id, circuit, agents=agents, now=now, station_sat=True
+    ):
+        await service_steps.clear_patient_later(session, circuit)
+    await service_steps.finish(session, org_id, circuit, now=now)
+    await announcements.circuit_changed(session, org_id, circuit.id, name=announcements.ENDED)
+    return True
 
 
 async def end_circuit_by(
@@ -189,9 +198,7 @@ async def end_circuit_by(
 ) -> CircuitRead:
     """A person ends the circuit: `end_circuit`, plus the audit row (none if it had already ended)."""
     circuit = await _require_circuit(session, org_id, circuit_id, lock=True)
-    was_open = circuit.ended_at is None
-    ended = await end_circuit(session, org_id, circuit_id, agents=agents, now=now)
-    if was_open:
+    if await _end_if_open(session, org_id, circuit, agents=agents, now=now):
         await tenancy_audit.record_for_owner(
             session,
             org_id=org_id,
@@ -201,7 +208,7 @@ async def end_circuit_by(
             target_id=str(circuit_id),
             summary=f"Circuit {circuit.name} ended by hand",
         )
-    return ended
+    return await read_circuit(session, org_id, circuit_id)
 
 
 async def end_abandoned(

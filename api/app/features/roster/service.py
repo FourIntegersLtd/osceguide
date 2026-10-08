@@ -251,13 +251,13 @@ ANONYMISED_NAME = "Anonymised trainee"
 
 
 def shown_identity(
-    trainee: TraineeRead | None, name: str | None, email: str | None
+    trainee: TraineeRead | None, person: identity.UserRef | None
 ) -> tuple[str | None, str | None]:
     """The name and email to show for a person: their account's, unless the roster entry was
     anonymised, when the account is no longer to be named (S-21) and the scrubbed address stands."""
     if trainee is not None and trainee.anonymised:
         return ANONYMISED_NAME, trainee.email
-    return name, email
+    return (person.name, person.email) if person else (None, None)
 
 
 async def trainees_by_user_id(

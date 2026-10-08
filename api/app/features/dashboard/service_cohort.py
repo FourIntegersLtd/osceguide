@@ -64,9 +64,7 @@ async def build_cohort_summary(
 
         ref = people.get(user_id)
         trainee = trainees.get(user_id)
-        shown_name, shown_email = roster.shown_identity(
-            trainee, ref.name if ref else None, ref.email if ref else None
-        )
+        shown_name, shown_email = roster.shown_identity(trainee, ref)
         candidates.append(
             CohortCandidate(
                 trainee=ConsolePerson(

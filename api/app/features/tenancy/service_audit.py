@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, overload
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,7 +57,7 @@ async def record(
     )
 
 
-async def record_for_org(
+async def _record_for_org(
     session: AsyncSession,
     *,
     org_id: uuid.UUID,
@@ -87,6 +87,36 @@ async def record_for_org(
     )
 
 
+@overload
+async def record_for_owner(
+    session: AsyncSession,
+    *,
+    org_id: uuid.UUID,
+    actor: Principal | Connector,
+    action: str,
+    target_type: str,
+    target_id: str,
+    summary: str | None = None,
+    meta: dict[str, Any] | None = None,
+) -> None:
+    """Record one act inside an organisation's own audit log."""
+
+
+@overload
+async def record_for_owner(
+    session: AsyncSession,
+    *,
+    org_id: None,
+    actor: Principal,
+    action: str,
+    target_type: str,
+    target_id: str,
+    summary: str | None = None,
+    meta: dict[str, Any] | None = None,
+) -> None:
+    """Record one platform-admin act in the platform's audit log."""
+
+
 async def record_for_owner(
     session: AsyncSession,
     *,
@@ -96,17 +126,24 @@ async def record_for_owner(
     target_type: str,
     target_id: str,
     summary: str | None = None,
+    meta: dict[str, Any] | None = None,
 ) -> None:
     """One audit row in its owner's log: the organisation's own, or the platform's when `org_id`
-    is empty (the library and the platform catalogue)."""
+    is empty (the library and the platform catalogue). A connector acts only inside an
+    organisation, which the overloads enforce."""
     if org_id is None:
-        if not isinstance(actor, Principal):
-            raise TypeError("a directory connector acts inside an organisation, never on the platform")
+        assert isinstance(actor, Principal)  # unreachable through the overloads
         await record(
-            session, actor=actor, action=action, target_type=target_type, target_id=target_id, summary=summary
+            session,
+            actor=actor,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            summary=summary,
+            meta=meta,
         )
     else:
-        await record_for_org(
+        await _record_for_org(
             session,
             org_id=org_id,
             actor=actor,
@@ -114,4 +151,5 @@ async def record_for_owner(
             target_type=target_type,
             target_id=target_id,
             summary=summary,
+            meta=meta,
         )

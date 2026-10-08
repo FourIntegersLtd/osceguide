@@ -137,7 +137,7 @@ async def render_admin_result_pdf(
     payload, filename = await _render_known_result(
         session, revision_row, result, generated_at, user_id=trainee.user_id, for_admin=True
     )
-    await audit.record_for_org(
+    await audit.record_for_owner(
         session,
         org_id=org_id,
         actor=actor,
@@ -191,13 +191,12 @@ async def _candidate_name(
     """The person's account name, or the roster name when they have not signed in. An
     anonymised entry is named by the roster alone (S-21)."""
     trainee = await roster.read_trainee(session, org_id, trainee_id)
-    if trainee.anonymised:
-        return roster.ANONYMISED_NAME
+    person = None
     if user_id is not None:
-        people = await identity.user_refs_by_ids(session, [user_id])
-        person = people.get(user_id)
-        if person is not None and person.name.strip():
-            return person.name
+        person = (await identity.user_refs_by_ids(session, [user_id])).get(user_id)
+    name, _ = roster.shown_identity(trainee, person)
+    if name and name.strip():
+        return name
     given = " ".join(part for part in (trainee.first_name, trainee.last_name) if part)
     return given or trainee.email
 

@@ -72,7 +72,9 @@ async def test_ending_a_circuit_is_audited(client: AsyncClient, make_actor, db_s
     assert (
         await client.post(f"{KINGS}/circuits/{circuit['id']}/end", headers=bearer(admin))
     ).status_code == 200
-    assert "circuit.ended" in await actions(client, admin)
+    again = await client.post(f"{KINGS}/circuits/{circuit['id']}/end", headers=bearer(admin))
+    assert again.status_code == 200
+    assert (await actions(client, admin)).count("circuit.ended") == 1
 
 
 async def test_calling_off_a_sitting_is_audited(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
