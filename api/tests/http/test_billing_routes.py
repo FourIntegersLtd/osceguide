@@ -1087,6 +1087,40 @@ async def test_a_refund_after_the_credit_was_paid_out_records_a_negative_balance
     assert sorted((r.earned_pence, r.payout_status) for r in rows) == [(-250, "unpaid"), (250, "paid")]
 
 
+async def test_a_dispute_won_after_a_paid_out_credit_was_clawed_back_reverses_the_negative_row(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-13: the referrer was paid for a sale that stood after all, so the negative row goes."""
+    from datetime import UTC, datetime
+
+    from app.features.growth import repository as growth_repo
+
+    referrer_token, _, intent, _ = await _bought_with_a_code(client, make_actor, db_session, "wonpaid")
+    referrer = await identity_repo.user_by_email(db_session, "wonpaid-referrer@example.com")
+    assert referrer is not None
+    credit = next(r for r in await growth_repo.referrals_for(db_session, referrer.id) if r.earned_pence)
+    await growth_repo.set_payout(
+        db_session,
+        credit.id,
+        payout_status="paid",
+        payout_reference="BANK-2",
+        paid_at=datetime.now(UTC),
+        paid_by_user_id=None,
+    )
+    await db_session.commit()
+    await post_event(client, charge_event("evt_wonpaid_open", "charge.dispute.created", intent))
+    rows = [r for r in await growth_repo.referrals_for(db_session, referrer.id) if r.redeemed_at]
+    assert sorted(r.earned_pence for r in rows) == [-250, 250]
+
+    response = await post_event(client, dispute_closed_event("evt_wonpaid_close", intent, "won"))
+
+    assert response.json()["status"] == "applied"
+    rows = [r for r in await growth_repo.referrals_for(db_session, referrer.id) if r.redeemed_at]
+    assert sorted((r.earned_pence, r.payout_status) for r in rows) == [(250, "paid")]
+    balance = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
+    assert balance.json()["earned_pence"] == 250
+
+
 async def test_a_different_plan_is_bought_while_one_is_live_and_extends_from_the_current_end(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]

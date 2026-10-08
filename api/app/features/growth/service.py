@@ -306,9 +306,16 @@ async def restore_referral_purchase(
 ) -> bool:
     """Give back the credit a disputed purchase had lost, now the dispute is won.
 
-    Only a credit that was zeroed while unpaid is restored, to what the plan earns. One already paid
-    out and clawed back with a negative row is left for a person: nothing here moves money.
+    A credit zeroed while unpaid is restored to what the plan earns. One already paid out and clawed
+    back with a negative row loses that row while it is still unpaid, so the balance nets back to the
+    paid credit; a negative row a payout has already settled is left for a person. Nothing here moves money.
     """
+    paid = await repository.redemption_made_at(session, referred_user_id, paid_at)
+    if paid is not None:
+        clawback = await repository.clawback_of(session, paid.id)
+        if clawback is not None and clawback.payout_status == "unpaid":
+            await repository.delete_row(session, clawback)
+            return True
     credit = await repository.voided_redemption_made_at(session, referred_user_id, paid_at)
     if credit is None:
         return False
