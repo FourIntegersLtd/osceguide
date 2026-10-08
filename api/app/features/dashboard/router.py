@@ -119,7 +119,10 @@ async def read_supervisor_circuits(workspace: OrgStaff, session: Session) -> sch
 async def read_circuit_console(
     circuit_id: uuid.UUID, workspace: OrgStaff, session: Session, clock: ClockDep
 ) -> schemas_org.CircuitConsole:
-    """The screen an examination is run from: session, stations, trainees, staff and feedback state."""
+    """The screen an examination is run from: session, stations, trainees, staff and feedback state.
+
+    Reading it may advance this circuit if its clock ran out (S-7), like the live board.
+    """
     return await service_console.build_console(session, workspace.org_id, circuit_id, now=clock.now())
 
 

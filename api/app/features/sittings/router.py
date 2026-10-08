@@ -130,6 +130,7 @@ async def cancel_sitting(sitting_id: uuid.UUID, workspace: OrgAdmin, session: Se
         errors.TraineeRevokedError,
         errors.MarkingNotReady,
         errors.TraineeNotOnRosterError,
+        errors.ProgrammeNotActive,
     ),
 )
 async def add_circuit(

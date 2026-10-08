@@ -42,6 +42,8 @@ _LIVE = (Forbidden, *errors.LIVE_CIRCUIT_REFUSALS)
         errors.CircuitAlreadyEndedError,
         errors.SittingLockedError,
         errors.LeadCannotRun,
+        errors.ProgrammeNotActive,
+        OrgSuspended,
     ),
 )
 async def start_circuit(

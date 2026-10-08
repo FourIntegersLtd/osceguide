@@ -39,6 +39,9 @@ async def read_live_board(workspace: OrgStaff, session: Session, clock: ClockDep
     The screen that did not exist: a course lead on the morning of an OSCE
     could open one circuit's console, or a list of sittings that did not say
     which were live.
+
+    Reading the board may advance a circuit whose clock ran out (S-7): the api catches up
+    what the job worker did not.
     """
     return await service_live.build_live_board(session, workspace.org_id, now=clock.now())
 

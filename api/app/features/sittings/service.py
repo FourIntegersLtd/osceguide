@@ -133,6 +133,7 @@ async def add_circuit(
     """Build a new circuit inside a sitting: check the roster, build its slots, write it."""
     sitting = await _require_sitting(session, org_id, sitting_id)
     await ensure_sitting_open(session, org_id, sitting)
+    await ensure_sitting_programme_active(session, org_id, sitting)
     mode = domain.Mode(sitting.mode)
     # R3: a revoked trainee is not scheduled into an examination.
     await roster.ensure_rosterable(session, org_id, trainee_ids)
@@ -283,6 +284,12 @@ async def rubric_versions_for_slots(
 
 
 # --- Which rubric version a sitting is marked against.
+
+
+async def ensure_sitting_programme_active(session: AsyncSession, org_id: uuid.UUID, sitting: Sitting) -> None:
+    """S-28: a retired or paused programme keeps its sittings but starts nothing new under them."""
+    if sitting.programme_id is not None:
+        await catalog.ensure_programme_active(session, org_id, sitting.programme_id)
 
 
 async def rubric_version_for_programme(

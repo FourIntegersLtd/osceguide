@@ -26,6 +26,7 @@ from app.core.errors import raise_mapped
 from app.core.logging import get_logger
 from app.core.ports import RoomAgents
 from app.core.settings import Settings
+from app.core.tenancy import OrgSuspended
 from app.features.sittings import (
     announcements,
     domain,
@@ -44,8 +45,10 @@ from app.features.sittings.service import (
     _require_sitting,
     ensure_lead_may_run,
     ensure_sitting_not_cancelled,
+    ensure_sitting_programme_active,
     read_circuit,
 )
+from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as tenancy_audit
 from app.features.voice import service as voice
 from app.features.voice.errors import VoiceUnavailable
@@ -83,6 +86,11 @@ async def start_circuit(
         return await read_circuit(session, org_id, circuit_id)
     sitting = await _require_sitting(session, org_id, circuit.sitting_id)
     ensure_sitting_not_cancelled(sitting)
+    await ensure_sitting_programme_active(session, org_id, sitting)
+    # S-17: nothing new starts for a suspended organisation, whoever asks.
+    org = await tenancy.org_ref_by_id(session, org_id)
+    if org is None or not tenancy.org_permits_access(org.status):
+        raise OrgSuspended()
     # R-41: a lead who lost the role since the circuit was built cannot run it.
     await ensure_lead_may_run(session, org_id, circuit.supervisor_user_id)
 

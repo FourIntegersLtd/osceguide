@@ -54,8 +54,6 @@ async def my_sittings(
     ]
     orgs = await tenancy.org_refs_by_ids(session, {slot.sitting.org_id for slot in trainee_slots})
     org_slugs = {org_id: org.slug for org_id, org in orgs.items()}
-    # A suspended organisation's sittings stay listed but cannot be joined, as at the join gate.
-    suspended = {org_id for org_id, org in orgs.items() if not tenancy.org_permits_access(org.status)}
     if org_slug is not None:
         trainee_slots = [slot for slot in trainee_slots if org_slugs.get(slot.sitting.org_id) == org_slug]
     titles = await _titles_per_org(session, trainee_slots)
@@ -70,7 +68,7 @@ async def my_sittings(
 
     grouped: dict[uuid.UUID, MySitting] = {}
     for trainee_slot in trainee_slots:
-        open_to_join = _circuit_live(trainee_slot.circuit) and trainee_slot.sitting.org_id not in suspended
+        open_to_join = _circuit_live(trainee_slot.circuit)
         entry = grouped.get(trainee_slot.circuit.id)
         if entry is None:
             entry = MySitting(

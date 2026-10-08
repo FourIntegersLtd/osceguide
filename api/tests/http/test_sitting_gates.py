@@ -258,20 +258,75 @@ async def test_one_live_roster_row_keeps_the_organisation_visible_and_the_gate_a
     )
 
 
-async def test_a_suspended_organisations_sittings_are_not_joinable(
+async def test_a_suspension_mid_exam_lets_the_running_circuit_finish(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
+    """S-17: the candidate in the room can rejoin; only new work is refused."""
     org_id, _, _, token = await _rostered_candidate(client, make_actor, db_session, start=True)
     url = "/api/v1/me/sittings"
-    before = (await client.get(url, headers=bearer(token))).json()["items"][0]
     await tenancy_repo.set_organization_status(db_session, org_id, status="suspended")
     await db_session.commit()
     after = (await client.get(url, headers=bearer(token))).json()["items"][0]
-    assert (before["slots"][0]["joinable"], after["slots"][0]["joinable"], after["can_join"]) == (
-        True,
-        False,
-        False,
+    assert (after["slots"][0]["joinable"], after["can_join"]) == (True, True)
+
+
+async def test_a_suspended_organisation_starts_no_new_circuit(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-17: not even a platform admin starts a circuit for a suspended organisation."""
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    candidate = await a_user(db_session, "susp@example.com")
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate)],
+        station_version_ids=[station],
     )
+    await tenancy_repo.set_organization_status(db_session, org_id, status="suspended")
+    await db_session.flush()
+    root = await make_actor("root-susp@osceguide.com", platform_admin=True)
+
+    refused = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(root))
+
+    assert (refused.status_code, refused.json()["code"]) == (403, "organization_suspended")
+
+
+async def test_a_retired_programme_blocks_starting_and_adding_circuits_but_keeps_the_sitting(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-28: a sitting scheduled before the retirement stays, but nothing new runs under it."""
+    client._transport.app.dependency_overrides[get_room_agents] = lambda: FakeRoomAgents()  # type: ignore[attr-defined]
+    _, admin = await org_with_admin(client, make_actor)
+    programme_id = await add_programme(client, admin, org_slug="kings")
+    sitting = (await _schedule(client, admin, programme_id)).json()
+    station = await published_station(client, admin, "kings", "Chest pain")
+    candidate = await a_user(db_session, "retire@example.com")
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(candidate)],
+        station_version_ids=[station],
+    )
+    await _set_programme(client, admin, programme_id, "retired")
+
+    start = await client.post(f"/api/v1/orgs/kings/circuits/{circuit['id']}/start", headers=bearer(admin))
+    another = await client.post(
+        f"/api/v1/orgs/kings/sittings/{sitting['id']}/circuits",
+        json={"name": "B", "trainee_ids": [str(candidate)], "station_version_ids": [station]},
+        headers=bearer(admin),
+    )
+    kept = await client.get(f"/api/v1/orgs/kings/sittings/{sitting['id']}", headers=bearer(admin))
+
+    assert (start.status_code, start.json()["code"]) == (409, "programme_not_active")
+    assert (another.status_code, another.json()["code"]) == (409, "programme_not_active")
+    assert kept.status_code == 200
 
 
 async def test_a_repeat_start_of_a_running_circuit_is_a_read_even_if_the_lead_was_demoted(

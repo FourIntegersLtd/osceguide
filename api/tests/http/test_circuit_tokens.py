@@ -243,10 +243,10 @@ async def test_a_candidate_cannot_take_an_examiners_token(
     assert response.status_code == 403
 
 
-async def test_a_suspended_organisation_lets_nobody_into_the_room(
+async def test_a_suspension_leaves_a_running_circuit_joinable(
     client: AsyncClient, make_actor, db_session: AsyncSession, tokens: FakeVoiceTokens
 ) -> None:  # type: ignore[no-untyped-def]
-    """S-1: a candidate still joined a live circuit after the platform suspended the org."""
+    """S-17: a suspension mid-exam lets the running circuit finish (it only stops new starts)."""
     _, candidate, circuit_id, _ = await a_live_circuit(client, make_actor, db_session)
     root = await make_actor("root2@osceguide.com", platform_admin=True)
     suspended = await client.post("/api/v1/platform/organizations/kings/suspend", headers=bearer(root))
@@ -254,9 +254,8 @@ async def test_a_suspended_organisation_lets_nobody_into_the_room(
 
     response = await client.post(f"/api/v1/me/circuits/{circuit_id}/join-token", headers=bearer(candidate))
 
-    assert response.status_code == 403, response.text
-    assert response.json()["code"] == "organization_suspended"
-    assert tokens.issued == []
+    assert response.status_code == 200, response.text
+    assert len(tokens.issued) == 1
 
 
 async def test_a_revoked_trainee_cannot_join_their_circuit(
