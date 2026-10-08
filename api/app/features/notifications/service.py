@@ -216,6 +216,17 @@ def _account_reopened(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _account_erased(escaped_fields: dict[str, str]) -> str:
+    """The body sent to the address an erased account had, once, as the last message to it."""
+    return _page(
+        "Your account has been erased",
+        "<p>Thirty days after you closed your OSCE Guide account, we erased it: your name, email, "
+        "photo, sign-in details and the transcripts of your consultations are gone.</p>"
+        "<p>Payment records are kept for six years, as our privacy policy says. "
+        "This is the last message we will send to this address.</p>",
+    )
+
+
 def _email_changed_notice(escaped_fields: dict[str, str]) -> str:
     """The body sent to the old address once an account has moved to a new one."""
     return _page(
@@ -464,6 +475,7 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "email_changed_notice": _email_changed_notice,
     "email_change_requested": _email_change_requested,
     "account_reopened": _account_reopened,
+    "account_erased": _account_erased,
     "payment_receipt": _payment_receipt,
     "entitlement_expiring": _entitlement_expiring,
     "invitation": _invitation,

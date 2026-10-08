@@ -33,6 +33,7 @@ from app.features.media_production import service as media_production
 from app.features.notifications import service as notifications
 from app.features.peer_practice import service_privacy as peer_practice_privacy
 from app.features.roster import service as roster
+from app.features.tenancy import service as tenancy
 from app.features.tutor_memory import service as tutor_memory_service
 
 log = get_logger(__name__)
@@ -100,6 +101,28 @@ async def erase_account(session: AsyncSession, user_id: uuid.UUID, *, now: datet
     recordings_deleted = await _erase_peer_recordings(session, get_settings(), user_id)
     await tutor_memory_service.forget_everything(session, user_id=user_id, include_debriefs=True)
     await inbox_service.erase_for_user(session, user_id)
+    if address and not address.endswith("@invalid"):
+        # After erase_recipients, which would otherwise drop it. The one message that still names the
+        # address: it is sent once and carries no payload.
+        await notifications.enqueue_email(
+            session,
+            recipient=address,
+            subject="Your OSCE Guide account has been erased",
+            template_key="account_erased",
+            payload={},
+            idempotency_key=f"account_erased:{user_id}",
+        )
+    await tenancy.record_audit(
+        session,
+        org_id=None,
+        actor_user_id=None,
+        actor_email=None,
+        action="account.erased",
+        at=now,
+        target_type="user",
+        target_id=str(user_id),
+        summary="Account erased 30 days after closure by the scheduled erasure job",
+    )
     log.info(
         "account erased",
         user_id=str(user_id),

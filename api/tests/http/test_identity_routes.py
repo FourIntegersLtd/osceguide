@@ -805,3 +805,70 @@ async def test_reopening_a_closed_account_emails_the_owner(
         ).scalars()
     )
     assert told == ["new@example.com"]
+
+
+async def test_erasure_is_audited_without_personal_data(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """S-14: who erased whom is on the log; the summary names no one."""
+    from sqlalchemy import select
+
+    from app.features.tenancy.models import AuditEntry
+
+    user_id = await _closed_long_ago(client, db_session, "audited@example.com")
+    await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
+    await db_session.commit()
+
+    rows = list(
+        (
+            await db_session.execute(
+                select(AuditEntry).where(
+                    AuditEntry.action == "account.erased", AuditEntry.target_id == str(user_id)
+                )
+            )
+        ).scalars()
+    )
+    assert len(rows) == 1
+    assert rows[0].actor_user_id is None
+    assert rows[0].actor_email is None
+    assert rows[0].summary == "Account erased 30 days after closure by the scheduled erasure job"
+
+
+async def test_erasure_clears_the_exam_and_sign_in_links_and_confirms_by_email(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """S-21/E-1: personal fields go, and the confirmation goes to the address before it is scrubbed."""
+    from datetime import date
+
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+
+    user_id = await _closed_long_ago(client, db_session, "confirm@example.com")
+    user = await identity_repo.user_by_id(db_session, user_id)
+    assert user is not None
+    user.exam_date = date(2027, 1, 5)
+    user.exam_code = "sca"
+    await identity_repo.link_identity(
+        db_session, user_id=user_id, provider="clerk", subject="sub_123", tenant_slug=None
+    )
+    await db_session.commit()
+
+    await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
+    await db_session.commit()
+
+    scrubbed = await identity_repo.user_by_id(db_session, user_id)
+    assert scrubbed is not None
+    await db_session.refresh(scrubbed)
+    assert scrubbed.exam_date is None
+    assert scrubbed.exam_code is None
+    assert await identity_repo.identity_by_subject(db_session, "clerk", "sub_123") is None
+    mail = list(
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "account_erased")
+            )
+        ).scalars()
+    )
+    assert [(m.recipient, m.status) for m in mail] == [("confirm@example.com", "pending")]
+    assert mail[0].payload == {}
