@@ -13,9 +13,10 @@ export function checkoutErrorMessage(cause: unknown, supportEmail: string): stri
   if (hasCode(cause, "referral_discount_unavailable")) {
     return "That plan has no referral discount. Choose another plan, or clear the code.";
   }
-  // Not in the generated code union until `schema.d.ts` is regenerated from the API.
+  // Not in the generated code union until `schema.d.ts` is regenerated from the API. The server's
+  // message says what to do, so it is shown as it is.
   if (isPlatformError(cause) && (cause.code as string) === "already_purchased") {
-    return "You already have this plan. Choose a different plan to extend your access, or buy it again when it ends.";
+    return cause.message;
   }
   if (hasCode(cause, "plan_not_available")) {
     return "That plan is not available for your exam. Choose another plan.";

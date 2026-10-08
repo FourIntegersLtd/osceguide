@@ -118,7 +118,7 @@ async def refund(
     async def revoke(entitlement_id: uuid.UUID) -> None:
         await entitlements.revoke(session, entitlement_id, reason=f"refund: {reason}", actor=actor, now=now)
 
-    if await service_settlement.withdraw_payment(session, payment, revoke=revoke):
+    if await service_settlement.withdraw_payment(session, payment, revoke=revoke, now=now):
         await service_audit.record(
             session,
             actor=actor,

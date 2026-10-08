@@ -9,7 +9,7 @@ const refused = (status: number, code: string, message = "Server words") =>
 test("a second purchase of a held exam says so", () => {
   assert.equal(
     checkoutErrorMessage(refused(409, "already_purchased"), "help@x.test"),
-    "You already have this plan. Choose a different plan to extend your access, or buy it again when it ends.",
+    "Server words",
   );
 });
 

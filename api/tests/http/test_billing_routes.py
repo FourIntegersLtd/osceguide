@@ -1030,3 +1030,61 @@ async def test_a_different_plan_is_bought_while_one_is_live_and_extends_from_the
         "/api/v1/billing/checkout", json={"plan_code": "three_month"}, headers=bearer(token)
     )
     assert again.status_code == 409, again.text
+
+
+async def test_two_events_for_one_payment_intent_grant_once(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Different event ids can carry the same payment intent; the second must not stack a grant."""
+    from app.features.entitlements import repository as ent_repo
+
+    await a_plan(db_session)
+    await a_customer(db_session, "twoevents@example.com")
+    first = checkout_event("evt_dup_a", "twoevents@example.com")
+    second = checkout_event("evt_dup_b", "twoevents@example.com")
+    second["data"]["object"]["payment_intent"] = first["data"]["object"]["payment_intent"]
+
+    assert (await post_event(client, first)).json()["status"] == "applied"
+    await post_event(client, second)
+
+    user = await identity_repo.user_by_email(db_session, "twoevents@example.com")
+    assert user is not None
+    assert len(await ent_repo.for_user(db_session, user.id)) == 1
+
+
+async def test_refunding_the_first_plan_pulls_a_stacked_plan_forward(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A-25: the stacked grant starts when the refunded one ended, so refunding the first leaves
+    a gap unless the later grant moves to start now."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.features.entitlements import repository as ent_repo
+
+    await a_plan(db_session)
+    await billing_repo.create_plan(
+        db_session,
+        code="three_month",
+        stripe_price_id="price_three_month",
+        amount_pence=5999,
+        duration_days=90,
+        exam_code="sca",
+    )
+    await a_customer(db_session, "gap@example.com")
+    await post_event(client, checkout_event("evt_gap_1", "gap@example.com"))
+    await post_event(client, checkout_event("evt_gap_2", "gap@example.com", "price_three_month"))
+    user = await identity_repo.user_by_email(db_session, "gap@example.com")
+    assert user is not None
+    first, second = sorted(await ent_repo.for_user(db_session, user.id), key=lambda grant: grant.created_at)
+    assert second.starts_at == first.ends_at
+
+    refunded = await post_event(client, charge_event("evt_gap_r", "charge.refunded", "pi_evt_gap_1"))
+    assert refunded.json()["status"] == "applied"
+
+    await db_session.refresh(first)
+    await db_session.refresh(second)
+    assert first.revoked_at is not None
+    assert second.revoked_at is None
+    now = datetime.now(UTC)
+    assert abs(second.starts_at - now) < timedelta(minutes=5)
+    assert second.ends_at - second.starts_at == timedelta(days=90)

@@ -672,3 +672,45 @@ async def test_only_an_admin_of_that_partner_org_reads_it(
         )
         assert response.status_code == 403, response.text
         assert response.json()["code"] == "not_a_partner_reporter"
+
+
+async def test_a_suspended_partner_org_or_a_revoked_admin_is_refused(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.tenancy import repository as tenancy_repo
+
+    suspended = await _partner_org_admin(db_session, make_actor, email="pa-susp@example.com", slug="gone")
+    org = await tenancy_repo.organization_by_slug(db_session, "gone")
+    assert org is not None
+    await tenancy_repo.set_organization_status(db_session, org.id, status="suspended")
+    revoked = await _partner_org_admin(db_session, make_actor, email="pa-rev@example.com", slug="kept")
+    kept = await tenancy_repo.organization_by_slug(db_session, "kept")
+    user = await identity_repo.user_by_email(db_session, "pa-rev@example.com")
+    assert kept is not None and user is not None
+    (membership,) = await tenancy_repo.memberships_for_user_in_org(db_session, kept.id, user.id)
+    await tenancy_repo.set_membership_revoked(db_session, kept.id, membership.id, at=datetime.now(UTC))
+    await db_session.commit()
+    for token, slug in ((suspended, "gone"), (revoked, "kept")):
+        response = await client.get(
+            f"/api/v1/growth/partners/{slug}/reporting/summary", params=date_range(), headers=bearer(token)
+        )
+        assert response.status_code == 403, f"{slug}: {response.text}"
+
+
+async def test_a_key_that_is_no_pilot_and_no_partner_org_is_unknown(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    admin = await make_actor("pa-root@example.com", platform_admin=True)
+    response = await client.get(
+        "/api/v1/growth/partners/nobody/reporting/summary", params=date_range(), headers=bearer(admin)
+    )
+    assert response.status_code == 404, response.text
+    assert response.json()["code"] == "unknown_partner"
+
+
+async def test_a_partner_org_admin_reads_its_own_funnel(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    token = await _partner_org_admin(db_session, make_actor, email="pa-funnel@example.com", slug="wiley")
+    response = await client.get("/api/v1/growth/partners/wiley/funnel", headers=bearer(token))
+    assert response.status_code == 200, response.text
+    other = await client.get("/api/v1/growth/partners/bmj/funnel", headers=bearer(token))
+    assert other.status_code == 403, other.text

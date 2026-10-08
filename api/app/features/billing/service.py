@@ -41,7 +41,7 @@ async def _apply_withdrawal(session: AsyncSession, *, event: dict[str, Any], now
     async def revoke(entitlement_id: uuid.UUID) -> None:
         await entitlements.withdraw(session, entitlement_id, now=now)
 
-    return await withdraw_payment(session, payment, revoke=revoke)
+    return await withdraw_payment(session, payment, revoke=revoke, now=now)
 
 
 def plan_label(plan_code: str) -> str:

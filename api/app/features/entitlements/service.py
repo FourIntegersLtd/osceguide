@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Collection
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -151,3 +151,27 @@ def _read(entitlement: Entitlement, exam_code: str, *, now: datetime) -> Entitle
         revoked_at=entitlement.revoked_at,
         live=_to_grant(entitlement).live_at(now),
     )
+
+
+async def pull_stacked_purchases_forward(
+    session: AsyncSession, withdrawn_id: uuid.UUID, *, now: datetime
+) -> None:
+    """A purchase was taken back: purchases bought to start where it ended start earlier by the
+    time it no longer covers, so the buyer is not left with a gap before access they paid for."""
+    withdrawn = await repository.by_id(session, withdrawn_id)
+    if withdrawn is None or withdrawn.source != "purchase" or withdrawn.ends_at is None:
+        return
+    shift = withdrawn.ends_at - max(withdrawn.starts_at, now)
+    if shift <= timedelta(0):
+        return
+    for later in await repository.for_user_and_exam(session, withdrawn.user_id, withdrawn.exam_id):
+        if (
+            later.id != withdrawn.id
+            and later.source == "purchase"
+            and later.revoked_at is None
+            and later.ends_at is not None
+            and later.starts_at >= withdrawn.ends_at
+        ):
+            await repository.set_window(
+                session, later.id, starts_at=later.starts_at - shift, ends_at=later.ends_at - shift
+            )

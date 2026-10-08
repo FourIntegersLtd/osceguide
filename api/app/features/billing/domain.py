@@ -92,9 +92,11 @@ def access_window(
     return starts_at, starts_at + timedelta(days=plan.duration_days)
 
 
-def base_plan_code(plan_code: str) -> str:
-    """The plan a referral-discounted plan is the discounted copy of; any other plan is itself."""
-    return plan_code.removesuffix(REFERRAL_PLAN_SUFFIX)
+def holds_same_plan(held_plan_codes: Iterable[str], plan_code: str) -> bool:
+    """Whether the plan being bought is one already held. A referral-discounted plan is the same plan
+    as its full-price one, on either side."""
+    wanted = plan_code.removesuffix(REFERRAL_PLAN_SUFFIX)
+    return any(held.removesuffix(REFERRAL_PLAN_SUFFIX) == wanted for held in held_plan_codes)
 
 
 def should_process_event(*, seen: Iterable[str], event_id: str) -> bool:

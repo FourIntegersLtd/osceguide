@@ -54,6 +54,11 @@ async def settle_payment(
     Also used by the platform console for a payment that did not come through Stripe, so it
     takes exactly the same steps as the webhook.
     """
+    # A second event for a payment already recorded (Stripe's own retries use one event id, but a
+    # different event can carry the same intent) must not stack a second grant.
+    recorded = await repository.payment_by_intent(session, intent_id)
+    if recorded is not None:
+        return recorded
     if not plan_row.exam_code:
         # Defaulting to one exam here silently sold the wrong thing (B-2). The
         # column is NOT NULL now; a row from before that holds '' and lands here.
@@ -138,6 +143,7 @@ async def withdraw_payment(
     payment: Payment,
     *,
     revoke: Callable[[uuid.UUID], Awaitable[None]],
+    now: datetime,
 ) -> bool:
     """Take back what a payment bought: its grant, and the referral credit it earned.
 
@@ -151,6 +157,8 @@ async def withdraw_payment(
     entitlement_id = payment.entitlement_id
     if entitlement_id is not None and not await entitlements.revoked_ids(session, [entitlement_id]):
         await revoke(entitlement_id)
+        # Access bought to start after this one would otherwise sit idle behind a gap.
+        await entitlements.pull_stacked_purchases_forward(session, entitlement_id, now=now)
         withdrawn = True
     clawed_back = await growth.claw_back_referral_purchase(
         session, referred_user_id=payment.user_id, paid_at=payment.paid_at

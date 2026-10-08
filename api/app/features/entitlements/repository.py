@@ -169,6 +169,15 @@ async def set_ends_at(session: AsyncSession, entitlement_id: uuid.UUID, *, ends_
     await session.execute(update(Entitlement).where(Entitlement.id == entitlement_id).values(ends_at=ends_at))
 
 
+async def set_window(
+    session: AsyncSession, entitlement_id: uuid.UUID, *, starts_at: datetime, ends_at: datetime | None
+) -> None:
+    """Move a grant's dates, so access bought to follow another can start sooner."""
+    await session.execute(
+        update(Entitlement).where(Entitlement.id == entitlement_id).values(starts_at=starts_at, ends_at=ends_at)
+    )
+
+
 async def live_user_ids_for_exam(
     session: AsyncSession, exam_id: uuid.UUID, *, now: datetime
 ) -> set[uuid.UUID]:

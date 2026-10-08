@@ -25,6 +25,7 @@ from app.features.growth.schemas import (
     UpdatePilotConfig,
 )
 from app.features.notifications import service as notifications
+from app.features.tenancy import service as tenancy
 
 log = get_logger(__name__)
 
@@ -284,9 +285,15 @@ def require_partner(partner: str) -> str:
     return partner_key
 
 
-def organisation_partner(partner: str) -> str:
-    """The partner key, lower-cased, for a partner found by its organisation, not the pilot allowlist."""
-    return (partner or "").strip().lower()
+async def resolve_partner(session: AsyncSession, partner: str) -> str:
+    """The partner key for a read: a pilot partner, or the slug of a partner organisation.
+
+    `require_partner` stays the gate for anything that attributes or pays money.
+    """
+    partner_key = (partner or "").strip().lower()
+    if partner_key in domain.PILOT_PARTNERS or await tenancy.is_partner_org(session, partner_key):
+        return partner_key
+    raise errors.UnknownPartnerError()
 
 
 def require_bucket(bucket: str) -> str:

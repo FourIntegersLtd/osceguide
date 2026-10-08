@@ -42,7 +42,7 @@ async def read_partner_summary(
     Oracle: b2c `_to_partner_summary` — the same underlying numbers as the
     admin summary, with every money figure but the partner's own fee removed.
     """
-    partner_key = service_spend.organisation_partner(partner)
+    partner_key = await service_spend.resolve_partner(session, partner)
     service_spend.require_range(from_date, to_date)
     landed_from, landed_before = domain.ledger_bounds(from_date, to_date)
 
@@ -204,7 +204,7 @@ async def read_visits_over_time(
     bucket: str,
 ) -> CountOverTimeReport:
     """The partner Performance tab's visits chart."""
-    partner_key = service_spend.organisation_partner(partner)
+    partner_key = await service_spend.resolve_partner(session, partner)
     service_spend.require_range(from_date, to_date)
     bucket_key = service_spend.require_bucket(bucket)
     landed_from, landed_before = domain.ledger_bounds(from_date, to_date)
@@ -244,7 +244,7 @@ async def read_signups_over_time(
     bucket: str,
 ) -> CountOverTimeReport:
     """The partner Performance tab's signups chart."""
-    partner_key = service_spend.organisation_partner(partner)
+    partner_key = await service_spend.resolve_partner(session, partner)
     service_spend.require_range(from_date, to_date)
     bucket_key = service_spend.require_bucket(bucket)
     acquired_from, acquired_before = domain.ledger_bounds(from_date, to_date)
@@ -284,7 +284,7 @@ async def read_fee_over_time(
     bucket: str,
 ) -> FeeOverTimeReport:
     """The partner "Your fee" tab's chart: visits and their estimated fee, per bucket."""
-    partner_key = service_spend.organisation_partner(partner)
+    partner_key = await service_spend.resolve_partner(session, partner)
     service_spend.require_range(from_date, to_date)
     bucket_key = service_spend.require_bucket(bucket)
     landed_from, landed_before = domain.ledger_bounds(from_date, to_date)

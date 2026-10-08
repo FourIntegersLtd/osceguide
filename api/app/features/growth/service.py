@@ -9,12 +9,13 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import Principal
 from app.core.logging import get_logger
 from app.core.secrets_at_rest import decrypt_text, encrypt_text
 from app.core.settings import get_settings
 from app.features.billing import service as billing
 from app.features.catalog import service as catalog
-from app.features.growth import domain, errors, repository
+from app.features.growth import domain, errors, repository, service_spend
 from app.features.growth.schemas import (
     AcquisitionRead,
     ArrivalRecorded,
@@ -105,17 +106,15 @@ async def attribute_signup(
     )
 
 
-async def ensure_reporter(
-    session: AsyncSession, *, partner: str, user_id: uuid.UUID, email: str, is_platform_admin: bool
-) -> None:
+async def ensure_reporter(session: AsyncSession, *, partner: str, principal: Principal) -> None:
     """Reporting access is per partner, checked against the partner in the path
     rather than "is a reporter at all". A `partner_admin` of the partner's own
     organisation reads it without a separate reporter grant."""
-    if is_platform_admin:
+    if principal.is_platform_admin:
         return
-    if await repository.is_reporter(session, partner=partner, email=email):
+    if await repository.is_reporter(session, partner=partner, email=principal.email):
         return
-    if not await tenancy.is_partner_admin(session, user_id=user_id, partner=partner):
+    if not await tenancy.is_partner_admin(session, user_id=principal.user_id, partner=partner):
         raise errors.NotAReporter()
 
 
@@ -134,9 +133,7 @@ async def read_funnel(
     unfiltered behaviour); a range and/or `exam_code`/`utm_campaign` narrows
     every count to match, as the admin dashboard's funnel tab needs.
     """
-    partner_key = (partner or "").strip().lower()
-    if partner_key not in domain.PILOT_PARTNERS:
-        raise errors.UnknownPartnerError()
+    partner_key = await service_spend.resolve_partner(session, partner)
 
     if from_date is None and to_date is None and exam_code is None and utm_campaign is None:
         # The whole pilot to date — the original, unfiltered behaviour.
@@ -414,7 +411,7 @@ async def add_reporter(session: AsyncSession, *, partner: str, email: str) -> No
 
 
 async def tracking_references(
-    session: AsyncSession, *, partner: str, user_id: uuid.UUID, email: str, is_platform_admin: bool
+    session: AsyncSession, *, partner: str, principal: Principal
 ) -> list[TrackingReference]:
     """The references a partner puts in its links, one per exam in the pilot.
 
@@ -424,9 +421,7 @@ async def tracking_references(
     partner_key = (partner or "").strip().lower()
     if partner_key not in domain.PILOT_PARTNERS:
         raise errors.UnknownPartnerError()
-    await ensure_reporter(
-        session, partner=partner_key, user_id=user_id, email=email, is_platform_admin=is_platform_admin
-    )
+    await ensure_reporter(session, partner=partner_key, principal=principal)
     pilot_exams = sorted(await catalog.pilot_exam_codes(session))
     return [
         TrackingReference(
