@@ -4,12 +4,13 @@ import {
   AsyncBoundary,
   Badge,
   Button,
+  LoadMore,
   Panel,
   Row,
   RowList,
   Select,
 } from "@/foundation/ui";
-import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { errorMessage, useCursorPages, useToast } from "@/foundation/hooks";
 import {
   listOrgMembershipsForSupport,
   type Membership,
@@ -23,8 +24,8 @@ import { roleLabel } from "@/foundation/session/roles";
 import { MEMBER_ROLES, humanise, oneOptionPerLabel, rolesForOrgType } from "@/domains/platform/support";
 
 export function MembersSection({ slug, orgType }: { slug: string; orgType: string }) {
-  const state = useAsync(
-    (signal) => listOrgMembershipsForSupport(slug, { limit: 50 }, signal),
+  const pages = useCursorPages(
+    (cursor, signal) => listOrgMembershipsForSupport(slug, { limit: 50, cursor }, signal),
     [slug],
   );
 
@@ -35,28 +36,34 @@ export function MembersSection({ slug, orgType }: { slug: string; orgType: strin
       padding="none"
     >
       <AsyncBoundary
-        state={state}
-        isEmpty={(page) => page.items.length === 0}
+        state={pages.state}
+        isEmpty={(items) => items.length === 0}
         empty={{
           title: "No members",
-          description: "Nobody has joined this organisation yet.",
+          description: "No staff have joined this organisation yet. Trainees are managed on its roster.",
           bare: true,
         }}
       >
-        {(page) => (
+        {(items) => (
           <RowList flush>
-            {page.items.map((membership) => (
+            {items.map((membership) => (
               <MemberRow
                 key={membership.id}
                 membership={membership}
                 slug={slug}
                 orgType={orgType}
-                onChanged={state.reload}
+                onChanged={pages.state.reload}
               />
             ))}
           </RowList>
         )}
       </AsyncBoundary>
+      <LoadMore
+        hasMore={pages.hasMore}
+        busy={pages.loadingMore}
+        onLoad={pages.loadMore}
+        error={pages.moreError}
+      />
     </Panel>
   );
 }

@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { PlatformError } from "@/foundation/platform-client";
 import { roleLabel } from "@/foundation/session/roles";
 import {
   formatDetail,
   humanise,
+  liveFeedLabel,
+  provisionFieldErrors,
   jobTaskLabel,
   messageSourceLabel,
   rolesForOrgType,
@@ -71,4 +74,20 @@ test("a menu offers one option per label, and a seat is the tenant admin only", 
     "supervisor",
     "trainee",
   ]);
+});
+
+test("a dropped live feed says how old the figures on screen are", () => {
+  const at = new Date("2026-10-08T12:34:00Z");
+  assert.deepEqual(liveFeedLabel(true, at), { tone: "success", text: "Live" });
+  assert.deepEqual(liveFeedLabel(false, null), { tone: "warning", text: "Reconnecting" });
+  const stale = liveFeedLabel(false, at);
+  assert.equal(stale.tone, "warning");
+  assert.match(stale.text, /^Reconnecting · figures from /);
+});
+
+test("a taken slug is shown under the slug field, not as a page alert", () => {
+  const taken = new PlatformError(409, { code: "org_slug_taken", message: "That slug is taken" } as never);
+  assert.deepEqual(provisionFieldErrors(taken), { slug: "That slug is taken" });
+  const other = new PlatformError(500, { code: "internal_error", message: "boom" } as never);
+  assert.deepEqual(provisionFieldErrors(other), {});
 });

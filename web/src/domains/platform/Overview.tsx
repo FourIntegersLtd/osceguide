@@ -90,7 +90,7 @@ export function PlatformOverview() {
                 }
               >
                 {attention.length === 0
-                  ? "Every organisation is active or on trial."
+                  ? "None is suspended, lapsed or ending within thirty days."
                   : "Suspended, lapsed, or ending within thirty days."}
               </B2CHero>
 
@@ -109,7 +109,7 @@ export function PlatformOverview() {
                     <EmptyPanel
                       bare
                       title="All clear"
-                      description="Every organisation is active or on trial."
+                      description="None is suspended, lapsed or ending within thirty days."
                     />
                   ) : (
                     <RowList flush>

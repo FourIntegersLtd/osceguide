@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   AsyncBoundary,
@@ -20,7 +20,7 @@ import {
   type TutorMemoryReindex,
 } from "@/domains/platform/support/api";
 import { UndeliveredMail } from "@/domains/platform/UndeliveredMail";
-import { formatMoment } from "@/domains/platform/support";
+import { formatMoment, liveFeedLabel } from "@/domains/platform/support";
 import { BackgroundTasks, type JobStatus } from "@/domains/platform/BackgroundTasks";
 
 /**
@@ -35,6 +35,12 @@ export function Ops() {
   const stream = useEventStream<Machinery>(machineryStreamPath(status));
   // Straight after a tab switch the last frame is still the old tab's.
   const pushed = stream.data?.job_status === status ? stream.data : null;
+  // When the figures on screen last arrived: the last pushed frame, else the first read.
+  const lastFrameAt = useMemo(
+    () => (pushed ?? initial.data ? new Date() : null),
+    [pushed, initial.data],
+  );
+  const live = liveFeedLabel(stream.connected, lastFrameAt);
   const machinery = { ...initial, data: pushed ?? initial.data };
   const health = { ...machinery, data: machinery.data?.health ?? null };
   const capacity = { ...machinery, data: machinery.data?.capacity ?? null };
@@ -46,9 +52,7 @@ export function Ops() {
         title="System health"
         description="Pushed live from the platform."
         actions={
-          <Badge tone={stream.connected ? "success" : "warning"}>
-            {stream.connected ? "Live" : "Reconnecting"}
-          </Badge>
+          <Badge tone={live.tone}>{live.text}</Badge>
         }
       />
 

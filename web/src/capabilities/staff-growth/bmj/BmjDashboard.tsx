@@ -156,7 +156,7 @@ export function BmjDashboard() {
               report ? <RevenueOverTimeSection copy={copy.revenueOverTime} report={report} /> : null
             }
           </AsyncBoundary>
-          <AsyncBoundary state={summary} failure={() => null}>
+          <AsyncBoundary state={summary} failure={summaryFailure("We couldn't load revenue by plan", "")}>
             {(data) =>
               data ? (
                 <RevenueByPlanSection copy={copy.revenueByPlan} rows={data.revenue.revenue_by_plan} />

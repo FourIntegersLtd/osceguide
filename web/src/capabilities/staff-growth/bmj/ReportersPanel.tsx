@@ -25,11 +25,7 @@ import {
   listPartnerReporters,
   revokePartnerReporter,
 } from "@/capabilities/staff-growth/api";
-
-/** Whether an address plausibly belongs to the partner (bmj -> @bmj.com). */
-export function isPartnerAddress(email: string, partner: string): boolean {
-  return email.trim().toLowerCase().endsWith(`@${partner.toLowerCase()}.com`);
-}
+import { isPartnerAddress } from "@/capabilities/staff-growth/bmj/partnerAddress";
 
 /** The people at the partner who may sign in to the partner dashboard: list, add, remove. */
 export function ReportersPanel({ partner }: { partner: string }) {

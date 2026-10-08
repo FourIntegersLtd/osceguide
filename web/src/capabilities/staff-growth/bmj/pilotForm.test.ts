@@ -12,16 +12,17 @@ describe("pilot settings form", () => {
     assert.equal(formatThresholdsForInput([50000, 100000]), "500, 1000");
   });
 
-  it("builds the save body, always resetting alert history", () => {
-    assert.deepEqual(pilotUpdateFromForm("0.40", "500, 1000"), {
+  it("resets alert history only when the thresholds changed", () => {
+    assert.deepEqual(pilotUpdateFromForm("0.40", "500, 1000", [50000, 100000]), {
       cost_per_click_pence: 40,
       spend_alert_thresholds_pence: [50000, 100000],
-      reset_spend_alerts: true,
+      reset_spend_alerts: false,
     });
+    assert.equal(pilotUpdateFromForm("0.40", "500, 2000", [50000, 100000])?.reset_spend_alerts, true);
   });
 
   it("refuses a rate that is not a non-negative amount", () => {
-    assert.equal(pilotUpdateFromForm("abc", "500"), null);
-    assert.equal(pilotUpdateFromForm("-1", "500"), null);
+    assert.equal(pilotUpdateFromForm("abc", "500", []), null);
+    assert.equal(pilotUpdateFromForm("-1", "500", []), null);
   });
 });

@@ -101,19 +101,22 @@ function PaymentRow({
         <Badge tone={payment.entitlement_id ? "success" : "neutral"}>
           {payment.entitlement_id ? "Granted" : "No grant"}
         </Badge>
-        <InlineAction
-          label="Record refund"
-          tone="danger"
-          description="This does not refund any money; do that in Stripe. It removes the access this payment bought and keeps the payment on record."
-          onConfirm={async (reason) => {
-            await recordRefund(payment.id, reason);
-            toast.success(
-              "Refund recorded",
-              "The access this payment bought has been revoked.",
-            );
-            onChanged();
-          }}
-        />
+        {/* Nothing to revoke once the grant is gone, so a second "refund" would only look like it did something. */}
+        {payment.entitlement_id ? (
+          <InlineAction
+            label="Record refund"
+            tone="danger"
+            description="This does not refund any money; do that in Stripe. It removes the access this payment bought and keeps the payment on record."
+            onConfirm={async (reason) => {
+              await recordRefund(payment.id, reason);
+              toast.success(
+                "Refund recorded",
+                "The access this payment bought has been revoked.",
+              );
+              onChanged();
+            }}
+          />
+        ) : null}
       </div>
     </Row>
   );

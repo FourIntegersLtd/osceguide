@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Input, Modal, Select } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { provisionOrganization, type Organization } from "@/domains/platform/api";
-import { validationFields } from "@/foundation/platform-client";
-import { ORG_TYPES, slugError, slugify } from "@/domains/platform/support";
+import { ORG_TYPES, provisionFieldErrors, slugError, slugify } from "@/domains/platform/support";
 
 /**
  * Provisioning a tenant: a name, a slug and which console its members land in.
@@ -55,7 +54,7 @@ export function ProvisionForm({
         setSlugEdited(false);
         onProvisioned(organization);
       } catch (cause) {
-        const fields = validationFields(cause);
+        const fields = provisionFieldErrors(cause);
         setServerFields(fields);
         // A refusal about one field is shown under it; anything else above the form.
         if (Object.keys(fields).length === 0) {

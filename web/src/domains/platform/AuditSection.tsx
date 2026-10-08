@@ -1,7 +1,7 @@
 "use client";
 
-import { AsyncBoundary, Panel, Row, RowList } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { AsyncBoundary, LoadMore, Panel, Row, RowList } from "@/foundation/ui";
+import { useCursorPages } from "@/foundation/hooks";
 import {
   listOrgAuditForSupport,
   type AuditEntry,
@@ -9,8 +9,8 @@ import {
 import { formatDay, humanise } from "@/domains/platform/support";
 
 export function AuditSection({ slug }: { slug: string }) {
-  const state = useAsync(
-    (signal) => listOrgAuditForSupport(slug, { limit: 50 }, signal),
+  const pages = useCursorPages(
+    (cursor, signal) => listOrgAuditForSupport(slug, { limit: 50, cursor }, signal),
     [slug],
   );
 
@@ -21,22 +21,28 @@ export function AuditSection({ slug }: { slug: string }) {
       padding="none"
     >
       <AsyncBoundary
-        state={state}
-        isEmpty={(page) => page.items.length === 0}
+        state={pages.state}
+        isEmpty={(items) => items.length === 0}
         empty={{
           title: "No audit entries",
           description: "Nothing has been recorded yet.",
           bare: true,
         }}
       >
-        {(page) => (
+        {(items) => (
           <RowList flush>
-            {page.items.map((entry) => (
+            {items.map((entry) => (
               <AuditRow key={entry.id} entry={entry} />
             ))}
           </RowList>
         )}
       </AsyncBoundary>
+      <LoadMore
+        hasMore={pages.hasMore}
+        busy={pages.loadingMore}
+        onLoad={pages.loadMore}
+        error={pages.moreError}
+      />
     </Panel>
   );
 }

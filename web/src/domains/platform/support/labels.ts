@@ -7,6 +7,7 @@
  */
 
 import { roleLabel } from "@/foundation/session/roles";
+import { hasCode, validationFields } from "@/foundation/platform-client";
 
 /** Any API identifier as words: `org.mfa_policy_changed` → "Org mfa policy changed". */
 export function humanise(code: string): string {
@@ -103,4 +104,21 @@ const MESSAGE_SOURCES: Record<string, string> = {
 /** Where a message was sent from; an unknown source is shown as it came. */
 export function messageSourceLabel(source: string): string {
   return MESSAGE_SOURCES[source] ?? source;
+}
+
+/** The live badge: while reconnecting, say how old the figures still on screen are. */
+export function liveFeedLabel(
+  connected: boolean,
+  lastFrameAt: Date | null,
+): { tone: "success" | "warning"; text: string } {
+  if (connected) return { tone: "success", text: "Live" };
+  if (!lastFrameAt) return { tone: "warning", text: "Reconnecting" };
+  const time = lastFrameAt.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return { tone: "warning", text: `Reconnecting · figures from ${time}` };
+}
+
+/** Provisioning refusals that belong to one field: the API's 422s, and a slug another organisation holds. */
+export function provisionFieldErrors(cause: unknown): Record<string, string> {
+  if (hasCode(cause, "org_slug_taken")) return { slug: cause.message };
+  return validationFields(cause);
 }

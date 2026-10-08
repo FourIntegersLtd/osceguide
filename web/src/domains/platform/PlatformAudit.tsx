@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AsyncBoundary,
+  LoadMore,
   Panel,
   PlatformFilterBar,
   PlatformFilterDivider,
@@ -11,7 +12,7 @@ import {
   PlatformPageHeader,
   RowList,
 } from "@/foundation/ui";
-import { useAsync } from "@/foundation/hooks";
+import { useCursorPages } from "@/foundation/hooks";
 import { listPlatformAudit } from "@/domains/platform/support/api";
 import { PlatformAuditRow } from "@/domains/platform/user/HistoryTab";
 
@@ -59,9 +60,8 @@ export function PlatformAudit() {
 
 function AuditLog() {
   const { orgSlug, actorEmail, action, setOrgSlug, setActorEmail, setAction } = useAuditFilters();
-  const state = useAsync(
-    (signal) =>
-      listPlatformAudit({ orgSlug, actorEmail, action, limit: 100 }, signal),
+  const pages = useCursorPages(
+    (cursor, signal) => listPlatformAudit({ orgSlug, actorEmail, action, limit: 100, cursor }, signal),
     [orgSlug, actorEmail, action],
   );
   return (
@@ -92,22 +92,28 @@ function AuditLog() {
       </PlatformFilterBar>
       <Panel padding="none">
         <AsyncBoundary
-          state={state}
-          isEmpty={(page) => page.items.length === 0}
+          state={pages.state}
+          isEmpty={(items) => items.length === 0}
           empty={{
             title: "Nothing recorded",
             description: "No rows match.",
             bare: true,
           }}
         >
-          {(page) => (
+          {(items) => (
             <RowList flush>
-              {page.items.map((entry) => (
+              {items.map((entry) => (
                 <PlatformAuditRow key={entry.id} entry={entry} />
               ))}
             </RowList>
           )}
         </AsyncBoundary>
+        <LoadMore
+          hasMore={pages.hasMore}
+          busy={pages.loadingMore}
+          onLoad={pages.loadMore}
+          error={pages.moreError}
+        />
       </Panel>
     </div>
   );

@@ -39,7 +39,7 @@ function PilotForm({ partner, initial }: { partner: string; initial: PilotConfig
   const save = async () => {
     setError(null);
     setSuccess(null);
-    const update = pilotUpdateFromForm(rate, thresholds);
+    const update = pilotUpdateFromForm(rate, thresholds, config.spend_alert_thresholds_pence);
     if (!update) {
       setError("Enter a valid rate per visit.");
       return;
@@ -47,7 +47,9 @@ function PilotForm({ partner, initial }: { partner: string; initial: PilotConfig
     setSaving(true);
     try {
       setConfig(await updatePilotConfig(partner, update));
-      setSuccess("Settings saved. Spend alert history was reset.");
+      setSuccess(
+        update.reset_spend_alerts ? "Settings saved. Spend alert history was reset." : "Settings saved.",
+      );
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
