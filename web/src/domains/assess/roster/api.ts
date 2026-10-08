@@ -8,6 +8,7 @@
  * across instead. Both spellings are live in the same API and the schema is
  * the only place that says which is which.
  */
+import type { WithTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { PlatformError, platformRequest, type components } from "@/foundation/platform-client";
 import {
   collectPages,
@@ -61,7 +62,7 @@ function traineeBody(input: TraineeInput) {
 
 /** An address with no account is invited and linked in the same call. */
 // until regenerated: the add route answers with `temporary_password_applied`.
-export type AddedTrainee = Trainee & { temporary_password_applied?: boolean };
+export type AddedTrainee = Trainee & WithTemporaryPassword;
 
 /**
  * `temporaryPassword` (when the invitation email cannot be delivered) gives a

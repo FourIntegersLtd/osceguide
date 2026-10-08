@@ -18,27 +18,34 @@ export function TemporaryPasswordField({
   value,
   onChange,
   disabled,
+  toggle = true,
+  hint = "At least 12 characters, mixing letters with numbers, punctuation or capitals. Only used if they have no account yet; they must change it when they first sign in.",
 }: {
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** False for a form that is only the password (no checkbox): `enabled` must then be true. */
+  toggle?: boolean;
+  hint?: string;
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <Checkbox
-        label="Set a temporary password instead of emailing a link"
-        checked={enabled}
-        onChange={(event) => onEnabledChange(event.target.checked)}
-        disabled={disabled}
-      />
+      {toggle ? (
+        <Checkbox
+          label="Set a temporary password instead of emailing a link"
+          checked={enabled}
+          onChange={(event) => onEnabledChange(event.target.checked)}
+          disabled={disabled}
+        />
+      ) : null}
       {enabled ? (
         <div className="flex items-end gap-2">
           <div className="min-w-0 flex-1">
             <Input
               label="Temporary password"
-              hint="At least 12 characters, mixing letters with numbers, punctuation or capitals. Only used if they have no account yet; they must change it when they first sign in."
+              hint={hint}
               error={temporaryPasswordIssue(value)}
               required
               autoComplete="off"

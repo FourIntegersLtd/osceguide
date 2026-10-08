@@ -72,6 +72,16 @@ async def sign_in_external(
         await repository.disable_password_login(session, user.id)
     if user.status != "active":
         raise AccountSuspended()
+    if user.password_hash is not None and user.must_change_password:
+        # Someone else chose this password and the person never replaced it (an admin's
+        # temporary password): it must not outlive the person proving the address is theirs.
+        # Otherwise an admin who seats an address they do not own keeps a way in after the
+        # real owner arrives through SSO.
+        await repository.clear_password(session, user.id)
+        await repository.revoke_all_chains_for_user(
+            session, user_id=user.id, at=now, reason="sso_replaced_temp_password"
+        )
+        await session.refresh(user)
     if link is None:
         await repository.link_identity(
             session, user_id=user.id, provider=provider, subject=subject, tenant_slug=tenant_slug

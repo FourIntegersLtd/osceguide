@@ -75,6 +75,25 @@ async def seat_user_with_temporary_password(
     return _ref(user)
 
 
+async def seat_or_invite(
+    session: AsyncSession,
+    *,
+    email: str,
+    name: str,
+    invited_to: str,
+    temporary_password: str | None,
+    now: datetime,
+) -> UserRef:
+    """Create the account for an address that has none: seated with the temporary password
+    when one is given (no email), otherwise invited by email. The caller has already found
+    that no account exists, and never calls this for one that does."""
+    if temporary_password is not None:
+        return await seat_user_with_temporary_password(
+            session, email=email, password=temporary_password, name=name
+        )
+    return await invite_user(session, email=email, name=name, invited_to=invited_to, now=now)
+
+
 async def reissue_temporary_password(
     session: AsyncSession, *, user_id: uuid.UUID, password: str, now: datetime
 ) -> bool:

@@ -4,11 +4,8 @@ import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
 import { useCallback, useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
-import {
-  IssuedPassword,
-  TemporaryPasswordField,
-  temporaryPasswordReady,
-} from "@/foundation/ui/TemporaryPassword";
+import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
+import { useTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { errorMessage } from "@/foundation/hooks";
 import { inviteMember, type SeatedMembership } from "@/domains/assess/team/api";
 import { BulkInviteDialog } from "@/domains/assess/team/BulkInviteDialog";
@@ -47,9 +44,7 @@ export function InvitePanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SeatedMembership | null>(null);
-  const [handPassword, setHandPassword] = useState(false);
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [issued, setIssued] = useState<string | null>(null);
+  const password = useTemporaryPassword();
   const [importOpen, setImportOpen] = useState(false);
 
   const submit = useCallback(async () => {
@@ -58,17 +53,15 @@ export function InvitePanel({
     setBusy(true);
     setError(null);
     setResult(null);
-    setIssued(null);
+    password.dismiss();
     try {
       const membership = await inviteMember(orgSlug, {
         email: address,
         role,
-        ...(handPassword ? { temporaryPassword } : {}),
+        ...(password.typed ? { temporaryPassword: password.typed } : {}),
       });
       setResult(membership);
-      if (membership.temporary_password_applied) setIssued(temporaryPassword);
-      setTemporaryPassword("");
-      setHandPassword(false);
+      password.finish(address, membership.temporary_password_applied === true);
       setEmail("");
       onInvited();
     } catch (cause) {
@@ -76,7 +69,7 @@ export function InvitePanel({
     } finally {
       setBusy(false);
     }
-  }, [email, role, handPassword, temporaryPassword, orgSlug, onInvited]);
+  }, [email, role, password, orgSlug, onInvited]);
 
   if (!canManage) {
     return (
@@ -143,20 +136,14 @@ export function InvitePanel({
             </select>
           </div>
 
-          <TemporaryPasswordField
-            enabled={handPassword}
-            onEnabledChange={setHandPassword}
-            value={temporaryPassword}
-            onChange={setTemporaryPassword}
-            disabled={busy}
-          />
+          <TemporaryPasswordField {...password.field} disabled={busy} />
 
           {error ? <Alert tone="danger">{error}</Alert> : null}
-          {result && issued !== null ? (
+          {password.issued ? (
             <IssuedPassword
-              email={result.email ?? ""}
-              password={issued}
-              onDismiss={() => setIssued(null)}
+              email={password.issued.email}
+              password={password.issued.password}
+              onDismiss={password.dismiss}
             />
           ) : result ? (
             <Alert tone="success">
@@ -170,7 +157,7 @@ export function InvitePanel({
             type="submit"
             themeType="b2b"
             variant="commit"
-            disabled={busy || email.trim().length === 0 || !temporaryPasswordReady(handPassword, temporaryPassword)}
+            disabled={busy || email.trim().length === 0 || !password.ready}
             className="inline-flex items-center gap-2"
           >
             <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden />

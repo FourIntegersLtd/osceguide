@@ -9,6 +9,7 @@ have registered first, unprompted. Both are one mechanism: an invitation.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 from httpx import AsyncClient
@@ -16,6 +17,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Membership
+from app.core.settings import get_settings
+from app.features.identity.service_sso import sign_in_external
 from app.features.notifications.models import OutboundMessage
 from tests.support.people import mark_signed_in
 from tests.support.tokens import bearer
@@ -311,6 +314,119 @@ async def test_the_console_reissues_a_password_only_until_it_is_changed(
         headers=bearer(root),
     )
     assert (refused.status_code, refused.json()["code"]) == (409, "password_already_chosen")
+
+
+async def test_sso_sign_in_takes_back_an_account_someone_else_gave_a_password(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """An org admin seats victim@ with a password they know; when the victim later signs in
+    through SSO the account is linked, and the admin's password must stop working."""
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    added = await client.post(
+        "/api/v1/orgs/ashford/memberships",
+        json={"email": "victim@example.com", "role": "supervisor", "temporary_password": "Attacker-Knows-1!"},
+        headers=bearer(owner),
+    )
+    assert added.status_code == 201, added.text
+    first = await client.post(
+        "/api/v1/auth/login", json={"email": "victim@example.com", "password": "Attacker-Knows-1!"}
+    )
+    assert first.status_code == 200, first.text
+
+    async def no_memberships(session: AsyncSession, user_id: uuid.UUID) -> list[Membership]:
+        del session, user_id
+        return []
+
+    result = await sign_in_external(
+        db_session,
+        provider="clerk",
+        subject="victim-subject",
+        email="victim@example.com",
+        name="Victim",
+        tenant_slug=None,
+        exam_code=None,
+        settings=get_settings(),
+        now=datetime.now(UTC),
+        memberships_for=no_memberships,
+    )
+    assert result.status == "signed_in"
+    await db_session.commit()
+    again = await client.post(
+        "/api/v1/auth/login", json={"email": "victim@example.com", "password": "Attacker-Knows-1!"}
+    )
+    assert again.status_code == 401, again.text
+    refreshed = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": first.json()["refresh_token"]}
+    )
+    assert refreshed.status_code == 401, refreshed.text
+
+
+async def test_reissue_is_for_the_console_only_and_ends_sessions(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    root, org_id = await provisioned(client, make_actor)
+    seated = await client.post(
+        "/api/v1/platform/organizations/ashford/memberships",
+        json={"email": "dean@ashford.ac.uk", "role": "owner", "temporary_password": "Temp-Passw0rd!"},
+        headers=bearer(root),
+    )
+    url = f"/api/v1/platform/users/{seated.json()['user_id']}/temporary-password"
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    denied = await client.post(url, json={"temporary_password": "Second-Passw0rd!"}, headers=bearer(owner))
+    assert denied.status_code == 403, denied.text
+
+    login = await client.post(
+        "/api/v1/auth/login", json={"email": "dean@ashford.ac.uk", "password": "Temp-Passw0rd!"}
+    )
+    ok = await client.post(url, json={"temporary_password": "Second-Passw0rd!"}, headers=bearer(root))
+    assert ok.status_code == 204, ok.text
+    refreshed = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": login.json()["refresh_token"]}
+    )
+    assert refreshed.status_code == 401, refreshed.text
+
+
+async def test_reissue_for_an_invited_account_says_to_resend_the_invitation(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    root, _ = await provisioned(client, make_actor)
+    seated = await client.post(
+        "/api/v1/platform/organizations/ashford/memberships",
+        json={"email": "pending@ashford.ac.uk", "role": "owner"},
+        headers=bearer(root),
+    )
+    refused = await client.post(
+        f"/api/v1/platform/users/{seated.json()['user_id']}/temporary-password",
+        json={"temporary_password": "Second-Passw0rd!"},
+        headers=bearer(root),
+    )
+    assert (refused.status_code, refused.json()["code"]) == (409, "invitation_pending")
+
+
+async def test_a_roster_add_audits_every_path(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    _, org_id = await provisioned(client, make_actor)
+    owner = await make_actor(
+        "owner@ashford.ac.uk",
+        memberships=(Membership(org_id=org_id, org_slug="ashford", role="owner"),),
+        active_org_slug="ashford",
+    )
+    await make_actor("known@ashford.ac.uk")
+    for email in ("new@ashford.ac.uk", "known@ashford.ac.uk"):
+        added = await client.post(
+            "/api/v1/orgs/ashford/trainees", json={"email": email}, headers=bearer(owner)
+        )
+        assert added.status_code == 201, added.text
+    audit = await client.get("/api/v1/orgs/ashford/audit", headers=bearer(owner))
+    summaries = {row["summary"] for row in audit.json()["items"]}
+    assert "Added new@ashford.ac.uk to the roster (invited)" in summaries
+    assert "Added known@ashford.ac.uk to the roster" in summaries
 
 
 async def test_only_the_console_may_seat(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

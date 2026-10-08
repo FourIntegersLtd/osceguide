@@ -139,7 +139,11 @@ async def reset_user_password(
     "/platform/users/{user_id}/temporary-password",
     status_code=status.HTTP_204_NO_CONTENT,
     responses=error_responses(
-        Forbidden, errors.UserNotFound, errors.PasswordAlreadyChosen, errors.WeakPasswordError
+        Forbidden,
+        errors.UserNotFound,
+        errors.PasswordAlreadyChosen,
+        errors.InvitationPending,
+        errors.WeakPasswordError,
     ),
 )
 async def reissue_temporary_password(

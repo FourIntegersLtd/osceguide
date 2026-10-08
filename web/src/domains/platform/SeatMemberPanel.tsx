@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 import { Alert, Button, Input, Panel, Select } from "@/foundation/ui";
-import {
-  IssuedPassword,
-  TemporaryPasswordField,
-  temporaryPasswordReady,
-} from "@/foundation/ui/TemporaryPassword";
+import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
+import { useTemporaryPassword, type WithTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { errorMessage, useToast } from "@/foundation/hooks";
-import { seatMembership } from "@/domains/platform/api";
+import { seatMembership, type Membership } from "@/domains/platform/api";
 import { ROLE_DESCRIPTIONS, roleLabel } from "@/foundation/session/roles";
 import { SEAT_ROLES, humanise, rolesForOrgType } from "@/domains/platform/support";
 
@@ -44,9 +41,7 @@ export function SeatMemberPanel({
   const [role, setRole] = useState<string>(
     roles.find((value) => value === "institution_admin") ?? roles[0] ?? SEAT_ROLES[0],
   );
-  const [handPassword, setHandPassword] = useState(false);
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [issued, setIssued] = useState<{ email: string; password: string } | null>(null);
+  const password = useTemporaryPassword();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -55,29 +50,25 @@ export function SeatMemberPanel({
     setBusy(true);
     setError(null);
     try {
-      const relayed = handPassword && temporaryPassword.length > 0;
       const address = email.trim();
       const membership = await seatMembership(slug, {
-        email: email.trim(),
+        email: address,
         role,
-        ...(relayed ? { temporaryPassword } : {}),
+        ...(password.typed ? { temporaryPassword: password.typed } : {}),
       });
-      // `temporary_password_applied` is on the response but not yet in the generated type.
-      const applied = (membership as { temporary_password_applied?: boolean }).temporary_password_applied === true;
-      setIssued(applied ? { email: address, password: temporaryPassword } : null);
+      const applied = (membership as Membership & WithTemporaryPassword).temporary_password_applied === true;
+      password.finish(address, applied);
       toast.success(
         `${address} added as ${roleLabel(role, humanise(role)).toLowerCase()}`,
         membership.invited
           ? "They have no account yet, so they have been emailed a link to choose a password."
           : applied
             ? "They can sign in with the password shown below and must change it first."
-            : relayed
+            : password.typed
               ? "They already had an account, so the password you typed was not used. They sign in as before."
               : "They already had an account and can sign in now.",
       );
       setEmail("");
-      setTemporaryPassword("");
-      setHandPassword(false);
       onSeated();
     } catch (cause) {
       setError(cause instanceof Error ? cause : new Error(String(cause)));
@@ -93,11 +84,11 @@ export function SeatMemberPanel({
     >
       <form onSubmit={submit} className="flex flex-col gap-3">
         {error ? <Alert tone="danger">{errorMessage(error)}</Alert> : null}
-        {issued ? (
+        {password.issued ? (
           <IssuedPassword
-            email={issued.email}
-            password={issued.password}
-            onDismiss={() => setIssued(null)}
+            email={password.issued.email}
+            password={password.issued.password}
+            onDismiss={password.dismiss}
           />
         ) : null}
         <div className="grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_14rem_auto]">
@@ -127,19 +118,13 @@ export function SeatMemberPanel({
             disabled={
               busy ||
               !email.trim() ||
-              !temporaryPasswordReady(handPassword, temporaryPassword)
+              !password.ready
             }
           >
             {busy ? "Adding…" : "Add admin"}
           </Button>
         </div>
-        <TemporaryPasswordField
-          enabled={handPassword}
-          onEnabledChange={setHandPassword}
-          value={temporaryPassword}
-          onChange={setTemporaryPassword}
-          disabled={busy}
-        />
+        <TemporaryPasswordField {...password.field} disabled={busy} />
       </form>
     </Panel>
   );

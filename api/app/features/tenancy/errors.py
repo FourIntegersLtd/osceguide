@@ -97,6 +97,13 @@ class PasswordAlreadyChosen(Conflict):
     default_message = "This person has already chosen their own password. Send them a reset link instead."
 
 
+class InvitationPending(Conflict):
+    """The account has no password yet: it is waiting on its invitation, not on a relayed password."""
+
+    code = "invitation_pending"
+    default_message = "This person has not set a password yet. Resend their invitation instead."
+
+
 class LastAdministrator(Conflict):
     """Revoking or demoting this member would leave the organisation without an administrator."""
 

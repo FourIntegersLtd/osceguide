@@ -8,6 +8,7 @@
  * depending on which tab happened to be open.
  */
 import { platformRequest, type components } from "@/foundation/platform-client";
+import type { WithTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { orgPath, pageQuery, type PageParams } from "@/domains/assess/api";
 
 export type Membership = components["schemas"]["app__features__tenancy__schemas__MembershipRead"];
@@ -16,7 +17,7 @@ export type AuditEvent = components["schemas"]["AuditRead"];
 export type AuditPage = components["schemas"]["Page_AuditRead_"];
 export type BulkMembershipsResult = components["schemas"]["BulkMembershipsResult"];
 // until regenerated: the add routes answer with `temporary_password_applied`.
-export type SeatedMembership = Membership & { temporary_password_applied?: boolean };
+export type SeatedMembership = Membership & WithTemporaryPassword;
 export type SkippedMembership = components["schemas"]["SkippedMembership"];
 
 export function listMemberships(

@@ -24,6 +24,7 @@ from app.features.identity import service_platform as accounts
 from app.features.tenancy import repository, repository_platform
 from app.features.tenancy.errors import (
     CannotRevokeOwnConsoleAccess,
+    InvitationPending,
     PasswordAlreadyChosen,
     PlatformAdminExists,
     UserNotFound,
@@ -227,7 +228,8 @@ async def reissue_temporary_password(
     """Hand an account that has not yet changed its relayed password a new one."""
     user = await _require(session, user_id)
     if not await invitations.reissue_temporary_password(session, user_id=user_id, password=password, now=now):
-        raise PasswordAlreadyChosen()
+        ref = await identity.user_ref_by_email(session, user.email)
+        raise InvitationPending() if ref is not None and ref.invitation_pending else PasswordAlreadyChosen()
     await repository.write_audit(
         session,
         org_id=None,

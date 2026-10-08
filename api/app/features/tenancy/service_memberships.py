@@ -109,9 +109,9 @@ async def add_membership(
 
     An address with no account is invited rather than refused: the account is created
     without a password and the person is emailed a link to choose one. With
-    `temporary_password` (the platform console only, for when that email cannot be
-    delivered) the new account gets that password instead and no email, and must change
-    it at first sign-in. An address that already has an account is never touched by it.
+    `temporary_password` (the console's seat route and an org admin's team invite, for when
+    that email cannot be delivered) the new account gets that password instead and no
+    email, and must change it at first sign-in. An address that already has an account is never touched by it.
     """
     _guard_role_grant(actor, org_id, role)
     user = await identity.user_ref_by_email(session, email)
@@ -123,12 +123,14 @@ async def add_membership(
             raise OrgNotFound()
         # No display name until they set one: the address is not a name, and storing it
         # made every greeting and "led by" read "Good morning, someone@example.com".
-        if temporary_password is not None:
-            user = await invitations.seat_user_with_temporary_password(
-                session, email=email, password=temporary_password
-            )
-        else:
-            user = await invitations.invite_user(session, email=email, name="", invited_to=org.name, now=now)
+        user = await invitations.seat_or_invite(
+            session,
+            email=email,
+            name="",
+            invited_to=org.name,
+            temporary_password=temporary_password,
+            now=now,
+        )
     user_id = user.id
     if await repository.membership_for_user_in_org(session, org_id, user_id, role=role) is not None:
         raise MembershipExists()
@@ -146,9 +148,7 @@ async def add_membership(
         target_id=str(user_id),
         summary=f"Granted {role} to {email}{how}",
     )
-    read = _membership_read(membership, person=user)
-    read.temporary_password_applied = relayed
-    return read
+    return _membership_read(membership, person=user, temporary_password_applied=relayed)
 
 
 async def change_membership_role(
@@ -258,7 +258,9 @@ async def _require_membership(session: AsyncSession, org_id: uuid.UUID, membersh
     return membership
 
 
-def _membership_read(membership: Any, *, person: identity.UserRef | None) -> MembershipRead:
+def _membership_read(
+    membership: Any, *, person: identity.UserRef | None, temporary_password_applied: bool = False
+) -> MembershipRead:
     """Shape a membership row into what a route may return.
 
     The email and the invited flag come from the `person` behind it, when the
@@ -275,6 +277,7 @@ def _membership_read(membership: Any, *, person: identity.UserRef | None) -> Mem
         status=membership.status,
         revoked_at=membership.revoked_at,
         invited=invited,
+        temporary_password_applied=temporary_password_applied,
     )
 
 

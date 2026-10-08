@@ -186,6 +186,13 @@ async def disable_password_login(session: AsyncSession, user_id: uuid.UUID) -> N
     await session.execute(update(User).where(User.id == user_id).values(password_login_disabled=True))
 
 
+async def clear_password(session: AsyncSession, user_id: uuid.UUID) -> None:
+    """Remove the password altogether, and the forced-change flag that goes with it."""
+    await session.execute(
+        update(User).where(User.id == user_id).values(password_hash=None, must_change_password=False)
+    )
+
+
 # --- external identities ---------------------------------------------------
 
 

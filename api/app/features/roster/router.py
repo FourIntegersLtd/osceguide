@@ -71,8 +71,8 @@ async def add_trainee(
         last_name=body.last_name,
         cohort_id=body.cohort_id,
         now=clock.now(),
-        temporary_password=body.temporary_password,
         actor=workspace.principal,
+        temporary_password=body.temporary_password,
     )
 
 
@@ -87,7 +87,9 @@ async def add_trainees(
     body: schemas.BulkCreateTrainees, workspace: OrgAdmin, session: Session, clock: ClockDep
 ) -> schemas.BulkTraineesResult:
     """A spreadsheet's worth of trainees. Duplicates are reported, not fatal."""
-    return await service.add_trainees(session, workspace.org_id, entries=body.trainees, now=clock.now())
+    return await service.add_trainees(
+        session, workspace.org_id, entries=body.trainees, actor=workspace.principal, now=clock.now()
+    )
 
 
 @router.post(

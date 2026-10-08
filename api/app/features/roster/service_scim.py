@@ -203,7 +203,7 @@ async def create_user(
     connector learns to link rather than create.
     """
     entry = _create_trainee(body)
-    outcome = await service.add_trainees(session, org_id, entries=[entry], now=now)
+    outcome = await service.add_trainees(session, org_id, entries=[entry], actor=None, now=now)
     if not outcome.created:
         raise errors.ScimUniqueness()
     created = outcome.created[0]

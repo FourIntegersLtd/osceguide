@@ -40,12 +40,12 @@ async def add_trainee(
     last_name: str | None,
     cohort_id: uuid.UUID | None,
     now: datetime,
+    actor: Principal | None,
     temporary_password: str | None = None,
-    actor: Principal | None = None,
 ) -> TraineeRead:
     """Add a trainee to an organisation's roster and invite them, if needed.
 
-    With `temporary_password` (and the `actor` who typed it) a brand-new account gets
+    With `temporary_password` a brand-new account gets
     that password instead of an email, and must change it at first sign-in; an existing
     account is never touched. The audit log says which path was taken.
 
@@ -65,40 +65,33 @@ async def add_trainee(
     # A slot names a `users.id`, so a trainee without a linked account could be
     # rostered and never scheduled. Invite and link now, so every trainee has one.
     existing = await identity.user_ref_by_email(session, email)
-    relayed = existing is None and temporary_password is not None and actor is not None
+    relayed = existing is None and temporary_password is not None
+    how = ""
     if existing is None:
-        if relayed:
-            assert temporary_password is not None and actor is not None
-            existing = await invitations.seat_user_with_temporary_password(
-                session,
-                email=email,
-                password=temporary_password,
-                name=_display_name(first_name, last_name, email),
-            )
-            await tenancy_audit.record_for_org(
-                session,
-                org_id=org_id,
-                actor=actor,
-                action="trainee.added",
-                target_type="trainee",
-                target_id=str(trainee.id),
-                summary=f"Added {email} to the roster (temporary password)",
-            )
-        else:
-            org = await tenancy.org_ref_by_id(session, org_id)
-            existing = await invitations.invite_user(
-                session,
-                email=email,
-                name=_display_name(first_name, last_name, email),
-                invited_to=org.name if org else "your institution",
-                now=now,
-            )
+        org = await tenancy.org_ref_by_id(session, org_id)
+        existing = await invitations.seat_or_invite(
+            session,
+            email=email,
+            name=_display_name(first_name, last_name, email),
+            invited_to=org.name if org else "your institution",
+            temporary_password=temporary_password,
+            now=now,
+        )
+        how = " (temporary password)" if relayed else " (invited)"
+    if actor is not None:  # None: a directory connector (SCIM), which is no person to name
+        await tenancy_audit.record_for_org(
+            session,
+            org_id=org_id,
+            actor=actor,
+            action="trainee.added",
+            target_type="trainee",
+            target_id=str(trainee.id),
+            summary=f"Added {email} to the roster{how}",
+        )
     await repository.link_trainee_to_user(session, org_id, trainee.id, user_id=existing.id)
     await tenancy.grant_trainee_membership(session, org_id, existing.id)
     await session.refresh(trainee)
-    read = _trainee_read(trainee)
-    read.temporary_password_applied = relayed
-    return read
+    return _trainee_read(trainee, temporary_password_applied=relayed)
 
 
 def _display_name(first: str | None, last: str | None, email: str) -> str:
@@ -172,7 +165,7 @@ async def _require_trainee(session: AsyncSession, org_id: uuid.UUID, trainee_id:
     return trainee
 
 
-def _trainee_read(trainee: Trainee) -> TraineeRead:
+def _trainee_read(trainee: Trainee, *, temporary_password_applied: bool = False) -> TraineeRead:
     """Shape a trainee row into what a route may return."""
     return TraineeRead(
         id=trainee.id,
@@ -183,6 +176,7 @@ def _trainee_read(trainee: Trainee) -> TraineeRead:
         user_id=trainee.user_id,
         access_revoked=trainee.access_revoked_at is not None,
         anonymised=trainee.anonymised_at is not None,
+        temporary_password_applied=temporary_password_applied,
     )
 
 
@@ -293,7 +287,12 @@ async def is_revoked(session: AsyncSession, org_id: uuid.UUID, user_id: uuid.UUI
 
 
 async def add_trainees(
-    session: AsyncSession, org_id: uuid.UUID, *, entries: list[CreateTrainee], now: datetime
+    session: AsyncSession,
+    org_id: uuid.UUID,
+    *,
+    entries: list[CreateTrainee],
+    actor: Principal | None,
+    now: datetime,
 ) -> BulkTraineesResult:
     """Add every row that can be added; report every row that cannot.
 
@@ -322,6 +321,7 @@ async def add_trainees(
                 last_name=entry.last_name,
                 cohort_id=entry.cohort_id,
                 now=now,
+                actor=actor,
             )
         except errors.TraineeExists as exc:
             outcome.skipped.append(SkippedTrainee(email=entry.email, code=exc.code))

@@ -3,11 +3,8 @@
 import { useCallback, useState } from "react";
 import { HiOutlineUserPlus } from "react-icons/hi2";
 import { Alert, Button, b2bTokens, Panel } from "@/foundation/ui";
-import {
-  IssuedPassword,
-  TemporaryPasswordField,
-  temporaryPasswordReady,
-} from "@/foundation/ui/TemporaryPassword";
+import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
+import { useTemporaryPassword } from "@/foundation/ui/useTemporaryPassword";
 import { errorMessage } from "@/foundation/hooks";
 import { addTrainee, type Cohort } from "@/domains/assess/roster/api";
 import { BulkImportDialog } from "@/domains/assess/roster/BulkImportDialog";
@@ -49,9 +46,7 @@ export function AddTraineePanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [handPassword, setHandPassword] = useState(false);
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [issued, setIssued] = useState<{ email: string; password: string } | null>(null);
+  const password = useTemporaryPassword();
   const [importOpen, setImportOpen] = useState(false);
 
   const submit = useCallback(async () => {
@@ -60,7 +55,7 @@ export function AddTraineePanel({
     setBusy(true);
     setError(null);
     setNotice(null);
-    setIssued(null);
+    password.dismiss();
     try {
       const { firstName, lastName } = splitName(name);
       const trainee = await addTrainee(orgSlug, {
@@ -68,18 +63,15 @@ export function AddTraineePanel({
         firstName,
         lastName,
         cohortId: cohortId || null,
-        ...(handPassword ? { temporaryPassword } : {}),
+        ...(password.typed ? { temporaryPassword: password.typed } : {}),
       });
-      setNotice(`${trainee.email} is on the roster.`);
-      if (trainee.temporary_password_applied) {
-        setIssued({ email: trainee.email, password: temporaryPassword });
-      } else if (handPassword) {
-        setNotice(
-          `${trainee.email} is on the roster. They already had an account, so the password you typed was not used.`,
-        );
-      }
-      setTemporaryPassword("");
-      setHandPassword(false);
+      const applied = trainee.temporary_password_applied === true;
+      setNotice(
+        password.typed && !applied
+          ? `${trainee.email} is on the roster. They already had an account, so the password you typed was not used.`
+          : `${trainee.email} is on the roster.`,
+      );
+      password.finish(trainee.email, applied);
       setName("");
       setEmail("");
       onAdded();
@@ -88,7 +80,7 @@ export function AddTraineePanel({
     } finally {
       setBusy(false);
     }
-  }, [name, email, cohortId, handPassword, temporaryPassword, orgSlug, onAdded]);
+  }, [name, email, cohortId, password, orgSlug, onAdded]);
 
   if (!canManage) {
     return (
@@ -172,21 +164,15 @@ export function AddTraineePanel({
             </select>
           </div>
 
-          <TemporaryPasswordField
-            enabled={handPassword}
-            onEnabledChange={setHandPassword}
-            value={temporaryPassword}
-            onChange={setTemporaryPassword}
-            disabled={busy}
-          />
+          <TemporaryPasswordField {...password.field} disabled={busy} />
 
           {error ? <Alert tone="danger">{error}</Alert> : null}
           {notice ? <Alert tone="success">{notice}</Alert> : null}
-          {issued ? (
+          {password.issued ? (
             <IssuedPassword
-              email={issued.email}
-              password={issued.password}
-              onDismiss={() => setIssued(null)}
+              email={password.issued.email}
+              password={password.issued.password}
+              onDismiss={password.dismiss}
             />
           ) : null}
 
@@ -194,7 +180,7 @@ export function AddTraineePanel({
             type="submit"
             themeType="b2b"
             variant="commit"
-            disabled={busy || email.trim().length === 0 || !temporaryPasswordReady(handPassword, temporaryPassword)}
+            disabled={busy || email.trim().length === 0 || !password.ready}
             className="inline-flex items-center gap-2"
           >
             <HiOutlineUserPlus className="h-4 w-4 shrink-0" aria-hidden />

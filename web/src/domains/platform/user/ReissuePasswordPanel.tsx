@@ -1,14 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Button, Input, Panel } from "@/foundation/ui";
-import { IssuedPassword } from "@/foundation/ui/TemporaryPassword";
+import { Alert, Button, Panel } from "@/foundation/ui";
+import { IssuedPassword, TemporaryPasswordField } from "@/foundation/ui/TemporaryPassword";
 import { errorMessage } from "@/foundation/hooks";
 import { reissueTemporaryPassword } from "@/domains/platform/user/api";
-import {
-  generateTemporaryPassword,
-  temporaryPasswordIssue,
-} from "@/foundation/session/temporaryPassword";
+import { temporaryPasswordIssue } from "@/foundation/session/temporaryPassword";
 
 /**
  * A new temporary password for an account that has not yet changed the one it was
@@ -47,25 +44,16 @@ export function ReissuePasswordPanel({ userId, email }: { userId: string; email:
         {issued !== null ? (
           <IssuedPassword email={email} password={issued} onDismiss={() => setIssued(null)} />
         ) : null}
-        <div className="flex items-end gap-2">
-          <div className="min-w-0 flex-1">
-            <Input
-              label="New temporary password"
-              error={issue}
-              autoComplete="off"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              disabled={busy}
-            />
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={busy}
-            onClick={() => setPassword(generateTemporaryPassword())}
-          >
-            Generate
-          </Button>
+        <TemporaryPasswordField
+          toggle={false}
+          enabled
+          onEnabledChange={() => undefined}
+          value={password}
+          onChange={setPassword}
+          disabled={busy}
+          hint="At least 12 characters, mixing letters with numbers, punctuation or capitals."
+        />
+        <div>
           <Button type="submit" disabled={busy || password.length === 0 || issue !== null}>
             {busy ? "Issuing…" : "Issue"}
           </Button>
