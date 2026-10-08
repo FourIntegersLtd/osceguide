@@ -1,7 +1,18 @@
 import { hasCode, platformRequest, type components } from "@/foundation/platform-client";
 
 export type SamlConnection = components["schemas"]["SamlConnectionRead"];
-export type SaveSamlInput = components["schemas"]["SaveSamlConnection"];
+/** The server keeps (or defaults) any claim attribute left out; the generated type predates that. */
+type ClaimAttribute = "email_attribute" | "first_name_attribute" | "last_name_attribute" | "display_name_attribute";
+export type SaveSamlInput = Omit<
+  components["schemas"]["SaveSamlConnection"],
+  ClaimAttribute
+> &
+  Partial<
+    Pick<
+      components["schemas"]["SaveSamlConnection"],
+      ClaimAttribute
+    >
+  >;
 
 const path = (slug: string) => `/api/v1/platform/orgs/${encodeURIComponent(slug)}/sso/saml`;
 

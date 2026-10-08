@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.audience import ViewerAudiences
 from app.core.auth import Principal
+from app.core.relayed_password import RELAYED_PASSWORD_NOTE
 from app.features.catalog import service as catalog
 from app.features.identity import service as identity
 from app.features.identity import service_invitations as invitations
@@ -77,7 +78,7 @@ async def add_trainee(
             temporary_password=temporary_password,
             now=now,
         )
-        how = " (temporary password)" if relayed else " (invited)"
+        how = RELAYED_PASSWORD_NOTE if relayed else " (invited)"
     if actor is not None:  # None: a directory connector (SCIM), which is no person to name
         await tenancy_audit.record_for_org(
             session,

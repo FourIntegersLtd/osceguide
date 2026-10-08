@@ -728,7 +728,7 @@ async def test_sso_sign_in_also_removes_an_authenticator_enrolled_on_a_relayed_a
 async def test_every_path_that_relays_a_password_leaves_the_audit_row_the_sso_check_reads(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
-    """`temporary_password_was_relayed` matches audit text. Pin each producer to it, so a
+    """An account that began with a relayed password is read from the audit log. Pin each producer, so a
     reworded summary fails here rather than silently reopening the takeover."""
     from app.features.identity import repository as identity_repository
     from app.features.tenancy import repository as tenancy_repository

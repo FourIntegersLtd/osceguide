@@ -161,16 +161,27 @@ async def save_connection(
         raise errors.SsoNotConfigured()
     if not saml.is_certificate(body.idp_x509_cert):
         raise errors.InvalidSamlConnection("idp_x509_cert is not a certificate")
+    # An attribute left out of the body keeps what is saved; with nothing saved it takes the
+    # schema's default (the claim URIs Entra sends).
+    saved = await repository.saml_connection_for_org(session, org.id)
+    names = {
+        name: getattr(saved, name)
+        if saved is not None and name not in body.model_fields_set
+        else getattr(body, name)
+        for name in (
+            "email_attribute",
+            "first_name_attribute",
+            "last_name_attribute",
+            "display_name_attribute",
+        )
+    }
     connection = await repository.save_saml_connection(
         session,
         org.id,
         idp_entity_id=body.idp_entity_id.strip(),
         idp_sso_url=body.idp_sso_url.strip(),
         idp_x509_cert=body.idp_x509_cert.strip(),
-        email_attribute=body.email_attribute.strip(),
-        first_name_attribute=body.first_name_attribute,
-        last_name_attribute=body.last_name_attribute,
-        display_name_attribute=body.display_name_attribute,
+        **names,
         enabled=body.enabled,
     )
     await service_audit.record(

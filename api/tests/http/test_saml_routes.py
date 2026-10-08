@@ -277,3 +277,24 @@ async def test_saving_a_saml_connection_is_audited_and_needs_https(client: Async
     rows = [r for r in audit.json()["items"] if r["action"] == "sso.saml_saved"]
     assert [r["summary"] for r in rows] == ["Saved the SAML connection for kings (enabled)"]
     assert rows[0]["actor_email"] == "root-saml@osceguide.com"
+
+
+async def test_a_claim_attribute_left_out_defaults_on_create_and_keeps_what_is_saved_after(
+    client: AsyncClient, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    idp = TestIdentityProvider()
+    first = await a_saml_org(client, make_actor, idp)
+    assert first["email_attribute"] == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"
+    assert first["first_name_attribute"] == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"
+    root = await make_actor("root-saml-keep@osceguide.com", platform_admin=True)
+    body = {"idp_entity_id": IDP_ENTITY_ID, "idp_sso_url": IDP_SSO_URL, "idp_x509_cert": idp.cert_pem}
+
+    custom = await client.put(
+        "/api/v1/platform/orgs/kings/sso/saml",
+        json={**body, "email_attribute": "mail", "first_name_attribute": "given"},
+        headers=bearer(root),
+    )
+    assert (custom.json()["email_attribute"], custom.json()["first_name_attribute"]) == ("mail", "given")
+
+    again = await client.put("/api/v1/platform/orgs/kings/sso/saml", json=body, headers=bearer(root))
+    assert (again.json()["email_attribute"], again.json()["first_name_attribute"]) == ("mail", "given")

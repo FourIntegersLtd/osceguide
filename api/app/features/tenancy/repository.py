@@ -17,6 +17,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import keyset_page
+from app.core.relayed_password import RELAYED_PASSWORD_NOTE
 from app.core.search import contains_text
 from app.features.tenancy.domain import END_USER_ROLES
 from app.features.tenancy.models import AuditEntry, Membership, Organization
@@ -225,20 +226,20 @@ async def set_membership_revoked(
 
 async def temporary_password_was_relayed(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> bool:
     """Whether the audit log shows an admin gave this account a password by hand: a seat or
-    team add "(temporary password)", a roster add of this address, or a re-issue."""
+    team add, a roster add of this address, or a re-issue."""
     stmt = (
         select(AuditEntry.id)
         .where(
             or_(
                 (AuditEntry.action == "membership.added")
                 & (AuditEntry.target_id == str(user_id))
-                & AuditEntry.summary.like("%(temporary password)"),
+                & AuditEntry.summary.endswith(RELAYED_PASSWORD_NOTE, autoescape=True),
                 (AuditEntry.action == "user.temporary_password_reissued")
                 & (AuditEntry.target_id == str(user_id)),
                 (AuditEntry.action == "trainee.added")
                 & (
                     func.lower(AuditEntry.summary)
-                    == f"added {email.lower()} to the roster (temporary password)"
+                    == f"added {email.lower()} to the roster{RELAYED_PASSWORD_NOTE}"
                 ),
             )
         )

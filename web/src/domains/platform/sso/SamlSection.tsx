@@ -5,9 +5,6 @@ import { Alert, AsyncBoundary, Button, Checkbox, Input, Panel, Textarea } from "
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { readSamlConnection, saveSamlConnection, type SamlConnection } from "@/domains/platform/sso/api";
 
-/** Claim URIs Entra sends; the server fills the same defaults. */
-const ENTRA = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/";
-
 /**
  * One organisation's SAML identity provider. The read answers "none" until it is saved,
  * which is an empty form; it also gives the two URLs the institution's IdP administrator needs.
@@ -31,7 +28,7 @@ function SamlForm({ slug, saml, onSaved }: { slug: string; saml: SamlConnection 
   const [entityId, setEntityId] = useState(saml?.idp_entity_id ?? "");
   const [ssoUrl, setSsoUrl] = useState(saml?.idp_sso_url ?? "");
   const [cert, setCert] = useState(saml?.idp_x509_cert ?? "");
-  const [emailAttr, setEmailAttr] = useState(saml?.email_attribute ?? `${ENTRA}emailaddress`);
+  const [emailAttr, setEmailAttr] = useState(saml?.email_attribute ?? "");
   const [enabled, setEnabled] = useState(saml?.enabled ?? false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,13 +42,7 @@ function SamlForm({ slug, saml, onSaved }: { slug: string; saml: SamlConnection 
         idp_entity_id: entityId.trim(),
         idp_sso_url: ssoUrl.trim(),
         idp_x509_cert: cert.trim(),
-        email_attribute: emailAttr.trim(),
-        // Not edited here: keep what is saved, else the Entra claim defaults.
-        first_name_attribute: saml ? saml.first_name_attribute : `${ENTRA}givenname`,
-        last_name_attribute: saml ? saml.last_name_attribute : `${ENTRA}surname`,
-        display_name_attribute: saml
-          ? saml.display_name_attribute
-          : "http://schemas.microsoft.com/identity/claims/displayname",
+        ...(emailAttr.trim() ? { email_attribute: emailAttr.trim() } : {}),
         enabled,
       });
       toast.success("SAML connection saved");
@@ -102,7 +93,8 @@ function SamlForm({ slug, saml, onSaved }: { slug: string; saml: SamlConnection 
         value={emailAttr}
         onChange={(e) => setEmailAttr(e.target.value)}
         disabled={busy}
-        hint="The claim that carries the person's email address. Name attributes keep their Entra defaults."
+        placeholder="Blank: the Entra email claim"
+        hint="The claim that carries the person's email address. Left blank, this and the name claims keep their saved value, or Entra's."
       />
       <div className="flex flex-col gap-3 md:col-span-2">
         <Checkbox

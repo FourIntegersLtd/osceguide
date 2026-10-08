@@ -22,6 +22,7 @@ from app.features.identity.models import User
 from app.features.identity.schemas import AuthResult
 from app.features.identity.service import _announce_registration, user_read
 from app.features.identity.service_sessions import issue
+from app.features.tenancy import service as tenancy
 
 
 async def sign_in_external(
@@ -73,13 +74,7 @@ async def sign_in_external(
         await repository.disable_password_login(session, user.id)
     if user.status != "active":
         raise AccountSuspended()
-    if user.password_hash is not None and (
-        user.must_change_password
-        or (
-            not await repository.has_external_identity(session, user.id)
-            and await _began_with_relayed_password(session, user)
-        )
-    ):
+    if await _must_drop_password(session, user):
         # Someone else chose this password (an admin's temporary password) and the person never
         # replaced it, or replaced it only after the admin had signed in and changed it
         # themselves (the audit log still says it began relayed): it must not outlive the
@@ -103,8 +98,14 @@ async def sign_in_external(
     return AuthResult(**tokens.model_dump(), user=user_read(user, memberships))
 
 
-async def _began_with_relayed_password(session: AsyncSession, user: User) -> bool:
-    # Imported here: `tenancy` imports this slice, and the audit log is its table.
-    from app.features.tenancy import repository as tenancy_repository
-
-    return await tenancy_repository.temporary_password_was_relayed(session, user_id=user.id, email=user.email)
+async def _must_drop_password(session: AsyncSession, user: User) -> bool:
+    """Whether the password on this account was chosen by somebody else and never replaced: an
+    admin's temporary password still awaiting change, or one the audit log shows was relayed to an
+    account with no external identity yet. Signing in through SSO must end it."""
+    if user.password_hash is None:
+        return False
+    if user.must_change_password:
+        return True
+    return not await repository.has_external_identity(
+        session, user.id
+    ) and await tenancy.password_was_relayed(session, user_id=user.id, email=user.email)
