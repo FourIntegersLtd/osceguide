@@ -4,17 +4,17 @@ import { HiOutlineBuildingOffice2, HiOutlineClock, HiOutlineCreditCard } from "r
 import { AsyncBoundary, productTokens, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { formatLongDate } from "@/foundation/format";
-import { useCurrentExam } from "@/foundation/session";
+import { useSession } from "@/foundation/session";
 import {
   listEntitlements,
   listPlans,
   listReceipts,
   type Entitlement,
-  type Plan,
   type Receipt,
 } from "@/capabilities/account/api";
 import { latestLiveEnd, paidAccess } from "@/capabilities/account/access";
 import PlanPicker from "@/capabilities/account/settings/PlanPicker";
+import { plansForAccount } from "@/capabilities/account/settings/plansForAccount";
 import { SUPPORT_EMAIL } from "@/foundation/support";
 import ReceiptList from "@/capabilities/account/settings/ReceiptList";
 import { DotEyebrow, SettingsRow, SettingsRows, StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
@@ -137,7 +137,7 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
 }
 
 /**
- * The plans this person may buy: their current exam's only.
+ * The plans this person may buy: the exam their account holds on the server, only (`plansForAccount`).
  *
  * The exam is chosen at sign-up and moving somebody is a support action, so
  * listing PLAB and ORTHO beside SCA sold an SCA account a library every other
@@ -146,14 +146,13 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
  */
 function Plans({ trial }: { trial: Trial | null }) {
   const plans = useAsync((signal) => listPlans(signal), []);
-  const exam = useCurrentExam();
+  const { session } = useSession();
+  const examCode = session?.user.exam_code ?? null;
 
   return (
     <AsyncBoundary state={plans}>
       {(page) => {
-        // Wait for the exam rather than flash every exam's plans first.
-        if (exam.loading) return null;
-        const onSale = plansForExam(page.items, exam.code);
+        const onSale = plansForAccount(page.items, examCode);
         const hero = (
           <B2CHero
             eyebrow={<DotEyebrow tone="warning">Your plan</DotEyebrow>}
@@ -172,12 +171,12 @@ function Plans({ trial }: { trial: Trial | null }) {
             </>
           );
         }
-        // Keyed by exam so switching exams resets the selected plan.
+        // Keyed by exam so a changed exam resets the selected plan.
         return (
           <>
             {hero}
             <Panel title="Choose the option that suits you best">
-              <PlanPicker key={exam.code ?? "any"} plans={onSale} />
+              <PlanPicker key={examCode ?? "any"} plans={onSale} />
             </Panel>
             {trial ? (
               <Panel title="Your free trial">
@@ -215,11 +214,6 @@ function runningTrial(entitlements: Entitlement[]): Trial | null {
 
 function daysLeftLabel(days: number): string {
   return days === 1 ? "1 day left" : `${days} days left`;
-}
-
-function plansForExam(plans: Plan[], examCode: string | null): Plan[] {
-  if (examCode === null) return plans;
-  return plans.filter((plan) => plan.exam_code === examCode);
 }
 
 /**
