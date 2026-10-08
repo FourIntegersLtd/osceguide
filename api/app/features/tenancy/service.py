@@ -53,6 +53,17 @@ async def is_partner_admin(session: AsyncSession, *, user_id: uuid.UUID, partner
     )
 
 
+async def holds_live_membership(session: AsyncSession, *, user_id: uuid.UUID, org_id: uuid.UUID) -> bool:
+    """Whether this person still has a live membership in an organisation that permits access.
+
+    The sign-in rule read from the stored rows, for a stream that outlives the token it opened with.
+    """
+    return any(
+        org.id == org_id and domain.org_permits_access(org.status)
+        for _membership, org in await repository.live_memberships_with_orgs(session, user_id)
+    )
+
+
 @dataclass(frozen=True)
 class OrgSummary:
     """An organisation as another slice names it to a person: the id and a name."""

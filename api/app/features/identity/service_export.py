@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.attempts import service_privacy as attempts_privacy
 from app.features.billing import service_receipts as billing_receipts
 from app.features.identity import repository
-from app.features.identity.errors import UserNotFound
+from app.features.identity.errors import AccountNotFound
 from app.features.identity.schemas import (
     ExportedAttempt,
     ExportedPayment,
@@ -33,13 +33,13 @@ from app.features.identity.schemas import (
 async def export_my_data(session: AsyncSession, *, user_id: uuid.UUID) -> MyDataExport:
     """Everything `user_id` owns, ready to serialise as the export download.
 
-    Raises `UserNotFound` if the account is gone — a closed account can still
+    Raises `AccountNotFound` if the account is gone — a closed account can still
     sign in during the 30-day window before erasure, so this stays reachable
     right up until the erasure job runs.
     """
     user = await repository.user_by_id(session, user_id)
     if user is None:
-        raise UserNotFound()
+        raise AccountNotFound()
 
     attempts = await attempts_privacy.export_for_user(session, user_id)
     payments = await billing_receipts.export_payments_for_user(session, user_id)

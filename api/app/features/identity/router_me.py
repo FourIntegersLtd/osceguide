@@ -30,7 +30,6 @@ from app.features.identity.errors import (
     MfaNotEnrolled,
     MfaRequiredByPolicy,
     UnknownExamError,
-    UserNotFound,
 )
 
 router = APIRouter(tags=["identity"])
@@ -126,7 +125,7 @@ async def close_me(
 @router.get(
     "/me/export",
     response_model=schemas.MyDataExport,
-    responses=error_responses(Unauthenticated, UserNotFound),
+    responses=error_responses(Unauthenticated, AccountNotFound),
 )
 async def export_me(
     principal: CurrentPrincipal,

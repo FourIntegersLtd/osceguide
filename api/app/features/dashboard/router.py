@@ -222,7 +222,7 @@ async def stream_circuit_console(
         workspace = await resolve_workspace(session, principal, org_slug, predicate=may_run_circuit_policy())
     return StreamingResponse(
         service_streams.console_stream(
-            workspace.org_id, circuit_id, bus=bus, open_session=open_session, clock=clock
+            workspace.org_id, circuit_id, principal, bus=bus, open_session=open_session, clock=clock
         ),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,

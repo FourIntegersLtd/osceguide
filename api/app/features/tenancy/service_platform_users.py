@@ -27,6 +27,7 @@ from app.features.tenancy.errors import (
     CannotRevokeOwnConsoleAccess,
     InvitationPending,
     PasswordAlreadyChosen,
+    PasswordResetNotSent,
     PlatformAdminExists,
     UserNotFound,
 )
@@ -75,7 +76,7 @@ async def list_platform_admins(session: AsyncSession, *, limit: int = 100) -> li
 
 
 async def invite_platform_admin(
-    session: AsyncSession, *, email: str, actor: Principal, now: datetime
+    session: AsyncSession, *, email: str, name: str | None, actor: Principal, now: datetime
 ) -> PlatformAdminInviteRead:
     """Grant the staff console by email.
 
@@ -87,7 +88,11 @@ async def invite_platform_admin(
     invited = ref is None
     if ref is None:
         ref = await invitations.invite_user(
-            session, email=address, name=address, invited_to=_STAFF_CONSOLE_LABEL, now=now
+            session,
+            email=address,
+            name=(name or "").strip() or address,
+            invited_to=_STAFF_CONSOLE_LABEL,
+            now=now,
         )
     existing = await accounts.user_by_id(session, ref.id)
     if existing is None:
@@ -210,7 +215,8 @@ async def trigger_password_reset(
 ) -> None:
     """Send this account a password reset email, on the console's behalf."""
     user = await _require(session, user_id)
-    await service_passwords.begin_password_reset(session, email=user.email, now=now)
+    if await service_passwords.begin_password_reset(session, email=user.email, now=now) is None:
+        raise PasswordResetNotSent()
     await repository.write_audit(
         session,
         org_id=None,

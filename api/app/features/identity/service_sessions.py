@@ -15,7 +15,7 @@ from app.core.auth import Membership, Principal
 from app.core.memberships import MembershipLookup
 from app.core.settings import Settings
 from app.core.streams import issue_stream_ticket
-from app.features.identity import repository
+from app.features.identity import repository, service_close_account
 from app.features.identity.domain import RefreshChain as RefreshChainRules
 from app.features.identity.domain import use_refresh_token
 from app.features.identity.errors import (
@@ -114,7 +114,9 @@ async def login_with_memberships(
         raise PasswordLoginDisabled()
     if not verify_password(user.password_hash, password):
         raise InvalidCredentials()
-    if user.status != "active":
+    if user.status != "active" and not await service_close_account.reopen_if_within_retention(
+        session, user, now=now
+    ):
         raise AccountSuspended()
     memberships = await memberships_for(session, user.id)
     from app.features.identity.service_mfa import finish_password_sign_in

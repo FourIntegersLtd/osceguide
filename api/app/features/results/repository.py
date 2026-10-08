@@ -7,11 +7,12 @@ from collections.abc import Collection
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.results.models import (
     CandidateResultEvent,
+    CandidateResultNotification,
     CandidateResultRevision,
 )
 
@@ -167,3 +168,13 @@ async def event_by_idempotency_key(
     """
     stmt = select(CandidateResultEvent).where(CandidateResultEvent.idempotency_key == idempotency_key)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def scrub_recipient(session: AsyncSession, email: str) -> None:
+    """Blank the address a release email was queued for. The outbox is the one mutable results
+    table; the append-only decisions never held the address."""
+    await session.execute(
+        update(CandidateResultNotification)
+        .where(CandidateResultNotification.recipient == email)
+        .values(recipient="erased@anonymised.invalid")
+    )

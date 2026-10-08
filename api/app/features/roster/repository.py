@@ -207,6 +207,26 @@ async def anonymise_trainee(
     )
 
 
+async def anonymise_for_user(session: AsyncSession, user_id: uuid.UUID, *, at: datetime) -> int:
+    """Scrub the name and address off every roster entry this account owns, keeping the rows.
+
+    The address becomes `anon-<id>@anonymised.invalid`, unique by construction, as in
+    `anonymise_trainee`. Returns how many entries changed.
+    """
+    result = await session.execute(
+        update(Trainee)
+        .where(Trainee.user_id == user_id, Trainee.anonymised_at.is_(None))
+        .values(
+            email=func.concat("anon-", Trainee.id, "@anonymised.invalid"),
+            first_name=None,
+            last_name=None,
+            access_revoked_at=at,
+            anonymised_at=at,
+        )
+    )
+    return int(result.rowcount or 0)  # type: ignore[attr-defined]
+
+
 async def link_trainee_to_user(
     session: AsyncSession, org_id: uuid.UUID, trainee_id: uuid.UUID, *, user_id: uuid.UUID
 ) -> None:

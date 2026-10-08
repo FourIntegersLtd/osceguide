@@ -65,6 +65,13 @@ class PlatformAdminExists(Conflict):
     default_message = "That person already has staff console access"
 
 
+class PasswordResetNotSent(Conflict):
+    """The console asked for a reset link and none was sent: the account signs in through SSO."""
+
+    code = "password_reset_not_sent"
+    default_message = "No reset link was sent: this account signs in through its organisation"
+
+
 class InvitationNotPending(Conflict):
     """That member has already chosen a password, or signs in through SSO."""
 

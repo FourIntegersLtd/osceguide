@@ -70,7 +70,7 @@ async def invite_platform_admin(
     link to choose one; an existing account is granted the console immediately.
     """
     return await service_platform_users.invite_platform_admin(
-        session, email=body.email, actor=admin, now=clock.now()
+        session, email=body.email, name=body.name, actor=admin, now=clock.now()
     )
 
 
@@ -125,7 +125,7 @@ async def set_platform_admin(
 @router.post(
     "/platform/users/{user_id}/reset-password",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=error_responses(Forbidden, errors.UserNotFound),
+    responses=error_responses(Forbidden, errors.UserNotFound, errors.PasswordResetNotSent),
 )
 async def reset_user_password(
     user_id: uuid.UUID, admin: PlatformAdmin, session: Session, clock: ClockDep

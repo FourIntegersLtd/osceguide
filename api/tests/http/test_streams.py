@@ -430,3 +430,43 @@ async def test_a_trainee_cannot_open_the_console_stream(client: AsyncClient, mak
     )
 
     assert response.status_code == 403, response.text
+
+
+async def test_a_console_stream_closes_when_the_supervisor_is_removed(
+    client: AsyncClient, streaming_client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """A removed supervisor keeps their token for minutes; the stream must not outlive the membership."""
+    from datetime import UTC, datetime
+
+    from sqlalchemy import update
+
+    from app.core.events import circuit_topic, get_event_bus
+    from app.features.tenancy.models import Membership as MembershipRow
+
+    org_id, admin = await org_with_admin(client, make_actor)
+    sitting = await a_sitting(client, admin, "kings", mode="training")
+    station = await published_station(client, admin, "kings", "S1")
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(await a_user(db_session, "cand@example.com"))],
+        station_version_ids=[station],
+    )
+
+    url = f"/api/v1/orgs/kings/circuits/{circuit['id']}/console/stream"
+    async with streaming_client.stream("GET", url, headers=bearer(admin)) as response:
+        lines = response.aiter_lines()
+        await asyncio.wait_for(frames(lines, 2), timeout=10)
+
+        await db_session.execute(
+            update(MembershipRow)
+            .where(MembershipRow.org_id == org_id)
+            .values(revoked_at=datetime.now(UTC), status="revoked")
+        )
+        await db_session.flush()
+        await get_event_bus().publish(circuit_topic(circuit["id"]), "changed")
+
+        after = await asyncio.wait_for(frames(lines, 5), timeout=10)
+        assert after == [], "no frame once removed; the stream closed"

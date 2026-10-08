@@ -25,6 +25,18 @@ from tests.support.tokens import bearer, mint_token
 
 pytestmark = pytest.mark.db
 
+
+def opener(session: AsyncSession):  # type: ignore[no-untyped-def]
+    """Hand the job the test's own transaction, as each account's session."""
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def open_session():  # type: ignore[no-untyped-def]
+        yield session
+
+    return open_session
+
+
 REGISTER = {"email": "new@example.com", "name": "New Person", "password": "correct horse battery"}
 
 
@@ -368,7 +380,7 @@ async def test_the_erasure_job_scrubs_an_account_closed_over_30_days_ago(
     user.closed_at = datetime.now(UTC) - timedelta(days=31)
     await db_session.commit()
 
-    erased_first_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    erased_first_run = await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
     await db_session.commit()
     assert erased_first_run == 1
 
@@ -392,7 +404,7 @@ async def test_the_erasure_job_scrubs_an_account_closed_over_30_days_ago(
     assert remaining == []
 
     # Idempotent: the account is already erased, so a second run finds nothing due.
-    erased_second_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    erased_second_run = await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
     assert erased_second_run == 0
 
 
@@ -402,7 +414,7 @@ async def test_an_account_closed_within_30_days_is_left_alone(
     token = (await register(client)).json()["access_token"]
     await client.post("/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(token))
 
-    erased = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    erased = await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
     await db_session.commit()
     assert erased == 0
 
@@ -453,7 +465,7 @@ async def test_a_peer_recording_is_deleted_only_once_both_sides_are_erased(
     doctor.closed_at = datetime.now(UTC) - timedelta(days=31)
     await db_session.commit()
 
-    erased_first_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    erased_first_run = await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
     await db_session.commit()
     assert erased_first_run == 1
     assert deleted_keys == []
@@ -471,7 +483,7 @@ async def test_a_peer_recording_is_deleted_only_once_both_sides_are_erased(
     patient.closed_at = datetime.now(UTC) - timedelta(days=31)
     await db_session.commit()
 
-    erased_second_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    erased_second_run = await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
     await db_session.commit()
     assert erased_second_run == 1
     assert deleted_keys == ["peer_practice/sca/session-1/consultation.ogg"]
@@ -483,7 +495,7 @@ async def test_a_peer_recording_is_deleted_only_once_both_sides_are_erased(
     assert scrubbed.recording_state == "erased"
 
     # Idempotent: nothing left due, and no second delete of an already-gone object.
-    erased_third_run = await erase_due_accounts(db_session, now=datetime.now(UTC))
+    erased_third_run = await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
     assert erased_third_run == 0
     assert deleted_keys == ["peer_practice/sca/session-1/consultation.ogg"]
 
@@ -612,3 +624,106 @@ async def test_changing_or_closing_for_an_account_that_no_longer_exists_says_so_
     closed = await client.post("/api/v1/me/close", json={"password": "anything at all"}, headers=headers)
     assert (changed.status_code, changed.json()["code"]) == (401, "account_not_found")
     assert (closed.status_code, closed.json()["code"]) == (401, "account_not_found")
+
+
+async def test_exporting_for_an_account_that_no_longer_exists_says_so_like_me_does(
+    client: AsyncClient,
+) -> None:
+    """T-14: the web hook reads 401 account_not_found as a dead session; a 404 left it signed in."""
+    response = await client.get("/api/v1/me/export", headers=bearer(mint_token(user_id=uuid.uuid4())))
+    assert (response.status_code, response.json()["code"]) == (401, "account_not_found")
+
+
+async def test_signing_in_within_the_month_reopens_a_closed_account_and_both_are_audited(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """S-19: the docstring promises a month to change your mind; signing in is the way back."""
+    from sqlalchemy import select
+
+    from app.features.tenancy.models import AuditEntry
+
+    token = (await register(client)).json()["access_token"]
+    await client.post("/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(token))
+
+    reopened = await client.post(
+        "/api/v1/auth/login", json={"email": "new@example.com", "password": REGISTER["password"]}
+    )
+    assert reopened.status_code == 200, reopened.text
+    user = await identity_repo.user_by_email(db_session, "new@example.com")
+    assert user is not None
+    assert (user.status, user.closed_at) == ("active", None)
+    actions = list((await db_session.execute(select(AuditEntry.action).order_by(AuditEntry.at))).scalars())
+    assert [a for a in actions if a.startswith("account.")] == ["account.closed", "account.reopened"]
+
+
+async def test_a_closed_account_past_its_month_does_not_reopen(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    token = (await register(client)).json()["access_token"]
+    await client.post("/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(token))
+    user = await identity_repo.user_by_email(db_session, "new@example.com")
+    assert user is not None
+    user.closed_at = datetime.now(UTC) - timedelta(days=31)
+    await db_session.commit()
+
+    refused = await client.post(
+        "/api/v1/auth/login", json={"email": "new@example.com", "password": REGISTER["password"]}
+    )
+    assert refused.status_code == 401, refused.text
+    assert refused.json()["code"] == "account_suspended"
+
+
+async def _closed_long_ago(client: AsyncClient, db_session: AsyncSession, email: str) -> uuid.UUID:
+    body = (await client.post("/api/v1/auth/register", json={**REGISTER, "email": email})).json()
+    await client.post(
+        "/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(body["access_token"])
+    )
+    user = await identity_repo.user_by_email(db_session, email)
+    assert user is not None
+    user.closed_at = datetime.now(UTC) - timedelta(days=31)
+    await db_session.commit()
+    return user.id
+
+
+async def test_erasure_anonymises_the_roster_entry_decisions_hang_off(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """S-20: transcripts and marks go, and the decision about the person must stop naming them."""
+    from app.features.roster import repository as roster_repo
+    from app.features.tenancy import repository as tenancy_repo
+
+    user_id = await _closed_long_ago(client, db_session, "gone@example.com")
+    org = await tenancy_repo.create_organization(db_session, slug="er-org", name="ER")
+    trainee = await roster_repo.create_trainee(
+        db_session, org.id, email="gone@example.com", first_name="Gone", last_name="Person", cohort_id=None
+    )
+    trainee.user_id = user_id
+    await db_session.commit()
+
+    assert await erase_due_accounts(opener(db_session), now=datetime.now(UTC)) == 1
+
+    await db_session.refresh(trainee)
+    assert (trainee.first_name, trainee.last_name) == (None, None)
+    assert trainee.email == f"anon-{trainee.id}@anonymised.invalid"
+    assert trainee.anonymised_at is not None
+
+
+async def test_one_account_failing_to_erase_does_not_stop_the_rest(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.features.identity import service_erasure
+
+    broken = await _closed_long_ago(client, db_session, "broken@example.com")
+    fine = await _closed_long_ago(client, db_session, "fine@example.com")
+    real = service_erasure.erase_account
+
+    async def flaky(session, user_id, *, now):  # type: ignore[no-untyped-def]
+        if user_id == broken:
+            raise RuntimeError("storage was down")
+        await real(session, user_id, now=now)
+
+    monkeypatch.setattr(service_erasure, "erase_account", flaky)
+
+    assert await erase_due_accounts(opener(db_session), now=datetime.now(UTC)) == 1
+    assert (await identity_repo.user_by_id(db_session, fine)).erased_at is not None  # type: ignore[union-attr]
+    assert (await identity_repo.user_by_id(db_session, broken)).erased_at is None  # type: ignore[union-attr]

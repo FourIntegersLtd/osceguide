@@ -24,10 +24,9 @@ def register() -> None:
         from app.core.db import job_session
         from app.features.identity.service_erasure import erase_due_accounts
 
-        async with job_session() as session:
-            erased = await erase_due_accounts(session, now=datetime.now(UTC))
-            if erased:
-                log.info("accounts erased", count=erased)
+        erased = await erase_due_accounts(job_session, now=datetime.now(UTC))
+        if erased:
+            log.info("accounts erased", count=erased)
 
     @app.periodic(cron="0 9 * * *")
     @app.task(name="send_engagement_emails", queue="identity")

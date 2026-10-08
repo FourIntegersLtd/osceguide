@@ -81,7 +81,9 @@ async def stream_live_board(
     async with open_session() as session:
         workspace = await resolve_workspace(session, principal, org_slug, predicate=may_run_circuit_policy())
     return StreamingResponse(
-        service_streams.live_board_stream(workspace.org_id, bus=bus, open_session=open_session, clock=clock),
+        service_streams.live_board_stream(
+            workspace.org_id, principal, bus=bus, open_session=open_session, clock=clock
+        ),
         media_type=MEDIA_TYPE,
         headers=SSE_HEADERS,
     )

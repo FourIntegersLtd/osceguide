@@ -289,3 +289,32 @@ async def test_the_console_directory_can_be_searched_and_filtered_by_type(
         headers=bearer(root),
     )
     assert [org["slug"] for org in narrowed.json()["items"]] == ["kings-recruit"]
+
+
+async def test_inviting_a_platform_admin_keeps_the_name_given(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    """P-24: the invitee's name was set to their email address."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    invited = await client.post(
+        "/api/v1/platform/admins",
+        json={"email": "named@osceguide.com", "name": "Nadia Named"},
+        headers=bearer(root),
+    )
+    assert invited.status_code == 200, invited.text
+    assert invited.json()["user"]["name"] == "Nadia Named"
+
+
+async def test_a_console_reset_for_a_sso_only_account_says_nothing_was_sent(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """P-26: the console toasted "emailed" for an account that is never sent a link."""
+    from app.features.identity import repository as identity_repo
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await make_actor("sso@osceguide.com")
+    user = await identity_repo.user_by_email(db_session, "sso@osceguide.com")
+    assert user is not None
+    await identity_repo.disable_password_login(db_session, user.id)
+    await db_session.flush()
+
+    refused = await client.post(f"/api/v1/platform/users/{user.id}/reset-password", headers=bearer(root))
+    assert (refused.status_code, refused.json()["code"]) == (409, "password_reset_not_sent")

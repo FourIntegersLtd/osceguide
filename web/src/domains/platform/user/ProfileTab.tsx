@@ -231,7 +231,7 @@ function PasswordReset({ userId }: { userId: string }) {
       await resetUserPassword(userId);
       toast.success(
         "Password reset emailed",
-        "If the account exists, they will receive a link.",
+        "A link to choose a new password is on its way to them.",
       );
     } catch (cause) {
       setError(errorMessage(cause));

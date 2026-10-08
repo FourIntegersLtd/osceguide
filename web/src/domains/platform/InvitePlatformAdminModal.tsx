@@ -16,6 +16,7 @@ export function InvitePlatformAdminModal({
 }) {
   const toast = useToast();
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [formKey, setFormKey] = useState(0);
@@ -30,7 +31,7 @@ export function InvitePlatformAdminModal({
       setBusy(true);
       setError(null);
       try {
-        const result = await invitePlatformAdmin(email.trim());
+        const result = await invitePlatformAdmin(email.trim(), name);
         toast.success(
           `${result.user.email} may use the staff console`,
           result.invited
@@ -38,6 +39,7 @@ export function InvitePlatformAdminModal({
             : "They already had an account and can sign in with their existing password.",
         );
         setEmail("");
+        setName("");
         onInvited();
         onClose();
       } catch (cause) {
@@ -46,7 +48,7 @@ export function InvitePlatformAdminModal({
         setBusy(false);
       }
     },
-    [email, onClose, onInvited, toast],
+    [email, name, onClose, onInvited, toast],
   );
 
   if (!open) return null;
@@ -66,6 +68,13 @@ export function InvitePlatformAdminModal({
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
+          disabled={busy}
+          autoComplete="off"
+        />
+        <Input
+          label="Name (optional)"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
           disabled={busy}
           autoComplete="off"
         />

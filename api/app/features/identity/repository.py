@@ -145,6 +145,7 @@ async def scrub_for_erasure(session: AsyncSession, user_id: uuid.UUID, *, now: d
     user.name = "Deleted user"
     user.email = f"deleted-{user.id}@invalid"
     user.avatar_url = None
+    user.password_hash = None
     user.erased_at = now
     return True
 

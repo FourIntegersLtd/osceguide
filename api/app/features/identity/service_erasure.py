@@ -23,13 +23,16 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.db import SessionOpener
 from app.core.logging import get_logger
 from app.core.settings import Settings, get_settings
 from app.features.attempts import service_privacy as attempts_privacy
-from app.features.identity import repository
+from app.features.identity import repository, service_close_account
 from app.features.inbox import service as inbox_service
 from app.features.media_production import service as media_production
 from app.features.peer_practice import service_privacy as peer_practice_privacy
+from app.features.results import service as results
+from app.features.roster import service as roster
 from app.features.tutor_memory import service as tutor_memory_service
 
 log = get_logger(__name__)
@@ -37,7 +40,7 @@ log = get_logger(__name__)
 # The privacy policy's own number: an account is erased 30 days after it is
 # closed, not the moment it is closed, so a person who closes by mistake has a
 # month to change their mind before their transcripts are gone for good.
-RETENTION_DAYS = 30
+RETENTION_DAYS = service_close_account.RETENTION_DAYS
 
 
 async def accounts_due_for_erasure(session: AsyncSession, *, now: datetime) -> list[uuid.UUID]:
@@ -85,6 +88,7 @@ async def erase_account(session: AsyncSession, user_id: uuid.UUID, *, now: datet
     """
     user = await repository.user_by_id(session, user_id)
     avatar_url = user.avatar_url if user else None
+    address = user.email if user else None
     scrubbed = await repository.scrub_for_erasure(session, user_id, now=now)
     if avatar_url and scrubbed:
         media_production.delete_image(get_settings(), avatar_url)
@@ -92,6 +96,9 @@ async def erase_account(session: AsyncSession, user_id: uuid.UUID, *, now: datet
         # Already gone, or already erased by an earlier, still-running pass —
         # nothing left to do, and nothing else to delete on its behalf either.
         return
+    if address:
+        await results.erase_recipient(session, email=address)
+    await roster.anonymise_for_user(session, user_id=user_id, now=now)
     attempts_scrubbed = await attempts_privacy.erase_content_for_user(session, user_id)
     recordings_deleted = await _erase_peer_recordings(session, get_settings(), user_id)
     await tutor_memory_service.forget_everything(session, user_id=user_id, include_debriefs=True)
@@ -104,9 +111,21 @@ async def erase_account(session: AsyncSession, user_id: uuid.UUID, *, now: datet
     )
 
 
-async def erase_due_accounts(session: AsyncSession, *, now: datetime) -> int:
-    """Run the job body: erase every account due, and answer how many were."""
-    due = await accounts_due_for_erasure(session, now=now)
+async def erase_due_accounts(open_session: SessionOpener, *, now: datetime) -> int:
+    """Run the job body: erase every account due, and answer how many were.
+
+    Each account gets a transaction of its own, so one that fails (storage down, a row in a state
+    nobody expected) is logged and left for tomorrow's run instead of aborting the rest.
+    """
+    async with open_session() as session:
+        due = await accounts_due_for_erasure(session, now=now)
+    erased = 0
     for user_id in due:
-        await erase_account(session, user_id, now=now)
-    return len(due)
+        try:
+            async with open_session() as session:
+                await erase_account(session, user_id, now=now)
+        except Exception:
+            log.exception("account erasure failed", user_id=str(user_id))
+            continue
+        erased += 1
+    return erased

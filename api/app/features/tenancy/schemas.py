@@ -94,6 +94,8 @@ class SetPlatformAdmin(BaseModel):
 
 class InvitePlatformAdmin(BaseModel):
     email: EmailStr
+    # Blank keeps the old behaviour of naming a new account after its address.
+    name: str | None = Field(default=None, max_length=200)
 
 
 class PlatformAdminInviteRead(BaseModel):

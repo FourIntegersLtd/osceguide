@@ -361,10 +361,11 @@ export interface PlatformAdminInviteResult {
 }
 
 /** Grant the staff console by email; new accounts are invited to set a password. */
-export function invitePlatformAdmin(email: string): Promise<PlatformAdminInviteResult> {
+export function invitePlatformAdmin(email: string, name?: string): Promise<PlatformAdminInviteResult> {
   return platformRequest<PlatformAdminInviteResult>(`${PLATFORM}/admins`, {
     method: "POST",
-    body: { email },
+    // `name` is not in the generated body type until `openapi.json` is regenerated.
+    body: { email, name: name?.trim() || undefined },
   });
 }
 

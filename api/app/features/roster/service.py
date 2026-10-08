@@ -219,6 +219,18 @@ async def trainee_email(session: AsyncSession, org_id: uuid.UUID, trainee_id: uu
     return (await _require_trainee(session, org_id, trainee_id)).email
 
 
+async def follow_account_email(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> None:
+    """The person's account moved to a new address: their roster entries follow, so an institution
+    still reaches and recognises them."""
+    await repository.follow_account_email(session, user_id, email)
+
+
+async def anonymise_for_user(session: AsyncSession, *, user_id: uuid.UUID, now: datetime) -> int:
+    """A closed account is being erased: every roster entry it owns stops naming the person, and the
+    decisions hung off those entries stay as the organisation's record."""
+    return await repository.anonymise_for_user(session, user_id, at=now)
+
+
 async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
     """Translate a `users.id` into the `trainees.id` rows for this person.
 
@@ -226,12 +238,6 @@ async def trainee_ids_for_user(session: AsyncSession, user_id: uuid.UUID) -> lis
     column name, two meanings.
     """
     return await repository.trainee_ids_for_user(session, user_id)
-async def follow_account_email(session: AsyncSession, *, user_id: uuid.UUID, email: str) -> None:
-    """The person's account moved to a new address: their roster entries follow, so an institution
-    still reaches and recognises them."""
-    await repository.follow_account_email(session, user_id, email)
-
-
 
 
 async def audiences_for_viewer(session: AsyncSession, user_id: uuid.UUID) -> ViewerAudiences:

@@ -104,3 +104,10 @@ through the published catalogue, so a code naming no exam yields nothing.
 None. `tenancy` reads users through this slice's service; this slice never reads
 `tenancy`. Memberships reach the token because the login service asks `tenancy` for
 them — the call goes downward, from `tenancy` into `identity`, never back.
+
+## Closing, reopening and erasing an account
+
+Closing keeps the password hash for 30 days and audits `account.closed`. Signing in with the password inside
+that month reopens the account (SSO sign-in does not yet). After 30 days `erase_due_accounts` erases each
+account in its own session, so one failure is logged and the rest still run; it also blanks the account's
+roster entries and queued release emails. Decision rationale stays in the append-only table (needs a migration).
