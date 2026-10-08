@@ -22,6 +22,7 @@ from app.core.ports import Clock, EventBus
 from app.core.sse import Snapshot, StreamFinished, event_stream
 from app.features.dashboard import service_console, service_live, service_trainee
 from app.features.dashboard.errors import CircuitNotFound
+from app.features.identity import service as identity
 from app.features.tenancy import service as tenancy
 
 
@@ -32,7 +33,7 @@ async def _still_a_member(session: AsyncSession, principal: Principal, org_id: u
     keep pushing candidate names for as long as the tab stays open. A role change is not checked
     here: it takes effect on the next request.
     """
-    if principal.is_platform_admin:
+    if principal.is_platform_admin and await identity.is_platform_admin(session, principal.user_id):
         return
     if not await tenancy.holds_live_membership(session, user_id=principal.user_id, org_id=org_id):
         raise StreamFinished

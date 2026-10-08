@@ -727,3 +727,81 @@ async def test_one_account_failing_to_erase_does_not_stop_the_rest(
     assert await erase_due_accounts(opener(db_session), now=datetime.now(UTC)) == 1
     assert (await identity_repo.user_by_id(db_session, fine)).erased_at is not None  # type: ignore[union-attr]
     assert (await identity_repo.user_by_id(db_session, broken)).erased_at is None  # type: ignore[union-attr]
+
+
+async def test_erasure_scrubs_release_emails_queued_for_the_roster_address(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """S-20: the release email goes to the roster address, which is not always the account's."""
+    from sqlalchemy import select
+
+    from app.features.notifications import service as notifications
+    from app.features.notifications.models import OutboundMessage
+    from app.features.roster import repository as roster_repo
+    from app.features.tenancy import repository as tenancy_repo
+
+    user_id = await _closed_long_ago(client, db_session, "acct@example.com")
+    org = await tenancy_repo.create_organization(db_session, slug="er2-org", name="ER2")
+    trainee = await roster_repo.create_trainee(
+        db_session, org.id, email="Work.Address@Hospital.nhs", first_name="A", last_name="B", cohort_id=None
+    )
+    trainee.user_id = user_id
+    for recipient, key in (("work.address@hospital.nhs", "r1"), ("someone.else@example.com", "r2")):
+        await notifications.enqueue_email(
+            session=db_session,
+            recipient=recipient,
+            subject="Your result is available",
+            template_key="candidate_result_released",
+            payload={},
+            idempotency_key=key,
+        )
+    await db_session.commit()
+
+    await erase_due_accounts(opener(db_session), now=datetime.now(UTC))
+
+    rows = {
+        row.idempotency_key: row.recipient
+        for row in (await db_session.execute(select(OutboundMessage))).scalars()
+        if row.idempotency_key in {"r1", "r2"}
+    }
+    assert rows == {"r2": "someone.else@example.com"}
+
+
+async def test_an_account_closed_by_anyone_but_its_owner_does_not_reopen_on_sign_in(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """S-19: only a self-close may be undone by the password; a closure the console made stays closed."""
+    await register(client)
+    user = await identity_repo.user_by_email(db_session, "new@example.com")
+    assert user is not None
+    user.status = "deleted"
+    user.closed_at = datetime.now(UTC)
+    await db_session.commit()
+
+    refused = await client.post(
+        "/api/v1/auth/login", json={"email": "new@example.com", "password": REGISTER["password"]}
+    )
+    assert refused.json()["code"] == "account_suspended"
+
+
+async def test_reopening_a_closed_account_emails_the_owner(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+
+    token = (await register(client)).json()["access_token"]
+    await client.post("/api/v1/me/close", json={"password": REGISTER["password"]}, headers=bearer(token))
+    await client.post(
+        "/api/v1/auth/login", json={"email": "new@example.com", "password": REGISTER["password"]}
+    )
+
+    told = list(
+        (
+            await db_session.execute(
+                select(OutboundMessage.recipient).where(OutboundMessage.template_key == "account_reopened")
+            )
+        ).scalars()
+    )
+    assert told == ["new@example.com"]

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.notifications.models import OutboundMessage
@@ -42,6 +42,17 @@ async def enqueue(
     await session.flush()
     await session.refresh(message)
     return message
+
+
+async def erase_recipients(session: AsyncSession, emails: set[str], *, placeholder: str) -> None:
+    """Take these addresses out of the outbox: unsent mail is dropped, sent mail keeps its row."""
+    if not emails:
+        return
+    matching = func.lower(OutboundMessage.recipient).in_(emails)
+    await session.execute(
+        delete(OutboundMessage).where(matching, OutboundMessage.status.in_(("pending", "failed")))
+    )
+    await session.execute(update(OutboundMessage).where(matching).values(recipient=placeholder))
 
 
 async def by_idempotency_key(session: AsyncSession, key: str) -> OutboundMessage | None:

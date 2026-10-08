@@ -71,6 +71,23 @@ async def holds_live_membership(session: AsyncSession, *, user_id: uuid.UUID, or
     )
 
 
+async def live_org_ids(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
+    """The organisations this person is currently a member of."""
+    return [org.id for _membership, org in await repository.live_memberships_with_orgs(session, user_id)]
+
+
+async def audit_count(session: AsyncSession, *, action: str, target_id: str) -> int:
+    """How many audit entries of this action name this target: a counter that needs no column."""
+    return await repository.audit_count(session, action=action, target_id=target_id)
+
+
+async def acted_on_themselves(session: AsyncSession, *, action: str, user_id: uuid.UUID) -> bool:
+    """Whether the audit log shows this person did this action to their own account."""
+    return await repository.audited_by_actor(
+        session, action=action, target_id=str(user_id), actor_user_id=user_id
+    )
+
+
 @dataclass(frozen=True)
 class OrgSummary:
     """An organisation as another slice names it to a person: the id and a name."""

@@ -207,6 +207,12 @@ async def anonymise_trainee(
     )
 
 
+async def emails_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[str]:
+    """The address on every roster entry this account owns: where an institution's mail goes."""
+    stmt = select(Trainee.email).where(Trainee.user_id == user_id)
+    return list((await session.execute(stmt)).scalars())
+
+
 async def anonymise_for_user(session: AsyncSession, user_id: uuid.UUID, *, at: datetime) -> int:
     """Scrub the name and address off every roster entry this account owns, keeping the rows.
 

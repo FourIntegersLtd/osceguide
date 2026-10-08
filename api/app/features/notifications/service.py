@@ -101,6 +101,14 @@ async def deliver_due(
     return sent, deferred
 
 
+async def erase_recipients(session: AsyncSession, emails: list[str]) -> None:
+    """The people behind these addresses are being erased: queued mail for them is dropped and
+    sent mail stops naming them. Compared lower-case, as addresses are stored."""
+    await repository.erase_recipients(
+        session, {email.lower() for email in emails}, placeholder="erased@anonymised.invalid"
+    )
+
+
 async def list_undelivered(session: AsyncSession, *, limit: int) -> list[OutboundMessage]:
     """What the worker gave up on, for the console: newest first."""
     return await repository.failed_messages(session, limit=limit)
@@ -178,6 +186,16 @@ def _email_change_requested(escaped_fields: dict[str, str]) -> str:
         f"{escaped_fields.get('new_email', 'a new address')}. Nothing changes until that address "
         "confirms.</p>"
         "<p>If this was not you, reset your password now.</p>"
+    )
+
+
+def _account_reopened(escaped_fields: dict[str, str]) -> str:
+    """The body sent to an owner whose closed account came back when they signed in."""
+    return (
+        "<h1>Your account is open again</h1>"
+        "<p>You signed in to your closed OSCE Guide account, so it has been reopened and will not be "
+        "erased.</p>"
+        "<p>If this was not you, reset your password straight away or contact support.</p>"
     )
 
 
@@ -390,6 +408,7 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "email_change": _email_change,
     "email_changed_notice": _email_changed_notice,
     "email_change_requested": _email_change_requested,
+    "account_reopened": _account_reopened,
     "payment_receipt": _payment_receipt,
     "entitlement_expiring": _entitlement_expiring,
     "invitation": _invitation,

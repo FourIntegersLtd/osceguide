@@ -184,3 +184,69 @@ async def test_asking_for_a_change_warns_the_current_address(
     )
     assert len(told) == 1
     assert told[0].payload == {"new_email": "warned@example.com"}
+
+
+async def test_an_old_link_cannot_be_replayed_after_the_address_went_there_and_back(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A-26: A to B to A restores the stamp's inputs; the link from the first hop must stay dead."""
+    pair = await signed_up(client)
+    await ask(client, pair, "b@example.com")
+    first = await queued_token(db_session, "b@example.com")
+    assert first
+    assert (await client.post("/api/v1/auth/email-change/confirm", json={"token": first})).status_code == 200
+
+    back = (
+        await client.post("/api/v1/auth/login", json={"email": "b@example.com", "password": PASSWORD})
+    ).json()
+    await ask(client, back, "old@example.com")
+    home = await queued_token(db_session, "old@example.com")
+    assert home
+    assert (await client.post("/api/v1/auth/email-change/confirm", json={"token": home})).status_code == 200
+
+    replay = await client.post("/api/v1/auth/email-change/confirm", json={"token": first})
+    assert replay.json()["code"] == "invalid_email_change_token"
+
+
+async def test_a_member_of_a_sso_only_organisation_cannot_move_their_address(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """A-26: the institution's identity provider names that person; a self-service change would orphan it."""
+    from sqlalchemy import update
+
+    from app.features.identity import repository as identity_repo
+    from app.features.sso.models import OrganizationSso
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    made = await client.post(
+        "/api/v1/platform/organizations",
+        json={"slug": "bmj", "name": "BMJ", "org_type": "institution"},
+        headers=bearer(root),
+    )
+    assert made.status_code == 201, made.text
+    saved = await client.put(
+        "/api/v1/platform/orgs/bmj/sso",
+        json={
+            "provider": "clerk",
+            "issuer": "bmj.accounts.dev",
+            "enabled": True,
+            "sso_only": False,
+            "sign_in_label": "Sign in with BMJ",
+            "hosts": ["bmj.osceguide.com"],
+            "email_domains": ["bmj.com"],
+        },
+        headers=bearer(root),
+    )
+    assert saved.status_code == 200, saved.text
+    pair = await signed_up(client, "member@bmj.com")
+    user = await identity_repo.user_by_email(db_session, "member@bmj.com")
+    org = await tenancy_repo.organization_by_slug(db_session, "bmj")
+    assert user is not None and org is not None
+    await tenancy_repo.add_membership(db_session, org_id=org.id, user_id=user.id, role="trainee")
+    await db_session.execute(update(OrganizationSso).values(sso_only=True))
+    await db_session.commit()
+
+    refused = await ask(client, pair, "elsewhere@example.com")
+    assert refused.status_code == 401
+    assert refused.json()["code"] == "password_login_disabled"
+    assert await queued_token(db_session, "elsewhere@example.com") is None

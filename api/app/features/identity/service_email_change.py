@@ -26,18 +26,25 @@ from app.features.identity.errors import (
     PasswordLoginDisabled,
     PasswordNotSet,
 )
+from app.features.identity.models import User
 from app.features.identity.tokens import verify_password
 from app.features.notifications import service as notifications
 from app.features.roster import service as roster
+from app.features.sso import service as sso
+from app.features.tenancy import service as tenancy
 
 EMAIL_CHANGE_TOKEN_TYPE = "email_change"  # noqa: S105 -- a claim name, not a secret
 LINK_LIFETIME = timedelta(hours=1)
+EMAIL_CHANGED_ACTION = "account.email_changed"
 
 
-def _stamp(password_hash: str | None, email: str) -> str:
+async def _stamp(session: AsyncSession, user: User) -> str:
     """What the account looked like when the link was sent: a reset or any address change since
-    makes it differ, which voids every link still in flight."""
-    return hashlib.sha256(f"{password_hash or ''}|{email.lower()}".encode()).hexdigest()[:32]
+    makes it differ, which voids every link still in flight. The count of address changes in the audit
+    log is part of it, so an address that went away and came back is not the account it was."""
+    changes = await tenancy.audit_count(session, action=EMAIL_CHANGED_ACTION, target_id=str(user.id))
+    seed = f"{user.password_hash or ''}|{user.email.lower()}|{changes}"
+    return hashlib.sha256(seed.encode()).hexdigest()[:32]
 
 
 async def begin_email_change(
@@ -65,6 +72,9 @@ async def begin_email_change(
         raise InvalidCredentials()
     if user.status != "active":
         raise AccountSuspended()
+    if await sso.is_in_sso_only_organisation(session, user.id):
+        # Their institution's identity provider names them; moving the address would orphan that.
+        raise PasswordLoginDisabled()
     wanted = new_email.strip().lower()
     if wanted == user.email.lower() or await repository.user_by_email(session, wanted) is not None:
         return
@@ -75,7 +85,7 @@ async def begin_email_change(
             "sub": str(user.id),
             "old": user.email.lower(),
             "new": wanted,
-            "stamp": _stamp(user.password_hash, user.email),
+            "stamp": await _stamp(session, user),
             "iat": int(now.timestamp()),
             "exp": int((now + LINK_LIFETIME).timestamp()),
         },
@@ -88,7 +98,7 @@ async def begin_email_change(
         subject="Confirm your new email address",
         template_key="email_change",
         payload={"token": token},
-        idempotency_key=f"email_change:{user.id}:{int(now.timestamp())}",
+        idempotency_key=f"email_change:{user.id}:{wanted}:{int(now.timestamp())}",
     )
     # The current address hears of the request, so a hijacked session cannot do this quietly.
     await notifications.enqueue_email(
@@ -125,7 +135,8 @@ async def confirm_email_change(
     if (
         user is None
         or user.email.lower() != claims["old"]
-        or claims.get("stamp") != _stamp(user.password_hash, user.email)
+        or claims.get("stamp") != await _stamp(session, user)
+        or await sso.is_in_sso_only_organisation(session, user.id)
         or user.status != "active"
         or await repository.user_by_email(session, new_email) is not None
     ):
@@ -136,6 +147,17 @@ async def confirm_email_change(
     except IntegrityError as exc:
         # Another confirmation took the address between the check and the write.
         raise InvalidEmailChangeToken() from exc
+    await tenancy.record_audit(
+        session,
+        org_id=None,
+        actor_user_id=user.id,
+        actor_email=old_email,
+        action=EMAIL_CHANGED_ACTION,
+        at=now,
+        target_type="user",
+        target_id=str(user.id),
+        summary="Sign-in address changed by its owner",
+    )
     await repository.revoke_all_chains_for_user(session, user_id=user.id, at=now, reason="email_change")
     await roster.follow_account_email(session, user_id=user.id, email=new_email)
     await notifications.enqueue_email(

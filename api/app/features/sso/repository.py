@@ -130,3 +130,15 @@ async def save_saml_connection(
         .execution_options(populate_existing=True)
     )
     return (await session.execute(stmt)).scalar_one()
+
+
+async def any_sso_only(session: AsyncSession, org_ids: Sequence[uuid.UUID]) -> bool:
+    """Whether any of these organisations has switched its members to signing in only through SSO."""
+    if not org_ids:
+        return False
+    stmt = (
+        select(OrganizationSso.id)
+        .where(OrganizationSso.org_id.in_(list(org_ids)), OrganizationSso.sso_only.is_(True))
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None

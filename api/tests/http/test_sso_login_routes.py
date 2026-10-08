@@ -288,3 +288,28 @@ async def test_an_org_without_sso_only_leaves_the_password_form_open(client: Asy
 
     reset = await client.post("/api/v1/auth/password-reset", json={"email": "both-ways@guys.com"})
     assert reset.status_code == 202, reset.text
+
+
+async def test_signing_in_through_sso_reopens_an_account_its_owner_closed_this_month(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-19: the way back is signing in, whichever way the person signs in."""
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await _enable(client, root, "bmj", sso_only=False)
+    registered = await client.post(
+        "/api/v1/auth/register",
+        json={"email": "back@bmj.com", "name": "Back Again", "password": "correct horse battery"},
+    )
+    await client.post(
+        "/api/v1/me/close",
+        json={"password": "correct horse battery"},
+        headers=bearer(registered.json()["access_token"]),
+    )
+    _use(client, FakeSsoBroker(identity=SsoIdentity(email="back@bmj.com", name="Back Again", subject="b1")))
+
+    signed_in = await client.post(CALLBACK, json={"org_slug": "bmj", "token": "t"})
+    assert signed_in.status_code == 200, signed_in.text
+    from app.features.identity import repository as identity_repo
+
+    user = await identity_repo.user_by_email(db_session, "back@bmj.com")
+    assert user is not None and (user.status, user.closed_at) == ("active", None)

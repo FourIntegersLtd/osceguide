@@ -30,22 +30,17 @@ from app.features.attempts import service_privacy as attempts_privacy
 from app.features.identity import repository, service_close_account
 from app.features.inbox import service as inbox_service
 from app.features.media_production import service as media_production
+from app.features.notifications import service as notifications
 from app.features.peer_practice import service_privacy as peer_practice_privacy
-from app.features.results import service as results
 from app.features.roster import service as roster
 from app.features.tutor_memory import service as tutor_memory_service
 
 log = get_logger(__name__)
 
-# The privacy policy's own number: an account is erased 30 days after it is
-# closed, not the moment it is closed, so a person who closes by mistake has a
-# month to change their mind before their transcripts are gone for good.
-RETENTION_DAYS = service_close_account.RETENTION_DAYS
-
 
 async def accounts_due_for_erasure(session: AsyncSession, *, now: datetime) -> list[uuid.UUID]:
     """Every account closed more than 30 days ago that has not yet been erased."""
-    cutoff = now - timedelta(days=RETENTION_DAYS)
+    cutoff = now - timedelta(days=service_close_account.RETENTION_DAYS)
     return await repository.user_ids_closed_before(session, cutoff=cutoff)
 
 
@@ -96,8 +91,10 @@ async def erase_account(session: AsyncSession, user_id: uuid.UUID, *, now: datet
         # Already gone, or already erased by an earlier, still-running pass —
         # nothing left to do, and nothing else to delete on its behalf either.
         return
-    if address:
-        await results.erase_recipient(session, email=address)
+    # Collected before the roster entries are anonymised: release mail was queued for the roster
+    # address, which need not be the account's.
+    addresses = await roster.emails_for_user(session, user_id=user_id)
+    await notifications.erase_recipients(session, [*addresses, *([address] if address else [])])
     await roster.anonymise_for_user(session, user_id=user_id, now=now)
     attempts_scrubbed = await attempts_privacy.erase_content_for_user(session, user_id)
     recordings_deleted = await _erase_peer_recordings(session, get_settings(), user_id)

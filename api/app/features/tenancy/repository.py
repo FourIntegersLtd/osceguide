@@ -255,6 +255,32 @@ async def temporary_password_was_relayed(session: AsyncSession, *, user_id: uuid
     return (await session.execute(stmt)).first() is not None
 
 
+async def audit_count(session: AsyncSession, *, action: str, target_id: str) -> int:
+    """How many entries of this action name this target."""
+    stmt = (
+        select(func.count())
+        .select_from(AuditEntry)
+        .where(AuditEntry.action == action, AuditEntry.target_id == target_id)
+    )
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def audited_by_actor(
+    session: AsyncSession, *, action: str, target_id: str, actor_user_id: uuid.UUID
+) -> bool:
+    """Whether this person themselves performed this action on this target."""
+    stmt = (
+        select(AuditEntry.id)
+        .where(
+            AuditEntry.action == action,
+            AuditEntry.target_id == target_id,
+            AuditEntry.actor_user_id == actor_user_id,
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).first() is not None
+
+
 async def write_audit(
     session: AsyncSession,
     *,

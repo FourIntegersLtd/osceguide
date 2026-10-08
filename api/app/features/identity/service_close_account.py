@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.features.identity import repository
 from app.features.identity.errors import AccountNotFound, InvalidCredentials
 from app.features.identity.models import User
+from app.features.notifications import service as notifications
 from app.features.tenancy import service as tenancy
 
 RETENTION_DAYS = 30  # the privacy policy's month; `service_erasure` erases on the same day
@@ -19,6 +20,21 @@ async def end_sessions(session: AsyncSession, user_id: uuid.UUID, *, now: dateti
     """Revoke every refresh chain this person holds. Deactivating an account
     has to end its sessions; the token check above ends its access."""
     await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason=reason)
+
+
+async def _audit_account(session: AsyncSession, user: User, action: str, now: datetime, summary: str) -> None:
+    """One platform-level audit row about the account, acted by its owner."""
+    await tenancy.record_audit(
+        session,
+        org_id=None,
+        actor_user_id=user.id,
+        actor_email=user.email,
+        action=action,
+        at=now,
+        target_type="user",
+        target_id=str(user.id),
+        summary=summary,
+    )
 
 
 async def close_account(
@@ -51,17 +67,7 @@ async def close_account(
     # account closed more than 30 days ago.
     user.closed_at = now
     await repository.revoke_all_chains_for_user(session, user_id=user_id, at=now, reason="account_closed")
-    await tenancy.record_audit(
-        session,
-        org_id=None,
-        actor_user_id=user.id,
-        actor_email=user.email,
-        action="account.closed",
-        at=now,
-        target_type="user",
-        target_id=str(user.id),
-        summary="Account closed by its owner",
-    )
+    await _audit_account(session, user, "account.closed", now, "Account closed by its owner")
 
 
 async def reopen_if_within_retention(session: AsyncSession, user: User, *, now: datetime) -> bool:
@@ -74,17 +80,18 @@ async def reopen_if_within_retention(session: AsyncSession, user: User, *, now: 
         return False
     if now - user.closed_at >= timedelta(days=RETENTION_DAYS):
         return False
+    # Only the owner's own closing is undone by signing in; any other closure stays closed.
+    if not await tenancy.acted_on_themselves(session, action="account.closed", user_id=user.id):
+        return False
     user.status = "active"
     user.closed_at = None
-    await tenancy.record_audit(
+    await _audit_account(session, user, "account.reopened", now, "Closed account reopened by signing in")
+    await notifications.enqueue_email(
         session,
-        org_id=None,
-        actor_user_id=user.id,
-        actor_email=user.email,
-        action="account.reopened",
-        at=now,
-        target_type="user",
-        target_id=str(user.id),
-        summary="Closed account reopened by signing in",
+        recipient=user.email,
+        subject="Your OSCE Guide account is open again",
+        template_key="account_reopened",
+        payload={},
+        idempotency_key=f"account_reopened:{user.id}:{int(now.timestamp())}",
     )
     return True

@@ -359,3 +359,9 @@ async def account_status(session: AsyncSession, user_id: uuid.UUID) -> str | Non
     on its next request rather than its next refresh."""
     user = await repository.user_by_id(session, user_id)
     return None if user is None else user.status
+
+
+async def is_platform_admin(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether the stored account is a platform admin now, for what outlives a token (a stream)."""
+    user = await repository.user_by_id(session, user_id)
+    return user is not None and user.status == "active" and user.is_platform_admin

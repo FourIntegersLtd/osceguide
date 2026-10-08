@@ -470,3 +470,39 @@ async def test_a_console_stream_closes_when_the_supervisor_is_removed(
 
         after = await asyncio.wait_for(frames(lines, 5), timeout=10)
         assert after == [], "no frame once removed; the stream closed"
+
+
+async def test_a_console_stream_closes_when_the_platform_admin_flag_is_withdrawn(
+    client: AsyncClient, streaming_client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """The token says platform admin for up to its lifetime; the stream asks the stored row."""
+    from sqlalchemy import update
+
+    from app.core.events import circuit_topic, get_event_bus
+    from app.features.identity.models import User
+
+    _org_id, admin = await org_with_admin(client, make_actor)
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    sitting = await a_sitting(client, admin, "kings", mode="training")
+    station = await published_station(client, admin, "kings", "S1")
+    circuit = await a_circuit(
+        client,
+        admin,
+        "kings",
+        sitting_id=sitting["id"],
+        trainee_ids=[str(await a_user(db_session, "cand@example.com"))],
+        station_version_ids=[station],
+    )
+
+    url = f"/api/v1/orgs/kings/circuits/{circuit['id']}/console/stream"
+    async with streaming_client.stream("GET", url, headers=bearer(root)) as response:
+        lines = response.aiter_lines()
+        await asyncio.wait_for(frames(lines, 2), timeout=10)
+        await db_session.execute(
+            update(User).where(User.email == "root@osceguide.com").values(is_platform_admin=False)
+        )
+        await db_session.flush()
+        await get_event_bus().publish(circuit_topic(circuit["id"]), "changed")
+
+        after = await asyncio.wait_for(frames(lines, 5), timeout=10)
+        assert after == [], "no frame once the flag is gone; the stream closed"

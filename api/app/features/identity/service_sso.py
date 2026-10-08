@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.memberships import MembershipLookup
 from app.core.settings import Settings
-from app.features.identity import repository
+from app.features.identity import repository, service_close_account
 from app.features.identity.errors import AccountSuspended
 from app.features.identity.models import User
 from app.features.identity.schemas import AuthResult
@@ -72,7 +72,9 @@ async def sign_in_external(
         # brought under the same rule rather than staying password-reachable
         # just because it predates the configuration.
         await repository.disable_password_login(session, user.id)
-    if user.status != "active":
+    if user.status != "active" and not await service_close_account.reopen_if_within_retention(
+        session, user, now=now
+    ):
         raise AccountSuspended()
     if await _must_drop_password(session, user):
         # Someone else chose this password (an admin's temporary password) and the person never

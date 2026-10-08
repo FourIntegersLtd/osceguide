@@ -187,3 +187,9 @@ async def _read(session: AsyncSession, config: OrganizationSso, *, org_slug: str
         default_exam_code=config.default_exam_code,
         bindings=[schemas.SsoBinding(kind=binding.kind, value=binding.value) for binding in bindings],
     )
+
+
+async def is_in_sso_only_organisation(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether this person belongs to an organisation whose identity provider names its members, so
+    the address on the account is not theirs to change."""
+    return await repository.any_sso_only(session, await tenancy.live_org_ids(session, user_id))

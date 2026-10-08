@@ -228,6 +228,11 @@ async def follow_account_email(session: AsyncSession, *, user_id: uuid.UUID, ema
     await repository.follow_account_email(session, user_id, email)
 
 
+async def emails_for_user(session: AsyncSession, *, user_id: uuid.UUID) -> list[str]:
+    """The roster addresses of this account, which are not always the account's own."""
+    return await repository.emails_for_user(session, user_id)
+
+
 async def anonymise_for_user(session: AsyncSession, *, user_id: uuid.UUID, now: datetime) -> int:
     """A closed account is being erased: every roster entry it owns stops naming the person, and the
     decisions hung off those entries stay as the organisation's record."""
