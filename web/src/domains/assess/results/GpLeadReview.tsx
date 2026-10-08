@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Badge, Button, Spinner, b2bTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
+import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { readGpLeadReview, saveGpLeadReview, type GpLeadReview as Review } from "@/domains/assess/results/api";
@@ -118,6 +119,7 @@ function Editor({
       setBusy(status);
       setFailure(null);
       setNote(null);
+      setStale(false);
       try {
         const saved = await saveGpLeadReview(orgSlug, slotId, {
           revision: review?.revision ?? 0,
@@ -131,8 +133,8 @@ function Editor({
       } catch (cause) {
         // A conflict is not a failure to retry: somebody else's words are in
         // there now, and saving over them is exactly what this prevents.
-        if (hasCode(cause, "review_conflict")) setStale(true);
-        setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
+        setStale(hasCode(cause, "review_conflict"));
+        setFailure(assessErrorMessage(cause));
       } finally {
         setBusy(null);
       }
@@ -151,12 +153,8 @@ function Editor({
         ) : null}
       </div>
 
-      {stale ? (
-        <Alert tone="warning">
-          Someone else changed this review while you had it open. Reload the page and make your changes again, so theirs are not lost.
-        </Alert>
-      ) : failure ? (
-        <Alert tone="danger">{failure}</Alert>
+      {failure ? (
+        <Alert tone={stale ? "warning" : "danger"}>{failure}</Alert>
       ) : note ? (
         <Alert tone="success">{note}</Alert>
       ) : null}

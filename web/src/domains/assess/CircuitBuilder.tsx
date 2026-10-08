@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { Alert, Button, Input, Spinner, Panel } from "@/foundation/ui";
-import { errorMessage } from "@/foundation/hooks";
+import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import {
   StationLibrary,
   type LibraryStation,
@@ -163,7 +163,7 @@ export function CircuitBuilder({
   return (
     <div className="flex flex-col gap-5">
       {above}
-      {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
+      {error && <Alert tone="danger">{assessErrorMessage(error)}</Alert>}
       {tooManyStations && (
         <Alert tone="warning">
           An exam circuit takes at most {MAX_EXAM_STATIONS} stations.

@@ -22,12 +22,11 @@ test("steps for an observer who has submitted, without the admin's review step",
   );
 });
 
-test("steps for an admin part-way, with no automatic marks to come", () => {
+test("steps for an admin part-way (one form, so no marks step), with no automatic marks to come", () => {
   assert.deepEqual(
     slotReviewSteps({ marking: "unavailable", mine: "none", admin: "draft" }).map((step) => [step.id, step.state, step.note]),
     [
       ["auto", "attention", "Not available"],
-      ["mine", "todo", "Not started"],
       ["admin", "todo", "Draft"],
     ],
   );

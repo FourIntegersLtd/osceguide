@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ConfirmModal } from "@/foundation/ui";
-import { errorMessage } from "@/foundation/hooks";
+import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
 import { cancelSitting, deleteCircuit, type Circuit } from "@/domains/assess/api";
 
@@ -77,5 +77,5 @@ function refusal(cause: unknown): string {
   if (hasCode(cause, "circuit_locked")) {
     return "This circuit has started, so it holds what was sat and cannot be deleted.";
   }
-  return errorMessage(cause);
+  return assessErrorMessage(cause);
 }

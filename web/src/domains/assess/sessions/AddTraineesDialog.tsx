@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useAsync } from "@/foundation/hooks";
 import { AsyncBoundary } from "@/foundation/ui";
+import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
 import { listActiveTrainees, type Trainee } from "@/domains/assess/api";
 import { latecomerChoices } from "@/domains/assess/sessions/latecomers";
@@ -212,7 +213,7 @@ function refusalFor(cause: unknown): string {
   if (hasCode(cause, "not_permitted_in_mode")) {
     return "An examination cannot take a late arrival: it is one candidate through every station.";
   }
-  return message;
+  return assessErrorMessage(cause);
 }
 
 function traineeName(trainee: Trainee): string {

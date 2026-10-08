@@ -3,11 +3,11 @@
 import { useCallback, useState } from "react";
 import { HiCheckCircle } from "react-icons/hi2";
 import { Alert, Badge, Button, Spinner, StepRail, b2bTokens } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { useAsync } from "@/foundation/hooks";
+import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { hasCode } from "@/foundation/platform-client";
 import {
   readDecision,
-  releaseDecision,
   saveDecision,
   signOffDecision,
   type CandidateReport,
@@ -23,7 +23,7 @@ import {
   workflowTone,
 } from "@/domains/assess/results/support";
 import { candidateProgress } from "@/domains/assess/results/candidateProgress";
-import { OutcomePicker, RecruitmentField, ReleaseButton, ReleasedDecision, ReopenButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
+import { OutcomePicker, RecruitmentField, ReleasedDecision, ReopenButton, StaleNotice } from "@/domains/assess/results/DecisionParts";
 
 /**
  * One candidate's outcome: draft, signed off, released.
@@ -62,7 +62,7 @@ export function CandidateDecision({
   }
 
   if (stored.loading) return <Spinner />;
-  if (stored.error) return <Alert tone="danger">{errorMessage(stored.error)}</Alert>;
+  if (stored.error) return <Alert tone="danger">{assessErrorMessage(stored.error)}</Alert>;
 
   return (
     <div className="space-y-4">
@@ -141,7 +141,7 @@ function Form({
       // here are still worth keeping, and the latest revision has to be loaded
       // before another save can go through.
       if (hasCode(cause, "decision_revised")) setStale(true);
-      else setFailure(errorMessage(cause instanceof Error ? cause : new Error(String(cause))));
+      else setFailure(assessErrorMessage(cause));
     } finally {
       setBusy(null);
     }
@@ -248,25 +248,17 @@ function Form({
                 )
               }
             />
-            <ReleaseButton
-              busy={busy === "release"}
-              disabled={busy !== null || !canRelease}
-              count={1}
-              label="Release to the candidate"
-              onConfirm={() =>
-                void run(
-                  "release",
-                  () => releaseDecision(orgSlug, sittingId, traineeId),
-                  "Released. The candidate can read it now.",
-                )
-              }
-            />
           </>
         )}
       </div>
 
       {signedOff && !canRelease ? (
         <Alert tone="warning">Cannot be released: {releaseRefusal("outcome_not_releasable")}.</Alert>
+      ) : null}
+      {signedOff && canRelease ? (
+        <p className="text-osce-meta text-b2b-mid">
+          Signed off. Release it from the button at the top of the results, together with any other signed-off results.
+        </p>
       ) : null}
       {signedOff ? (
         <p className="text-osce-caption text-b2b-mid">

@@ -62,7 +62,7 @@ test.describe.serial("ASSESS-4 review, decide, release", () => {
     await admin.getByRole("textbox", { name: /rationale/i }).fill("Journey: met the standard.");
     await admin.getByRole("button", { name: "Sign off" }).click();
     await expect(admin.getByRole("button", { name: "Back to draft" })).toBeVisible();
-    await admin.getByRole("button", { name: "Release to the candidate" }).click();
+    await admin.getByRole("button", { name: "Release 1 signed-off result" }).click();
     await admin.getByRole("dialog").getByRole("button", { name: "Release" }).click();
 
     await openPage(trainee, `/app/${w.slug}/trainee/results/${sitting.id}`);

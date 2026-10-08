@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Alert, AsyncBoundary, B2CPageHeader } from "@/foundation/ui";
+import { useState } from "react";
+import { Alert, AsyncBoundary, B2CPageHeader, Button } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
+import { hasCode } from "@/foundation/platform-client";
 import { useSurface } from "@/capabilities";
 import {
   listActiveMembers,
@@ -43,6 +45,8 @@ import { DEFAULT_BREAK_MINUTES, DEFAULT_READING_MINUTES, DEFAULT_SIMULATION_MINU
 export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId: string }) {
   const router = useRouter();
   const { hrefFor } = useSurface();
+  // The lock is read at load; a save can find it taken since (a 409), and then the page is stale.
+  const [lockedOnSave, setLockedOnSave] = useState(false);
 
   const context = useAsync(
     async (signal) => {
@@ -72,6 +76,7 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
       <AsyncBoundary state={context}>
         {({ console: data, trainees, staff, scope }) => {
           const blocked = editLockNotice(data.circuit);
+          const staleLock = blocked === null && lockedOnSave;
           return (
             <>
               <B2CPageHeader
@@ -100,10 +105,31 @@ export function EditCircuit({ orgSlug, circuitId }: { orgSlug: string; circuitId
                         </p>
                       </section>
                     </>
+                  ) : staleLock ? (
+                    <Alert tone="warning" title="This circuit changed while you were editing">
+                      <p>Nothing was saved. Reload to see its current state; your changes on this form will be lost.</p>
+                      <div className="mt-2">
+                        <Button
+                          themeType="b2b"
+                          variant="secondary"
+                          onClick={() => {
+                            setLockedOnSave(false);
+                            context.reload();
+                          }}
+                        >
+                          Reload the circuit
+                        </Button>
+                      </div>
+                    </Alert>
                   ) : null
                 }
                 onSubmit={async (shape) => {
-                  await rebuildCircuit(orgSlug, circuitId, shape);
+                  try {
+                    await rebuildCircuit(orgSlug, circuitId, shape);
+                  } catch (cause) {
+                    if (hasCode(cause, "circuit_locked")) setLockedOnSave(true);
+                    throw cause;
+                  }
                   router.push(hrefFor(`/circuits/${circuitId}`));
                 }}
               />

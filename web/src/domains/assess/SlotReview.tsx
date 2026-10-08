@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { Alert, AsyncBoundary, Badge, Button, B2CPageHeader, FoldSection, Spinner, Panel, StepGuide } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { useAsync } from "@/foundation/hooks";
+import { assessErrorMessage } from "@/domains/assess/errorCopy";
 import { type AttemptFeedbackRead } from "@/capabilities/feedback";
 import type { RatingValue } from "@/capabilities/feedback/rubric";
 import { AttemptTranscript } from "@/domains/assess/AttemptTranscript";
@@ -183,16 +184,17 @@ function Editor({
     [orgSlug, slotId, ratings, notes, onSaved],
   );
 
-  const mineReadOnly = submitted || open !== "mine";
+  const mineReadOnly = submitted;
   return (
     <>
       <StepGuide steps={steps} current={open} line={slotNextLine(open, steps)} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
+          {/* One form per page: an admin writes the review that counts, anyone else their own marks. */}
+          {open === "mine" ? (
           <FoldSection
             title="Your marks"
-            defaultOpen={open === "mine"}
-            description={open === "mine" ? undefined : "Read-only here. An admin writes the review that counts."}
+            defaultOpen
             meta={
               <Badge variant={submitted ? "success" : "neutral"} dot>
                 {submitted ? "Submitted" : "Draft"}
@@ -200,7 +202,7 @@ function Editor({
             }
           >
             <div className="flex flex-col gap-4">
-              {error && <Alert tone="danger">{errorMessage(error)}</Alert>}
+              {error && <Alert tone="danger">{assessErrorMessage(error)}</Alert>}
               {saved && !error && <Alert tone="success">{saved}</Alert>}
 
               <ReviewFields
@@ -235,16 +237,15 @@ function Editor({
               )}
             </div>
           </FoldSection>
-
-          {isAdmin ? (
+          ) : (
             <FoldSection
               title="Admin's review"
-              defaultOpen={open === "admin"}
+              defaultOpen
               description="One overall mark for the station. This is the mark that counts."
             >
               <GpLeadReview orgSlug={orgSlug} slotId={slotId} form={form} payload={payload} onStatus={setAdminStatus} />
             </FoldSection>
-          ) : null}
+          )}
 
           <Panel title="What the reviewers agreed">
             <SlotReviewers reviews={reviews} />

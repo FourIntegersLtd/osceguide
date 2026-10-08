@@ -70,14 +70,11 @@ const FORM: Record<FormStatus, Pick<SlotStep, "state" | "note">> = {
   completed: { state: "done", note: "Submitted" },
 };
 
-/** `admin` is null for someone who does not write the admin's review: that step is not theirs, so it is not shown. */
+/** One form per person: an admin (`admin` not null) writes only the admin's review, anyone else only their own marks. */
 export function slotReviewSteps(input: { marking: MarkingState; mine: FormStatus; admin: FormStatus | null }): SlotStep[] {
-  const steps: SlotStep[] = [
-    { id: "auto", label: "Automatic marking", ...AUTO[input.marking] },
-    { id: "mine", label: "Your marks", ...FORM[input.mine] },
-  ];
-  if (input.admin !== null) steps.push({ id: "admin", label: "Admin's review", ...FORM[input.admin] });
-  return steps;
+  const auto: SlotStep = { id: "auto", label: "Automatic marking", ...AUTO[input.marking] };
+  if (input.admin !== null) return [auto, { id: "admin", label: "Admin's review", ...FORM[input.admin] }];
+  return [auto, { id: "mine", label: "Your marks", ...FORM[input.mine] }];
 }
 
 /** The one form that is open for this person; the other is read-only. */
