@@ -268,6 +268,14 @@ export function recordRefund(paymentId: string, reason: string): Promise<Platfor
   );
 }
 
+/** Refunds the whole payment in Stripe, then withdraws what it bought; if Stripe refuses, nothing changes. */
+export function refundInStripe(paymentId: string, reason: string): Promise<PlatformPayment> {
+  return platformRequest<PlatformPayment>(
+    `${PLATFORM}/payments/${encodeURIComponent(paymentId)}/stripe-refund`,
+    { method: "POST", body: { reason } },
+  );
+}
+
 /* ------------------------------------------------------------------ Audit */
 
 export function listPlatformAudit(

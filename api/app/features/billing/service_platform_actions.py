@@ -1,8 +1,7 @@
 """What support may do about a payment, once `service_platform` has said what happened.
 
-Three actions: replay a delivery that was refused once the cause is fixed, record a payment
-that never went through Stripe, and mark a refund (See ADR 0012). Nothing here calls Stripe;
-the money itself moves in the Stripe dashboard.
+Four actions: replay a delivery that did not go through, record a payment that never went
+through Stripe, mark a refund (See ADR 0012), and issue one in Stripe first (`stripe_refund`).
 """
 
 from __future__ import annotations
@@ -14,11 +13,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.core.errors import AppError
+from app.core.ports import CheckoutSessions, CheckoutUnavailable
+from app.core.settings import SettingsDep
 from app.features.billing import errors, repository, service, service_platform, service_settlement
 from app.features.billing.schemas import PlatformPaymentRead
 from app.features.entitlements import service_platform as entitlements
 from app.features.identity import service as identity
 from app.features.tenancy import service_audit
+
+
+def get_stripe_refunds(settings: SettingsDep) -> CheckoutSessions:
+    """The Stripe adapter for refunds, as the router's dependency. Overridden in tests."""
+    from app.features.billing.checkout import build_checkout
+
+    try:
+        return build_checkout(settings)
+    except CheckoutUnavailable as exc:
+        raise errors.StripeRefundFailed() from exc
 
 
 async def replay_event(
@@ -134,3 +145,34 @@ async def refund(
         )
     plan = await repository.plan_by_id(session, payment.plan_id) if payment.plan_id else None
     return await service_platform.payment_read(session, payment, plan_code=plan.code if plan else None)
+
+
+async def stripe_refund(
+    session: AsyncSession,
+    payment_id: uuid.UUID,
+    *,
+    reason: str,
+    stripe: CheckoutSessions,
+    actor: Principal,
+    now: datetime,
+) -> PlatformPaymentRead:
+    """Refund the whole payment in Stripe, then withdraw what it bought (`refund`).
+
+    Stripe first: if it refuses, nothing is withdrawn and the person keeps what they paid for. The
+    idempotency key is the payment and the amount, so a double click or a retry after a lost answer
+    is one refund. The `charge.refunded` webhook that follows finds the access already withdrawn.
+    """
+    payment = await repository.payment_by_id(session, payment_id)
+    if payment is None:
+        raise errors.PaymentNotFound()
+    if not payment.stripe_payment_intent_id.startswith("pi_"):
+        raise errors.NotAStripePayment()
+    try:
+        await stripe.refund(
+            payment_intent_id=payment.stripe_payment_intent_id,
+            amount_pence=payment.amount_total_pence,
+            idempotency_key=f"refund:{payment.id}:{payment.amount_total_pence}",
+        )
+    except CheckoutUnavailable as exc:
+        raise errors.StripeRefundFailed() from exc
+    return await refund(session, payment_id, reason=reason, actor=actor, now=now)

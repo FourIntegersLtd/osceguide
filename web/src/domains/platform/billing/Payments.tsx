@@ -12,6 +12,7 @@ import { useCursorPages, useToast } from "@/foundation/hooks";
 import {
   listUserPayments,
   recordRefund,
+  refundInStripe,
   type PlatformPayment,
 } from "@/domains/platform/support/api";
 import { formatMoney } from "@/foundation/format";
@@ -102,22 +103,27 @@ function PaymentRow({
         <Badge tone={granted ? "success" : "neutral"}>
           {granted ? "Granted" : payment.entitlement_id ? "Access withdrawn" : "No grant"}
         </Badge>
-        {payment.stripe_payment_intent_id ? (
-          <a
-            className="text-osce-meta text-accent underline"
-            href={`https://dashboard.stripe.com/payments/${encodeURIComponent(payment.stripe_payment_intent_id)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Refund in Stripe
-          </a>
-        ) : null}
         {/* Nothing to revoke once the grant is gone, so a second "refund" would only look like it did something. */}
+        {granted && payment.stripe_payment_intent_id.startsWith("pi_") ? (
+          <InlineAction
+            label="Refund"
+            tone="danger"
+            description="Refunds the full amount to the customer's card in Stripe, then removes the access this payment bought. If Stripe refuses, nothing changes."
+            onConfirm={async (reason) => {
+              await refundInStripe(payment.id, reason);
+              toast.success(
+                "Refunded in Stripe",
+                "The access this payment bought has been revoked.",
+              );
+              onChanged();
+            }}
+          />
+        ) : null}
         {granted ? (
           <InlineAction
             label="Record refund"
             tone="danger"
-            description="This does not refund any money; do that in Stripe. It removes the access this payment bought and keeps the payment on record."
+            description="This does not move any money; use it for a refund made outside this screen. It removes the access this payment bought and keeps the payment on record."
             onConfirm={async (reason) => {
               await recordRefund(payment.id, reason);
               toast.success(

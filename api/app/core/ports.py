@@ -82,6 +82,13 @@ class CheckoutSessions(Protocol):
         """
         ...
 
+    async def refund(self, *, payment_intent_id: str, amount_pence: int, idempotency_key: str) -> None:
+        """Return this much of a payment to the card. A repeat with the same key is the same refund.
+
+        Raises `CheckoutUnavailable` when Stripe cannot be reached or refuses it.
+        """
+        ...
+
 
 class CheckoutUnavailable(Exception):
     """The card processor could not start a checkout."""

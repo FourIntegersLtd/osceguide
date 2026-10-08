@@ -112,6 +112,22 @@ class PriceCreationFailed(Unavailable):
     default_message = "Stripe could not create that price. Try again in a moment."
 
 
+class StripeRefundFailed(Unavailable):
+    """Stripe did not refund the payment, so nothing was withdrawn: the money and the access
+    are as they were. 503: usually transient, or this deployment has no Stripe key."""
+
+    code = "stripe_refund_failed"
+    default_message = "Stripe could not refund that payment. Nothing has changed; try again in a moment."
+
+
+class NotAStripePayment(Conflict):
+    """The payment was recorded by hand, so there is no Stripe charge to refund. Withdraw its access
+    with "Record refund" and return the money where it was taken."""
+
+    code = "not_a_stripe_payment"
+    default_message = "That payment did not go through Stripe, so there is nothing to refund there."
+
+
 class ReferralDiscountUnavailable(NotFound):
     """The code is fine, but this plan has no referral price to switch to. Refused rather than
     charged in full: the customer typed a code expecting 10% off."""

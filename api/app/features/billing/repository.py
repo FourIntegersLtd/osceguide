@@ -225,10 +225,10 @@ async def list_events(
     session: AsyncSession, *, failed_only: bool, limit: int, cursor: dict[str, Any] | None = None
 ) -> tuple[list[StripeEvent], str | None]:
     """The webhook ledger, newest first. `failed_only` is the reconcile queue:
-    deliveries recorded but never applied."""
+    deliveries recorded but never applied, refused or not."""
     stmt = select(StripeEvent)
     if failed_only:
-        stmt = stmt.where(StripeEvent.processed_at.is_(None), StripeEvent.failure.is_not(None))
+        stmt = stmt.where(StripeEvent.processed_at.is_(None))
     return await keyset_page(
         session, stmt, sort_col=StripeEvent.received_at, id_col=StripeEvent.id, limit=limit, cursor=cursor
     )

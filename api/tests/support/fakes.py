@@ -447,6 +447,7 @@ class FakeCheckoutSessions:
         self.fails = fails
         self.calls: list[dict[str, str]] = []
         self.prices: list[dict[str, str | int]] = []
+        self.refunds: list[dict[str, str | int]] = []
 
     async def create(
         self,
@@ -492,6 +493,19 @@ class FakeCheckoutSessions:
             }
         )
         return f"price_fake_{plan_code}"
+
+    async def refund(self, *, payment_intent_id: str, amount_pence: int, idempotency_key: str) -> None:
+        from app.core.ports import CheckoutUnavailable
+
+        if self.fails:
+            raise CheckoutUnavailable("stripe is down")
+        self.refunds.append(
+            {
+                "payment_intent_id": payment_intent_id,
+                "amount_pence": amount_pence,
+                "idempotency_key": idempotency_key,
+            }
+        )
 
 
 @dataclass

@@ -116,7 +116,7 @@ function EventRow({
         >
           {event.processed_at ? "Applied" : refused ? "Refused" : "Pending"}
         </Badge>
-        {refused ? (
+        {!event.processed_at ? (
           <InlineAction
             label="Try again"
             requireReason={false}

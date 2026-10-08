@@ -19,6 +19,7 @@ log = get_logger(__name__)
 
 STRIPE_CHECKOUT_URL = "https://api.stripe.com/v1/checkout/sessions"
 STRIPE_PRICES_URL = "https://api.stripe.com/v1/prices"
+STRIPE_REFUNDS_URL = "https://api.stripe.com/v1/refunds"
 TIMEOUT_SECONDS = 15.0
 
 
@@ -127,6 +128,25 @@ class StripeCheckout:
         if not price_id:
             raise CheckoutUnavailable("Stripe returned a price with no id")
         return str(price_id)
+
+    async def refund(self, *, payment_intent_id: str, amount_pence: int, idempotency_key: str) -> None:
+        """Refund a payment through Stripe's refunds API. Stripe answers a repeat with the same
+        idempotency key by returning the refund it already made; a charge refunded in full by
+        other means is refused, which the caller reports and does not retry."""
+        form = {"payment_intent": payment_intent_id, "amount": str(amount_pence)}
+        try:
+            async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
+                response = await client.post(
+                    STRIPE_REFUNDS_URL,
+                    data=form,
+                    auth=(self._secret_key, ""),
+                    headers={"Idempotency-Key": idempotency_key},
+                )
+        except httpx.HTTPError as exc:
+            raise CheckoutUnavailable(f"could not reach Stripe: {exc}") from exc
+        if response.status_code >= 400:
+            log.warning("stripe refused a refund", status=response.status_code, body=response.text[:500])
+            raise CheckoutUnavailable(f"Stripe refused the refund ({response.status_code})")
 
 
 def build_checkout(settings: Settings) -> StripeCheckout:

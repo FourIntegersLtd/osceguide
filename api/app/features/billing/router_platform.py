@@ -150,6 +150,27 @@ async def record_refund(
     )
 
 
+@router.post(
+    "/platform/payments/{payment_id}/stripe-refund",
+    response_model=schemas.PlatformPaymentRead,
+    responses=error_responses(
+        Forbidden, errors.PaymentNotFound, errors.NotAStripePayment, errors.StripeRefundFailed
+    ),
+)
+async def refund_in_stripe(
+    payment_id: uuid.UUID,
+    body: schemas.RefundRequest,
+    admin: PlatformAdmin,
+    session: Session,
+    clock: ClockDep,
+    stripe: Annotated[CheckoutSessions, Depends(service_platform_actions.get_stripe_refunds)],
+) -> schemas.PlatformPaymentRead:
+    """Refund the payment in Stripe, then withdraw what it bought. If Stripe refuses, nothing changes."""
+    return await service_platform_actions.stripe_refund(
+        session, payment_id, reason=body.reason, stripe=stripe, actor=admin, now=clock.now()
+    )
+
+
 @router.get(
     "/platform/billing/plans",
     response_model=Page[schemas.PlatformPlanRead],

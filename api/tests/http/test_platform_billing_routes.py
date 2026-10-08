@@ -8,8 +8,11 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.features.billing import repository as billing_repo
+from app.features.billing import service_platform_actions
 from app.features.identity import repository as identity_repo
 from tests.http.test_billing_routes import a_customer, a_plan, checkout_event, post_event
+from tests.support.fakes import FakeCheckoutSessions
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -267,3 +270,104 @@ async def test_a_console_refund_takes_back_the_referral_credit_like_the_webhook(
 
     mine = await client.get("/api/v1/me/referrals", headers=bearer(referrer_token))
     assert mine.json()["earned_pence"] == 0
+
+
+@pytest.fixture
+def stripe(client: AsyncClient):  # type: ignore[no-untyped-def]
+    """Stripe as the refund route sees it, without the internet."""
+    fake = FakeCheckoutSessions()
+    overrides = client._transport.app.dependency_overrides  # type: ignore[attr-defined]
+    overrides[service_platform_actions.get_stripe_refunds] = lambda: fake
+    yield fake
+    overrides.pop(service_platform_actions.get_stripe_refunds, None)
+
+
+async def _paid(client: AsyncClient, make_actor, db_session: AsyncSession, name: str):  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await a_plan(db_session)
+    await a_customer(db_session, f"{name}@example.com")
+    await post_event(client, checkout_event(f"evt_{name}", f"{name}@example.com"))
+    user = await identity_repo.user_by_email(db_session, f"{name}@example.com")
+    assert user is not None
+    [payment] = (await client.get(f"/api/v1/platform/users/{user.id}/payments", headers=bearer(root))).json()[
+        "items"
+    ]
+    return root, user, payment
+
+
+async def test_a_stripe_refund_moves_the_money_then_withdraws_the_access(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    """P-28: Refund refunds in Stripe, keyed on payment and amount: a double click is one refund."""
+    root, _, payment = await _paid(client, make_actor, db_session, "stripe-refund")
+    url = f"/api/v1/platform/payments/{payment['id']}/stripe-refund"
+
+    refunded = await client.post(url, json={"reason": "asked nicely"}, headers=bearer(root))
+    assert refunded.status_code == 200, refunded.text
+    assert refunded.json()["access_revoked"] is True
+    assert stripe.refunds == [
+        {
+            "payment_intent_id": "pi_evt_stripe-refund",
+            "amount_pence": 2499,
+            "idempotency_key": f"refund:{payment['id']}:2499",
+        }
+    ]
+    again = await client.post(url, json={"reason": "again"}, headers=bearer(root))
+    assert again.status_code == 200
+    assert [r["idempotency_key"] for r in stripe.refunds] == [f"refund:{payment['id']}:2499"] * 2
+
+
+async def test_a_stripe_refusal_leaves_the_access_alone(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    root, _, payment = await _paid(client, make_actor, db_session, "stripe-down")
+    stripe.fails = True
+
+    refused = await client.post(
+        f"/api/v1/platform/payments/{payment['id']}/stripe-refund", json={"reason": "x"}, headers=bearer(root)
+    )
+
+    assert refused.status_code == 503
+    assert refused.json()["code"] == "stripe_refund_failed"
+    after = await client.get(f"/api/v1/platform/users/{payment['user_id']}/payments", headers=bearer(root))
+    assert after.json()["items"][0]["access_revoked"] is False
+
+
+async def test_a_payment_that_never_went_through_stripe_cannot_be_refunded_there(
+    client: AsyncClient, make_actor, db_session: AsyncSession, stripe: FakeCheckoutSessions
+) -> None:  # type: ignore[no-untyped-def]
+    root, user, _ = await _paid(client, make_actor, db_session, "manual")
+    made = await client.post(
+        f"/api/v1/platform/users/{user.id}/payments",
+        json={"plan_code": "one_month", "note": "invoice paid by bank transfer"},
+        headers=bearer(root),
+    )
+    assert made.status_code == 201, made.text
+
+    refused = await client.post(
+        f"/api/v1/platform/payments/{made.json()['id']}/stripe-refund",
+        json={"reason": "x"},
+        headers=bearer(root),
+    )
+
+    assert refused.status_code == 409
+    assert refused.json()["code"] == "not_a_stripe_payment"
+    assert stripe.refunds == []
+
+
+async def test_an_event_recorded_but_never_processed_is_in_the_queue_and_can_be_retried(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await billing_repo.record_event(
+        db_session, event_id="evt_stuck", event_type="customer.created", event_payload={"id": "evt_stuck"}
+    )
+    await db_session.commit()
+
+    queue = await client.get("/api/v1/platform/billing/events?failed_only=true", headers=bearer(root))
+    assert [e["event_id"] for e in queue.json()["items"]] == ["evt_stuck"]
+
+    retried = await client.post("/api/v1/platform/billing/events/evt_stuck/replay", headers=bearer(root))
+    assert retried.status_code == 200, retried.text
+    queue = await client.get("/api/v1/platform/billing/events?failed_only=true", headers=bearer(root))
+    assert queue.json()["items"] == []
