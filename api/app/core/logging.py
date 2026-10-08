@@ -16,7 +16,7 @@ import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.core.settings import Settings
+from app.core.settings import AppEnv, Settings
 
 REQUEST_ID_HEADER = "X-Request-ID"
 
@@ -39,7 +39,9 @@ def configure_logging(settings: Settings) -> None:
         processors=[*shared_processors, structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
         wrapper_class=structlog.make_filtering_bound_logger(level),
         logger_factory=structlog.stdlib.LoggerFactory(),
-        cache_logger_on_first_use=True,
+        # A cached logger keeps the processors of the configure() call it first saw,
+        # so tests (which configure once per app) could not capture its events.
+        cache_logger_on_first_use=settings.app_env != AppEnv.test,
     )
 
     # Route stdlib loggers (uvicorn, sqlalchemy, alembic) through the same renderer.
