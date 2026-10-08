@@ -113,6 +113,10 @@ async def create_exam(
     return exam_read(exam)
 
 
+# Fields where an explicit null means "clear it"; for every other field null means "unchanged".
+_CLEARABLE = frozenset({"rubric_version_id"})
+
+
 async def update_exam(
     session: AsyncSession, exam_id: uuid.UUID, org_id: uuid.UUID | None = None, **fields: Any
 ) -> ExamRead:
@@ -122,14 +126,13 @@ async def update_exam(
     one would silently strand them; a new exam is the honest way to do it.
     """
     exam = await _owned_exam(session, exam_id, org_id)
-    changes = {field: value for field, value in fields.items() if value is not None}
-    if "rubric_version_id" in fields:
-        # An explicit null clears the marking scheme, but only on a draft: a published exam with
-        # none could not be marked.
-        if fields["rubric_version_id"] is None:
+    changes = {field: value for field, value in fields.items() if value is not None or field in _CLEARABLE}
+    if "rubric_version_id" in changes:
+        if changes["rubric_version_id"] is None:
+            # No existing code fits better: the refusal is "this exam cannot be offered without a
+            # rubric", which is what `exam_not_publishable` already says to the screen.
             if exam.status != "draft":
                 raise ExamNotPublishable("A published exam must keep its marking scheme version.")
-            changes["rubric_version_id"] = None
         else:
             await _usable_rubric(session, org_id, changes["rubric_version_id"])
     if "settings" in changes:

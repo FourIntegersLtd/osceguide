@@ -10,6 +10,7 @@ import {
 } from "@/capabilities/authoring/parts/AuthoringIconAction";
 import { AuthoringListRow } from "@/capabilities/authoring/parts/AuthoringListRow";
 import { AuthoringSectionLead } from "@/capabilities/authoring/parts/AuthoringSectionLead";
+import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import {
@@ -157,12 +158,7 @@ export function ProgrammesSection() {
             ))}
           </Select>
           {exams.error ? (
-            <p role="alert" className="mt-2 text-osce-caption text-danger">
-              Exams could not be loaded: {exams.error.message}{" "}
-              <button type="button" onClick={exams.reload} className="underline">
-                Try again
-              </button>
-            </p>
+            <LoadError message={`Exams could not be loaded: ${exams.error.message}`} onRetry={exams.reload} />
           ) : publishedExams.length === 0 ? (
             <p className="mt-2 text-osce-caption text-ink-muted">Publish an exam to use it here.</p>
           ) : (

@@ -47,3 +47,19 @@ export function stationConfirmCopy(kind: "archive" | "delete"): string {
     ? "The draft is removed. Published versions are untouched. If this is the station's only version, the station is deleted with it."
     : "Past attempts stay intact. If an older version is still published, the station stays in the live library on that one; otherwise it is retired from the live library.";
 }
+
+export type VersionStatus = "draft" | "published" | "archived";
+
+/**
+ * Which writes a rubric version offers. The server refuses publishing anything but a draft,
+ * archiving anything but a published version, and any write by an organisation to a platform
+ * rubric; offering them only made a button that always failed.
+ */
+export function rubricVersionActions(
+  status: VersionStatus,
+  scopeKind: "org" | "platform",
+  ownerKind: string,
+): { publish: boolean; archive: boolean } {
+  if (!canManageTemplate(scopeKind, ownerKind)) return { publish: false, archive: false };
+  return { publish: status === "draft", archive: status === "published" };
+}

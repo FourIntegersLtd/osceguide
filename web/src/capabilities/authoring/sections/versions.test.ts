@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { canManageTemplate, latestOf, stationConfirmCopy } from "@/capabilities/authoring/sections/versions";
+import { canManageTemplate, latestOf, stationConfirmCopy, rubricVersionActions } from "@/capabilities/authoring/sections/versions";
 
 const v = (version: number, status: string) => ({ version, status });
 
@@ -46,5 +46,19 @@ describe("stationConfirmCopy", () => {
   });
   it("warns that deleting the only version deletes the station", () => {
     assert.match(stationConfirmCopy("delete"), /only version, the station is deleted/);
+  });
+});
+
+describe("rubricVersionActions", () => {
+  it("offers publish on a draft only", () => {
+    assert.deepEqual(rubricVersionActions("draft", "org", "org"), { publish: true, archive: false });
+    assert.deepEqual(rubricVersionActions("archived", "org", "org"), { publish: false, archive: false });
+  });
+  it("offers archive on a published version only", () => {
+    assert.deepEqual(rubricVersionActions("published", "org", "org"), { publish: false, archive: true });
+  });
+  it("offers an organisation nothing on a platform rubric, and staff their own writes", () => {
+    assert.deepEqual(rubricVersionActions("draft", "org", "platform"), { publish: false, archive: false });
+    assert.deepEqual(rubricVersionActions("draft", "platform", "platform"), { publish: true, archive: false });
   });
 });

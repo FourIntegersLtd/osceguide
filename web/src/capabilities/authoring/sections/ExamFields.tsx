@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Checkbox, getInputClassName, Select } from "@/foundation/ui";
+import { LoadError } from "@/capabilities/authoring/parts/LoadError";
 import { useAsync } from "@/foundation/hooks";
 import { listRubrics, type ExamSettings } from "@/capabilities/authoring/api";
 import {
@@ -144,14 +145,7 @@ export function ExamFields({
               </option>
             ))}
           </Select>
-          {rubrics.error ? (
-            <p role="alert" className="mt-1 text-osce-caption text-danger">
-              {rubrics.error.message}{" "}
-              <button type="button" onClick={rubrics.reload} className="underline">
-                Try again
-              </button>
-            </p>
-          ) : null}
+          {rubrics.error ? <LoadError message={rubrics.error.message} onRetry={rubrics.reload} /> : null}
         </Field>
       </div>
       <ExamSettingsFields value={value.settings} onChange={setSettings} />
