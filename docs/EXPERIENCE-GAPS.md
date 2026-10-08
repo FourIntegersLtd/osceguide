@@ -162,6 +162,7 @@ unless written in full.
 - **T-10** · ROUGH · partly fixed 33209b7 (empty state links to the library; completeHref to feedback not done: self-practice has no feedback route yet, see T-12) · Self practice empty state points to the library with no link; completeHref returns to the list not the feedback. SelfPractice.tsx
 - **T-11** · WRONG · fixed 33209b7 (api scopes /me/sittings by org_slug; a stale token lacking the org membership shows nothing until refresh) · Found during 5770d03, not caused by it: /me/sittings is not scoped by workspace in the api; only the web filters it. dashboard/service_trainee.py:30
 - **T-12** · ROUGH · open · Found during 33209b7, not caused by it: self practice has no feedback route, so completeHref cannot return to feedback (T-10 second half). SelfPractice
+- **T-13** · ROUGH · open · Found during 613c080/2d653e5 (613c080 caused a regression, reverted in 2d653e5): /me/sittings all-orgs view lists every rostered slot, so a trainee whose org access was revoked still sees that org's sittings; ?org_slug scoping reads JWT memberships, so a token minted before rostering shows nothing for that workspace until refresh. Fix by scoping on DB membership/revocation, not the token. dashboard/service_trainee.py
 
 ## 5. Consumer (C-*)
 
@@ -356,3 +357,4 @@ Live consultation end to end; a real scoring run and the score and priority colu
 | 2026-10-08 | night r1 institution | T-7 T-9 T-11 R-41 fixed, S-24 T-10 partly (33209b7); review fixes d7e3dc1 (edbf127, 576c547) | T-12 added; openapi needs org_slug, programme_not_active, lead_cannot_run; R-19 /end has no reason field |
 | 2026-10-08 | night r1 institution+access | review fixes 613c080 (33209b7 d7e3dc1: all-orgs /me/sittings now membership-scoped, ensure_programme_active, offline disables restored), 0d00c78 (75ee1d7 fd62033); runner fixed test_sitting_cancel_routes broken by edbf127 | S-28 added; access lane on 0d00c78 review fixes |
 | 2026-10-08 | night r1 access | review fixes 753a70c (0d00c78: account_not_found 401, SAML strip-before-validate, refresh generation counter, audit wording) | openapi regen also needs account_not_found + SAML fields; 613c080 broke test_an_exam_candidate_reads_nothing_of_their_slot_until_release (membership scoping), sent to institution lane |
+| 2026-10-08 | night r1 institution | 613c080 broke an examiner transcript test (all-orgs /me/sittings filtered by token membership); 2d653e5 restores rostered-only all-orgs view, org_slug narrows | T-13 added (revoked trainee still sees sittings; stale-token slug scoping) |
