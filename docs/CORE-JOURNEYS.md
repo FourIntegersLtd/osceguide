@@ -37,7 +37,7 @@ to write anything unless the api host is localhost, then creates a fresh
 organisation `e2e-<id>` with an admin, supervisor, trainee, a consumer and a
 newcomer, so a run never depends on earlier data. Override with
 `E2E_API_URL`, `E2E_WEB_URL`, `E2E_PG_CONTAINER`. Sign-in is rate limited to
-10 a minute; the helpers wait and retry on 429. Failures keep a trace and
+10 a minute; the helpers wait and retry on 429 (`loginPatiently` is a test-only workaround for that limit, not product behaviour). Failures keep a trace and
 screenshot in `web/test-results/`.
 
 ## TRAIN: the consumer

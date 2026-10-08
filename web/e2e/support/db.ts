@@ -9,6 +9,11 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { assertLocalApi } from "./api";
 
+/** The one marked result both fixtures carry: a Green rating with a quoted phrase. */
+const GREEN_PAYLOAD = JSON.stringify({
+  global_skills: { structures_consultation: { score: "G", supporting_phrase: "Shall we start with what brought you in?", explanation: "Clear opening." } },
+});
+
 const CONTAINER = process.env.E2E_PG_CONTAINER ?? "platform-api-postgres-1";
 
 function psql(sql: string): string {
@@ -29,7 +34,7 @@ DECLARE
   exam uuid := (select id from exams where code = 'sca');
   sv uuid := (select sv.id from station_versions sv join stations s on s.id = sv.station_id
               where s.exam_id = exam and sv.status = 'published' order by sv.created_at limit 1);
-  payload jsonb := '{"global_skills": {"structures_consultation": {"score": "G", "supporting_phrase": "Shall we start with what brought you in?", "explanation": "Clear opening."}}}';
+  payload jsonb := '${GREEN_PAYLOAD}';
 BEGIN
   INSERT INTO attempts (id, kind, user_id, exam_id, station_version_id, status, started_at, completed_at)
     VALUES ('${a}', 'practice', u, exam, sv, 'evaluated', now() - interval '20 minutes', now() - interval '5 minutes');
@@ -50,7 +55,7 @@ export function seedMarkedSlotAttempt(slotId: string): void {
 DO $$
 DECLARE
   s record;
-  payload jsonb := '{"global_skills": {"structures_consultation": {"score": "G", "supporting_phrase": "Shall we start with what brought you in?", "explanation": "Clear opening."}}}';
+  payload jsonb := '${GREEN_PAYLOAD}';
 BEGIN
   SELECT sl.id, sl.org_id, sl.trainee_id, sl.station_version_id, st.exam_id INTO s
     FROM slots sl JOIN station_versions sv ON sv.id = sl.station_version_id JOIN stations st ON st.id = sv.station_id

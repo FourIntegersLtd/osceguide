@@ -1,8 +1,7 @@
 import type { BrowserContext, Page } from "@playwright/test";
-import { loginPatiently, PASSWORD, type Session } from "./api";
+import { loginPatiently, PASSWORD, WEB, type Session } from "./api";
 import { world, type Role } from "./world";
 
-const WEB = process.env.VERIFY_WEB_URL ?? "http://localhost:3101";
 const cache = new Map<Role, Session>();
 
 /** Token pair for a world account, signed in once per worker (sign-ins are rate limited). */
@@ -37,8 +36,10 @@ export async function dismissOverlays(page: Page): Promise<void> {
   const close = page.getByRole("button", { name: "Close dialog" });
   const decline = page.getByRole("button", { name: "Continue without analytics" });
   for (let round = 0; round < 4; round += 1) {
-    if (await close.isVisible({ timeout: round === 0 ? 4_000 : 1_000 }).catch(() => false)) await close.click();
-    else if (await decline.isVisible({ timeout: 1_000 }).catch(() => false)) await decline.click();
+    // The dialogs mount after hydration, which is slow on a cold dev server: give them time.
+    const wait = round === 0 ? 4_000 : 2_000;
+    if (await close.isVisible({ timeout: wait }).catch(() => false)) await close.click();
+    else if (await decline.isVisible({ timeout: wait }).catch(() => false)) await decline.click();
     else return;
   }
 }

@@ -4,12 +4,12 @@
  * talks to the local platform-api (global-setup refuses anything else).
  */
 import { signInWithPassword } from "../../scripts/admin-totp.mjs";
-import { API } from "../../.claude/skills/verify/harness.mjs";
+import { ACCOUNT, API, WEB } from "../../.claude/skills/verify/harness.mjs";
 
-export { API };
+export { API, WEB };
 export const PASSWORD = "e2e-correct-horse-1";
-/** The seeded platform admin (the verify harness account). */
-export const ADMIN = { email: process.env.E2E_ADMIN_EMAIL ?? "walkthrough@example.com", password: process.env.E2E_ADMIN_PASSWORD ?? "correct horse battery" };
+/** The seeded platform admin: the verify harness account. */
+export const ADMIN = ACCOUNT;
 
 export function assertLocalApi(): void {
   const host = new URL(API).hostname;
