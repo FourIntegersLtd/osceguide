@@ -236,7 +236,7 @@ async function askForToken(refused?: string): Promise<TokenAnswer | null> {
   }
 }
 
-async function fetchToken(): Promise<string | null> {
+async function fetchToken(): Promise<string | null | undefined> {
   const startedIn = generation;
   return withSessionLock(async () => {
     let body = await askForToken();
@@ -250,7 +250,11 @@ async function fetchToken(): Promise<string | null> {
     // Signed out while this was in the air: the answer belongs to a session that is gone, and
     // acting on it (clearing on a refusal, storing a token) would undo whatever came since. Hand
     // callers who joined it the current session's token, if a sign-in has made one.
-    if (generation !== startedIn) return session?.accessToken ?? null;
+    // An expired one is no use to them: `undefined` sends them round again for a fresh one.
+    if (generation !== startedIn) {
+      if (!session) return null;
+      return Date.now() < session.expiresAt - REFRESH_MARGIN_MS ? session.accessToken : undefined;
+    }
     if (!body.access_token) {
       // The server has already cleared the cookies: the chain was spent or
       // revoked, or there was never a session here.
@@ -279,7 +283,9 @@ export async function platformAccessToken(): Promise<string | null> {
   const started = (inFlight ??= fetchToken().finally(() => {
     if (inFlight === started) inFlight = null;
   }));
-  return started;
+  const token = await started;
+  // `inFlight` is cleared by now, so this starts a new refresh.
+  return token === undefined ? platformAccessToken() : token;
 }
 
 /**

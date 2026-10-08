@@ -231,6 +231,38 @@ test("callers that joined a refresh across a sign-out and sign-in get the new se
   assert.equal(await stale, "access-1");
 });
 
+test("a stale refresh finding the new session's token expired asks again rather than hand it out", async () => {
+  serverSetsMarker();
+  let release: (response: Response) => void = () => {};
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  let tokenAsks = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (init?.method === "DELETE") return new Response(null, { status: 204 });
+    if (url.endsWith("/api/session") && init?.method === "POST") {
+      serverSetsMarker();
+      return new Response(null, { status: 204 });
+    }
+    if (url.includes("/auth/login")) return json(PAIR);
+    tokenAsks += 1;
+    return tokenAsks === 1 ? held : json({ access_token: "fresh", expires_at: Date.now() + 900_000 });
+  }) as typeof fetch;
+  const realNow = Date.now;
+  try {
+    const stale = platformAccessToken();
+    await logout();
+    await login("a@b.c", "right-password");
+    // The new session's token has run out by the time the stale answer lands.
+    Date.now = () => realNow() + 1_000_000;
+    release(json({ access_token: "late", expires_at: realNow() + 900_000 }));
+    assert.equal(await stale, "fresh");
+  } finally {
+    Date.now = realNow;
+  }
+});
+
 test("no session means no request at all", async () => {
   const calls = respond(() => json({ access_token: null }));
   assert.equal(await platformAccessToken(), null);
