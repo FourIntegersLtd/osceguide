@@ -66,6 +66,7 @@ def capped(owner: uuid.UUID, stream: AsyncIterator[str]) -> AsyncIterator[str]:
         raise TooManyStreams
 
     async def counted() -> AsyncIterator[str]:
+        """Pass every frame through, holding one of the account's places until the stream closes."""
         _open_streams[owner] = _open_streams.get(owner, 0) + 1
         try:
             async for item in stream:

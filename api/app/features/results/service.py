@@ -372,3 +372,13 @@ async def decisions_for_sitting(
     """Every candidate's current decision, keyed by `trainees.id`. For the sitting report."""
     revisions = await repository.latest_revisions_for_sitting(session, org_id, sitting_id)
     return {revision_row.trainee_id: _read(revision_row) for revision_row in revisions}
+
+
+async def released_outcomes_by_sitting(
+    session: AsyncSession, org_id: uuid.UUID
+) -> dict[uuid.UUID, list[str | None]]:
+    """Every released decision's outcome, grouped by sitting. For reporting across sittings."""
+    grouped: dict[uuid.UUID, list[str | None]] = {}
+    for sitting_id, outcome in await repository.released_outcomes(session, org_id):
+        grouped.setdefault(sitting_id, []).append(outcome)
+    return grouped

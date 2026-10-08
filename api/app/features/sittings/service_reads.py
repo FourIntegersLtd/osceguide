@@ -111,6 +111,16 @@ async def sitting_counts_by_cohort(
     return await repository_reads.sitting_counts_by_cohort(session, org_id, cohort_ids)
 
 
+async def programme_activity(session: AsyncSession, org_id: uuid.UUID) -> dict[uuid.UUID, tuple[int, int]]:
+    """Per programme id: (sittings, distinct candidates), for the reporting screen."""
+    return await repository_reads.programme_activity(session, org_id)
+
+
+async def sitting_programmes(session: AsyncSession, org_id: uuid.UUID) -> dict[uuid.UUID, uuid.UUID]:
+    """Sitting id to programme id, for rolling a per-sitting figure up to its programme."""
+    return await repository_reads.sitting_programmes(session, org_id)
+
+
 async def count_sittings(session: AsyncSession, org_id: uuid.UUID) -> int:
     return await repository_reads.count_sittings(session, org_id)
 

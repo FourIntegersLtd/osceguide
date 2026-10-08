@@ -24,6 +24,7 @@ from app.features.dashboard import (
     schemas_org,
     schemas_readout,
     schemas_report,
+    schemas_reporting,
     service,
     service_cohort,
     service_console,
@@ -32,6 +33,7 @@ from app.features.dashboard import (
     service_readout,
     service_report,
     service_report_csv,
+    service_reporting,
     service_streams,
     service_trainee,
 )
@@ -99,6 +101,16 @@ async def read_my_sittings(
 async def read_org_dashboard(workspace: OrgStaff, session: Session) -> schemas_org.OrgDashboard:
     """The institutional home screen: counts, setup state and recent sittings."""
     return await service_org.build_org_dashboard(session, workspace.org_id)
+
+
+@router.get(
+    "/orgs/{org_slug}/reporting",
+    response_model=schemas_reporting.OrgReporting,
+    responses=error_responses(Forbidden),
+)
+async def read_org_reporting(workspace: OrgStaff, session: Session) -> schemas_reporting.OrgReporting:
+    """Sittings, candidates and pass rate per programme, across every sitting."""
+    return await service_reporting.build_org_reporting(session, workspace.org_id)
 
 
 @router.get(

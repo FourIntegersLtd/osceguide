@@ -320,12 +320,13 @@ describe("surface registry", () => {
       "sittings",
       "live",
       "trainees",
+      "reporting",
       "team",
       "build",
       "stations",
       "programmes",
     ]);
-    assert.deepEqual(keys(supervisor), ["dashboard", "sittings", "live", "trainees", "build"]);
+    assert.deepEqual(keys(supervisor), ["dashboard", "sittings", "live", "trainees", "reporting", "build"]);
     // A trainee (no staff permission) sees only their own items: study and
     // community come from the mounted capabilities, and the staff ones stay out.
     const trainee = SURFACE_MANIFESTS.assess.nav({ workspace, can: () => false, href });

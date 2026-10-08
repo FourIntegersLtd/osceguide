@@ -56,6 +56,7 @@ exists as its own slice rather than as fields grafted onto `attempts`.
 | GET | `/api/v1/orgs/{org_slug}/sittings/{sitting_id}/report` | org admin | per candidate: stations sat, marking, reviewers' combined RAG, decision state; `sitting_not_found` (404) |
 | GET | `/api/v1/orgs/{org_slug}/sittings/{sitting_id}/cohort` | org member | the sitting's candidates ranked on their effective scores, completion before score; `not_an_exam_sitting` (422) for a training sitting |
 | GET | `/api/v1/orgs/{org_slug}/sittings/{sitting_id}/readout` | org admin | the downloadable read-out: that same ranking, plus what the cohort adds up to, the recommendation sentences and the stated method. JSON — the screen writes the file; `not_an_exam_sitting` (422), `sitting_not_found` (404) |
+| GET | `/api/v1/orgs/{org_slug}/reporting` | org staff | per programme: sittings, distinct candidates, released decisions and the pass rate among them (R-32) |
 | GET | `/api/v1/me/sittings/stream` | bearer or `?ticket=` | the same payload, pushed (SSE) |
 | GET | `/api/v1/orgs/{org_slug}/live` | org staff | every circuit running now, with its clock, its progress and its alerts |
 | GET | `/api/v1/orgs/{org_slug}/live/stream` | org staff | the same payload, pushed (SSE) |

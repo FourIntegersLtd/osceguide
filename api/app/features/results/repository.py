@@ -167,3 +167,19 @@ async def event_by_idempotency_key(
     """
     stmt = select(CandidateResultEvent).where(CandidateResultEvent.idempotency_key == idempotency_key)
     return (await session.execute(stmt)).scalar_one_or_none()
+
+
+async def released_outcomes(session: AsyncSession, org_id: uuid.UUID) -> list[tuple[uuid.UUID, str | None]]:
+    """(sitting id, assessment outcome) of every candidate's current revision that has been released."""
+    stmt = (
+        select(CandidateResultRevision)
+        .where(CandidateResultRevision.org_id == org_id)
+        .distinct(CandidateResultRevision.sitting_id, CandidateResultRevision.trainee_id)
+        .order_by(
+            CandidateResultRevision.sitting_id,
+            CandidateResultRevision.trainee_id,
+            CandidateResultRevision.revision.desc(),
+        )
+    )
+    rows = (await session.execute(stmt)).scalars()
+    return [(row.sitting_id, row.assessment_outcome) for row in rows if row.released_at is not None]
