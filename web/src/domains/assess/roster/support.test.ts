@@ -57,3 +57,33 @@ test("a member with nothing booked is fine, and one on a sitting is booked", () 
 test("revoked access is flagged whatever step was reached", () => {
   assert.equal(traineeStatus(trainee({ access_revoked: true, programme_names: ["SCA"] })).attention, "Access revoked");
 });
+
+import { deleteLead, rosterTabs, loadRoster, type RosterData } from "@/domains/assess/roster/support";
+
+test("a supervisor is not offered the Exam access tab, which the API closes to admins", () => {
+  assert.deepEqual(rosterTabs(false).map((t) => t.key), ["trainees", "add", "groups"]);
+  assert.deepEqual(rosterTabs(true).map((t) => t.key), ["trainees", "add", "groups", "access"]);
+});
+
+test("the delete prompt says up front when Revoke is the option that will work", () => {
+  assert.match(deleteLead("Ada", 3), /has sat 3 stations.*Revoke/);
+  assert.doesNotMatch(deleteLead("Ada", 0), /has sat/);
+});
+
+test("a reload fetches only the lists marked stale", async () => {
+  const calls: string[] = [];
+  const fetchers = {
+    trainees: async () => (calls.push("trainees"), [] as RosterData["trainees"]),
+    cohorts: async () => (calls.push("cohorts"), [] as RosterData["cohorts"]),
+    groups: async () => (calls.push("groups"), [] as RosterData["groups"]),
+  };
+  const cache: { slug?: string; data?: RosterData } = {};
+  await loadRoster(cache, "kings", new Set(["trainees", "cohorts", "groups"]), fetchers);
+  assert.deepEqual(calls, ["trainees", "cohorts", "groups"]);
+  calls.length = 0;
+  await loadRoster(cache, "kings", new Set(["groups"]), fetchers);
+  assert.deepEqual(calls, ["groups"]);
+  calls.length = 0;
+  await loadRoster(cache, "other", new Set(["groups"]), fetchers);
+  assert.deepEqual(calls, ["trainees", "cohorts", "groups"]);
+});

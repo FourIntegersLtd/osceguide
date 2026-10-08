@@ -1,27 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AsyncBoundary, Button, B2CHero, B2CPageHeader, TextLink } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { can, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
-import { TabStrip, type Tab } from "@/domains/assess/team/chrome";
+import { TabStrip } from "@/domains/assess/team/chrome";
 import { listAllTrainees, listCohorts, listTraineeGroups } from "@/domains/assess/roster/api";
 import { TraineesPanel } from "@/domains/assess/roster/TraineesPanel";
 import { AddTraineePanel } from "@/domains/assess/roster/AddTraineePanel";
 import { GroupsPanel } from "@/domains/assess/roster/GroupsPanel";
 import { AccessPanel } from "@/domains/assess/roster/AccessPanel";
 import type { Trainee } from "@/domains/assess/api";
-import { sectionSubtitle } from "@/domains/assess/roster/support";
+import { loadRoster, rosterTabs, sectionSubtitle, type RosterData } from "@/domains/assess/roster/support";
 
 type Section = "trainees" | "add" | "groups" | "access";
-
-const TABS: readonly Tab<Section>[] = [
-  { key: "trainees", label: "Everyone" },
-  { key: "add", label: "Add people" },
-  { key: "groups", label: "Groups" },
-  { key: "access", label: "Exam access" },
-];
+type Part = keyof RosterData;
 
 /**
  * The roster: who the organisation examines.
@@ -38,17 +32,31 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
   const [section, setSection] = useState<Section>("trainees");
   const canManage = can(session, "manage_team");
 
+  // Lists a write has changed; the rest are served from the last load (see `loadRoster`).
+  const cache = useRef<{ slug?: string; data?: RosterData }>({});
+  const stale = useRef<Set<Part>>(new Set(["trainees", "cohorts", "groups"]));
   const state = useAsync(
     async (signal) => {
-      const [trainees, cohorts, groups] = await Promise.all([
-        listAllTrainees(orgSlug, signal),
-        listCohorts(orgSlug, signal),
-        listTraineeGroups(orgSlug, signal),
-      ]);
-      return { trainees, cohorts: cohorts.items, groups: groups.items };
+      const parts = new Set(stale.current);
+      stale.current = new Set();
+      try {
+        return await loadRoster(cache.current, orgSlug, parts, {
+          trainees: () => listAllTrainees(orgSlug, signal),
+          cohorts: async () => (await listCohorts(orgSlug, signal)).items,
+          groups: async () => (await listTraineeGroups(orgSlug, signal)).items,
+        });
+      } catch (cause) {
+        // Nothing was cached, so the next attempt must fetch what this one meant to.
+        parts.forEach((part) => stale.current.add(part));
+        throw cause;
+      }
     },
     [orgSlug],
   );
+  const reloadAfter = (...parts: Part[]) => () => {
+    parts.forEach((part) => stale.current.add(part));
+    state.reload();
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,7 +85,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
             ) : null}
 
             <TabStrip
-              tabs={TABS.map((tab) =>
+              tabs={rosterTabs(canManage).map((tab) =>
                 tab.key === "trainees" ? { ...tab, count: data.trainees.length } : tab,
               )}
               active={section} onSelect={setSection}
@@ -89,7 +97,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
                 orgSlug={orgSlug}
                 cohorts={data.cohorts}
                 canManage={canManage}
-                onChanged={state.reload}
+                onChanged={reloadAfter("trainees", "groups")}
               />
             ) : null}
 
@@ -98,7 +106,7 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
                 orgSlug={orgSlug}
                 cohorts={data.cohorts}
                 canManage={canManage}
-                onAdded={state.reload}
+                onAdded={reloadAfter("trainees", "groups")}
               />
             ) : null}
 
@@ -109,12 +117,12 @@ export function Trainees({ orgSlug }: { orgSlug: string }) {
                 groups={data.groups}
                 trainees={data.trainees}
                 canManage={canManage}
-                onChanged={state.reload}
+                onChanged={reloadAfter("groups", "cohorts")}
               />
             ) : null}
 
-            {section === "access" ? (
-              <AccessPanel orgSlug={orgSlug} trainees={data.trainees} canManage={canManage} />
+            {section === "access" && canManage ? (
+              <AccessPanel orgSlug={orgSlug} trainees={data.trainees} canManage />
             ) : null}
           </>
         )}

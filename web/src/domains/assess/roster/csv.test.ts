@@ -50,3 +50,26 @@ test("skipped line numbers are file lines even when blank lines come before them
   assert.deepEqual(parsed.skippedLines, [5]);
   assert.deepEqual(parsed.invalidLines, [6]);
 });
+
+test("a UTF-8 byte-order mark does not hide the email column", () => {
+  const parsed = parseTraineeCsv("﻿email,cohort\na@b.uk,June");
+  assert.equal(parsed.error, null);
+  assert.equal(parsed.rows[0]?.email, "a@b.uk");
+});
+
+test("a semicolon-separated file (Excel in much of Europe) is read as columns", () => {
+  const parsed = parseTraineeCsv("email;first name\na@b.uk;Amina");
+  assert.equal(parsed.error, null);
+  assert.deepEqual(parsed.rows.map((r) => [r.email, r.firstName]), [["a@b.uk", "Amina"]]);
+});
+
+test("a repeated address is counted once and its later lines are reported", () => {
+  const parsed = parseTraineeCsv("email\na@b.uk\nA@B.uk\nc@d.uk\na@b.uk");
+  assert.deepEqual(parsed.rows.map((r) => r.email), ["a@b.uk", "c@d.uk"]);
+  assert.deepEqual(parsed.duplicateLines, [3, 5]);
+});
+
+test("a missing email column names the columns that were found", () => {
+  const parsed = parseTraineeCsv("name;cohort\nAmina;June");
+  assert.match(parsed.error ?? "", /found: name, cohort/);
+});

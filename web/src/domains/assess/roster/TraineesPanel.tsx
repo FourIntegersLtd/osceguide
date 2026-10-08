@@ -26,7 +26,7 @@ import {
 } from "@/domains/assess/roster/api";
 import { TraineeEditDialog } from "@/domains/assess/roster/TraineeEditDialog";
 import { TraineeRowActions } from "@/domains/assess/roster/TraineeRowActions";
-import { accessActive, cohortName, displayName, traineeCountLabel, traineeStatus } from "@/domains/assess/roster/support";
+import { accessActive, cohortName, deleteLead, displayName, traineeCountLabel, traineeStatus } from "@/domains/assess/roster/support";
 
 type Pending = { kind: "revoke" | "restore" | "delete" | "anonymise"; trainee: Trainee } | null;
 
@@ -345,7 +345,7 @@ export function TraineesPanel({
         lead={
           pending
             ? deleting
-              ? "You can only delete a trainee with no results recorded. If they have been examined, remove their access instead."
+              ? deleteLead(named, pending.trainee.stations_sat)
               : anonymising
                 ? `${named}'s name and email address will be scrubbed and their access revoked. Any decision already recorded about them is kept. This cannot be undone.`
                 : revoking

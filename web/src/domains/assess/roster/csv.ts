@@ -25,6 +25,8 @@ export interface CsvParse {
   skippedLines: number[];
   /** File line numbers whose address cell had text but no `@`. */
   invalidLines: number[];
+  /** File line numbers repeating an address already taken from an earlier line. */
+  duplicateLines: number[];
   error: string | null;
 }
 
@@ -47,7 +49,7 @@ function normalise(header: string): string {
  * importer did — turns that row into three fields and shifts every column
  * after it.
  */
-export function splitCsvLine(line: string): string[] {
+export function splitCsvLine(line: string, delimiter = ","): string[] {
   const fields: string[] = [];
   let value = "";
   let quoted = false;
@@ -67,7 +69,7 @@ export function splitCsvLine(line: string): string[] {
       }
     } else if (char === '"') {
       quoted = true;
-    } else if (char === ",") {
+    } else if (char === delimiter) {
       fields.push(value);
       value = "";
     } else {
@@ -76,6 +78,13 @@ export function splitCsvLine(line: string): string[] {
   }
   fields.push(value);
   return fields.map((field) => field.trim());
+}
+
+/** Comma, semicolon or tab, whichever splits the header row into the most columns. */
+function detectDelimiter(header: string): string {
+  return [",", ";", "\t"].reduce((best, candidate) =>
+    splitCsvLine(header, candidate).length > splitCsvLine(header, best).length ? candidate : best,
+  );
 }
 
 /** The file's lines, trailing space trimmed. Blank lines are dropped but every line keeps its file number. */
@@ -106,29 +115,33 @@ function pick(row: Record<string, string>, keys: string[]): string | null {
 }
 
 export function parseTraineeCsv(text: string): CsvParse {
-  const lines = numberedLines(text);
+  const lines = numberedLines(text.replace(/^\uFEFF/, ""));
 
   const header = lines[0]?.text ?? "";
   if (header.trim() === "") {
-    return { rows: [], skippedLines: [], invalidLines: [], error: "That file is empty." };
+    return { rows: [], skippedLines: [], invalidLines: [], duplicateLines: [], error: "That file is empty." };
   }
 
-  const headers = splitCsvLine(header).map(normalise);
+  const delimiter = detectDelimiter(header);
+  const headers = splitCsvLine(header, delimiter).map(normalise);
   if (!hasEmailColumn(headers)) {
     return {
       rows: [],
       skippedLines: [],
       invalidLines: [],
-      error: "The first row must name the columns, and one of them must be `email`.",
+      duplicateLines: [],
+      error: `The first row must name the columns, and one of them must be \`email\` (found: ${headers.filter(Boolean).join(", ") || "nothing"}).`,
     };
   }
 
   const rows: CsvRow[] = [];
   const skippedLines: number[] = [];
   const invalidLines: number[] = [];
+  const duplicateLines: number[] = [];
+  const seen = new Set<string>();
 
   for (let index = 1; index < lines.length; index += 1) {
-    const cells = splitCsvLine(lines[index]?.text ?? "");
+    const cells = splitCsvLine(lines[index]?.text ?? "", delimiter);
     const record: Record<string, string> = {};
     headers.forEach((header, column) => {
       record[header] = cells[column] ?? "";
@@ -141,6 +154,12 @@ export function parseTraineeCsv(text: string): CsvParse {
       (verdict === "skipped" ? skippedLines : invalidLines).push(lineNumber);
       continue;
     }
+
+    if (seen.has(email.toLowerCase())) {
+      duplicateLines.push(lineNumber);
+      continue;
+    }
+    seen.add(email.toLowerCase());
 
     let first = pick(record, FIRST_KEYS);
     let last = pick(record, LAST_KEYS);
@@ -159,9 +178,9 @@ export function parseTraineeCsv(text: string): CsvParse {
   }
 
   if (rows.length === 0) {
-    return { rows, skippedLines, invalidLines, error: "No rows in that file had an email address." };
+    return { rows, skippedLines, invalidLines, duplicateLines, error: "No rows in that file had an email address." };
   }
-  return { rows, skippedLines, invalidLines, error: null };
+  return { rows, skippedLines, invalidLines, duplicateLines, error: null };
 }
 
 /** Why the backend skipped a row, in words an administrator can act on. */

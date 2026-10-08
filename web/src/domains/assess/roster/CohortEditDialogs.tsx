@@ -196,7 +196,8 @@ function DeleteForm({
 
   const lead =
     `Delete “${cohort.name}”? Nobody can be put into it afterwards. This cannot be ` +
-    "undone, and a cohort that still has trainees in it is not deleted.";
+    "undone, and a cohort that still has trainees in it is not deleted. Sittings scheduled for it are " +
+    "kept but no longer belong to any cohort.";
 
   return (
     <Dialog

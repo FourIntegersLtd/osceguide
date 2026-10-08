@@ -3,10 +3,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { HiOutlineArrowUpTray } from "react-icons/hi2";
-import { Alert, b2bTokens } from "@/foundation/ui";
+import { Alert, Button, b2bTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { Dialog } from "@/domains/assess/team/chrome";
-import { bulkAddTrainees, type BulkTraineesResult, type Cohort } from "@/domains/assess/roster/api";
+import { addCohort, bulkAddTrainees, type BulkTraineesResult, type Cohort } from "@/domains/assess/roster/api";
 import { parseTraineeCsv, skipReason, type CsvParse } from "@/domains/assess/roster/csv";
 import { ImportInstructions, ImportOutcome } from "@/domains/assess/roster/ImportParts";
 
@@ -59,9 +59,11 @@ export function BulkImportDialog({
     },
   });
 
+  // Cohorts made from this dialog; the roster behind it is reloaded after the import.
+  const [made, setMade] = useState<Cohort[]>([]);
   const byName = useMemo(
-    () => new Map(cohorts.map((cohort) => [cohort.name.trim().toLowerCase(), cohort.id])),
-    [cohorts],
+    () => new Map([...cohorts, ...made].map((cohort) => [cohort.name.trim().toLowerCase(), cohort.id])),
+    [cohorts, made],
   );
   const unknownCohorts = parsed
     ? [
@@ -74,7 +76,23 @@ export function BulkImportDialog({
       ]
     : [];
 
+  const createCohorts = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      for (const name of unknownCohorts) {
+        const cohort = await addCohort(orgSlug, { name, academicYear: null });
+        setMade((current) => [...current, cohort]);
+      }
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const reset = () => {
+    setMade([]);
     setFile(null);
     setParsed(null);
     setResult(null);
@@ -165,10 +183,21 @@ export function BulkImportDialog({
               not a valid email address, so {parsed.invalidLines.length === 1 ? "that row is" : "those rows are"} left out.
             </p>
           ) : null}
-          {unknownCohorts.length > 0 ? (
+          {parsed.duplicateLines.length > 0 ? (
             <p className="mt-1 text-osce-caption text-b2b-warning-text/90">
-              No cohort here is called {unknownCohorts.join(", ")}. Those people are added without a cohort. Create the cohort under Groups, then set it for them.
+              Line{parsed.duplicateLines.length === 1 ? "" : "s"} {parsed.duplicateLines.join(", ")}:
+              the address already appears earlier in the file, so {parsed.duplicateLines.length === 1 ? "it is" : "they are"} counted once.
             </p>
+          ) : null}
+          {unknownCohorts.length > 0 ? (
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-osce-caption text-b2b-warning-text/90">
+              <span>
+                No cohort here is called {unknownCohorts.join(", ")}. Without it those people are added with no cohort.
+              </span>
+              <Button themeType="b2b" variant="secondary" size="sm" disabled={busy} onClick={() => void createCohorts()}>
+                Create {unknownCohorts.length === 1 ? "that cohort" : "those cohorts"}
+              </Button>
+            </div>
           ) : null}
         </div>
       ) : null}

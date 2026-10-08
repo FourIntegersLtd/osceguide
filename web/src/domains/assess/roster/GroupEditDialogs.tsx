@@ -195,6 +195,7 @@ function DeleteForm({
       busy={busy}
       commitLabel="Delete group"
       busyLabel="Deleting…"
+      commitDisabled={group.member_count > 0}
       onClose={onClose}
       onCommit={() => void commit()}
     />
