@@ -20,9 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
 from app.features.identity import service as identity
+from app.features.notifications import service as notifications
 from app.features.tenancy import domain, repository, repository_platform
 from app.features.tenancy.errors import ContractDatesOutOfOrder, ContractEndInPast, OrgNotFound
-from app.features.tenancy.models import AuditEntry
+from app.features.tenancy.models import AuditEntry, Organization
 from app.features.tenancy.schemas import (
     OrganizationRead,
     OrgAtRisk,
@@ -234,8 +235,23 @@ async def suspend_lapsed_organizations(session: AsyncSession, *, now: datetime) 
             target_id=str(org.id),
             summary=f"Contract ended {org.contract_ends_at:%Y-%m-%d}; suspended",
         )
+        await _tell_admins_the_contract_ended(session, org)
         lapsed.append(org.slug)
     return lapsed
+
+
+async def _tell_admins_the_contract_ended(session: AsyncSession, org: Organization) -> None:
+    """Email each live organisation admin once per contract end date (S-16)."""
+    admins = await identity.user_refs_by_ids(session, await repository.admin_user_ids(session, org.id))
+    for admin in admins.values():
+        await notifications.enqueue_email(
+            session,
+            recipient=admin.email,
+            subject=f"{org.name}: your contract has ended",
+            template_key="organization_contract_ended",
+            payload={"organization": org.name},
+            idempotency_key=f"organization_contract_ended:{org.id}:{org.contract_ends_at:%Y%m%d}",
+        )
 
 
 # --- The audit log, read across every organisation.

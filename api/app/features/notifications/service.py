@@ -374,7 +374,18 @@ def _inactive_user_engagement(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _organization_contract_ended(escaped_fields: dict[str, str]) -> str:
+    """The body telling an organisation's admins its contract ended and access is suspended (S-16)."""
+    return (
+        f"<h1>{escaped_fields.get('organization', 'Your organisation')}: contract ended</h1>"
+        "<p>Your contract ended, so access for your organisation is suspended. Exams that are "
+        "already running can finish; nothing new can be started. Contact us to renew and "
+        "we will restore access.</p>"
+    )
+
+
 _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
+    "organization_contract_ended": _organization_contract_ended,
     "password_reset": _password_reset,
     "email_change": _email_change,
     "email_changed_notice": _email_changed_notice,

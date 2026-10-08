@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.audit_wording import RELAYED_PASSWORD_NOTE, roster_added_summary
 from app.core.pagination import keyset_page
 from app.core.search import contains_text
-from app.features.tenancy.domain import END_USER_ROLES
+from app.features.tenancy.domain import END_USER_ROLES, ORG_ADMIN_ROLES
 from app.features.tenancy.models import AuditEntry, Membership, Organization
 
 
@@ -331,6 +331,16 @@ async def update_organization(session: AsyncSession, org_id: uuid.UUID, **values
 async def live_member_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
     """Everyone with a live membership here, whatever the role."""
     stmt = select(Membership.user_id).where(Membership.org_id == org_id, Membership.revoked_at.is_(None))
+    return list((await session.execute(stmt)).scalars().unique())
+
+
+async def admin_user_ids(session: AsyncSession, org_id: uuid.UUID) -> list[uuid.UUID]:
+    """Everyone with a live organisation-admin membership here."""
+    stmt = select(Membership.user_id).where(
+        Membership.org_id == org_id,
+        Membership.revoked_at.is_(None),
+        Membership.role.in_(sorted(ORG_ADMIN_ROLES)),
+    )
     return list((await session.execute(stmt)).scalars().unique())
 
 

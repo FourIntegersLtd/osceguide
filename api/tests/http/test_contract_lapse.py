@@ -128,3 +128,37 @@ async def test_restoring_a_lapsed_organisation_records_the_old_end_date(
     audit = await client.get("/api/v1/platform/organizations/audited/audit", headers=bearer(root))
     restored = next(e for e in audit.json()["items"] if e["action"] == "organization.restored")
     assert "2026-09-16" in restored["summary"]
+
+
+async def test_a_lapse_emails_the_organisation_admins_once_and_restoring_clears_the_end_date(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-16: a contract end suspended an organisation in silence."""
+    from sqlalchemy import select
+
+    from app.core.auth import Membership
+    from app.features.notifications.models import OutboundMessage
+
+    root = await make_actor("root@osceguide.com", platform_admin=True)
+    await provisioned(client, root, "ending", NOW - timedelta(days=1))
+    listing = (await client.get("/api/v1/platform/organizations", headers=bearer(root))).json()["items"]
+    org = next(item for item in listing if item["slug"] == "ending")
+    await make_actor(
+        "owner-ending@example.com",
+        memberships=(Membership(org_id=org["id"], org_slug="ending", role="owner"),),
+    )
+
+    await suspend_lapsed_organizations(db_session, now=NOW)
+    await suspend_lapsed_organizations(db_session, now=NOW)
+
+    sent = list(
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "organization_contract_ended")
+            )
+        ).scalars()
+    )
+    assert [message.recipient for message in sent] == ["owner-ending@example.com"]
+
+    restored = await client.post("/api/v1/platform/organizations/ending/restore", headers=bearer(root))
+    assert (restored.json()["status"], restored.json()["contract_ends_at"]) == ("active", None)
