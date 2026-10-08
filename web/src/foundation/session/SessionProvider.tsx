@@ -4,10 +4,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from "react";
 import {
   hasStoredSession,
+  forgetAccessToken,
   installPlatformAuth,
   logout as apiLogout,
   PlatformError,
   platformRequest,
+  setUnauthorizedHandler,
   switchWorkspace as apiSwitchWorkspace,
 } from "@/foundation/platform-client";
 import type { PlatformCapabilities, PlatformUser, Session, SessionState, SessionStatus } from "@/foundation/session/types";
@@ -100,6 +102,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  // A 401 on any later request means the token was refused (the session was revoked, or its chain
+  // ended). Ask who this is again rather than leaving every screen to show its own error: a real
+  // sign-out lands on the sign-in page, a token that only expired is replaced and nothing shows.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      forgetAccessToken();
+      void refresh();
+    });
+    return () => setUnauthorizedHandler(null);
   }, [refresh]);
 
   // After a failure that was not a 401, ask again: 1s, 2s, 4s … capped at 30s.

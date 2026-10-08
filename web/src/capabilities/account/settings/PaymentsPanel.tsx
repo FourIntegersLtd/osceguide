@@ -50,7 +50,7 @@ interface Trial {
 export default function PaymentsPanel() {
   const state = useAsync(
     async (signal) => {
-      const [entitlements, receipts] = await Promise.all([
+      const [entitlements, { receipts, unreadable }] = await Promise.all([
         listEntitlements(signal),
         listReceipts(signal),
       ]);
@@ -60,6 +60,7 @@ export default function PaymentsPanel() {
         live: paidAccess(entitlements.items),
         trial: runningTrial(entitlements.items),
         receipts,
+        unreadable,
       };
     },
     [],
@@ -68,8 +69,12 @@ export default function PaymentsPanel() {
   return (
     <SettingsTabShell>
       <AsyncBoundary state={state}>
-        {({ live, trial, receipts }) =>
-          live.length > 0 ? <ActivePlan live={live} receipts={receipts} /> : <Plans trial={trial} />
+        {({ live, trial, receipts, unreadable }) =>
+          live.length > 0 ? (
+            <ActivePlan live={live} receipts={receipts} unreadable={unreadable} />
+          ) : (
+            <Plans trial={trial} />
+          )
         }
       </AsyncBoundary>
     </SettingsTabShell>
@@ -84,7 +89,15 @@ export default function PaymentsPanel() {
  * so two grants for one exam (a purchase and its renewal) read as one line
  * rather than two. A grant with no end date means open-ended access.
  */
-function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt[] }) {
+function ActivePlan({
+  live,
+  receipts,
+  unreadable,
+}: {
+  live: Entitlement[];
+  receipts: Receipt[];
+  unreadable: number;
+}) {
   const latest = receipts[0] ?? null;
   const openEnded = live.some((entitlement) => entitlement.ends_at === null);
   const endsAt = openEnded ? null : latestEnd(live);
@@ -118,6 +131,16 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
       {receipts.length > 0 ? (
         <Panel title="Receipts">
           <ReceiptList receipts={receipts} />
+          {unreadable > 0 ? (
+            <p className={settingsSub}>
+              {unreadable === 1 ? "One receipt" : `${unreadable} receipts`} could not be loaded. Reload to try
+              again, or{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}`} className={b2cLink}>
+                contact support
+              </a>
+              .
+            </p>
+          ) : null}
         </Panel>
       ) : purchased ? (
         <p className={settingsSub}>
@@ -176,7 +199,7 @@ function Plans({ trial }: { trial: Trial | null }) {
               <PlanPicker key={exam.code ?? "any"} plans={onSale} />
             </Panel>
             {trial ? (
-              <Panel title="Receipts">
+              <Panel title="Your free trial">
                 <SettingsRows>
                   <SettingsRow
                     icon={HiOutlineClock}

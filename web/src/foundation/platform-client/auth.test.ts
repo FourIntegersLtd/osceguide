@@ -13,6 +13,7 @@ import {
   peekPlatformAccessToken,
   platformAccessToken,
 } from "@/foundation/platform-client/auth";
+import { PlatformTransportError } from "@/foundation/platform-client/errors";
 import { SESSION_MARKER_COOKIE } from "@/foundation/platform-client/sessionCookies";
 
 const realFetch = globalThis.fetch;
@@ -196,7 +197,7 @@ test("an unreachable server is not a sign-out", async () => {
   serverSetsMarker();
   respond(() => json({ code: "transport_error", message: "no" }, 503));
 
-  assert.equal(await platformAccessToken(), null);
+  await assert.rejects(platformAccessToken(), PlatformTransportError);
   assert.equal(hasStoredSession(), true, "the session is still there");
 });
 

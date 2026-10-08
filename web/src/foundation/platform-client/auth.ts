@@ -1,5 +1,5 @@
 import { platformRequest, setPlatformTokenSource } from "@/foundation/platform-client/client";
-import { hasCode, isPlatformError } from "@/foundation/platform-client/errors";
+import { hasCode, isPlatformError, PlatformTransportError } from "@/foundation/platform-client/errors";
 import { markOrgSuspended } from "@/foundation/platform-client/orgSuspension";
 import {
   REFRESH_MARGIN_MS,
@@ -239,7 +239,10 @@ async function fetchToken(): Promise<string | null> {
     // A refused refresh is checked back once: a pair stored meanwhile (another
     // tab signed in) is used rather than cleared.
     if (body?.refused) body = await askForToken(body.refused);
-    if (!body) return null;
+    // Not "no session": this app's server could not be reached or could not reach the API, and the
+    // cookies are untouched. Answering null sent the next request out with no token, and its 401
+    // read as a sign-out while the session was fine.
+    if (!body) throw new PlatformTransportError("Could not refresh the session", null);
     if (!body.access_token) {
       // The server has already cleared the cookies: the chain was spent or
       // revoked, or there was never a session here.
@@ -269,6 +272,15 @@ export async function platformAccessToken(): Promise<string | null> {
     inFlight = null;
   });
   return inFlight;
+}
+
+/**
+ * Drop the cached access token, keeping the session marker: the server refused it, so the next
+ * request asks the token route again, which refreshes or ends the session.
+ */
+export function forgetAccessToken(): void {
+  session = null;
+  inFlight = null;
 }
 
 /**

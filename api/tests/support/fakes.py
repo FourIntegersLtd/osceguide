@@ -457,11 +457,13 @@ class FakeCheckoutSessions:
         cancel_url: str,
         client_reference: str,
         referral_code: str | None = None,
+        idempotency_key: str | None = None,
     ) -> str:
         from app.core.ports import CheckoutUnavailable
 
         self.calls.append(
             {
+                "idempotency_key": idempotency_key or "",
                 "price_id": price_id,
                 "customer_email": customer_email,
                 "success_url": success_url,

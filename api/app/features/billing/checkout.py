@@ -37,6 +37,7 @@ class StripeCheckout:
         cancel_url: str,
         client_reference: str,
         referral_code: str | None,
+        idempotency_key: str | None = None,
     ) -> str:
         """Start a Stripe checkout session for one price and return its URL.
 
@@ -68,7 +69,13 @@ class StripeCheckout:
             form["metadata[referral_code]"] = referral_code
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
-                response = await client.post(STRIPE_CHECKOUT_URL, data=form, auth=(self._secret_key, ""))
+                response = await client.post(
+                    STRIPE_CHECKOUT_URL,
+                    data=form,
+                    auth=(self._secret_key, ""),
+                    # A double click or retry returns the session Stripe already made.
+                    headers={"Idempotency-Key": idempotency_key} if idempotency_key else None,
+                )
         except httpx.HTTPError as exc:
             raise CheckoutUnavailable(f"could not reach Stripe: {exc}") from exc
 

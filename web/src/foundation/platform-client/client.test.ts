@@ -4,6 +4,7 @@ import {
   platformDownload,
   platformRequest,
   setPlatformTokenSource,
+  setUnauthorizedHandler,
 } from "@/foundation/platform-client/client";
 import { PlatformError, PlatformTransportError, hasCode } from "@/foundation/platform-client/errors";
 
@@ -204,4 +205,30 @@ test("a 500 with no body says the fault is ours, not a status code", async () =>
   assert.equal(err.status, 500);
   assert.equal(err.code, "internal_error");
   assert.equal(err.message, "Something went wrong on our side. Try again.");
+});
+
+test("a 401 on a request that carried a token tells the session to re-check", async () => {
+  let told = 0;
+  setUnauthorizedHandler(() => {
+    told += 1;
+  });
+  setPlatformTokenSource(() => "stale");
+  respondWith(401, JSON.stringify({ code: "unauthenticated", message: "Sign in" }));
+  await assert.rejects(platformRequest("/api/v1/me/receipts"), PlatformError);
+  assert.equal(told, 1);
+  setUnauthorizedHandler(null);
+});
+
+test("a 401 from sign-in, or with no token sent, is not a lost session", async () => {
+  let told = 0;
+  setUnauthorizedHandler(() => {
+    told += 1;
+  });
+  respondWith(401, JSON.stringify({ code: "invalid_credentials", message: "No" }));
+  setPlatformTokenSource(() => "stale");
+  await assert.rejects(platformRequest("/api/v1/auth/login", { method: "POST" }), PlatformError);
+  setPlatformTokenSource(() => null);
+  await assert.rejects(platformRequest("/api/v1/billing/plans"), PlatformError);
+  assert.equal(told, 0);
+  setUnauthorizedHandler(null);
 });

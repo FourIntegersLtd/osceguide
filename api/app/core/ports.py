@@ -57,8 +57,11 @@ class CheckoutSessions(Protocol):
         cancel_url: str,
         client_reference: str,
         referral_code: str | None,
+        idempotency_key: str | None = None,
     ) -> str:
         """Start a checkout and return the URL to send the customer to.
+
+        `idempotency_key`: a repeat with the same key is the same checkout, not a second one.
 
         `referral_code` rides on the session so the webhook can credit its owner once the
         payment arrives; None for a full-price checkout.

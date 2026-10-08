@@ -66,21 +66,23 @@ export function listPlans(signal?: AbortSignal) {
  *
  * Nothing is granted by this call. Access arrives when Stripe's webhook says
  * the money did, which is why the return page confirms rather than assumes.
- */
-/**
- * Start paying for a plan. A friend's referral code, when given, makes the
- * backend charge the plan's 10%-off price and credit the friend once paid.
+ * A friend's referral code, when given, makes the backend charge the plan's
+ * 10%-off price and credit the friend once paid.
+ *
+ * `attemptId` names one visit to the picker. The backend hands it to Stripe
+ * (scoped to the buyer), so a double-submit is one checkout session, while a
+ * later visit starts a fresh one rather than replaying a session that expired.
  */
 export function startCheckout(
   planCode: string,
-  referralCode: string | null = null,
+  referralCode: string | null,
+  attemptId: string,
 ): Promise<{ checkout_url: string }> {
   return platformRequest<components["schemas"]["CheckoutStarted"]>("/api/v1/billing/checkout", {
     method: "POST",
     body: { plan_code: planCode, referral_code: referralCode },
-    // A double-submitted button is one intent to buy, not two. The code is in
-    // the key so fixing a mistyped code is a new attempt, not the old refusal.
-    idempotencyKey: `checkout:${planCode}:${referralCode ?? ""}`,
+    // The code is in the key so fixing a mistyped code is a new attempt, not the old refusal.
+    idempotencyKey: `${attemptId}:${planCode}:${referralCode ?? ""}`,
   });
 }
 
@@ -92,12 +94,27 @@ export function startCheckout(
  * travels to accountants and employers and must not be a key that anybody
  * holding it can read.
  */
-export async function listReceipts(signal?: AbortSignal): Promise<Receipt[]> {
+export async function listReceipts(signal?: AbortSignal): Promise<{ receipts: Receipt[]; unreadable: number }> {
   const page = await platformRequest<components["schemas"]["Page_str_"]>(
     "/api/v1/me/receipts",
     { signal },
   );
-  return Promise.all(page.items.map((id) => readReceipt(id, signal)));
+  // One receipt that will not load must not take the others down with it.
+  const settled = await Promise.allSettled(page.items.map((id) => readReceipt(id, signal)));
+  const receipts = settled.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+  return { receipts, unreadable: settled.length - receipts.length };
+}
+
+/** The receipt ids made by one Stripe checkout session; empty until its payment has been recorded. */
+export async function listReceiptIdsForSession(
+  checkoutSessionId: string,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  const page = await platformRequest<components["schemas"]["Page_str_"]>("/api/v1/me/receipts", {
+    query: { checkout_session_id: checkoutSessionId },
+    signal,
+  });
+  return page.items;
 }
 
 export function readReceipt(receiptId: string, signal?: AbortSignal): Promise<Receipt> {

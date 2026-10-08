@@ -69,6 +69,14 @@ class ReceiptNotFound(NotFound):
     default_message = "No such receipt"
 
 
+class AlreadyPurchased(Conflict):
+    """The buyer already holds a live purchase for this plan's exam. A second payment would buy
+    access they have; buying again is how it is renewed once it lapses."""
+
+    code = "already_purchased"
+    default_message = "You already have access to this exam"
+
+
 class PlanNotAvailable(NotFound):
     """No such plan, or one that is no longer sold. Not `unknown_plan`, which means a *charged*
     payment with nothing to grant — a different emergency."""

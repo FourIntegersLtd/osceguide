@@ -5,6 +5,7 @@ export {
   saveBlob,
   platformApiUrl,
   setPlatformTokenSource,
+  setUnauthorizedHandler,
   type RequestOptions,
   type PlatformDownload,
 } from "@/foundation/platform-client/client";
@@ -33,6 +34,7 @@ export {
   confirmPasswordReset,
   hasStoredSession,
   installPlatformAuth,
+  forgetAccessToken,
   platformAccessToken,
   peekPlatformAccessToken,
   rememberPlatformSession,

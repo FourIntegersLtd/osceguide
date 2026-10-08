@@ -4,10 +4,9 @@ import { useState } from "react";
 import { HiOutlineArrowPath } from "react-icons/hi2";
 import { PiSparkle } from "react-icons/pi";
 import { Button, Checkbox, Input, ModalContent, ModalHelper, cn, productTokens } from "@/foundation/ui";
-import { errorMessage } from "@/foundation/hooks";
 import { formatMoney } from "@/foundation/format";
-import { hasCode } from "@/foundation/platform-client";
 import { startCheckout, type Plan } from "@/capabilities/account/api";
+import { checkoutErrorMessage } from "@/capabilities/account/settings/checkoutErrors";
 import { CONSENT_DOCUMENT, CONSENT_REQUIRED } from "@/capabilities/account/settings/checkoutConsent";
 
 const { b2cLink } = productTokens;
@@ -20,15 +19,15 @@ const { b2cLink } = productTokens;
 const PLAN_COPY: Record<number, { title: string; description: string }> = {
   1: {
     title: "1-Month Access",
-    description: "50 stations · last-minute preparation",
+    description: "Last-minute preparation",
   },
   3: {
     title: "3-Month Access",
-    description: "100 stations · long-term preparation",
+    description: "Long-term preparation",
   },
   6: {
     title: "6-Month Access",
-    description: "150 stations · best value",
+    description: "Best value",
   },
 };
 
@@ -50,8 +49,8 @@ const DEFAULT_MONTHS = 3;
  * One field the old picker did not have: a friend's referral code. The old
  * client took it at sign-up; `platform-api` takes it only at checkout
  * (`CheckoutStart.referral_code`), so without this box nobody could redeem
- * one. Typing a code shows each plan's 10%-off price, but only the backend
- * decides whether the code is good.
+ * one. Only the backend decides whether a code is good, so the prices shown
+ * are always the full ones and Stripe's page shows what is charged.
  */
 export default function PlanPicker({
   plans,
@@ -65,6 +64,8 @@ export default function PlanPicker({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [referralCode, setReferralCode] = useState("");
+  // One per visit, renewed after a refusal: see `startCheckout`.
+  const [attemptId, setAttemptId] = useState(() => crypto.randomUUID());
 
   const chosen = plans.find((plan) => plan.code === selected) ?? null;
   // Blank means "no code": the full price, and nothing sent to the backend.
@@ -84,22 +85,14 @@ export default function PlanPicker({
       const { checkout_url } = await startCheckout(
         chosen.code,
         hasReferralCode ? trimmedReferralCode : null,
+        attemptId,
       );
       // Leave `isLoading` true: the browser is on its way to Stripe, and a
       // button that springs back to "Upgrade" invites a second checkout.
       window.location.assign(checkout_url);
     } catch (cause) {
-      // A refused code is the buyer's to fix, so say so plainly. Everything
-      // else is ours, and they need to hear no money moved.
-      if (hasCode(cause, "referral_not_found")) {
-        setError("That referral code is not valid. Check it, or clear it to pay the full price.");
-      } else if (hasCode(cause, "referral_discount_unavailable")) {
-        setError("That plan has no referral discount. Choose another plan, or clear the code.");
-      } else {
-        setError(
-          `${errorMessage(cause)} No money has left your account. Please try again or email ${SUPPORT_EMAIL}.`,
-        );
-      }
+      setError(checkoutErrorMessage(cause, SUPPORT_EMAIL));
+      setAttemptId(crypto.randomUUID());
       setIsLoading(false);
     }
   };
@@ -134,7 +127,7 @@ export default function PlanPicker({
                 <span className="block text-osce-body font-medium text-ink">{planTitle(plan)}</span>
                 <span className="mt-0.5 block text-osce-meta text-ink-muted">{planDescription(plan)}</span>
                 <span className="mt-2 flex items-baseline gap-2 text-osce-body font-semibold text-ink">
-                  <PlanPrice plan={plan} hasReferralCode={hasReferralCode} />
+                  {formatMoney(plan.amount_pence, plan.currency)}
                 </span>
               </span>
               <span
@@ -155,7 +148,7 @@ export default function PlanPicker({
         <Input
           id="checkout-referral-code"
           label="Friend's referral code"
-          hint="Optional."
+          hint="Optional. A valid code takes 10% off on the payment page."
           value={referralCode}
           onChange={(event) => setReferralCode(event.target.value)}
           placeholder="Enter a code for 10% off"
@@ -202,9 +195,7 @@ export default function PlanPicker({
                 <PiSparkle className="h-4 w-4 shrink-0" aria-hidden />
                 <span>
                   Upgrade now
-                  {chosen
-                    ? ` · ${formatMoney(chargedPence(chosen, hasReferralCode), chosen.currency)}`
-                    : ""}
+                  {chosen ? ` · ${formatMoney(chosen.amount_pence, chosen.currency)}` : ""}
                 </span>
               </>
             )}
@@ -215,26 +206,6 @@ export default function PlanPicker({
       </div>
     </ModalContent>
   );
-}
-
-/**
- * A plan's price: the full price alone, or struck through beside the 10%-off
- * price once a referral code is typed and the plan has a discounted price.
- */
-function PlanPrice({ plan, hasReferralCode }: { plan: Plan; hasReferralCode: boolean }) {
-  const discountedPence = hasReferralCode ? plan.referral_amount_pence : null;
-  if (discountedPence == null) return <>{formatMoney(plan.amount_pence, plan.currency)}</>;
-  return (
-    <>
-      <s className="font-normal text-ink-muted">{formatMoney(plan.amount_pence, plan.currency)}</s>
-      {formatMoney(discountedPence, plan.currency)}
-    </>
-  );
-}
-
-/** What the buyer will be charged: the referral price when a code is typed and the plan has one. */
-function chargedPence(plan: Plan, hasReferralCode: boolean): number {
-  return (hasReferralCode ? plan.referral_amount_pence : null) ?? plan.amount_pence;
 }
 
 export const SUPPORT_EMAIL = "hello@fourintegers.com";

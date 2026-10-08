@@ -29,6 +29,10 @@ export default function ReceiptList({ receipts }: { receipts: Receipt[] }) {
  * somebody simply looking at what they were charged. It cannot be a plain
  * link either — the route wants a bearer token — so the markup is fetched
  * and handed to a tab as a blob.
+ *
+ * The tab is opened first, inside the click, and pointed at the document once
+ * it arrives: a window opened after an await is no longer a user gesture and
+ * browsers block it.
  */
 function useReceiptDocument(receipt: Receipt) {
   const [isOpening, setIsOpening] = useState(false);
@@ -36,16 +40,23 @@ function useReceiptDocument(receipt: Receipt) {
 
   const openDocument = async () => {
     setError(null);
+    const tab = window.open("", "_blank");
+    if (!tab) {
+      setError("Your browser blocked the receipt window. Allow pop-ups and try again.");
+      return;
+    }
+    // `noopener` would hand back null, so the link back to this page is cut by hand.
+    tab.opener = null;
     setIsOpening(true);
     try {
       const html = await readReceiptDocument(receipt.receipt_id);
       const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
-      if (!opened) setError("Your browser blocked the receipt window. Allow pop-ups and try again.");
+      tab.location.href = url;
       // Long enough for the new tab to have loaded it; the object is the tab's
       // after that, and keeping the handle leaks the document into this page.
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (cause) {
+      tab.close();
       setError(errorMessage(cause));
     } finally {
       setIsOpening(false);

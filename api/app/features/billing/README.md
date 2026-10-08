@@ -47,7 +47,7 @@ service and never grants access itself.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/api/v1/billing/plans` | none | the pricing page reads this |
-| POST | `/api/v1/billing/checkout` | bearer | Start paying for a plan by code; `plan_not_available` (404), `checkout_failed` (503). Grants nothing — the webhook does |
+| POST | `/api/v1/billing/checkout` | bearer | Start paying for a plan by code; `plan_not_available` (404), `already_purchased` (409: a live paid purchase of that exam; a trial, an org grant or a lapsed purchase does not block), `checkout_failed` (503). `Idempotency-Key` is passed to Stripe scoped to the buyer. Grants nothing — the webhook does |
 | POST | `/api/v1/billing/webhooks/stripe` | signature | `already_applied` / `ignored` / `applied` |
 | GET | `/api/v1/me/receipts` | bearer | this person's receipt ids, newest first |
 | GET | `/api/v1/me/receipts/{receipt_id}` | bearer | one receipt, every field rendered for display; `receipt_not_found` (404) |

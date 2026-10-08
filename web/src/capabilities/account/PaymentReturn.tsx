@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   HiOutlineArrowPath,
   HiOutlineCheckCircle,
@@ -11,16 +12,14 @@ import {
 import { productTokens } from "@/foundation/ui";
 import { PERSONAL_SLUG, workspaceBasePath } from "@/foundation/routing";
 import { useOptionalSurface } from "@/capabilities";
-import { listEntitlements } from "@/capabilities/account/api";
+import { listEntitlements, listReceiptIdsForSession } from "@/capabilities/account/api";
+import { confirmPayment, type PaymentOutcome } from "@/capabilities/account/paymentConfirmation";
+import { loginHref } from "@/foundation/session/loginHref";
 import { SUPPORT_EMAIL } from "@/capabilities/account/settings/PlanPicker";
 
 const { b2cButtonPrimary, b2cButtonSecondary, b2cCardPlain, b2cGhostButton } = productTokens;
 
-/** Stripe's webhook can land a beat after the redirect; poll briefly. */
-const CONFIRM_ATTEMPTS = 6;
-const CONFIRM_INTERVAL_MS = 2000;
-
-type ConfirmState = "confirming" | "active" | "pending";
+type ConfirmState = "confirming" | PaymentOutcome | "unknown";
 
 /**
  * Where Stripe sends somebody who paid.
@@ -28,9 +27,12 @@ type ConfirmState = "confirming" | "active" | "pending";
  * It confirms rather than congratulates. Paying and being entitled are two
  * events — the checkout redirect happens in the browser, the grant happens
  * when Stripe's webhook reaches the backend — and they arrive in that order
- * with a gap between them. So this asks `/me/entitlements` until a live grant
- * appears, and after six tries says "received, being activated" instead of
- * claiming access the person does not yet have.
+ * with a gap between them. So this asks for the receipt of the very checkout
+ * session in the address (`?session_id=`), and after six tries says "received,
+ * being activated" instead of claiming access the person does not yet have.
+ * Asking about entitlements instead would confirm a renewal or a trial the
+ * moment the page opened. A buyer the API no longer recognises is asked to
+ * sign in, not left on a message that cannot change.
  *
  * It renders outside any workspace shell, because the backend's `success_url`
  * is a fixed address on the site rather than one inside a workspace. That is
@@ -38,47 +40,35 @@ type ConfirmState = "confirming" | "active" | "pending";
  * point at the person's own practice.
  */
 export default function PaymentReturn() {
-  const [state, setState] = useState<ConfirmState>("confirming");
+  const sessionId = useSearchParams().get("session_id");
+  const [state, setState] = useState<ConfirmState>(sessionId ? "confirming" : "unknown");
   const [endsAt, setEndsAt] = useState<string | null>(null);
   const home = useHomeHref();
 
   useEffect(() => {
+    if (!sessionId) return;
     let cancelled = false;
-    let attempt = 0;
-    let timer: number | undefined;
-
-    const tick = async () => {
-      attempt += 1;
-      try {
-        const { items } = await listEntitlements();
-        // `live` and nothing else. The list carries revoked and expired rows
-        // too, and reading it as "what I have" is how a revoked entitlement
-        // went on unlocking stations in the old client.
-        const live = items.find((entitlement) => entitlement.live);
-        if (cancelled) return;
-        if (live) {
-          setEndsAt(live.ends_at);
-          setState("active");
-          return;
-        }
-      } catch {
-        // A failed poll is not a failed payment. Keep trying, then fall
-        // through to the "received" state, which is what is actually true.
-      }
+    void (async () => {
+      const outcome = await confirmPayment(
+        () => listReceiptIdsForSession(sessionId),
+        (ms) => new Promise((resolve) => window.setTimeout(resolve, ms)),
+        () => cancelled,
+      );
       if (cancelled) return;
-      if (attempt >= CONFIRM_ATTEMPTS) {
-        setState("pending");
-        return;
+      if (outcome === "paid") {
+        // Best effort: the date is a nicety, the receipt is the proof.
+        const ends = await listEntitlements()
+          .then(({ items }) => latestLiveEnd(items))
+          .catch(() => null);
+        if (cancelled) return;
+        setEndsAt(ends);
       }
-      timer = window.setTimeout(() => void tick(), CONFIRM_INTERVAL_MS);
-    };
-
-    void tick();
+      setState(outcome);
+    })();
     return () => {
       cancelled = true;
-      if (timer) window.clearTimeout(timer);
     };
-  }, []);
+  }, [sessionId]);
 
   return (
     <div className="flex min-h-[70dvh] items-center justify-center px-4">
@@ -99,21 +89,46 @@ export default function PaymentReturn() {
               This takes a few seconds. Please keep this page open.
             </p>
           </>
-        ) : state === "active" ? (
+        ) : state === "paid" ? (
           <>
             <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-osce-lg bg-b2c-surface-muted">
               <HiOutlineCheckCircle className="h-6 w-6 text-osce-success-text" aria-hidden />
             </span>
             <h1 className="mb-2 text-osce-title font-semibold text-ink">
-              You&apos;re all set
+              Payment confirmed
             </h1>
             <p className="mb-8 text-osce-body text-ink-subtle">
               {endsAt
-                ? `Your plan is active until ${formatDay(endsAt)}.`
-                : "Your plan is active. All stations are unlocked."}
+                ? `Your access runs until ${formatDay(endsAt)}.`
+                : "Your payment has been recorded and your access is active."}
             </p>
             <Link href={`${home}/dashboard`} className={b2cButtonPrimary}>
               Go to dashboard
+            </Link>
+          </>
+        ) : state === "signed_out" ? (
+          <>
+            <h1 className="mb-2 text-osce-title font-semibold text-ink">Sign in to see your payment</h1>
+            <p className="mb-6 text-osce-body text-ink-subtle">
+              We can only confirm a payment for the account that made it. Sign in and this page will check
+              again.
+            </p>
+            <Link
+              href={loginHref(`/billing/complete?session_id=${encodeURIComponent(sessionId ?? "")}`, true)}
+              className={b2cButtonPrimary}
+            >
+              Sign in
+            </Link>
+          </>
+        ) : state === "unknown" ? (
+          <>
+            <h1 className="mb-2 text-osce-title font-semibold text-ink">Nothing to confirm here</h1>
+            <p className="mb-6 text-osce-body text-ink-subtle">
+              This page needs the link Stripe sends after a payment. Your plan and receipts are under
+              Payments in your settings.
+            </p>
+            <Link href={`${home}/settings?tab=payments`} className={b2cButtonPrimary}>
+              Go to payments
             </Link>
           </>
         ) : (
@@ -197,6 +212,14 @@ export function CheckoutCancelled() {
 function useHomeHref(): string {
   const surface = useOptionalSurface();
   return surface ? surface.basePath : workspaceBasePath(PERSONAL_SLUG);
+}
+
+/** The latest end among live grants, or null when none is live or one is open-ended. */
+function latestLiveEnd(entitlements: { live: boolean; ends_at: string | null }[]): string | null {
+  const live = entitlements.filter((entitlement) => entitlement.live);
+  if (live.length === 0 || live.some((entitlement) => entitlement.ends_at === null)) return null;
+  return live.reduce((latest, entitlement) =>
+    (entitlement.ends_at ?? "") > latest ? (entitlement.ends_at ?? latest) : latest, "") || null;
 }
 
 function formatDay(value: string): string {

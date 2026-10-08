@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,9 +69,17 @@ async def stripe_webhook(
     response_model=Page[str],
     responses=error_responses(Unauthenticated),
 )
-async def list_my_receipts(principal: CurrentPrincipal, session: Session) -> Page[str]:
-    """The receipt ids for this person's payments, newest first."""
-    return Page(items=await service_receipts.list_my_receipts(session, principal.user_id), next_cursor=None)
+async def list_my_receipts(
+    principal: CurrentPrincipal,
+    session: Session,
+    checkout_session_id: Annotated[str | None, Query(max_length=200)] = None,
+) -> Page[str]:
+    """The receipt ids for this person's payments, newest first. `checkout_session_id` keeps only
+    the payment made by that Stripe checkout session."""
+    items = await service_receipts.list_my_receipts(
+        session, principal.user_id, checkout_session_id=checkout_session_id
+    )
+    return Page(items=items, next_cursor=None)
 
 
 @router.get(
@@ -111,6 +119,7 @@ async def read_receipt_document(
     responses=error_responses(
         Unauthenticated,
         errors.PlanNotAvailable,
+        errors.AlreadyPurchased,
         errors.ReferralNotFound,
         errors.ReferralDiscountUnavailable,
         errors.CheckoutFailed,
@@ -123,6 +132,7 @@ async def start_checkout(
     settings: SettingsDep,
     clock: ClockDep,
     checkout: Annotated[CheckoutSessions, Depends(service_checkout.get_checkout)],
+    idempotency_key: Annotated[str | None, Header(max_length=100)] = None,
 ) -> schemas.CheckoutStarted:
     """Begin paying for a plan, at 10% off with somebody's referral code. The client names a plan
     code, never a price or an amount."""
@@ -135,5 +145,6 @@ async def start_checkout(
         checkout=checkout,
         settings=settings,
         now=clock.now(),
+        idempotency_key=idempotency_key,
     )
     return schemas.CheckoutStarted(checkout_url=url)

@@ -709,3 +709,84 @@ async def test_a_code_that_stopped_resolving_still_grants_what_was_paid_for(
     buyer = await identity_repo.user_by_email(db_session, "orphan-code@example.com")
     assert buyer is not None
     assert len(await ent_repo.for_user(db_session, buyer.id)) == 1
+
+
+async def test_a_second_checkout_for_an_exam_already_paid_for_is_refused_before_stripe(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """Nothing checked what the buyer already held, so a second tab, a double click or a
+    stale page took a second payment for access they had (A-17)."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.features.billing import service_checkout
+    from app.features.entitlements import repository as ent_repo
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan(db_session)
+    token = await make_actor("twice@example.com")
+    paid = await post_event(client, checkout_event("evt_twice", "twice@example.com"))
+    assert paid.json()["status"] == "applied"
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    refused = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "one_month"}, headers=bearer(token)
+    )
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["code"] == "already_purchased"
+    assert fake.calls == []
+
+    # Once the purchase has lapsed, buying again is how access is renewed.
+    user = await identity_repo.user_by_email(db_session, "twice@example.com")
+    assert user is not None
+    for grant in await ent_repo.for_user(db_session, user.id):
+        await ent_repo.set_ends_at(db_session, grant.id, ends_at=datetime.now(UTC) - timedelta(days=1))
+    await db_session.commit()
+    again = await client.post(
+        "/api/v1/billing/checkout", json={"plan_code": "one_month"}, headers=bearer(token)
+    )
+    assert again.status_code == 201, again.text
+
+
+async def test_the_idempotency_key_reaches_the_processor_scoped_to_the_buyer(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from app.features.billing import service_checkout
+    from tests.support.fakes import FakeCheckoutSessions
+
+    await a_plan(db_session)
+    token = await make_actor("keyed@example.com")
+    user = await identity_repo.user_by_email(db_session, "keyed@example.com")
+    assert user is not None
+    fake = FakeCheckoutSessions()
+    client._transport.app.dependency_overrides[service_checkout.get_checkout] = lambda: fake  # type: ignore[attr-defined]
+
+    for _ in range(2):
+        response = await client.post(
+            "/api/v1/billing/checkout",
+            json={"plan_code": "one_month"},
+            headers={**bearer(token), "Idempotency-Key": "click-1"},
+        )
+        assert response.status_code == 201, response.text
+    assert [call["idempotency_key"] for call in fake.calls] == [f"checkout:{user.id}:click-1"] * 2
+
+
+async def test_the_receipts_for_one_checkout_session_are_found_by_its_id(
+    client: AsyncClient, db_session: AsyncSession, make_actor
+) -> None:  # type: ignore[no-untyped-def]
+    """The page Stripe returns to knows the session, not the receipt: it asks whether this
+    session has been paid, and only its own buyer can see the answer."""
+    from tests.support.tokens import bearer
+
+    await a_plan(db_session)
+    buyer = await make_actor("session@example.com")
+    stranger = await make_actor("not-the-buyer@example.com")
+    await post_event(client, checkout_event("evt_cs", "session@example.com"))
+    path = "/api/v1/me/receipts"
+
+    mine = await client.get(path, params={"checkout_session_id": "cs_test_1"}, headers=bearer(buyer))
+    assert len(mine.json()["items"]) == 1
+    other = await client.get(path, params={"checkout_session_id": "cs_unpaid"}, headers=bearer(buyer))
+    assert other.json()["items"] == []
+    theirs = await client.get(path, params={"checkout_session_id": "cs_test_1"}, headers=bearer(stranger))
+    assert theirs.json()["items"] == []

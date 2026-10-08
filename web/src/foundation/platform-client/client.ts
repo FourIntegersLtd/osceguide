@@ -46,6 +46,17 @@ export function setPlatformTokenSource(source: TokenSource): void {
   readToken = source;
 }
 
+let onUnauthorized: (() => void) | null = null;
+
+/**
+ * Be told when the API refuses a token this client sent (a 401 anywhere but sign-in), so the
+ * session can re-check itself instead of leaving each screen to show its own error. Set where
+ * the session lives; `null` removes it.
+ */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
 export interface RequestOptions {
   method?: string;
   /** Serialised as JSON. Use `formData` for uploads. */
@@ -61,9 +72,9 @@ export interface RequestOptions {
    * `mockAgentDispatchLock` Set belongs — a React StrictMode double-render is
    * not a second dispatch, and a module-level Set does not survive a reload.
    *
-   * No endpoint reads the header yet: the backend derives its idempotency keys
-   * internally (`signoff:{sitting}:{trainee}:{revision}`). Sending it costs
-   * nothing and means the client does not change when a route honours it.
+   * Only `POST /billing/checkout` reads it so far (passed to Stripe, scoped to the buyer); the
+   * rest derive their keys internally (`signoff:{sitting}:{trainee}:{revision}`). Sending it
+   * elsewhere costs nothing and means the client does not change when a route honours it.
    */
   idempotencyKey?: string;
 }
@@ -166,7 +177,12 @@ async function platformFetch(
     const last = attempt >= retries.length;
     try {
       const response = await fetch(url, init);
-      if (last || !GATEWAY_STATUSES.has(response.status)) return response;
+      if (last || !GATEWAY_STATUSES.has(response.status)) {
+        // Sign-in and the other /auth routes answer 401 for a wrong password or code, which says
+        // nothing about a session; and with no token sent there was no session to lose.
+        if (response.status === 401 && token && !path.startsWith("/api/v1/auth/")) onUnauthorized?.();
+        return response;
+      }
     } catch (cause) {
       if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
       if (last) throw new PlatformTransportError("Could not reach the server", cause);

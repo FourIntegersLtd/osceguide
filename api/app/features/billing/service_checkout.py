@@ -15,6 +15,7 @@ from app.core.logging import get_logger
 from app.core.ports import CheckoutSessions, CheckoutUnavailable
 from app.core.settings import Settings, SettingsDep
 from app.features.billing import domain, errors, repository
+from app.features.entitlements import service as entitlements
 from app.features.entitlements import service_access
 from app.features.growth import service as growth
 
@@ -45,6 +46,7 @@ async def start_checkout(
     checkout: CheckoutSessions,
     settings: Settings,
     now: datetime,
+    idempotency_key: str | None = None,
 ) -> str:
     """Send this person to pay for a plan, and return where to send them.
 
@@ -74,6 +76,12 @@ async def start_checkout(
     if access.codes and plan.exam_code not in access.codes:
         raise errors.PlanNotAvailable(details={"reason": "not_your_exam"})
 
+    # Only a paid, still-running purchase for this exam: a trial, an institution's grant or a
+    # lapsed purchase does not stop anyone buying (ADR 0012: entitlement is not payment).
+    held = await entitlements.list_for_user(session, user_id, now=now)
+    if any(grant.live and grant.source == "purchase" and grant.exam_code == plan.exam_code for grant in held):
+        raise errors.AlreadyPurchased()
+
     checked_referral_code: str | None = None
     if referral_code and referral_code.strip():
         checked_referral_code = await growth.check_code_for_purchase(
@@ -98,6 +106,8 @@ async def start_checkout(
             cancel_url=f"{base}/pricing?cancelled=1",
             client_reference=str(user_id),
             referral_code=checked_referral_code,
+            # Scoped to the buyer, so one person's key can never collide with another's.
+            idempotency_key=f"checkout:{user_id}:{idempotency_key}" if idempotency_key else None,
         )
     except CheckoutUnavailable as exc:
         # The processor's own words go to the log, never to the customer.

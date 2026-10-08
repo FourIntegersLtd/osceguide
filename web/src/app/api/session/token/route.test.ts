@@ -52,3 +52,15 @@ test("a pair another tab stored meanwhile survives the check-back", async () => 
   assert.equal(((await response.json()) as { access_token: string }).access_token, "fresh-access");
   assert.equal(cleared(response), false);
 });
+
+test("a refresh that finds platform-api failing is retried later, never read as a refusal", async () => {
+  globalThis.fetch = async () => new Response("bad gateway", { status: 503 });
+  const response = await POST(ask("good-token"));
+  assert.equal(response.status, 503);
+  assert.equal(cleared(response), false);
+  assert.equal(((await response.json()) as { code: string }).code, "transport_error");
+  // Even the check-back, which clears on a refusal, must not clear on a failure.
+  const again = await POST(ask("good-token", { refused: "something-else" }));
+  assert.equal(again.status, 503);
+  assert.equal(cleared(again), false);
+});

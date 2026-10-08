@@ -50,12 +50,16 @@ async def read_receipt_document(session: AsyncSession, user_id: uuid.UUID, recei
     return render_receipt_html(receipt.model_dump())
 
 
-async def list_my_receipts(session: AsyncSession, user_id: uuid.UUID) -> list[str]:
-    """The receipt ids this person has, newest first."""
+async def list_my_receipts(
+    session: AsyncSession, user_id: uuid.UUID, *, checkout_session_id: str | None = None
+) -> list[str]:
+    """The receipt ids this person has, newest first; only the ones for one Stripe checkout
+    session when its id is given (the page Stripe returns to asks whether it was paid)."""
     return [
         payment.receipt_id
         for payment in await repository.payments_for_user(session, user_id)
         if payment.receipt_id is not None
+        and (checkout_session_id is None or payment.checkout_session_id == checkout_session_id)
     ]
 
 
