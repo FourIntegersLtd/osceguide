@@ -88,6 +88,12 @@ mails is an ordinary reset token, so `password-reset/confirm` finishes the job.
 `service_invitations.reissue_invitation` is the same email for an account that
 has one and has not used it — it mints a fresh token, because only the hash of
 the first was ever stored, and refuses an account that already has a password.
+`service_invitations.send_due_invitation_reminders` (daily job `send_invitation_reminders`)
+sends the reminder once, five days in: an invitation whose link has under two days left, with
+no password set. It reissues through the same path with `reminder=True`; the reminder's own
+message is `invitation_reminder`, which is not remindable, so nobody is nudged twice. The
+original wording (`invited_to`, `exam_title`) is read back from the outbox
+(`notifications.queued_under`), since only the token hash is stored here.
 
 ## The exam an account is for
 `users.exam_code` is set at sign-up and changed on `PATCH /me`. The retiring

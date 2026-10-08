@@ -23,6 +23,8 @@ from app.features.identity.tokens import hash_password, new_token
 from app.features.notifications import service as notifications
 
 INVITATION_TTL_DAYS = 7
+INVITATION_REMINDER_AFTER_DAYS = 5
+_REMINDABLE_TEMPLATES = {"invitation", "practice_access_invitation"}
 
 
 async def invite_user(
@@ -125,11 +127,14 @@ async def reissue_invitation(
     invited_to: str,
     now: datetime,
     practice_exam_title: str | None = None,
+    reminder: bool = False,
 ) -> bool:
     """Send the choose-a-password link again, to an account that never used the first one.
 
     Only the token's hash is stored, so the first link cannot be repeated; this mints a
     fresh one through the same path and spends the old one, so only one ever stays live.
+
+    `reminder` sends it as the five-day reminder rather than a plain invitation.
 
     Returns False when there is nothing to re-send: the account already has a password, or
     the account is gone.
@@ -146,7 +151,12 @@ async def reissue_invitation(
         return False
     await repository.mark_unused_reset_tokens_used(session, user_id=user.id, at=now)
     await _queue_invitation(
-        session, user=user, invited_to=invited_to, now=now, practice_exam_title=practice_exam_title
+        session,
+        user=user,
+        invited_to=invited_to,
+        now=now,
+        practice_exam_title=practice_exam_title,
+        reminder=reminder,
     )
     return True
 
@@ -158,6 +168,7 @@ async def _queue_invitation(
     invited_to: str,
     now: datetime,
     practice_exam_title: str | None = None,
+    reminder: bool = False,
 ) -> None:
     """The token and the message, which is all an invitation is.
 
@@ -172,6 +183,16 @@ async def _queue_invitation(
         token_hash=token_hash,
         expires_at=now + timedelta(days=INVITATION_TTL_DAYS),
     )
+    if reminder:
+        await notifications.enqueue_email(
+            session,
+            recipient=user.email,
+            subject=f"Your invitation to {invited_to} is still waiting",
+            template_key="invitation_reminder",
+            payload={"token": raw, "invited_to": invited_to, "exam_title": practice_exam_title or ""},
+            idempotency_key=f"invitation:{token_hash}",
+        )
+        return
     if practice_exam_title is None:
         await notifications.enqueue_email(
             session,
@@ -190,3 +211,32 @@ async def _queue_invitation(
         payload={"token": raw, "invited_to": invited_to, "exam_title": practice_exam_title},
         idempotency_key=f"invitation:{token_hash}",
     )
+
+
+async def send_due_invitation_reminders(session: AsyncSession, *, now: datetime) -> int:
+    """Remind everyone whose invitation has sat unanswered for five days, once, and say how many.
+
+    The daily job calls this. An invitation is due when its link has under two days left, so
+    the window is the last two of the seven. The reminder carries a fresh link and spends the
+    old one; its own message is not an invitation, so it is never reminded a second time.
+    """
+    reminder_window = timedelta(days=INVITATION_TTL_DAYS - INVITATION_REMINDER_AFTER_DAYS)
+    waiting = await repository.pending_invitations_expiring_between(
+        session, window_start=now, window_end=now + reminder_window
+    )
+    reminded = 0
+    for user, token_hash in waiting:
+        original = await notifications.queued_under(session, f"invitation:{token_hash}")
+        if original is None or original[0] not in _REMINDABLE_TEMPLATES:
+            continue
+        payload = original[1]
+        if await reissue_invitation(
+            session,
+            user_id=user.id,
+            invited_to=str(payload.get("invited_to", "")),
+            now=now,
+            practice_exam_title=payload.get("exam_title"),
+            reminder=True,
+        ):
+            reminded += 1
+    return reminded

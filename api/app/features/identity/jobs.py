@@ -44,3 +44,15 @@ def register() -> None:
             sent = await send_due_engagement_emails(session, now=datetime.now(UTC))
             if sent:
                 log.info("engagement emails queued", count=sent)
+
+    @app.periodic(cron="0 10 * * *")
+    @app.task(name="send_invitation_reminders", queue="identity")
+    async def send_invitation_reminders(timestamp: int = 0) -> None:
+        """Run once a day: remind every invitee who has not answered after five days."""
+        from app.core.db import job_session
+        from app.features.identity.service_invitations import send_due_invitation_reminders
+
+        async with job_session() as session:
+            reminded = await send_due_invitation_reminders(session, now=datetime.now(UTC))
+            if reminded:
+                log.info("invitation reminders queued", count=reminded)

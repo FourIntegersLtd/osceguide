@@ -320,6 +320,29 @@ async def create_reset_token(
     return token
 
 
+async def pending_invitations_expiring_between(
+    session: AsyncSession, *, window_start: datetime, window_end: datetime
+) -> list[tuple[User, str]]:
+    """Each waiting invitee with the hash of the unused link that ends inside the window.
+
+    Waiting means no password yet, password sign-in not switched off, and the account not
+    closed. The hash is what the outbox remembers the original email under.
+    """
+    stmt = (
+        select(User, PasswordResetToken.token_hash)
+        .join(PasswordResetToken, PasswordResetToken.user_id == User.id)
+        .where(
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > window_start,
+            PasswordResetToken.expires_at <= window_end,
+            User.password_hash.is_(None),
+            User.password_login_disabled.is_(False),
+            User.closed_at.is_(None),
+        )
+    )
+    return [(user, token_hash) for user, token_hash in (await session.execute(stmt)).all()]
+
+
 async def reset_token_by_hash(session: AsyncSession, token_hash: str) -> PasswordResetToken | None:
     """The reset link this hash matches, or None for one that was never
     issued or that this table has since forgotten."""

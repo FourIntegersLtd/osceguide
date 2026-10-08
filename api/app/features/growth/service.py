@@ -28,6 +28,7 @@ from app.features.growth.schemas import (
     TrackingReference,
 )
 from app.features.identity import service as identity
+from app.features.notifications import service as notifications
 from app.features.tenancy import service as tenancy
 
 log = get_logger(__name__)
@@ -245,15 +246,27 @@ async def credit_referral_purchase(
     # The shared code plus a random suffix: `referrals.code` is unique, and the
     # suffix keeps the redemption readable next to the code it came from.
     redemption_suffix = secrets.token_hex(REDEMPTION_SUFFIX_BYTES).upper()
+    redemption_code = f"{shared.code}-{redemption_suffix}"[:REFERRAL_CODE_MAX_LENGTH]
+    earned_pence = domain.referral_reward_pence(plan_duration_days)
     await repository.record_redemption(
         session,
         referrer_user_id=shared.referrer_user_id,
-        redemption_code=f"{shared.code}-{redemption_suffix}"[:REFERRAL_CODE_MAX_LENGTH],
+        redemption_code=redemption_code,
         referred_user_id=referred_user_id,
-        earned_pence=domain.referral_reward_pence(plan_duration_days),
+        earned_pence=earned_pence,
         at=now,
         plan_code=plan_code,
     )
+    referrer = await identity.user_ref_by_id(session, shared.referrer_user_id)
+    if referrer is not None:
+        await notifications.enqueue_email(
+            session,
+            recipient=referrer.email,
+            subject="Someone used your OSCE Guide referral code",
+            template_key="referral_redeemed",
+            payload={"earned": f"£{earned_pence / 100:.2f}"},
+            idempotency_key=f"referral-redeemed:{redemption_code}",
+        )
     return True
 
 

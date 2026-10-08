@@ -160,3 +160,12 @@ async def test_someone_already_sent_the_email_before_is_skipped(db_session: Asyn
     sent = await send_due_engagement_emails(db_session, now=NOW)
 
     assert sent == 0
+
+
+async def test_the_nudge_is_never_repeated_within_fourteen_days_or_after(db_session: AsyncSession) -> None:
+    """E-5: daily runs on day 0, 1 and 14 queue one nudge in all, not one a day."""
+    await _create_user_signed_up(db_session, created_at=NOW - timedelta(days=3))
+
+    sent = [await send_due_engagement_emails(db_session, now=NOW + timedelta(days=day)) for day in (0, 1, 14)]
+
+    assert sent == [1, 0, 0]

@@ -51,6 +51,18 @@ async def enqueue_email(
     return message is not None
 
 
+async def queued_under(session: AsyncSession, idempotency_key: str) -> tuple[str, dict[str, Any]] | None:
+    """The template and payload of the message queued under this key, or None if there is none.
+
+    For a slice that stores only a hash of what it emailed (an invitation link) and later needs
+    the wording again, such as a reminder.
+    """
+    message = await repository.by_idempotency_key(session, idempotency_key)
+    if message is None:
+        return None
+    return message.template_key, dict(message.payload or {})
+
+
 async def deliver_due(
     session: AsyncSession, *, sender: EmailSender, now: datetime, limit: int = DELIVERY_BATCH
 ) -> tuple[int, int]:
@@ -244,6 +256,44 @@ def _invitation(escaped_fields: dict[str, str]) -> str:
     )
 
 
+def _invitation_reminder(escaped_fields: dict[str, str]) -> str:
+    """The body nudging someone who was invited five days ago and has not set a password.
+
+    Carries a fresh link (the first cannot be repeated). With `exam_title` it says which
+    practice access is waiting.
+    """
+    link = (
+        f"{get_settings().frontend_url.rstrip('/')}/accept-invitation?token={escaped_fields.get('token', '')}"
+    )
+    waiting = (
+        f"your practice access to {escaped_fields['exam_title']}"
+        if escaped_fields.get("exam_title")
+        else "your account"
+    )
+    return _page(
+        f"Your invitation to {escaped_fields.get('invited_to', '')} is still waiting",
+        f"<p>{escaped_fields.get('invited_to', '')} invited you to OSCE Guide and {waiting} is not "
+        "set up yet. Set a password to get started.</p>"
+        f"{_button(link, 'Set your password')}"
+        f'<p style="{_META}">This link expires in 7 days. Not expecting this? You can ignore this '
+        "email and the account stays locked.</p>",
+    )
+
+
+def _referral_redeemed(escaped_fields: dict[str, str]) -> str:
+    """The body telling a referrer that someone bought with their code and what it earned.
+
+    It does not name the buyer: the referrer is told the amount, not who paid.
+    """
+    link = f"{get_settings().frontend_url.rstrip('/')}/account"
+    return _page(
+        "Someone used your referral code",
+        f"<p>A purchase with your code earned you {escaped_fields.get('earned', '')}. "
+        "It is added to your referral balance.</p>"
+        f'<p><a href="{link}">See your referrals</a></p>',
+    )
+
+
 def _practice_access_invitation(escaped_fields: dict[str, str]) -> str:
     """The body inviting someone with no account yet to practise an exam an organisation chose.
 
@@ -417,6 +467,8 @@ _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "payment_receipt": _payment_receipt,
     "entitlement_expiring": _entitlement_expiring,
     "invitation": _invitation,
+    "invitation_reminder": _invitation_reminder,
+    "referral_redeemed": _referral_redeemed,
     "practice_access_invitation": _practice_access_invitation,
     "practice_access_granted": _practice_access_granted,
     "candidate_result_released": _result_released,

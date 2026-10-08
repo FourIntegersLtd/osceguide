@@ -666,6 +666,34 @@ async def test_a_paid_referral_purchase_grants_access_and_credits_the_referrer(
     assert mine.json() == {"code": code, "redeemed_count": 1, "earned_pence": 250}
 
 
+async def test_a_referral_purchase_tells_the_referrer_what_they_earned_without_naming_the_buyer(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    from sqlalchemy import select
+
+    from app.features.notifications.models import OutboundMessage
+
+    await a_plan_with_a_referral_discount(db_session)
+    _, code = await a_shared_code(client, make_actor, "told@example.com")
+    await a_customer(db_session, "told-buyer@example.com")
+
+    await post_event(
+        client,
+        referral_checkout_event(
+            "evt_told_1", "told-buyer@example.com", price_id="price_one_month_referral", referral_code=code
+        ),
+    )
+
+    messages = list(
+        (
+            await db_session.execute(
+                select(OutboundMessage).where(OutboundMessage.template_key == "referral_redeemed")
+            )
+        ).scalars()
+    )
+    assert [(m.recipient, m.payload) for m in messages] == [("told@example.com", {"earned": "£2.50"})]
+
+
 async def test_a_full_price_payment_carrying_a_code_credits_nobody(
     client: AsyncClient, make_actor, db_session: AsyncSession
 ) -> None:  # type: ignore[no-untyped-def]
