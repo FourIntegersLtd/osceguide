@@ -665,3 +665,29 @@ async def test_another_orgs_group_members_cannot_be_read(client: AsyncClient, ma
     refused = await client.get(f"{KINGS}/trainee-groups/{group}/members", headers=bearer(admin))
     assert refused.status_code == 404, refused.text
     assert refused.json()["code"] == "group_not_found"
+
+
+async def test_anonymising_ends_the_unstarted_stations_and_frees_the_address(
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:  # type: ignore[no-untyped-def]
+    """S-21: an erased person is not still scheduled into a circuit, and the same address may be
+    rostered again afterwards as a different, new trainee."""
+    from app.features.sittings.models import Slot
+    from tests.http.test_org_read_models import a_circuit, a_sitting
+    from tests.http.test_sittings_routes import published_station
+
+    _, admin = await org_with_admin(client, make_actor)
+    old = await add_trainee(client, admin, "erase.slots@example.com")
+    user_id = (await client.get(f"{KINGS}/trainees", headers=bearer(admin))).json()["items"][0]["user_id"]
+    sitting = await a_sitting(client, admin, "kings", mode="exam")
+    station = await published_station(client, admin, "kings", "Chest pain")
+    await a_circuit(
+        client, admin, "kings", sitting_id=sitting["id"], trainee_ids=[user_id], station_version_ids=[station]
+    )
+
+    assert (await client.post(f"{KINGS}/trainees/{old}/anonymise", headers=bearer(admin))).status_code == 200
+
+    db_session.expire_all()
+    assert list((await db_session.execute(select(Slot.status))).scalars().all()) == ["skipped"]
+    again = await add_trainee(client, admin, "erase.slots@example.com")
+    assert again != old

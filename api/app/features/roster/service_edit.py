@@ -17,6 +17,7 @@ from app.features.identity import service_invitations as invitations
 from app.features.roster import errors, repository, repository_groups
 from app.features.roster.schemas import InvitationRead, TraineeRead, UpdateTrainee
 from app.features.roster.service import _display_name, _require_trainee, _trainee_read
+from app.features.sittings import service as sittings
 from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit
 
@@ -106,6 +107,10 @@ async def anonymise_trainee(
             session, org_id, trainee_id, email=f"anon-{trainee_id}@anonymised.invalid", at=now
         )
         await tenancy.revoke_trainee_membership(session, org_id, trainee.user_id, at=now)
+        # An erased person is no longer scheduled: their unstarted stations end as absent (S-21). The
+        # address was rewritten above, so it is free to be rostered again as a new trainee.
+        if trainee.user_id is not None:
+            await sittings.skip_unstarted_stations(session, org_id, trainee.user_id, now=now)
         await service_audit.record_for_owner(
             session,
             org_id=org_id,
