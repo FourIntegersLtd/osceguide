@@ -28,7 +28,7 @@ import { useAuthoringScope } from "@/capabilities/authoring/parts/useAuthoringSc
 import { useAction } from "@/capabilities/authoring/parts/useAction";
 import { StatusBadge } from "@/capabilities/authoring/parts/StatusPills";
 import { useSurface } from "@/capabilities";
-import { rubricVersionActions, type VersionStatus } from "@/capabilities/authoring/sections/versions";
+import { rubricVersionActions } from "@/capabilities/authoring/sections/versions";
 import { rubricEditPath } from "@/capabilities/authoring/templates/paths";
 
 /** A rubric's versions, and the writes against each one. */
@@ -84,7 +84,7 @@ export function RubricDetail({ rubricId, onBack }: { rubricId: string; onBack: (
               .sort((a, b) => b.version - a.version)
               .map((version) => {
                 const actions = rubricVersionActions(
-                  version.status as VersionStatus,
+                  version.status,
                   scope.kind,
                   data.owner_kind,
                 );
