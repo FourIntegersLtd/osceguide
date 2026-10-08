@@ -58,9 +58,6 @@ function describeFailure(error: unknown): { message: string; expired: boolean } 
   if (hasCode(error, "invalid_mfa_code")) {
     return { message: "That code is not right. Check the app and try again.", expired: false };
   }
-  if (hasCode(error, "too_many_requests")) {
-    return { message: "Too many tries. Wait a minute, then try again.", expired: false };
-  }
   return { message: errorMessage(error), expired: false };
 }
 

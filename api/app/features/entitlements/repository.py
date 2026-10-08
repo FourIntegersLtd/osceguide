@@ -202,3 +202,20 @@ def _live(now: datetime) -> tuple[Any, ...]:
         Entitlement.starts_at <= now,
         or_(Entitlement.ends_at.is_(None), Entitlement.ends_at > now),
     )
+
+
+async def purchases_ending_between(
+    session: AsyncSession, *, after: datetime, before: datetime
+) -> list[Entitlement]:
+    """Bought access, not revoked, that ends in `(after, before]`: who is owed a warning."""
+    stmt = (
+        select(Entitlement)
+        .where(
+            Entitlement.source == "purchase",
+            Entitlement.revoked_at.is_(None),
+            Entitlement.ends_at > after,
+            Entitlement.ends_at <= before,
+        )
+        .order_by(Entitlement.ends_at, Entitlement.id)
+    )
+    return list((await session.execute(stmt)).scalars())

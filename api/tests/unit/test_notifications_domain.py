@@ -81,3 +81,21 @@ def test_an_unknown_template_key_is_an_error_not_an_email() -> None:
 
     with pytest.raises(service.UnknownTemplate):
         service._render("no_such_template", {"a": "b"})
+
+
+def test_the_practice_access_email_opens_the_practice_area_not_the_sign_in_page() -> None:
+    """E-5: the link used to be /login, a dead end for someone already signed in."""
+    from app.features.notifications import service
+
+    html = service._render("practice_access_granted", {"exam_title": "SCA", "granted_by": "Kings"})
+    assert '/app/me" style=' in html
+    assert "/login" not in html
+    assert ">Start practising</a>" in html
+
+
+def test_the_expiry_warning_names_the_exam_and_the_end_date() -> None:
+    from app.features.notifications import service
+
+    html = service._render("entitlement_expiring", {"exam_title": "SCA <b>", "ends_on": "15 October 2026"})
+    assert "Your SCA &lt;b&gt; access ends on 15 October 2026</h1>" in html
+    assert '/app/me/settings" style=' in html

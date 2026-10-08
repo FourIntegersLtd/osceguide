@@ -42,6 +42,8 @@ FEATURE_TASKS = {
     "check_partner_spend",
     # Unregistered, a job whose worker died stays `doing` for ever (B32).
     "reclaim_stalled_jobs",
+    # Unregistered, bought access lapses with no warning (S-12).
+    "warn_expiring_access",
 }
 PERIODIC_TASKS = {
     "deliver_outbound_messages",
@@ -52,6 +54,7 @@ PERIODIC_TASKS = {
     "reindex_material",
     "check_partner_spend",
     "reclaim_stalled_jobs",
+    "warn_expiring_access",
 }
 
 

@@ -92,3 +92,24 @@ export function validationFields(err: unknown): Record<string, string> {
   }
   return fields;
 }
+
+/**
+ * How long a 429 asks the caller to wait, as a phrase ("1 minute", "25 minutes"), or null
+ * when the failure is not a rate limit or the server gave no `retry_after` (seconds).
+ * Without it a person who hits an hourly limit is told to "wait a moment" and retries
+ * into the same wall.
+ */
+export function retryAfterPhrase(err: unknown): string | null {
+  if (!isPlatformError(err) || err.code !== "too_many_requests") return null;
+  const seconds = err.details?.retry_after;
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) return null;
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+}
+
+/** The sentence for a 429, naming the wait when known; null for any other failure. */
+export function rateLimitMessage(err: unknown): string | null {
+  if (!isPlatformError(err) || err.code !== "too_many_requests") return null;
+  const wait = retryAfterPhrase(err);
+  return wait ? `Too many attempts. Try again in ${wait}.` : err.message;
+}

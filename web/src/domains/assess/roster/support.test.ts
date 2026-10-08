@@ -90,15 +90,19 @@ test("a reload fetches only the lists marked stale", async () => {
 });
 
 test("a duplicate add and a rate-limited resend are said plainly", () => {
-  const refused = (status: number, code: string) =>
-    new PlatformError(status, { code, message: "raw server text" } as never);
+  const refused = (status: number, code: string, details?: Record<string, unknown>) =>
+    new PlatformError(status, { code, message: "raw server text", details } as never);
   assert.equal(
     rosterErrorMessage(refused(409, "trainee_exists"), "ada@example.com"),
     "ada@example.com is already on this roster.",
   );
   assert.equal(
     rosterErrorMessage(refused(429, "too_many_requests"), "ada@example.com"),
-    "You have sent a lot of invitation emails just now. Wait a minute, then try again.",
+    "You have sent a lot of invitation emails just now. Wait a while, then try again.",
+  );
+  assert.equal(
+    rosterErrorMessage(refused(429, "too_many_requests", { retry_after: 1500 }), "ada@example.com"),
+    "You have sent a lot of invitation emails just now. Try again in 25 minutes.",
   );
   assert.equal(rosterErrorMessage(refused(500, "internal_error"), "a@b.c"), "raw server text");
 });

@@ -16,7 +16,7 @@ from app.core.db import get_session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
-from app.core.rate_limit import OUTBOUND_EMAIL, TooManyRequests, per_user
+from app.core.rate_limit import OUTBOUND_EMAIL, OUTBOUND_RESEND, TooManyRequests, per_user
 from app.core.role_policy import policy
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, OrgReader, PlatformAdmin, Workspace, require_org
@@ -267,7 +267,7 @@ async def restore_membership(
     responses=error_responses(
         TooManyRequests, Forbidden, errors.MembershipNotFound, errors.InvitationNotPending
     ),
-    dependencies=[Depends(per_user(OUTBOUND_EMAIL))],
+    dependencies=[Depends(per_user(OUTBOUND_RESEND))],
 )
 async def resend_membership_invitation(
     membership_id: uuid.UUID, workspace: OrgAdmin, session: Session, clock: ClockDep

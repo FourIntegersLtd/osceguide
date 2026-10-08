@@ -231,3 +231,16 @@ async def test_the_local_count_never_holds_more_than_its_cap(monkeypatch: pytest
     for n in range(20):
         await check(counted, f"caller{n}")
     assert len(rate_limit._local_windows) == 5
+
+
+async def test_resending_has_its_own_hourly_allowance(redis: FakeRedis) -> None:
+    """S-26: thirty adds or imports in an hour left no resends, and the reverse."""
+    for _ in range(30):
+        await check(rate_limit.OUTBOUND_EMAIL, "admin")
+    with pytest.raises(TooManyRequests):
+        await check(rate_limit.OUTBOUND_EMAIL, "admin")
+
+    for _ in range(60):
+        await check(rate_limit.OUTBOUND_RESEND, "admin")
+    with pytest.raises(TooManyRequests):
+        await check(rate_limit.OUTBOUND_RESEND, "admin")

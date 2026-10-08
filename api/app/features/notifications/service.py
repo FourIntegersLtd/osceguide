@@ -34,13 +34,13 @@ async def enqueue_email(
     template_key: str,
     payload: dict[str, Any] | None,
     idempotency_key: str,
-) -> None:
-    """Queue in the caller's transaction.
+) -> bool:
+    """Queue in the caller's transaction. True when queued now, False when that key was already queued.
 
     Writing the row beside the data that justified it is the point: a password
     reset that rolls back does not leave an email promising one.
     """
-    await repository.enqueue(
+    message = await repository.enqueue(
         session,
         recipient=recipient,
         subject=subject,
@@ -48,6 +48,7 @@ async def enqueue_email(
         payload=payload,
         idempotency_key=idempotency_key,
     )
+    return message is not None
 
 
 async def deliver_due(
@@ -209,13 +210,26 @@ def _practice_access_invitation(escaped_fields: dict[str, str]) -> str:
 
 def _practice_access_granted(escaped_fields: dict[str, str]) -> str:
     """The body telling an existing account holder an organisation gave them an exam to practise."""
-    link = f"{get_settings().frontend_url.rstrip('/')}/login"
+    # The practice area, not /login: a signed-in person lands there, and sign-in sends the rest back.
+    link = f"{get_settings().frontend_url.rstrip('/')}/app/me"
     return (
         f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
         f"{escaped_fields.get('granted_by', '')} has given you practice access</h1>"
         f'<p style="{_BODY}">You can now practise <strong>{escaped_fields.get("exam_title", "")}</strong> '
         "with your existing OSCE Guide account. There is nothing new to set up.</p>"
-        f"{_button(link, 'Sign in to OSCE Guide')}"
+        f"{_button(link, 'Start practising')}"
+    )
+
+
+def _entitlement_expiring(escaped_fields: dict[str, str]) -> str:
+    """The body warning that bought access ends soon (S-12)."""
+    link = f"{get_settings().frontend_url.rstrip('/')}/app/me/settings"
+    return (
+        f'<h1 style="margin:0 0 16px;font-size:22px;font-weight:600">'
+        f"Your {escaped_fields.get('exam_title', '')} access ends on {escaped_fields.get('ends_on', '')}</h1>"
+        f'<p style="{_BODY}">Your practice history stays on your account. Once your access has ended '
+        "you can buy more from your settings and carry on where you left off.</p>"
+        f"{_button(link, 'Open your settings')}"
     )
 
 
@@ -330,6 +344,7 @@ def _inactive_user_engagement(escaped_fields: dict[str, str]) -> str:
 _TEMPLATES: dict[str, Callable[[dict[str, str]], str]] = {
     "password_reset": _password_reset,
     "payment_receipt": _payment_receipt,
+    "entitlement_expiring": _entitlement_expiring,
     "invitation": _invitation,
     "practice_access_invitation": _practice_access_invitation,
     "practice_access_granted": _practice_access_granted,

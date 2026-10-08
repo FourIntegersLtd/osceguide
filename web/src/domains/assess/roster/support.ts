@@ -1,7 +1,7 @@
 import type { Trainee } from "@/domains/assess/api";
 import type { Cohort } from "@/domains/assess/roster/api";
 import { errorMessage } from "@/foundation/hooks/useAsync";
-import { hasCode } from "@/foundation/platform-client";
+import { hasCode, retryAfterPhrase } from "@/foundation/platform-client";
 
 /** A trainee exists before they have ever signed in, so a name may be absent. */
 export function fullName(trainee: Trainee): string | null {
@@ -157,7 +157,8 @@ export function deleteLead(name: string, stationsSat: number): string {
 export function rosterErrorMessage(cause: unknown, email: string): string {
   if (hasCode(cause, "trainee_exists")) return `${email} is already on this roster.`;
   if (hasCode(cause, "too_many_requests")) {
-    return "You have sent a lot of invitation emails just now. Wait a minute, then try again.";
+    const wait = retryAfterPhrase(cause);
+    return `You have sent a lot of invitation emails just now. ${wait ? `Try again in ${wait}.` : "Wait a while, then try again."}`;
   }
   return errorMessage(cause);
 }

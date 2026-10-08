@@ -133,6 +133,9 @@ STATION_IMPORT = Limit(name="station-import", allowance=60, window_seconds=3600)
 # report to support. A bulk upload is one call however many rows it carries;
 # the limit is on a loop of calls, which is how an inbox gets flooded.
 OUTBOUND_EMAIL = Limit(name="outbound-email", allowance=30, window_seconds=3600)
+# Sends an invitation again. Its own allowance (S-26): an import or a run of adds
+# must not use up the resends, and a chaser to a whole cohort is a normal hour.
+OUTBOUND_RESEND = Limit(name="outbound-resend", allowance=60, window_seconds=3600)
 # Publishes something other people read: a question, a reply, a comment, a
 # marketplace slot. Sized well above a busy contributor and well below spam.
 PUBLISH = Limit(name="publish", allowance=20, window_seconds=600)

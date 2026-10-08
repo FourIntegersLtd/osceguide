@@ -54,9 +54,19 @@ async def start_attempt(
     except CatalogUnknownExam as exc:
         raise errors.UnknownExamError(str(exc)) from exc
 
+    await entitlements.require(
+        session,
+        user_id=user_id,
+        exam_id=exam.id,
+        now=now,
+        trial=await trial_state_for(
+            session, user_id=user_id, exam_id=exam.id, station_version_id=station_version_id
+        ),
+    )
+
     # Reopening a station (a reload, a second tab) resumes the attempt it already opened rather
-    # than leaving that one orphaned and restarting the reading clock. Checked before the
-    # entitlement gate: that attempt was already granted, and the trial counts it.
+    # than leaving that one orphaned and restarting the reading clock. Checked after the
+    # entitlement gate (S-11): access that has lapsed or been refunded since must not reopen it.
     if kind in _RESUMABLE_KINDS and station_version_id is not None and room_name is None:
         unstarted = await repository.unstarted_attempt(
             session,
@@ -69,16 +79,6 @@ async def start_attempt(
         )
         if unstarted is not None:
             return _attempt_read(unstarted)
-
-    await entitlements.require(
-        session,
-        user_id=user_id,
-        exam_id=exam.id,
-        now=now,
-        trial=await trial_state_for(
-            session, user_id=user_id, exam_id=exam.id, station_version_id=station_version_id
-        ),
-    )
 
     attempt = await repository.create_attempt(
         session,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PlatformError, PlatformTransportError } from "@/foundation/platform-client";
+import { PlatformError, PlatformTransportError, rateLimitMessage } from "@/foundation/platform-client";
 
 export interface AsyncState<T> {
   data: T | null;
@@ -85,6 +85,6 @@ export function errorMessage(error: unknown): string {
   if (error instanceof PlatformTransportError) {
     return "We could not reach the server. Check your connection and try again.";
   }
-  if (error instanceof PlatformError) return error.message;
+  if (error instanceof PlatformError) return rateLimitMessage(error) ?? error.message;
   return "Something went wrong. Please try again.";
 }

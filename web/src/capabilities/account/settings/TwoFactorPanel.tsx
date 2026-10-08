@@ -33,7 +33,6 @@ const REQUIRED_BECAUSE: Record<NonNullable<MfaStatus["required_reason"]>, string
 
 function codeFailure(error: unknown): string {
   if (hasCode(error, "invalid_mfa_code")) return "That code is not right. Check the app and try again.";
-  if (hasCode(error, "too_many_requests")) return "Too many tries. Wait a minute, then try again.";
   if (hasCode(error, "mfa_required_by_policy")) {
     return "Two-factor sign-in is required for this account, so it cannot be turned off.";
   }
