@@ -7,7 +7,6 @@ import {
   HiOutlineHeart,
   HiOutlineIdentification,
   HiOutlineNewspaper,
-  HiOutlinePhoto,
   HiOutlineUser,
   HiOutlineUserCircle,
   HiOutlineUsers,
@@ -54,9 +53,8 @@ const BRIEF_BLOCK_META: Record<string, BriefBlockMeta> = {
   doctor_task: { title: "Your Role", icon: HiOutlineUserCircle, tone: "primary", order: 1 },
   // Ortho ST3 — OrthoDoctorScreen
   clinical_scenario: { title: "Clinical Scenario", icon: HiOutlineClipboardDocumentList, tone: "primary", order: 1 },
-  radiograph_image_url: { title: "Radiograph", icon: HiOutlineViewfinderCircle, tone: "sky", order: 2 },
+  radiograph_image_url: { title: "Images", icon: HiOutlineViewfinderCircle, tone: "sky", order: 2 },
   patient_list_for_candidate: { title: "Patient List", icon: HiOutlineUsers, tone: "emerald", order: 3 },
-  additional_image_urls: { title: "Additional Images", icon: HiOutlinePhoto, tone: "orange", order: 7 },
   background_overview: { title: "Background", icon: HiOutlineChatBubbleLeftRight, tone: "violet", order: 4 },
 };
 

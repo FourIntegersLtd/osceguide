@@ -33,7 +33,6 @@ SCENARIO_KEYS = (
     "clinical_scenario_title",
     "clinical_scenario",
     "radiograph_image_url",
-    "additional_image_urls",
     "background_overview",
     "patient_list_for_candidate",
     "duration_minutes",

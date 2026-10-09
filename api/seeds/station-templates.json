@@ -726,15 +726,8 @@
                 "id": "radiograph_image_url",
                 "type": "media",
                 "role": "candidate_brief",
-                "label": "Radiograph Image URL",
-                "placeholder": "Optional URL to primary imaging"
-              },
-              {
-                "id": "additional_image_urls",
-                "type": "media",
-                "role": "candidate_brief",
-                "label": "Additional Image URLs",
-                "placeholder": "Classification diagrams, post-op X-rays, etc."
+                "label": "Images",
+                "placeholder": "Radiographs, classification diagrams, post-op X-rays, etc."
               }
             ]
           },
