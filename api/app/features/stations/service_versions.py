@@ -46,15 +46,19 @@ async def add_version(
         raise_mapped(exc, _REFUSALS)
     seed = domain.seed_version(refs)
     content: dict[str, Any] = {}
+    template_version_id: uuid.UUID | None = None
     if seed is not None:
         source = next(version for version in existing if version.version == seed.number)
         content = dict(source.content)
+        # The content is laid out by that template; without it the station renders no sections.
+        template_version_id = source.template_version_id
     station_version = await repository.add_version(
         session,
         org_id,
         station_id=station_id,
         version=domain.next_version_number(refs),
         content=content,
+        template_version_id=template_version_id,
     )
     return _version_read(station_version)
 
