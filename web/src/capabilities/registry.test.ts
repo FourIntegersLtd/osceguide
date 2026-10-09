@@ -20,10 +20,13 @@ describe("capability registry", () => {
     assert.ok(!train.includes("media"), "combined library is hidden from nav");
   });
 
-  it("puts transcripts and debriefs in the consumer navigation", () => {
+  it("keeps transcripts and debriefs inside practice, out of the consumer navigation", () => {
     const train = capabilitiesFor("train", { basePath: "/app/me" }).map((c) => c.href);
-    assert.ok(train.includes("/app/me/transcripts"));
-    assert.ok(train.includes("/app/me/debriefs"));
+    assert.ok(!train.includes("/app/me/transcripts"));
+    assert.ok(!train.includes("/app/me/debriefs"));
+    const mounted = capabilitiesFor("train", { basePath: "/app/me", includeHidden: true }).map((c) => c.href);
+    assert.ok(mounted.includes("/app/me/transcripts"), "still open by link");
+    assert.ok(mounted.includes("/app/me/debriefs"), "still open by link");
   });
 
   it("hides the marketplace from an exam that does not offer it", () => {

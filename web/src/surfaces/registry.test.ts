@@ -258,8 +258,6 @@ describe("surface registry", () => {
       "Slides",
       "Podcast",
       "Articles",
-      "Debrief",
-      "Transcripts",
     ]);
     // Contact & Feedback leads Connect: the retiring sidebar carried it too,
     // ahead of the community, and a capability mounts it on this arm only.

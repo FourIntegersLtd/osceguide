@@ -9,8 +9,9 @@ import type { CapabilityModule } from "@/capabilities/contract";
  * so an institution reviewing a cohort's stations wants it for the same reason
  * a consumer does.
  *
- * Listed in the navigation under Practice, as well as reached from an attempt:
- * the list of every debrief the person has had is its own screen.
+ * `hidden`: reached from an attempt (the station's Debriefs tab), never from
+ * the navigation, so it stays inside practice rather than reading as a section
+ * of its own. The list of every debrief stays open by link.
  */
 export const debriefCapability: CapabilityModule = {
   id: "debrief",
@@ -21,4 +22,5 @@ export const debriefCapability: CapabilityModule = {
   section: "practice",
   path: "/debriefs",
   icon: LuMessageSquareQuote,
+  hidden: true,
 };

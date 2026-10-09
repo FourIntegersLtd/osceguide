@@ -188,7 +188,7 @@ unless written in full.
 - **C-13** · ROUGH · fixed 04f288c (feedbackRows.test.ts) · Feedback history Evaluator hard-coded "system"; only first 25 attempts listed. FeedbackHistory.tsx:48; useStationAttempt.ts
 - **C-14** · ROUGH · fixed 04f288c (re-checked 2026-10-08: the reminder link /app/me/marketplace/session/<id> resolves, covered by a unit test) · Marketplace reachable by URL for non-SCA exams; /app/me/stations is a 404 for consumers; reminder email links /marketplace for non-SCA. peer-practice/capability.ts; stations/capability.ts
 - **C-15** · WRONG · fixed ad3ba66 (matcher refuses an exam with no stations; turning peer practice on in production is a deploy task, not code) · Peer practice not on production; matcher pairs people for an exam with no published stations. BACKLOG
-- **C-16** · ROUGH · fixed 04f288c (registry.test.ts transcripts and debriefs in the nav) · Transcripts and debriefs have no nav entry (links only). capability.ts hidden
+- **C-16** · ROUGH · reverted 2026-10-09 by product decision: both stay inside AI practice (the station's transcript panel and Debriefs tab), hidden from the nav; registry.test.ts pins it · Transcripts and debriefs have no nav entry (links only). capability.ts hidden
 
 ## 6. Sign-in, account, billing, public (A-*)
 
