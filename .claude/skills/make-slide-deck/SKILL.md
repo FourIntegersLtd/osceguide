@@ -116,6 +116,21 @@ cd ../../../../api && PYTHONPATH=. poetry run python ../.claude/skills/make-slid
 Only CC0 / CC BY / CC BY-SA / public-domain pictures. No identifiable patients except
 from openly licensed medical images. `up.py` needs the `.jpg` extension.
 
+Generic pictures (telephone, consultation, ambulance, tablets ...) belong to the pools in
+`vary.py`; prefer a pool picture used least across nearby decks, never the same one twice in a deck.
+To spread pictures across already published decks without re-voicing them (from `api/`, PYTHONPATH=.):
+
+1. `poetry run python ../.claude/skills/make-slide-deck/scripts/vary.py <plans_dir>` writes each changed
+   deck's new `image_urls`. It plans from `<sid>.before-pictures.json` where one exists, so re-running it gives the same plans.
+2. `poetry run python ../.claude/skills/make-slide-deck/scripts/refilm.py <sid> <plans_dir>/<sid>.json --check --upload`
+   pastes only the new picture boxes over the published frames, copies the audio, uploads
+   `<topic>_<sid>_pictures.mp4` and rewrites `published/<sid>.json` (old kept as `.before-pictures.json`).
+   It refuses to upload if the old pictures, drawn again, do not match the published video.
+3. `pubpics.py platform <sids> --apply` inside `railway run -s platform-postgres -e staging`, then
+   `-s platform-postgres-production -e production`; then `pubpics.py firestore <sids> --apply` with
+   `FIREBASE_SERVICE_ACCOUNT_KEY_PATH` set (add `GRPC_DNS_RESOLVER=native` if Firestore cannot resolve).
+   Dry run without `--apply`. Only `image_urls` and `final_video_url` change.
+
 ## Steps, per batch of 3 to 5 decks (k, k+1, ...)
 
 1. **Case text**: `python3 pdfcase.py "../../../../native mock.pdf" <case#>...` → `work/cases/<n>.txt`. Read it.

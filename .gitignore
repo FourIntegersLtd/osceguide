@@ -8,3 +8,6 @@ service-key
 # Local design mock, not part of the repository
 native mock.pdf
 __pycache__/
+
+# commons-images skill output (downloaded images)
+commons-work/
