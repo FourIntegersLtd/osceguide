@@ -30,14 +30,22 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import regenerate_podcasts as rp  # noqa: E402  (sets up the path, env and .env loading)
+_ROOT = Path(__file__).resolve().parents[1]
+sys.path[:0] = [str(Path(__file__).resolve().parent), str(_ROOT)]
+os.environ.setdefault("APP_ENV", "local")
+
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(_ROOT / ".env")
+
+from railway_db import use_database_env  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
@@ -110,7 +118,7 @@ def _approved_sample(row: MediaItem, sample_file: str) -> dict[str, Any]:
 
 async def _run(args: argparse.Namespace) -> int:
     if args.database_url_env:
-        rp._use_database_env(args.database_url_env)
+        use_database_env(args.database_url_env)
     import_all_models()
     settings = get_settings()
     host = urlparse(settings.database_url).hostname or "?"

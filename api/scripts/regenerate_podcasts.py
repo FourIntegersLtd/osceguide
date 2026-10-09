@@ -31,7 +31,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
-from urllib.parse import quote, urlparse
+from urllib.parse import urlparse
 
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT))
@@ -41,6 +41,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(_ROOT / ".env")
 
+from railway_db import use_database_env  # noqa: E402  # same folder
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
@@ -60,42 +61,9 @@ def _is_v4(url: object) -> bool:
     return isinstance(url, str) and V4_MARK in url
 
 
-def _railway_proxy_url() -> str:
-    """The public connection string of a Railway Postgres service, from its own variables
-    (so this must run under `railway run -s <postgres service> -e <environment>`)."""
-    needed = (
-        "POSTGRES_USER",
-        "POSTGRES_PASSWORD",
-        "POSTGRES_DB",
-        "RAILWAY_TCP_PROXY_DOMAIN",
-        "RAILWAY_TCP_PROXY_PORT",
-    )
-    env = {key: os.environ.get(key, "").strip() for key in needed}
-    missing = [key for key, value in env.items() if not value]
-    if missing:
-        sys.exit(
-            f"missing {', '.join(missing)}; run under `railway run -s <postgres service> -e <environment>`"
-        )
-    return (
-        f"postgresql://{quote(env['POSTGRES_USER'], safe='')}:{quote(env['POSTGRES_PASSWORD'], safe='')}"
-        f"@{env['RAILWAY_TCP_PROXY_DOMAIN']}:{env['RAILWAY_TCP_PROXY_PORT']}/{env['POSTGRES_DB']}"
-    )
-
-
-def _use_database_env(name: str) -> None:
-    """Points the app's DATABASE_URL at the connection string held in env var `name`,
-    or at the Railway proxy address when `name` is RAILWAY_PROXY."""
-    url = _railway_proxy_url() if name == "RAILWAY_PROXY" else (os.environ.get(name) or "").strip()
-    if not url:
-        sys.exit(f"{name} is not set")
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
-    os.environ["DATABASE_URL"] = url
-
-
 async def _run(args: argparse.Namespace) -> int:
     if args.database_url_env:
-        _use_database_env(args.database_url_env)
+        use_database_env(args.database_url_env)
     import_all_models()
     settings = get_settings()
     host = urlparse(settings.database_url).hostname or "?"

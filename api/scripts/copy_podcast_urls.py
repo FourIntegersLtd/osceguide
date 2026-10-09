@@ -24,6 +24,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import regenerate_podcasts as rp  # same folder; loads .env and the app
+from railway_db import use_database_env  # noqa: E402
 from regenerate_slides import NARRATION_MARK  # noqa: E402  # same folder
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
@@ -38,7 +39,7 @@ SLIDE_DECK = "slide_deck"
 
 async def _run(args: argparse.Namespace) -> int:
     if args.database_url_env:
-        rp._use_database_env(args.database_url_env)
+        use_database_env(args.database_url_env)
     import_all_models()
     host = urlparse(get_settings().database_url).hostname or "?"
     is_local = host in ("localhost", "127.0.0.1", "::1")
