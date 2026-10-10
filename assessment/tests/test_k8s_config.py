@@ -241,3 +241,15 @@ def test_each_overlay_renders_into_its_own_namespace(environment, expected_names
     assert f"image: {WORKER_IMAGE}:{environment}" in rendered
     assert re.findall(r"^  replicas: (\d+)$", rendered, re.MULTILINE) == [str(expected_replicas)] * 2
     assert f'SENTRY_ENVIRONMENT: {environment}' in rendered
+
+
+@pytest.mark.parametrize("manifest", ("deployment.yaml", "deployment-assistant.yaml"))
+def test_rollout_deadline_outlasts_the_drain_of_the_pod_being_replaced(manifest) -> None:
+    """maxUnavailable 0 keeps the old pod draining for terminationGracePeriodSeconds; a
+    progress deadline at or below that fails the rollout while a healthy pod is draining."""
+    text = (K8S / manifest).read_text()
+    deadline = re.search(r"^  progressDeadlineSeconds: (\d+)$", text, re.M)
+    grace = re.search(r"^      terminationGracePeriodSeconds: (\d+)$", text, re.M)
+    assert grace, f"{manifest} sets no terminationGracePeriodSeconds"
+    assert deadline, f"{manifest} sets no progressDeadlineSeconds (Kubernetes defaults to 600)"
+    assert int(deadline.group(1)) > int(grace.group(1))

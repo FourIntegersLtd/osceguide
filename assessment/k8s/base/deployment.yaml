@@ -4,6 +4,8 @@ metadata:
   name: assessment-worker
 spec:
   replicas: 3
+  # Must stay above terminationGracePeriodSeconds plus pod start, or a drain fails the rollout.
+  progressDeadlineSeconds: 1200
   # Add capacity before removing any, so a rollout never evicts a pod that is
   # still carrying consultations to make room for its own replacement.
   strategy:
