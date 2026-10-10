@@ -10,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-from pipe import R, W
+from pipe import R, W, live_decks
 
 PUBLISHED = R / "published"
 PREFIX = "https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v2/pictures/"
@@ -34,16 +34,6 @@ POOLS = [
     "office_desk work_top_workspace work_laptop_neat_desk",
     "stethoscope exam_bp_cuff exam_stethoscope_desk",
 ]
-
-
-def live_decks() -> list[tuple[int, str]]:
-    """The live slide id of each deck number. pub.sh appends "<k> <deck> <slide_id> [replaced <date>]"."""
-    live: dict[int, str] = {}
-    for line in (W / "published.txt").read_text().splitlines():
-        parts = line.split()
-        if len(parts) >= 3 and parts[2].startswith("slide_"):
-            live[int(parts[0])] = parts[2]
-    return sorted(live.items())
 
 
 def main() -> None:

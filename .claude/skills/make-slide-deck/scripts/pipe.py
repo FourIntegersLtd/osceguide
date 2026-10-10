@@ -19,6 +19,16 @@ def mid(k):
     return (W / f"d{k}.id").read_text().strip()
 
 
+def live_decks():
+    """The live slide id of each deck number. pub.sh appends "<k> <deck> <slide_id> [replaced <date>]"."""
+    live = {}
+    for line in (W / "published.txt").read_text().splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[2].startswith("slide_"):
+            live[int(parts[0])] = parts[2]
+    return sorted(live.items())
+
+
 def name(k):
     return (W / f"d{k}.name").read_text().strip()
 
