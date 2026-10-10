@@ -278,17 +278,19 @@ async function main() {
     },
   });
   /*
-   * Receipts are ids, not documents. The settings screen was written against
-   * the detail shape until this said otherwise — `domains/train/Access.tsx`
-   * still reads `plan_label` off this list and renders nothing.
+   * `/me/receipts-full` answers whole `ReceiptRead` objects a page at a time;
+   * the id is `receipt_id`.
    */
-  const receipts = await step("my receipts", "/api/v1/me/receipts", {
+  const receipts = await step("my receipts", "/api/v1/me/receipts-full", {
     expect: (p) => {
       must(Array.isArray(p.items), "not a page");
-      for (const item of p.items) must(typeof item === "string", "receipts are ids, not objects");
+      for (const item of p.items) {
+        must(typeof item === "object" && item !== null, "receipts are objects");
+        must(typeof item.receipt_id === "string" && typeof item.plan_label === "string", "not a ReceiptRead");
+      }
     },
   });
-  const receiptId = receipts?.items?.[0];
+  const receiptId = receipts?.items?.[0]?.receipt_id;
   if (receiptId) {
     await step("one receipt", `/api/v1/me/receipts/${receiptId}`, {
       expect: (p) => must(typeof p.plan_label === "string", "no plan label"),
