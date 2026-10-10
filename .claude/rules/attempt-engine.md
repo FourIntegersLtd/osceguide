@@ -44,6 +44,10 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
   (the one reader of `OSCE_LIVEKIT_HOSTING`). Cloud uses `livekit.agents.inference`, which needs
   `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` at construction (tests set them); self-hosted keeps the
   direct plugins and provider keys, unchanged.
+- The tutor voice is one female persona on every provider (Deepgram athena, OpenAI `coral`, Cartesia
+  female) in one order for every session type; a fallback must not change who speaks (C-36). A new
+  default voice goes in `VOICE_GENDERS` (`tests/test_voice_infra_speech.py`). OpenAI voices also need
+  GPT-Live support (`gpt_live.py` shares `TUTOR_VOICE`): `nova` is TTS-only.
 - Swapping a voice model: re-run `scripts/model_bench.py`; under ~1 role breach per consultation
   at n=3 is judge noise.
 
