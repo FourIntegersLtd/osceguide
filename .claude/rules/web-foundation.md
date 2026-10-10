@@ -41,6 +41,9 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
 - Green CI once shipped an app that signed everyone out on reload: prove in a real browser.
 - The web dev server proxies `/api/v1` to a REMOTE api unless routed locally; never create data on a
   remote server. Journeys: `docs/CORE-JOURNEYS.md`, `npm run e2e` against :8002.
+- CI runs the journeys on a FRESH database: a spec that passes only on your dev DB (templates, a
+  library, a plan on sale) is red there. `e2e/global-setup.ts` makes every precondition or fails
+  naming the seed; reproduce on a fresh database, not the dev one.
 - Node is not on the default PATH: `export PATH="$HOME/.nvm/versions/node/v22.22.3/bin:$PATH"`.
 - Learner read models (home, performance, achievements) are in api `dashboard/`; they exist only to
   feed these screens. A stored rubric structure is read via `rubrics.service`, never directly.

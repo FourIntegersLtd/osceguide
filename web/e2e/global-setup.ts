@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { ADMIN, API, assertLocalApi, call, login, PASSWORD, register, stamp, switchWorkspace } from "./support/api";
+import { ensureScaPlanOnSale } from "./support/db";
 import { stagingWorld } from "./support/staging";
 import { WORLD_FILE, type Role, type World } from "./support/world";
 
@@ -9,21 +10,43 @@ function writeWorld(built: World): void {
   writeFileSync(WORLD_FILE, JSON.stringify(built, null, 2));
 }
 
+/** A brief the trainee can read: the SCA template's required patient blocks, and the candidate's biodata. */
+const LIBRARY_CONTENT = {
+  patient_biodata: "Sam Reid, 54",
+  gender: "male",
+  opening_sentence: "I've had this cough for three weeks.",
+  expanded_history: "Dry cough, worse at night, no weight loss.",
+  doctor_patient_biodata: "Sam Reid, 54, retired teacher",
+};
+
 /**
  * A fresh database has no station library (seed_platform.py imports none), so a run on one
- * authors three minimal SCA stations as the platform admin. Skipped when the library has them.
+ * authors three minimal SCA stations as the platform admin, on the SCA platform template
+ * (scripts/seed_station_templates.py) so the brief has sections. Skipped when the library has them.
  */
 async function ensureLibrary(platform: string): Promise<string[]> {
   const ids = async () => ((await call(platform, "/api/v1/stations?exam_code=sca&limit=3")).items as { version_id: string }[]).map((item) => item.version_id);
   let have = await ids();
-  for (let n = have.length; n < 3; n += 1) {
-    const created = await call(platform, "/api/v1/platform/stations", {
-      method: "POST",
-      body: { title: `E2E library station ${n + 1}`, exam_code: "sca", content: { title: `E2E library station ${n + 1}` } },
-    });
-    await call(platform, `/api/v1/platform/stations/${created.id}/versions/1/publish`, { method: "POST" });
+  if (have.length < 3) {
+    const templates = (await call(platform, "/api/v1/platform/station-templates?exam_code=sca&published_only=true")).items as {
+      exam_code: string | null;
+      versions: { id: string; status: string }[];
+    }[];
+    // The filter also answers templates for any exam (the ASPiH one), which have no SCA blocks.
+    const templateVersionId = templates
+      .filter((t) => t.exam_code === "sca")
+      .flatMap((t) => t.versions).find((v) => v.status === "published")?.id;
+    if (!templateVersionId) throw new Error("no published SCA station template: run scripts/seed_station_templates.py --apply");
+    for (let n = have.length; n < 3; n += 1) {
+      const title = `E2E library station ${n + 1}`;
+      const created = await call(platform, "/api/v1/platform/stations", {
+        method: "POST",
+        body: { title, exam_code: "sca", template_version_id: templateVersionId, content: { title, ...LIBRARY_CONTENT } },
+      });
+      await call(platform, `/api/v1/platform/stations/${created.id}/versions/1/publish`, { method: "POST" });
+    }
+    have = await ids();
   }
-  have = await ids();
   return have;
 }
 
@@ -103,6 +126,7 @@ export default async function globalSetup(): Promise<void> {
   });
   const stationVersionIds = await ensureLibrary(platform);
   if (stationVersionIds.length === 0) throw new Error("no published SCA stations: run scripts/seed_platform.py");
+  ensureScaPlanOnSale();
 
   writeWorld({
     target: "local",

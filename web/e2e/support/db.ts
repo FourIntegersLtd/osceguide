@@ -73,3 +73,17 @@ BEGIN
   UPDATE slots SET status = 'completed' WHERE id = s.id;
 END $$;`);
 }
+
+/**
+ * An SCA plan on sale (local runs only), so the Payments tab offers one. Pricing a plan through the api
+ * creates Stripe prices, which a run has no keys for, so a fresh database gets the row the
+ * staff pricing screen would leave, with a placeholder price id. Skipped when one is on sale.
+ */
+export function ensureScaPlanOnSale(): void {
+  // Columns of api/app/features/billing/models.py `Plan`.
+  psql(`
+INSERT INTO plans (id, code, stripe_price_id, exam_code, amount_pence, currency, duration_days, active)
+  SELECT gen_random_uuid(), 'e2e_sca', 'price_e2e_sca', 'sca', 2900, 'gbp', 90, true
+  WHERE NOT EXISTS (SELECT 1 FROM plans WHERE exam_code = 'sca' AND active)
+  ON CONFLICT (code) DO UPDATE SET active = true;`);
+}

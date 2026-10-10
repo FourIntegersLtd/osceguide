@@ -119,7 +119,7 @@ jobs:
         working-directory: api
         run: poetry install --no-interaction
 
-      # Migrate, author the exams and rubrics, and make the platform admin the
+      # Migrate, author the exams, rubrics and platform station templates, and make the platform admin the
       # console journey signs in as. The flag that forces a password change on
       # first login is cleared so the sign-in returns tokens.
       - name: Migrate and seed the api
@@ -128,6 +128,8 @@ jobs:
           poetry run alembic upgrade head
           poetry run python scripts/seed_platform.py
           poetry run python scripts/bootstrap_admin.py --email "$ADMIN_EMAIL" --name "Walkthrough" --password "$ADMIN_PASSWORD"
+          # Published as the platform admin, so after it exists.
+          poetry run python scripts/seed_station_templates.py --apply
           psql "$DATABASE_URL" -c "update users set must_change_password = false where email = '$ADMIN_EMAIL'"
 
       - name: Start the api on :8002

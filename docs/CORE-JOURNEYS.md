@@ -20,7 +20,8 @@ the reason. The seams used are:
 ## How to run
 
 Prerequisites: docker postgres up, `poetry run alembic upgrade head`,
-`poetry run python scripts/seed_platform.py`, and platform-api on `:8002`
+`poetry run python scripts/seed_platform.py`,
+`poetry run python scripts/seed_station_templates.py --apply` (needs a platform admin), and platform-api on `:8002`
 (`make start` in `api/`). Then, from `web/`:
 
 ```bash
@@ -191,11 +192,12 @@ opens each, and fails on any 401/403/404 from the page's own api calls or a
 
 - **ci-web.yml, job `journeys`**: Postgres service, `alembic upgrade head`,
   `seed_platform.py`, `bootstrap_admin.py` (the platform admin, TOTP from
-  `ADMIN_TOTP_SECRET`), uvicorn on :8002, `next build` with
+  `ADMIN_TOTP_SECRET`), `seed_station_templates.py --apply` (publishes as that admin), uvicorn on :8002, `next build` with
   `PLATFORM_API_URL` pointing at it, then `npm run e2e` with `E2E_PREBUILT=1`
   and `E2E_DATABASE_URL` (the database seam uses `psql` there, not docker).
-  Global setup authors three minimal published SCA stations when the library
-  is empty. Never a remote api.
+  Global setup authors three minimal published SCA stations on the SCA template
+  when the library is empty, and puts an SCA plan on sale (a placeholder Stripe
+  price) when none is. Never a remote api.
 - **Staging** (`promote-web.yml` job `staging-journeys`, `promote-api.yml` before
   gate 5): `web/scripts/smoke.mjs`, then `E2E_TARGET=staging npx playwright
   test`, which runs only specs tagged `@staging` (read-only; they create
