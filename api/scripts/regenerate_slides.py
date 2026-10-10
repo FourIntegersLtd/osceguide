@@ -30,22 +30,16 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-_ROOT = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(Path(__file__).resolve().parent), str(_ROOT)]
-os.environ.setdefault("APP_ENV", "local")
+from railway_db import RAILWAY_PROXY, bootstrap_app, use_database_env  # same folder
 
-from dotenv import load_dotenv  # noqa: E402
+bootstrap_app()
 
-load_dotenv(_ROOT / ".env")
-
-from railway_db import use_database_env  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
@@ -220,7 +214,7 @@ def main() -> None:
     parser.add_argument("--sample-file", help="with --publish-sample: the sample's saved json")
     parser.add_argument("--only", help="only decks whose slug contains this text")
     parser.add_argument("--dry-run", action="store_true", help="list what would be rendered")
-    parser.add_argument("--database-url-env", help="env var with the database URL, or RAILWAY_PROXY")
+    parser.add_argument("--database-url-env", help=f"env var with the database URL, or {RAILWAY_PROXY}")
     parser.add_argument("--live", action="store_true", help="allow writing to a remote database")
     parser.add_argument("--limit", type=int, help="stop after this many decks")
     parser.add_argument(

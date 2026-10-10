@@ -46,7 +46,7 @@ RED_FLAGS = re.compile(
 )
 
 
-def _get(params: dict[str, Any]) -> dict[str, Any]:
+def api_get(params: dict[str, Any]) -> dict[str, Any]:
     params = {**params, "format": "json", "formatversion": "2"}
     url = f"{API}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
@@ -55,14 +55,28 @@ def _get(params: dict[str, Any]) -> dict[str, Any]:
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return json.load(resp)
         except urllib.error.HTTPError as exc:
-            if exc.code < 500 or attempt == 3:
+            if (exc.code < 500 and exc.code != 429) or attempt == 3:
                 raise
-            time.sleep(2**attempt)
+            time.sleep(10 * (attempt + 1) if exc.code == 429 else 2**attempt)
         except (urllib.error.URLError, TimeoutError):
             if attempt == 3:
                 raise
             time.sleep(2**attempt)
     return {}
+
+
+def download(url: str) -> bytes:
+    """Fetch a Commons file, backing off on rate limits."""
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    for attempt in range(5):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return resp.read()
+        except urllib.error.HTTPError as exc:
+            if exc.code != 429 or attempt == 4:
+                raise
+            time.sleep(10 * (attempt + 1))
+    raise AssertionError("unreachable")
 
 
 def _strip_html(value: str) -> str:
@@ -188,13 +202,13 @@ def _page_to_candidate(page: dict[str, Any]) -> dict[str, Any]:
 
 def _lookup(titles: list[str]) -> list[dict[str, Any]]:
     """Checked candidates for the given File: titles that exist on Commons, in Commons' order."""
-    data = _get({"action": "query", "titles": "|".join(titles), **IMAGEINFO})
+    data = api_get({"action": "query", "titles": "|".join(titles), **IMAGEINFO})
     pages = data.get("query", {}).get("pages", [])
     return [_page_to_candidate(pg) for pg in pages if not (pg.get("missing") or pg.get("invalid"))]
 
 
 def _search(query: str, limit: int) -> list[dict[str, Any]]:
-    data = _get({"action": "query", "generator": "search", "gsrsearch": f"{query} filetype:bitmap",
+    data = api_get({"action": "query", "generator": "search", "gsrsearch": f"{query} filetype:bitmap",
                  "gsrnamespace": "6", "gsrlimit": str(limit), **IMAGEINFO})
     return [_page_to_candidate(page) for page in data.get("query", {}).get("pages", [])]
 
@@ -269,9 +283,7 @@ def cmd_fetch(args: argparse.Namespace) -> None:
             dest = work / "commons" / station_id / _safe_name(file_title)
             dest.parent.mkdir(parents=True, exist_ok=True)
             if not dest.exists():
-                req = urllib.request.Request(match["original_url"], headers={"User-Agent": USER_AGENT})
-                with urllib.request.urlopen(req, timeout=60) as resp:
-                    dest.write_bytes(resp.read())
+                dest.write_bytes(download(match["original_url"]))
                 time.sleep(0.5)
             manifest.append({"station_id": station_id, "local_path": str(dest.relative_to(work)), **match,
                              "attribution": attribution(match)})

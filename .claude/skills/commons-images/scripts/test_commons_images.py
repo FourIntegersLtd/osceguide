@@ -49,18 +49,18 @@ def page(title: str, **flags: bool) -> dict:
 class TraceExisting(unittest.TestCase):
     def test_matches_commons_file_whose_extension_case_differs(self):
         reply = {"query": {"pages": [page("File:Kneeffusion.jpg", missing=True), page("File:Kneeffusion.JPG")]}}
-        with mock.patch.object(commons_images, "_get", return_value=reply):
+        with mock.patch.object(commons_images, "api_get", return_value=reply):
             found = _trace_existing("https://osceguide.s3.eu-west-2.amazonaws.com/yahayakenny/Kneeffusion.jpg")
         self.assertEqual((found["file"], found["licence"], found["licence_ok"]), ("File:Kneeffusion.JPG", "CC BY-SA 3.0", True))
 
     def test_no_match_reports_licence_unknown(self):
-        with mock.patch.object(commons_images, "_get", return_value={"query": {"pages": [page("File:images.jpg", missing=True)]}}):
+        with mock.patch.object(commons_images, "api_get", return_value={"query": {"pages": [page("File:images.jpg", missing=True)]}}):
             found = _trace_existing("https://x/images.jpg")
         self.assertIsNone(found)
         self.assertEqual(_existing_status({"commons_source": found}), '<span class="warn">licence unknown — check source</span>')
 
     def test_invalid_title_does_not_crash(self):
-        with mock.patch.object(commons_images, "_get", return_value={}):
+        with mock.patch.object(commons_images, "api_get", return_value={}):
             self.assertIsNone(_trace_existing("https://x/a.jpg"))
         self.assertIsNone(_trace_existing("https://x/a|b.jpg"))
 

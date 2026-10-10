@@ -20,20 +20,18 @@ from __future__ import annotations
 import argparse
 import asyncio
 import os
-import sys
 from pathlib import Path
 from typing import Any
 
-_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_ROOT))
-os.environ.setdefault("APP_ENV", "local")
+from railway_db import API_ROOT, bootstrap_app  # same folder
+
+bootstrap_app()
 
 from dotenv import load_dotenv  # noqa: E402
 
-load_dotenv(_ROOT / ".env")
 # The legacy b2c-api's .env sits beside api/ only in the old backend checkout;
 # in the osceguide repository set the Firebase variables in the environment.
-_b2c_env = _ROOT.parent / "b2c-api" / ".env"
+_b2c_env = API_ROOT.parent / "b2c-api" / ".env"
 if _b2c_env.is_file():
     load_dotenv(_b2c_env, override=False)
 
@@ -56,7 +54,7 @@ from app.migration.media import (  # noqa: E402
 )
 
 
-def _configure_firebase_credentials_from_env() -> None:
+def configure_firebase_credentials_from_env() -> None:
     import json
     import tempfile
 
@@ -122,7 +120,7 @@ async def run(
     kinds = _kinds_from_arg(kind)
 
     if from_firestore:
-        _configure_firebase_credentials_from_env()
+        configure_firebase_credentials_from_env()
         products = [collection] if collection else None
         raw_documents = stream_b2c_media_documents(kinds=kinds, products=products)
     else:

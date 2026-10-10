@@ -11,9 +11,21 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 from urllib.parse import quote
 
+API_ROOT = Path(__file__).resolve().parents[1]
+
 RAILWAY_PROXY = "RAILWAY_PROXY"  # use_database_env(RAILWAY_PROXY): the proxy of the service run under
+
+
+def bootstrap_app() -> None:
+    """Make `app` importable and load api/.env, as every maintenance script needs before importing it."""
+    from dotenv import load_dotenv
+
+    sys.path.insert(0, str(API_ROOT))
+    os.environ.setdefault("APP_ENV", "local")
+    load_dotenv(API_ROOT / ".env")
 
 
 def _railway_proxy_url() -> str:

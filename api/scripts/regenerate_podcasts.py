@@ -27,21 +27,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import sys
 import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
-_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(_ROOT))
-os.environ.setdefault("APP_ENV", "local")
+from railway_db import RAILWAY_PROXY, bootstrap_app, use_database_env  # same folder
 
-from dotenv import load_dotenv  # noqa: E402
+bootstrap_app()
 
-load_dotenv(_ROOT / ".env")
-
-from railway_db import use_database_env  # noqa: E402  # same folder
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
@@ -174,7 +168,7 @@ def main() -> None:
     parser.add_argument("--only", help="only rows whose slug contains this text")
     parser.add_argument(
         "--database-url-env",
-        help="env var holding the database URL, or RAILWAY_PROXY to build it from a Railway Postgres service",
+        help=f"env var holding the database URL, or {RAILWAY_PROXY} to build it from a Railway service",
     )
     parser.add_argument("--live", action="store_true", help="allow writing to a database that is not local")
     parser.add_argument("--kind", choices=("summary", "podcast"), help="only this kind of row")

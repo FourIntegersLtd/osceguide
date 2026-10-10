@@ -107,7 +107,7 @@ Names resolve to `https://osceguide.s3.eu-west-2.amazonaws.com/teaching_videos/v
 Existing ones: `ls api/app/features/media_production/assets/slides/images/`. For a new one:
 
 ```bash
-python3 commons.py "search words" "other words"              # Wikimedia Commons, prints licence
+# find candidates and check licences with the commons-images skill (commons_images.py search)
 P=$(cd ../../../../api && poetry env info -p)/bin/python
 $P fetchx.py "name.jpg=File:Exact Title.jpg"                 # saves + writes CREDITS.json
 cd ../../../../api && PYTHONPATH=. poetry run python ../.claude/skills/make-slide-deck/scripts/up.py name.jpg

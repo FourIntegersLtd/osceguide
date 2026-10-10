@@ -6,13 +6,17 @@ Firestore (FIREBASE_SERVICE_ACCOUNT_KEY_PATH set): sets final_video_url on the e
 (legacy decks carry no slide pictures). Every other field is left exactly as it is. Dry run without --apply.
 """
 
+import argparse
 import asyncio
 import json
 import os
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
 from pipe import R
+
+API_SCRIPTS = Path(__file__).resolve().parents[4] / "api" / "scripts"
 
 PUBLISHED = R / "published"
 
@@ -25,7 +29,7 @@ def _new(sid: str) -> dict:
 
 
 async def _platform(sids: list[str], apply: bool) -> None:
-    sys.path.insert(0, "scripts")
+    sys.path.insert(0, str(API_SCRIPTS))
     from railway_db import RAILWAY_PROXY, use_database_env
     from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -66,13 +70,13 @@ def _firestore(sids: list[str], apply: bool) -> None:
     from dotenv import load_dotenv
 
     load_dotenv(".env")
-    sys.path.insert(0, "scripts")
-    from import_b2c_media import _configure_firebase_credentials_from_env
+    sys.path.insert(0, str(API_SCRIPTS))
+    from import_b2c_media import configure_firebase_credentials_from_env
 
     from app.migration import b2c_firestore
     from app.migration.b2c_media_sources import B2C_MEDIA_SLIDE_COLLECTIONS
 
-    _configure_firebase_credentials_from_env()
+    configure_firebase_credentials_from_env()
     collection = b2c_firestore.client().collection(B2C_MEDIA_SLIDE_COLLECTIONS["sca"])
     for sid in sids:
         new = _new(sid)
@@ -95,13 +99,13 @@ def _firestore(sids: list[str], apply: bool) -> None:
 
 
 def main() -> None:
-    target, *rest = sys.argv[1:]
-    apply = "--apply" in rest
-    sids = [arg for arg in rest if arg.startswith("slide_")]
-    unknown = [arg for arg in rest if arg != "--apply" and arg not in sids]
-    if target not in ("platform", "firestore") or unknown:
-        sys.exit(f"usage: pubpics.py platform|firestore <slide_id>... [--apply] (unknown: {target} {unknown})")
-    if target == "platform":
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("target", choices=("platform", "firestore"))
+    parser.add_argument("slide_ids", nargs="+", metavar="slide_id")
+    parser.add_argument("--apply", action="store_true", help="write; a dry run without it")
+    args = parser.parse_args()
+    sids, apply = args.slide_ids, args.apply
+    if args.target == "platform":
         asyncio.run(_platform(sids, apply))
     else:
         if not os.environ.get("FIREBASE_SERVICE_ACCOUNT_KEY_PATH"):
