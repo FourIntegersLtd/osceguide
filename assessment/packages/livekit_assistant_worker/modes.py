@@ -43,7 +43,7 @@ class ModeProfile:
     gpt_live_eligible: bool = False
     ui_guidance: bool = False
     scene_updates: bool = False
-    """The browser announces scene changes; the backend re-renders the instructions."""
+    """The browser announces scene changes (the backend re-renders the instructions) and can pause the assistant."""
     opens_with_generated_reply: bool = False
     """Open with a model-generated line instead of a fixed greeting."""
     paced: bool = False

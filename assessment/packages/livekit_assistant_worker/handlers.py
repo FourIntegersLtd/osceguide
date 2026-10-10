@@ -21,6 +21,8 @@ from voice_infra.data_packets import json_packet
 logger = logging.getLogger(__name__)
 
 DATA_TYPE_SCENE_CHANGE = "scene_change"
+DATA_TYPE_PAUSE = "pause"
+DATA_TYPE_RESUME = "resume"
 DATA_TYPE_NAV_MODE_CHOICE = "nav_mode_choice"
 SCENE_KEYS = ("phase", "question", "patientLine")
 SCENE_STARTED_INPUT = "[New scene started — introduce it now as instructed.]"
@@ -86,14 +88,34 @@ def wire_guidance_progress(agent: Any, progress: GuidanceProgress) -> None:
 
 
 def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
-    """The browser announces a scene; the backend renders the instructions; the model introduces it."""
+    """The browser announces a scene; the backend renders the instructions; the model introduces it.
+
+    The browser can also pause the assistant. A pause cuts off whatever is
+    being said, and a scene announced while paused is held, not read: the
+    latest one is introduced on resume, so clicking through a paused
+    walkthrough does not queue a speech per click.
+    """
     announced: dict[str, Any] = {}
+    held: dict[str, Any] = {}
+    paused = False
 
     @ctx.room.on("data_received")
     def _on_scene_change(data_packet: Any) -> None:
         """Start an announcement when the browser reports a scene we have not announced yet."""
+        nonlocal paused
         msg = json_packet(data_packet)
-        if not msg or msg.get("type") != DATA_TYPE_SCENE_CHANGE:
+        kind = msg.get("type") if msg else None
+        if kind == DATA_TYPE_PAUSE:
+            paused = True
+            asyncio.create_task(_interrupt(agent))
+            return
+        if kind == DATA_TYPE_RESUME:
+            paused = False
+            if held:
+                asyncio.create_task(_announce_scene(agent, render_scene, dict(held)))
+                held.clear()
+            return
+        if not msg or kind != DATA_TYPE_SCENE_CHANGE:
             return
         scene = {key: msg.get(key) for key in SCENE_KEYS if msg.get(key) is not None}
         if scene == announced:
@@ -101,8 +123,20 @@ def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
             return
         announced.clear()
         announced.update(scene)
+        if paused:
+            held.clear()
+            held.update(scene)
+            return
         logger.info("[assistant] scene change phase=%s", scene.get("phase"))
         asyncio.create_task(_announce_scene(agent, render_scene, scene))
+
+
+async def _interrupt(agent: Any) -> None:
+    """Cut off any speech in progress; nothing playing is not an error."""
+    try:
+        await agent.interrupt()
+    except Exception as exc:  # noqa: BLE001 — nothing playing, or an uninterruptible speech
+        logger.debug("no speech to interrupt: %s", exc)
 
 
 async def _announce_scene(agent: Any, render_scene: RenderScene, scene: dict[str, Any]) -> None:
@@ -113,10 +147,7 @@ async def _announce_scene(agent: Any, render_scene: RenderScene, scene: dict[str
         logger.error("scene change not rendered: %s", exc)
         return
     # The opening line may still be playing; without this the new scene queues behind it.
-    try:
-        await agent.interrupt()
-    except Exception as exc:  # noqa: BLE001 — nothing playing, or an uninterruptible speech
-        logger.debug("no speech to interrupt before scene change: %s", exc)
+    await _interrupt(agent)
     await _reply(agent, instructions=instructions, user_input=SCENE_STARTED_INPUT, what="scene change")
 
 

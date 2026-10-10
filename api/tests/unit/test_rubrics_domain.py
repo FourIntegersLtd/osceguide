@@ -427,7 +427,7 @@ def test_casc_passes_on_eighty_percent_overall_only() -> None:
     }
 
 
-def test_sca_has_no_pass_line_and_says_where_you_stand() -> None:
+def test_sca_has_no_pass_line_and_no_dashboard_title() -> None:
     display = domain.resolved_display(domain.parse_structure(SEEDED["sca"]))
 
     assert display["total"] == {
@@ -437,7 +437,6 @@ def test_sca_has_no_pass_line_and_says_where_you_stand() -> None:
         "requireEveryDomain": False,
     }
     assert display["labels"] == {
-        "title": "Where you stand",
         "domainSubtitle": "RAG mix by clinical domain",
         "trendSubtitle": "How your skills moved across recent sessions",
     }

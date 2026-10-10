@@ -47,9 +47,9 @@ const SCA_PERFORMANCE = performance({
 });
 
 describe("the dashboard, read off the rubric's display", () => {
-  it("SCA: where you stand, a RAG mix by domain, and no pass line", () => {
+  it("SCA: a RAG mix by domain, and no pass line", () => {
     const view = dashboardView(SCA_PERFORMANCE);
-    assert.equal(view.title, "Where you stand");
+    assert.equal(view.title, "Dashboard");
     assert.equal(view.counted, true);
     assert.deepEqual(view.summaryCards, []);
     assert.deepEqual(view.domainChart, {
@@ -226,10 +226,10 @@ describe("recentAttemptStatus", () => {
 });
 
 describe("nextStationCopy", () => {
-  it("never promises a number of minutes, which is the exam's to say", () => {
-    assert.equal(
-      nextStationCopy({ firstStation: true, weakest: null }).sub,
-      "A timed consultation with an AI patient, then feedback by domain.",
-    );
+  it("asks a new learner for a first practice session, and promises no minutes (the exam's to say)", () => {
+    assert.deepEqual(nextStationCopy({ firstStation: true, weakest: null }), {
+      title: "Start your first practice session",
+      sub: "Pick a few stations and talk to an AI patient, just like the real exam. Afterwards you'll see what you did well and what to work on.",
+    });
   });
 });

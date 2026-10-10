@@ -15,7 +15,7 @@ a candidate's station → Review.
 ```js
 await open(run, `/app/me/attempts/${attemptId}`);   // redirects to .../practise?action=review&tab=feedback
 // e.g. SCA "of ratings at G"; PLAB "Pass at 7/12"; CASC "Pass at 80%"; Ortho "18/50", "Pass at 35/50"
-await open(run, "/app/me/dashboard");               // SCA "Where you stand"; PLAB "Pass (7/12)"; Ortho "0–17"
+await open(run, "/app/me/dashboard");               // SCA "Dashboard"; PLAB "Pass (7/12)"; Ortho "0–17"
 await open(run, `/app/verify-rubrics/slots/${slot}/review?attempt=${copy}`);
 // "Your marking", "Required", "machine: G"; SCA buttons G/A/R, Ortho 10..0, CASC Met / Not met, PLAB spinbutton
 ```

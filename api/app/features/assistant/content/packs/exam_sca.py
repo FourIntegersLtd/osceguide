@@ -15,13 +15,32 @@ ONBOARDING_SCENES = (
     OnboardingScene(
         "Hi doctor, I've had this headache for a few days and it's not going away.",
         "How do you open the consultation?",
+        replies=(
+            "Hello, I'm one of the doctors. Tell me about this headache.",
+            "How bad is the pain out of ten?",
+            "Headaches are usually nothing serious, so try not to worry.",
+        ),
+        model_answer="\"Hello, I'm one of the doctors today. I'm sorry the headache has been bothering you. Can you tell me about it from the beginning?\" An open question lets the patient tell their story before you narrow down.",
     ),
     OnboardingScene(
         "I've just been so worried about what this could be. My mother had a brain tumour.",
         "The patient is offering an emotional cue and their core concern. How do you respond?",
+        replies=(
+            "That sounds really frightening, especially after what happened to your mum. What's worrying you most?",
+            "Brain tumours are very rare, so I'm sure it's nothing.",
+            "Is the headache worse in the mornings?",
+        ),
+        model_answer='"That must be really worrying, given what your mother went through. Can you tell me more about what\'s on your mind?" Name the fear and invite them to say more before you reassure.',
     ),
     OnboardingScene(
-        "Okay, so what should I do now?", "How do you close the loop and provide clear next steps?"
+        "Okay, so what should I do now?",
+        "How do you close the loop and provide clear next steps?",
+        replies=(
+            "Let's agree a plan together, and I'll tell you which warning signs mean you should come back sooner.",
+            "Take some painkillers and see how you go.",
+            "We'll need to rule out a space-occupying lesion with neuroimaging.",
+        ),
+        model_answer='"Here\'s what I suggest: simple pain relief, a headache diary and a review in two weeks. If you get a sudden severe headache, weakness or repeated vomiting, get help straight away. Does that plan work for you?" Clear steps, a safety net, and checking they agree.',
     ),
 )
 

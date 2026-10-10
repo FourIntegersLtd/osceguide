@@ -1,4 +1,4 @@
-import { LuInbox } from "react-icons/lu";
+import { LuMail } from "react-icons/lu";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 /**
@@ -13,6 +13,6 @@ export const inboxCapability: CapabilityModule = {
   surfaces: ["train"],
   permission: null,
   path: "/inbox",
-  icon: LuInbox,
+  icon: LuMail,
   section: "connect",
 };

@@ -147,8 +147,8 @@ export function WorkspaceShell({
             rootLabel={isTrain ? "Practice" : staff ? "Platform console" : workspace.name}
             sectionLabels={NAV_SECTION_LABELS}
             basePath={basePath}
-            inboxHref={inboxItem?.href ?? null}
-            unread={unread.count}
+            examCode={examCode ?? null}
+            consumer={isTrain}
           />
           <main
             id="main"

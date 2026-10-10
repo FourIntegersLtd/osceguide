@@ -23,14 +23,13 @@ function captureBodies(): unknown[] {
 }
 
 describe("opening Athena on a topic", () => {
-  it("sends the topic with the session, and nothing when there is none", async () => {
+  it("sends the topic or the onboarding step with the session, and nothing when there is none", async () => {
     const bodies = captureBodies();
-    await startAssistantSession("dashboard", context, undefined, undefined, {
-      title: "Asthma",
-      kind: "summary",
-      slug: "asthma",
+    await startAssistantSession("dashboard", context, {
+      topic: { title: "Asthma", kind: "summary", slug: "asthma" },
     });
     await startAssistantSession("dashboard", context);
+    await startAssistantSession("onboarding", context, { onboarding: { phase: "demo", scene: 1 } });
 
     assert.deepEqual(bodies, [
       {
@@ -38,6 +37,7 @@ describe("opening Athena on a topic", () => {
         extras: { client: context, topic: { title: "Asthma", kind: "summary", slug: "asthma" } },
       },
       { session_type: "dashboard", extras: { client: context } },
+      { session_type: "onboarding", extras: { client: context, onboarding: { phase: "demo", scene: 1 } } },
     ]);
   });
 

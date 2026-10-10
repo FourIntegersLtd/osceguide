@@ -263,6 +263,53 @@ def test_a_scene_the_backend_cannot_render_leaves_the_current_scene_running(fake
     assert len(agent.replies) == 1  # only the opening; no reply on a scene that was not rendered
 
 
+def _packet(kind: str, **fields) -> MagicMock:
+    return MagicMock(data=json.dumps({"type": kind, **fields}).encode())
+
+
+def test_pause_stops_athena_and_holds_the_next_scene_until_resume(fake_agent) -> None:
+    """Paused means silent: what she was saying stops, and a scene clicked to meanwhile waits."""
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+    rendered = MagicMock(return_value="Demo scene.")
+
+    async def paused():
+        with patch.object(session_module, "fetch_scene_instructions", rendered):
+            ctx.room.emit("data_received", _packet("pause"))
+            await asyncio.sleep(0.02)
+            ctx.room.emit("data_received", _packet("scene_change", phase="demo", patientLine="I'm scared."))
+            await asyncio.sleep(0.05)
+
+    asyncio.run(paused())
+    assert agent.interrupts == 1
+    assert rendered.call_count == 0
+    assert len(agent.replies) == 1  # only the opening
+
+    async def resumed():
+        with patch.object(session_module, "fetch_scene_instructions", rendered):
+            ctx.room.emit("data_received", _packet("resume"))
+            await asyncio.sleep(0.05)
+
+    asyncio.run(resumed())
+    assert rendered.call_count == 1
+    assert agent.replies[-1]["instructions"] == "Demo scene."
+
+
+def test_resume_with_no_scene_waiting_says_nothing_new(fake_agent) -> None:
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+
+    async def scenario():
+        ctx.room.emit("data_received", _packet("pause"))
+        ctx.room.emit("data_received", _packet("resume"))
+        await asyncio.sleep(0.05)
+
+    asyncio.run(scenario())
+    assert len(agent.replies) == 1
+
+
 def test_dashboard_and_doctor_use_backend_rendered_instructions(fake_agent) -> None:
     bootstrap = AssistantSession(session_id="unified_1", worker_type="dashboard", candidate_ref="user-1", instructions="Rendered dashboard prompt.", greeting="Custom greeting.")
     _, _, _ = _run(bootstrap)

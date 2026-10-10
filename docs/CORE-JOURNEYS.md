@@ -51,6 +51,7 @@ screenshot in `web/test-results/`.
 | TRAIN-4 | Read feedback on a marked station; dashboard moves | yes, marked row seeded | `train/feedback.spec.ts` |
 | TRAIN-5 | Update profile, see plans | yes | `train/settings.spec.ts` |
 | TRAIN-6 | Speak a practice station and be marked | no, needs LiveKit | skipped |
+| TRAIN-7 | Help is on every learner screen (phone: floating button; desktop: toolbar, no Inbox icon) | yes | `train/help-everywhere.spec.ts` |
 
 **TRAIN-1.** Actor: a registered consumer.
 1. Open `/login`, enter email and password, submit.

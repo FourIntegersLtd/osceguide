@@ -54,7 +54,7 @@ export function CompetencyHero({
           <div className="py-4">
             <p className="font-medium text-osce-ink-900">No assessments yet</p>
             <p className="mt-1 text-osce-meta text-b2c-text-muted">
-              Complete a station and your competency mix will appear here.
+              Complete a session to see your strengths and weak spots here.
             </p>
           </div>
         ) : (

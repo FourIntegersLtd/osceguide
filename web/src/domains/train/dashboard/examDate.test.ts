@@ -1,66 +1,37 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-  EXAM_PASSED,
-  examMoment,
-  examCountdownSubtitle,
-  examTimeRemaining,
-  isExamWeek,
-  parseExamDate,
-} from "@/domains/train/dashboard/examDate";
+import { examCountdown, isExamWeek } from "@/domains/train/dashboard/examDate";
 
-// 2026-09-21T00:00:00Z, fixed so the countdowns are deterministic.
-const NOW = Date.UTC(2026, 8, 21, 0, 0, 0);
+// Local times, because the calendar shows the learner's own day.
+const LATE_EVENING = new Date(2026, 8, 21, 23, 30).getTime();
+const MORNING = new Date(2026, 8, 21, 8, 0).getTime();
 
 describe("exam date countdown", () => {
-  it("reads a bare date as UTC midnight", () => {
-    assert.equal(parseExamDate("2026-11-02")?.getTime(), Date.UTC(2026, 10, 2));
-    assert.equal(parseExamDate(null), null);
-    assert.equal(parseExamDate(""), null);
+  it("counts whole days to the day the calendar shows, whatever the hour or zone", () => {
+    assert.equal(examCountdown("2026-09-22", LATE_EVENING), "1 day to go");
+    assert.equal(examCountdown("2026-09-22", MORNING), "1 day to go");
+    assert.equal(examCountdown("2026-09-24", LATE_EVENING), "3 days to go");
   });
 
-  it("counts six whole weeks to the exam, the way the old subtitle did", () => {
-    // 42 days out — exactly six weeks.
-    assert.equal(examCountdownSubtitle("2026-11-02", NOW), "6 weeks until your exam");
-    assert.equal(examTimeRemaining("2026-11-02", NOW), "42 days");
-    assert.equal(isExamWeek("2026-11-02", NOW), false);
+  it("counts six weeks, and one week, with the right plural", () => {
+    assert.equal(examCountdown("2026-11-02", MORNING), "6 weeks to go");
+    assert.equal(examCountdown("2026-09-28", MORNING), "1 week to go");
   });
 
-  it("says one week, not one weeks, seven days out", () => {
-    assert.equal(examCountdownSubtitle("2026-09-28", NOW), "1 week until your exam");
-    assert.equal(examTimeRemaining("2026-09-28", NOW), "7 days");
-  });
-
-  it("reports a passed exam date", () => {
-    assert.equal(examTimeRemaining("2026-09-01", NOW), EXAM_PASSED);
-    assert.equal(
-      examCountdownSubtitle("2026-09-01", NOW),
-      "Your exam date has passed. Keep practising to stay sharp.",
-    );
-    assert.equal(isExamWeek("2026-09-01", NOW), false);
-  });
-
-  it("opens the good-luck window inside seven days only", () => {
-    assert.equal(isExamWeek("2026-09-24", NOW), true); // three days out
-    assert.equal(isExamWeek("2026-09-28", NOW), true); // seven days out
-    assert.equal(isExamWeek("2026-09-29", NOW), false); // eight days out
-  });
-
-  it("drops to hours and minutes on the last day", () => {
-    assert.equal(examTimeRemaining("2026-09-21T00:30:00", NOW), "Less than 1h");
-    assert.equal(examTimeRemaining("2026-09-21T03:00:00", NOW), "3h");
+  it("says Exam day on the day itself, and reports a passed date", () => {
+    assert.equal(examCountdown("2026-09-21", LATE_EVENING), "Exam day");
+    assert.equal(examCountdown("2026-09-20", MORNING), "Exam date has passed");
   });
 
   it("says nothing when there is no date", () => {
-    assert.equal(examTimeRemaining(null, NOW), null);
-    assert.equal(examCountdownSubtitle(null, NOW), undefined);
-    assert.equal(isExamWeek(null, NOW), false);
+    assert.equal(examCountdown(null, MORNING), undefined);
+    assert.equal(isExamWeek(null, MORNING), false);
   });
 
-  it("counts to the saved time of day, not midnight", () => {
-    assert.equal(examMoment("2026-09-22", "09:30:00"), "2026-09-22T09:30:00");
-    assert.equal(examMoment("2026-09-22", null), "2026-09-22");
-    assert.equal(examMoment(null, "09:30:00"), null);
-    assert.equal(examTimeRemaining(examMoment("2026-09-22", "09:30:00"), NOW), "1 days 9 hours");
+  it("opens the good-luck window from the exam day to seven days out", () => {
+    assert.equal(isExamWeek("2026-09-21", LATE_EVENING), true);
+    assert.equal(isExamWeek("2026-09-28", MORNING), true);
+    assert.equal(isExamWeek("2026-09-29", MORNING), false);
+    assert.equal(isExamWeek("2026-09-20", MORNING), false);
   });
 });

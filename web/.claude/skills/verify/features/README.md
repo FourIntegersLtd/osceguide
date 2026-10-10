@@ -11,6 +11,7 @@ teaches you something it did not say (see `maintain-verification-skill`).
 | Institution dashboard and sittings | `institution.md` | `domains/assess`, authoring, sittings |
 | Athena onboarding (voice) | `onboarding.md` | `capabilities/onboarding`, `foundation/livekit`, assistant calls |
 | AI Practice (mocks) | `mocks.md` | `domains/train/mocks`, `/app/[workspace]/mocks/**`, `MicrophoneCheck` |
+| App shell: Help, search, nav icons | `shell.md` | `surfaces/Workspace*`, `capabilities/help` (`AthenaFab`, dock), nav `capability.ts` icons |
 | Rubric feedback, dashboards and review forms | `feedback.md` | `capabilities/feedback`, `domains/train/dashboard`, `domains/assess/results`, `SlotReview` |
 | Rubric builder (start, edit, preview, trial, publish) | `rubric-builder.md` | `capabilities/authoring/rubrics`, `authoring/sections/Rubric*`, `app/**/authoring/rubrics/**` |
 | Marketplace and live peer practice | `marketplace.md` | `capabilities/peer-practice`, `/app/[workspace]/marketplace/**`, platform-api `peer_practice` / `marketplace` |

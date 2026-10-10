@@ -62,6 +62,7 @@ FIELD_SOURCES = ("marker", "system")
 DOMAIN_AGGREGATES = ("ragCounts", "sum", "mean", "percentAchieved")
 TOTAL_AGGREGATES = ("ragShare", "sum", "mean", "percentAchieved")
 TONES = ("excellent", "good", "fair", "weak", "poor")
+# "title" is legacy: no screen renders it now; kept so stored rubrics that carry it still validate.
 DISPLAY_LABELS = ("title", "domainSubtitle", "domainPassLabel", "totalTitle", "trendSubtitle", "passLabel")
 
 # --- Size limits --------------------------------------------------------------

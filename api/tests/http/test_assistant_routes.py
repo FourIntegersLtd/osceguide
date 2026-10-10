@@ -210,6 +210,48 @@ async def test_an_onboarding_session_carries_the_scenes_it_will_demonstrate(
     assert "Athena" in row.instructions
 
 
+async def start_onboarding(client: AsyncClient, token: str, onboarding: dict) -> str:
+    created = await client.post(
+        "/api/v1/assistant/sessions",
+        json={"session_type": "onboarding", "extras": {"onboarding": onboarding}},
+        headers=bearer(token),
+    )
+    assert created.status_code == 201, created.text
+    return created.json()["id"]
+
+
+async def test_voice_turned_on_mid_demo_opens_on_the_scene_on_screen(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """Turning voice on at the second scene must narrate that scene, not the introduction."""
+    from app.features.assistant import repository
+
+    token = await make_actor("assistant-onboarding-demo@example.com")
+    scenes = (await client.get("/api/v1/assistant/onboarding-scenes", headers=bearer(token))).json()["scenes"]
+    session_id = await start_onboarding(client, token, {"phase": "demo", "scene": 1})
+
+    row = await repository.by_id(db_session, uuid.UUID(session_id))
+    assert row is not None
+    assert "This is a DEMO scenario." in row.instructions
+    assert scenes[1]["patientLine"] in row.instructions
+    assert "INTRODUCTION phase" not in row.instructions
+
+
+async def test_an_onboarding_start_naming_no_real_scene_falls_back_to_the_introduction(
+    client: AsyncClient, make_actor, db_session
+) -> None:  # type: ignore[no-untyped-def]
+    """The browser names a scene by position only, so it cannot hand the model a script."""
+    from app.features.assistant import repository
+
+    token = await make_actor("assistant-onboarding-bogus@example.com")
+    bogus = ({"phase": "demo", "scene": 99}, {"phase": "exam", "scene": 0}, {"phase": "demo", "scene": "x"})
+    for onboarding in bogus:
+        session_id = await start_onboarding(client, token, onboarding)
+        row = await repository.by_id(db_session, uuid.UUID(session_id))
+        assert row is not None
+        assert "INTRODUCTION phase" in row.instructions, onboarding
+
+
 async def test_the_onboarding_scenes_are_offered_to_the_browser(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
     token = await make_actor("assistant-scenes@example.com")
 
@@ -220,6 +262,9 @@ async def test_the_onboarding_scenes_are_offered_to_the_browser(client: AsyncCli
     assert body["persona"]["assistantName"] == "Athena"
     assert body["scenes"]
     assert all(scene["patientLine"] and scene["question"] for scene in body["scenes"])
+    # Without voice the walkthrough is read: each scene offers replies to pick
+    # from and the answer Athena would model.
+    assert all(len(scene["replies"]) >= 2 and scene["modelAnswer"] for scene in body["scenes"])
 
 
 async def test_the_scenes_route_needs_somebody_signed_in(client: AsyncClient) -> None:

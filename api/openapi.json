@@ -9648,6 +9648,10 @@
       "OnboardingScene": {
         "description": "One demo scenario. The spelling is the worker's and the browser's.",
         "properties": {
+          "modelAnswer": {
+            "title": "Modelanswer",
+            "type": "string"
+          },
           "patientLine": {
             "title": "Patientline",
             "type": "string"
@@ -9655,11 +9659,20 @@
           "question": {
             "title": "Question",
             "type": "string"
+          },
+          "replies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Replies",
+            "type": "array"
           }
         },
         "required": [
           "patientLine",
-          "question"
+          "question",
+          "replies",
+          "modelAnswer"
         ],
         "title": "OnboardingScene",
         "type": "object"

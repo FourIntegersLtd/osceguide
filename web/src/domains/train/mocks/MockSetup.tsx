@@ -8,7 +8,7 @@ import { hasCode } from "@/foundation/platform-client";
 import { useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities";
 import { createSet } from "@/domains/train/api";
-import { AddExamDate } from "@/domains/train/dashboard/AddExamDate";
+import { AddExamDate } from "@/capabilities/account/AddExamDate";
 import { UpgradePlans } from "@/domains/train/mocks/SetupPrompts";
 import { attemptedVersionIds, chooseStations, describeCreateSetFailure, describeTrial, nothingPickableMessage } from "@/domains/train/mocks/model";
 import {
@@ -52,7 +52,7 @@ export function MockSetup({
   const router = useRouter();
   const { hrefFor } = useSurface();
   const { session, refresh } = useSession();
-  const { code: currentExam, settings } = useCurrentExam();
+  const { code: currentExam } = useCurrentExam();
   const examCode = defaultExamCode(workspace, currentExam);
   // The old client counted and scanned this exam's sessions only.
   const examSets = useMemo(
@@ -231,8 +231,6 @@ export function MockSetup({
         >
           <AddExamDate
             examDate={null}
-            examTime={null}
-            dateLabel={settings.date_label}
             onSaved={() => {
               void refresh();
               setExamDateSkipped(true);

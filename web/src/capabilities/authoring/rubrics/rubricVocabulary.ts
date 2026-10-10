@@ -31,7 +31,6 @@ export type DomainAggregate = "ragCounts" | "sum" | "mean" | "percentAchieved";
 export type TotalAggregate = "ragShare" | "sum" | "mean" | "percentAchieved";
 export type Tone = "excellent" | "good" | "fair" | "weak" | "poor";
 export type DisplayLabelKey =
-  | "title"
   | "domainSubtitle"
   | "domainPassLabel"
   | "totalTitle"
@@ -102,7 +101,6 @@ export const TONES: readonly Choice<Tone>[] = [
 ];
 
 export const DISPLAY_LABELS: readonly Choice<DisplayLabelKey>[] = [
-  { value: "title", label: "Dashboard title", hint: "Heads the learner's dashboard." },
   { value: "domainSubtitle", label: "Domain chart subtitle", hint: "Under “Domain performance”." },
   { value: "domainPassLabel", label: "Domain pass line label", hint: "Written on the domain pass line." },
   { value: "totalTitle", label: "Station total title", hint: "Heads the total on the feedback page." },

@@ -1,4 +1,4 @@
-import { RiUserCommunityFill } from "react-icons/ri";
+import { LuStore } from "react-icons/lu";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 /**
@@ -18,5 +18,5 @@ export const peerPracticeCapability: CapabilityModule = {
   section: "connect",
   path: "/marketplace",
   exams: ["sca"],
-  icon: RiUserCommunityFill,
+  icon: LuStore,
 };

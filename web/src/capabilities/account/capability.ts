@@ -1,4 +1,4 @@
-import { HiOutlineCog6Tooth } from "react-icons/hi2";
+import { LuSettings } from "react-icons/lu";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 /**
@@ -17,5 +17,5 @@ export const accountCapability: CapabilityModule = {
   permission: null,
   section: "general",
   path: "/settings",
-  icon: HiOutlineCog6Tooth,
+  icon: LuSettings,
 };

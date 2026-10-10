@@ -12,7 +12,7 @@ direct URLs reach the others.
 ## Driving it with playwright-core
 | Path | Ready when | Expect |
 |---|---|---|
-| `/app/me/dashboard` | h1 "Where you stand" | `navigation "Train sections"`: Dashboard, AI Practice, A to Z, Slides, Podcast, Articles, Contact & Feedback, Community, Marketplace, Settings, Achievements |
+| `/app/me/dashboard` | h1 "Dashboard" | `navigation "Train sections"`: Dashboard, AI Practice, A to Z, Slides, Podcast, Articles, Contact & Feedback, Community, Marketplace, Settings, Achievements |
 | `/app/kings/dashboard` | h1 "Kings College" | `navigation "Institution sections"`: Overview, Sittings, My training, Self practice, Practice sessions, Now running, Trainees, Team, Authoring, Stations, A to Z, … |
 | `/app/bmj/dashboard` | h1 "Overview" | Arrivals / Signed up / Purchased, h2 "Tracking references" |
 | `/staff` | h1 "Hello, Walkthrough." | links Organisations, Users, Authoring, Your account; h2 "Needs attention (0)" |

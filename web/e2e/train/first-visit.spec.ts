@@ -22,8 +22,8 @@ test("TRAIN-2 register, choose an exam, reach the first-station prompt", async (
   await page.getByRole("button", { name: "Continue" }).click();
 
   await dismissOverlays(page); // Athena's walkthrough is a voice feature; closing it is part of the journey
-  await expect(page.getByRole("heading", { level: 1, name: "Where you stand" })).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole("link", { name: "Start your first station" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("link", { name: "Start your first session" })).toBeVisible();
 });
 
 // An account that has not chosen an exam is held at the picker on every personal page.

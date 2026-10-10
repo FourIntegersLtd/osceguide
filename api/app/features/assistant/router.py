@@ -89,7 +89,12 @@ async def read_onboarding_scenes(principal: CurrentPrincipal, session: Session) 
     pack = await service_content.pack_for(session, user_id=principal.user_id, extras={})
     return schemas.OnboardingScenes(
         scenes=[
-            schemas.OnboardingScene(patientLine=scene.patient_line, question=scene.question)
+            schemas.OnboardingScene(
+                patientLine=scene.patient_line,
+                question=scene.question,
+                replies=list(scene.replies),
+                modelAnswer=scene.model_answer,
+            )
             for scene in pack.onboarding_scenes
         ],
         persona=schemas.AssistantPersona(assistantName=pack.persona.assistant_name),

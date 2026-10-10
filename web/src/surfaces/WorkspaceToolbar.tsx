@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { LuChevronRight, LuInbox, LuSearch } from "react-icons/lu";
+import Image from "next/image";
+import { LuChevronRight, LuSearch } from "react-icons/lu";
 import { isNavActive } from "@/foundation/navigation/isNavActive";
-import { inboxAriaLabel } from "@/capabilities/inbox";
+import { ATHENA_IMAGE_SRC } from "@/foundation/ui";
+import { openAthena } from "@/capabilities/help/api";
 import type { NavItem } from "@/surfaces/contract";
 import { WorkspaceJumpTo } from "@/surfaces/WorkspaceJumpTo";
 
@@ -30,25 +31,29 @@ export interface WorkspaceToolbarProps {
   rootLabel: string;
   sectionLabels: Record<string, string>;
   basePath: string;
-  /** Where the inbox lives; null on arms without one. */
-  inboxHref?: string | null;
-  unread?: number;
+  /** The learner's exam, for the library and Help searches. */
+  examCode: string | null;
+  /** Train only: the station library is searchable from here. */
+  consumer: boolean;
 }
 
 /**
  * The 52px bar over every workspace page (canvas `train-dashboard`): where you
- * are, a ⌘K jump-to, and the assistant.
+ * are, a ⌘K search over pages, stations and Help, and the Help button. Phones
+ * have no toolbar; their Help button is the floating one (`AthenaFab`).
  */
 export function WorkspaceToolbar({
   items,
   rootLabel,
   sectionLabels,
   basePath,
-  inboxHref = null,
-  unread = 0,
+  examCode,
+  consumer,
 }: WorkspaceToolbarProps) {
   const pathname = usePathname() ?? "";
   const [jumpOpen, setJumpOpen] = useState(false);
+  const closeJump = useCallback(() => setJumpOpen(false), []);
+  const scope = useMemo(() => ({ examCode, stations: consumer }), [examCode, consumer]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -99,19 +104,15 @@ export function WorkspaceToolbar({
       >
         <LuSearch className="h-4 w-4" aria-hidden />
       </button>
-      {inboxHref ? (
-        <Link
-          href={inboxHref}
-          aria-label={inboxAriaLabel(unread)}
-          className="relative inline-flex h-[30px] w-[30px] items-center justify-center rounded-osce-md text-b2c-text-secondary hover:bg-b2c-secondary"
-        >
-          <LuInbox className="h-4 w-4" aria-hidden />
-          {unread > 0 ? (
-            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-osce-accent" aria-hidden />
-          ) : null}
-        </Link>
-      ) : null}
-      {jumpOpen ? <WorkspaceJumpTo items={items} onClose={() => setJumpOpen(false)} /> : null}
+      <button
+        type="button"
+        onClick={() => openAthena()}
+        className="inline-flex h-[30px] items-center gap-2 rounded-osce-md bg-b2c-surface-muted pl-1 pr-3 text-[13px] font-medium text-osce-ink-900 hover:bg-b2c-secondary-hover"
+      >
+        <Image src={ATHENA_IMAGE_SRC} alt="" width={22} height={22} className="h-[22px] w-[22px] rounded-full object-cover object-top" />
+        Help
+      </button>
+      {jumpOpen ? <WorkspaceJumpTo items={items} scope={scope} basePath={basePath} onClose={closeJump} /> : null}
     </div>
   );
 }

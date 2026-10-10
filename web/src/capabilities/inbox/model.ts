@@ -24,8 +24,3 @@ export function kindLabel(kind: string): string {
       return "Message";
   }
 }
-
-/** The shell's accessible name for the inbox button. */
-export function inboxAriaLabel(unread: number): string {
-  return unread > 0 ? `Inbox, ${unread} unread` : "Inbox";
-}

@@ -11,7 +11,7 @@ inputs:
     description: Staging site URL.
     required: true
   secrets:
-    description: "Pass ${{ toJSON(secrets) }}: composite actions cannot read secrets themselves."
+    description: "Pass toJSON(secrets) as an expression: composite actions cannot read secrets themselves."
     required: true
 runs:
   using: composite

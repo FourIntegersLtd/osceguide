@@ -236,7 +236,7 @@ export function dashboardView(performance: Performance | null): DashboardView {
 
   const versions = performance?.rubric_versions ?? 1;
   return {
-    title: labels.title ?? "Dashboard",
+    title: "Dashboard",
     counted,
     summaryCards,
     hero: {
@@ -274,8 +274,8 @@ export function nextStationCopy(input: { firstStation: boolean; weakest: string 
   const { firstStation, weakest } = input;
   if (firstStation) {
     return {
-      title: "Sit your first station",
-      sub: "A timed consultation with an AI patient, then feedback by domain.",
+      title: "Start your first practice session",
+      sub: "Pick a few stations and talk to an AI patient, just like the real exam. Afterwards you'll see what you did well and what to work on.",
     };
   }
   if (weakest) {

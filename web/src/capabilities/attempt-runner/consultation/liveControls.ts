@@ -1,11 +1,7 @@
 /**
- * Pure pieces of the consultation's live controls: the mic toggle and the
- * optional captions, kept here so they can be tested without a room.
+ * The consultation's optional captions, kept here so they can be tested
+ * without a room. The mic toggle is `micToggle` in `foundation/livekit`.
  */
-
-export function micToggle(enabled: boolean): { label: string; next: boolean } {
-  return { label: enabled ? "Mute" : "Unmute", next: !enabled };
-}
 
 export interface CaptionLine {
   id: string;

@@ -723,7 +723,6 @@
               "aggregate": "ragShare"
             },
             "labels": {
-              "title": "Where you stand",
               "domainSubtitle": "RAG mix by clinical domain",
               "trendSubtitle": "How your skills moved across recent sessions"
             }

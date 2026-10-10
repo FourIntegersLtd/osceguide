@@ -1,6 +1,4 @@
-import { HiOutlineNewspaper, HiOutlinePlayCircle } from "react-icons/hi2";
-import { GiSpellBook } from "react-icons/gi";
-import { LuPodcast } from "react-icons/lu";
+import { LuBookA, LuNewspaper, LuPodcast, LuPresentation } from "react-icons/lu";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 const SURFACES = ["train", "assess"] as const;
@@ -18,7 +16,7 @@ export const studyAToZCapability: CapabilityModule = {
   staffRefusedOn: ["assess"],
   section: "practice",
   path: "/summary",
-  icon: GiSpellBook,
+  icon: LuBookA,
 };
 
 export const studySlidesCapability: CapabilityModule = {
@@ -30,7 +28,7 @@ export const studySlidesCapability: CapabilityModule = {
   staffRefusedOn: ["assess"],
   section: "practice",
   path: "/slides",
-  icon: HiOutlinePlayCircle,
+  icon: LuPresentation,
 };
 
 export const studyPodcastCapability: CapabilityModule = {
@@ -54,7 +52,7 @@ export const studyArticlesCapability: CapabilityModule = {
   staffRefusedOn: ["assess"],
   section: "practice",
   path: "/articles",
-  icon: HiOutlineNewspaper,
+  icon: LuNewspaper,
 };
 
 export const STUDY_NAV_CAPABILITIES: readonly CapabilityModule[] = [

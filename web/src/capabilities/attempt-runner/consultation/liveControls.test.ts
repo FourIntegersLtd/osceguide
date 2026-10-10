@@ -1,11 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addCaptions, micToggle } from "./liveControls";
-
-test("the mic toggle offers the opposite of the current state", () => {
-  assert.deepEqual(micToggle(true), { label: "Mute", next: false });
-  assert.deepEqual(micToggle(false), { label: "Unmute", next: true });
-});
+import { addCaptions } from "./liveControls";
 
 test("a refined segment replaces its line, and only the last lines are kept in spoken order", () => {
   let lines = addCaptions([], [{ id: "a", speaker: "patient", text: "I have", at: 1 }]);

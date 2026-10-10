@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { GoSidebarCollapse } from "react-icons/go";
+import { LuPanelLeftClose, LuPanelLeftOpen } from "react-icons/lu";
 import { MdClose, MdMenu, MdRefresh } from "react-icons/md";
 import Logo from "@/foundation/ui/Logo";
 import { useStandaloneDisplay } from "@/foundation/pwa/standalone";
@@ -111,7 +111,7 @@ export function WorkspaceSidebar({
                 aria-label="Expand sidebar"
                 className={b2cIconButton}
               >
-                <GoSidebarCollapse className="h-4 w-4 rotate-180" />
+                <LuPanelLeftOpen className="h-4 w-4" />
               </button>
             </div>
           ) : (
@@ -123,7 +123,7 @@ export function WorkspaceSidebar({
                 aria-label="Collapse sidebar"
                 className={cn(b2cIconButton, "sm:h-7 sm:w-7")}
               >
-                <GoSidebarCollapse className="h-4 w-4" />
+                <LuPanelLeftClose className="h-4 w-4" />
               </button>
             </div>
           )}

@@ -13,7 +13,7 @@ describe("the rubric builder's dashboard preview", () => {
         display: {
           domain: { aggregate: "mean", max: 4, passAtLeast: 2 },
           total: { aggregate: "sum", max: 8, passAtLeast: 5 },
-          labels: { title: "Emergency medicine", domainPassLabel: "Pass" },
+          labels: { domainPassLabel: "Pass" },
         },
         totals: {
           total: 6,
@@ -42,7 +42,6 @@ describe("the rubric builder's dashboard preview", () => {
       ["2026-09-30", 6],
     ]);
     const view = dashboardView(performance);
-    assert.equal(view.title, "Emergency medicine");
     assert.equal(view.domainChart.kind, "bars");
     if (view.domainChart.kind === "bars") {
       assert.deepEqual(view.domainChart.bars.map((bar) => bar.score), [3, 1]);

@@ -72,10 +72,17 @@ class FaqEntry:
 
 @dataclass(frozen=True)
 class OnboardingScene:
-    """One demo turn: the line the simulated patient says and the question it answers."""
+    """One demo turn: the line the simulated patient says and the question it answers.
+
+    `replies` and `model_answer` are for the walkthrough read without voice:
+    the person picks a reply (or types one) and then sees the answer Athena
+    would model. The voice demo critiques what was said instead.
+    """
 
     patient_line: str
     question: str
+    replies: tuple[str, ...] = ()
+    model_answer: str = ""
 
 
 @dataclass(frozen=True)

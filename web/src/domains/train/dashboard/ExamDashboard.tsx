@@ -43,7 +43,7 @@ import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
 import { dashboardView, nextStationCopy, recentAttemptStatus, type DashboardView } from "@/domains/train/dashboard/dashboardView";
 import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
 import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
-import { examCountdownSubtitle, examMoment, isExamWeek } from "@/domains/train/dashboard/examDate";
+import { isExamWeek } from "@/domains/train/dashboard/examDate";
 import type { AboutKey } from "@/domains/train/dashboard/aboutTypes";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 
@@ -80,7 +80,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
 
   const performanceState = useAsync((signal) => readPerformance(examCode, signal), [examCode]);
 
-  const examDate = examMoment(session?.user.exam_date, session?.user.exam_time);
+  const examDate = session?.user.exam_date ?? null;
   const userId = session?.user.id ?? null;
 
   /*
@@ -125,11 +125,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
   };
 
   const firstName = session?.user.name?.split(" ")[0] ?? "there";
-  // The countdown leads when there is one to show; otherwise the exam's own
-  // welcome line (SCA has none, matching the old screen).
   const greeting = attempts === 0 ? `Welcome, ${firstName}.` : `Welcome back, ${firstName}.`;
-  const countdown = examCountdownSubtitle(examDate);
-  const subtitle = countdown ? `${countdown} ${greeting}` : greeting;
   const eyebrow = `${attempts} station${attempts === 1 ? "" : "s"} attempted`;
   const performance = performanceState.data;
   const view = dashboardView(performance);
@@ -139,7 +135,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
       <B2CPageHeader
         eyebrow={eyebrow}
         title={view.title}
-        subtitle={subtitle}
+        subtitle={greeting}
         action={<ExamDateControl />}
       />
 
@@ -157,7 +153,7 @@ function DashboardBody({ data }: { data: DashboardData }) {
             </span>
             <h2 className={productTokens.b2cSectionTitle}>No assessments yet</h2>
             <p className="max-w-[360px] text-b2c-text-muted">
-              Complete stations and your competency mix will appear here.
+              Complete a session to see your strengths and weak spots here.
             </p>
           </div>
           <RecentStations
@@ -224,7 +220,7 @@ function NextStation({
       action={
         <>
           <ButtonLink href={practiseHref} variant="primary" size="md">
-            {firstStation ? "Start your first station" : "Practise a station"}
+            {firstStation ? "Start your first session" : "Practise a station"}
           </ButtonLink>
           {weakest ? (
             <ButtonLink href="#work" variant="secondary" size="md">

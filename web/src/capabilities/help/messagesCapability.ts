@@ -1,4 +1,4 @@
-import { HiOutlineChatBubbleLeftRight } from "react-icons/hi2";
+import { LuMessageSquare } from "react-icons/lu";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 /**
@@ -14,6 +14,6 @@ export const messagesCapability: CapabilityModule = {
   surfaces: ["train"],
   permission: null,
   path: "/messages",
-  icon: HiOutlineChatBubbleLeftRight,
+  icon: LuMessageSquare,
   section: "connect",
 };

@@ -16,7 +16,7 @@ Email and Password → **Sign in** → the personal workspace. Reload the page. 
 await open(run, "/app/me/dashboard", { ready: (p) => p.getByLabel("Email") });
 // expect run.page.url() to end with /login?next=%2Fapp%2Fme%2Fdashboard
 await signIn(run);                                     // -> /app/me
-await open(run, "/app/me/dashboard");                  // h1 "Where you stand"
+await open(run, "/app/me/dashboard");                  // h1 "Dashboard"
 await run.page.reload({ waitUntil: "domcontentloaded" });
 await run.page.getByRole("heading", { level: 1 }).waitFor();
 // expect the URL is still /app/me/dashboard, not /login

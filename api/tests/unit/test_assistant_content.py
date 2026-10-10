@@ -35,6 +35,16 @@ def test_the_exam_decides_which_scenarios_a_newcomer_is_shown() -> None:
     assert sca.onboarding_scenes != plab.onboarding_scenes
 
 
+@pytest.mark.parametrize("exam", sorted(packs.EXAM_OVERLAYS))
+def test_every_demo_scene_can_be_played_without_voice(exam: str) -> None:
+    """Text mode offers the scene's replies and then her model answer; a half-filled scene shows nothing."""
+    scenes = resolve_content_pack(ClientProfile(surface="exam", exam=exam)).onboarding_scenes
+    assert scenes
+    for scene in scenes:
+        assert len(scene.replies) >= 2, scene.question
+        assert scene.model_answer.strip(), scene.question
+
+
 def test_an_unknown_exam_still_answers_from_the_base_pack() -> None:
     pack = resolve_content_pack(ClientProfile(surface="exam", exam="not-an-exam"))
     assert pack.faq

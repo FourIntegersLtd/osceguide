@@ -1,5 +1,4 @@
-import { HiOutlinePresentationChartLine } from "react-icons/hi2";
-import { RiSpeakLine } from "react-icons/ri";
+import { LuLayoutDashboard, LuMic } from "react-icons/lu";
 import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
 
 /**
@@ -20,8 +19,8 @@ import type { NavContext, NavItem, SurfaceManifest } from "@/surfaces/contract";
  */
 function nav({ href }: NavContext): NavItem[] {
   return [
-    { key: "dashboard", label: "Dashboard", href: href("/dashboard"), icon: HiOutlinePresentationChartLine, section: "practice" },
-    { key: "mocks", label: "AI Practice", href: href("/mocks"), icon: RiSpeakLine, section: "practice" },
+    { key: "dashboard", label: "Dashboard", href: href("/dashboard"), icon: LuLayoutDashboard, section: "practice" },
+    { key: "mocks", label: "AI Practice", href: href("/mocks"), icon: LuMic, section: "practice" },
   ];
 }
 

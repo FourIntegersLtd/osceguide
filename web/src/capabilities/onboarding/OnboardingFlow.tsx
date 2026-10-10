@@ -1,18 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { HiOutlineArrowLeft, HiOutlineArrowRight, HiOutlinePlay } from "react-icons/hi2";
-import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalSection, cn, productTokens } from "@/foundation/ui";
+import { useEffect, useMemo, useState } from "react";
+import { HiOutlineArrowRight } from "react-icons/hi2";
+import { Alert, AthenaIdentity, Button, LoadingSpinner, cn, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
-import { BarVisualizer, useVoiceAssistant } from "@livekit/components-react";
-import { VoiceRoom, agentStateLabel } from "@/foundation/livekit";
-import type { OnboardingScene } from "@/capabilities/onboarding/api";
+import { VoiceRoom } from "@/foundation/livekit";
 import { useOnboardingVoice } from "@/capabilities/onboarding/useOnboardingVoice";
+import { DemoScene, MeetAthena } from "@/capabilities/onboarding/OnboardingSteps";
+import { onboardingPosition, voiceErrorCopy, type FlowMode, type Step } from "@/capabilities/onboarding/onboardingModel";
 
 const { b2cCard, b2cCardPadding } = productTokens;
-
-type Step = "meet" | "demo" | "invitation";
 
 const STEPS: { id: Step; label: string }[] = [
   { id: "meet", label: "Meet Athena" },
@@ -23,33 +21,45 @@ const STEPS: { id: Step; label: string }[] = [
 /**
  * Athena's introduction, and one consultation shown rather than described.
  *
- * Three steps: she introduces herself, the person answers a patient out loud
- * and hears what she makes of it, and then they are invited to start their
- * own. One voice session spans all three — see `useOnboardingVoice` — so
+ * Three steps: she introduces herself, the person answers a patient and hears
+ * (or reads) what she makes of it, and then they are invited to start their
+ * own. Voice comes first: the demo waits until Athena can be heard, unless the
+ * person chooses "Continue without voice", which turns the walkthrough into
+ * reading. One voice session spans the steps — see `useOnboardingVoice` — so
  * moving between scenes is an announcement, not a reconnection.
  *
  * `onComplete` is the caller's: a dashboard that opened this in a modal closes
- * it and remembers, and a settings page replaying it stays put. This component
- * does not navigate, because where "start practising" goes is the surface's
- * business and a capability may not know the arm it is mounted on.
+ * it and remembers, and a settings page replaying it stays put. "Skip tour" on
+ * every step calls it too. This component does not navigate, because where
+ * "start practising" goes is the surface's business and a capability may not
+ * know the arm it is mounted on.
  */
 export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   const voice = useOnboardingVoice();
   const { session } = useSession();
   const [step, setStep] = useState<Step>("meet");
+  const [mode, setMode] = useState<FlowMode>("voice");
   const [sceneIndex, setSceneIndex] = useState(0);
-  const scene: OnboardingScene | undefined = voice.scenes[sceneIndex];
+  const scene = voice.scenes[sceneIndex];
+  const position = useMemo(() => onboardingPosition(step, sceneIndex), [step, sceneIndex]);
+  const { announce, status } = voice;
 
-  const { announce } = voice;
   // Voice starts on a press, never on mount: each start opens a billed voice
   // session and asks for the microphone, and opening this screen (or having
   // it opened for you on the dashboard) is not asking to hear Athena.
-  const canPlay = step !== "invitation" && !voice.grant && !voice.error;
+  const startVoice = () => void voice.start(position);
 
+  // Also re-run when the room comes up, so a step changed while it was
+  // connecting is announced then; the session opened on the step it started on.
   useEffect(() => {
-    if (step !== "demo" || !scene) return;
-    announce("demo", scene);
-  }, [step, scene, announce]);
+    if (mode !== "voice" || status !== "on" || (position.phase === "demo" && !scene)) return;
+    announce(position);
+  }, [mode, status, position, scene, announce]);
+
+  const continueWithoutVoice = () => {
+    voice.leave();
+    setMode("text");
+  };
 
   const finish = () => {
     voice.leave();
@@ -59,38 +69,51 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
   return (
     <VoiceRoom
       className="mx-auto w-full max-w-xl space-y-8"
-      grant={step === "invitation" ? null : voice.grant}
+      grant={step === "invitation" || mode === "text" ? null : voice.grant}
       onConnected={voice.onConnected}
+      onDisconnected={voice.onDisconnected}
     >
-      <ol className="flex items-center justify-center" aria-label="Onboarding steps">
-        {STEPS.map((entry, index) => (
-          <li
-            key={entry.id}
-            aria-current={entry.id === step ? "step" : undefined}
-            title={entry.label}
-            className={cn(
-              "border-l border-osce-border px-6 font-mono text-osce-body tabular-nums first:border-l-0",
-              entry.id === step ? "font-semibold text-osce-ink-900" : "text-b2c-text-muted",
-            )}
-          >
-            {String(index + 1).padStart(2, "0")}
-            <span className="sr-only"> {entry.label}</span>
-          </li>
-        ))}
-      </ol>
+      <div className="space-y-2">
+        <ol className="flex items-center justify-center" aria-label="Onboarding steps">
+          {STEPS.map((entry, index) => (
+            <li
+              key={entry.id}
+              aria-current={entry.id === step ? "step" : undefined}
+              title={entry.label}
+              className={cn(
+                "border-l border-osce-border px-6 font-mono text-osce-body tabular-nums first:border-l-0",
+                entry.id === step ? "font-semibold text-osce-ink-900" : "text-b2c-text-muted",
+              )}
+            >
+              {String(index + 1).padStart(2, "0")}
+              <span className="sr-only"> {entry.label}</span>
+            </li>
+          ))}
+        </ol>
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" onClick={finish}>
+            Skip tour
+          </Button>
+        </div>
+      </div>
+
       {step === "meet" && (
         <MeetAthena
           assistantName={voice.assistantName}
           userName={session?.user.name ?? ""}
+          mode={mode}
+          status={status}
+          onTurnOnVoice={startVoice}
+          onContinueWithoutVoice={continueWithoutVoice}
           onNext={() => setStep("demo")}
         />
       )}
 
-      {canPlay && (
+      {/* Voice that dropped mid-demo; reaching the demo in voice mode needed it on. */}
+      {step === "demo" && mode === "voice" && status === "off" && !voice.error && (
         <div className="flex justify-center">
-          <Button variant="secondary" onClick={() => void voice.start()} isLoading={voice.starting}>
-            <HiOutlinePlay className="h-4 w-4" aria-hidden />
-            {step === "meet" ? `Play ${voice.assistantName}'s introduction` : `Turn on ${voice.assistantName}'s voice`}
+          <Button variant="secondary" onClick={startVoice}>
+            Turn on {voice.assistantName}&apos;s voice
           </Button>
         </div>
       )}
@@ -116,9 +139,11 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       )}
 
       {step === "demo" && scene && (
-        <InteractiveDemo
+        <DemoScene
+          key={sceneIndex}
           scene={scene}
           assistantName={voice.assistantName}
+          mode={mode}
           isFirst={sceneIndex === 0}
           isLast={sceneIndex === voice.scenes.length - 1}
           onPrevious={() => setSceneIndex((index) => Math.max(0, index - 1))}
@@ -139,104 +164,15 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
         </div>
       )}
 
-      {voice.error && (
+      {voice.error && mode === "voice" && (
         <Alert tone="warning">
-          {errorMessage(voice.error)} You can still read through the demo, but {voice.assistantName} will not speak.{" "}
-          <Button size="sm" variant="secondary" onClick={() => voice.start()}>
+          {voiceErrorCopy(errorMessage(voice.error), voice.assistantName)}{" "}
+          <Button size="sm" variant="secondary" onClick={startVoice}>
             Try voice again
           </Button>
         </Alert>
       )}
       {voice.mic.message && <Alert tone="warning">{voice.mic.message}</Alert>}
     </VoiceRoom>
-  );
-}
-
-/** Athena's voice as bars. The state is read out, not printed. */
-function AthenaVoice({ assistantName }: { assistantName: string }) {
-  const { state, audioTrack } = useVoiceAssistant();
-  return (
-    <div className="flex justify-center py-2">
-      {/* LiveKit's stylesheet sizes the visualiser to its parent, so the box is the parent's. */}
-      <div className="h-12 w-40">
-        <BarVisualizer
-          state={state}
-          barCount={7}
-          trackRef={audioTrack}
-          className="[--lk-fg:rgb(var(--color-accent))] [--lk-va-bar-bg:rgb(var(--color-ink)/0.2)] [--lk-va-bar-gap:8px] [--lk-va-bar-width:6px]"
-          options={{ minHeight: 16 }}
-        />
-      </div>
-      <p aria-live="polite" className="sr-only">
-        {agentStateLabel(state, assistantName)}
-      </p>
-    </div>
-  );
-}
-
-function MeetAthena({
-  assistantName,
-  userName,
-  onNext,
-}: {
-  assistantName: string;
-  userName: string;
-  onNext: () => void;
-}) {
-  return (
-    <div className={`${b2cCard} ${b2cCardPadding} space-y-6 text-center`}>
-      <AthenaIdentity
-        title={assistantName}
-        description={`Press play to hear ${assistantName} introduce herself${userName ? `, ${userName}` : ""}, or continue when you are ready.`}
-      />
-      <AthenaVoice assistantName={assistantName} />
-      {/* No microphone card here: it opened the microphone a second time while
-          the session start was already asking, and on an installed iOS app the
-          two requests left each other unanswered. A blocked microphone is
-          reported by the alert under the steps. */}
-      <Button onClick={onNext}>
-        Show me how it works <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
-      </Button>
-    </div>
-  );
-}
-
-function InteractiveDemo({
-  scene,
-  assistantName,
-  isFirst,
-  isLast,
-  onPrevious,
-  onNext,
-}: {
-  scene: OnboardingScene;
-  assistantName: string;
-  isFirst: boolean;
-  isLast: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-}) {
-  return (
-    <div className={`${b2cCard} ${b2cCardPadding} space-y-6`}>
-      <header className="space-y-1 text-center">
-        <h2 className="font-semibold text-ink">See Athena in action</h2>
-        <p className="text-sm text-ink-muted">
-          Respond to the patient out loud, and Athena will give instant feedback.
-        </p>
-      </header>
-      <AthenaVoice assistantName={assistantName} />
-      <ModalSection title="Patient">
-        <p className="leading-relaxed text-ink">{scene.patientLine}</p>
-      </ModalSection>
-      <p className="font-medium leading-relaxed text-accent">{scene.question}</p>
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="secondary" onClick={onPrevious} disabled={isFirst}>
-          <HiOutlineArrowLeft className="h-3 w-3" aria-hidden /> Previous
-        </Button>
-        <Button onClick={onNext}>
-          {isLast ? "Finish demo" : "Next"} <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
-        </Button>
-      </div>
-    </div>
   );
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { heroHeadline, inboxAriaLabel, kindLabel, unreadLabel } from "./model";
+import { heroHeadline, kindLabel, unreadLabel } from "./model";
 
 describe("inbox model", () => {
   it("caps the pill at 9+", () => {
@@ -17,9 +17,5 @@ describe("inbox model", () => {
     assert.equal(kindLabel("announcement"), "Announcement");
     assert.equal(kindLabel("report_answer"), "Answer to your report");
     assert.equal(kindLabel("whatever"), "Message");
-  });
-  it("labels the inbox button", () => {
-    assert.equal(inboxAriaLabel(0), "Inbox");
-    assert.equal(inboxAriaLabel(3), "Inbox, 3 unread");
   });
 });

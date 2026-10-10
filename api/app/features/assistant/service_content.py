@@ -19,6 +19,7 @@ from app.features.assistant.content import (
     ADMIN_ROLE,
     ClientProfile,
     ContentPack,
+    OnboardingScene,
     UnsupportedSurfaceError,
     resolve_client_profile,
     resolve_content_pack,
@@ -98,11 +99,11 @@ async def render(
         )
 
     scenes = pack.onboarding_scenes
-    first = scenes[0] if scenes else None
+    phase, current = _onboarding_start(extras, scenes)
     instructions = OnboardingInstructions(
-        question=first.question if first else "",
-        patient_line=first.patient_line if first else "",
-        phase="intro",
+        question=current.question if current else "",
+        patient_line=current.patient_line if current else "",
+        phase=phase,
         user_name=user_name,
         persona=pack.persona,
     ).get_onboarding_instructions()
@@ -114,6 +115,23 @@ async def render(
         # written against, not whatever the pack says by then.
         extras={SCENES_KEY: [scene_payload(scene) for scene in scenes]},
     )
+
+
+def _onboarding_start(
+    extras: dict[str, Any], scenes: tuple[OnboardingScene, ...]
+) -> tuple[str, OnboardingScene | None]:
+    """Where the walkthrough is when voice is turned on: the introduction, or a demo scene.
+
+    The browser names a scene by its position in this pack, never by its
+    text, so a start request cannot hand the model a script of its own.
+    Anything that is not a real demo scene opens on the introduction.
+    """
+    start = extras.get("onboarding")
+    if isinstance(start, dict) and start.get("phase") == "demo":
+        index = start.get("scene")
+        if isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(scenes):
+            return "demo", scenes[index]
+    return "intro", scenes[0] if scenes else None
 
 
 def scene_payload(scene: Any) -> dict[str, str]:

@@ -48,7 +48,6 @@ export const SCA_DISPLAY: Json = {
   total: { max: null, aggregate: "ragShare", passAtLeast: null, requireEveryDomain: false },
   domain: { max: null, aggregate: "ragCounts", passAtLeast: null },
   labels: {
-    title: "Where you stand",
     trendSubtitle: "How your skills moved across recent sessions",
     domainSubtitle: "RAG mix by clinical domain",
   },

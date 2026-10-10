@@ -17,14 +17,14 @@ import {
 } from "react-icons/hi2";
 import { Alert, Button, ConfirmModal, Spinner, cn, productTokens } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
-import { VoiceRoom, useMicPreflight } from "@/foundation/livekit";
+import { VoiceRoom, micToggle, useMicPreflight } from "@/foundation/livekit";
 import LivekitIdleState, { LivekitAvatarMotif } from "@/foundation/livekit/LivekitIdleState";
 import { ConsultationConnectionStatus } from "@/capabilities/attempt-runner/consultation/ConsultationConnectionStatus";
 import { AGENT_STATE_LABEL } from "@/foundation/livekit/types";
 import type { AttemptSession } from "@/capabilities/attempt-runner/useAttemptSession";
 import type { ConsultationPatient } from "@/capabilities/attempt-runner/consultation/patientIdentity";
 import { WaitingInLine } from "@/capabilities/attempt-runner/WaitingInLine";
-import { addCaptions, micToggle, type CaptionLine } from "@/capabilities/attempt-runner/consultation/liveControls";
+import { addCaptions, type CaptionLine } from "@/capabilities/attempt-runner/consultation/liveControls";
 
 const { b2cLivekitEndButton } = productTokens;
 

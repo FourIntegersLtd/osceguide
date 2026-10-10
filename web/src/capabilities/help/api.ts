@@ -93,16 +93,32 @@ export function readAthenaLaunch(detail: unknown): AthenaLaunch {
   return { kind, topic };
 }
 
+/**
+ * Where an onboarding walkthrough is when its voice is turned on, so Athena
+ * opens on that step. The scene is named by position, never by its text.
+ */
+export interface OnboardingStart {
+  phase: "intro" | "demo";
+  scene: number;
+}
+
 export function startAssistantSession(
   sessionType: AssistantSessionType,
   context: AssistantClientContext,
-  signal?: AbortSignal,
-  helpOptions?: { voice_help_intent: "faq" | "guide"; screen_ui_guidance: boolean },
-  topic?: AthenaTopic | null,
+  options: {
+    signal?: AbortSignal;
+    help?: { voice_help_intent: "faq" | "guide"; screen_ui_guidance: boolean };
+    topic?: AthenaTopic | null;
+    onboarding?: OnboardingStart;
+  } = {},
 ): Promise<AssistantSession> {
+  const { signal, help, topic, onboarding } = options;
   return platformRequest<AssistantSession>("/api/v1/assistant/sessions", {
     method: "POST",
-    body: { session_type: sessionType, extras: { client: context, ...helpOptions, ...(topic ? { topic } : {}) } },
+    body: {
+      session_type: sessionType,
+      extras: { client: context, ...help, ...(topic ? { topic } : {}), ...(onboarding ? { onboarding } : {}) },
+    },
     signal,
   });
 }

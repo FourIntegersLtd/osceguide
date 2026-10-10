@@ -12028,10 +12028,14 @@ export interface components {
          * @description One demo scenario. The spelling is the worker's and the browser's.
          */
         OnboardingScene: {
+            /** Modelanswer */
+            modelAnswer: string;
             /** Patientline */
             patientLine: string;
             /** Question */
             question: string;
+            /** Replies */
+            replies: string[];
         };
         /** OnboardingScenes */
         OnboardingScenes: {

@@ -1,4 +1,4 @@
-import { HiOutlineUsers } from "react-icons/hi2";
+import { LuUsers } from "react-icons/lu";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 /**
@@ -17,5 +17,5 @@ export const communityCapability: CapabilityModule = {
   section: "connect",
   path: "/discussion",
   staffRefusedOn: ["assess"],
-  icon: HiOutlineUsers,
+  icon: LuUsers,
 };

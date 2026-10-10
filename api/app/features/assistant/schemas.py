@@ -65,6 +65,8 @@ class OnboardingScene(BaseModel):
 
     patientLine: str  # noqa: N815 - the contract's own spelling
     question: str
+    replies: list[str]
+    modelAnswer: str  # noqa: N815 - the contract's own spelling
 
 
 class AssistantPersona(BaseModel):
