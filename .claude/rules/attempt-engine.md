@@ -40,6 +40,10 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
   `scripts/debrief_bench.py` against the baseline (about $2 for 16 debriefs).
 - Ten-minute clock: `prompts/debrief_pacing` writes the plan, platform-api sends it as
   `tool_context["pacing"]` with `check_time` in `tools`; `voice_infra.pacing` holds the clock.
+- Cloud vs self-hosted voice stacks: `speech.py` builders branch on `cloud_hosting.is_livekit_cloud()`
+  (the one reader of `OSCE_LIVEKIT_HOSTING`). Cloud uses `livekit.agents.inference`, which needs
+  `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` at construction (tests set them); self-hosted keeps the
+  direct plugins and provider keys, unchanged.
 - Swapping a voice model: re-run `scripts/model_bench.py`; under ~1 role breach per consultation
   at n=3 is judge noise.
 

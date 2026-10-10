@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import os
 from typing import Literal
 
 from livekit.agents import TurnHandlingOptions
 from livekit.agents.inference import TurnDetector
+
+from .cloud_hosting import is_livekit_cloud
 
 MIN_CONSECUTIVE_SPEECH_DELAY = 0.45
 
@@ -19,12 +20,7 @@ def turn_detector_version() -> TurnDetectorVersion:
     Hosting is declared by ``OSCE_LIVEKIT_HOSTING``: ``cloud`` for LiveKit Cloud,
     ``self-hosted`` for on-box turn detection.
     """
-    hosting = (os.getenv("OSCE_LIVEKIT_HOSTING") or "").strip().lower()
-    if hosting == "self-hosted":
-        return "v1-mini"
-    if hosting in {"cloud", "livekit-cloud"}:
-        return "v1"
-    return "v1-mini"
+    return "v1" if is_livekit_cloud() else "v1-mini"
 
 
 def build_turn_handling_options(*, preemptive: bool = False, max_endpoint_delay: float = 1.8) -> TurnHandlingOptions:

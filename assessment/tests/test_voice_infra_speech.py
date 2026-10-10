@@ -170,3 +170,80 @@ def test_effort_is_a_deployment_setting_like_every_other_field(monkeypatch) -> N
     calls = _capture_openai_llm(monkeypatch)
     speech.build_llm("patient")
     assert calls[0] == {"model": "gpt-5.4-nano", "reasoning_effort": "low"}
+
+
+# --- LiveKit Cloud: Inference where it serves the model; self-hosted keeps the plugins ---
+
+
+@pytest.fixture(params=["", "self-hosted"])
+def not_cloud(monkeypatch, request):
+    monkeypatch.setenv("OSCE_LIVEKIT_HOSTING", request.param)
+
+
+@pytest.fixture
+def cloud(monkeypatch):
+    monkeypatch.setenv("OSCE_LIVEKIT_HOSTING", "cloud")
+    monkeypatch.setenv("LIVEKIT_API_KEY", "k")
+    monkeypatch.setenv("LIVEKIT_API_SECRET", "s")
+    monkeypatch.setenv("LIVEKIT_URL", "wss://example.livekit.cloud")
+
+
+def test_cloud_stt_is_inference_nova3_medical(cloud) -> None:
+    stt = speech.build_stt()
+    assert isinstance(stt, speech.inference.STT)
+    assert stt.model == "deepgram/nova-3-medical"
+
+
+def test_non_cloud_stt_is_the_deepgram_plugin(monkeypatch, not_cloud) -> None:
+    monkeypatch.setenv("DEEPGRAM_API_KEY", "test-key")
+    assert isinstance(speech.build_stt(), deepgram.STT)
+
+
+def test_cloud_llm_is_inference_openai_with_gemini_fallback(cloud, monkeypatch) -> None:
+    monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
+    patient = speech.build_llm("patient")
+    tutor = speech.build_llm("tutor")
+    assert all(isinstance(m, speech.inference.LLM) for m in patient + tutor)
+    assert [m.model for m in patient] == ["openai/gpt-4o-mini", "google/gemini-3.1-flash-lite"]
+    assert [m.model for m in tutor] == ["openai/gpt-5.4-mini", "google/gemini-3.1-flash-lite"]
+    assert tutor[0]._opts.extra_kwargs == {"reasoning_effort": "none"}
+    assert patient[0]._opts.extra_kwargs == {}
+    assert patient[1]._opts.extra_kwargs == {"temperature": 0.8}
+
+
+def test_cloud_vision_llm_is_inference_gemini(cloud, monkeypatch) -> None:
+    monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
+    built = speech.build_vision_llm()
+    assert [m.model for m in built] == ["google/gemini-3.1-flash-lite", "openai/gpt-4o-mini"]
+
+
+def test_non_cloud_llm_and_vision_stay_on_the_plugins(monkeypatch, not_cloud) -> None:
+    monkeypatch.setattr(speech.openai, "LLM", lambda **kw: f"openai:{kw['model']}")
+    monkeypatch.setattr(speech.anthropic, "LLM", lambda **kw: f"anthropic:{kw['model']}")
+    monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
+    assert speech.build_llm("patient") == ["openai:gpt-4o-mini", "anthropic:claude-haiku-4-5"]
+    assert speech.build_vision_llm() == ["anthropic:claude-haiku-4-5", "anthropic:claude-haiku-4-5"]
+
+
+def test_cloud_tts_chain_is_cartesia_then_aura_then_openai(cloud, monkeypatch) -> None:
+    openai_tts, _, _, fallback = _patch_tts(monkeypatch)
+    fallback.side_effect = lambda chain: chain
+    chain = speech.build_tts("patient", "Male")
+    assert [type(t) for t in chain[:2]] == [speech.inference.TTS, speech.inference.TTS]
+    assert [t.model for t in chain[:2]] == ["cartesia/sonic-3.5", "deepgram/aura-2"]
+    assert [t._opts.voice for t in chain[:2]] == [speech.CARTESIA_MALE_VOICE_ID, "aura-2-hermes-en"]
+    assert chain[2] == "openai"
+    assert openai_tts.call_args.kwargs["model"] == "gpt-4o-mini-tts"
+
+
+def test_cloud_tutor_tts_uses_the_tutor_voices(cloud, monkeypatch) -> None:
+    _, _, _, fallback = _patch_tts(monkeypatch)
+    fallback.side_effect = lambda chain: chain
+    chain = speech.build_tts("tutor")
+    assert [t._opts.voice for t in chain[:2]] == [speech.CARTESIA_FEMALE_VOICE_ID, "aura-2-athena-en"]
+
+
+def test_non_cloud_tts_stays_on_the_plugins(monkeypatch, not_cloud) -> None:
+    _, _, _, fallback = _patch_tts(monkeypatch)
+    speech.build_tts("tutor")
+    assert fallback.call_args.args[0] == ["deepgram", "openai", "cartesia"]

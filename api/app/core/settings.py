@@ -155,10 +155,11 @@ class Settings(BaseSettings):
 
     # LiveKit Cloud concurrency is metered and shared across every product, so
     # past the cap sessions are served from our own workers rather than
-    # refused. Defaults match the legacy backends exactly: the key is shared
-    # with them during coexistence, so the numbers have to agree.
+    # refused. 50 is the LiveKit Cloud Scale plan's Inference concurrency. The
+    # legacy backends share this Redis key during coexistence, so their
+    # LIVEKIT_CLOUD_MAX_CONCURRENT must agree or they undercount.
     livekit_cloud_overflow_enabled: bool = False
-    livekit_cloud_max_concurrent: int = 20
+    livekit_cloud_max_concurrent: int = 50
     livekit_cloud_slot_pending_ttl_seconds: int = 300
     livekit_cloud_slot_ttl_seconds: int = 2100
 

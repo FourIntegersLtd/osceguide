@@ -12,6 +12,8 @@ from sentry_sdk.integrations.anthropic import AnthropicIntegration
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
 from sentry_sdk.integrations.openai import OpenAIIntegration
 
+from .cloud_hosting import is_livekit_cloud
+
 _initialized = False
 
 IN_APP_PACKAGES = ["voice_infra", "osce_assessment", "livekit_assessment_worker", "livekit_assistant_worker", "hosting"]
@@ -26,7 +28,7 @@ def _environment() -> str:
     value = os.getenv("SENTRY_ENVIRONMENT", "").strip()
     if value:
         return value
-    if (os.getenv("OSCE_LIVEKIT_HOSTING") or "").strip().lower() in {"cloud", "livekit-cloud"}:
+    if is_livekit_cloud():
         return "livekit-cloud"
     return "development"
 

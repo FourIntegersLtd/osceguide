@@ -1,11 +1,11 @@
 """Speech and language stacks for a voice session, chosen by role not product.
 
-``build_stt`` is Deepgram direct (LiveKit Inference STT counts against a small
-shared slot pool). ``build_llm`` and ``build_tts`` take the interaction role:
-the simulated *patient* (gendered voice, cheaper primary model) or the
-*tutor* voice used for debriefs and assistants (shared voice, stronger
-model). ``build_vision_llm`` is the image-capable model a session needs when
-it looks at screenshots.
+``build_stt`` is the speech-to-text model. ``build_llm`` and ``build_tts`` take
+the interaction role: the simulated *patient* (gendered voice, cheaper primary
+model) or the *tutor* voice used for debriefs and assistants (shared voice,
+stronger model). ``build_vision_llm`` is the image-capable model a session needs
+when it looks at screenshots. On LiveKit Cloud (``OSCE_LIVEKIT_HOSTING=cloud``)
+every builder uses LiveKit Inference; our own workers use the provider plugins.
 
 Model ids, voices and the spoken style are deployment settings: every field
 of ``SpeechSettings`` can be overridden by ``VOICE_<FIELD>`` in the
@@ -21,9 +21,11 @@ import os
 from dataclasses import dataclass, fields
 from typing import Literal, get_type_hints
 
-from livekit.agents import llm, tts
+from livekit.agents import inference, llm, stt, tts
 from livekit.plugins import anthropic, cartesia, deepgram, openai
 from livekit.plugins.deepgram import tts as deepgram_tts
+
+from .cloud_hosting import is_livekit_cloud
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +77,10 @@ class SpeechSettings:
     deepgram_male_voice: str = "aura-2-hermes-en"
     cartesia_female_voice: str = CARTESIA_FEMALE_VOICE_ID
     cartesia_male_voice: str = CARTESIA_MALE_VOICE_ID
+    # LiveKit Cloud only (Inference "provider/model" ids), EU-served for Frankfurt.
+    # The fallback is also the vision model: Gemini reads images.
+    cloud_fallback_llm: str = "google/gemini-3.1-flash-lite"
+    cloud_tts_model: str = "cartesia/sonic-3.5"
 
     @classmethod
     def from_env(cls) -> "SpeechSettings":
@@ -92,13 +98,20 @@ class SpeechSettings:
         return cls(**overrides)
 
 
-def build_stt(settings: SpeechSettings | None = None) -> deepgram.STT:
+def build_stt(settings: SpeechSettings | None = None) -> stt.STT:
     """Build the speech-to-text model."""
     settings = settings or SpeechSettings.from_env()
+    if is_livekit_cloud():
+        return inference.STT(model=f"deepgram/{settings.stt_model}", language="en")
     return deepgram.STT(model=settings.stt_model, language="en", punctuate=True, interim_results=True)
 
 
 def _fallback_llm(settings: SpeechSettings) -> llm.LLM:
+    """The shared backup model: Inference Gemini on Cloud, Anthropic direct on our own workers."""
+    if is_livekit_cloud():
+        return inference.LLM(
+            model=settings.cloud_fallback_llm, extra_kwargs={"temperature": settings.fallback_temperature}
+        )
     return anthropic.LLM(model=settings.fallback_llm, temperature=settings.fallback_temperature)
 
 
@@ -111,9 +124,10 @@ def _openai_llm(model: str, effort: str) -> llm.LLM:
     default costs seconds before the first word. Sending the effort here covers
     the whole line; older models take no such argument, so they are left alone.
     """
-    if not model.startswith(REASONING_MODEL_PREFIX) or not effort.strip():
-        return openai.LLM(model=model)
-    return openai.LLM(model=model, reasoning_effort=effort.strip())
+    kwargs = {"reasoning_effort": effort.strip()} if model.startswith(REASONING_MODEL_PREFIX) and effort.strip() else {}
+    if is_livekit_cloud():
+        return inference.LLM(model=f"openai/{model}", extra_kwargs=kwargs or None)
+    return openai.LLM(model=model, **kwargs)
 
 
 def build_llm(role: Role, settings: SpeechSettings | None = None) -> llm.LLM:
@@ -134,6 +148,9 @@ def build_vision_llm(settings: SpeechSettings | None = None) -> llm.LLM:
     shared fallback reads images too, so there is no reason to run this one bare.
     """
     settings = settings or SpeechSettings.from_env()
+    if is_livekit_cloud():
+        # Gemini first, then the patient's OpenAI model (it reads images too), so the pair differs.
+        return llm.FallbackAdapter([_fallback_llm(settings), _openai_llm(settings.patient_llm, settings.patient_reasoning_effort)])
     return llm.FallbackAdapter([anthropic.LLM(model=settings.vision_llm), _fallback_llm(settings)])
 
 
@@ -148,9 +165,10 @@ def build_tts(
     primary: TtsProvider = "deepgram",
     settings: SpeechSettings | None = None,
 ) -> tts.TTS:
-    """Deepgram and OpenAI in the order ``primary`` asks for, then Cartesia.
+    """Fallback chain of voices: the tutor uses the shared voice, the patient is gendered.
 
-    The tutor uses the shared voice; the patient is gendered.
+    Deepgram and OpenAI in the order ``primary`` asks for, then Cartesia. On
+    LiveKit Cloud the Deepgram and Cartesia entries are Inference voices.
     """
     settings = settings or SpeechSettings.from_env()
     style = settings.tts_style if role == "tutor" else settings.patient_tts_style
@@ -160,7 +178,14 @@ def build_tts(
         deepgram_voice, cartesia_voice = settings.deepgram_female_voice, settings.cartesia_female_voice
     else:
         deepgram_voice, cartesia_voice = settings.deepgram_male_voice, settings.cartesia_male_voice
-    first_two = [deepgram_tts.TTS(model=deepgram_voice), _openai_tts(settings, style)]
+    openai_voice = _openai_tts(settings, style)
+    if is_livekit_cloud():
+        others = [
+            inference.TTS(model=settings.cloud_tts_model, voice=cartesia_voice),
+            inference.TTS(model="deepgram/aura-2", voice=deepgram_voice),
+        ]
+        return tts.FallbackAdapter([openai_voice, *others] if primary == "openai" else [*others, openai_voice])
+    first_two = [deepgram_tts.TTS(model=deepgram_voice), openai_voice]
     if primary == "openai":
         first_two.reverse()
     return tts.FallbackAdapter([*first_two, cartesia.TTS(voice=cartesia_voice)])
