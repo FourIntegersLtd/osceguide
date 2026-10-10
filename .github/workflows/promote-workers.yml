@@ -241,6 +241,8 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          # GITHUB_TOKEN may not push a commit that changes .github/workflows; PROMOTE_TOKEN (a fine-grained PAT: Contents + Workflows write) may.
+          token: ${{ secrets.PROMOTE_TOKEN || github.token }}
 
       # Deploy the manifests (assessment/k8s) as they were at the promoted commit, so production gets
       # the same config staging tested (or, on rollback, the config it ran before).

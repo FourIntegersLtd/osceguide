@@ -42,18 +42,21 @@ for (const { role, home, label } of MATRIX) {
 
     await openPage(page, home(w));
     const prefix = home(w).startsWith("/staff") ? "/staff" : `/app/${home(w).split("/")[2]}`;
+    await sidebar(page).waitFor();
     const hrefs = await sidebar(page)
       .locator("a[href]")
       .evaluateAll((links) => links.map((link) => link.getAttribute("href") ?? ""));
     const pages = [...new Set([home(w), ...hrefs.filter((href) => href.startsWith(prefix))])];
     expect(pages.length, `${label} should be shown a menu`).toBeGreaterThan(1);
+    // Each page can take up to openPage's 60s on a slow staging: budget for the whole menu.
+    test.setTimeout(60_000 + 30_000 * pages.length);
 
     for (const path of pages) {
       refusals.length = 0;
       await openPage(page, path);
       await expect(page.getByRole("heading", { name: "Page not found" }), `${label} on ${path}`).toHaveCount(0);
       // Settled: the page's own data calls have answered (the loading placeholder is gone).
-      await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+      await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 45_000 });
       expect(refusals, `${label} on ${path}: the page's own calls were refused`).toEqual([]);
     }
   });

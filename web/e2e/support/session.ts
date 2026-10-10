@@ -47,9 +47,23 @@ export async function dismissOverlays(page: Page): Promise<void> {
   }
 }
 
-/** Open a page and wait until it has rendered its heading, then clear any overlay. */
+/**
+ * Open a page and wait until it has rendered its heading, then clear any overlay.
+ * Screens that fetch before they draw show no heading when the call fails, only
+ * an alert, so an alert is reported with the path instead of a bare timeout.
+ */
 export async function openPage(page: Page, path: string): Promise<void> {
   await page.goto(path, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { level: 1 }).first().waitFor({ state: "visible", timeout: 60_000 });
+  const heading = page.getByRole("heading", { level: 1 }).first();
+  const alert = page.getByRole("alert").first();
+  try {
+    await heading.or(alert).waitFor({ state: "visible", timeout: 60_000 });
+  } catch {
+    throw new Error(`${path}: no h1 or alert within 60s (at ${page.url()})`);
+  }
+  if (!(await heading.isVisible()) && (await alert.isVisible())) {
+    const text = ((await alert.textContent()) ?? "").trim().replace(/\s+/g, " ");
+    throw new Error(`${path}: the page showed an alert instead of a heading: ${text}`);
+  }
   await dismissOverlays(page);
 }

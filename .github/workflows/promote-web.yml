@@ -178,6 +178,8 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          # GITHUB_TOKEN may not push a commit that changes .github/workflows; PROMOTE_TOKEN (a fine-grained PAT: Contents + Workflows write) may.
+          token: ${{ secrets.PROMOTE_TOKEN || github.token }}
 
       # A plain push, so git itself refuses anything but a fast-forward. Vercel's
       # GitHub App sees the push (pushes made with GITHUB_TOKEN skip other

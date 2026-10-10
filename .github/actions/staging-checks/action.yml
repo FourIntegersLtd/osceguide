@@ -1,8 +1,9 @@
 name: Staging checks
 description: >-
   Part 3.1 and 3.2 of docs/REGRESSION-PLAN.md. Runs web/scripts/smoke.mjs and the
-  read-only @staging journeys against staging. Creates nothing there; each part
-  skips with a notice when its secrets are absent. Needs the repository checked out.
+  read-only @staging journeys against staging. The journeys create nothing there; the
+  smoke makes the throwaway rows its script describes. Missing secrets fail the check:
+  a promotion with no checks is not a passed check. Needs the repository checked out.
 inputs:
   api-url:
     description: Staging platform-api URL, no trailing slash.
@@ -27,9 +28,8 @@ runs:
         SMOKE_PASSWORD: ${{ fromJSON(inputs.secrets).STAGING_SMOKE_PASSWORD }}
       run: |
         if [ -z "${SMOKE_EMAIL}" ] || [ -z "${SMOKE_PASSWORD}" ] || [ -z "${PLATFORM_API_URL}" ]; then
-          echo "::notice::Staging smoke skipped: set STAGING_SMOKE_EMAIL and STAGING_SMOKE_PASSWORD (and the staging api URL)."
-          echo "Staging smoke: skipped (secrets absent)" >> "$GITHUB_STEP_SUMMARY"
-          exit 0
+          echo "::error::Staging smoke cannot run: set STAGING_SMOKE_EMAIL and STAGING_SMOKE_PASSWORD (and the staging api URL)."
+          exit 1
         fi
         node scripts/smoke.mjs --email "${SMOKE_EMAIL}" --password "${SMOKE_PASSWORD}"
         echo "Staging smoke: passed" >> "$GITHUB_STEP_SUMMARY"
@@ -65,10 +65,21 @@ runs:
         ADMIN_TOTP_SECRET: ${{ fromJSON(inputs.secrets).STAGING_E2E_PLATFORM_TOTP_SECRET }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ fromJSON(inputs.secrets).VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: |
+        # A promotion with no journeys is not a passed check: fail, do not skip.
         if [ -z "${STAGING_E2E_WEB_URL}" ] || [ -z "${STAGING_E2E_API_URL}" ] || [ -z "${STAGING_E2E_CONSUMER_EMAIL}" ]; then
-          echo "::notice::Staging journeys skipped: set the STAGING_E2E_* secrets (docs/CORE-JOURNEYS.md)."
-          echo "Staging journeys: skipped (secrets absent)" >> "$GITHUB_STEP_SUMMARY"
-          exit 0
+          echo "::error::Staging journeys cannot run: set the STAGING_E2E_WEB_URL variable and the STAGING_E2E_* secrets (docs/CORE-JOURNEYS.md)."
+          exit 1
         fi
         npx playwright test
         echo "Staging journeys: passed" >> "$GITHUB_STEP_SUMMARY"
+
+    # The trace and screenshot of a failed journey, so a staging failure can be read
+    # instead of guessed at (open with `npx playwright show-trace`).
+    - name: Keep the failed journeys' traces
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: staging-journeys-failures
+        path: web/test-results
+        if-no-files-found: ignore
+        retention-days: 7
