@@ -36,11 +36,13 @@ export async function dismissOverlays(page: Page): Promise<void> {
   // The walkthrough sits above the cookie dialog: close the top one, then look again.
   const close = page.getByRole("button", { name: "Close dialog" });
   const decline = page.getByRole("button", { name: "Continue without analytics" });
-  for (let round = 0; round < 4; round += 1) {
+  for (let round = 0; round < 6; round += 1) {
     // The dialogs mount after hydration, which is slow on a cold dev server: give them time.
     const wait = round === 0 ? 4_000 : 2_000;
-    if (await close.isVisible({ timeout: wait }).catch(() => false)) await close.click();
-    else if (await decline.isVisible({ timeout: wait }).catch(() => false)) await decline.click();
+    // A short click: the walkthrough can mount over the cookie dialog after the check above,
+    // and a blocked click then waits the full action timeout. Fail fast and look again.
+    if (await close.isVisible({ timeout: wait }).catch(() => false)) await close.click({ timeout: 2_000 }).catch(() => undefined);
+    else if (await decline.isVisible({ timeout: wait }).catch(() => false)) await decline.click({ timeout: 2_000 }).catch(() => undefined);
     else return;
   }
 }
