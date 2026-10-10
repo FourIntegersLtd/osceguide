@@ -16,5 +16,5 @@ test("PARTNER-1 a partner admin opens Overview, Reporting and Team @staging", as
   await expectPageHeading(page, /reporting/i);
   await openPage(page, `/app/${w.partnerSlug}/team`);
   await expectPageHeading(page);
-  await expect(page.getByText(w.accounts.partnerAdmin.name).first()).toBeVisible();
+  await expect(page.getByText(w.accounts.partnerAdmin.email).first()).toBeVisible();
 });
