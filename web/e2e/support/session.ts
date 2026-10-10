@@ -54,16 +54,13 @@ export async function dismissOverlays(page: Page): Promise<void> {
  */
 export async function openPage(page: Page, path: string): Promise<void> {
   await page.goto(path, { waitUntil: "domcontentloaded" });
-  const heading = page.getByRole("heading", { level: 1 }).first();
-  const alert = page.getByRole("alert").first();
   try {
-    await heading.or(alert).waitFor({ state: "visible", timeout: 60_000 });
-  } catch {
-    throw new Error(`${path}: no h1 or alert within 60s (at ${page.url()})`);
-  }
-  if (!(await heading.isVisible()) && (await alert.isVisible())) {
-    const text = ((await alert.textContent()) ?? "").trim().replace(/\s+/g, " ");
-    throw new Error(`${path}: the page showed an alert instead of a heading: ${text}`);
+    await page
+      .getByRole("heading", { level: 1 })
+      .first()
+      .waitFor({ state: "visible", timeout: 60_000 });
+  } catch (cause) {
+    throw new Error(`${path}: no h1 within 60s (at ${page.url()})`, { cause });
   }
   await dismissOverlays(page);
 }
