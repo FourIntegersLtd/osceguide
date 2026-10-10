@@ -1,6 +1,5 @@
 import type { Viewport } from "next";
 import type { ReactNode } from "react";
-import { Archivo, IBM_Plex_Mono, Inter } from "next/font/google";
 import localFont from "next/font/local";
 import { SessionProvider } from "@/foundation/session";
 import { ToastHost } from "@/foundation/ui";
@@ -19,7 +18,8 @@ import "@/app/globals.css";
 export { metadata } from "@/app/metadata";
 
 /*
- * Three faces, as CSS variables.
+ * Three faces, as CSS variables, all self-hosted (latin woff2, OFL) so a build never
+ * depends on Google's servers.
  *
  * Inter for body, Archivo for headings and the wordmark, IBM Plex Mono for the
  * small uppercase captions over tables and cards. The token vocabulary and the
@@ -27,24 +27,28 @@ export { metadata } from "@/app/metadata";
  * to `var(--font-archivo)` — so without them loaded here every screen falls
  * back to the system stack, which is what "the font is not right" looks like.
  */
-const inter = Inter({
-  subsets: ["latin"],
+const inter = localFont({
+  src: "./fonts/Inter-latin-variable.woff2",
+  weight: "400 700",
+  style: "normal",
   variable: "--font-inter",
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const archivo = Archivo({
-  subsets: ["latin"],
+const archivo = localFont({
+  src: "./fonts/Archivo-latin-variable.woff2",
+  weight: "400 700",
+  style: "normal",
   variable: "--font-archivo",
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
+const ibmPlexMono = localFont({
+  src: [
+    { path: "./fonts/IBMPlexMono-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/IBMPlexMono-500.woff2", weight: "500", style: "normal" },
+  ],
   variable: "--font-ibm-plex-mono",
-  weight: ["400", "500"],
   display: "swap",
 });
 

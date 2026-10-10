@@ -15,6 +15,8 @@
 #   3. staging reports that exact commit and a healthy status on /health;
 #   4. the staging check: a test account signs in on staging and reads its dashboard;
 #   5. production only moves forward (the commit contains what production runs now).
+# With no sha typed in, staging must also run the newest api change on main: Railway skips
+# a commit when any check on it fails and never retries, so staging can be silently old.
 #
 # Rolling back is not done here: Railway → production → Deployments → the previous
 # deployment → Redeploy (about two minutes). See api/docs/ENVIRONMENT.md.
@@ -108,6 +110,24 @@ jobs:
           fi
           echo "sha=${target_sha}" >> "$GITHUB_OUTPUT"
           echo "Promoting ${target_sha}"
+
+      # Staging must have caught up with the newest api change on main. Only when
+      # no sha was typed: a typed sha is the person's explicit choice.
+      - name: Staging is not stale
+        if: ${{ inputs.sha == '' }}
+        env:
+          STAGING_COMMIT: ${{ steps.staging.outputs.commit }}
+        run: |
+          set -euo pipefail
+          newest=$(git log -1 --format=%H origin/main -- api assessment/packages/osce_assessment)
+          if [ -z "${newest}" ]; then
+            echo "::error::Found no main commit touching api/ or the engine; the checkout is too shallow or origin/main is missing."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "${newest}" "${STAGING_COMMIT}"; then
+            echo "::error::Staging runs ${STAGING_COMMIT}, which lacks the newest api change on main (${newest}). Railway skipped it: in Railway, platform-api-staging → Deploy latest commit, then run this again."
+            exit 1
+          fi
 
       # Gate 1: only code that went through main can reach production.
       - name: "Gate 1: the commit is on main"
