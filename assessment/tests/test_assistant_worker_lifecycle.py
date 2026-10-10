@@ -66,7 +66,7 @@ def fake_agent(monkeypatch):
 
     monkeypatch.setattr(session_module, "build_assistant_agent", build)
     monkeypatch.setattr(session_module, "build_assistant_llm", lambda mode: f"llm:{mode.worker_type.value}")
-    monkeypatch.setattr(session_module, "build_assistant_tts", lambda mode, voice_help_intent=None: f"tts:{mode.worker_type.value}:{voice_help_intent}")
+    monkeypatch.setattr(session_module, "build_tts", lambda role: f"tts:{role}")
     monkeypatch.setattr(session_module, "ConversationLatencyTracker", lambda **kw: MagicMock())
     monkeypatch.setattr(session_module, "build_room_options", lambda **kw: kw)
     def _computer_toolset(ctx, worker_type, navigation):
@@ -105,7 +105,7 @@ def test_help_session_on_the_pipeline_with_screen_guidance(fake_agent) -> None:
     # the reply are published through it as the words are spoken.
     assert build["guidance_toolset"] is voice.guidance
     assert build["pipeline_instructions"] == "Rendered help prompt, FAQ included."
-    assert build["max_tool_steps"] == 10 and build["pipeline_llm"] == "llm:help" and build["pipeline_tts"] == "tts:help:guide"
+    assert build["max_tool_steps"] == 10 and build["pipeline_llm"] == "llm:help" and build["pipeline_tts"] == "tts:tutor"
     agent = FakeAgentSession.instances[-1]
     assert agent.said[0][0] == "Hi, I'm the help assistant."
     assert voice.navigation.mode == "guide"
@@ -182,6 +182,13 @@ def test_a_dashboard_session_registers_the_backends_tools_and_delivers_its_turns
     assert build["pipeline_llm"] == "llm:dashboard" and build["max_tool_steps"] == 5
     assert voice.recorder is not None and voice.delivery is not None, "the turns go back to the backend for summarising"
     assert len(ctx.shutdown_callbacks) >= 2  # cloud slot release + transcript delivery
+
+
+@pytest.mark.parametrize(("worker_type", "extras"), [("help", {"voice_help_intent": "faq"}), ("help", {"voice_help_intent": "guide"}), ("dashboard", {}), ("onboarding", {})])
+def test_every_session_type_speaks_with_the_one_tutor_voice_chain(fake_agent, worker_type, extras) -> None:
+    """FAQ help used to put OpenAI first: a fallback then changed the voice mid-session (C-36)."""
+    _run(AssistantSession(session_id="unified_1", worker_type=worker_type, candidate_ref="user-1", instructions="Rendered.", extras=extras))
+    assert fake_agent[0]["pipeline_tts"] == "tts:tutor"
 
 
 def test_a_mode_that_does_not_load_tools_ignores_any_the_backend_sends(fake_agent) -> None:

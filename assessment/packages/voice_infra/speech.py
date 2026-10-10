@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 Role = Literal["patient", "tutor"]
 Gender = Literal["Female", "Male"]
-TtsProvider = Literal["deepgram", "openai"]
 
 SETTINGS_ENV_PREFIX = "VOICE_"
 
@@ -40,7 +39,10 @@ REASONING_MODEL_PREFIX = "gpt-5"
 
 # Kept as module constants because other packages and the GPT-Live model
 # construction share them; they are the defaults ``SpeechSettings`` starts from.
-TUTOR_VOICE = "marin"
+# The tutor is one persona, Athena, on every provider: a fallback mid-session
+# must not change who is speaking. ``coral`` is OpenAI's closest match to
+# Deepgram's ``aura-2-athena-en`` that the speech-to-speech model also offers.
+TUTOR_VOICE = "coral"
 TUTOR_TTS_MODEL = "gpt-4o-mini-tts"
 CARTESIA_FEMALE_VOICE_ID = "794f9389-aac1-45b6-b726-9d9369183238"
 CARTESIA_MALE_VOICE_ID = "95856005-0332-41b0-935f-352e296aa0df"
@@ -162,13 +164,12 @@ def build_tts(
     role: Role,
     gender: Gender = "Female",
     *,
-    primary: TtsProvider = "deepgram",
     settings: SpeechSettings | None = None,
 ) -> tts.TTS:
     """Fallback chain of voices: the tutor uses the shared voice, the patient is gendered.
 
-    Deepgram and OpenAI in the order ``primary`` asks for, then Cartesia. On
-    LiveKit Cloud the Deepgram and Cartesia entries are Inference voices.
+    Deepgram, OpenAI, then Cartesia; on LiveKit Cloud, Cartesia and Deepgram as
+    Inference voices, then OpenAI. One order for every session type.
     """
     settings = settings or SpeechSettings.from_env()
     style = settings.tts_style if role == "tutor" else settings.patient_tts_style
@@ -184,8 +185,5 @@ def build_tts(
             inference.TTS(model=settings.cloud_tts_model, voice=cartesia_voice),
             inference.TTS(model="deepgram/aura-2", voice=deepgram_voice),
         ]
-        return tts.FallbackAdapter([openai_voice, *others] if primary == "openai" else [*others, openai_voice])
-    first_two = [deepgram_tts.TTS(model=deepgram_voice), openai_voice]
-    if primary == "openai":
-        first_two.reverse()
-    return tts.FallbackAdapter([*first_two, cartesia.TTS(voice=cartesia_voice)])
+        return tts.FallbackAdapter([*others, openai_voice])
+    return tts.FallbackAdapter([deepgram_tts.TTS(model=deepgram_voice), openai_voice, cartesia.TTS(voice=cartesia_voice)])

@@ -14,7 +14,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import get_settings
-from app.features.tutor_memory import repository, tools_catalog
+from app.features.tutor_memory import repository, service_session, tools_catalog
 from tests.support.fakes import FakeMaterialIndex, FakeTutorPromptRenderer
 from tests.support.tokens import bearer
 
@@ -115,7 +115,7 @@ async def test_a_first_conversation_is_greeted_differently_from_a_returning_one(
     payload = (await client.get(f"/api/worker/assistant-sessions/{second}", headers=worker_headers())).json()[
         "session"
     ]
-    assert payload["greeting"] == "Good to see you again. Shall we pick up where we left off?"
+    assert payload["greeting"] in {t.format(name="") for t in service_session.GREETINGS_RETURNING}
 
     user.name = "Amara Okafor"
     await db_session.flush()
@@ -123,7 +123,7 @@ async def test_a_first_conversation_is_greeted_differently_from_a_returning_one(
     payload = (await client.get(f"/api/worker/assistant-sessions/{third}", headers=worker_headers())).json()[
         "session"
     ]
-    assert payload["greeting"] == "Good to see you again, Amara. Shall we pick up where we left off?"
+    assert payload["greeting"] in {t.format(name=", Amara") for t in service_session.GREETINGS_RETURNING}
 
 
 async def test_the_brief_knows_the_name_the_exam_and_the_open_page(

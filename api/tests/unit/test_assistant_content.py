@@ -117,3 +117,11 @@ def test_the_whole_faq_is_rendered_into_the_prompt() -> None:
     block = render_faq_block(pack)
     assert block.startswith(FAQ_BLOCK_HEADER)
     assert all(entry.question in block for entry in pack.faq)
+
+
+@pytest.mark.parametrize("surface", ["exam", "admin"])
+def test_help_presents_as_text_help_not_a_persona(surface: str) -> None:
+    """Help is text "Help" on every surface; Athena is the clinical voice (C-38)."""
+    greeting = resolve_content_pack(ClientProfile(surface=surface, exam="sca")).greetings["help"]
+    assert "Athena" not in greeting
+    assert greeting.startswith("Hi, this is Help.")

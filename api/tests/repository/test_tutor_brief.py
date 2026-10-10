@@ -68,8 +68,8 @@ async def test_a_topic_they_opened_on_is_in_the_brief_and_the_greeting(db_sessio
 
     assert ordinary["topic"] == {}
     assert on_topic["topic"] == {"title": "Asthma in adults?", "kind": "summary"}
-    greeting = service_session.greeting_for(on_topic)
-    assert greeting == "Hello. You wanted to talk about Asthma in adults. Where shall we start?"
+    greeting = service_session.greeting_for(on_topic, seed="session-1")
+    assert greeting in {t.format(name="", topic="Asthma in adults") for t in service_session.GREETINGS_TOPIC}
 
 
 async def test_a_marked_consultation_arrives_as_observations_not_scores(

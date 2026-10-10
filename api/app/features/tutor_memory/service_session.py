@@ -7,6 +7,7 @@ rather than a use case of its own.
 
 from __future__ import annotations
 
+import random
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
@@ -25,13 +26,28 @@ log = get_logger(__name__)
 DASHBOARD = "dashboard"
 
 # Said before the instructions are read, so it must not depend on them. The
-# returning form is used only when there is a conversation to return to. The
-# name slot is the first name on the account, or nothing.
+# returning forms are used only when there is a conversation to return to. The
+# name slot is the first name on the account, or nothing. One line of each set
+# is drawn per session: the same opening every time reads as a script.
 GREETING_FIRST_TIME = "Hello{name}. What would you like to work on today?"
-GREETING_RETURNING = "Good to see you again{name}. Shall we pick up where we left off?"
-# Said when they opened the conversation on a subject: it names the subject back
-# so they know the button they pressed was understood.
-GREETING_TOPIC = "Hello{name}. You wanted to talk about {topic}. Where shall we start?"
+GREETINGS_RETURNING = (
+    "Good to see you again{name}. Shall we pick up where we left off?",
+    "Welcome back{name}. Do you want to carry on from last time?",
+    "Hello again{name}. Shall we continue where we stopped?",
+    "Nice to have you back{name}. Pick up where we left off, or something new?",
+    "Hi again{name}. Ready to carry on from our last conversation?",
+)
+# Said when they opened the conversation on a subject: each names the subject
+# back so they know the button they pressed was understood.
+GREETINGS_TOPIC = (
+    "Hello{name}. You wanted to talk about {topic}. Where shall we start?",
+    "Hi{name}. Let's look at {topic}. What would you like to start with?",
+    "Hello{name}. {topic} it is. What would be most useful to go over first?",
+    "Hi{name}. You picked {topic}. Is there a part of it you find tricky?",
+    "Hello{name}. Let's talk about {topic}. What do you already know about it?",
+    "Hi{name}. {topic} is a good one to revise. Where would you like to begin?",
+    "Hello{name}. Shall we work through {topic} together? Tell me where to start.",
+)
 
 
 async def render_dashboard_session(
@@ -64,20 +80,24 @@ async def render_dashboard_session(
 
     return {
         "instructions": instructions,
-        "greeting": greeting_for(brief),
+        "greeting": greeting_for(brief, seed=f"{user_id}:{now.isoformat()}"),
         "tools": [dict(tool) for tool in CATALOG],
         "extras": {},
     }
 
 
-def greeting_for(brief: Mapping[str, Any]) -> str:
-    """The opening line: on their topic, returning or first-time, with their first name when known."""
+def greeting_for(brief: Mapping[str, Any], *, seed: str) -> str:
+    """The opening line: on their topic, returning or first-time, with their first name when known.
+
+    ``seed`` names the session, so one session's line is stable and the next one's varies.
+    """
+    rng = random.Random(seed)  # noqa: S311 - picks a greeting, nothing secret
     full_name = str((brief.get("learner") or {}).get("name") or "").split()
     name_slot = f", {full_name[0]}" if full_name else ""
     topic_title = str((brief.get("topic") or {}).get("title") or "").rstrip(" .?!")
     if topic_title:
-        return GREETING_TOPIC.format(name=name_slot, topic=topic_title)
-    template = GREETING_RETURNING if brief.get("last_conversation") else GREETING_FIRST_TIME
+        return rng.choice(GREETINGS_TOPIC).format(name=name_slot, topic=topic_title)
+    template = rng.choice(GREETINGS_RETURNING) if brief.get("last_conversation") else GREETING_FIRST_TIME
     return template.format(name=name_slot)
 
 

@@ -10,7 +10,7 @@ ADMIN = "Admin tools"
 
 OVERLAY = Overlay(
     greetings={
-        "help": "Hi, I'm Athena. I can help you with the admin tools as well as the learner pages. What do you need?",
+        "help": "Hi, this is Help. I can help you with the admin tools as well as the learner pages. What do you need?",
     },
     add=(
         FaqEntry(

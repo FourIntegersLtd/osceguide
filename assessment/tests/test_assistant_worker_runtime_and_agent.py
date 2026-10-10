@@ -67,11 +67,7 @@ def test_speech_choices_come_from_the_mode_table(monkeypatch) -> None:
 
     monkeypatch.setattr(speech, "build_vision_llm", lambda: "vision")
     monkeypatch.setattr(speech, "build_llm", lambda role: f"llm:{role}")
-    monkeypatch.setattr(speech, "build_tts", lambda role, **kw: (role, kw["primary"]))
     assert speech.build_assistant_llm(mode_profile(WorkerType.HELP)) == "vision"
     assert speech.build_assistant_llm(mode_profile(WorkerType.ONBOARDING)) == "vision"
     assert speech.build_assistant_llm(mode_profile(WorkerType.CONSULTING_DOCTOR)) == "llm:tutor"
     assert speech.build_assistant_llm(mode_profile(WorkerType.DASHBOARD)) == "llm:tutor"
-    assert speech.build_assistant_tts(mode_profile(WorkerType.HELP), voice_help_intent="faq") == ("tutor", "openai")
-    assert speech.build_assistant_tts(mode_profile(WorkerType.HELP), voice_help_intent="guide") == ("tutor", "deepgram")
-    assert speech.build_assistant_tts(mode_profile(WorkerType.DASHBOARD)) == ("tutor", "deepgram")

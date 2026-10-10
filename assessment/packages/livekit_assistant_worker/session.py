@@ -16,6 +16,7 @@ from voice_infra.audio_input import build_room_options
 from voice_infra.cloud_slot import register_cloud_slot_lifecycle
 from voice_infra.latency import ConversationLatencyTracker
 from voice_infra.pacing import InteractionClock, build_check_time_tool
+from voice_infra.speech import build_tts
 from voice_infra.participants import wait_for_candidate
 
 from . import handlers
@@ -25,7 +26,7 @@ from .gpt_live_policy import register_gpt_live_session_policy
 from .metadata import MetadataError, parse_dispatch_metadata
 from .runtime_policy import VoiceRuntime, select_voice_runtime
 from .session_cap import SessionCap, register_session_cap
-from .speech import build_assistant_llm, build_assistant_tts
+from .speech import build_assistant_llm
 from .tools.navigation_mode import build_offer_navigation_modes_tool
 from .tools.remote import build_remote_tools
 from .transcript import GPT_LIVE_LATE_ITEMS_S, TranscriptDelivery, TranscriptRecorder
@@ -148,7 +149,7 @@ class AssistantVoiceSession:
             pipeline_instructions=instructions,
             pipeline_tools=tools,
             pipeline_llm=build_assistant_llm(session.mode),
-            pipeline_tts=build_assistant_tts(session.mode, voice_help_intent=session.extras.voice_help_intent),
+            pipeline_tts=build_tts("tutor"),  # one voice chain for every session type
             max_tool_steps=session.mode.max_tool_steps,
             userdata=None,
             gpt_live_instructions=session.gpt_live if runtime is VoiceRuntime.GPT_LIVE else None,

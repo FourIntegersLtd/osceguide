@@ -17,7 +17,7 @@ def test_build_gpt_live_model_uses_the_pinned_models_and_shared_voice(monkeypatc
     assert build_gpt_live_model(backend_instructions="Use the FAQ.") == "model"
     options = factory.call_args.kwargs
     assert options["model"] == GPT_LIVE_MODEL
-    assert options["voice"] == TUTOR_VOICE == "marin"
+    assert options["voice"] == TUTOR_VOICE == "coral"
     assert options["responses_options"]["model"] == GPT_LIVE_RESPONSES_MODEL
     assert options["responses_options"]["instructions"] == "Use the FAQ."
     assert options["responses_options"]["parallel_tool_calls"] is False

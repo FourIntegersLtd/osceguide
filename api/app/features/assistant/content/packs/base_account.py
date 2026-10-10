@@ -134,13 +134,13 @@ ENTRIES: tuple[FaqEntry, ...] = (
         "voice-help",
         VOICE,
         "How does voice help work?",
-        "You can speak with Athena from the help panel. Ask how to use the app. Athena uses the FAQ knowledge base and can highlight controls on screen when UI guidance is enabled.",
+        "You can speak to Help from the help panel. Ask how to use the app. Help answers from the FAQ and can highlight controls on screen when UI guidance is enabled.",
     ),
     FaqEntry(
         "clinical-questions",
         VOICE,
         "Can Athena answer clinical exam content questions?",
-        "Use Athena in help mode for navigation and how to use the product. For medical decisions always follow your own clinical judgement and official exam guidance.",
+        "Use Help for navigation and how to use the product. For medical decisions always follow your own clinical judgement and official exam guidance.",
     ),
     FaqEntry(
         "mic-not-working",

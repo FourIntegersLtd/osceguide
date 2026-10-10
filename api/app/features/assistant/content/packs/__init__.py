@@ -42,7 +42,8 @@ GREETINGS = {
         "like to explore these opportunities for improvement together?"
     ),
     "athena-doctor": "Hello, I'm Doctor Athena... It's nice to meet you. Can you confirm your name and date of birth for me ?",
-    "help": "Hi, I'm Athena, your personal assistant. I'm here to help you navigate the application. Feel free to ask me anything.",
+    # Help is text "Help", not a persona: Athena is the voice of the clinical surfaces.
+    "help": "Hi, this is Help. Ask me anything about finding your way around the application.",
 }
 
 NO_MATCH_MESSAGE = "Tell the user you cannot answer from the FAQ list and direct them to {nav.messages} in the left navigation bar."

@@ -9,6 +9,17 @@ from livekit.plugins import deepgram
 
 from voice_infra import speech
 
+# Who each default voice sounds like. A chain that mixes voices is the fallback a
+# listener hears as a different person; add a voice here when a default changes.
+VOICE_GENDERS = {
+    "aura-2-athena-en": "Female",
+    "aura-2-thalia-en": "Female",
+    "aura-2-hermes-en": "Male",
+    "coral": "Female",
+    speech.CARTESIA_FEMALE_VOICE_ID: "Female",
+    speech.CARTESIA_MALE_VOICE_ID: "Male",
+}
+
 
 def _patch_tts(monkeypatch):
     openai_tts = MagicMock(return_value="openai")
@@ -34,7 +45,7 @@ def test_tutor_tts_is_deepgram_then_openai_then_cartesia(monkeypatch) -> None:
     assert speech.build_tts("tutor") == "fallback"
     assert fallback.call_args.args[0] == ["deepgram", "openai", "cartesia"]
     assert deepgram_tts.call_args.kwargs["model"] == "aura-2-athena-en"
-    assert openai_tts.call_args.kwargs["voice"] == "marin"
+    assert openai_tts.call_args.kwargs["voice"] == "coral"
     assert openai_tts.call_args.kwargs["model"] == "gpt-4o-mini-tts"
 
 
@@ -59,10 +70,29 @@ def test_llm_primary_by_role_with_shared_fallback(monkeypatch) -> None:
     assert anthropic_llm.call_args.kwargs["temperature"] == 0.8
 
 
-def test_faq_style_sessions_can_put_openai_first(monkeypatch) -> None:
-    _, _, _, fallback = _patch_tts(monkeypatch)
-    speech.build_tts("tutor", primary="openai")
-    assert fallback.call_args.args[0] == ["openai", "deepgram", "cartesia"]
+def test_every_tutor_voice_is_the_one_female_persona(monkeypatch) -> None:
+    """A provider fallback mid-session must not change who is speaking (C-36)."""
+    openai_tts, deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
+    speech.build_tts("tutor")
+    voices = [deepgram_tts.call_args.kwargs["model"], openai_tts.call_args.kwargs["voice"], cartesia_tts.call_args.kwargs["voice"]]
+    assert [VOICE_GENDERS.get(v) for v in voices] == ["Female", "Female", "Female"]
+    assert voices == ["aura-2-athena-en", speech.TUTOR_VOICE, speech.CARTESIA_FEMALE_VOICE_ID]
+
+
+def test_every_cloud_tutor_voice_is_the_one_female_persona(cloud, monkeypatch) -> None:
+    openai_tts, _, _, fallback = _patch_tts(monkeypatch)
+    fallback.side_effect = lambda chain: chain
+    chain = speech.build_tts("tutor")
+    voices = [t._opts.voice for t in chain[:2]] + [openai_tts.call_args.kwargs["voice"]]
+    assert [VOICE_GENDERS.get(v) for v in voices] == ["Female", "Female", "Female"]
+
+
+@pytest.mark.parametrize("gender", ["Female", "Male"])
+def test_patient_voices_match_the_gender_in_the_voice_table(monkeypatch, gender) -> None:
+    _, deepgram_tts, cartesia_tts, _ = _patch_tts(monkeypatch)
+    speech.build_tts("patient", gender)
+    voices = [deepgram_tts.call_args.kwargs["model"], cartesia_tts.call_args.kwargs["voice"]]
+    assert [VOICE_GENDERS.get(v) for v in voices] == [gender, gender]
 
 
 def test_vision_llm_has_a_fallback_like_every_other_role(monkeypatch) -> None:
