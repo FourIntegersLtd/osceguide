@@ -38,6 +38,7 @@ Owner: `attempt-engine-owner`. Proof: `verify-attempt-engine`. Athena is the voi
   and the server takes the scene **by index** from the pack (`service_content._onboarding_start`),
   never the client's text. Later steps are `scene_change` packets; `pause`/`resume` packets make the
   worker interrupt and hold any scene until resume (`handlers.wire_scene_changes`). Every demo scene
-  needs `replies` and `model_answer` for text mode (`test_assistant_content.py`).
+  needs `replies` and `model_answer` for text mode (`test_assistant_content.py`). Web and api deploy
+  apart: the web reads scenes through `readScene`, which tolerates an api without those fields.
 - Prompt injection: tutor input is untrusted (`tests/security/test_assistant_prompt_injection.py`).
 - Dashboard `progress` counts only started, non-debrief attempts.

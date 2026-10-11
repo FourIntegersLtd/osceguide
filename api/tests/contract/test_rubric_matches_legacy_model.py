@@ -12,10 +12,13 @@ inlined), and the strict-mode `additionalProperties: false`. Storage metadata
 the legacy model carried is dropped from the oracle by `marking_content`,
 exactly as the b2b registry dropped it.
 
-One difference is allowed, by path: SCA's competency rating `score` carries the
-R/A/G `enum` where the legacy model had a `^[RAG]$` pattern. An unconstrained
-rating would let a marker return "Green" or "B". The `score` in SCA's
-actionable feedback is not a rating and must match legacy exactly.
+Two differences are allowed. By path: SCA's competency rating `score` carries
+the R/A/G `enum` where the legacy model had a `^[RAG]$` pattern. An
+unconstrained rating would let a marker return "Green" or "B". By hint: the
+fields an exam's `seeds/rubric_hints/<exam>.json` lists under `omit` are a
+product decision to stop asking for them (SCA's per-domain summaries and
+language notes repeated the competency explanations), so they are removed from
+the oracle before comparing, and each must still exist in it.
 """
 
 from __future__ import annotations
@@ -34,7 +37,9 @@ from app.features.rubrics.domain import (
 )
 from tests.contract.test_feedback_model_parity import leaf_differences, load, marking_content
 
-SEED = Path(__file__).resolve().parents[2] / "seeds" / "platform-starter.json"
+API_ROOT = Path(__file__).resolve().parents[2]
+SEED = API_ROOT / "seeds" / "platform-starter.json"
+HINTS = API_ROOT / "seeds" / "rubric_hints"
 EXAMS = ("sca", "plab", "casc", "ortho")
 
 
@@ -71,6 +76,25 @@ def normalised(schema: dict[str, Any]) -> dict[str, Any]:
     return _presentation_free(_inline(content, content.get("$defs", {})))
 
 
+def without_omitted(schema: dict[str, Any], exam: str) -> dict[str, Any]:
+    """The oracle with the hint-omitted fields removed; refuses a path the oracle does not have.
+
+    Deliberately its own walk, not the generator's: this is the check that the
+    generator dropped nothing more. It assumes non-nullable parents.
+    """
+    pruned: dict[str, Any] = json.loads(json.dumps(schema))
+    hints = json.loads((HINTS / f"{exam}.json").read_text(encoding="utf-8"))
+    for dotted in hints.get("omit") or []:
+        *parents, leaf = dotted.split(".")
+        node = pruned
+        for part in parents:
+            node = node["properties"][part]
+        assert leaf in node["properties"], f"{exam}: omit names {dotted}, which the legacy model lacks"
+        node["properties"].pop(leaf)
+        node["required"] = [name for name in node.get("required", []) if name != leaf]
+    return pruned
+
+
 def seeded_structure(exam: str) -> RubricStructure:
     """The parsed structure the seed file authors for one exam."""
     seed = json.loads(SEED.read_text(encoding="utf-8"))
@@ -97,7 +121,7 @@ def allowed_difference(exam: str, structure: RubricStructure, path: str) -> bool
 def test_the_seeded_rubric_derives_its_legacy_model_exactly(exam: str) -> None:
     structure = seeded_structure(exam)
     derived = normalised(derive_display_schema(structure))
-    legacy = normalised(load("b2c", exam))
+    legacy = without_omitted(normalised(load("b2c", exam)), exam)
 
     differences = [
         (path, ours, theirs)
@@ -111,7 +135,7 @@ def test_the_seeded_rubric_derives_its_legacy_model_exactly(exam: str) -> None:
 def test_the_sca_exception_is_exactly_the_rag_enum_on_competency_ratings() -> None:
     structure = seeded_structure("sca")
     derived = normalised(derive_display_schema(structure))
-    legacy = normalised(load("b2c", "sca"))
+    legacy = without_omitted(normalised(load("b2c", "sca")), "sca")
 
     allowed = [
         (path, ours, theirs)
@@ -129,15 +153,16 @@ def test_the_sca_exception_is_exactly_the_rag_enum_on_competency_ratings() -> No
             assert (ours, theirs) == (None, "^[RAG]$"), path
 
 
-def test_sca_feedback_scores_are_the_legacy_bare_string() -> None:
-    derived = normalised(derive_display_schema(seeded_structure("sca")))
+def test_sca_priorities_ask_only_for_the_overall_priorities() -> None:
+    """The tail of an SCA report is the 2-3 priorities; the per-domain and language notes are gone."""
+    structure = seeded_structure("sca")
+    (section,) = [part for part in structure.sections if part.id == "actionable_feedback"]
+    priorities = derive_result_schema(structure)["properties"]["actionable_feedback"]
 
-    feedback = derived["properties"]["actionable_feedback"]["properties"]["global_skills_feedback"]
-
-    assert feedback["properties"]["score"] == {
-        "description": "Overall domain score (R/A/G)",
-        "type": "string",
-    }
+    assert section.title == "Priorities"
+    assert [spec.id for spec in section.fields] == ["overall_priorities"]
+    assert list(priorities["properties"]) == ["overall_priorities"]
+    assert priorities["required"] == ["overall_priorities"]
 
 
 def _drop_system_fields(schema: dict[str, Any], structure: RubricStructure) -> dict[str, Any]:
@@ -177,7 +202,7 @@ def _descriptions(node: Any, path: str = "") -> dict[str, str]:
 @pytest.mark.parametrize("exam", EXAMS)
 def test_every_legacy_description_reaches_the_marker(exam: str) -> None:
     derived = _descriptions(normalised(derive_display_schema(seeded_structure(exam))))
-    legacy = _descriptions(normalised(load("b2c", exam)))
+    legacy = _descriptions(without_omitted(normalised(load("b2c", exam)), exam))
 
     missing = [path for path, text in legacy.items() if text.strip() not in derived.get(path, "")]
 

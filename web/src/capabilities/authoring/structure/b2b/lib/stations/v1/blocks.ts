@@ -1,6 +1,5 @@
 import type { StationBlock } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
 
-const SCA_RAG_OPTIONS = ["R", "A", "G"] as const;
 const COMPETENT_OPTIONS = ["Competent", "Not competent"] as const;
 
 export function ragBlock(pathStem: string, label: string): StationBlock {
@@ -34,33 +33,6 @@ export function competentBlock(pathStem: string, label: string): StationBlock {
     label,
     options: [...COMPETENT_OPTIONS],
   };
-}
-
-export function domainSummaryBlocks(pathStem: string, label: string): StationBlock[] {
-  const base = pathStem.replace(/\./g, "_");
-  return [
-    {
-      id: `${base}_score`,
-      type: "singleSelect",
-      label: `${label}: Overall score`,
-      options: [...SCA_RAG_OPTIONS],
-    },
-    {
-      id: `${base}_strengths`,
-      type: "list",
-      label: `${label}: Strengths`,
-    },
-    {
-      id: `${base}_improvements`,
-      type: "list",
-      label: `${label}: Improvements`,
-    },
-    {
-      id: `${base}_suggested_actions`,
-      type: "list",
-      label: `${label}: Suggested actions`,
-    },
-  ];
 }
 
 /** PLAB 2 numeric competency (0–1) with evidence lists. */

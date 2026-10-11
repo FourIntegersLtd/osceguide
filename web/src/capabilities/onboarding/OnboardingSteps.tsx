@@ -2,22 +2,20 @@
 
 import { useState, type ReactNode } from "react";
 import { HiOutlineArrowLeft, HiOutlineArrowRight } from "react-icons/hi2";
-import { AthenaIdentity, Button, ModalSection, Textarea, productTokens } from "@/foundation/ui";
+import { AthenaIdentity, Button, ModalBody, ModalLead, ModalSection, Textarea, type ModalTone } from "@/foundation/ui";
 import type { OnboardingScene } from "@/capabilities/onboarding/api";
 import { AthenaVoice } from "@/capabilities/onboarding/AthenaVoice";
 import { MAX_REPLY_CHARS, meetActions, sceneReply, type FlowMode, type VoiceStatus } from "@/capabilities/onboarding/onboardingModel";
 
-const { b2cCard, b2cCardPadding } = productTokens;
+/** Section title type, so a legend reads like every ModalSection title beside it. */
+const SECTION_TITLE = "text-osce-meta font-semibold text-osce-ink-900";
 
-/** One of Athena's lines, with her face and a label saying what kind of line it is. */
-function AthenaSays({ label, children }: { label: string; children: ReactNode }) {
+/** One line of the demo conversation, titled with who says it. */
+function Line({ title, tint, children }: { title: ReactNode; tint: ModalTone; children: ReactNode }) {
   return (
-    <figure className="space-y-2">
-      <AthenaIdentity layout="inline" title={label} description={null} imageClassName="h-8 w-8" />
-      <blockquote className="ml-11 rounded-2xl rounded-tl-sm bg-osce-accent-subtle px-4 py-3 leading-relaxed text-ink">
-        {children}
-      </blockquote>
-    </figure>
+    <ModalSection title={title} tint={tint}>
+      <p className="leading-relaxed text-ink">{children}</p>
+    </ModalSection>
   );
 }
 
@@ -40,13 +38,13 @@ export function MeetAthena({
 }) {
   const actions = meetActions(status, mode, assistantName);
   return (
-    <div className={`${b2cCard} ${b2cCardPadding} space-y-6 text-center`}>
+    <ModalBody className="text-center">
       {mode === "text" ? (
         <div className="text-left">
-          <AthenaSays label={assistantName}>
+          <Line title={assistantName} tint="violet">
             Hello{userName ? `, ${userName}` : ""}! I&apos;m {assistantName}. I give you instant feedback on how you
             communicate with patients. Let me show you how I work. It only takes a minute.
-          </AthenaSays>
+          </Line>
         </div>
       ) : (
         <>
@@ -67,16 +65,19 @@ export function MeetAthena({
             {actions.voiceButton}
           </Button>
         )}
-        <Button variant={actions.voiceButton ? "secondary" : "primary"} disabled={!actions.showMeEnabled} onClick={onNext}>
-          Show me how it works <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
-        </Button>
         {actions.offerTextMode && (
-          <Button variant="ghost" size="sm" onClick={onContinueWithoutVoice}>
+          <Button variant="secondary" onClick={onContinueWithoutVoice}>
             Continue without voice
           </Button>
         )}
+        {actions.hint && <p className="text-osce-meta text-ink-muted">{actions.hint}</p>}
+        {actions.showMe && (
+          <Button onClick={onNext}>
+            Show me how it works <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
+          </Button>
+        )}
       </div>
-    </div>
+    </ModalBody>
   );
 }
 
@@ -106,38 +107,41 @@ export function DemoScene({
   const [typed, setTyped] = useState("");
   const typedReply = sceneReply(typed);
   return (
-    <div className={`${b2cCard} ${b2cCardPadding} space-y-6`}>
-      <header className="space-y-1 text-center">
-        <h2 className="font-semibold text-ink">See {assistantName} in action</h2>
-        <p className="text-sm text-ink-muted">
-          {mode === "voice"
+    <ModalBody>
+      <ModalLead
+        title={`See ${assistantName} in action`}
+        description={
+          mode === "voice"
             ? `Answer ${assistantName}'s question out loud, and she will give you instant feedback.`
-            : `Choose a reply or write your own, then see the answer ${assistantName} would give.`}
-        </p>
-      </header>
+            : `Choose a reply or write your own, then see the answer ${assistantName} would give.`
+        }
+      />
       {mode === "voice" && <AthenaVoice assistantName={assistantName} />}
-      <ModalSection title="Patient">
-        <p className="leading-relaxed text-ink">{scene.patientLine}</p>
-      </ModalSection>
-      <AthenaSays label={`${assistantName} asks:`}>{scene.question}</AthenaSays>
+      <Line title="Patient" tint="muted">
+        {scene.patientLine}
+      </Line>
+      <Line title={assistantName} tint="violet">
+        {scene.question}
+      </Line>
 
       {mode === "text" && reply === null && (
-        <div className="space-y-4">
-          <fieldset className="space-y-2">
-            <legend className="mb-2 text-sm font-medium text-ink">Pick a reply</legend>
-            {scene.replies.map((option) => (
-              <Button
-                key={option}
-                variant="outline"
-                className="h-auto w-full justify-start whitespace-normal py-2 text-left"
-                onClick={() => setReply(option)}
-              >
-                {option}
-              </Button>
-            ))}
+        <div>
+          <fieldset className="space-y-3 pb-6">
+              <legend className={`mb-2.5 ${SECTION_TITLE}`}>Pick a reply</legend>
+              {scene.replies.map((option) => (
+                <Button
+                  key={option}
+                  variant="outline"
+                  fullWidth
+                  className="h-auto justify-start whitespace-normal py-3 text-left"
+                  onClick={() => setReply(option)}
+                >
+                  {option}
+                </Button>
+              ))}
           </fieldset>
           <form
-            className="space-y-2"
+            className="mt-6 space-y-2.5"
             onSubmit={(event) => {
               event.preventDefault();
               if (typedReply) setReply(typedReply);
@@ -158,15 +162,21 @@ export function DemoScene({
       )}
 
       {mode === "text" && reply !== null && (
-        <div className="space-y-4">
-          <figure className="ml-auto max-w-[85%] space-y-1 text-right">
-            <figcaption className="text-sm font-medium text-ink-muted">You said</figcaption>
-            <blockquote className="rounded-2xl rounded-tr-sm bg-surface-raised px-4 py-3 text-left leading-relaxed text-ink">
-              {reply}
-            </blockquote>
-          </figure>
-          <AthenaSays label={`${assistantName} would say:`}>{scene.modelAnswer}</AthenaSays>
-        </div>
+        <>
+          <Line title="You" tint="muted">
+            {reply}
+          </Line>
+          <Line
+            title={
+              <>
+                {assistantName} <span className="font-normal text-ink-muted">· What you could have said</span>
+              </>
+            }
+            tint="violet"
+          >
+            {scene.modelAnswer}
+          </Line>
+        </>
       )}
 
       <div className="flex items-center justify-between gap-3">
@@ -177,6 +187,6 @@ export function DemoScene({
           {isLast ? "Finish demo" : "Next"} <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
         </Button>
       </div>
-    </div>
+    </ModalBody>
   );
 }

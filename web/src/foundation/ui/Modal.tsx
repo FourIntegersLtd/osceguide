@@ -146,7 +146,8 @@ const Modal = ({
             </button>
           </div>
         ) : null}
-        <div className={cn(b2cModalPanelBody, bodyClassName)}>{children}</div>
+        {/* The close bar already holds the top edge; full body padding under it left a blank band. */}
+        <div className={cn(b2cModalPanelBody, showClose && "pt-2 sm:pt-2", bodyClassName)}>{children}</div>
       </div>
     </div>,
     document.body,

@@ -126,11 +126,22 @@ def rubric_from_model(schema: Mapping[str, Any], hints: Mapping[str, Any]) -> di
 
     `hints` supplies only what the schema cannot: the rating field, roles a
     field's name does not tell, the platform-written fields, the domains marked
-    live during the consultation, and the display.
+    live during the consultation, the legacy fields no longer asked for
+    (`omit`, dotted paths), section titles (`titles`) and the display.
     Refuses (SystemExit) a model whose competencies disagree on the rating or
     on what they answer, rather than guessing.
     """
     model = inline(schema, schema.get("$defs", {}))
+    for dotted in hints.get("omit") or ():
+        *parents, leaf = dotted.split(".")
+        parent = model
+        for part in parents:
+            parent = unwrap(parent["properties"][part])[0]
+        if leaf not in parent.get("properties", {}):
+            raise SystemExit(f"omit names {dotted}, which the legacy model lacks")
+        del parent["properties"][leaf]
+        parent["required"] = [name for name in parent.get("required", []) if name != leaf]
+    titles: dict[str, str] = dict(hints.get("titles") or {})
     rating_field = str(hints["ratingField"])
     roles: dict[str, str] = dict(hints.get("roles") or {})
     system_fields = frozenset(hints.get("systemFields") or ())
@@ -176,7 +187,7 @@ def rubric_from_model(schema: Mapping[str, Any], hints: Mapping[str, Any]) -> di
         if not children:
             sections.append({"kind": "field", "field": field(name, node, required)})
             continue
-        section: dict[str, Any] = {"id": name, "title": humanise(name)}
+        section: dict[str, Any] = {"id": name, "title": titles.get(name, humanise(name))}
         if nullable:
             # pydantic's `X | None = None`: the object's own description is the
             # instructions, the wrapper's says what the part is.

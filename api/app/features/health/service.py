@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable
 from datetime import datetime, timedelta
+from typing import TypeVar
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,7 +41,10 @@ from app.features.tenancy import service_audit
 from app.features.voice import service as voice_service
 
 log = get_logger(__name__)
+T = TypeVar("T")
 CHECK_TIMEOUT_SECONDS = 2.0
+# The checks whose failure leaves the platform up but degraded; a failed database is `down`.
+DEGRADING = ("redis", "content")
 # How often the machinery stream re-reads what changes with nobody announcing
 # it: a job finishing, a worker's heartbeat, a Cloud slot lapsing.
 MACHINERY_REFRESH_SECONDS = 5.0
@@ -54,34 +58,44 @@ STALLED_AFTER_SECONDS = 180
 MAX_STALLED_REQUEUES = 3
 
 
+async def _answers_in_time(name: str, query: Awaitable[T]) -> T | None:
+    """What a check's query returns within the timeout, or None when it fails; never raises."""
+    try:
+        return await asyncio.wait_for(query, CHECK_TIMEOUT_SECONDS)
+    except Exception as exc:  # noqa: BLE001 - health must never raise
+        log.warning("health check failed", check=name, error=str(exc))
+        return None
+
+
 async def check_database(session: AsyncSession) -> CheckState:
     """Whether the database answers a trivial query within the timeout."""
-    try:
-        await asyncio.wait_for(repository.ping(session), CHECK_TIMEOUT_SECONDS)
-        return "ok"
-    except Exception as exc:  # noqa: BLE001 - health must never raise
-        log.warning("database check failed", error=str(exc))
-        return "error"
+    return "ok" if await _answers_in_time("database", repository.ping(session)) is not None else "error"
+
+
+async def check_content(session: AsyncSession) -> CheckState:
+    """Whether every published platform station is bound to a template (else it has no written brief)."""
+    unbound = await _answers_in_time("content", repository.unbound_platform_stations(session))
+    return "ok" if unbound == 0 else "error"
 
 
 async def check_redis(redis: Redis | None) -> CheckState:
     """Whether Redis answers within the timeout, or `disabled` when this deployment has none."""
     if redis is None:
         return "disabled"
-    try:
-        await asyncio.wait_for(redis.ping(), CHECK_TIMEOUT_SECONDS)
-        return "ok"
-    except Exception as exc:  # noqa: BLE001
-        log.warning("redis check failed", error=str(exc))
-        return "error"
+    return "ok" if await _answers_in_time("redis", redis.ping()) is not None else "error"
 
 
 async def health_report(session: AsyncSession, redis: Redis | None) -> HealthResponse:
-    """The public health check: `down` if the database fails, `degraded` if only Redis does, else `ok`."""
-    checks = {"database": await check_database(session), "redis": await check_redis(redis)}
-    if checks["database"] == "error":
+    """The public health check: `down` if the database fails, `degraded` if Redis fails or a published
+    platform station has no template (`content`), else `ok`."""
+    database = await check_database(session)
+    # With the database down the content query is not run (it would only fail on a broken session),
+    # so `content` reads "error" without having been checked.
+    content = await check_content(session) if database == "ok" else "error"
+    checks = {"database": database, "redis": await check_redis(redis), "content": content}
+    if database == "error":
         status = "down"
-    elif checks["redis"] == "error":
+    elif any(checks[name] == "error" for name in DEGRADING):
         status = "degraded"
     else:
         status = "ok"

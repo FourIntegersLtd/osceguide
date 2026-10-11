@@ -32,6 +32,10 @@ const PLAN_COPY: Record<number, { title: string; description: string }> = {
   },
 };
 
+/** What every plan is, said once above the picker: fixed terms, paid once, nothing renews. */
+export const UPGRADE_LEAD =
+  "Choose how long you want full access for. Every option is a one-off payment, not a subscription";
+
 /** The old picker opened on the three-month plan. */
 const DEFAULT_MONTHS = 3;
 
@@ -40,8 +44,8 @@ const DEFAULT_MONTHS = 3;
  *
  * The retiring client's `PaymentsUpgrade`, string for string. It is the only
  * way anybody buys anything, so what it does and does not do both matter. It
- * sends a **plan code** — never a price — and then hands the browser to
- * Stripe's hosted page; no card detail passes through here, and nothing in
+ * sends a **plan code** — never a price — and then opens Stripe's hosted page
+ * in a new tab; no card detail passes through here, and nothing in
  * this file can grant access. The plans, their prices and their durations are
  * the backend's answer to `/billing/plans` rather than constants compiled into
  * the bundle, which is how the retiring client came to show one price and
@@ -67,11 +71,15 @@ export default function PlanPicker({
   const [referralCode, setReferralCode] = useState("");
   // One per visit, renewed after a refusal: see `startCheckout`.
   const [attemptId, setAttemptId] = useState(() => crypto.randomUUID());
+  const [openedInTab, setOpenedInTab] = useState(false);
 
   const chosen = plans.find((plan) => plan.code === selected) ?? null;
   // Blank means "no code": the full price, and nothing sent to the backend.
   const trimmedReferralCode = referralCode.trim();
   const hasReferralCode = trimmedReferralCode.length > 0;
+  // Once a payment tab is open the choice is frozen: a different plan or code would be a second
+  // Stripe session, and paying in both tabs charges twice. "Choose again" unfreezes it on purpose.
+  const locked = isLoading || openedInTab;
 
   const handleCheckout = async () => {
     setError(null);
@@ -81,17 +89,30 @@ export default function PlanPicker({
     }
     if (!chosen) return;
 
+    // Opened now, inside the click, so a popup blocker lets it through; Stripe's
+    // address is only known once the backend answers. Not `noopener`: that makes
+    // `window.open` return null. The opener link is cut before navigating instead.
+    const tab = window.open("", "_blank");
+    if (tab) tab.opener = null;
     setIsLoading(true);
+    setOpenedInTab(false);
     try {
       const { checkout_url } = await startCheckout(
         chosen.code,
         hasReferralCode ? trimmedReferralCode : null,
         attemptId,
       );
-      // Leave `isLoading` true: the browser is on its way to Stripe, and a
-      // button that springs back to "Upgrade" invites a second checkout.
-      window.location.assign(checkout_url);
+      if (tab) {
+        tab.location.href = checkout_url;
+        setOpenedInTab(true);
+        setIsLoading(false);
+      } else {
+        // Blocked anyway: pay in this tab. Leave `isLoading` true, the browser is
+        // on its way to Stripe and a button that springs back invites a second checkout.
+        window.location.assign(checkout_url);
+      }
     } catch (cause) {
+      tab?.close();
       setError(checkoutErrorMessage(cause, SUPPORT_EMAIL));
       setAttemptId(crypto.randomUUID());
       setIsLoading(false);
@@ -100,10 +121,8 @@ export default function PlanPicker({
 
   return (
     <ModalContent className="w-full">
-      {/* On the settings page the card's own title says this. */}
-      {variant === "modal" ? (
-        <ModalHelper className="mb-5 mt-0">Choose the option that suits you best</ModalHelper>
-      ) : null}
+      {/* On the settings page the Upgrade card's description says this. */}
+      {variant === "modal" ? <ModalHelper className="mb-5 mt-0">{UPGRADE_LEAD}</ModalHelper> : null}
 
       <div role="radiogroup" aria-label="Plan" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {plans.map((plan) => {
@@ -114,9 +133,10 @@ export default function PlanPicker({
               type="button"
               role="radio"
               aria-checked={isSelected}
+              disabled={locked}
               onClick={() => setSelected(plan.code)}
               className={cn(
-                "flex items-start gap-3 rounded-osce-lg border px-4 py-3.5 text-left transition",
+                "flex items-start gap-3 rounded-osce-lg border px-4 py-3.5 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
                 // The selected tile's border is 2px; a ring of the same colour
                 // adds the second pixel without moving the text.
                 isSelected
@@ -155,6 +175,7 @@ export default function PlanPicker({
           placeholder="Enter a code for 10% off"
           autoComplete="off"
           maxLength={32}
+          disabled={locked}
         />
       </div>
 
@@ -183,7 +204,7 @@ export default function PlanPicker({
         <div className="flex sm:justify-end">
           <Button
             onClick={() => handleCheckout()}
-            disabled={isLoading || !chosen}
+            disabled={locked || !chosen}
             className="w-full gap-2 whitespace-nowrap sm:w-auto"
           >
             {isLoading ? (
@@ -203,6 +224,21 @@ export default function PlanPicker({
           </Button>
         </div>
         {error ? <p className="text-osce-meta text-danger sm:text-right">{error}</p> : null}
+        {openedInTab ? (
+          <p role="status" className="text-osce-meta text-ink sm:text-right">
+            Payment opened in a new tab. Your plan updates here when you come back{" "}
+            <button
+              type="button"
+              className={cn(b2cLink, "ml-2")}
+              onClick={() => {
+                setOpenedInTab(false);
+                setAttemptId(crypto.randomUUID());
+              }}
+            >
+              Choose again
+            </button>
+          </p>
+        ) : null}
         <p className="text-osce-meta text-ink-muted sm:text-right">Secure payment powered by Stripe</p>
       </div>
     </ModalContent>

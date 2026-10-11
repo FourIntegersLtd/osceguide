@@ -2,15 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { HiOutlineArrowRight } from "react-icons/hi2";
-import { Alert, AthenaIdentity, Button, LoadingSpinner, cn, productTokens } from "@/foundation/ui";
+import { Alert, AthenaIdentity, Button, LoadingSpinner, ModalBody, cn } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { VoiceRoom } from "@/foundation/livekit";
 import { useOnboardingVoice } from "@/capabilities/onboarding/useOnboardingVoice";
 import { DemoScene, MeetAthena } from "@/capabilities/onboarding/OnboardingSteps";
-import { onboardingPosition, voiceErrorCopy, type FlowMode, type Step } from "@/capabilities/onboarding/onboardingModel";
-
-const { b2cCard, b2cCardPadding } = productTokens;
+import { offersSkipTour, onboardingPosition, voiceErrorCopy, type FlowMode, type Step } from "@/capabilities/onboarding/onboardingModel";
 
 const STEPS: { id: Step; label: string }[] = [
   { id: "meet", label: "Meet Athena" },
@@ -30,11 +28,12 @@ const STEPS: { id: Step; label: string }[] = [
  *
  * `onComplete` is the caller's: a dashboard that opened this in a modal closes
  * it and remembers, and a settings page replaying it stays put. "Skip tour" on
- * every step calls it too. This component does not navigate, because where
- * "start practising" goes is the surface's business and a capability may not
- * know the arm it is mounted on.
+ * the introduction and the demo calls `onSkip` (default `onComplete`), so a
+ * host can close in place on skip and navigate only on completion. This
+ * component does not navigate, because where "start practising" goes is the
+ * surface's business and a capability may not know the arm it is mounted on.
  */
-export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
+export function OnboardingFlow({ onComplete, onSkip = onComplete }: { onComplete: () => void; onSkip?: () => void }) {
   const voice = useOnboardingVoice();
   const { session } = useSession();
   const [step, setStep] = useState<Step>("meet");
@@ -66,22 +65,27 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
     onComplete();
   };
 
+  const skip = () => {
+    voice.leave();
+    onSkip();
+  };
+
   return (
     <VoiceRoom
-      className="mx-auto w-full max-w-xl space-y-8"
+      className="mx-auto w-full max-w-xl space-y-7"
       grant={step === "invitation" || mode === "text" ? null : voice.grant}
       onConnected={voice.onConnected}
       onDisconnected={voice.onDisconnected}
     >
-      <div className="space-y-2">
-        <ol className="flex items-center justify-center" aria-label="Onboarding steps">
+      <div className="flex items-center justify-between gap-3">
+        <ol className="flex items-center" aria-label="Onboarding steps">
           {STEPS.map((entry, index) => (
             <li
               key={entry.id}
               aria-current={entry.id === step ? "step" : undefined}
               title={entry.label}
               className={cn(
-                "border-l border-osce-border px-6 font-mono text-osce-body tabular-nums first:border-l-0",
+                "border-l border-osce-border px-4 font-mono text-osce-body tabular-nums first:border-l-0 first:pl-0",
                 entry.id === step ? "font-semibold text-osce-ink-900" : "text-b2c-text-muted",
               )}
             >
@@ -90,11 +94,11 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
             </li>
           ))}
         </ol>
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={finish}>
+        {offersSkipTour(step) && (
+          <Button variant="ghost" size="sm" onClick={skip}>
             Skip tour
           </Button>
-        </div>
+        )}
       </div>
 
       {step === "meet" && (
@@ -119,15 +123,15 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       )}
 
       {step === "demo" && voice.loadingScenes && (
-        <div className={`${b2cCard} ${b2cCardPadding} text-center`}>
+        <div className="space-y-2.5 text-center">
           <LoadingSpinner />
-          <p className="mt-3 text-sm text-ink-muted">Loading the demo…</p>
+          <p className="text-osce-meta text-ink-muted">Loading the demo…</p>
         </div>
       )}
 
       {step === "demo" && !voice.loadingScenes && !scene && (
-        <div className={`${b2cCard} ${b2cCardPadding} space-y-4 text-center`}>
-          <p className="text-sm text-ink-muted">
+        <ModalBody className="text-center">
+          <p className="text-osce-meta text-ink-muted">
             {voice.scenesError
               ? "We couldn't load the demo right now. Please try again."
               : "The demo is not available for your exam yet."}
@@ -135,7 +139,7 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
           <Button onClick={() => setStep("invitation")}>
             Skip the demo <HiOutlineArrowRight className="h-3 w-3" aria-hidden />
           </Button>
-        </div>
+        </ModalBody>
       )}
 
       {step === "demo" && scene && (
@@ -155,21 +159,23 @@ export function OnboardingFlow({ onComplete }: { onComplete: () => void }) {
       )}
 
       {step === "invitation" && (
-        <div className={`${b2cCard} ${b2cCardPadding} space-y-6 text-center`}>
+        <ModalBody className="text-center">
           <AthenaIdentity
             title={voice.assistantName}
             description="You've seen how Athena analyzes a consultation. Ready to start practicing and get your own personalized feedback?"
           />
           <Button onClick={finish}>Start my first consultation</Button>
-        </div>
+        </ModalBody>
       )}
 
       {voice.error && mode === "voice" && (
         <Alert tone="warning">
-          {voiceErrorCopy(errorMessage(voice.error), voice.assistantName)}{" "}
-          <Button size="sm" variant="secondary" onClick={startVoice}>
-            Try voice again
-          </Button>
+          <div className="space-y-2.5">
+            <p>{voiceErrorCopy(errorMessage(voice.error), voice.assistantName)}</p>
+            <Button size="sm" variant="secondary" onClick={startVoice}>
+              Try voice again
+            </Button>
+          </div>
         </Alert>
       )}
       {voice.mic.message && <Alert tone="warning">{voice.mic.message}</Alert>}

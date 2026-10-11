@@ -114,8 +114,8 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
 - `GET /api/v1/me/referral-payout-details` answers 200 `null` when nothing is
   saved (since 2026-10-06; it was a 404 in `problems` on staff settings).
 - Staff settings (`/staff/settings`) are Account / Security / Data; consumer
-  settings (`/app/me/settings`) keep Profile / Preferences / Exam / Payments /
-  Memory. Prove both when touching `capabilities/account/Settings.tsx`.
+  settings (`/app/me/settings`) keep Profile / Preferences / Payments / Referrals /
+  Memory (Exam left on 2026-10-11; `?tab=exam` falls back to Profile, which shows the exam type). Prove both when touching `capabilities/account/Settings.tsx`.
 - Onboarding voice starts only on "Play Athena's introduction". Prove it with a
   fresh `@example.com` account registered with `exam_code` (lands on the
   onboarding dialog) and count `POST /assistant/sessions` before play: 0
@@ -159,3 +159,13 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   and compute the TOTP with `crypto` HMAC-SHA1. The server rejects a code reused in the same
   30 s step, so wait 31 s between the enrol code and the turn-off code or the turn-off looks
   broken. Walk Delete account to the second confirm and cancel; never confirm it.
+  Scope delete-flow locators to `getByRole("dialog")` (the page's first textbox is Username);
+  the second confirm cancels with "Back", then "Keep account".
+- **Payments and checkout (A-38..A-40).** Local checkout answers 503 (no Stripe key): that proves
+  only the failure path (blank tab opened, then closed, error shown). For the success and
+  blocked-popup paths, stub `**/billing/checkout` with `page.route` returning a `checkout_url`
+  and read the new tab from `context.waitForEvent("page")`; say the checkout was stubbed. Payments
+  re-reads `/me/entitlements` on `visibilitychange`: count those requests. Trial account: insert a
+  `trial` entitlement for a fresh `@example.com` user; paid: an account with a live purchase.
+- **Preferences save per switch.** Count `PATCH /me` bodies: each switch sends only its own field,
+  extra time sends the timers on confirm, then reload and check the switches persisted.

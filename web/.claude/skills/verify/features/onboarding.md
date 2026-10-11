@@ -2,8 +2,9 @@
 
 ## Sub-features
 - Opens one assistant session (`POST /api/v1/assistant/sessions`, profile `onboarding`) and one voice token.
-- Joins a LiveKit room; "Show me how it works" enables once Athena is connected.
-- Three steps (Meet Athena, Watch a demo consultation, Your first station), then "Start my first consultation" (→ `/mocks`). The close X dismisses the tour and remembers it (`osce_onboarding_dismissed:{exam}:{user}`). There is no skip button: it went with the old screen in e1d6f96.
+- Step 1 is the choice: "Turn on Athena's voice" or "Continue without voice", with "Pick voice or text first" under them. "Show me how it works" is not rendered until voice is on or text is chosen (C-50).
+- Three steps (Meet Athena, Watch a demo consultation, Your first station), then "Start my first consultation" (dashboard: → `/mocks`). "Skip tour" shows on steps 1 and 2 only. Neither host renders the modal's close X; Escape and the backdrop still close it and remember it (`osce_onboarding_dismissed:{exam}:{user}`) (C-52).
+- Text demo: headings "Patient", "Athena" (the question), "You" (the reply) and "Athena · What you could have said" (the model answer). Locate them with `getByRole("heading", { name, exact: true })`: "You" also matches the model-answer heading otherwise.
 
 ## How to get to it (user POV)
 A modal over the consumer dashboard (`ExamDashboard`), opened automatically for a new account with no attempts, or replayed from account preferences. There is no `/app/me/onboarding` route (removed in e1d6f96, which is deliberate).

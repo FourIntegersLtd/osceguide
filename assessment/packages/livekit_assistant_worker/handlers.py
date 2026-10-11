@@ -27,6 +27,11 @@ DATA_TYPE_NAV_MODE_CHOICE = "nav_mode_choice"
 SCENE_KEYS = ("phase", "question", "patientLine")
 SCENE_STARTED_INPUT = "[New scene started — introduce it now as instructed.]"
 REPLY_TIMEOUT_S = 45.0
+STALL_TIMEOUT_S = 8.0
+STALL_INSTRUCTION = (
+    "You took too long to answer. In one short sentence say you lost your thread, "
+    "then answer what the learner just said if you can, or ask your last question again."
+)
 
 RenderScene = Callable[[dict[str, Any]], Awaitable[str]]
 
@@ -90,14 +95,27 @@ def wire_guidance_progress(agent: Any, progress: GuidanceProgress) -> None:
 def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
     """The browser announces a scene; the backend renders the instructions; the model introduces it.
 
-    The browser can also pause the assistant. A pause cuts off whatever is
-    being said, and a scene announced while paused is held, not read: the
-    latest one is introduced on resume, so clicking through a paused
-    walkthrough does not queue a speech per click.
+    A scene change cuts off whatever is being said at once, and only the latest
+    scene is ever introduced: a slower render of a scene the learner has already
+    left is dropped rather than read after the current one. The rendered script
+    replaces the agent's instructions, so the learner's answer is met with the
+    scene on screen and not the one the session opened on.
+
+    The browser can also pause the assistant. A scene announced while paused is
+    held, not read: the latest one is introduced on resume, so clicking through a
+    paused walkthrough does not queue a speech per click.
     """
     announced: dict[str, Any] = {}
     held: dict[str, Any] = {}
     paused = False
+    current: asyncio.Task[None] | None = None
+
+    def announce(scene: dict[str, Any]) -> None:
+        """Introduce this scene, cancelling the announcement of any scene before it."""
+        nonlocal current
+        if current is not None and not current.done():
+            current.cancel()
+        current = asyncio.create_task(_announce_scene(agent, render_scene, scene))
 
     @ctx.room.on("data_received")
     def _on_scene_change(data_packet: Any) -> None:
@@ -112,7 +130,7 @@ def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
         if kind == DATA_TYPE_RESUME:
             paused = False
             if held:
-                asyncio.create_task(_announce_scene(agent, render_scene, dict(held)))
+                announce(dict(held))
                 held.clear()
             return
         if not msg or kind != DATA_TYPE_SCENE_CHANGE:
@@ -128,7 +146,43 @@ def wire_scene_changes(ctx: Any, agent: Any, render_scene: RenderScene) -> None:
             held.update(scene)
             return
         logger.info("[assistant] scene change phase=%s", scene.get("phase"))
-        asyncio.create_task(_announce_scene(agent, render_scene, scene))
+        announce(scene)
+
+
+def wire_stall_recovery(agent: Any) -> None:
+    """If the agent is still thinking after `STALL_TIMEOUT_S`, cut it off and have it say so and ask again.
+
+    One recovery at a time: state changes during the recovery reply are
+    ignored (`recovering`), so a model that cannot answer is re-prompted once
+    per stall, not in a loop of recoveries watching recoveries.
+    """
+    watch: asyncio.Task[None] | None = None
+    recovering = False
+
+    async def _recover() -> None:
+        """Wait out the allowance, then recover."""
+        nonlocal recovering
+        await asyncio.sleep(STALL_TIMEOUT_S)
+        recovering = True
+        logger.warning("[assistant] still thinking after %.0fs; recovering", STALL_TIMEOUT_S)
+        try:
+            await _interrupt(agent)
+            await _reply(agent, instructions=STALL_INSTRUCTION, what="stall recovery")
+        finally:
+            recovering = False
+
+    @agent.on("agent_state_changed")
+    def _on_agent_state(change: Any) -> None:
+        """Arm the watch when thinking starts; disarm it on any other state."""
+        nonlocal watch
+        if recovering:
+            return
+        thinking = getattr(change, "new_state", None) == "thinking"
+        if thinking and (watch is None or watch.done()):
+            watch = asyncio.create_task(_recover())
+        elif not thinking and watch is not None:
+            watch.cancel()
+            watch = None
 
 
 async def _interrupt(agent: Any) -> None:
@@ -140,14 +194,21 @@ async def _interrupt(agent: Any) -> None:
 
 
 async def _announce_scene(agent: Any, render_scene: RenderScene, scene: dict[str, Any]) -> None:
-    """Render the instructions for a new scene, cut off any speech in progress, and introduce it."""
+    """Stop what is playing, render the scene's instructions, make them the agent's and introduce it.
+
+    Cancelled by the next scene change, so a slow render of a scene already left is never read.
+    """
+    # The opening line or the previous scene may still be playing; stop it now, not after the render.
+    await _interrupt(agent)
     try:
         instructions = await render_scene(scene)
     except Exception as exc:  # noqa: BLE001 — the session continues on the previous scene
         logger.error("scene change not rendered: %s", exc)
         return
-    # The opening line may still be playing; without this the new scene queues behind it.
-    await _interrupt(agent)
+    try:
+        await agent.current_agent.update_instructions(instructions)
+    except Exception as exc:  # noqa: BLE001 — the introduction below still carries the scene
+        logger.warning("scene instructions not applied: %s", exc)
     await _reply(agent, instructions=instructions, user_input=SCENE_STARTED_INPUT, what="scene change")
 
 

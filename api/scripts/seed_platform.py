@@ -220,7 +220,7 @@ async def republish_existing(session: Any, code: str, spec: dict[str, Any], now:
         marking_layout=current.marking_layout or spec.get("marking_layout") or DEFAULT_MARKING_LAYOUT,
     )
     published = await rubrics.publish_version(
-        session, None, current.rubric_id, draft.version, actor_id=None, now=now
+        session, None, current.rubric_id, draft.version, actor=None, now=now
     )
     await exams.update_exam(session, exam.id, rubric_version_id=published.id)
     return True

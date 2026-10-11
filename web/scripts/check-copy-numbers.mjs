@@ -19,7 +19,6 @@ import { allowList, COPY_NUMBER, finish, read, rel, sourceFiles } from "./lib-sr
 const ALLOWED = allowList(
   {
     "src/capabilities/account/Achievements.tsx: 3 days": "a streak badge's own threshold, one sentence, no server rule",
-    "src/capabilities/account/settings/PaymentsPanel.tsx: 1 day": "grammar singular of a computed count",
     "src/domains/marketing/CascLandingPage.tsx: 7 min": "CASC exam format figure on its own landing page",
     "src/domains/marketing/CascLandingPage.tsx: 4 min": "CASC exam format figure on its own landing page",
     "src/domains/marketing/CascLandingPage.tsx: 16 stations": "CASC exam format figure on its own landing page",
@@ -31,7 +30,7 @@ const ALLOWED = allowList(
     "src/foundation/ui/ProgressBar.tsx: 45 minutes": "TODO: see 3 stations",
     "src/foundation/ui/Timer.tsx: 6 minutes": "the doctor timer's own toast title, tied to its DOCTOR_TIME_WARNING beside it",
   },
-  12,
+  11,
 );
 
 const offenders = [];

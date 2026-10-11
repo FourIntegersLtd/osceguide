@@ -125,7 +125,7 @@ function ReferralCodeCard({
     >
       <div className="space-y-4">
         <ModalHelper className="mt-0">
-          Share your referral code and earn rewards paid to your bank account.
+          Share your referral code and earn rewards paid to your bank account
         </ModalHelper>
 
         <div className="rounded-osce-md border border-border bg-canvas px-3 py-2.5">
@@ -135,44 +135,44 @@ function ReferralCodeCard({
           </p>
         </div>
 
-        <div>
-          <label htmlFor="referral-code" className={b2cFieldLabel}>
-            Your referral code
-          </label>
-          <input
-            id="referral-code"
-            className={`mt-1.5 ${b2cSettingsFieldInput}`}
-            value={referral.code}
-            readOnly
-            placeholder="Generate your referral code"
-          />
-          {error ? <p className="mt-1 text-osce-meta text-osce-danger">{error}</p> : null}
+        <div className="flex items-end gap-3">
+          {!referral.code ? (
+            <ModalPrimaryButton type="button" onClick={handleGenerate} disabled={busy} className="shrink-0">
+              {busy ? "Generating…" : "Generate code"}
+            </ModalPrimaryButton>
+          ) : (
+            <ModalPrimaryButton
+              type="button"
+              onClick={handleCopy}
+              className={`shrink-0 gap-2 ${copied ? "bg-success" : ""}`}
+            >
+              {copied ? (
+                <>
+                  <HiOutlineCheck className="h-3.5 w-3.5" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <HiOutlineDocumentDuplicate className="h-3.5 w-3.5" />
+                  Copy code
+                </>
+              )}
+            </ModalPrimaryButton>
+          )}
+          <div className="min-w-0 flex-1">
+            <label htmlFor="referral-code" className={b2cFieldLabel}>
+              Your referral code
+            </label>
+            <input
+              id="referral-code"
+              className={`mt-1.5 ${b2cSettingsFieldInput}`}
+              value={referral.code}
+              readOnly
+              placeholder="Your code appears here"
+            />
+          </div>
         </div>
-      </div>
-      <div className="mt-6 flex justify-end gap-3 border-t border-border pt-4">
-        {!referral.code ? (
-          <ModalPrimaryButton type="button" onClick={handleGenerate} disabled={busy}>
-            {busy ? "Generating…" : "Generate code"}
-          </ModalPrimaryButton>
-        ) : (
-          <ModalPrimaryButton
-            type="button"
-            onClick={handleCopy}
-            className={`gap-2 ${copied ? "bg-success" : ""}`}
-          >
-            {copied ? (
-              <>
-                <HiOutlineCheck className="h-3.5 w-3.5" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <HiOutlineDocumentDuplicate className="h-3.5 w-3.5" />
-                Copy code
-              </>
-            )}
-          </ModalPrimaryButton>
-        )}
+        {error ? <p className="text-osce-meta text-osce-danger">{error}</p> : null}
       </div>
     </Panel>
   );

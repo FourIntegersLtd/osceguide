@@ -15,7 +15,6 @@ import { tabsFor, type SettingsTab } from "@/capabilities/account/settings/setti
 
 export type { SettingsTab };
 import PreferencesPanel from "@/capabilities/account/settings/PreferencesPanel";
-import ExamPanel from "@/capabilities/account/settings/ExamPanel";
 import PaymentsPanel from "@/capabilities/account/settings/PaymentsPanel";
 import ReferralsPanel from "@/capabilities/account/settings/ReferralsPanel";
 import TutorMemoryPanel from "@/capabilities/account/settings/TutorMemoryPanel";
@@ -137,7 +136,6 @@ function SettingsFrame({
         <ProfilePanel key={tab} part={tab} onDirtyChange={setDirty} />
       ) : null}
       {tab === "preferences" ? <PreferencesPanel /> : null}
-      {tab === "exam" ? <ExamPanel /> : null}
       {tab === "payments" ? <PaymentsPanel /> : null}
       {tab === "referrals" ? <ReferralsPanel /> : null}
       {tab === "memory" ? <TutorMemoryPanel /> : null}

@@ -184,6 +184,7 @@ class AssistantVoiceSession:
             handlers.wire_delivery_on_end(ctx, self._deliver_transcript_once)
         if session.mode.scene_updates:
             handlers.wire_scene_changes(ctx, agent, self._render_scene)
+            handlers.wire_stall_recovery(agent)
         if session.mode.ui_guidance:
             handlers.wire_navigation_mode_choice(ctx, agent, self.navigation)
         if self.guidance is not None:

@@ -20,16 +20,31 @@ export function voiceStatus(input: { starting: boolean; granted: boolean; connec
   return input.starting || input.granted ? "connecting" : "off";
 }
 
-/** Step 1's actions: turn the voice on, go on once it is, or go on without it. */
+/**
+ * Step 1's actions. The choice is the step: "Show me how it works" is not
+ * shown at all until the voice is on or the person chose text, because a
+ * disabled outline button looked exactly like an enabled one (C-50).
+ */
 export function meetActions(
   status: VoiceStatus,
   mode: FlowMode,
   assistantName: string,
-): { voiceButton: string | null; showMeEnabled: boolean; offerTextMode: boolean } {
+): { voiceButton: string | null; showMe: boolean; offerTextMode: boolean; hint: string | null } {
   if (mode === "text" || status === "on") {
-    return { voiceButton: null, showMeEnabled: true, offerTextMode: false };
+    return { voiceButton: null, showMe: true, offerTextMode: false, hint: null };
   }
-  return { voiceButton: `Turn on ${assistantName}'s voice`, showMeEnabled: false, offerTextMode: true };
+  return {
+    voiceButton: `Turn on ${assistantName}'s voice`,
+    showMe: false,
+    offerTextMode: true,
+    // While connecting the voice button already says what is happening.
+    hint: status === "off" ? "Pick voice or text first" : null,
+  };
+}
+
+/** Skip tour is for the introduction and the demo; the last page's exit is its own button. */
+export function offersSkipTour(step: Step): boolean {
+  return step !== "invitation";
 }
 
 export function onboardingPosition(step: Step, sceneIndex: number): OnboardingStart {

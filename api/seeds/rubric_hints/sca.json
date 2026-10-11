@@ -1,5 +1,5 @@
 {
-  "_comment": "What the SCA legacy model does not say: its name, clock, which competency field holds the rating, and how the dashboard reads it (plan section 4.3). Read by scripts/generate_platform_seed.py.",
+  "_comment": "What the SCA legacy model does not say: its name, clock, which competency field holds the rating, how the dashboard reads it (plan section 4.3), the legacy fields it no longer asks for (`omit`: the per-domain summaries repeated each competency's explanation, the language notes were empty for a native-English patient) and section titles that differ from the field name. Read by scripts/generate_platform_seed.py.",
   "name": "Simulated Consultation Assessment",
   "readingSeconds": 120,
   "simulationSeconds": 720,
@@ -8,6 +8,14 @@
   "roles": {},
   "systemFields": [],
   "liveDomains": ["tasks", "relating_to_others"],
+  "omit": [
+    "actionable_feedback.global_skills_feedback",
+    "actionable_feedback.tasks_feedback",
+    "actionable_feedback.relating_feedback",
+    "actionable_feedback.cultural_linguistic_considerations",
+    "actionable_feedback.language_adaptations"
+  ],
+  "titles": {"actionable_feedback": "Priorities"},
   "display": {
     "domain": {"aggregate": "ragCounts"},
     "total": {"aggregate": "ragShare"},

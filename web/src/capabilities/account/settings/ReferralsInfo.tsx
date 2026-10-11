@@ -45,14 +45,14 @@ export default function ReferralsInfo() {
               </AboutInfoIconMarker>
             }
             title="Earn rewards"
-            description="£2.50 for each 1-month subscription, or £5.00 for each 3/6-month subscription."
+            description="£2.50 for each 1-month plan a friend buys, or £5.00 for each 3- or 6-month plan"
           />
         </AboutInfoList>
       </AboutInfoSection>
       <AboutInfoSection title="Benefits for your friends" tone="green">
         <AboutInfoBullets
           items={[
-            "10% discount on their subscription",
+            "10% off the plan they buy",
             "Full access to all OSCE Guide features including realistic patient interactions, instant feedback and detailed analytics across all domains",
             "Access to our OSCE Guide community and support forum",
           ]}

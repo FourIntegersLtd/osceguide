@@ -1,5 +1,5 @@
 import type { StationStructure } from "@/capabilities/authoring/structure/b2b/types/b2bStationTemplateTypes";
-import { domainSummaryBlocks, ragBlock } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/blocks";
+import { ragBlock } from "@/capabilities/authoring/structure/b2b/lib/stations/v1/blocks";
 
 /** RCGP SCA feedback template — version 1 (FeedbackModel). */
 export function scaFeedbackTemplateV1(): StationStructure {
@@ -96,32 +96,13 @@ export function scaFeedbackTemplateV1(): StationStructure {
       },
       {
         id: "sec_actionable_feedback",
-        title: "Actionable feedback",
+        title: "Priorities",
         blocks: [
-          ...domainSummaryBlocks(
-            "actionable_feedback.global_skills_feedback",
-            "Global skills feedback",
-          ),
-          ...domainSummaryBlocks("actionable_feedback.tasks_feedback", "Tasks feedback"),
-          ...domainSummaryBlocks(
-            "actionable_feedback.relating_feedback",
-            "Relating feedback",
-          ),
           {
             id: "actionable_feedback_overall_priorities",
             type: "list",
             label: "Overall priorities",
             placeholder: "Area, current level, steps, expected outcome",
-          },
-          {
-            id: "actionable_feedback_cultural_linguistic_considerations",
-            type: "list",
-            label: "Cultural & linguistic considerations",
-          },
-          {
-            id: "actionable_feedback_language_adaptations",
-            type: "list",
-            label: "Language adaptations",
           },
         ],
       },

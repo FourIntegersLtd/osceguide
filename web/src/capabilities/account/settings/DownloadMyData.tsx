@@ -10,7 +10,7 @@ import { settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 /**
  * The self-serve subject access request (E-5): everything this account owns,
- * as one JSON file the browser saves rather than displays.
+ * as a PDF to read or one JSON file, which the browser saves rather than displays.
  *
  * `GET /me/export` answers the object directly — `platformRequest` reads
  * JSON regardless of the backend's `Content-Disposition` header, since that
@@ -33,9 +33,14 @@ export function DownloadMyData() {
     }
   };
 
+  // PDF first: it is the one a person reads. JSON is the machine-readable copy.
   const formats = [
     {
-      label: busy ? "Preparing…" : "Download my data",
+      label: "Download as PDF",
+      save: async () => saveBlob(await exportMyDataPdf(), "my-data.pdf"),
+    },
+    {
+      label: "Download as JSON",
       save: async () => {
         const data = await exportMyData();
         saveBlob(
@@ -43,10 +48,6 @@ export function DownloadMyData() {
           "my-data.json",
         );
       },
-    },
-    {
-      label: "Download as PDF",
-      save: async () => saveBlob(await exportMyDataPdf(), "my-data.pdf"),
     },
   ];
 

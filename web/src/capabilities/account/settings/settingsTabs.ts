@@ -4,7 +4,6 @@ export type ProfilePart = "account" | "security" | "data";
 export type SettingsTab =
   | "profile"
   | "preferences"
-  | "exam"
   | "payments"
   | "referrals"
   | "memory"
@@ -19,7 +18,6 @@ export type SettingsTab =
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "profile", label: "Profile" },
   { id: "preferences", label: "Preferences" },
-  { id: "exam", label: "Exam" },
   { id: "payments", label: "Payments" },
   { id: "referrals", label: "Referrals" },
   { id: "memory", label: "Memory" },

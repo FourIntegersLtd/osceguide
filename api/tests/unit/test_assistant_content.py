@@ -20,6 +20,7 @@ from app.features.assistant.content import (
 from app.features.assistant.content.models import FaqEntry
 from app.features.assistant.content.overlay import Overlay, OverlayError, apply
 from app.features.assistant.content.prompts.faq_block import FAQ_BLOCK_HEADER, render_faq_block
+from app.features.assistant.content.prompts.onboarding import OnboardingInstructions
 
 
 def nav(*keys: str) -> tuple[NavItem, ...]:
@@ -125,6 +126,17 @@ def test_help_presents_as_text_help_not_a_persona(surface: str) -> None:
     greeting = resolve_content_pack(ClientProfile(surface=surface, exam="sca")).greetings["help"]
     assert "Athena" not in greeting
     assert greeting.startswith("Hi, this is Help.")
+
+
+@pytest.mark.parametrize("phase", ["intro", "demo"])
+def test_onboarding_answers_whatever_the_learner_says_before_returning_to_the_scene(phase: str) -> None:
+    """C-54: off-script speech gets an answer, never silence; the script comes second."""
+    instructions = OnboardingInstructions("How would you respond?", "I'm scared.", phase=phase)
+    assert (
+        instructions.get_onboarding_instructions()
+        .rstrip()
+        .endswith("Never stay silent after the learner speaks. If you are unsure, say so and move on.")
+    )
 
 
 def test_the_community_prompt_is_athena_writing_like_a_person_without_lists() -> None:

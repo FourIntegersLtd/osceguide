@@ -41,20 +41,11 @@ describe("feedback rendered from the rubric", () => {
     });
     assert.deepEqual(
       model.blocks.map((block) => block.title),
-      ["Global skills", "Clinical analysis", "Actionable feedback"],
+      ["Global skills", "Clinical analysis", "Priorities"],
     );
-    const actionable = model.blocks[2];
-    assert.ok(actionable?.kind === "section");
-    assert.deepEqual(actionable.answers, [
-      {
-        type: "group",
-        role: "other",
-        label: "Tasks feedback",
-        answers: [
-          { type: "text", role: "other", label: "Score", text: "A" },
-          { type: "list", role: "strength", label: "Strengths", items: ["Open question first"] },
-        ],
-      },
+    const priorities = model.blocks[2];
+    assert.ok(priorities?.kind === "section");
+    assert.deepEqual(priorities.answers, [
       {
         // The second, empty priority is dropped rather than drawn as a blank card.
         type: "records",

@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { tabsFor } from "@/capabilities/account/settings/settingsTabs";
 
-test("every consumer account sees the Referrals tab, as checkout and the code route already allow", () => {
+test("every consumer account sees the Referrals tab and no Exam tab (the exam type is on Profile)", () => {
   assert.deepEqual(
     tabsFor("train").map((tab) => tab.id),
-    ["profile", "preferences", "exam", "payments", "referrals", "memory"],
+    ["profile", "preferences", "payments", "referrals", "memory"],
   );
 });
 

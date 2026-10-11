@@ -22,7 +22,12 @@ SCA_RESULT = {
         "missed_history": ["Pack-year smoking history"],
         "safety_considerations": ["Haemoptysis not asked about"],
     },
-    "actionable_feedback": {"overall_priorities": ["Signpost before examining"]},
+    "actionable_feedback": {
+        "overall_priorities": ["Signpost before examining"],
+        # Keys a mark stored before SCA stopped asking for them (its frozen rubric still had them).
+        "tasks_feedback": {"improvements": ["Repeated tasks note"]},
+        "language_adaptations": ["Generic language note"],
+    },
 }
 
 
@@ -75,6 +80,9 @@ async def test_tutor_gets_source_transcript_marking_and_opening_line(monkeypatch
         "Pack-year smoking history",
         "Haemoptysis not asked about",
         "Signpost before examining",
+        # An older mark still renders whole: the walk is over the stored payload.
+        "Repeated tasks note",
+        "Generic language note",
     ):
         assert expected in text
     assert "Edited later" not in text

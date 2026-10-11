@@ -74,8 +74,9 @@ export function VoiceRoom({
       onDisconnected={handleDisconnected}
       onError={(error) => onError?.(error)}
     >
-      <RoomAudioRenderer />
       {children}
+      {/* Last, not first: its hidden div ahead of the children gave the first one a `space-y-*` top margin. */}
+      <RoomAudioRenderer />
     </LiveKitRoom>
   );
 }

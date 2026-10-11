@@ -18,6 +18,7 @@ import {
 // field on `UserRead` — the route already returns it.
 export type Me = components["schemas"]["UserRead"] & { avatar_url?: string | null };
 export type Entitlement = components["schemas"]["EntitlementSummary"];
+export type MyEntitlements = components["schemas"]["MyEntitlements"];
 export type Plan = components["schemas"]["PlanRead"];
 export type Receipt = components["schemas"]["ReceiptRead"];
 export type Referral = components["schemas"]["ReferralRead"];
@@ -47,8 +48,8 @@ export function readAchievements(signal?: AbortSignal): Promise<Achievements> {
   return platformRequest<Achievements>("/api/v1/me/achievements", { signal });
 }
 
-export function listEntitlements(signal?: AbortSignal): Promise<{ items: Entitlement[] }> {
-  return platformRequest<{ items: Entitlement[] }>("/api/v1/me/entitlements", { signal });
+export function listEntitlements(signal?: AbortSignal): Promise<MyEntitlements> {
+  return platformRequest<MyEntitlements>("/api/v1/me/entitlements", { signal });
 }
 
 export function listPlans(signal?: AbortSignal) {

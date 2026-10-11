@@ -3,6 +3,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import {
+  HiOutlineAcademicCap,
   HiOutlineBuildingOffice2,
   HiOutlineCamera,
   HiOutlineCheck,
@@ -28,7 +29,7 @@ import ChangePassword from "@/capabilities/account/settings/ChangePassword";
 import CvPanel from "@/capabilities/account/settings/CvPanel";
 import { CloseAccount } from "@/capabilities/account/settings/CloseAccount";
 import { DownloadMyData } from "@/capabilities/account/settings/DownloadMyData";
-import { SettingsTile, settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
+import { SettingsRow, SettingsRows, SettingsTile, settingsMeta, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { TwoFactorPanel } from "@/capabilities/account/settings/TwoFactorPanel";
 
@@ -254,7 +255,16 @@ function AccountForm({
             <Input id="email" type="email" label="Email" value={user.email} disabled />
           </div>
 
-          {exam !== null ? <Input id="exam" label="Exam" value={exam} disabled /> : null}
+          {exam !== null ? (
+            <SettingsRows>
+              <SettingsRow
+                icon={HiOutlineAcademicCap}
+                title="Exam type"
+                meta="Chosen at sign-up. Contact us to change it"
+                trailing={<span className="text-osce-body text-ink">{exam}</span>}
+              />
+            </SettingsRows>
+          ) : null}
 
           <div className="flex flex-wrap justify-end gap-2">
             {passwordHere ? (

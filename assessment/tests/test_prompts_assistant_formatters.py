@@ -1,39 +1,8 @@
-"""The dashboard and consulting-doctor prompts render from data alone."""
+"""The consulting-doctor prompts render from data alone."""
 
 from __future__ import annotations
 
-from osce_assessment.prompts import AthenaDoctorFormatter, DashboardFeedbackPromptFormatter, ManagementPlanFormatter
-
-
-def test_dashboard_aggregates_recent_improvements_without_duplicates() -> None:
-    feedback = [
-        {"created_at": "2026-01-02", "actionable_feedback": {"global_skills_feedback": {"improvements": ["Signpost more", "Signpost more"]}, "tasks_feedback": {"improvements": ["Safety net"]}}},
-        {"created_at": "2026-01-01", "actionable_feedback": {"relating_feedback": {"improvements": ["Reflect emotion"]}}},
-    ]
-    aggregated = DashboardFeedbackPromptFormatter.aggregate_actionable_feedback(feedback)
-    assert aggregated == {"global_skills": {"improvements": ["Signpost more"]}, "tasks": {"improvements": ["Safety net"]}, "relating": {"improvements": ["Reflect emotion"]}}
-    prompt = DashboardFeedbackPromptFormatter.format_actionable_feedback_for_llm(aggregated)
-    assert "What you noticed: Signpost more" in prompt
-    assert "What you noticed: Safety net" in prompt
-    assert "What you noticed: Reflect emotion" in prompt
-
-
-def test_dashboard_with_no_feedback_asks_rather_than_inventing_observations() -> None:
-    """With nothing observed the coach opens the area as a question; it never claims to have seen something."""
-    prompt = DashboardFeedbackPromptFormatter.format_actionable_feedback_for_llm(DashboardFeedbackPromptFormatter.aggregate_actionable_feedback([]))
-    assert "Ask how they feel their clinical approach is going." in prompt
-    assert "Ask what they find hardest about clinical tasks." in prompt
-    assert "What you noticed" not in prompt
-
-
-def test_dashboard_prompt_states_the_role_and_does_not_open_with_a_greeting() -> None:
-    """The session speaks the greeting, so the prompt opening its own line made the coach repeat itself."""
-    prompt = DashboardFeedbackPromptFormatter.format_actionable_feedback_for_llm(
-        DashboardFeedbackPromptFormatter.aggregate_actionable_feedback([])
-    )
-    assert "<role>" in prompt
-    assert "You have already greeted them" in prompt
-    assert "We've had a chance to observe" not in prompt
+from osce_assessment.prompts import AthenaDoctorFormatter, ManagementPlanFormatter
 
 
 def test_athena_doctor_prompt_embeds_records_and_the_full_plan() -> None:

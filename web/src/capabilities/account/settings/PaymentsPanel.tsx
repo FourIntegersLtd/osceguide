@@ -1,138 +1,90 @@
 "use client";
 
-import { HiOutlineBuildingOffice2, HiOutlineClock, HiOutlineCreditCard } from "react-icons/hi2";
+import { useEffect } from "react";
+import { HiOutlineBuildingOffice2, HiOutlineClock, HiOutlineCreditCard, HiOutlineSparkles } from "react-icons/hi2";
 import { AsyncBoundary, productTokens, Panel } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
-import { formatLongDate } from "@/foundation/format";
 import { useSession } from "@/foundation/session";
-import {
-  listEntitlements,
-  listPlans,
-  listReceipts,
-  type Entitlement,
-  type Receipt,
-} from "@/capabilities/account/api";
-import { latestLiveEnd, paidAccess } from "@/capabilities/account/access";
-import PlanPicker from "@/capabilities/account/settings/PlanPicker";
+import { listEntitlements, listPlans, listReceipts, type Receipt } from "@/capabilities/account/api";
+import { currentPlanView, type CurrentPlanView } from "@/capabilities/account/access";
+import PlanPicker, { UPGRADE_LEAD } from "@/capabilities/account/settings/PlanPicker";
 import { plansForAccount } from "@/capabilities/account/settings/plansForAccount";
 import { SUPPORT_EMAIL } from "@/foundation/support";
 import ReceiptList from "@/capabilities/account/settings/ReceiptList";
-import { DotEyebrow, SettingsRow, SettingsRows, StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
+import { SettingsRow, SettingsRows, StatusPill, settingsSub } from "@/capabilities/account/settings/SettingsKit";
 import { SettingsTabShell } from "@/capabilities/account/settings/SettingsTabShell";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 
 const { b2cLink } = productTokens;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+/** What full access gives. The product has no courses, so this never mentions any. */
+const FULL_ACCESS =
+  "Full access includes every practice station, the whole study library (A to Z summaries, slides and podcasts), debriefs with Athena and practice with colleagues";
 
-/** A free trial still running: when it ends, and the whole days left as the page loaded. */
-interface Trial {
-  endsAt: string;
-  daysLeft: number;
-}
+const PLAN_ICON = {
+  free: HiOutlineSparkles,
+  trial: HiOutlineClock,
+  paid: HiOutlineCreditCard,
+  organisation: HiOutlineBuildingOffice2,
+} as const;
 
 /**
- * The retiring client's Payments tab: one "Payments" card.
+ * Your plan: what you hold now, the one-off plans you can buy, and your receipts.
  *
- * With live access it says so — Premium, until when, the plan and its
- * receipt. Without it, it is the plan picker and nothing else, as the old
- * `PaymentsUpgrade` was. The old screen switched on a
- * `has_paid` flag; here the switch is a live entitlement, because an
- * institution's grant is access too and must not be offered a checkout.
- *
- * A live grant is `live === true` and nothing else. `list_for_user` returns
- * revoked and expired rows too, and reading the list as "what I have" is how a
- * revoked entitlement went on unlocking stations.
+ * Access is fixed-term and paid once (`mode=payment`): nothing renews, so there
+ * is no subscription to manage. "Current plan" is `currentPlanView` over the
+ * live entitlements, the trial allowance and the newest receipt. A live grant
+ * is `live === true` and nothing else: `/me/entitlements` returns revoked and
+ * expired rows too.
  *
  * Entitlements and receipts load together so a failure is an error and never
  * falls through to the plans: a paying person must not be asked to pay again
- * because of a network blip.
+ * because of a network blip. Checkout opens in a new tab, so both are read
+ * again when this tab is shown again and the plan updates on return.
  */
 export default function PaymentsPanel() {
-  const state = useAsync(
-    async (signal) => {
-      const [entitlements, receipts] = await Promise.all([
-        listEntitlements(signal),
-        listReceipts(signal),
-      ]);
-      // A trial is live too, but it is what the plans are for: somebody still
-      // inside it is offered them, as the old screen's `has_paid` flag did.
-      return {
-        live: paidAccess(entitlements.items),
-        trial: runningTrial(entitlements.items),
-        receipts,
-      };
-    },
-    [],
-  );
+  const state = useAsync(async (signal) => {
+    const [entitlements, receipts] = await Promise.all([listEntitlements(signal), listReceipts(signal)]);
+    return { plan: currentPlanView(entitlements, new Date()), receipts };
+  }, []);
+  const { reload } = state;
+
+  useEffect(() => {
+    const onShow = () => {
+      if (document.visibilityState === "visible") reload();
+    };
+    document.addEventListener("visibilitychange", onShow);
+    return () => document.removeEventListener("visibilitychange", onShow);
+  }, [reload]);
 
   return (
     <SettingsTabShell>
+      <B2CHero title="Your plan">{FULL_ACCESS}</B2CHero>
       <AsyncBoundary state={state}>
-        {({ live, trial, receipts }) =>
-          live.length > 0 ? (
-            <ActivePlan live={live} receipts={receipts} />
-          ) : (
-            <Plans trial={trial} />
-          )
-        }
+        {({ plan, receipts }) => (
+          <>
+            <CurrentPlan plan={plan} />
+            {plan.upgrade ? <Upgrade /> : null}
+            <Receipts receipts={receipts} paid={plan.kind === "paid"} />
+          </>
+        )}
       </AsyncBoundary>
     </SettingsTabShell>
   );
 }
 
-/**
- * Premium, active, and the facts behind it.
- *
- * The plan and start date come from the newest receipt, which is the purchase
- * that set the access up; "Valid until" is the latest end among live grants,
- * so two grants for one exam (a purchase and its renewal) read as one line
- * rather than two. A grant with no end date means open-ended access.
- */
-function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt[] }) {
-  const latest = receipts[0] ?? null;
-  const endsAt = latestLiveEnd(live);
-  const plan = latest?.plan_label ?? grantLabel(live);
-
-  const purchased = live.some((entitlement) => entitlement.source === "purchase");
-  const facts = [
-    latest?.plan_start_date ? `Started ${latest.plan_start_date}` : null,
-    endsAt ? `Valid until ${formatLongDate(endsAt)}` : "No end date",
-  ].filter((fact): fact is string => fact !== null);
-
+function CurrentPlan({ plan }: { plan: CurrentPlanView }) {
   return (
-    <>
-      <B2CHero eyebrow={<DotEyebrow tone="ok">Your plan</DotEyebrow>} title={plan}>
-        {endsAt
-          ? `Full access until ${formatLongDate(endsAt)}: every station, the study library and debriefs with Athena.`
-          : "You have full access: every station, the study library and debriefs with Athena."}
-      </B2CHero>
-
-      <Panel title={purchased ? "Your own plan" : "Organisation access"}>
-        <SettingsRows>
-          <SettingsRow
-            icon={purchased ? HiOutlineCreditCard : HiOutlineBuildingOffice2}
-            title={plan}
-            meta={facts.join(" · ")}
-            trailing={<StatusPill tone="ok">Active</StatusPill>}
-          />
-        </SettingsRows>
-      </Panel>
-
-      {receipts.length > 0 ? (
-        <Panel title="Receipts">
-          <ReceiptList receipts={receipts} />
-        </Panel>
-      ) : purchased ? (
-        <p className={settingsSub}>
-          Receipt unavailable.{" "}
-          <a href={`mailto:${SUPPORT_EMAIL}`} className={b2cLink}>
-            Contact support
-          </a>{" "}
-          if you need confirmation.
-        </p>
-      ) : null}
-    </>
+    <Panel title="Current plan">
+      <SettingsRows>
+        <SettingsRow
+          icon={PLAN_ICON[plan.kind]}
+          title={plan.title}
+          meta={plan.meta}
+          trailing={plan.active ? <StatusPill tone="ok">Active</StatusPill> : null}
+        />
+      </SettingsRows>
+    </Panel>
   );
 }
 
@@ -143,93 +95,49 @@ function ActivePlan({ live, receipts }: { live: Entitlement[]; receipts: Receipt
  * listing PLAB and ORTHO beside SCA sold an SCA account a library every other
  * screen hides; checkout refuses those plans too (`billing/service_checkout.py`).
  * With no exam yet, every plan is on offer, because what they buy becomes it.
+ * Somebody with a running purchase may buy a different plan; it starts where
+ * the running access ends.
  */
-function Plans({ trial }: { trial: Trial | null }) {
+function Upgrade() {
   const plans = useAsync((signal) => listPlans(signal), []);
   const { session } = useSession();
   const examCode = session?.user.exam_code ?? null;
 
   return (
-    <AsyncBoundary state={plans}>
-      {(page) => {
-        const onSale = plansForAccount(page.items, examCode);
-        const hero = (
-          <B2CHero
-            eyebrow={<DotEyebrow tone="warning">Your plan</DotEyebrow>}
-            title={trial ? `Free trial, ${daysLeftLabel(trial.daysLeft)}` : "Choose a plan"}
-          >
-            Choose a plan to unlock every station, study material and practice with colleagues.
-          </B2CHero>
-        );
-        if (onSale.length === 0) {
-          return (
-            <>
-              {hero}
-              <p className={settingsSub}>
-                There are no plans on sale at the moment. Get in touch and we will set your access up.
-              </p>
-            </>
+    <Panel title="Upgrade" description={UPGRADE_LEAD}>
+      <AsyncBoundary state={plans}>
+        {(page) => {
+          const onSale = plansForAccount(page.items, examCode);
+          // Keyed by exam so a changed exam resets the selected plan.
+          return onSale.length > 0 ? (
+            <PlanPicker key={examCode ?? "any"} plans={onSale} />
+          ) : (
+            <p className={settingsSub}>
+              There are no plans on sale at the moment. Get in touch and we will set your access up.
+            </p>
           );
-        }
-        // Keyed by exam so a changed exam resets the selected plan.
-        return (
-          <>
-            {hero}
-            <Panel title="Choose the option that suits you best">
-              <PlanPicker key={examCode ?? "any"} plans={onSale} />
-            </Panel>
-            {trial ? (
-              <Panel title="Your free trial">
-                <SettingsRows>
-                  <SettingsRow
-                    icon={HiOutlineClock}
-                    title="Free trial"
-                    meta={`Ends ${formatLongDate(trial.endsAt)}`}
-                    trailing={<StatusPill tone="ok">Active</StatusPill>}
-                  />
-                </SettingsRows>
-              </Panel>
-            ) : null}
-          </>
-        );
-      }}
-    </AsyncBoundary>
+        }}
+      </AsyncBoundary>
+    </Panel>
   );
 }
 
-/**
- * The trial somebody is still inside, if any.
- *
- * Days are counted here, in the loader, so rendering stays pure; a trial that
- * ends later today still reads "1 day left".
- */
-function runningTrial(entitlements: Entitlement[]): Trial | null {
-  const trial = entitlements.find(
-    (entitlement) => entitlement.live && entitlement.source === "trial" && entitlement.ends_at !== null,
+function Receipts({ receipts, paid }: { receipts: Receipt[]; paid: boolean }) {
+  if (receipts.length > 0) {
+    return (
+      <Panel title="Receipts">
+        <ReceiptList receipts={receipts} />
+      </Panel>
+    );
+  }
+  if (!paid) return null;
+  return (
+    <p className={settingsSub}>
+      Receipt unavailable.{" "}
+      <a href={`mailto:${SUPPORT_EMAIL}`} className={b2cLink}>
+        Contact support
+      </a>{" "}
+      if you need confirmation.
+    </p>
   );
-  if (!trial?.ends_at) return null;
-  const daysLeft = Math.max(1, Math.ceil((new Date(trial.ends_at).getTime() - Date.now()) / DAY_MS));
-  return { endsAt: trial.ends_at, daysLeft };
-}
-
-function daysLeftLabel(days: number): string {
-  return days === 1 ? "1 day left" : `${days} days left`;
-}
-
-/**
- * The plan line for access nobody paid for here.
- *
- * `org_grant`, `sso_tenant` and the rest are the backend's own spelling
- * (`entitlements/domain.py`). A `capitalize` class over the raw value read
- * "From Your Org_grant".
- */
-function grantLabel(live: Entitlement[]): string {
-  const named: Record<string, string> = {
-    purchase: "Purchased access",
-    org_grant: "Access from your organisation",
-    sso_tenant: "Access from your institution",
-    admin: "Access from the OSCE Guide team",
-  };
-  const source = live[0]?.source ?? "";
-  return named[source] ?? source.replace(/_/g, " ");
 }

@@ -195,6 +195,7 @@ console, billing, voice, SSO and invitations reach production unverified.
 4. **Rollback in one command**, written down: Railway redeploy for the api, Vercel
    instant rollback for web, the workers' existing rollback input.
 5. No feature-flag system until a second real need appears.
+6. **Content gate**: `/health` `checks.content` and `promote-api` Gates 3 and 6 (see `.claude/rules/staff-console.md`).
 
 ## Order of work
 

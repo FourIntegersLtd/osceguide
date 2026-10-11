@@ -128,16 +128,6 @@ export function StatusPill({ tone = "neutral", children }: { tone?: PillTone; ch
   );
 }
 
-/** A hero eyebrow led by a status dot (canvas `train-settings-payments`). */
-export function DotEyebrow({ tone, children }: { tone: PillTone; children: ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span className={cn("h-[7px] w-[7px] rounded-full", PILL_DOT[tone])} aria-hidden />
-      {children}
-    </span>
-  );
-}
-
 /** A field label over its control (canvas `.lab`). */
 export const settingsLabel = "mb-1.5 block text-osce-meta font-medium text-ink";
 /** The muted sentence that explains a card or a field (canvas `.sub`, `.meta`). */

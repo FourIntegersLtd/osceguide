@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BarVisualizer,
   useConnectionState,
@@ -246,11 +246,19 @@ function ConsultationLiveStage({
 
 /**
  * Live captions from the room's transcription stream, off unless asked for.
- * Only the last few lines: the full transcript is on the transcript step.
+ * A scrollable window of recent lines that follows the newest one unless the
+ * candidate has scrolled back; the full transcript is on the transcript step.
  */
 function LiveCaptions() {
   const room = useRoomContext();
   const [lines, setLines] = useState<CaptionLine[]>([]);
+  const scroller = useRef<HTMLDivElement>(null);
+  const pinnedToEnd = useRef(true);
+
+  useEffect(() => {
+    const element = scroller.current;
+    if (element && pinnedToEnd.current) element.scrollTop = element.scrollHeight;
+  }, [lines]);
 
   useEffect(() => {
     const onTranscription = (segments: TranscriptionSegment[], participant?: Participant) => {
@@ -259,7 +267,7 @@ function LiveCaptions() {
         addCaptions(
           previous,
           segments.map((segment) => ({ id: segment.id, speaker, text: segment.text, at: segment.firstReceivedTime })),
-          8,
+          40,
         ),
       );
     };
@@ -271,9 +279,14 @@ function LiveCaptions() {
 
   return (
     <div
+      ref={scroller}
       aria-live="polite"
       aria-label="Live captions"
-      className="mx-2 flex h-36 shrink-0 flex-col justify-end overflow-hidden rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-body [mask-image:linear-gradient(to_bottom,transparent,black_1.5rem)]"
+      onScroll={(event) => {
+        const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+        pinnedToEnd.current = scrollHeight - scrollTop - clientHeight < 16;
+      }}
+      className="mx-2 h-36 shrink-0 overflow-y-auto rounded-osce-md border border-osce-border bg-osce-surface px-3 py-2 text-osce-body"
     >
       {lines.length === 0 ? (
         <p className="text-b2c-text-muted">Captions appear here as you speak.</p>
@@ -281,7 +294,9 @@ function LiveCaptions() {
         <div className="space-y-1">
           {lines.map((line) => (
             <p key={line.id} className="text-osce-ink-900">
-              <span className="mr-2 font-medium text-b2c-text-secondary">{line.speaker === "you" ? "You" : "Patient"}</span>
+              <span className={cn("mr-2 font-semibold", line.speaker === "you" ? "text-osce-accent" : "text-b2c-text-secondary")}>
+                {line.speaker === "you" ? "You" : "Patient"}
+              </span>
               {line.text}
             </p>
           ))}

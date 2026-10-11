@@ -1,7 +1,6 @@
 """The tutor who remembers: a dashboard prompt rendered from what is on file about one learner.
 
-Where ``dashboard_feedback`` casts a peer who has seen patterns but no
-particular consultation, this persona knows the learner: which consultations
+A tutor persona that knows the learner: which consultations
 they ran and how each went, what a debrief agreed, what they said last time,
 what they have been reading. Everything it may say about the past is in the
 brief or comes back from a tool; the prompt forbids the rest.

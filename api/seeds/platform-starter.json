@@ -514,145 +514,10 @@
             },
             {
               "id": "actionable_feedback",
-              "title": "Actionable feedback",
+              "title": "Priorities",
               "instructions": "Actionable feedback for the doctor",
               "kind": "section",
               "fields": [
-                {
-                  "id": "global_skills_feedback",
-                  "label": "Global skills feedback",
-                  "type": "group",
-                  "required": true,
-                  "role": "other",
-                  "instructions": "Analysis and recommendations for global consultation skills",
-                  "fields": [
-                    {
-                      "id": "score",
-                      "label": "Score",
-                      "type": "shortText",
-                      "required": true,
-                      "role": "other",
-                      "instructions": "Overall domain score (R/A/G)"
-                    },
-                    {
-                      "id": "strengths",
-                      "label": "Strengths",
-                      "type": "list",
-                      "required": true,
-                      "role": "strength",
-                      "instructions": "List specific moments with timestamps showing effective behavior and impact.\n        Example: \"Excellent use of silence at [3:45] when patient became emotional\" ",
-                      "minItems": 2
-                    },
-                    {
-                      "id": "improvements",
-                      "label": "Improvements",
-                      "type": "list",
-                      "required": true,
-                      "role": "improvement",
-                      "instructions": "List specific moments with timestamps showing what went wrong and how to improve.\n        Example: \"At [5:20] used medical jargon without explanation - use plain English instead\" ",
-                      "minItems": 2
-                    },
-                    {
-                      "id": "suggested_actions",
-                      "label": "Suggested actions",
-                      "type": "list",
-                      "required": true,
-                      "role": "action",
-                      "instructions": "Concrete steps for improvement",
-                      "minItems": 2
-                    }
-                  ]
-                },
-                {
-                  "id": "tasks_feedback",
-                  "label": "Tasks feedback",
-                  "type": "group",
-                  "required": true,
-                  "role": "other",
-                  "instructions": "Analysis and recommendations for clinical tasks",
-                  "fields": [
-                    {
-                      "id": "score",
-                      "label": "Score",
-                      "type": "shortText",
-                      "required": true,
-                      "role": "other",
-                      "instructions": "Overall domain score (R/A/G)"
-                    },
-                    {
-                      "id": "strengths",
-                      "label": "Strengths",
-                      "type": "list",
-                      "required": true,
-                      "role": "strength",
-                      "instructions": "List specific moments with timestamps showing effective behavior and impact.\n        Example: \"Excellent use of silence at [3:45] when patient became emotional\" ",
-                      "minItems": 2
-                    },
-                    {
-                      "id": "improvements",
-                      "label": "Improvements",
-                      "type": "list",
-                      "required": true,
-                      "role": "improvement",
-                      "instructions": "List specific moments with timestamps showing what went wrong and how to improve.\n        Example: \"At [5:20] used medical jargon without explanation - use plain English instead\" ",
-                      "minItems": 2
-                    },
-                    {
-                      "id": "suggested_actions",
-                      "label": "Suggested actions",
-                      "type": "list",
-                      "required": true,
-                      "role": "action",
-                      "instructions": "Concrete steps for improvement",
-                      "minItems": 2
-                    }
-                  ]
-                },
-                {
-                  "id": "relating_feedback",
-                  "label": "Relating feedback",
-                  "type": "group",
-                  "required": true,
-                  "role": "other",
-                  "instructions": "Analysis and recommendations for interpersonal skills",
-                  "fields": [
-                    {
-                      "id": "score",
-                      "label": "Score",
-                      "type": "shortText",
-                      "required": true,
-                      "role": "other",
-                      "instructions": "Overall domain score (R/A/G)"
-                    },
-                    {
-                      "id": "strengths",
-                      "label": "Strengths",
-                      "type": "list",
-                      "required": true,
-                      "role": "strength",
-                      "instructions": "List specific moments with timestamps showing effective behavior and impact.\n        Example: \"Excellent use of silence at [3:45] when patient became emotional\" ",
-                      "minItems": 2
-                    },
-                    {
-                      "id": "improvements",
-                      "label": "Improvements",
-                      "type": "list",
-                      "required": true,
-                      "role": "improvement",
-                      "instructions": "List specific moments with timestamps showing what went wrong and how to improve.\n        Example: \"At [5:20] used medical jargon without explanation - use plain English instead\" ",
-                      "minItems": 2
-                    },
-                    {
-                      "id": "suggested_actions",
-                      "label": "Suggested actions",
-                      "type": "list",
-                      "required": true,
-                      "role": "action",
-                      "instructions": "Concrete steps for improvement",
-                      "minItems": 2
-                    }
-                  ]
-                },
                 {
                   "id": "overall_priorities",
                   "label": "Overall priorities",
@@ -695,22 +560,6 @@
                       "instructions": "Expected result after implementing improvements"
                     }
                   ]
-                },
-                {
-                  "id": "cultural_linguistic_considerations",
-                  "label": "Cultural linguistic considerations",
-                  "type": "list",
-                  "required": false,
-                  "role": "other",
-                  "instructions": "Specific feedback on cultural and linguistic appropriateness"
-                },
-                {
-                  "id": "language_adaptations",
-                  "label": "Language adaptations",
-                  "type": "list",
-                  "required": false,
-                  "role": "other",
-                  "instructions": "Suggestions for clearer communication with non-native English speakers"
                 }
               ]
             }

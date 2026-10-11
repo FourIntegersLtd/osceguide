@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { meetActions, onboardingPosition, pauseToggle, sceneReply, voiceErrorCopy, voiceStatus } from "./onboardingModel";
+import {
+  meetActions,
+  offersSkipTour,
+  onboardingPosition,
+  pauseToggle,
+  sceneReply,
+  voiceErrorCopy,
+  voiceStatus,
+} from "./onboardingModel";
 
 test("a voice failure reads as whole sentences, whether or not the server's reason ends in a full stop", () => {
   assert.equal(
@@ -20,27 +28,24 @@ test("voice is off until a grant arrives, connecting until the room is up, then 
   assert.equal(voiceStatus({ starting: false, granted: true, connected: true }), "on");
 });
 
-test("Show me how it works waits for Athena's voice, with a way to go on without it", () => {
-  assert.deepEqual(meetActions("off", "voice", "Athena"), {
+test("C-50: the choice is the step; Show me how it works only appears once voice or text is picked", () => {
+  const unchosen = {
     voiceButton: "Turn on Athena's voice",
-    showMeEnabled: false,
+    showMe: false,
     offerTextMode: true,
-  });
-  assert.deepEqual(meetActions("connecting", "voice", "Athena"), {
-    voiceButton: "Turn on Athena's voice",
-    showMeEnabled: false,
-    offerTextMode: true,
-  });
-  assert.deepEqual(meetActions("on", "voice", "Athena"), {
-    voiceButton: null,
-    showMeEnabled: true,
-    offerTextMode: false,
-  });
-  assert.deepEqual(meetActions("off", "text", "Athena"), {
-    voiceButton: null,
-    showMeEnabled: true,
-    offerTextMode: false,
-  });
+    hint: "Pick voice or text first",
+  };
+  assert.deepEqual(meetActions("off", "voice", "Athena"), unchosen);
+  assert.deepEqual(meetActions("connecting", "voice", "Athena"), { ...unchosen, hint: null });
+  const chosen = { voiceButton: null, showMe: true, offerTextMode: false, hint: null };
+  assert.deepEqual(meetActions("on", "voice", "Athena"), chosen);
+  assert.deepEqual(meetActions("off", "text", "Athena"), chosen);
+});
+
+test("C-52: Skip tour is offered on the introduction and the demo, never on the last page", () => {
+  assert.equal(offersSkipTour("meet"), true);
+  assert.equal(offersSkipTour("demo"), true);
+  assert.equal(offersSkipTour("invitation"), false);
 });
 
 test("the session starts where the person is: the introduction, or the scene on screen", () => {

@@ -187,8 +187,8 @@ function DashboardBody({ data }: { data: DashboardData }) {
       )}
 
       {showOnboarding && (
-        <Modal width="min(95vw, 560px)" height="fit-content" onClose={dismissOnboarding}>
-          <OnboardingFlow onComplete={completeOnboarding} />
+        <Modal width="min(95vw, 560px)" height="fit-content" onClose={dismissOnboarding} hideCloseButton>
+          <OnboardingFlow onComplete={completeOnboarding} onSkip={dismissOnboarding} />
         </Modal>
       )}
     </>

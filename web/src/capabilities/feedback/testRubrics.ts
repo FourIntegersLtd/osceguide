@@ -89,12 +89,8 @@ export const SCA = {
       {
         id: "actionable_feedback",
         kind: "section",
-        title: "Actionable feedback",
+        title: "Priorities",
         fields: [
-          field("tasks_feedback", "group", "other", "Tasks feedback", [
-            field("score", "shortText", "other", "Score"),
-            field("strengths", "list", "strength", "Strengths"),
-          ]),
           field("overall_priorities", "records", "action", "Overall priorities", [
             field("area", "shortText", "other", "Area"),
             field("improvement_steps", "list", "action", "Improvement steps"),
@@ -115,6 +111,7 @@ export const SCA = {
       },
       clinical_analysis: { key_positives: ["Exertional pattern elicited"], safety_considerations: ["No red flags asked"] },
       actionable_feedback: {
+        // A key stored before SCA stopped asking for it: the rubric no longer has it, so it is not drawn.
         tasks_feedback: { score: "A", strengths: ["Open question first"] },
         overall_priorities: [{ area: "Red flags", improvement_steps: ["Ask about radiation"] }, { area: "", improvement_steps: [] }],
       },

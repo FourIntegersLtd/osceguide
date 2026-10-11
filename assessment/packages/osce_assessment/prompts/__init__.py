@@ -28,7 +28,6 @@ from .consultation_pacing import (
 )
 from .cv import format_structured_cv_for_llm
 from .debrief_pacing import DEBRIEF_PACING_BLOCK, DEBRIEF_SECONDS, debrief_pacing_payload
-from .dashboard_feedback import DashboardFeedbackPromptFormatter
 from .dashboard_tutor import DashboardTutorFormatter
 from ._rating_text import rating_text
 from .debrief_feedback import NO_MARKING, render_marking
@@ -85,7 +84,6 @@ __all__ = [
     "DEBRIEF_SECONDS",
     "debrief_pacing_payload",
     "pacing_from_payload",
-    "DashboardFeedbackPromptFormatter",
     "DashboardTutorFormatter",
     "DebriefPromptFormatter",
     "ManagementPlanFormatter",

@@ -359,10 +359,9 @@ LOG_ONLY_HANDLERS: dict[str, str] = {
     "app/features/attempts/service_trial.py::trial_stream": (
         "yields a failed snapshot to the stream before returning; the stream is the visible state"
     ),
-    "app/features/health/service.py::check_database": (
+    "app/features/health/service.py::_answers_in_time": (
         "the health report is the visible state: it answers error"
     ),
-    "app/features/health/service.py::check_redis": "the health report is the visible state: it answers error",
     "app/features/identity/service_erasure.py::erase_due_accounts": (
         "the account stays due and the next daily run retries it; log.exception reaches Sentry"
     ),

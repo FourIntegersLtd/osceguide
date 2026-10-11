@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -38,6 +40,7 @@ class _FakeAgent(FakeAgentSession):
         self.replies: list[dict] = []
         self.interrupts = 0
         self.current_agent = MagicMock()
+        self.current_agent.update_instructions = AsyncMock()
 
     def _done(self):
         fut = asyncio.get_event_loop().create_future()
@@ -239,6 +242,76 @@ def test_a_new_scene_cuts_off_whatever_athena_is_still_saying(fake_agent) -> Non
     asyncio.run(scenario())
     assert agent.interrupts == 1
     assert agent.replies[-1]["instructions"] == "Demo scene."
+
+
+def test_a_new_scene_becomes_what_athena_answers_from(fake_agent) -> None:
+    """C-53: a scene's script must outlive its introduction, or the learner's answer is met with the intro again."""
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+
+    async def scenario():
+        with patch.object(session_module, "fetch_scene_instructions", MagicMock(return_value="Demo scene.")):
+            ctx.room.emit("data_received", _packet("scene_change", phase="demo", patientLine="I'm scared."))
+            await asyncio.sleep(0.05)
+
+    asyncio.run(scenario())
+    agent.current_agent.update_instructions.assert_awaited_once_with("Demo scene.")
+
+
+def test_two_scene_changes_in_quick_succession_speak_only_the_second(fake_agent) -> None:
+    """C-53: a slow render of the scene the learner already left must not land after the current one."""
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+
+    def render(_endpoints, _session_id, scene):
+        time.sleep(0.1 if scene["phase"] == "intro" else 0.01)
+        return f"{scene['phase']} scene."
+
+    async def scenario():
+        with patch.object(session_module, "fetch_scene_instructions", render):
+            ctx.room.emit("data_received", _packet("scene_change", phase="intro"))
+            ctx.room.emit("data_received", _packet("scene_change", phase="demo", patientLine="I'm scared."))
+            await asyncio.sleep(0.2)
+
+    asyncio.run(scenario())
+    assert [reply.get("instructions") for reply in agent.replies[1:]] == ["demo scene."]
+    agent.current_agent.update_instructions.assert_awaited_once_with("demo scene.")
+
+
+def test_athena_still_thinking_after_the_wait_says_so_and_asks_again(fake_agent, monkeypatch) -> None:
+    """C-54: an off-script answer must never leave her silent on "thinking"."""
+    monkeypatch.setattr(session_module.handlers, "STALL_TIMEOUT_S", 0.02)
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+
+    async def scenario():
+        agent.emit("agent_state_changed", SimpleNamespace(new_state="thinking"))
+        await asyncio.sleep(0.08)
+
+    asyncio.run(scenario())
+    assert agent.interrupts == 1
+    assert agent.replies[-1] == {"instructions": session_module.handlers.STALL_INSTRUCTION}
+
+
+def test_athena_who_starts_speaking_in_time_is_left_alone(fake_agent, monkeypatch) -> None:
+    """C-54: leaving "thinking" before the wait ends disarms the watchdog, so no recovery reply."""
+    monkeypatch.setattr(session_module.handlers, "STALL_TIMEOUT_S", 0.05)
+    bootstrap = AssistantSession(session_id="unified_1", worker_type="onboarding", candidate_ref="user-1", instructions="Intro.")
+    _, ctx, _ = _run(bootstrap)
+    agent = FakeAgentSession.instances[-1]
+
+    async def scenario():
+        agent.emit("agent_state_changed", SimpleNamespace(new_state="thinking"))
+        await asyncio.sleep(0.01)
+        agent.emit("agent_state_changed", SimpleNamespace(new_state="speaking"))
+        await asyncio.sleep(0.1)
+
+    asyncio.run(scenario())
+    assert agent.interrupts == 0
+    assert len(agent.replies) == 1  # only the opening
 
 
 def test_the_same_scene_announced_twice_is_only_read_once(fake_agent) -> None:

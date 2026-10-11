@@ -1,7 +1,7 @@
 # health
 
 ## Purpose
-Liveness endpoint for Railway and for humans. Reports whether the database and Redis answer.
+Liveness endpoint for Railway and for humans. Reports whether the database and Redis answer, and whether every published platform station is bound to a template (`checks.content`, `degraded` when not).
 
 ## Aggregates & invariants
 None. This slice owns no tables. It is the one reader of procrastinate's own

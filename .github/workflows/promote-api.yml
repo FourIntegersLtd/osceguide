@@ -95,6 +95,7 @@ jobs:
           staging_health=$(curl --fail --silent --show-error --max-time 20 "${STAGING_API_URL}/health")
           echo "Staging says: ${staging_health}"
           echo "status=$(echo "${staging_health}" | jq -r '.status')" >> "$GITHUB_OUTPUT"
+          echo "health=$(echo "${staging_health}" | jq -c '.')" >> "$GITHUB_OUTPUT"
           echo "commit=$(echo "${staging_health}" | jq -r '.commit // ""')" >> "$GITHUB_OUTPUT"
 
       # The commit to promote: the one typed in, or else the one staging runs.
@@ -161,6 +162,7 @@ jobs:
           TARGET_SHA: ${{ steps.target.outputs.sha }}
           STAGING_STATUS: ${{ steps.staging.outputs.status }}
           STAGING_COMMIT: ${{ steps.staging.outputs.commit }}
+          STAGING_HEALTH: ${{ steps.staging.outputs.health }}
         run: |
           set -euo pipefail
           if [ "${STAGING_COMMIT}" != "${TARGET_SHA}" ]; then
@@ -171,6 +173,7 @@ jobs:
             echo "::error::Staging's health is '${STAGING_STATUS}', not 'ok'."
             exit 1
           fi
+          .github/scripts/check_content_bound.sh staging "${STAGING_HEALTH}"
 
       # Gate 4: the staging check. A real sign-in and a real read, through the
       # database, as a person would, so a deploy that is "up" but broken is caught.
@@ -211,6 +214,21 @@ jobs:
               exit 1
             fi
           fi
+
+      # Gate 6: production's content is bound. A deploy never seeds templates or binds
+      # stations, and /health used to say ok while every station had no written brief.
+      - name: "Gate 6: production's content is bound"
+        env:
+          PRODUCTION_API_URL: ${{ vars.PRODUCTION_API_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PRODUCTION_API_URL}" ]; then
+            echo "::error::Set the PRODUCTION_API_URL variable on the production-api environment."
+            exit 1
+          fi
+          production_health=$(curl --fail --silent --show-error --max-time 20 "${PRODUCTION_API_URL}/health")
+          echo "Production says: ${production_health}"
+          .github/scripts/check_content_bound.sh production "${production_health}"
 
       # Every gate passed: fast-forward `production-api`. A plain push (never --force)
       # fails on its own if the branch could not fast-forward.

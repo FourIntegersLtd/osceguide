@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from ..models import Persona
 
+# Without this the scripts below read as "say nothing else", and a learner who
+# asked something off-script was met with silence (C-54).
+OFF_SCRIPT_RULE = """
+OFF-SCRIPT: If the learner says anything off-script (a question, a comment, a joke, an answer to
+something else), answer it in one or two sentences first, then steer back to where the script is.
+Never stay silent after the learner speaks. If you are unsure, say so and move on.
+"""
+
 
 class OnboardingInstructions:
     """The onboarding demo's prompt, built fresh for whichever phase and scene are current."""
@@ -30,9 +38,8 @@ class OnboardingInstructions:
 
     def get_onboarding_instructions(self) -> str:
         """The prompt for this phase: the fixed introduction, or the current demo scene."""
-        if self.phase == "intro":
-            return self._intro_instructions()
-        return self._demo_instructions()
+        script = self._intro_instructions() if self.phase == "intro" else self._demo_instructions()
+        return script + OFF_SCRIPT_RULE
 
     def _intro_instructions(self) -> str:
         """The fixed introduction script, spoken once before any demo scene."""

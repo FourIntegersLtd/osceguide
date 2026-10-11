@@ -10,8 +10,9 @@ import {
   subscribeLiveCoverageHidden,
 } from "@/capabilities/attempt-runner/coverage/preference";
 
-const sectionCard =
-  "flex min-w-0 flex-col overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface";
+const sectionCard = "flex min-w-0 flex-col overflow-hidden bg-osce-surface";
+/** Sections share one frame; a divider sits above each on a narrow screen and to its left on a wide one. */
+const sectionDivider = "border-t border-osce-border lg:border-l lg:border-t-0";
 
 function SectionHeader({ icon: Icon, children }: { icon?: IconType; children: ReactNode }) {
   return (
@@ -23,9 +24,10 @@ function SectionHeader({ icon: Icon, children }: { icon?: IconType; children: Re
 }
 
 /**
- * The consultation as three cards (canvas `train-room`): the room on the
- * left, the reading in the middle, and live marking ("What you've covered")
- * on the right.
+ * The consultation as one square-cornered card split by dividers (canvas
+ * `train-room`): the room on the left, the reading in the middle at the same
+ * width, and live marking ("What you've covered") in a narrower column on the
+ * right.
  *
  * The room holds a microphone, a name and one button; the middle holds
  * everything the candidate is actually reading while they talk; the right
@@ -74,10 +76,10 @@ export function ConsultationScreen({
       {collapsed && <div className="mb-3 flex justify-end">{coverage}</div>}
       <div
         className={cn(
-          "grid grid-cols-1 gap-4 lg:min-h-[420px]",
+          "grid grid-cols-1 overflow-hidden border border-osce-border bg-osce-surface lg:min-h-[420px]",
           fill ? "min-h-0 flex-1" : "lg:h-[60vh]",
           coverage && !collapsed
-            ? "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.9fr)]"
+            ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.6fr)]"
             : "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",
         )}
       >
@@ -97,12 +99,12 @@ export function ConsultationScreen({
           </div>
         </section>
 
-        <section className={cn(sectionCard, "min-h-[320px] lg:min-h-0")}>
+        <section className={cn(sectionCard, sectionDivider, "min-h-[320px] lg:min-h-0")}>
           <SectionHeader icon={asideIcon}>{asideTitle}</SectionHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">{aside}</div>
         </section>
 
-        {coverage && !collapsed && <section className={cn(sectionCard, "lg:min-h-0")}>{coverage}</section>}
+        {coverage && !collapsed && <section className={cn(sectionCard, sectionDivider, "lg:min-h-0")}>{coverage}</section>}
       </div>
 
       {showTerms && (

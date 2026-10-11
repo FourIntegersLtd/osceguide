@@ -26,7 +26,11 @@ are `institution-owner`'s; this is how a mark and an outcome are computed.
   called is not done: 20 domain rules shipped that way (`test_domain_rules_are_reachable`).
 - Results are append-only (`tests/repository/test_results_append_only.py`).
 - Oracles: `tests/fixtures/legacy_schemas/`, `legacy_prompts/` and the contract tests that read
-  them. **Never edit an oracle to make a test pass.**
+  them. **Never edit an oracle to make a test pass.** To stop asking for a legacy field, list its
+  dotted path under `omit` in `seeds/rubric_hints/<exam>.json` (and rename a section with
+  `titles`), then regenerate: the contract test drops `omit` paths from the oracle and refuses
+  one the oracle lacks. A stored mark keeps the rubric frozen on its attempt, so old marks render
+  their old fields (SCA dropped its per-domain summaries and language notes 2026-10-11).
 - The engine (`assessment/`) takes a framework id and `CompetencyFramework`; scoring concerns
   (model, prompt, thresholds) never go on a framework, result shape never on an `EvaluationPolicy`.
   `extra="forbid"` turns a new payload key into a refused framework: after changing

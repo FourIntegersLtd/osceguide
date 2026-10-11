@@ -106,7 +106,7 @@ function ReferralCards({ referral }: { referral: ReferralHistoryRow }) {
                 <span className="capitalize">{referral.payout_status}</span>
               </StatusPill>
             </Fact>
-            <Fact label="Subscription">{(referral.plan_code ?? "").replace("_", " ")}</Fact>
+            <Fact label="Plan">{(referral.plan_code ?? "").replace("_", " ")}</Fact>
           </dl>
         </Panel>
 
