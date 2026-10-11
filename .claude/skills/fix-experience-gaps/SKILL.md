@@ -30,6 +30,11 @@ reads only the rows it will fix, and ends by updating the file. Usage:
    `git add <paths>`), one commit per batch, the row IDs first in the message. Never
    `git stash`, `git checkout`, `git restore` or `git reset`. It never edits `docs/EXPERIENCE-GAPS.md`; the main session
    flips statuses (`fixed <commit>` plus the test name) and appends to the Sessions log.
+   Before the main session pushes, it proves HEAD in a clean worktree (`git worktree add
+   --detach <scratchpad>/wt HEAD`, run `make ci` there with the main checkout's venv on PATH):
+   the shared tree carries other sessions' uncommitted files, so a green run in it says nothing
+   about the commit. `make ci` must run the same commands as the workflow; when CI adds a step,
+   add it to the Makefile in the same commit (2026-10-11: the product-guide check was in CI only).
 5. Run `quality-reviewer` on the round's diff, and the `reviewer` agent (opus) as well on
    every BLOCKS, auth or money row; act on both sets of findings before the next round.
    Then run the journey specs the batch touches, from `web/`: `npm run e2e:train` and/or
