@@ -1816,7 +1816,8 @@ export interface paths {
          * Export Me
          * @description Download everything this account owns: profile, attempts with their
          *     transcripts and marks, and payments. Offered as an attachment, so the
-         *     browser saves it rather than rendering it.
+         *     browser saves it rather than rendering it. `format=pdf` is the same data
+         *     as a file a person can read and print.
          */
         get: operations["identity_export_me"];
         put?: never;
@@ -16945,6 +16946,11 @@ export interface components {
             /** Exam Code */
             exam_code: string | null;
             /**
+             * Has Podcast
+             * @default false
+             */
+            has_podcast: boolean;
+            /**
              * Id
              * Format: uuid
              */
@@ -22530,20 +22536,23 @@ export interface operations {
     };
     identity_export_me: {
         parameters: {
-            query?: never;
+            query?: {
+                format?: "json" | "pdf";
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description The export: JSON by default, the same data as a PDF with `format=pdf`. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["MyDataExport"];
+                    "application/pdf": string;
                 };
             };
             /** @description unauthenticated, account_suspended, account_not_found */
@@ -22553,6 +22562,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

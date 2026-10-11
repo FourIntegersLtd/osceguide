@@ -22228,6 +22228,11 @@
             ],
             "title": "Exam Code"
           },
+          "has_podcast": {
+            "default": false,
+            "title": "Has Podcast",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",

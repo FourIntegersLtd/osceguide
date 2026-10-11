@@ -72,6 +72,7 @@ async def read_many(
                 summary=item.summary,
                 content=None if locked else content,
                 locked=locked,
+                has_podcast=domain.has_podcast(content),
                 exam_code=codes.get(item.exam_id) if item.exam_id else None,
                 specialty=item.specialty,
                 status=item.status,

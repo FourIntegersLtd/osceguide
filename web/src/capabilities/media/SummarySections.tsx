@@ -17,6 +17,7 @@ import type { IconType } from "react-icons";
 import type { ReactNode } from "react";
 import { cn, productTokens as t } from "@/foundation/ui";
 import type { SummarySection } from "@/capabilities/media/api";
+import { boldLead } from "@/capabilities/media/support/text";
 
 const CLINICAL: Record<SummarySection["key"], { title: string; icon: IconType; tone: keyof typeof t.b2cReadingTones }> = {
   red_flags: { title: "Red Flags", icon: HiOutlineExclamationTriangle, tone: "safety" },
@@ -46,14 +47,16 @@ function ToneBlock({
   icon: Icon,
   title,
   children,
+  className,
 }: {
   tone: keyof typeof t.b2cReadingTones;
   icon: IconType;
   title: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <article className={cn("rounded-osce-lg px-[18px] py-4", t.b2cReadingTones[tone].card)}>
+    <article className={cn("w-full rounded-osce-lg px-[18px] py-4", t.b2cReadingTones[tone].card, className)}>
       <h2 className={cn("flex items-center gap-2 text-osce-body font-semibold", t.b2cReadingTones[tone].title)}>
         <Icon className="h-4 w-4 shrink-0" aria-hidden />
         {title}
@@ -63,18 +66,41 @@ function ToneBlock({
   );
 }
 
+/** One list item with its `Label:` in bold. */
+function ListEntry({ entry }: { entry: string }) {
+  const { lead, rest } = boldLead(entry);
+  return (
+    <li className="leading-[22px]">
+      {lead ? <strong className="font-semibold text-osce-ink-900">{lead} </strong> : null}
+      {rest}
+    </li>
+  );
+}
+
+function EntryList({ entries }: { entries: string[] }) {
+  return (
+    <ul className="list-disc space-y-2 pl-[18px]">
+      {entries.map((entry, index) => (
+        <ListEntry key={index} entry={entry} />
+      ))}
+    </ul>
+  );
+}
+
 export function ClinicalSections({ sections }: { sections: SummarySection[] }) {
   return (
-    <div className={"space-y-4"}>
+    <div className="grid w-full gap-4 md:grid-cols-2">
       {sections.map((section) => {
         const meta = CLINICAL[section.key];
         return (
-          <ToneBlock key={section.key} tone={meta.tone} icon={meta.icon} title={meta.title}>
-            <ul className="list-disc pl-[18px]">
-              {section.items.map((entry, index) => (
-                <li key={index}>{entry}</li>
-              ))}
-            </ul>
+          <ToneBlock
+            key={section.key}
+            tone={meta.tone}
+            icon={meta.icon}
+            title={meta.title}
+            className={section.key === "brief_management" ? "md:col-span-2" : undefined}
+          >
+            <EntryList entries={section.items} />
           </ToneBlock>
         );
       })}
@@ -108,7 +134,7 @@ export function PsychosocialSections({ aspects }: { aspects: string[] }) {
   }
 
   return (
-    <div className={"space-y-4"}>
+    <div className="grid w-full items-stretch gap-4 md:grid-cols-2">
       {aspects.map((aspect, index) => {
         const { title, items } = splitAspect(aspect);
         const toneKey =
@@ -118,13 +144,7 @@ export function PsychosocialSections({ aspects }: { aspects: string[] }) {
 
         return (
           <ToneBlock key={index} tone={toneKey} icon={Icon} title={title}>
-            {items.length > 0 ? (
-              <ul className="list-disc pl-[18px]">
-                {items.map((entry, idx) => (
-                  <li key={idx}>{entry}</li>
-                ))}
-              </ul>
-            ) : null}
+            {items.length > 0 ? <EntryList entries={items} /> : null}
           </ToneBlock>
         );
       })}

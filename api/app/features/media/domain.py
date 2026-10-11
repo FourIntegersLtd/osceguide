@@ -175,6 +175,19 @@ def specialty_of(content: dict[str, Any]) -> str | None:
     return one.strip() if isinstance(one, str) and one.strip() else None
 
 
+def has_podcast(content: dict[str, Any] | None) -> bool:
+    """Whether the document names audio: a non-blank `podcast_url` or `audio_url`.
+
+    The same test the web's `podcastUrl` applies, asked of the stored body so a locked
+    item (whose body is withheld) can still say it has a podcast without sending it.
+    """
+    return any(
+        isinstance(content.get(key), str) and content[key].strip() != ""
+        for key in ("podcast_url", "audio_url")
+        if content
+    )
+
+
 def content_updated_at(content: dict[str, Any]) -> datetime | None:
     """The edit date the authoring payload carries, if it carries one.
 

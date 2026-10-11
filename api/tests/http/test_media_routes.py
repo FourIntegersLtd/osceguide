@@ -769,3 +769,35 @@ async def test_publish_is_refused_while_the_pipeline_runs_and_unpublish_allows_d
     assert (await client.delete(f"/api/v1/media/{item['id']}", headers=bearer(admin))).status_code == 204
     again = await client.post(f"/api/v1/media/{item['id']}/unpublish", headers=bearer(admin))
     assert again.status_code == 404
+
+
+async def test_a_listed_summary_says_whether_it_has_a_podcast(
+    client: AsyncClient,
+    make_actor,
+    index: FakeVectorIndex,  # type: ignore[no-untyped-def]
+) -> None:
+    from tests.support.catalog import create_exam
+
+    admin = await make_actor("m-podcast-flag@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    spoken = await publish_item(
+        client, admin, title="Has Audio", content={"podcast_url": "https://x.test/a.mp3"}
+    )
+    legacy = await publish_item(
+        client, admin, title="Has Old Audio", content={"audio_url": "https://x.test/b.mp3"}
+    )
+    silent = await publish_item(client, admin, title="No Audio", content={"podcast_url": "  "})
+    locked = await publish_item(
+        client, admin, title="Locked Audio", exam_code="sca", content={"podcast_url": "https://x.test/c.mp3"}
+    )
+    reader = await make_actor("m-podcast-flag-reader@osceguide.com")
+
+    rows = {
+        row["id"]: row
+        for row in (await client.get("/api/v1/media?kind=summary", headers=bearer(reader))).json()["items"]
+    }
+
+    assert [rows[i["id"]]["has_podcast"] for i in (spoken, legacy, silent)] == [True, True, False]
+    assert rows[locked["id"]]["locked"] is True
+    assert rows[locked["id"]]["content"] is None
+    assert rows[locked["id"]]["has_podcast"] is True

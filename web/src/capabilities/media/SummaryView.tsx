@@ -125,7 +125,7 @@ export function SummaryView({
  * when the modal opens rather than beside the summary, so reading a summary
  * costs one request.
  */
-function SummaryPodcast({ item }: { item: MediaItem }) {
+export function SummaryPodcast({ item }: { item: MediaItem }) {
   const { code: examCode } = useCurrentExam();
   const state = useAsync((signal) => listAllMedia("summary", signal, examCode), [examCode]);
   const [index, setIndex] = useState<number | null>(null);

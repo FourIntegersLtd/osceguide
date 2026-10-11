@@ -73,3 +73,13 @@ export function clockTime(seconds: number): string {
   const whole = Math.max(0, Math.floor(seconds));
   return `${String(Math.floor(whole / 60)).padStart(2, "0")}:${String(whole % 60).padStart(2, "0")}`;
 }
+
+/**
+ * A summary line written `Label: detail` split at the first ": ", so the label can be
+ * bold. A line with no label has an empty `lead`.
+ */
+export function boldLead(entry: string): { lead: string; rest: string } {
+  const colon = entry.indexOf(": ");
+  if (colon === -1) return { lead: "", rest: entry };
+  return { lead: entry.slice(0, colon + 1), rest: entry.slice(colon + 2) };
+}

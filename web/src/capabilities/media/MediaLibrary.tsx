@@ -25,7 +25,8 @@ import {
 } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
 import { MEDIA_KIND_ICON, MediaCard, MediaCardGrid, mediaKindOf } from "@/capabilities/media/MediaCard";
-import { SummaryIndex } from "@/capabilities/media/SummaryIndex";
+import { SummaryIndex, SummaryIndexNav } from "@/capabilities/media/SummaryIndex";
+import type { SummaryView } from "@/capabilities/media/summaryGroups";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
 
 type Filter = MediaKind | "all";
@@ -73,6 +74,7 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
   const { hrefFor } = useSurface();
   const { code: examCode } = useCurrentExam();
   const [filter, setFilter] = useState<Filter>(initialKind ?? "all");
+  const [summaryView, setSummaryView] = useState<SummaryView>("az");
   const [term, setTerm] = useState("");
   const [query, setQuery] = useState("");
 
@@ -173,7 +175,10 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
                   }
                 />
               ) : filter === "summary" ? (
-                <SummaryIndex items={items} hrefFor={hrefFor} />
+                <div className="space-y-6">
+                  <SummaryIndexNav items={items} view={summaryView} onViewChange={setSummaryView} />
+                  <SummaryIndex items={items} view={summaryView} hrefFor={hrefFor} />
+                </div>
               ) : (
                 <MediaGrid items={items} hrefFor={hrefFor} />
               );

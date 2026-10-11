@@ -25,6 +25,8 @@ class MediaRead(BaseModel):
     summary: str | None
     content: dict[str, Any] | None = None
     locked: bool = False
+    # Whether the body names audio. Public like `title`: a locked row still shows its Listen button.
+    has_podcast: bool = False
     exam_code: str | None
     specialty: str | None = None
     status: str

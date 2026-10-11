@@ -19,18 +19,19 @@ import { MEDIA_KIND_ICON } from "@/capabilities/media/MediaCard";
 import { ArticlesLibrary } from "@/capabilities/media/ArticlesLibrary";
 import { PodcastLibrary } from "@/capabilities/media/PodcastLibrary";
 import { SlidesLibrary } from "@/capabilities/media/SlidesLibrary";
-import { SummaryIndex } from "@/capabilities/media/SummaryIndex";
+import { SummaryIndex, SummaryIndexNav } from "@/capabilities/media/SummaryIndex";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
 import { CLIENT_PAGE_SIZE, sortByTitle } from "@/capabilities/media/catalogue";
+import type { SummaryView } from "@/capabilities/media/summaryGroups";
+import { B2CHero } from "@/foundation/ui/B2CHero";
 import { useStudySearch } from "@/capabilities/media/useStudySearch";
 
 const PAGE_COPY: Record<
   MediaKind,
-  { title: string; subtitle: string; emptyTitle: string; emptyDescription: string }
+  { title: string; subtitle?: string; emptyTitle: string; emptyDescription: string }
 > = {
   summary: {
     title: "A to Z",
-    subtitle: "Clinical summaries to revise between stations.",
     emptyTitle: "No summaries yet",
     emptyDescription: "Summaries appear here as they are published for your exam.",
   },
@@ -90,6 +91,7 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
       clientPaged ? listAllMedia(kind, signal, examCode).then(sortByTitle) : Promise.resolve([]),
     [kind, examCode, clientPaged],
   );
+  const [summaryView, setSummaryView] = useState<SummaryView>("az");
   const [shown, setShown] = useState(CLIENT_PAGE_SIZE);
   const everything = catalogue.data ?? [];
 
@@ -176,7 +178,23 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
     <div className="w-full text-left">
       <B2CPageHeader title={copy.title} subtitle={copy.subtitle} />
 
-      {searchEnabled ? searchForm : null}
+      {kind === "summary" && !showSearchResults ? (
+        <B2CHero title="Revise common primary care conditions" className="mb-6">
+          Each summary has a clinical and a psychological section, which you can talk through with Athena.
+        </B2CHero>
+      ) : null}
+
+      {kind === "summary" ? (
+        // Search, tabs and the jump row stay put while the list scrolls.
+        <div className="sticky top-0 z-20 -mx-1 bg-osce-surface px-1 pb-4">
+          {searchForm}
+          {showSearchResults ? null : (
+            <SummaryIndexNav items={state.data ?? []} view={summaryView} onViewChange={setSummaryView} />
+          )}
+        </div>
+      ) : searchEnabled ? (
+        searchForm
+      ) : null}
 
       {showSearchResults ? (
         <MediaSearchResults
@@ -202,7 +220,7 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
                     }
                   />
                 ) : kind === "summary" ? (
-                  <SummaryIndex items={items} hrefFor={hrefFor} />
+                  <SummaryIndex items={items} view={summaryView} hrefFor={hrefFor} />
                 ) : kind === "slide_deck" ? (
                   <SlidesLibrary
                     items={items}
