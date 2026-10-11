@@ -87,6 +87,7 @@ Calls `catalog` to tag a question with an exam, and `stations` to check that a
 station a comment names exists.
 
 - **A question has a category** (`general`, `platform`, `skills`, `exam`); tags are its subtags.
-- **The assistant never answers exam or skills questions.** `reply_as_assistant` (flag
-  `COMMUNITY_ASSISTANT_REPLIES`, off by default) replies to unanswered public general and platform
-  questions with an `is_assistant` post that has no author account.
+- **The assistant never answers exam or skills questions.** `ask` queues
+  `reply_as_assistant` in its own transaction for a public general or platform question; the job
+  answers that one question, if still unanswered, as Athena with an `is_assistant` post that has no
+  author account, and tells the asker on `/me/events` (`community_reply`).

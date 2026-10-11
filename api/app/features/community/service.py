@@ -19,6 +19,8 @@ from app.core.audience import (
     ensure_may_address,
 )
 from app.core.errors import AppError, raise_mapped
+from app.core.events import publish_after_commit, user_topic
+from app.core.jobs import defer_in_transaction
 from app.core.pagination import CursorParams, Page
 from app.features.catalog.service import resolve_exam
 from app.features.community import domain, errors, repository
@@ -36,10 +38,6 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.InvalidCategory: errors.InvalidCategoryError,
     domain.ExamRequired: errors.ExamRequiredError,
 }
-
-# Long enough for a person to get there first.
-ASSISTANT_WAIT = timedelta(minutes=30)
-ASSISTANT_BATCH = 10
 
 Drafter = Callable[[str, str], Awaitable[str]]
 
@@ -82,6 +80,16 @@ async def ask(
         tags=cleaned_tags,
         category=category,
     )
+    if category in domain.ASSISTANT_CATEGORIES and audience == PUBLIC:
+        # The assistant answers from the same transaction that stored the question, so a question
+        # that is kept is a question that gets its answer.
+        await defer_in_transaction(
+            session,
+            queue=domain.ASSISTANT_QUEUE,
+            task=domain.ASSISTANT_TASK,
+            queueing_lock=f"community-reply:{question.id}",
+            args={"post_id": str(question.id)},
+        )
     return await read_one(session, question, viewer_id=author_id)
 
 
@@ -237,24 +245,30 @@ async def list_questions(
     return await read_many(session, questions, viewer_id=viewer_id), next_cursor
 
 
-async def reply_as_assistant(
-    session: AsyncSession, *, draft: Drafter, now: datetime, wait: timedelta = ASSISTANT_WAIT
-) -> int:
-    """Answer each general or platform question nobody has answered, as the OSCE Guide assistant.
+async def reply_as_assistant(session: AsyncSession, post_id: uuid.UUID, *, draft: Drafter) -> bool:
+    """Answer one general or platform question as the OSCE Guide assistant, if it still wants one.
 
     Never an exam or skills question (`domain.ASSISTANT_CATEGORIES`), never one inside an
-    institution's room, and never one a person had `wait` to answer first. The reply has no
-    author account: `is_assistant` says who wrote it. A draft that raises ends the run, so the
-    queue row fails where staff can see it and retry; the question stays unanswered meanwhile.
+    institution's room, one removed since, or one a person answered first. The reply has no author
+    account: `is_assistant` says who wrote it. The asker is told on `/me/events` once it commits. A
+    draft that raises ends the run, so the queue row fails where staff can see it and retry.
     """
-    questions = await repository.unanswered_public_questions(
-        session, categories=domain.ASSISTANT_CATEGORIES, before=now - wait, limit=ASSISTANT_BATCH
+    question = await repository.unanswered_public_question(
+        session, post_id, categories=domain.ASSISTANT_CATEGORIES
     )
-    for question in questions:
-        text = domain.clean(await draft(question.title or "", question.body))
-        domain.ensure_postable(text)
-        await _reply_to(session, question, None, text, audience_of(question), is_assistant=True)
-    return len(questions)
+    if question is None:
+        return False
+    text = domain.clean(await draft(question.title or "", question.body))
+    domain.ensure_postable(text)
+    answer = await _reply_to(session, question, None, text, audience_of(question), is_assistant=True)
+    if question.author_id is not None:
+        publish_after_commit(
+            session,
+            user_topic(question.author_id),
+            "community_reply",
+            {"post_id": str(question.id), "reply_id": str(answer.id)},
+        )
+    return True
 
 
 async def question_detail(session: AsyncSession, question_id: uuid.UUID, *, viewer_id: uuid.UUID) -> PostRead:

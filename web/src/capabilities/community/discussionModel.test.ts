@@ -91,9 +91,9 @@ describe("community categories", () => {
 describe("authorLabel", () => {
   const person = { author_id: "a1", author_name: "Ada", is_assistant: false };
 
-  it("says the OSCE Guide assistant wrote an assistant reply", () => {
-    assert.equal(ASSISTANT_LABEL, "OSCE Guide assistant");
-    assert.equal(authorLabel({ author_id: null, author_name: null, is_assistant: true }, "a1", "Ada"), "OSCE Guide assistant");
+  it("says Athena wrote an assistant reply", () => {
+    assert.equal(ASSISTANT_LABEL, "Athena");
+    assert.equal(authorLabel({ author_id: null, author_name: null, is_assistant: true }, "a1", "Ada"), "Athena");
   });
 
   it("keeps the viewer, a named author and a deleted account as before", () => {

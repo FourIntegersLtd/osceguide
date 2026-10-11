@@ -104,29 +104,24 @@ async def list_questions(
     )
 
 
-async def unanswered_public_questions(
-    session: AsyncSession, *, categories: tuple[str, ...], before: datetime, limit: int
-) -> list[Post]:
-    """Public questions in these categories, asked before `before`, with no live reply, oldest first.
+async def unanswered_public_question(
+    session: AsyncSession, post_id: uuid.UUID, *, categories: tuple[str, ...]
+) -> Post | None:
+    """This question, if it is public, in these categories, still up and with no live reply.
 
     Public only: a question in an institution's room is not the assistant's to answer.
     """
     reply = aliased(Post)
     has_reply = select(reply.id).where(reply.parent_id == Post.id, reply.removed_at.is_(None)).exists()
-    stmt = (
-        select(Post)
-        .where(
-            Post.kind == "question",
-            Post.removed_at.is_(None),
-            Post.visibility == "public",
-            Post.category.in_(categories),
-            Post.created_at <= before,
-            ~has_reply,
-        )
-        .order_by(Post.created_at)
-        .limit(limit)
+    stmt = select(Post).where(
+        Post.id == post_id,
+        Post.kind == "question",
+        Post.removed_at.is_(None),
+        Post.visibility == "public",
+        Post.category.in_(categories),
+        ~has_reply,
     )
-    return list((await session.execute(stmt)).scalars())
+    return (await session.execute(stmt)).scalar_one_or_none()
 
 
 async def list_answers(

@@ -5,17 +5,20 @@ import { mintStreamTicket, platformApiUrl } from "@/foundation/platform-client";
 import { streamUrl } from "./eventStreamProtocol";
 
 /** Every named event `/me/events` can carry. Kept in sync with the backend's `MeEventEnvelope`. */
-export type MeEventName =
-  | "attempt"
-  | "practice.session_updated"
-  | "practice.matched"
-  | "practice.accepted"
-  | "cv.read"
-  | "media.updated"
-  | "station_import.updated"
-  | "station.updated"
-  | "coverage"
-  | "message.received";
+const ME_EVENT_NAMES = [
+  "attempt",
+  "practice.session_updated",
+  "practice.matched",
+  "practice.accepted",
+  "cv.read",
+  "media.updated",
+  "station_import.updated",
+  "station.updated",
+  "coverage",
+  "message.received",
+  "community_reply",
+] as const;
+export type MeEventName = (typeof ME_EVENT_NAMES)[number];
 
 /** A synthetic event this hook invents, never sent by the server: "go re-read your own state". */
 export type MeSignal = MeEventName | "resync";
@@ -101,22 +104,7 @@ class MeEventHub {
         this.emit({ name: raw as MeEventName, data });
       });
     };
-    (
-      [
-        "attempt",
-        "practice.session_updated",
-        "practice.matched",
-        "practice.accepted",
-        "cv.read",
-        "media.updated",
-        "station_import.updated",
-        "station.updated",
-        "coverage",
-        "message.received",
-        "connected",
-        "ping",
-      ] satisfies (MeEventName | "connected" | "ping")[]
-    ).forEach(forward);
+    [...ME_EVENT_NAMES, "connected", "ping"].forEach(forward);
 
     source.onerror = () => {
       source.close();

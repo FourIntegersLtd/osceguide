@@ -335,7 +335,7 @@ class MeEventEnvelope(BaseModel):
     changed data itself, which the client re-fetches.
 
     The events: `attempt`, `practice.session_updated`, `practice.matched`, `practice.accepted`,
-    `cv.read`, `media.updated`, `station_import.updated`, `message.received`, `coverage`.
+    `cv.read`, `media.updated`, `station_import.updated`, `message.received`, `coverage`, `community_reply`.
     """
 
     event: str

@@ -3,10 +3,11 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Back, B2CErrorState, ConfirmModal, Spinner, cn, productTokens } from "@/foundation/ui";
-import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
+import { AthenaIdentity } from "@/foundation/ui/AthenaIdentity";
+import { errorMessage, useAsync, useMeEvents, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { listReplies, readQuestion, removePost, type Post } from "@/capabilities/community/api";
-import { authorLabel, sortReplies, type ReplyOrder } from "@/capabilities/community/discussionModel";
+import { ASSISTANT_LABEL, authorLabel, sortReplies, type ReplyOrder } from "@/capabilities/community/discussionModel";
 import { AnswerQuestion } from "@/capabilities/community/AnswerQuestion";
 import {
   DeleteButton,
@@ -44,6 +45,12 @@ export function QuestionDetail({ questionId }: { questionId: string }) {
     },
     [questionId],
   );
+
+  // Athena's answer is written after the question is asked: the server says when it lands.
+  const { reload } = thread;
+  useMeEvents(["community_reply"], (event) => {
+    if (event.data.post_id === questionId) reload();
+  });
 
   if (thread.loading && thread.data === null) {
     return (
@@ -116,6 +123,16 @@ export function QuestionDetail({ questionId }: { questionId: string }) {
 
 function QuestionByline({ question }: { question: Post }) {
   const viewer = useViewer();
+  if (question.is_assistant) {
+    return (
+      <AthenaIdentity
+        layout="inline"
+        description={null}
+        title={ASSISTANT_LABEL}
+        imageClassName="h-8 w-8"
+      />
+    );
+  }
   return (
     <>
       {authorLabel(question, viewer.id, viewer.name)} · {formatPostedAt(question.created_at)}
@@ -226,9 +243,9 @@ function Answers({ replies, onChanged }: { replies: Post[]; onChanged: () => voi
                   <LinkedText>{replyPost.body}</LinkedText>
                 </p>
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-osce-meta text-b2c-text-muted">
+                  <div className="text-osce-meta text-b2c-text-muted">
                     <QuestionByline question={replyPost} />
-                  </span>
+                  </div>
                   <span className="flex items-center gap-2">
                     <OwnerActions
                       post={replyPost}

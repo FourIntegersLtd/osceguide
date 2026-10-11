@@ -2,6 +2,8 @@
  * Athena, the voice tutor, belongs on clinical surfaces: practice, A to Z,
  * slides, podcasts and the debrief. Contact, Notifications, Settings and
  * Community get text Help only: no voice button, no "Discuss with Athena".
+ * That is the Help dock. On Community Athena still signs the assistant's
+ * written replies under a question (`QuestionDetail`), but never speaks there.
  * The segment after `/app/<workspace>/` decides, so every workspace agrees.
  */
 const TEXT_HELP_ONLY = new Set(["messages", "notifications", "inbox", "settings", "discussion"]);

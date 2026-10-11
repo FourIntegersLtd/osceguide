@@ -1,40 +1,35 @@
-"""Community's background work: the assistant answering questions nobody has."""
+"""Community's background work: the assistant answering a question when it is asked."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import uuid
 
 from app.core.jobs import get_jobs_app
 from app.core.logging import get_logger
 from app.core.settings import get_settings
 from app.features.assistant.service_community import help_drafter as draft_reply
+from app.features.community import domain
 
 log = get_logger(__name__)
-
-
-def utcnow() -> datetime:
-    return datetime.now(UTC)
 
 
 def register() -> None:
     """Wire up community's background jobs on the shared jobs app."""
     app = get_jobs_app()
 
-    @app.periodic(cron="*/10 * * * *")
-    @app.task(name="reply_as_assistant", queue="community")
-    async def reply_as_assistant(timestamp: int = 0) -> None:
-        """Answer each unanswered general or platform question as the OSCE Guide assistant.
+    @app.task(name=domain.ASSISTANT_TASK, queue=domain.ASSISTANT_QUEUE)
+    async def reply_as_assistant(post_id: str) -> None:
+        """Answer one general or platform question as the OSCE Guide assistant, queued by `ask`.
 
-        A no-op while `COMMUNITY_ASSISTANT_REPLIES` is unset. A draft that fails ends the run: the
-        queue row fails in `/platform/jobs` for staff to retry, and the question stays unanswered.
+        A draft that fails (no `OPENAI_API_KEY` included) ends the run: the queue row fails in
+        `/platform/jobs` for staff to retry, and the question stays unanswered.
         """
-        settings = get_settings()
-        if not settings.community_assistant_replies:
-            return
         from app.core.db import job_session
         from app.features.community import service
 
         async with job_session() as session:
-            posted = await service.reply_as_assistant(session, draft=draft_reply(settings), now=utcnow())
+            posted = await service.reply_as_assistant(
+                session, uuid.UUID(post_id), draft=draft_reply(get_settings())
+            )
             if posted:
-                log.info("assistant replies posted", count=posted)
+                log.info("assistant reply posted", post_id=post_id)

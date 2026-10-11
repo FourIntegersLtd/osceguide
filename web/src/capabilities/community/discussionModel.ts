@@ -56,8 +56,8 @@ export function listFilterFor(
   return tab === "exam" ? { category: "exam", examCode } : {};
 }
 
-/** Shown in place of a name on a reply the assistant wrote. Text only: no persona on community. */
-export const ASSISTANT_LABEL = "OSCE Guide assistant";
+/** Shown in place of a name on a reply the assistant wrote: Athena signs it. */
+export const ASSISTANT_LABEL = "Athena";
 
 /**
  * `@somebody`, or the assistant's label. The name is joined by the backend; a deleted account has

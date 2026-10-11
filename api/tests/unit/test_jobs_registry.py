@@ -40,7 +40,7 @@ FEATURE_TASKS = {
     # A partner pilot's spend crossing a threshold. Unregistered, nobody is told
     # until the partner's invoice arrives.
     "check_partner_spend",
-    # Unregistered, general and platform questions stay unanswered even with the flag on.
+    # Unregistered, general and platform questions stay unanswered.
     "reply_as_assistant",
     # Unregistered, a job whose worker died stays `doing` for ever (B32).
     "reclaim_stalled_jobs",
@@ -55,7 +55,6 @@ PERIODIC_TASKS = {
     "sweep_circuits",
     "reindex_material",
     "check_partner_spend",
-    "reply_as_assistant",
     "reclaim_stalled_jobs",
     "warn_expiring_access",
 }

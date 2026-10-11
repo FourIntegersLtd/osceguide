@@ -21,6 +21,9 @@ CATEGORIES = ("general", "platform", "skills", "exam")
 DEFAULT_CATEGORY = "general"
 # The categories the assistant may answer: never the exam or skills ones, which need an expert.
 ASSISTANT_CATEGORIES = ("general", "platform")
+# The queue row `ask` writes for a question the assistant answers; `jobs.register` names the task.
+ASSISTANT_QUEUE = "community"
+ASSISTANT_TASK = "reply_as_assistant"
 
 
 class InvalidCategory(Exception):

@@ -1,33 +1,27 @@
-"""The assistant answers general and platform questions nobody has answered, and nothing else."""
+"""The assistant answers one general or platform question when it is asked, and nothing else."""
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-from sqlalchemy import update
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import jobs
 from app.core.audience import PUBLIC
-from app.core.settings import get_settings
+from app.core.events import PENDING_KEY, user_topic
 from app.features.community import repository, service
 from app.features.community.models import Post
 from app.features.identity import repository as identity_repository
 
 pytestmark = pytest.mark.db
 
-NOW = datetime(2026, 10, 11, 12, 0, tzinfo=UTC)
-LONG_AGO = NOW - timedelta(hours=3)
 
-
-async def a_question(
-    db_session: AsyncSession, author_id: Any, *, category: str, age: timedelta = timedelta(hours=3)
-) -> Post:
-    question = await repository.create_post(
+async def a_question(db_session: AsyncSession, author_id: Any, *, category: str) -> Post:
+    return await repository.create_post(
         db_session,
         kind="question",
         author_id=author_id,
@@ -36,9 +30,6 @@ async def a_question(
         audience=PUBLIC,
         category=category,
     )
-    await db_session.execute(update(Post).where(Post.id == question.id).values(created_at=NOW - age))
-    await db_session.flush()
-    return question
 
 
 async def a_world(db_session: AsyncSession) -> Any:
@@ -52,17 +43,34 @@ async def draft(title: str, body: str) -> str:
     return f"Open Settings, then Security. ({title})"
 
 
-async def test_a_general_question_gets_one_assistant_reply(db_session: AsyncSession) -> None:
+async def queued_for(db_session: AsyncSession, post_id: Any) -> list[str]:
+    rows = await db_session.execute(
+        text("SELECT task_name FROM procrastinate_jobs WHERE args->>'post_id' = :id"), {"id": str(post_id)}
+    )
+    return [row[0] for row in rows]
+
+
+async def test_a_general_question_gets_one_assistant_reply_and_the_asker_is_told(
+    db_session: AsyncSession,
+) -> None:
     asker = await a_world(db_session)
     question = await a_question(db_session, asker, category="general")
+    db_session.info.pop(PENDING_KEY, None)
 
-    posted = await service.reply_as_assistant(db_session, draft=draft, now=NOW)
-    again = await service.reply_as_assistant(db_session, draft=draft, now=NOW)
+    posted = await service.reply_as_assistant(db_session, question.id, draft=draft)
+    again = await service.reply_as_assistant(db_session, question.id, draft=draft)
 
     replies = await repository.list_children(db_session, question.id)
-    assert (posted, again) == (1, 0)
+    assert (posted, again) == (True, False)
     assert [(r.body, r.is_assistant, r.author_id, r.category) for r in replies] == [
         ("Open Settings, then Security. (Where is Settings?)", True, None, "general")
+    ]
+    assert db_session.info[PENDING_KEY] == [
+        (
+            user_topic(asker),
+            "community_reply",
+            {"post_id": str(question.id), "reply_id": str(replies[0].id)},
+        )
     ]
 
 
@@ -71,14 +79,13 @@ async def test_exam_and_skills_questions_are_never_answered(db_session: AsyncSes
     exam = await a_question(db_session, asker, category="exam")
     skills = await a_question(db_session, asker, category="skills")
 
-    posted = await service.reply_as_assistant(db_session, draft=draft, now=NOW)
-
-    assert posted == 0
+    assert await service.reply_as_assistant(db_session, exam.id, draft=draft) is False
+    assert await service.reply_as_assistant(db_session, skills.id, draft=draft) is False
     assert await repository.list_children(db_session, exam.id) == []
     assert await repository.list_children(db_session, skills.id) == []
 
 
-async def test_a_question_someone_has_answered_or_is_too_new_is_left_alone(db_session: AsyncSession) -> None:
+async def test_a_question_someone_has_answered_is_left_alone(db_session: AsyncSession) -> None:
     asker = await a_world(db_session)
     answered = await a_question(db_session, asker, category="platform")
     await repository.create_post(
@@ -89,32 +96,37 @@ async def test_a_question_someone_has_answered_or_is_too_new_is_left_alone(db_se
         audience=PUBLIC,
         parent_id=answered.id,
     )
-    fresh = await a_question(db_session, asker, category="general", age=timedelta(minutes=2))
 
-    assert await service.reply_as_assistant(db_session, draft=draft, now=NOW) == 0
-    assert await repository.list_children(db_session, fresh.id) == []
+    assert await service.reply_as_assistant(db_session, answered.id, draft=draft) is False
+    assert [r.body for r in await repository.list_children(db_session, answered.id)] == ["Human answer."]
 
 
-async def test_the_job_does_nothing_while_the_flag_is_off(db_session: AsyncSession, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+async def test_asking_a_general_or_platform_question_queues_the_reply_and_other_categories_do_not(
+    db_session: AsyncSession,
+) -> None:
+    asker = await a_world(db_session)
+
+    queued = {}
+    for category in ("general", "platform", "skills"):
+        post = await service.ask(
+            db_session,
+            author_id=asker,
+            title="Q",
+            body="Where is Settings?",
+            exam_code=None,
+            category=category,
+        )
+        queued[category] = await queued_for(db_session, post.id)
+
+    assert queued == {"general": ["reply_as_assistant"], "platform": ["reply_as_assistant"], "skills": []}
+
+
+async def test_the_job_answers_the_post_it_is_given(db_session: AsyncSession, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     asker = await a_world(db_session)
     question = await a_question(db_session, asker, category="general")
     _stub(monkeypatch, db_session)
-    monkeypatch.setattr(get_settings(), "community_assistant_replies", False)
 
-    await jobs.get_jobs_app().tasks["reply_as_assistant"].func()
-
-    assert await repository.list_children(db_session, question.id) == []
-
-
-async def test_the_job_answers_a_general_post_when_the_flag_is_on(
-    db_session: AsyncSession, monkeypatch
-) -> None:  # type: ignore[no-untyped-def]
-    asker = await a_world(db_session)
-    question = await a_question(db_session, asker, category="general")
-    _stub(monkeypatch, db_session)
-    monkeypatch.setattr(get_settings(), "community_assistant_replies", True)
-
-    await jobs.get_jobs_app().tasks["reply_as_assistant"].func()
+    await jobs.get_jobs_app().tasks["reply_as_assistant"].func(str(question.id))
 
     replies = await repository.list_children(db_session, question.id)
     assert [r.body for r in replies] == ["Open Settings, then Security. (Where is Settings?)"]
@@ -124,10 +136,9 @@ async def test_a_failing_draft_fails_the_run_and_posts_nothing(db_session: Async
     asker = await a_world(db_session)
     question = await a_question(db_session, asker, category="general")
     _stub(monkeypatch, db_session, drafter=_exploding)
-    monkeypatch.setattr(get_settings(), "community_assistant_replies", True)
 
     with pytest.raises(RuntimeError, match="model down"):
-        await jobs.get_jobs_app().tasks["reply_as_assistant"].func()
+        await jobs.get_jobs_app().tasks["reply_as_assistant"].func(str(question.id))
 
     assert await repository.list_children(db_session, question.id) == []
 
@@ -143,4 +154,3 @@ def _stub(monkeypatch, db_session: AsyncSession, drafter: Any = draft) -> None: 
 
     monkeypatch.setattr("app.core.db.job_session", opener)
     monkeypatch.setattr("app.features.community.jobs.draft_reply", lambda _settings: drafter)
-    monkeypatch.setattr("app.features.community.jobs.utcnow", lambda: NOW)

@@ -125,3 +125,13 @@ def test_help_presents_as_text_help_not_a_persona(surface: str) -> None:
     greeting = resolve_content_pack(ClientProfile(surface=surface, exam="sca")).greetings["help"]
     assert "Athena" not in greeting
     assert greeting.startswith("Hi, this is Help.")
+
+
+def test_the_community_prompt_is_athena_writing_like_a_person_without_lists() -> None:
+    from app.features.assistant.service_community import system_prompt
+
+    prompt = system_prompt()
+
+    assert "You are Athena, the OSCE Guide assistant" in prompt
+    assert "Do not use bullet points, numbered lists, headings or bold" in prompt
+    assert "Never say you are an AI" in prompt
