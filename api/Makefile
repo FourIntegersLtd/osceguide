@@ -73,6 +73,7 @@ arch:
 	poetry run lint-imports
 	poetry run python scripts/check_slice_readmes.py
 	poetry run python scripts/check_data_model.py
+	PYTHONPATH=. poetry run python scripts/build_product_guide.py --check
 
 ci: lint typecheck arch guards test
 
