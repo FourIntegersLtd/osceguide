@@ -15,10 +15,10 @@ import {
   DeleteButton,
   LikeButton,
   LinkedText,
-  authorLabel,
   formatPostedDate,
   useViewer,
 } from "@/capabilities/community/posts";
+import { authorLabel } from "@/capabilities/community/discussionModel";
 
 /**
  * What people said about one station.

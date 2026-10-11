@@ -3858,6 +3858,11 @@
             "title": "Body",
             "type": "string"
           },
+          "category": {
+            "default": "general",
+            "title": "Category",
+            "type": "string"
+          },
           "exam_code": {
             "anyOf": [
               {
@@ -5510,6 +5515,7 @@
               "exam_in_use",
               "exam_not_in_pilot",
               "exam_not_publishable",
+              "exam_required_for_category",
               "exam_rubric_not_ready",
               "fact_check_running",
               "forbidden",
@@ -5529,6 +5535,7 @@
               "invalid_author_filter",
               "invalid_avatar_file",
               "invalid_bucket",
+              "invalid_category",
               "invalid_circuit",
               "invalid_credentials",
               "invalid_cv_file",
@@ -21931,9 +21938,16 @@
             "$ref": "#/components/schemas/AudienceOut"
           },
           "author_id": {
-            "format": "uuid",
-            "title": "Author Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Id"
           },
           "author_name": {
             "anyOf": [
@@ -21950,6 +21964,10 @@
             "title": "Body",
             "type": "string"
           },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -21959,6 +21977,10 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "is_assistant": {
+            "title": "Is Assistant",
+            "type": "boolean"
           },
           "kind": {
             "title": "Kind",
@@ -22029,6 +22051,8 @@
           "title",
           "body",
           "tags",
+          "category",
+          "is_assistant",
           "like_count",
           "liked_by_me",
           "reply_count",
@@ -26298,6 +26322,24 @@
             }
           },
           {
+            "description": "Only questions filed under general, platform, skills or exam.",
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only questions filed under general, platform, skills or exam.",
+              "title": "Category"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page",
             "in": "query",
             "name": "cursor",
@@ -26422,11 +26464,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "invalid_category",
+            "x-codes": [
+              "invalid_category"
+            ]
           }
         },
         "security": [
@@ -26511,11 +26556,13 @@
                 }
               }
             },
-            "description": "empty_content, tag_too_long, too_many_tags, invalid_audience",
+            "description": "empty_content, tag_too_long, too_many_tags, invalid_category, exam_required_for_category, invalid_audience",
             "x-codes": [
               "empty_content",
               "tag_too_long",
               "too_many_tags",
+              "invalid_category",
+              "exam_required_for_category",
               "invalid_audience"
             ]
           },

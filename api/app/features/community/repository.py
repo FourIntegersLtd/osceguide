@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.audience import Audience, ViewerAudiences, addressed_to, visible_to
 from app.core.pagination import keyset_page
@@ -18,7 +19,7 @@ async def create_post(
     session: AsyncSession,
     *,
     kind: str,
-    author_id: uuid.UUID,
+    author_id: uuid.UUID | None,
     body: str,
     audience: Audience,
     title: str | None = None,
@@ -26,6 +27,8 @@ async def create_post(
     exam_id: uuid.UUID | None = None,
     station_id: uuid.UUID | None = None,
     tags: list[str] | None = None,
+    category: str = "general",
+    is_assistant: bool = False,
 ) -> Post:
     """Store a question, reply or station comment as one `Post` row."""
     post = Post(
@@ -39,6 +42,8 @@ async def create_post(
         # Already normalized by `domain.clean_tags` — the repository stores
         # what it is given and repeats no rule.
         tags=tags or [],
+        category=category,
+        is_assistant=is_assistant,
         visibility=str(audience.visibility),
         audience_org_id=audience.org_id,
         audience_group_id=audience.group_id,
@@ -70,6 +75,7 @@ async def list_questions(
     audience: Audience | None = None,
     author_id: uuid.UUID | None = None,
     tag: str | None = None,
+    category: str | None = None,
 ) -> tuple[list[Post], str | None]:
     """Questions this viewer may see, newest first.
 
@@ -83,6 +89,8 @@ async def list_questions(
         stmt = stmt.where(Post.exam_id == exam_id)
     if author_id is not None:
         stmt = stmt.where(Post.author_id == author_id)
+    if category is not None:
+        stmt = stmt.where(Post.category == category)
     if audience is not None:
         # Narrowing to one room, on top of everything the viewer may see.
         stmt = stmt.where(addressed_to(Post, audience))
@@ -94,6 +102,31 @@ async def list_questions(
     return await keyset_page(
         session, stmt, sort_col=Post.created_at, id_col=Post.id, limit=limit, cursor=cursor
     )
+
+
+async def unanswered_public_questions(
+    session: AsyncSession, *, categories: tuple[str, ...], before: datetime, limit: int
+) -> list[Post]:
+    """Public questions in these categories, asked before `before`, with no live reply, oldest first.
+
+    Public only: a question in an institution's room is not the assistant's to answer.
+    """
+    reply = aliased(Post)
+    has_reply = select(reply.id).where(reply.parent_id == Post.id, reply.removed_at.is_(None)).exists()
+    stmt = (
+        select(Post)
+        .where(
+            Post.kind == "question",
+            Post.removed_at.is_(None),
+            Post.visibility == "public",
+            Post.category.in_(categories),
+            Post.created_at <= before,
+            ~has_reply,
+        )
+        .order_by(Post.created_at)
+        .limit(limit)
+    )
+    return list((await session.execute(stmt)).scalars())
 
 
 async def list_answers(

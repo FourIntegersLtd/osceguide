@@ -3,13 +3,21 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { HiOutlineChevronRight } from "react-icons/hi2";
-import { AsyncBoundary, Button, cn, productTokens } from "@/foundation/ui";
+import { AsyncBoundary, Button, Select, cn, productTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
+import { hasCode } from "@/foundation/platform-client";
 import { useCurrentExam } from "@/foundation/session";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { askQuestion, listQuestions, type Post, type Room } from "@/capabilities/community/api";
+import {
+  COMMUNITY_CATEGORIES,
+  authorLabel,
+  composerExamCode,
+  defaultExamChoice,
+  type CommunityCategory,
+} from "@/capabilities/community/discussionModel";
 import { SPECIALTY_TAGS_SORTED } from "@/capabilities/community/specialtyTags";
-import { fieldClass, formatPostedDate, titleFromBody, useViewer, authorLabel, QuestionTags } from "@/capabilities/community/posts";
+import { fieldClass, formatPostedDate, titleFromBody, useViewer, QuestionTags } from "@/capabilities/community/posts";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 import { b2cCard, b2cPanelDivided } from "@/foundation/ui/productTokens";
 
@@ -35,26 +43,26 @@ export const PAGE_SIZE = 100;
 export function QuestionList({
   room,
   roomName,
-  examCode = null,
+  filter = {},
   compose = false,
 }: {
   room: Room;
   roomName: string | null;
-  /** Narrows the list to one exam and drops the composer: the Exam tab only browses. */
-  examCode?: string | null;
+  /** Narrows the list to a category and exam and drops the composer: the Exam tab only browses. */
+  filter?: { category?: CommunityCategory; examCode?: string | null };
   /** Focus the composer on arrival (`?compose=1`). */
   compose?: boolean;
 }) {
   const [tag, setTag] = useState<string | null>(null);
   const { surface } = useSurface();
   const state = useAsync(
-    (signal) => listQuestions({ room, limit: PAGE_SIZE, tag, examCode }, signal),
-    [room.visibility, room.orgId, tag, examCode],
+    (signal) => listQuestions({ room, limit: PAGE_SIZE, tag, ...filter }, signal),
+    [room.visibility, room.orgId, tag, filter.category, filter.examCode],
   );
 
   return (
     <div className="space-y-6">
-      {examCode ? null : (
+      {filter.category ? null : (
       <B2CHero
         // The train arm's composer sits on the page itself, with no grey panel behind it.
         className={surface === "train" ? "!bg-transparent !p-0" : undefined}
@@ -160,12 +168,16 @@ function Composer({ room, onPosted, focusOnArrival }: { room: Room; onPosted: ()
   }, [focusOnArrival]);
   const [content, setContent] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [category, setCategory] = useState<CommunityCategory>("general");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The retiring client hid the tag row for the ortho app — its stations are
   // surgical, and the specialty list was GP medicine — and kept it for
   // everything else, so the gate is on the exam, not on the arm.
-  const { code } = useCurrentExam();
+  const { code, codes } = useCurrentExam();
+  // Chosen only once the person touches the select; until then it follows the current exam.
+  const [pickedExam, setPickedExam] = useState<string | null>(null);
+  const examChoice = pickedExam ?? defaultExamChoice(codes, code);
   const showTags = code !== "ortho";
 
   const toggleTag = useCallback((key: string) => {
@@ -185,7 +197,8 @@ function Composer({ room, onPosted, focusOnArrival }: { room: Room; onPosted: ()
       await askQuestion({
         title: titleFromBody(content),
         body: content,
-        examCode: code,
+        examCode: composerExamCode(category, examChoice),
+        category,
         tags: selectedTags,
         room,
       });
@@ -193,11 +206,18 @@ function Composer({ room, onPosted, focusOnArrival }: { room: Room; onPosted: ()
       setSelectedTags([]);
       onPosted();
     } catch (cause) {
-      setError(errorMessage(cause) || "Could not post your question. Try again.");
+      // The selects cannot send either, but a stale page or an exam that lapsed can.
+      setError(
+        hasCode(cause, "exam_required_for_category")
+          ? "Choose the exam this question is about."
+          : hasCode(cause, "invalid_category")
+            ? "Choose General, Platform, Skills or Exam."
+            : errorMessage(cause) || "Could not post your question. Try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
-  }, [content, selectedTags, room, code, onPosted]);
+  }, [content, selectedTags, room, category, examChoice, onPosted]);
 
   return (
     <div className={cn(b2cCard, "space-y-4 p-5")}>
@@ -213,9 +233,40 @@ function Composer({ room, onPosted, focusOnArrival }: { room: Room; onPosted: ()
           rows={3}
         />
       </div>
+      <div className="flex flex-wrap gap-3">
+        <Select
+          label="Category"
+          value={category}
+          onChange={(event) => setCategory(event.target.value as CommunityCategory)}
+          className="w-44"
+        >
+          {COMMUNITY_CATEGORIES.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        {category === "exam" ? (
+          <Select
+            label="Exam"
+            value={examChoice ?? ""}
+            onChange={(event) => setPickedExam(event.target.value)}
+            className="w-44"
+          >
+            <option value="" disabled>
+              Choose an exam
+            </option>
+            {codes.map((examCode) => (
+              <option key={examCode} value={examCode}>
+                {examCode.toUpperCase()}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+      </div>
       {showTags ? (
         <div>
-          <p className={b2cFieldLabel}>Tags</p>
+          <p className={b2cFieldLabel}>Subtags</p>
           <div className="mt-1.5 touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain whitespace-nowrap pb-1">
             <div className="flex gap-2">
               {SPECIALTY_TAGS_SORTED.map((specialty) => (
@@ -258,6 +309,9 @@ function QuestionRow({ question }: { question: Post }) {
           </span>
         </span>
         <span className="hidden flex-wrap justify-end gap-1.5 sm:flex">
+          <span className="inline-flex h-[22px] items-center rounded-[6px] bg-b2c-surface-muted px-2 text-osce-micro font-medium text-b2c-text-muted">
+            {COMMUNITY_CATEGORIES.find((option) => option.id === question.category)?.label ?? question.category}
+          </span>
           <QuestionTags tags={question.tags} />
           <span className="inline-flex h-[22px] items-center rounded-[6px] bg-b2c-surface-muted px-2 text-osce-micro font-medium text-b2c-text-muted">
             {replies} {replies === 1 ? "reply" : "replies"}

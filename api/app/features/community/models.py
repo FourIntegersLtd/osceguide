@@ -10,7 +10,17 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,6 +45,7 @@ class Post(Base, UUIDPrimaryKey, Timestamps, Addressed):
         Index("ix_posts_parent", "parent_id"),
         Index("ix_posts_exam_created", "exam_id", "created_at"),
         Index("ix_posts_station", "station_id"),
+        Index("ix_posts_category_created", "category", "created_at"),
         CheckConstraint(AUDIENCE_CHECK, name="ck_posts_audience"),
         # The list query filters on these before anything else.
         Index("ix_posts_audience_org_id", "audience_org_id", "created_at"),
@@ -46,7 +57,9 @@ class Post(Base, UUIDPrimaryKey, Timestamps, Addressed):
 
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("posts.id", ondelete="CASCADE"))
-    author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Null for a post the OSCE Guide assistant wrote (`is_assistant`): it has no account, and
+    # inventing a user for it would put a fake person in the roster and every user count.
+    author_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     exam_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("exams.id", ondelete="SET NULL"))
     # A comment about a specific station, which b2c keeps in its own collection.
     station_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("stations.id", ondelete="CASCADE"))
@@ -58,6 +71,10 @@ class Post(Base, UUIDPrimaryKey, Timestamps, Addressed):
     # list, which is what JSONB containment does in one clause. Replies and
     # comments carry none; the default keeps every pre-tag row a real list.
     tags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    # What a question is about: general, platform, skills or exam (`domain.CATEGORIES`). `tags`
+    # are the subtags beneath it. A reply carries its question's category.
+    category: Mapped[str] = mapped_column(String(16), nullable=False, server_default="general")
+    is_assistant: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     removed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 

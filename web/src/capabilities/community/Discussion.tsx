@@ -9,7 +9,7 @@ import { QuestionDetail } from "@/capabilities/community/QuestionDetail";
 import { MyAnswers } from "@/capabilities/community/MyAnswers";
 import { MyQuestions } from "@/capabilities/community/MyQuestions";
 import { useRoom, useRoomName } from "@/capabilities/community/useRoom";
-import { COMMUNITY_TABS, parseTab, tabHref, type CommunityTab } from "@/capabilities/community/discussionModel";
+import { COMMUNITY_TABS, listFilterFor, parseTab, tabHref, type CommunityTab } from "@/capabilities/community/discussionModel";
 
 const COMMUNITY_COPY =
   "Ask anything about OSCE Guide, your exam or skills training. Other members and the OSCE Guide assistant answer.";
@@ -79,7 +79,7 @@ function CommunityCore({ orgId }: { orgId: string | null }) {
         {activeTab === "all" ? (
           <QuestionList room={room} roomName={roomName} compose={params.get("compose") === "1"} />
         ) : null}
-        {activeTab === "exam" ? <QuestionList room={room} roomName={roomName} examCode={examCode} /> : null}
+        {activeTab === "exam" ? <QuestionList room={room} roomName={roomName} filter={listFilterFor("exam", examCode)} /> : null}
       </div>
     </div>
   );

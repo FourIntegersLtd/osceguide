@@ -47,6 +47,9 @@ STATE: dict[str, str | None] = {
     "produce_summary_podcast": None,
     "transcribe_peer_session": None,
     "draft_import_template": None,
+    "reply_as_assistant": (
+        "tests/repository/test_community_assistant.py::test_a_failing_draft_fails_the_run_and_posts_nothing"
+    ),
     "deliver_outbound_messages": (
         "tests/http/test_platform_ops_routes.py::"
         "test_mail_abandoned_in_an_outage_is_listed_and_sent_again_on_retry"

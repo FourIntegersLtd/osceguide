@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -32,7 +33,15 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.ContentTooLong: errors.ContentTooLongError,
     domain.TagTooLong: errors.TagTooLongError,
     domain.TooManyTags: errors.TooManyTagsError,
+    domain.InvalidCategory: errors.InvalidCategoryError,
+    domain.ExamRequired: errors.ExamRequiredError,
 }
+
+# Long enough for a person to get there first.
+ASSISTANT_WAIT = timedelta(minutes=30)
+ASSISTANT_BATCH = 10
+
+Drafter = Callable[[str, str], Awaitable[str]]
 
 
 async def ask(
@@ -44,9 +53,11 @@ async def ask(
     exam_code: str | None,
     audience: Audience = PUBLIC,
     tags: list[str] | None = None,
+    category: str = domain.DEFAULT_CATEGORY,
 ) -> PostRead:
-    """Ask a new question, in the given room and tagged for the feed filter."""
+    """Ask a new question, filed under a category, in the given room and tagged for the feed filter."""
     try:
+        category = domain.ensure_category(category, exam_code=exam_code)
         domain.ensure_postable(body)
         # A question is what tags describe: they are how the feed is narrowed.
         # A reply is never given its own, for the reason it is never given its
@@ -69,6 +80,7 @@ async def ask(
         exam_id=exam_id,
         audience=audience,
         tags=cleaned_tags,
+        category=category,
     )
     return await read_one(session, question, viewer_id=author_id)
 
@@ -90,15 +102,7 @@ async def reply(session: AsyncSession, parent_id: uuid.UUID, *, author_id: uuid.
     except Exception as exc:  # noqa: BLE001 - mapped above
         raise_mapped(exc, _REFUSALS)
 
-    created_reply = await repository.create_post(
-        session,
-        kind="reply",
-        author_id=author_id,
-        body=domain.clean(body),
-        parent_id=parent_id,
-        exam_id=parent.exam_id,
-        audience=audience,
-    )
+    created_reply = await _reply_to(session, parent, author_id, domain.clean(body), audience)
     return await read_one(session, created_reply, viewer_id=author_id)
 
 
@@ -174,6 +178,29 @@ async def set_like(session: AsyncSession, post_id: uuid.UUID, *, user_id: uuid.U
     return await read_one(session, post, viewer_id=user_id)
 
 
+async def _reply_to(
+    session: AsyncSession,
+    parent: Post,
+    author_id: uuid.UUID | None,
+    body: str,
+    audience: Audience,
+    *,
+    is_assistant: bool = False,
+) -> Post:
+    """A reply, carrying its question's exam and category."""
+    return await repository.create_post(
+        session,
+        kind="reply",
+        author_id=author_id,
+        body=body,
+        parent_id=parent.id,
+        exam_id=parent.exam_id,
+        audience=audience,
+        category=parent.category,
+        is_assistant=is_assistant,
+    )
+
+
 async def list_questions(
     session: AsyncSession,
     *,
@@ -184,8 +211,14 @@ async def list_questions(
     mine: bool = False,
     tag: str | None = None,
     exam_code: str | None = None,
+    category: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
-    """Questions this viewer may see, newest first, narrowed by room, author, tag or exam."""
+    """Questions this viewer may see, newest first, narrowed by room, author, tag, exam or category."""
+    try:
+        if category:
+            domain.ensure_known_category(category)
+    except domain.InvalidCategory as exc:
+        raise_mapped(exc, _REFUSALS)
     viewer = await audiences_for(session, viewer_id)
     exam_id = (await resolve_exam(session, exam_code)).id if exam_code else None
     questions, next_cursor = await repository.list_questions(
@@ -199,8 +232,29 @@ async def list_questions(
         # Normalized the way tags are stored, so "Cardiology" finds
         # "cardiology". A blank filter is no filter.
         tag=domain.normalize_tag(tag) if tag else None,
+        category=category or None,
     )
     return await read_many(session, questions, viewer_id=viewer_id), next_cursor
+
+
+async def reply_as_assistant(
+    session: AsyncSession, *, draft: Drafter, now: datetime, wait: timedelta = ASSISTANT_WAIT
+) -> int:
+    """Answer each general or platform question nobody has answered, as the OSCE Guide assistant.
+
+    Never an exam or skills question (`domain.ASSISTANT_CATEGORIES`), never one inside an
+    institution's room, and never one a person had `wait` to answer first. The reply has no
+    author account: `is_assistant` says who wrote it. A draft that raises ends the run, so the
+    queue row fails where staff can see it and retry; the question stays unanswered meanwhile.
+    """
+    questions = await repository.unanswered_public_questions(
+        session, categories=domain.ASSISTANT_CATEGORIES, before=now - wait, limit=ASSISTANT_BATCH
+    )
+    for question in questions:
+        text = domain.clean(await draft(question.title or "", question.body))
+        domain.ensure_postable(text)
+        await _reply_to(session, question, None, text, audience_of(question), is_assistant=True)
+    return len(questions)
 
 
 async def question_detail(session: AsyncSession, question_id: uuid.UUID, *, viewer_id: uuid.UUID) -> PostRead:
@@ -282,13 +336,17 @@ async def read_many(session: AsyncSession, posts: list[Post], *, viewer_id: uuid
     ids = [post.id for post in posts]
     counts, mine = await repository.like_counts(session, ids, viewer_id)
     reply_counts = await repository.reply_counts(session, ids)
-    people = await identity.user_refs_by_ids(session, list({post.author_id for post in posts}))
+    people = await identity.user_refs_by_ids(
+        session, list({post.author_id for post in posts if post.author_id})
+    )
     return [
         PostRead(
             id=post.id,
             kind=post.kind,
             parent_id=post.parent_id,
             author_id=post.author_id,
+            is_assistant=post.is_assistant,
+            category=post.category,
             station_id=post.station_id,
             # Null when the account is gone. Falling back to the id prints a
             # uuid where a name belongs.

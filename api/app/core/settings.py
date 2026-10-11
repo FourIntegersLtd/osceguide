@@ -169,6 +169,11 @@ class Settings(BaseSettings):
     # cannot fire it on real inboxes until the owner turns it on deliberately.
     engagement_email_enabled: bool = False
 
+    # Gates `community.jobs.reply_as_assistant`, which answers general and platform questions nobody
+    # has answered as "OSCE Guide assistant". Off by default: it posts public text under our name
+    # and spends model calls, so the owner turns it on deliberately (`COMMUNITY_ASSISTANT_REPLIES`).
+    community_assistant_replies: bool = False
+
     # Our own assessment workers' seats: nodes x LIVEKIT_ASSESSMENT_MAX_CONCURRENT_JOBS
     # in assessment-platform's k8s config (3 x 6 in production). Past these and
     # Cloud's, a candidate waits in line instead of joining a room no worker

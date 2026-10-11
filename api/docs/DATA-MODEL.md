@@ -1268,12 +1268,14 @@ Carries the `Addressed` columns (`visibility`, `audience_org_id`, `audience_grou
 |---|---|---|
 | `kind` | `varchar(16) not null` | `question` \| `reply` \| `comment` |
 | `parent_id` | `uuid null` → `posts.id` CASCADE | indexed |
-| `author_id` | `uuid not null` → `users.id` CASCADE | |
+| `author_id` | `uuid null` → `users.id` CASCADE | null only for an assistant reply (`is_assistant`) |
 | `exam_id` | `uuid null` → `exams.id` SET NULL | indexed with `created_at` |
 | `station_id` | `uuid null` → `stations.id` CASCADE | a comment about a specific station, which b2c keeps in its own collection. Indexed |
 | `title` | `varchar(300) null` | |
 | `body` | `text not null` | `MAX_CONTENT = 10_000` |
 | `tags` | `jsonb not null default '[]'` | a question's tags — ≤ 5 normalized lowercase keys, ≤ 32 chars each (`domain.clean_tags`). GIN-indexed (`ix_posts_tags`) for the feed's `tag` containment filter. Replies and comments carry `[]` |
+| `category` | `varchar(16) not null default 'general'` | `general`, `platform`, `skills` or `exam` (`domain.CATEGORIES`); `tags` are its subtags. A reply carries its question's. Indexed with `created_at` (`ix_posts_category_created`) |
+| `is_assistant` | `bool not null default false` | the OSCE Guide assistant wrote it (`community.jobs.reply_as_assistant`); such a post has no `author_id` |
 | `removed_at` / `removed_by` | `timestamptz null` / `uuid null` → `users.id` SET NULL | |
 
 CHECK `ck_posts_parent_matches_kind`: a question starts a thread (no parent), a reply

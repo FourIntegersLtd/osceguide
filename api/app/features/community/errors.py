@@ -82,3 +82,17 @@ class StationNotFound(NotFound):
 
     code = "station_not_found"
     default_message = "No such station"
+
+
+class InvalidCategoryError(InvalidInput):
+    """The category is not general, platform, skills or exam."""
+
+    code = "invalid_category"
+    default_message = "A category is general, platform, skills or exam"
+
+
+class ExamRequiredError(InvalidInput):
+    """An exam question did not say which exam it is about."""
+
+    code = "exam_required_for_category"
+    default_message = "Choose the exam this question is about"

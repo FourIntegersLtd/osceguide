@@ -26,7 +26,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 @router.get(
     "/community/questions",
     response_model=Page[schemas.PostRead],
-    responses=error_responses(errors.UnknownExamError, Unauthenticated),
+    responses=error_responses(errors.UnknownExamError, Unauthenticated, errors.InvalidCategoryError),
 )
 async def list_questions(
     principal: CurrentPrincipal,
@@ -36,6 +36,9 @@ async def list_questions(
     mine: Annotated[bool, Query(description="Only the caller's own questions.")] = False,
     tag: Annotated[str | None, Query(description="Only questions carrying this tag.")] = None,
     exam_code: Annotated[str | None, Query(description="Only questions asked about this exam.")] = None,
+    category: Annotated[
+        str | None, Query(description="Only questions filed under general, platform, skills or exam.")
+    ] = None,
 ) -> Page[schemas.PostRead]:
     """Everything this caller may see, or one room of it.
 
@@ -52,6 +55,7 @@ async def list_questions(
         mine=mine,
         tag=tag,
         exam_code=exam_code,
+        category=category,
     )
     return Page(items=questions, next_cursor=next_cursor)
 
@@ -106,6 +110,8 @@ async def read_question(
         errors.EmptyContentError,
         errors.TagTooLongError,
         errors.TooManyTagsError,
+        errors.InvalidCategoryError,
+        errors.ExamRequiredError,
         InvalidAudience,
         AudienceNotYours,
     ),
@@ -120,6 +126,7 @@ async def ask(
         title=body.title,
         body=body.body,
         exam_code=body.exam_code,
+        category=body.category,
         audience=body.audience.to_audience(),
         tags=body.tags,
     )

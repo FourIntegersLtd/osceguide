@@ -479,3 +479,77 @@ async def test_an_unknown_exam_code_is_refused_on_the_list(client: AsyncClient, 
         "/api/v1/community/questions", params={"exam_code": "nope"}, headers=bearer(token)
     )
     assert response.status_code == 404
+
+
+async def test_a_question_is_general_unless_it_says_otherwise(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("cat1@example.com")
+    posted = await ask(client, token)
+    assert posted["category"] == "general"
+    assert posted["is_assistant"] is False
+
+
+async def test_questions_list_by_category(client: AsyncClient, make_actor, db_session: AsyncSession) -> None:  # type: ignore[no-untyped-def]
+    await ensure_exam(db_session, "sca")
+    token = await make_actor("cat2@example.com")
+    for title, category, code in (
+        ("Platform one", "platform", None),
+        ("Skills one", "skills", None),
+        ("Exam one", "exam", "sca"),
+    ):
+        posted = await client.post(
+            "/api/v1/community/questions",
+            json={"title": title, "body": "Body text.", "category": category, "exam_code": code},
+            headers=bearer(token),
+        )
+        assert posted.status_code == 201, posted.text
+        assert posted.json()["category"] == category
+    platform = await client.get(
+        "/api/v1/community/questions", params={"category": "platform"}, headers=bearer(token)
+    )
+    assert [q["title"] for q in platform.json()["items"]] == ["Platform one"]
+    exam = await client.get(
+        "/api/v1/community/questions", params={"category": "exam", "exam_code": "sca"}, headers=bearer(token)
+    )
+    assert [q["title"] for q in exam.json()["items"]] == ["Exam one"]
+
+
+async def test_an_unknown_category_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("cat3@example.com")
+    posted = await client.post(
+        "/api/v1/community/questions",
+        json={"title": "T", "body": "Body.", "category": "gossip"},
+        headers=bearer(token),
+    )
+    assert posted.status_code == 422
+    assert posted.json()["code"] == "invalid_category"
+    listed = await client.get(
+        "/api/v1/community/questions", params={"category": "gossip"}, headers=bearer(token)
+    )
+    assert listed.status_code == 422
+    assert listed.json()["code"] == "invalid_category"
+
+
+async def test_an_exam_question_names_its_exam(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("cat4@example.com")
+    posted = await client.post(
+        "/api/v1/community/questions",
+        json={"title": "T", "body": "Body.", "category": "exam"},
+        headers=bearer(token),
+    )
+    assert posted.status_code == 422
+    assert posted.json()["code"] == "exam_required_for_category"
+
+
+async def test_a_reply_carries_its_questions_category(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("cat5@example.com")
+    posted = await client.post(
+        "/api/v1/community/questions",
+        json={"title": "T", "body": "Body.", "category": "platform"},
+        headers=bearer(token),
+    )
+    reply = await client.post(
+        f"/api/v1/community/questions/{posted.json()['id']}/replies",
+        json={"body": "Try Settings."},
+        headers=bearer(token),
+    )
+    assert reply.json()["category"] == "platform"

@@ -16,6 +16,25 @@ MAX_TAGS = 5
 MAX_TAG_LENGTH = 32
 
 
+# What a question is filed under; its free-text tags are subtags of it.
+CATEGORIES = ("general", "platform", "skills", "exam")
+DEFAULT_CATEGORY = "general"
+# The categories the assistant may answer: never the exam or skills ones, which need an expert.
+ASSISTANT_CATEGORIES = ("general", "platform")
+
+
+class InvalidCategory(Exception):
+    """Raised when a category is not one of `CATEGORIES`."""
+
+    pass
+
+
+class ExamRequired(Exception):
+    """Raised when an exam question names no exam."""
+
+    pass
+
+
 class NotYours(Exception):
     """Raised when someone tries to remove a post they may not moderate."""
 
@@ -44,6 +63,21 @@ class TooManyTags(Exception):
     """Raised when a question carries more tags than `MAX_TAGS` allows."""
 
     pass
+
+
+def ensure_category(category: str, *, exam_code: str | None = None) -> str:
+    """The category as stored. An exam question must say which exam."""
+    ensure_known_category(category)
+    if category == "exam" and not exam_code:
+        raise ExamRequired("An exam question names its exam.")
+    return category
+
+
+def ensure_known_category(category: str) -> str:
+    """The category, once it is known to be one of `CATEGORIES`."""
+    if category not in CATEGORIES:
+        raise InvalidCategory(f"A category is one of {', '.join(CATEGORIES)}.")
+    return category
 
 
 def clean(raw: str) -> str:

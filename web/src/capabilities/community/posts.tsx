@@ -33,20 +33,6 @@ export function useViewer(): { id: string | null; name: string } {
 }
 
 /**
- * `@somebody`.
- *
- * The name now comes from `PostRead.author_name`, joined by the backend a page
- * at a time. The fallback is what a post by a deleted account reads as — the id
- * is deliberately not the fallback, because printing a uuid where a name
- * belongs is the thing the roster screen was already criticised for.
- */
-export function authorLabel(post: Post, viewerId: string | null, viewerName: string): string {
-  if (post.author_id === viewerId) return `@${viewerName}`;
-  const name = post.author_name?.trim();
-  return name ? `@${name}` : "@a colleague";
-}
-
-/**
  * A question's specialty tags.
  *
  * The stored value stays the key the filter matches on. The chip shows the

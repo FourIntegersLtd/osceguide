@@ -6,14 +6,13 @@ import { Back, B2CErrorState, ConfirmModal, Spinner, cn, productTokens } from "@
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { listReplies, readQuestion, removePost, type Post } from "@/capabilities/community/api";
-import { sortReplies, type ReplyOrder } from "@/capabilities/community/discussionModel";
+import { authorLabel, sortReplies, type ReplyOrder } from "@/capabilities/community/discussionModel";
 import { AnswerQuestion } from "@/capabilities/community/AnswerQuestion";
 import {
   DeleteButton,
   LikeButton,
   LinkedText,
   QuestionTags,
-  authorLabel,
   formatPostedAt,
   titleFromBody,
   useViewer,

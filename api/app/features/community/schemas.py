@@ -14,7 +14,8 @@ class PostRead(BaseModel):
     id: uuid.UUID
     kind: str
     parent_id: uuid.UUID | None
-    author_id: uuid.UUID
+    # None for a reply the OSCE Guide assistant wrote.
+    author_id: uuid.UUID | None
     # The station a comment is on; None for a question or a reply. Lets a moderator open it.
     station_id: uuid.UUID | None
     # The author's name, joined from `identity` a page at a time rather than
@@ -26,6 +27,10 @@ class PostRead(BaseModel):
     # Normalized on write — trimmed, lowercased, de-duplicated. Empty for a
     # reply or a station comment: a tag describes what a question is about.
     tags: list[str]
+    # general, platform, skills or exam; `tags` are subtags of it.
+    category: str
+    # Written by the OSCE Guide assistant rather than a person.
+    is_assistant: bool
     like_count: int
     liked_by_me: bool
     reply_count: int
@@ -37,6 +42,8 @@ class CreateQuestion(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     body: str = Field(min_length=1)
     exam_code: str | None = None
+    # Checked in `domain.ensure_category`, so a refusal answers `invalid_category`.
+    category: str = "general"
     # Checked against the count and length limits in `domain.clean_tags`, not
     # here: a refusal answers `too_many_tags` or `tag_too_long`, which a Field
     # constraint cannot say.
