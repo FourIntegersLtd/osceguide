@@ -68,4 +68,5 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
   (`surfaces/pageWidth.test.ts` guards it). Toasts are top-centre and one with `durationMs` is capped at 60 s
   (`toastDuration.ts`); success feedback is a `useToast` toast, not an inline Alert. `Panel` is static; a part that folds is `FoldSection`. The Help button and FAB use a neutral `LuCircleHelp`, never Athena's face. `resolveCrumb` takes an options object; deep-page names are `NAV_DEEP_PAGES`. A confirm step is `foundation/ui/ConfirmModal`. Study search types into the URL
   (`useStudySearch`); A to Z and Podcasts load the whole catalogue once and page client-side (`catalogue.ts`).
+- The page column (`b2cPageColumn`) is the scroller (its `overflow-x-hidden` makes it one) and a sticky child is offset by the scroller's own padding: keep top padding on an inner div (`WorkspaceShell`), never on `main` or the column, so `sticky top-0` sits flush under the 52px toolbar. Contact subject and the testimonial question are pure models (`contactSubject.ts`, `productFeedbackModel.ts`).
 - Open items: `docs/BACKLOG.md`; delete a row when you land it.

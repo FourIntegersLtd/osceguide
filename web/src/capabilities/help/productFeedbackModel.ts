@@ -26,12 +26,19 @@ export const TESTIMONIAL_OPTIONS: {
   { value: "no", label: "No", compactLabel: "No" },
 ];
 
+/** Asked only of a rating this high; a lower one is never a testimonial. */
+export const TESTIMONIAL_MIN_RATING = 3;
+
+export function asksTestimonial(rating: number): boolean {
+  return rating >= TESTIMONIAL_MIN_RATING;
+}
+
 /** The retiring client's message composition, line for line. */
 export function composeFeedbackBody(input: {
   name: string;
   email: string;
   rating: number;
-  testimonialPermission: TestimonialPermission;
+  testimonialPermission: TestimonialPermission | "";
   source: ProductFeedbackSource;
   examCode?: string;
   experience: string;
@@ -40,7 +47,9 @@ export function composeFeedbackBody(input: {
     `Name: ${input.name || "(not provided)"}`,
     `Email: ${input.email}`,
     `Rating: ${input.rating}/5`,
-    `Testimonial permission: ${TESTIMONIAL_LABELS[input.testimonialPermission]}`,
+    asksTestimonial(input.rating) && input.testimonialPermission
+      ? `Testimonial permission: ${TESTIMONIAL_LABELS[input.testimonialPermission]}`
+      : null,
     `Source: ${input.source}`,
     input.examCode ? `App: ${input.examCode}` : null,
     "",

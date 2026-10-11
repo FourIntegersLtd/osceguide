@@ -3,7 +3,7 @@
 import { SUPPORT_REPLY_HOURS } from "@/foundation/config/copyNumbers";
 import { useMemo, useState } from "react";
 import { useToast } from "@/foundation/hooks";
-import { Alert, B2CPageHeader, Button, productTokens, Panel } from "@/foundation/ui";
+import { Alert, B2CPageHeader, Button, Input, Select, productTokens, Panel } from "@/foundation/ui";
 import {
   B2CSegmentedTabs,
   type B2CSegmentedTabItem,
@@ -11,7 +11,7 @@ import {
 import { useSession } from "@/foundation/session";
 import { sendSiteMessage } from "@/capabilities/help/api";
 import { ProductFeedbackForm } from "@/capabilities/help/ProductFeedbackForm";
-import { B2CHero } from "@/foundation/ui/B2CHero";
+import { CONTACT_SUBJECTS, contactSubjectText, type ContactSubject } from "@/capabilities/help/contactSubject";
 
 const { b2cFieldLabel, b2cSettingsFieldInput } = productTokens;
 
@@ -34,7 +34,8 @@ type MessagesTab = "contact" | "feedback";
 function ContactForm() {
   const { session } = useSession();
   const toast = useToast();
-  const [subject, setSubject] = useState("");
+  const [choice, setChoice] = useState<ContactSubject | "">("");
+  const [otherSubject, setOtherSubject] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -48,11 +49,12 @@ function ContactForm() {
         kind: "contact",
         name: session?.user.name || null,
         email: session?.user.email || null,
-        subject,
+        subject: contactSubjectText(choice, otherSubject),
         body: message,
         source: "messages-screen",
       });
-      setSubject("");
+      setChoice("");
+      setOtherSubject("");
       setMessage("");
       toast.success(
         "Message sent",
@@ -69,10 +71,11 @@ function ContactForm() {
 
   return (
     <div className="space-y-6">
-      <B2CHero eyebrow="Contact" title="Send a message to the team">
-        If you are reporting a problem with a station, flag it in the station and tell us which one. We
-        aim to reply within {SUPPORT_REPLY_HOURS} hours.
-      </B2CHero>
+      <p className="text-osce-body text-b2c-text-secondary">
+        Tell us about a problem, ask a question or request information. To report a faulty station, use
+        Flag station inside the station; use this form for anything else. We reply within{" "}
+        {SUPPORT_REPLY_HOURS} hours.
+      </p>
 
       <form onSubmit={handleSubmit}>
         <Panel title="Your message">
@@ -81,15 +84,32 @@ function ContactForm() {
               <label htmlFor="subject" className={b2cFieldLabel}>
                 Subject
               </label>
-              <input
-                type="text"
+              <Select
                 id="subject"
-                placeholder="Enter message subject"
-                className={`mt-1.5 ${fieldClass}`}
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                className="mt-1.5"
+                value={choice}
+                onChange={(e) => setChoice(e.target.value as ContactSubject | "")}
                 required
-              />
+              >
+                <option value="" disabled>
+                  Choose a subject
+                </option>
+                {CONTACT_SUBJECTS.map((subject) => (
+                  <option key={subject.value} value={subject.value}>
+                    {subject.label}
+                  </option>
+                ))}
+              </Select>
+              {choice === "other" ? (
+                <Input
+                  aria-label="Your subject"
+                  className="mt-2"
+                  placeholder="Enter message subject"
+                  value={otherSubject}
+                  onChange={(e) => setOtherSubject(e.target.value)}
+                  required
+                />
+              ) : null}
             </div>
             <div>
               <label htmlFor="message" className={b2cFieldLabel}>

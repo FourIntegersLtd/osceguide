@@ -276,9 +276,10 @@ export const b2cRoomOverlay = "absolute inset-x-0 bottom-0 top-14 z-30 md:top-0"
 
 export const b2cShellMain = [
   "w-full min-h-0 min-w-0 flex-1 bg-osce-surface",
-  // Canvas: 36px 40px 56px under the toolbar. Mobile clears the fixed top bar
+  // Canvas: 36px 40px 56px under the toolbar; the top 36px is the page column's
+  // (WorkspaceShell), so sticky blocks stick flush under the toolbar. Mobile clears the fixed top bar
   // (pt-16) and the floating help button at the bottom.
-  "px-4 pt-20 pb-[calc(0.5rem+2.75rem+env(safe-area-inset-bottom,0px))] sm:px-6 md:pt-7 lg:px-10 lg:pt-9 lg:pb-14",
+  "px-4 pt-20 md:pt-0 pb-[calc(0.5rem+2.75rem+env(safe-area-inset-bottom,0px))] sm:px-6 lg:px-10 lg:pb-14",
   "[-webkit-overflow-scrolling:touch] overscroll-y-contain",
   b2cScrollY,
 ].join(" ");

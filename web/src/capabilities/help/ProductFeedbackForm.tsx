@@ -8,6 +8,7 @@ import { useSession } from "@/foundation/session";
 import { sendSiteMessage } from "@/capabilities/help/api";
 import { StarRating, TestimonialChoice } from "@/capabilities/help/ProductFeedbackFields";
 import {
+  asksTestimonial,
   composeFeedbackBody,
   type ProductFeedbackSource,
   type TestimonialPermission,
@@ -76,7 +77,7 @@ export function ProductFeedbackForm({
       setError("Please rate your experience.");
       return;
     }
-    if (!testimonialPermission) {
+    if (asksTestimonial(rating) && !testimonialPermission) {
       setError("Please choose a testimonial preference.");
       return;
     }
@@ -179,12 +180,14 @@ export function ProductFeedbackForm({
         />
       </div>
 
-      <TestimonialChoice
-        idPrefix={idPrefix}
-        value={testimonialPermission}
-        onChange={setTestimonialPermission}
-        compact={compact}
-      />
+      {asksTestimonial(rating) ? (
+        <TestimonialChoice
+          idPrefix={idPrefix}
+          value={testimonialPermission}
+          onChange={setTestimonialPermission}
+          compact={compact}
+        />
+      ) : null}
     </>
   );
 

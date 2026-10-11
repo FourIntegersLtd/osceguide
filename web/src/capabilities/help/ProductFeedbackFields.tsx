@@ -38,6 +38,7 @@ export function StarRating({
     >
       {[1, 2, 3, 4, 5].map((star) => {
         const filled = star <= activeRating;
+        const hovering = hoverRating > 0;
         return (
           <button
             key={star}
@@ -47,7 +48,11 @@ export function StarRating({
             aria-label={`${star}. ${STAR_LABELS[star - 1]}`}
             className={cn(
               "rounded-md p-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-osce-accent/30",
-              filled ? "text-osce-ink-900" : "text-osce-ink-400 hover:text-osce-ink-900",
+              !filled
+                ? "text-osce-ink-400"
+                : hovering
+                  ? "text-osce-ink-900"
+                  : "text-osce-accent",
             )}
             onMouseEnter={() => setHoverRating(star)}
             onMouseLeave={() => setHoverRating(0)}

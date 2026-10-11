@@ -155,9 +155,11 @@ export function WorkspaceShell({
             className={cn(b2cShellMain, "flex min-h-0 flex-1 flex-col")}
           >
             <div className={b2cPageColumn}>
-              <PendingFeedbackProvider>
-                {isTrain ? <PeerPracticeProvider>{children}</PeerPracticeProvider> : children}
-              </PendingFeedbackProvider>
+              <div className="space-y-6 md:pt-7 lg:pt-9">
+                <PendingFeedbackProvider>
+                  {isTrain ? <PeerPracticeProvider>{children}</PeerPracticeProvider> : children}
+                </PendingFeedbackProvider>
+              </div>
             </div>
           </main>
         </div>
