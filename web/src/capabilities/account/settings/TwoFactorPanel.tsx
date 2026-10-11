@@ -24,8 +24,7 @@ type Dialog =
   | { kind: "enrol"; enrolment: MfaEnrolment }
   | { kind: "codes"; codes: string[] }
   | { kind: "regenerate" }
-  | { kind: "disable" }
-  | { kind: "confirmOff"; code: string };
+  | { kind: "disable" };
 
 const REQUIRED_BECAUSE: Record<NonNullable<MfaStatus["required_reason"]>, string> = {
   platform_admin: "Staff accounts must use two-factor sign-in.",
@@ -54,6 +53,8 @@ export function TwoFactorPanel() {
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
   const [offError, setOffError] = useState<string | null>(null);
+  /** The code typed in the disable dialog, held while the confirm step is open. */
+  const [pendingOffCode, setPendingOffCode] = useState<string | null>(null);
   const toast = useToast();
 
   const start = async () => {
@@ -70,6 +71,7 @@ export function TwoFactorPanel() {
 
   const close = () => {
     setDialog(null);
+    setPendingOffCode(null);
     status.reload();
   };
 
@@ -83,6 +85,7 @@ export function TwoFactorPanel() {
       if (hasCode(cause, "invalid_mfa_code")) {
         // The confirm step has no code field: send them back to the one that does.
         toast.error(codeFailure(cause));
+        setPendingOffCode(null);
         setDialog({ kind: "disable" });
       } else {
         setOffError(codeFailure(cause));
@@ -149,9 +152,9 @@ export function TwoFactorPanel() {
       </Panel>
 
       <ConfirmModal
-        isOpen={dialog?.kind === "confirmOff"}
+        isOpen={pendingOffCode !== null}
         onCancel={close}
-        onConfirm={() => (dialog?.kind === "confirmOff" ? turnOff(dialog.code) : undefined)}
+        onConfirm={() => (pendingOffCode === null ? undefined : turnOff(pendingOffCode))}
         title="Turn off two-factor sign-in?"
         message="You will sign in with your password alone. Your recovery codes stop working."
         confirmText="Turn off"
@@ -160,7 +163,7 @@ export function TwoFactorPanel() {
         error={offError}
       />
 
-      {dialog && dialog.kind !== "confirmOff" ? (
+      {dialog ? (
         <Modal width="440px" title={DIALOG_TITLES[dialog.kind]} onClose={close}>
           <div className="p-5">
             {/* The modal's own title is for screen readers only. */}
@@ -185,10 +188,11 @@ export function TwoFactorPanel() {
               <CodeDialog
                 description="Enter a code from your authenticator app to continue."
                 action="Continue"
-                run={async (code) => [code]}
-                onDone={([code]) => {
+                run={async () => []}
+                onDone={(_, code) => {
                   setOffError(null);
-                  setDialog({ kind: "confirmOff", code: code ?? "" });
+                  setDialog(null);
+                  setPendingOffCode(code);
                 }}
               />
             )}
@@ -199,7 +203,7 @@ export function TwoFactorPanel() {
   );
 }
 
-const DIALOG_TITLES: Record<Exclude<Dialog["kind"], "confirmOff">, string> = {
+const DIALOG_TITLES: Record<Dialog["kind"], string> = {
   enrol: "Set up two-factor sign-in",
   codes: "Your recovery codes",
   regenerate: "New recovery codes",
@@ -245,7 +249,7 @@ function CodeDialog({
   description: string;
   action: string;
   run: (code: string) => Promise<string[]>;
-  onDone: (codes: string[]) => void;
+  onDone: (codes: string[], code: string) => void;
 }) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -260,8 +264,9 @@ function CodeDialog({
         if (!isCompleteTotp(code)) return;
         setBusy(true);
         setError(null);
-        run(normaliseTotp(code))
-          .then(onDone)
+        const typed = normaliseTotp(code);
+        run(typed)
+          .then((codes) => onDone(codes, typed))
           .catch((cause: unknown) => {
             setError(codeFailure(cause));
             setBusy(false);

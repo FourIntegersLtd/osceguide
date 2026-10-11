@@ -130,7 +130,7 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
       <ConfirmModal
         isOpen={step === "final"}
         onCancel={() => setStep("form")}
-        onConfirm={() => close()}
+        onConfirm={close}
         title="Delete your account?"
         message={`This cannot be undone after ${ACCOUNT_REOPEN_DAYS} days.`}
         confirmText="Delete my account"

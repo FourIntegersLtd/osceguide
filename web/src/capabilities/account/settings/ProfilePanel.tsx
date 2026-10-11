@@ -19,9 +19,8 @@ import { readMe, updateMe, uploadAvatar, type Me } from "@/capabilities/account/
 import type { ProfilePart } from "@/capabilities/account/settings/settingsTabs";
 import {
   AVATAR_CAPTION,
+  AVATAR_MAX_BYTES,
   AVATAR_TOO_BIG,
-  avatarButtonLabel,
-  avatarTooBig,
 } from "@/capabilities/account/settings/avatarRule";
 import { examLabel, NO_EXAM_LABEL } from "@/capabilities/account/settings/examLabel";
 import ChangeEmail from "@/capabilities/account/settings/ChangeEmail";
@@ -154,7 +153,7 @@ function AccountForm({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    if (avatarTooBig(file.size)) {
+    if (file.size > AVATAR_MAX_BYTES) {
       toast.error(AVATAR_TOO_BIG);
       return;
     }
@@ -230,7 +229,7 @@ function AccountForm({
                 className={getButtonClassName({ variant: "secondary", className: "cursor-pointer gap-2" })}
               >
                 <HiOutlineCamera className="h-4 w-4" aria-hidden />
-                {avatarBusy ? "Uploading…" : avatarButtonLabel(avatarUrl !== null)}
+                {avatarBusy ? "Uploading…" : avatarUrl ? "Change photo" : "Add photo"}
               </label>
               <p className={settingsMeta}>{AVATAR_CAPTION}</p>
             </div>

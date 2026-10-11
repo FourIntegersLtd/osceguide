@@ -21,25 +21,34 @@ export function DownloadMyData() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const download = async (format: "json" | "pdf") => {
+  const run = async (save: () => Promise<void>) => {
     setBusy(true);
     setError(null);
     try {
-      if (format === "pdf") {
-        saveBlob(await exportMyDataPdf(), "my-data.pdf");
-      } else {
-        const data = await exportMyData();
-        saveBlob(
-          new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
-          "my-data.json",
-        );
-      }
+      await save();
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
   };
+
+  const formats = [
+    {
+      label: busy ? "Preparing…" : "Download my data",
+      save: async () => {
+        const data = await exportMyData();
+        saveBlob(
+          new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+          "my-data.json",
+        );
+      },
+    },
+    {
+      label: "Download as PDF",
+      save: async () => saveBlob(await exportMyDataPdf(), "my-data.pdf"),
+    },
+  ];
 
   return (
     <Panel title="Your data">
@@ -49,14 +58,18 @@ export function DownloadMyData() {
           {error ? <p className="mt-1 text-osce-meta text-danger">{error}</p> : null}
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => download("json")} disabled={busy} className="gap-2">
-            <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
-            {busy ? "Preparing…" : "Download my data"}
-          </Button>
-          <Button variant="secondary" onClick={() => download("pdf")} disabled={busy} className="gap-2">
-            <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
-            Download as PDF
-          </Button>
+          {formats.map(({ label, save }) => (
+            <Button
+              key={label}
+              variant="secondary"
+              onClick={() => run(save)}
+              disabled={busy}
+              className="gap-2"
+            >
+              <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
+              {label}
+            </Button>
+          ))}
         </div>
       </div>
     </Panel>
