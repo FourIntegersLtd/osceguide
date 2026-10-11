@@ -97,9 +97,15 @@ def render_export_pdf(export: MyDataExport) -> bytes:
     document.set_auto_page_break(auto=True, margin=18)
     pdf.add_face(document)
     document.add_page()
-
     _heading(document, "Your OSCE Guide data", size=18)
-    profile = export.profile
+    _write_profile(document, export.profile)
+    _write_attempts(document, export.attempts)
+    _write_payments(document, export.payments)
+    return pdf.output_bytes(document)
+
+
+def _write_profile(document: FPDF, profile: ExportedProfile) -> None:
+    """The account's own fields."""
     _rows(
         document,
         [
@@ -111,10 +117,13 @@ def render_export_pdf(export: MyDataExport) -> bytes:
         ],
     )
 
-    _heading(document, f"Attempts ({len(export.attempts)})")
-    if not export.attempts:
+
+def _write_attempts(document: FPDF, attempts: list[ExportedAttempt]) -> None:
+    """Every attempt with its marks and its transcript, or a line saying there are none."""
+    _heading(document, f"Attempts ({len(attempts)})")
+    if not attempts:
         _line(document, "No attempts.")
-    for attempt in export.attempts:
+    for attempt in attempts:
         _heading(document, f"{attempt.kind.replace('_', ' ').capitalize()} · {attempt.status}", size=12)
         _rows(
             document,
@@ -133,21 +142,22 @@ def render_export_pdf(export: MyDataExport) -> bytes:
         for message in attempt.transcript.messages:
             _line(document, f"{_moment(message.spoken_at)}  {message.role}: {message.message}")
 
-    _heading(document, f"Payments ({len(export.payments)})")
-    if not export.payments:
+
+def _write_payments(document: FPDF, payments: list[ExportedPayment]) -> None:
+    """Every payment, or a line saying there are none."""
+    _heading(document, f"Payments ({len(payments)})")
+    if not payments:
         _line(document, "No payments.")
-    for payment in export.payments:
+    for payment in payments:
         amount = f"{payment.amount_total_pence / 100:.2f} {payment.currency.upper()}"
         receipt = f", receipt {payment.receipt_id}" if payment.receipt_id else ""
         _line(document, f"{_moment(payment.paid_at)}  {amount}{receipt}")
-    return pdf.output_bytes(document)
 
 
 def _heading(document: FPDF, text: str, *, size: int = 14) -> None:
     """A section title with a little space above it."""
     document.ln(4)
-    document.set_font(pdf.FACE, size=size)
-    document.multi_cell(0, size * 0.5, text, new_x="LMARGIN", new_y="NEXT")
+    _line(document, text, size=size)
 
 
 def _rows(document: FPDF, rows: list[tuple[str, str]]) -> None:
