@@ -1,4 +1,5 @@
 import {
+  platformDownload,
   platformRequest,
   rememberPlatformSession,
   type components,
@@ -281,6 +282,12 @@ export type MyDataExport = components["schemas"]["MyDataExport"];
  */
 export function exportMyData(signal?: AbortSignal): Promise<MyDataExport> {
   return platformRequest<MyDataExport>("/api/v1/me/export", { signal });
+}
+
+/** The same data as a PDF a person can read and print (`?format=pdf`). */
+export async function exportMyDataPdf(signal?: AbortSignal): Promise<Blob> {
+  const { blob } = await platformDownload("/api/v1/me/export", { query: { format: "pdf" }, signal });
+  return blob;
 }
 
 export type SsoSignIn = components["schemas"]["SsoSignIn"];

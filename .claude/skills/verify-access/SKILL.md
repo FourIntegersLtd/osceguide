@@ -152,3 +152,10 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
   an `@example.com` address from the staff console, take the token from the
   outbox row, open `/accept-invitation?token=...`, set a password, and expect to
   land signed in on `/app` (then reload: still signed in).
+- **Settings account screens in a browser (A-27..A-33).** `walkthrough@example.com` is a
+  platform admin, so Delete account is disabled and 2FA is mandatory there: register a fresh
+  `@example.com` account (`POST /auth/register`, then `PATCH /me {"exam_code":"sca"}`) and
+  drive that. Enrolling 2FA from a script: read `secret` off the `POST /me/mfa/enrol` response
+  and compute the TOTP with `crypto` HMAC-SHA1. The server rejects a code reused in the same
+  30 s step, so wait 31 s between the enrol code and the turn-off code or the turn-off looks
+  broken. Walk Delete account to the second confirm and cancel; never confirm it.

@@ -36,6 +36,10 @@ export function AuthenticatorSetup({
         if (isCompleteTotp(code)) onConfirm(normaliseTotp(code));
       }}
     >
+      <p className="text-osce-body text-ink">
+        After setup, every sign-in needs your password and a 6-digit code from your authenticator
+        app.
+      </p>
       <ol className="list-decimal space-y-3 pl-5 text-osce-body text-ink">
         <li>
           Open an authenticator app such as Google Authenticator, Microsoft Authenticator or
@@ -50,11 +54,11 @@ export function AuthenticatorSetup({
             className="my-2 block rounded-osce-lg border border-border"
           />
           <span className="block">
-            On your phone?{" "}
+            Setting up on the phone that has the authenticator app? Tap{" "}
             <a href={otpauthUri} className="font-medium text-accent hover:text-accent-hover">
               Open in your authenticator app
-            </a>
-            .
+            </a>{" "}
+            instead of scanning.
           </span>
         </li>
         <li>

@@ -25,7 +25,7 @@ export default function ReferralsInfo() {
     <AboutInfo>
       <AboutInfoHeader
         title="Understanding our referral program"
-        description="Share OSCE Guide with your friends and earn rewards while helping them with their exams."
+        description="Share OSCE Guide with your friends and earn rewards while helping them with their exams"
       />
       <AboutInfoSection title="How it works" tone="sky">
         <AboutInfoList>
@@ -36,7 +36,7 @@ export default function ReferralsInfo() {
               </AboutInfoIconMarker>
             }
             title="Share your code"
-            description="Generate your unique referral code and share it with friends."
+            description="Generate your unique referral code and share it with friends"
           />
           <AboutInfoItem
             marker={

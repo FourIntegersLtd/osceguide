@@ -17,6 +17,12 @@ import { useCurrentExam } from "@/foundation/session/useCurrentExam";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { readMe, updateMe, uploadAvatar, type Me } from "@/capabilities/account/api";
 import type { ProfilePart } from "@/capabilities/account/settings/settingsTabs";
+import {
+  AVATAR_CAPTION,
+  AVATAR_TOO_BIG,
+  avatarButtonLabel,
+  avatarTooBig,
+} from "@/capabilities/account/settings/avatarRule";
 import { examLabel, NO_EXAM_LABEL } from "@/capabilities/account/settings/examLabel";
 import ChangeEmail from "@/capabilities/account/settings/ChangeEmail";
 import ChangePassword from "@/capabilities/account/settings/ChangePassword";
@@ -84,10 +90,10 @@ export default function ProfilePanel({
       ) : null}
       {part === "security" ? (
         <>
-          <Panel title="Password" description="Change the password you sign in with.">
+          <Panel title="Password" description="Change the password you sign in with">
             <ChangePassword />
           </Panel>
-          <Panel title="Email" description="Change the address you sign in with.">
+          <Panel title="Email" description="Change the address you sign in with">
             <ChangeEmail />
           </Panel>
           <TwoFactorPanel />
@@ -148,6 +154,10 @@ function AccountForm({
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (avatarTooBig(file.size)) {
+      toast.error(AVATAR_TOO_BIG);
+      return;
+    }
     setAvatarBusy(true);
     setAvatarError(null);
     try {
@@ -196,7 +206,7 @@ function AccountForm({
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <Panel title="Account" description="Your sign-in details and account actions.">
+      <Panel title="Account" description="Your sign-in details and account actions">
         <div className="space-y-4">
           {error ? <Alert message={error} type="error" /> : null}
           {avatarError ? <Alert message={avatarError} type="error" /> : null}
@@ -214,17 +224,20 @@ function AccountForm({
                 {initials(user.name || user.email)}
               </div>
             )}
-            <label
-              htmlFor="avatar-upload"
-              className={getButtonClassName({ variant: "secondary", className: "cursor-pointer gap-2" })}
-            >
-              <HiOutlineCamera className="h-4 w-4" aria-hidden />
-              {avatarBusy ? "Uploading…" : "Change photo"}
-            </label>
+            <div className="space-y-1">
+              <label
+                htmlFor="avatar-upload"
+                className={getButtonClassName({ variant: "secondary", className: "cursor-pointer gap-2" })}
+              >
+                <HiOutlineCamera className="h-4 w-4" aria-hidden />
+                {avatarBusy ? "Uploading…" : avatarButtonLabel(avatarUrl !== null)}
+              </label>
+              <p className={settingsMeta}>{AVATAR_CAPTION}</p>
+            </div>
             <input
               id="avatar-upload"
               type="file"
-              accept="image/jpeg,image/png,image/webp"
+              accept="image/jpeg,image/png"
               className="hidden"
               disabled={avatarBusy}
               onChange={(event) => void onAvatarPicked(event)}

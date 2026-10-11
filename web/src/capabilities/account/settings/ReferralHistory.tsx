@@ -147,7 +147,7 @@ function ReferralHistoryTable({ rows, more }: { rows: ReferralHistoryRow[]; more
     <Table<ReferralHistoryRow>
       className={more.hasMore ? "mb-24" : "mb-4"}
       title="Referral history"
-      description="Track referees, earnings, and payout status."
+      description="Track referees, earnings, and payout status"
       rows={rows}
       more={more}
       columns={columns}

@@ -137,7 +137,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
     <ModalContent>
       <ModalLead
         title="Update password"
-        description="Choose a new password for your account."
+        description="Choose a new password for your account"
         icon={<HiOutlineLockClosed className="h-5 w-5" />}
       />
       {formError ? <Alert message={formError} type="error" /> : null}

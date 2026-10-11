@@ -43,3 +43,4 @@ Proof: `verify-access`. Anything that touches auth is ask-first.
   reads. `tests/http/test_route_roles.py` sends the rung below.
 - web `scripts/check-route-gates.mjs` fails a write whose screen checks no permission admitting the
   route's rung. A gate on the button (`AuthoringButton write`) is invisible to it: allow-list with why.
+- Account-close and 2FA-off copy (`capabilities/account/settings/CloseAccount.tsx`, `TwoFactorPanel.tsx`): there are no Stripe subscriptions (A-34), so never say a subscription is cancelled; say paid access ends with the account, no refund. Each destructive step is `ConfirmModal`, with a success toast after 2FA-off.

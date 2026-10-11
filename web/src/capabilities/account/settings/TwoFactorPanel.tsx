@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { HiOutlineShieldCheck } from "react-icons/hi2";
+import { HiOutlineCheckCircle, HiOutlineShieldCheck } from "react-icons/hi2";
 import { hasCode } from "@/foundation/platform-client";
-import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { AsyncBoundary, Button, ConfirmModal, Input, Modal, Panel } from "@/foundation/ui";
+import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import {
   confirmMyMfa,
   disableMyMfa,
@@ -24,7 +24,8 @@ type Dialog =
   | { kind: "enrol"; enrolment: MfaEnrolment }
   | { kind: "codes"; codes: string[] }
   | { kind: "regenerate" }
-  | { kind: "disable" };
+  | { kind: "disable" }
+  | { kind: "confirmOff"; code: string };
 
 const REQUIRED_BECAUSE: Record<NonNullable<MfaStatus["required_reason"]>, string> = {
   platform_admin: "Staff accounts must use two-factor sign-in.",
@@ -52,6 +53,8 @@ export function TwoFactorPanel() {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
+  const [offError, setOffError] = useState<string | null>(null);
+  const toast = useToast();
 
   const start = async () => {
     setStarting(true);
@@ -70,18 +73,48 @@ export function TwoFactorPanel() {
     status.reload();
   };
 
+  const turnOff = async (code: string) => {
+    setOffError(null);
+    try {
+      await disableMyMfa(code);
+      toast.success("Two-factor sign-in is off");
+      close();
+    } catch (cause) {
+      if (hasCode(cause, "invalid_mfa_code")) {
+        // The confirm step has no code field: send them back to the one that does.
+        toast.error(codeFailure(cause));
+        setDialog({ kind: "disable" });
+      } else {
+        setOffError(codeFailure(cause));
+      }
+    }
+  };
+
   return (
     <>
-      <Panel title="Two-factor sign-in">
+      <Panel
+        title="Two-factor sign-in"
+        description="Ask for a code from your authenticator app at every sign-in"
+      >
         <AsyncBoundary state={status}>
           {(mfa: MfaStatus) => (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-1">
-                <p className={settingsSub}>
-                  {mfa.enabled
-                    ? `On. You sign in with your password and a code from your authenticator app. ${mfa.recovery_codes_remaining} recovery ${mfa.recovery_codes_remaining === 1 ? "code" : "codes"} left.`
-                    : "Add a code from an authenticator app when you sign in."}
-                </p>
+                {mfa.enabled ? (
+                  <>
+                    <p className="flex items-center gap-1.5 text-osce-body font-medium text-success">
+                      <HiOutlineCheckCircle className="h-5 w-5" aria-hidden />
+                      Enabled
+                    </p>
+                    <p className={settingsSub}>
+                      You sign in with your password and a code from your authenticator app.{" "}
+                      {mfa.recovery_codes_remaining} recovery{" "}
+                      {mfa.recovery_codes_remaining === 1 ? "code" : "codes"} left.
+                    </p>
+                  </>
+                ) : (
+                  <p className={settingsSub}>Add a code from an authenticator app when you sign in.</p>
+                )}
                 {mfa.required && mfa.required_reason ? (
                   <p className={settingsMeta}>{REQUIRED_BECAUSE[mfa.required_reason]}</p>
                 ) : null}
@@ -115,7 +148,19 @@ export function TwoFactorPanel() {
         </AsyncBoundary>
       </Panel>
 
-      {dialog ? (
+      <ConfirmModal
+        isOpen={dialog?.kind === "confirmOff"}
+        onCancel={close}
+        onConfirm={() => (dialog?.kind === "confirmOff" ? turnOff(dialog.code) : undefined)}
+        title="Turn off two-factor sign-in?"
+        message="You will sign in with your password alone. Your recovery codes stop working."
+        confirmText="Turn off"
+        cancelText="Keep it on"
+        tone="danger"
+        error={offError}
+      />
+
+      {dialog && dialog.kind !== "confirmOff" ? (
         <Modal width="440px" title={DIALOG_TITLES[dialog.kind]} onClose={close}>
           <div className="p-5">
             {/* The modal's own title is for screen readers only. */}
@@ -138,13 +183,13 @@ export function TwoFactorPanel() {
               />
             ) : (
               <CodeDialog
-                description="You will sign in with your password alone. Your recovery codes stop working."
-                action="Turn off two-factor sign-in"
-                run={async (code) => {
-                  await disableMyMfa(code);
-                  return [];
+                description="Enter a code from your authenticator app to continue."
+                action="Continue"
+                run={async (code) => [code]}
+                onDone={([code]) => {
+                  setOffError(null);
+                  setDialog({ kind: "confirmOff", code: code ?? "" });
                 }}
-                onDone={close}
               />
             )}
           </div>
@@ -154,7 +199,7 @@ export function TwoFactorPanel() {
   );
 }
 
-const DIALOG_TITLES: Record<Dialog["kind"], string> = {
+const DIALOG_TITLES: Record<Exclude<Dialog["kind"], "confirmOff">, string> = {
   enrol: "Set up two-factor sign-in",
   codes: "Your recovery codes",
   regenerate: "New recovery codes",

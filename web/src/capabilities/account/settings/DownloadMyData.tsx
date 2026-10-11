@@ -5,7 +5,7 @@ import { HiOutlineArrowDownTray } from "react-icons/hi2";
 import { Button, Panel } from "@/foundation/ui";
 import { errorMessage } from "@/foundation/hooks";
 import { saveBlob } from "@/foundation/platform-client";
-import { exportMyData } from "@/capabilities/account/api";
+import { exportMyData, exportMyDataPdf } from "@/capabilities/account/api";
 import { settingsSub } from "@/capabilities/account/settings/SettingsKit";
 
 /**
@@ -21,15 +21,19 @@ export function DownloadMyData() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const download = async () => {
+  const download = async (format: "json" | "pdf") => {
     setBusy(true);
     setError(null);
     try {
-      const data = await exportMyData();
-      saveBlob(
-        new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
-        "my-data.json",
-      );
+      if (format === "pdf") {
+        saveBlob(await exportMyDataPdf(), "my-data.pdf");
+      } else {
+        const data = await exportMyData();
+        saveBlob(
+          new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
+          "my-data.json",
+        );
+      }
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
@@ -44,10 +48,16 @@ export function DownloadMyData() {
           <p className={settingsSub}>A copy of everything we hold about you.</p>
           {error ? <p className="mt-1 text-osce-meta text-danger">{error}</p> : null}
         </div>
-        <Button variant="secondary" onClick={() => download()} disabled={busy} className="shrink-0 gap-2">
-          <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
-          {busy ? "Preparing…" : "Download my data"}
-        </Button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => download("json")} disabled={busy} className="gap-2">
+            <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
+            {busy ? "Preparing…" : "Download my data"}
+          </Button>
+          <Button variant="secondary" onClick={() => download("pdf")} disabled={busy} className="gap-2">
+            <HiOutlineArrowDownTray className="h-4 w-4" aria-hidden />
+            Download as PDF
+          </Button>
+        </div>
       </div>
     </Panel>
   );

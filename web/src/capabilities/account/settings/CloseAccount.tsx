@@ -25,14 +25,14 @@ const { b2cInputBase } = productTokens;
 export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
   const router = useRouter();
   const { signOut } = useSession();
-  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<"closed" | "form" | "final">("closed");
   const [confirmText, setConfirmText] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
-    setOpen(false);
+    setStep("closed");
     setConfirmText("");
     setPassword("");
     setError(null);
@@ -57,16 +57,14 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
       <section className="flex flex-wrap items-center justify-between gap-4 rounded-osce-lg bg-canvas p-6">
         <div className="min-w-0 flex-1">
           <h2 className="text-osce-subheading font-semibold text-danger">Delete your account</h2>
-          <p className={settingsSub}>
-            You are signed out straight away. Sign in again within {ACCOUNT_REOPEN_DAYS} days to reopen it; after that your details and practice are erased.
-          </p>
+          <p className={settingsSub}>You are signed out straight away. You have {ACCOUNT_REOPEN_DAYS} days to reopen it.</p>
           {isAdmin ? (
             <p className={`mt-1 ${settingsMeta}`}>Admin accounts cannot be deleted from Settings.</p>
           ) : null}
         </div>
         <Button
           variant="danger"
-          onClick={() => setOpen(true)}
+          onClick={() => setStep("form")}
           disabled={isAdmin || busy}
           className="shrink-0 gap-2"
         >
@@ -85,19 +83,23 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
       </section>
 
       <ConfirmModal
-        isOpen={open}
+        isOpen={step === "form"}
         onCancel={reset}
-        onConfirm={() => close()}
+        onConfirm={() => setStep("final")}
         title="Delete your account?"
-        message={`You will be signed out now. Sign in again within ${ACCOUNT_REOPEN_DAYS} days to reopen the account; after that your details, attempts and feedback are erased. Closing does not cancel a subscription or refund a payment: email support first if you want that. Type DELETE to confirm.`}
-        confirmText="Delete my account"
+        message="Here is what happens."
+        confirmText="Continue"
         cancelText="Keep account"
         tone="danger"
-        isLoading={busy}
         confirmDisabled={confirmText.trim().toUpperCase() !== "DELETE"}
         error={error}
       >
         <div className="space-y-3 text-left">
+          <ul className="list-disc space-y-1 pl-5 text-osce-body text-ink">
+            <li>Now: you are signed out, paid access ends with the account, and there is no refund.</li>
+            <li>For {ACCOUNT_REOPEN_DAYS} days: sign in again to reopen the account.</li>
+            <li>After {ACCOUNT_REOPEN_DAYS} days: your details, attempts and feedback are erased.</li>
+          </ul>
           <label className="block">
             <span className="mb-1 block text-osce-meta text-ink-subtle">
               Type <span className="font-mono font-semibold">DELETE</span> to confirm
@@ -124,6 +126,19 @@ export function CloseAccount({ isAdmin }: { isAdmin: boolean }) {
           </label>
         </div>
       </ConfirmModal>
+
+      <ConfirmModal
+        isOpen={step === "final"}
+        onCancel={() => setStep("form")}
+        onConfirm={() => close()}
+        title="Delete your account?"
+        message={`This cannot be undone after ${ACCOUNT_REOPEN_DAYS} days.`}
+        confirmText="Delete my account"
+        cancelText="Back"
+        tone="danger"
+        isLoading={busy}
+        error={error}
+      />
     </>
   );
 }

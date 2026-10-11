@@ -51,6 +51,10 @@ export function RecoveryCodes({
         Keep these somewhere safe. Each one signs you in once if you lose your authenticator.
         This is the only time we will show them.
       </p>
+      <p className="text-osce-body text-ink">
+        After setup, every sign-in needs your password and a 6-digit code from your authenticator
+        app.
+      </p>
       <ul
         aria-label="Recovery codes"
         className="grid grid-cols-2 gap-2 rounded-osce-lg border border-border bg-canvas p-4 font-mono text-osce-data text-ink"

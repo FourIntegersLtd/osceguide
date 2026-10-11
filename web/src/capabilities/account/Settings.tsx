@@ -157,7 +157,7 @@ function SettingsFrame({
     return (
       <PlatformTabbedScreen
         title="Settings"
-        description="Your own account: profile, sign-in and your data."
+        description="Your own account: profile, sign-in and your data"
         tabs={items}
         value={tab}
         onChange={handleTabChange}

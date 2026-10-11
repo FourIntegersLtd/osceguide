@@ -124,7 +124,7 @@ function PreferencesForm({ me }: { me: Me }) {
       <form onSubmit={(event) => void save(event)} className="space-y-6" noValidate>
         {error ? <Alert message={error} type="error" /> : null}
 
-        <Panel title="Preferences" description="Accessibility, AI consent and notifications.">
+        <Panel title="Preferences" description="Accessibility, AI consent and notifications">
           <SettingsRows className="rounded-none border-0">
             <SettingsRow
               icon={HiOutlineSparkles}
