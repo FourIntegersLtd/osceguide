@@ -34,7 +34,7 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
   const active = finished.find((slot) => slot.id === activeId) ?? first;
 
   return (
-    <Panel title="Mark a finished station">
+    <Panel title="Mark a finished station" collapsible>
       <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Finished stations">
         {finished.map((slot) => (
           <button

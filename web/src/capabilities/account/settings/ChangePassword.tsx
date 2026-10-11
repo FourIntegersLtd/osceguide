@@ -17,7 +17,7 @@ import {
   ModalSection,
 } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
-import { errorMessage } from "@/foundation/hooks";
+import { errorMessage, useToast } from "@/foundation/hooks";
 import {
   PASSWORD_HINT,
   passwordSchema,
@@ -77,7 +77,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const toast = useToast();
   const [fieldErrors, setFieldErrors] = useState<FieldErrors<PasswordField>>({});
   const [noPassword, setNoPassword] = useState(false);
   const email = useSession().session?.user.email ?? null;
@@ -88,7 +88,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
     try {
       await requestPasswordReset(email);
       setNoPassword(false);
-      setSuccessMessage(`We've emailed ${email} a link to set a password.`);
+      toast.success(`We've emailed ${email} a link to set a password.`);
     } catch (error) {
       setFormError(errorMessage(error));
     }
@@ -97,7 +97,6 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setFormError(null);
-    setSuccessMessage(null);
     const validation = validateWith<typeof values, PasswordField>(
       updatePasswordSchema,
       values,
@@ -110,7 +109,7 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
     setIsSubmitting(true);
     try {
       await changePassword(values.currentPassword, values.newPassword);
-      setSuccessMessage(`Password updated. This device stays signed in; your other devices are signed out within ${OTHER_DEVICES_SIGN_OUT_MINUTES} minutes.`);
+      toast.success(`Password updated. This device stays signed in; your other devices are signed out within ${OTHER_DEVICES_SIGN_OUT_MINUTES} minutes.`);
       setValues({ currentPassword: "", newPassword: "", confirmPassword: "" });
       if (onChanged) await onChanged();
     } catch (error) {
@@ -141,7 +140,6 @@ export default function ChangePassword({ onChanged }: { onChanged?: () => Promis
         description="Choose a new password for your account."
         icon={<HiOutlineLockClosed className="h-5 w-5" />}
       />
-      {successMessage ? <Alert message={successMessage} type="success" /> : null}
       {formError ? <Alert message={formError} type="error" /> : null}
       {noPassword && email ? (
         <ModalPrimaryButton type="button" onClick={() => void sendSetPasswordLink()}>

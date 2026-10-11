@@ -83,15 +83,16 @@ export function FoldSection({
 }
 
 /**
- * A titled surface. The console is a stack of these on every screen. A titled
- * panel folds from its header, which is tinted so one panel reads apart from
- * the next; a folded body stays mounted, so a form inside keeps what was typed.
+ * A titled surface. The console is a stack of these on every screen. Only a
+ * `collapsible` panel (a sidebar's) folds from its header; a folded body stays
+ * mounted, so a form inside keeps what was typed.
  */
 export function Panel({
   title,
   description,
   actions,
   padding = "md",
+  collapsible = false,
   defaultOpen = true,
   scrollable = true,
   className,
@@ -102,13 +103,17 @@ export function Panel({
   actions?: React.ReactNode;
   /** `"none"` for a panel whose body is its own full-bleed list (rows carry their own padding). */
   padding?: "none" | "sm" | "md";
+  /** Folds from the header. Off by default: a page's panels stay open. */
+  collapsible?: boolean;
+  /** Only read when `collapsible`. */
   defaultOpen?: boolean;
   /** Off for a form whose in-flow dropdown would be cut off by the scroll cap. */
   scrollable?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [folded, setFolded] = useState(collapsible && !defaultOpen);
+  const open = !folded;
   const shown = open || !title;
   const bodyPadding =
     padding === "none" ? "" : padding === "sm" ? "p-4" : "p-5 sm:p-6";
@@ -128,24 +133,28 @@ export function Panel({
         >
           <div className="min-w-0">
             <h2 className="font-heading text-osce-subheading font-semibold text-ink">
-              <button
-                type="button"
-                aria-expanded={open}
-                onClick={() => setOpen((value) => !value)}
-                className="flex items-center gap-2 text-left"
-              >
-                <HiOutlineChevronRight
-                  className={cn(
-                    "h-4 w-4 shrink-0 text-ink-subtle transition-transform",
-                    open && "rotate-90",
-                  )}
-                  aria-hidden
-                />
-                {title}
-              </button>
+              {collapsible ? (
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() => setFolded((value) => !value)}
+                  className="flex items-center gap-2 text-left"
+                >
+                  <HiOutlineChevronRight
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-ink-subtle transition-transform",
+                      open && "rotate-90",
+                    )}
+                    aria-hidden
+                  />
+                  {title}
+                </button>
+              ) : (
+                title
+              )}
             </h2>
             {description ? (
-              <p className="mt-0.5 pl-6 text-osce-meta text-ink-subtle">
+              <p className={cn("mt-0.5 text-osce-meta text-ink-subtle", collapsible && "pl-6")}>
                 {description}
               </p>
             ) : null}
@@ -355,7 +364,7 @@ export function ActionRail({
   danger?: React.ReactNode;
 }) {
   return (
-    <Panel title={title} padding="sm">
+    <Panel title={title} padding="sm" collapsible>
       <div className="flex flex-col gap-3">
         {children}
         {danger ? (

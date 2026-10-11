@@ -4,13 +4,12 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { HiOutlinePlay } from "react-icons/hi2";
 import { LuHeadphones } from "react-icons/lu";
-import { B2CEmptyState, productTokens as t } from "@/foundation/ui";
+import { B2CEmptyState } from "@/foundation/ui";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import {
   audioUrl,
   bodyMarkdown,
   readMedia,
-  podcastGroupLabel,
   podcastSeries,
   type MediaItem,
 } from "@/capabilities/media/api";
@@ -20,6 +19,7 @@ import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 import { EpisodePanel } from "@/capabilities/media/EpisodePanel";
 import { Prose } from "@/capabilities/media/Prose";
 import { podcastEpisodePath } from "@/capabilities/media/studyPaths";
+import { groupPodcasts, podcastOrder } from "@/capabilities/media/catalogue";
 import type { Episode } from "@/capabilities/media/PodcastPlayer";
 import { B2CGroupedRowLink, B2CGroupedSection } from "@/foundation/ui/B2CGroupedList";
 
@@ -37,33 +37,13 @@ function resolveSelected(
   return episodes[0] ?? null;
 }
 
-function publishedSortKey(item: MediaItem): number {
-  if (!item.published_at) return 0;
-  const ms = Date.parse(item.published_at);
-  return Number.isFinite(ms) ? ms : 0;
-}
-
-function groupPodcasts(items: MediaItem[]): { label: string; episodes: MediaItem[] }[] {
-  const map = new Map<string, MediaItem[]>();
-  for (const item of items) {
-    const label = podcastGroupLabel(item);
-    const list = map.get(label) ?? [];
-    list.push(item);
-    map.set(label, list);
-  }
-  return [...map.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([label, episodes]) => ({
-      label,
-      episodes: [...episodes].sort((a, b) => publishedSortKey(b) - publishedSortKey(a)),
-    }));
-}
-
 function PodcastLibraryBody({
   items,
+  catalogue,
   allItemsCount,
 }: {
   items: MediaItem[];
+  catalogue: MediaItem[];
   allItemsCount: number;
 }) {
   const { hrefFor } = useSurface();
@@ -103,7 +83,7 @@ function PodcastLibraryBody({
 
   if (!selected) return null;
 
-  const series = podcastSeries(items, selected, examCode);
+  const series = podcastSeries(podcastOrder(catalogue), selected, examCode);
   const fallbackIndex = Math.max(0, series.findIndex((entry) => entry.id === selected.id));
   const currentIndex = indexOverride ?? fallbackIndex;
   const current = series[currentIndex] ?? selected;
@@ -157,9 +137,7 @@ function PodcastLibraryBody({
 
       <DiscussWithAthena topic={{ title: current.title, kind: "podcast", slug: current.slug }} />
       {notes ? (
-        <div className={t.b2cProseMeasureWide}>
-          <Prose content={notes} />
-        </div>
+        <Prose content={notes} />
       ) : null}
     </div>
   );
@@ -167,14 +145,18 @@ function PodcastLibraryBody({
 
 export function PodcastLibrary({
   items,
+  catalogue,
   allItemsCount,
 }: {
+  /** The rows shown so far: the first of the catalogue, ten at a time. */
   items: MediaItem[];
+  /** Every episode, by title: what Previous and Next walk. */
+  catalogue: MediaItem[];
   allItemsCount: number;
 }) {
   return (
     <Suspense fallback={null}>
-      <PodcastLibraryBody items={items} allItemsCount={allItemsCount} />
+      <PodcastLibraryBody items={items} catalogue={catalogue} allItemsCount={allItemsCount} />
     </Suspense>
   );
 }

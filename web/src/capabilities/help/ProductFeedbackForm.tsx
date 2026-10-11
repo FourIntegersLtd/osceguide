@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { LuMessageSquare } from "react-icons/lu";
 import { Alert, Button, ModalHelper, ModalTitle, cn, productTokens, Panel } from "@/foundation/ui";
+import { useToast } from "@/foundation/hooks";
 import { useSession } from "@/foundation/session";
 import { sendSiteMessage } from "@/capabilities/help/api";
 import { StarRating, TestimonialChoice } from "@/capabilities/help/ProductFeedbackFields";
@@ -54,13 +55,13 @@ export function ProductFeedbackForm({
   className = "",
 }: ProductFeedbackFormProps) {
   const { session } = useSession();
+  const toast = useToast();
   const [rating, setRating] = useState(0);
   const [experience, setExperience] = useState("");
   const [testimonialPermission, setTestimonialPermission] =
     useState<TestimonialPermission | "">("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
 
   const idPrefix = `product-feedback-${source}`;
 
@@ -100,7 +101,10 @@ export function ProductFeedbackForm({
         }),
         source,
       });
-      setSent(true);
+      toast.success("Feedback sent", "Thanks for helping us improve.");
+      setRating(0);
+      setExperience("");
+      setTestimonialPermission("");
       onSubmitted?.();
     } catch {
       setError("Could not send feedback. Please try again.");
@@ -183,23 +187,6 @@ export function ProductFeedbackForm({
       />
     </>
   );
-
-  if (sent) {
-    if (cardTitle) {
-      return (
-        <div className={className}>
-          <Panel title={cardTitle}>
-            <Alert tone="success">Thanks. Your feedback was sent.</Alert>
-          </Panel>
-        </div>
-      );
-    }
-    return (
-      <div className={className}>
-        <Alert tone="success">Thanks. Your feedback was sent.</Alert>
-      </div>
-    );
-  }
 
   return (
     <div className={cn(compact ? "space-y-3" : "space-y-6", className)}>

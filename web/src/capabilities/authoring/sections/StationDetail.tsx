@@ -477,7 +477,7 @@ export function StationDetail({
             </Panel>
           ) : null}
           {structure ? (
-            <Panel title="Station content" defaultOpen={drafted || !factCheck}>
+            <Panel title="Station content" collapsible defaultOpen={drafted || !factCheck}>
               <p className="mb-4 text-osce-caption text-ink-muted">
                 Version {version}.
                 {editable
@@ -504,7 +504,7 @@ export function StationDetail({
             />
           ) : null}
           {factCheck && editable && drafted ? (
-            <Panel title="Produce again from a brief" padding="sm" defaultOpen={false}>
+            <Panel title="Produce again from a brief" padding="sm" collapsible defaultOpen={false}>
               {produceForm}
             </Panel>
           ) : null}

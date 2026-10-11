@@ -42,7 +42,7 @@ export function TranscriptList() {
   );
 
   return (
-    <div className="mx-auto max-w-osce-page space-y-6">
+    <div className="space-y-6">
       <B2CPageHeader
         title="Transcripts"
         subtitle="A transcript is saved each time you complete a consultation."

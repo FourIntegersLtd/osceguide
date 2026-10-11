@@ -58,14 +58,14 @@ const b2cVariants: Record<ButtonVariant, string> = {
     "bg-osce-accent !text-white hover:bg-osce-accent-hover focus:ring-osce-accent/30 border border-transparent",
   commit: commitStyles,
   secondary:
-    "bg-osce-surface border border-b2c-border text-osce-ink-900 hover:bg-b2c-secondary focus:ring-osce-accent/20",
+    "border border-osce-accent bg-osce-surface text-osce-accent hover:bg-osce-accent hover:!text-white focus:ring-osce-accent/20",
   danger:
     // !bg / !text beat LiveKit `.lk-disconnect-button` Theme vars (otherwise invisible on white)
     "!bg-osce-danger !text-white hover:!bg-osce-danger-hover focus:ring-osce-danger border border-transparent",
   dangerSolid:
     "!bg-osce-danger !text-white hover:!bg-osce-danger-hover focus:ring-osce-danger-border border border-transparent",
   outline:
-    "border border-b2c-border text-osce-ink-900 hover:bg-b2c-secondary focus:ring-osce-accent/20 bg-osce-surface",
+    "border border-osce-accent bg-osce-surface text-osce-accent hover:bg-osce-accent hover:!text-white focus:ring-osce-accent/20",
   ghost:
     "text-b2c-text-muted hover:bg-b2c-secondary hover:text-osce-ink-900 focus:ring-osce-accent/20 bg-transparent border border-transparent",
 };

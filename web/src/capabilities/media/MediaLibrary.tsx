@@ -1,5 +1,6 @@
 "use client";
 
+import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
 import { useState } from "react";
 import { HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
 import {
@@ -23,7 +24,7 @@ import {
   type MediaKind,
 } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
-import { MEDIA_KIND_ICON, MediaCard, MediaCardGrid } from "@/capabilities/media/MediaCard";
+import { MEDIA_KIND_ICON, MediaCard, MediaCardGrid, mediaKindOf } from "@/capabilities/media/MediaCard";
 import { SummaryIndex } from "@/capabilities/media/SummaryIndex";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
 
@@ -212,7 +213,7 @@ function MediaGrid({ items, hrefFor }: { items: MediaItem[]; hrefFor: (path: str
     <div className="space-y-8">
       <MediaCardGrid>
         {items.map((item) => (
-          <MediaCard key={item.id} item={item} href={hrefFor(`/library/${item.slug}`)} />
+          <MediaCard key={item.id} item={item} href={hrefFor(studyTabPathForSlug(mediaKindOf(item) ?? "summary", item.slug))} />
         ))}
       </MediaCardGrid>
     </div>

@@ -4,26 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { LuChevronRight, LuSearch } from "react-icons/lu";
-import { isNavActive } from "@/foundation/navigation/isNavActive";
+import { resolveCrumb } from "@/foundation/navigation/resolveCrumb";
 import { ATHENA_IMAGE_SRC } from "@/foundation/ui";
 import { openAthena } from "@/capabilities/help/api";
 import type { NavItem } from "@/surfaces/contract";
 import { WorkspaceJumpTo } from "@/surfaces/WorkspaceJumpTo";
-
-/** Pages reached from inside a section rather than from the nav. */
-const DEEP_PAGES: Record<string, string> = {
-  debriefs: "Debriefs",
-  transcripts: "Transcripts",
-  library: "Library",
-  stations: "Station",
-  attempts: "Attempt",
-  sessions: "Sessions",
-  sittings: "Sittings",
-  circuits: "Circuit",
-  slots: "Review",
-  trainee: "My training",
-  mocks: "Practice sessions",
-};
 
 export interface WorkspaceToolbarProps {
   items: NavItem[];
@@ -66,16 +51,10 @@ export function WorkspaceToolbar({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const crumb = useMemo(() => {
-    const match = items
-      .filter((item) => isNavActive(pathname, item.href, { shellBase: basePath }))
-      .sort((a, b) => b.href.length - a.href.length)[0];
-    if (match) {
-      return { section: match.section ? sectionLabels[match.section] : rootLabel, page: match.label };
-    }
-    const segment = pathname.slice(basePath.length).split("/").filter(Boolean)[0] ?? "";
-    return { section: rootLabel, page: DEEP_PAGES[segment] ?? "Dashboard" };
-  }, [items, pathname, basePath, sectionLabels, rootLabel]);
+  const crumb = useMemo(
+    () => resolveCrumb(pathname, items, basePath, sectionLabels, rootLabel),
+    [items, pathname, basePath, sectionLabels, rootLabel],
+  );
 
   return (
     <div className="sticky top-0 z-10 hidden h-[52px] shrink-0 items-center gap-3 border-b border-osce-border-light bg-osce-surface px-6 md:flex lg:px-10">

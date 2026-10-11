@@ -60,7 +60,7 @@ export function ArticleView({
           <DiscussWithAthena className="mt-4" topic={{ title: item.title, kind: "blog", slug: item.slug }} />
         </header>
 
-        <div className="mt-6 max-w-[720px] text-[17px] leading-7 [&_p]:text-[17px] [&_p]:leading-7">
+        <div className="mt-6 text-[17px] leading-7 [&_p]:text-[17px] [&_p]:leading-7">
           {body ? (
             <Prose content={body} />
           ) : (

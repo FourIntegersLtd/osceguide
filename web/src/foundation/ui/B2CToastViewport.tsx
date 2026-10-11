@@ -12,7 +12,7 @@ interface B2CToastViewportProps {
 export function B2CToastViewport({ toasts, onDismiss }: B2CToastViewportProps) {
   if (toasts.length === 0) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[110] flex flex-col gap-2 sm:inset-x-auto sm:bottom-6 sm:right-6 sm:w-[22rem]">
+    <div className="pointer-events-none fixed top-4 left-1/2 z-[110] flex w-[calc(100%-2rem)] -translate-x-1/2 flex-col gap-2 sm:w-[24rem]">
       {toasts.map((toast) => (
         <B2CToastCard key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}

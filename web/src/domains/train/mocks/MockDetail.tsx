@@ -103,7 +103,7 @@ export function MockDetail({ setId }: { setId: string }) {
           const canStart = micReady && first !== null;
 
           return (
-            <div className="mx-auto max-w-osce-page space-y-6">
+            <div className="space-y-6">
               <B2CPageHeader
                 back={{ href: hrefFor("/mocks/list"), label: "Sessions" }}
                 title={set.name}

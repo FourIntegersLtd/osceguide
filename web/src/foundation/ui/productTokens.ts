@@ -145,7 +145,6 @@ export const b2cPsychosocialReadingToneKeys = [
 ] as const satisfies readonly B2CReadingToneKey[];
 
 export const b2cEyebrow = "text-osce-meta font-medium text-b2c-text-muted";
-export const b2cProseMeasureWide = "max-w-3xl";
 export const b2cHeroTitle =
   "text-osce-heading font-semibold tracking-[-0.022em] text-osce-ink-900";
 export const b2cGroupedShell = `${b2cCard} min-w-0 max-w-full overflow-hidden`;

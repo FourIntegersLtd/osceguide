@@ -16,9 +16,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <Capability id="help">
-      <div className="mx-auto w-full max-w-3xl p-4">
-        <HelpArticleBrowse />
-      </div>
+      <HelpArticleBrowse />
     </Capability>
   );
 }

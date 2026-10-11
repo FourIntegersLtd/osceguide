@@ -104,10 +104,6 @@ export { default as Modal } from "@/foundation/ui/Modal";
 export { default as ConfirmModal, type ConfirmModalProps } from "@/foundation/ui/ConfirmModal";
 export { default as LeaveConfirmModal } from "@/foundation/ui/LeaveConfirmModal";
 export { default as CookiesConsentModal } from "@/foundation/ui/CookiesConsentModal";
-export {
-  default as DeleteConfirmationModal,
-  type DeleteConfirmationModalPropType,
-} from "@/foundation/ui/DeleteConfirmationModal";
 export * from "@/foundation/ui/ModalContent";
 export * from "@/foundation/ui/ModalSection";
 

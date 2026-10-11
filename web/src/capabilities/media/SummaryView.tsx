@@ -104,9 +104,7 @@ export function SummaryView({
             </div>
           </>
         ) : body ? (
-          <div className={t.b2cProseMeasureWide}>
-            <Prose content={body} />
-          </div>
+          <Prose content={body} />
         ) : (
           <p className={t.b2cBodyTextMuted}>This summary has no content yet.</p>
         )}

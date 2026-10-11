@@ -65,7 +65,7 @@ function ToneBlock({
 
 export function ClinicalSections({ sections }: { sections: SummarySection[] }) {
   return (
-    <div className={cn("space-y-4", t.b2cProseMeasureWide)}>
+    <div className={"space-y-4"}>
       {sections.map((section) => {
         const meta = CLINICAL[section.key];
         return (
@@ -108,7 +108,7 @@ export function PsychosocialSections({ aspects }: { aspects: string[] }) {
   }
 
   return (
-    <div className={cn("space-y-4", t.b2cProseMeasureWide)}>
+    <div className={"space-y-4"}>
       {aspects.map((aspect, index) => {
         const { title, items } = splitAspect(aspect);
         const toneKey =

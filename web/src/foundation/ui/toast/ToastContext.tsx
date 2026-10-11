@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { toastDurationMs } from "./toastDuration";
 
 export type ToastTone = "success" | "error" | "warning" | "info";
 
@@ -25,7 +26,7 @@ export interface ToastInput {
   tone?: ToastTone;
   title: string;
   message?: string;
-  /** Stays until dismissed. Default for errors with an action. */
+  /** Stays longer (60 s at most), for a toast carrying an action. Not for plain success. */
   persistent?: boolean;
   durationMs?: number;
   action?: ToastAction;
@@ -37,8 +38,8 @@ export interface ToastItem extends ToastInput {
   id: string;
   tone: ToastTone;
   createdAt: number;
-  /** Resolved auto-dismiss delay, or null when the toast is persistent. */
-  resolvedDurationMs: number | null;
+  /** Resolved auto-dismiss delay. */
+  resolvedDurationMs: number;
 }
 
 export interface ToastContextValue {
@@ -55,17 +56,9 @@ export interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const MAX_VISIBLE = 3;
-const DEFAULT_DURATION_MS = 4500;
-const ERROR_DURATION_MS = 8000;
 
 let counter = 0;
 const nextId = () => `toast-${Date.now()}-${(counter += 1)}`;
-
-const durationFor = (input: ToastInput, tone: ToastTone): number | null => {
-  if (input.persistent) return null;
-  if (input.durationMs) return input.durationMs;
-  return tone === "error" ? ERROR_DURATION_MS : DEFAULT_DURATION_MS;
-};
 
 interface ToastProviderProps {
   children: ReactNode;
@@ -113,7 +106,7 @@ export function ToastProvider({
     (input: ToastInput): string => {
       const id = input.id ?? nextId();
       const tone = input.tone ?? "info";
-      const duration = durationFor(input, tone);
+      const duration = toastDurationMs(input, tone);
       const item: ToastItem = {
         ...input,
         id,
@@ -127,12 +120,10 @@ export function ToastProvider({
         const rest = current.filter((toast) => toast.id !== id);
         return [...rest, item].slice(-MAX_VISIBLE);
       });
-      if (duration !== null) {
-        timers.current.set(
-          id,
-          setTimeout(() => remove(id), duration),
-        );
-      }
+      timers.current.set(
+        id,
+        setTimeout(() => remove(id), duration),
+      );
       return id;
     },
     [clearTimer, remove],

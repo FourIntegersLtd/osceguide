@@ -18,7 +18,7 @@ const DEBRIEF_HISTORY_PAGE_LIMIT = 25;
 /** The Debriefs screen: every debrief the person has had, newest first. */
 export function DebriefList() {
   return (
-    <div className="mx-auto max-w-osce-page space-y-6">
+    <div className="space-y-6">
       <B2CPageHeader
         title="Debriefs"
         subtitle="Each time you talk a consultation through with Athena, its summary is kept here."

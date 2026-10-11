@@ -11,7 +11,7 @@ import {
 import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
 import { getButtonClassName } from "@/foundation/ui/buttonStyles";
 import Alert from "@/foundation/forms/Alert";
-import { errorMessage, useAsync } from "@/foundation/hooks";
+import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { isPlatformAdmin, useSession } from "@/foundation/session";
 import { useCurrentExam } from "@/foundation/session/useCurrentExam";
 import { useSurface } from "@/capabilities/SurfaceContext";
@@ -136,7 +136,7 @@ function AccountForm({
   const [name, setName] = useState(user.name);
   const [savedName, setSavedName] = useState(user.name);
   const [saving, setSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
+  const toast = useToast();
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -171,7 +171,6 @@ function AccountForm({
     event.preventDefault();
     const trimmed = name.trim();
     setError("");
-    setSuccessMessage("");
     if (trimmed.length < NAME_MIN) {
       setFieldError(`Username must be at least ${NAME_MIN} characters`);
       return;
@@ -186,7 +185,7 @@ function AccountForm({
       await updateMe({ name: trimmed });
       setSavedName(trimmed);
       await refresh();
-      setSuccessMessage("Profile updated");
+      toast.success("Profile updated");
       onSaved();
     } catch (cause) {
       setError(errorMessage(cause));
@@ -199,7 +198,6 @@ function AccountForm({
     <form onSubmit={(event) => void submit(event)}>
       <Panel title="Account" description="Your sign-in details and account actions.">
         <div className="space-y-4">
-          {successMessage ? <Alert message={successMessage} type="success" /> : null}
           {error ? <Alert message={error} type="error" /> : null}
           {avatarError ? <Alert message={avatarError} type="error" /> : null}
 

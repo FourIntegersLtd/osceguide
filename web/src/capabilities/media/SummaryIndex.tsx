@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { LuStethoscope } from "react-icons/lu";
 import {
   B2CEmptyState,
   B2CSegmentedTabs,
 } from "@/foundation/ui";
 import { specialtiesOf, type MediaItem } from "@/capabilities/media/api";
+import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 import { B2CGroupedRowLink, B2CGroupedSection } from "@/foundation/ui/B2CGroupedList";
 
@@ -20,12 +21,9 @@ type SummaryView = "az" | "specialty";
 export function SummaryIndex({
   items,
   hrefFor,
-  search,
 }: {
   items: MediaItem[];
   hrefFor: (path: string) => string;
-  /** The page's search field, drawn beside the tabs. */
-  search?: ReactNode;
 }) {
   const [view, setView] = useState<SummaryView>("az");
 
@@ -51,7 +49,6 @@ export function SummaryIndex({
           onChange={setView}
           aria-label="Summary view"
         />
-        {search}
       </div>
 
       {keys.length === 0 && view === "specialty" ? (
@@ -83,7 +80,7 @@ export function SummaryIndex({
             return (
               <B2CGroupedRowLink
                 key={item.id}
-                href={hrefFor(`/library/${item.slug}`)}
+                href={hrefFor(studyTabPathForSlug("summary", item.slug))}
                 icon={LuStethoscope}
                 title={item.title}
                 meta={view === "az" && specialty ? specialty : undefined}

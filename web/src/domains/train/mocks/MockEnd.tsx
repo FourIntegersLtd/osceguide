@@ -125,7 +125,7 @@ export function MockEnd({ setId }: { setId: string }) {
           );
           const badgeCount = checkMilestone(stationsCompleted, 0).stationBadges;
           return (
-            <div className="mx-auto max-w-osce-page space-y-6">
+            <div className="space-y-6">
               <MilestoneCelebration stationsCompleted={stationsCompleted} />
 
               <B2CHero

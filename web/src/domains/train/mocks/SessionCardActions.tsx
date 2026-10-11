@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlinePencilSquare, HiOutlineTrash } from "react-icons/hi2";
-import { DeleteConfirmationModal, cn, productTokens } from "@/foundation/ui";
+import { ConfirmModal, cn, productTokens } from "@/foundation/ui";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { deleteSet, type StationSet } from "@/domains/train/api";
@@ -29,22 +29,15 @@ export function SessionCardActions({
   const { hrefFor } = useSurface();
   const toast = useToast();
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [deletionStatus, setDeletionStatus] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleConfirmDelete = async () => {
-    setIsLoading(true);
     try {
       await deleteSet(set.id);
-      setDeletionStatus(true);
       setShowDeleteConfirmation(false);
       toast.success("Session deleted", `${set.name} has been removed.`);
       onChanged();
     } catch (cause) {
-      setDeletionStatus(false);
       toast.error("We couldn't delete this session", errorMessage(cause));
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -62,31 +55,22 @@ export function SessionCardActions({
         <button
           type="button"
           aria-label={`Delete ${set.name}`}
-          onClick={() => {
-            setDeletionStatus(null);
-            setShowDeleteConfirmation(true);
-          }}
+          onClick={() => setShowDeleteConfirmation(true)}
           className={cn(productTokens.b2cIconButton, "hover:text-osce-danger sm:h-8 sm:w-8")}
         >
           <HiOutlineTrash className="h-4 w-4" />
         </button>
       </div>
 
-      {showDeleteConfirmation && (
-        <DeleteConfirmationModal
-          isOpen={showDeleteConfirmation}
-          onCancel={() => {
-            setShowDeleteConfirmation(false);
-            setDeletionStatus(null);
-          }}
-          onConfirm={() => handleConfirmDelete()}
-          setDeletionStatus={setDeletionStatus}
-          setLoading={setIsLoading}
-          deletionStatus={deletionStatus}
-          selectedName={set.name}
-          loading={isLoading}
-        />
-      )}
+      <ConfirmModal
+        isOpen={showDeleteConfirmation}
+        tone="danger"
+        title="Delete this session?"
+        message={`${set.name} will be removed. This cannot be undone.`}
+        confirmText="Delete"
+        onCancel={() => setShowDeleteConfirmation(false)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { AsyncBoundary, Input, Panel } from "@/foundation/ui";
-import Alert from "@/foundation/forms/Alert";
-import { useAsync } from "@/foundation/hooks";
+import { useAsync, useToast } from "@/foundation/hooks";
 import { useCurrentExam } from "@/foundation/session";
 import { AddExamDate } from "@/capabilities/account/AddExamDate";
 import { readMe, type Me } from "@/capabilities/account/api";
@@ -61,18 +60,17 @@ function ExamCards({ me }: { me: Me }) {
 /** The date card: click a day to save it, or clear it (the countdown and pacing stop). Day only, no time. */
 function ExamDateCard({ initialDate, dateLabel }: { initialDate: string; dateLabel: string }) {
   const [examDate, setExamDate] = useState(initialDate);
-  const [successMessage, setSuccessMessage] = useState("");
+  const toast = useToast();
 
   return (
     <Panel title={dateLabel}>
       <div className="space-y-4">
-        {successMessage ? <Alert message={successMessage} type="success" /> : null}
         <AddExamDate
           examDate={examDate || null}
           allowClear
           onSaved={(day) => {
             setExamDate(day ?? "");
-            setSuccessMessage(day ? `${dateLabel} updated` : `${dateLabel} cleared`);
+            toast.success(day ? `${dateLabel} updated` : `${dateLabel} cleared`);
           }}
         />
         <p className={settingsMeta}>

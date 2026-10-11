@@ -13,7 +13,7 @@ import {
   ModalSection,
 } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
-import { errorMessage } from "@/foundation/hooks";
+import { errorMessage, useToast } from "@/foundation/hooks";
 
 const inputClassName =
   "w-full rounded-xl border border-osce-border bg-white px-3 py-2.5 text-osce-body text-ink outline-none transition focus:border-osce-accent-subtle focus:ring-2 focus:ring-osce-accent-muted";
@@ -28,17 +28,16 @@ export default function ChangeEmail() {
   const [newEmail, setNewEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
-    setSentTo(null);
     setBusy(true);
     try {
       await requestEmailChange(newEmail.trim(), password);
-      setSentTo(newEmail.trim());
+      toast.success(`We've sent a link to ${newEmail.trim()}`, "Your address changes when you use it.");
       setPassword("");
     } catch (cause) {
       setError(errorMessage(cause));
@@ -54,7 +53,6 @@ export default function ChangeEmail() {
         description={current ? `You sign in with ${current}.` : "Choose the address you sign in with."}
         icon={<HiOutlineEnvelope className="h-5 w-5" />}
       />
-      {sentTo ? <Alert message={`We've sent a link to ${sentTo}. Your address changes when you use it.`} type="success" /> : null}
       {error ? <Alert message={error} type="error" /> : null}
       <form onSubmit={submit} className="space-y-7">
         <ModalSection title="New address">

@@ -404,7 +404,7 @@ export function MediaDetailScreen({
   };
 
   const details = (open: boolean) => (
-    <Panel title="Details" defaultOpen={open}>
+    <Panel title="Details" collapsible defaultOpen={open}>
       <div className="flex flex-col gap-4">
         <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
         <Input
@@ -651,12 +651,12 @@ export function MediaDetailScreen({
                   {produceForm}
                 </Panel>
               )}
-              <Panel title="Content" defaultOpen={drafted}>
+              <Panel title="Content" collapsible defaultOpen={drafted}>
                 {contentForm()}
               </Panel>
               {details(false)}
               {drafted ? (
-                <Panel title="Produce again from a brief" padding="sm" defaultOpen={false}>
+                <Panel title="Produce again from a brief" padding="sm" collapsible defaultOpen={false}>
                   {produceForm}
                 </Panel>
               ) : null}

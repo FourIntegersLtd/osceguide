@@ -32,9 +32,9 @@ export function studySearchPath(kind: MediaKind, query: string): string {
   return `${STUDY_KIND_PATH[kind]}?q=${encodeURIComponent(query.trim())}`;
 }
 
-/** Tab URL for an unlocked library item (summaries and articles stay on `/library`). */
+/** The page for one item: its kind's own route, so the breadcrumb finds its nav item. */
 export function studyTabPathForSlug(kind: MediaKind, slug: string): string {
   if (kind === "slide_deck") return slidesDeckPath(slug);
   if (kind === "podcast") return podcastEpisodePath(slug);
-  return `/library/${slug}`;
+  return `${STUDY_KIND_PATH[kind]}/${slug}`;
 }

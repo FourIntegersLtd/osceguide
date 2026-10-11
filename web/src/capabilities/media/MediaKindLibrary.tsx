@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
 import {
   Alert,
@@ -10,12 +9,11 @@ import {
   B2CPageHeader,
   Button,
   cn,
-  productTokens as t,
   iconSearchInputClassName,
 } from "@/foundation/ui";
-import { useCursorPages, useAsync, type CursorPages } from "@/foundation/hooks";
+import { useCursorPages, useAsync, type AsyncState, type CursorPages } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
-import { listMedia, listAllMedia, specialtiesOf, type MediaKind } from "@/capabilities/media/api";
+import { listMedia, listAllMedia, specialtiesOf, type MediaItem, type MediaKind } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
 import { MEDIA_KIND_ICON } from "@/capabilities/media/MediaCard";
 import { ArticlesLibrary } from "@/capabilities/media/ArticlesLibrary";
@@ -23,7 +21,8 @@ import { PodcastLibrary } from "@/capabilities/media/PodcastLibrary";
 import { SlidesLibrary } from "@/capabilities/media/SlidesLibrary";
 import { SummaryIndex } from "@/capabilities/media/SummaryIndex";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
-import { studyListPath, studySearchPath } from "@/capabilities/media/studyPaths";
+import { CLIENT_PAGE_SIZE, sortByTitle } from "@/capabilities/media/catalogue";
+import { useStudySearch } from "@/capabilities/media/useStudySearch";
 
 const PAGE_COPY: Record<
   MediaKind,
@@ -72,25 +71,34 @@ const MEDIA_KIND_PAGE_LIMIT = 24;
 function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
   const copy = PAGE_COPY[kind];
   const { hrefFor } = useSurface();
-  const router = useRouter();
   const { code: examCode } = useCurrentExam();
-  const searchParams = useSearchParams();
-  const urlQuery = searchParams.get("q")?.trim() ?? "";
-  const [term, setTerm] = useState(urlQuery);
+  const { term, setTerm, urlQuery, clear: clearSearch } = useStudySearch(kind);
 
   // Slide decks alone offer a specialty filter, applied in SQL rather than
   // over an already-loaded page.
   const [specialty, setSpecialty] = useState("all");
   // Slides search inside their own list, matched on title and summary in SQL.
-  const [deckQuery, setDeckQuery] = useState("");
+  const deckQuery = kind === "slide_deck" ? urlQuery : "";
   const specialtyFilter =
     specialty === "all" ? {} : specialty === "other" ? { hasSpecialty: false } : { specialty };
 
-  // A page at a time, scoped by exam in SQL. This used to walk every cursor
-  // up front and then filter the whole catalogue by exam in the browser.
-  const pages = useCursorPages(
+  // A to Z and Podcasts read the whole catalogue once, sort it by title and show it ten at
+  // a time: a later server page would sort in above the rows already on screen.
+  const clientPaged = kind === "summary" || kind === "podcast";
+  const catalogue = useAsync(
+    (signal) =>
+      clientPaged ? listAllMedia(kind, signal, examCode).then(sortByTitle) : Promise.resolve([]),
+    [kind, examCode, clientPaged],
+  );
+  const [shown, setShown] = useState(CLIENT_PAGE_SIZE);
+  const everything = catalogue.data ?? [];
+
+  // Slides and Articles: a server page at a time, scoped by exam in SQL.
+  const cursorPages = useCursorPages(
     (cursor, signal) =>
-      listMedia(
+      clientPaged
+        ? Promise.resolve({ items: [] })
+        : listMedia(
         {
           kind,
           cursor,
@@ -105,9 +113,19 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
         },
         signal,
       ),
-    [kind, examCode, specialty, deckQuery],
+    [kind, examCode, specialty, deckQuery, clientPaged],
   );
-  const state = pages.state;
+  const state: AsyncState<MediaItem[]> = clientPaged
+    ? { ...catalogue, data: catalogue.data === null ? null : everything.slice(0, shown) }
+    : cursorPages.state;
+  const pages: MoreRows = clientPaged
+    ? {
+        hasMore: shown < everything.length,
+        loadingMore: false,
+        moreError: null,
+        loadMore: () => setShown((count) => count + CLIENT_PAGE_SIZE),
+      }
+    : cursorPages;
 
   // The specialty picker's own option list, from a wider unfiltered fetch —
   // an already-filtered page can't tell you what else was on offer.
@@ -121,28 +139,10 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
   );
   const searchEnabled = kind !== "slide_deck";
   const showSearchResults = searchEnabled && urlQuery.length > 0;
-  // The A to Z draws its search beside its own tabs (canvas `train-atoz`),
-  // once there is an index to draw it in.
-  const searchInIndex = kind === "summary" && !showSearchResults && (state.data?.length ?? 0) > 0;
-
-  useEffect(() => {
-    setTerm(urlQuery);
-  }, [urlQuery]);
-
-  const clearSearch = () => {
-    setTerm("");
-    router.replace(hrefFor(studyListPath(kind)), { scroll: false });
-  };
-
-  const searchForm = (className: string) => (
+  const searchForm = (
     <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        const next = term.trim();
-        if (next === "") return;
-        router.replace(hrefFor(studySearchPath(kind, next)), { scroll: false });
-      }}
-      className={className}
+      onSubmit={(event) => event.preventDefault()}
+      className="mb-6"
       role="search"
     >
       <div className="relative w-full">
@@ -156,25 +156,18 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
           value={term}
           onChange={(event) => setTerm(event.target.value)}
           aria-label="Search study material"
-          className={cn(iconSearchInputClassName, "pr-24 text-left")}
+          className={cn(iconSearchInputClassName, "pr-10 text-left")}
         />
-        <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1.5">
-          {term ? (
-            <button
-              type="button"
-              onClick={clearSearch}
-              className="rounded-md p-1.5 text-osce-ink-400 transition-colors hover:bg-osce-border-light hover:text-osce-ink-600"
-              aria-label="Clear search"
-            >
-              <HiOutlineXMark className="h-3.5 w-3.5" aria-hidden />
-            </button>
-          ) : null}
-          {term.trim() !== "" ? (
-            <button type="submit" className={t.b2cButtonPrimarySm}>
-              Search
-            </button>
-          ) : null}
-        </div>
+        {term ? (
+          <button
+            type="button"
+            onClick={clearSearch}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-osce-ink-400 transition-colors hover:bg-osce-border-light hover:text-osce-ink-600"
+            aria-label="Clear search"
+          >
+            <HiOutlineXMark className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        ) : null}
       </div>
     </form>
   );
@@ -183,7 +176,7 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
     <div className="w-full text-left">
       <B2CPageHeader title={copy.title} subtitle={copy.subtitle} />
 
-      {searchEnabled && !searchInIndex ? searchForm("mb-6") : null}
+      {searchEnabled ? searchForm : null}
 
       {showSearchResults ? (
         <MediaSearchResults
@@ -209,22 +202,20 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
                     }
                   />
                 ) : kind === "summary" ? (
-                  <SummaryIndex items={items} hrefFor={hrefFor} search={searchForm("w-full sm:max-w-[520px]")} />
+                  <SummaryIndex items={items} hrefFor={hrefFor} />
                 ) : kind === "slide_deck" ? (
                   <SlidesLibrary
                     items={items}
                     allItemsCount={items.length}
-                    query={deckQuery}
-                    onQueryChange={setDeckQuery}
                     specialty={specialty}
                     onSpecialtyChange={setSpecialty}
                     specialtyOptions={deckSpecialties}
                     hasUncategorized={deckHasUncategorized}
-                    total={pages.total}
+                    total={cursorPages.total}
                     footer={<LoadMore pages={pages} className="flex justify-center p-3" />}
                   />
                 ) : kind === "podcast" ? (
-                  <PodcastLibrary items={items} allItemsCount={items.length} />
+                  <PodcastLibrary items={items} catalogue={everything} allItemsCount={everything.length} />
                 ) : (
                   <ArticlesLibrary items={items} hrefFor={hrefFor} />
                 )}
@@ -240,7 +231,9 @@ function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
   );
 }
 
-function LoadMore<T>({ pages, className }: { pages: CursorPages<T>; className: string }) {
+type MoreRows = Pick<CursorPages<unknown>, "hasMore" | "loadingMore" | "moreError" | "loadMore">;
+
+function LoadMore({ pages, className }: { pages: MoreRows; className: string }) {
   return (
     <>
       {pages.moreError ? (

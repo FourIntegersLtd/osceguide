@@ -2,6 +2,7 @@
 
 import { SUPPORT_REPLY_HOURS } from "@/foundation/config/copyNumbers";
 import { useMemo, useState } from "react";
+import { useToast } from "@/foundation/hooks";
 import { Alert, B2CPageHeader, Button, productTokens, Panel } from "@/foundation/ui";
 import {
   B2CSegmentedTabs,
@@ -32,16 +33,15 @@ type MessagesTab = "contact" | "feedback";
 
 function ContactForm() {
   const { session } = useSession();
+  const toast = useToast();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setSuccessMessage(null);
     setErrorMessage(null);
     try {
       await sendSiteMessage({
@@ -54,8 +54,9 @@ function ContactForm() {
       });
       setSubject("");
       setMessage("");
-      setSuccessMessage(
-        `Message successfully sent! We aim to respond within the next ${SUPPORT_REPLY_HOURS} hours.`,
+      toast.success(
+        "Message sent",
+        `We aim to respond within the next ${SUPPORT_REPLY_HOURS} hours.`,
       );
     } catch {
       setErrorMessage(
@@ -106,7 +107,6 @@ function ContactForm() {
             <Button type="submit" isLoading={loading}>
               Send message
             </Button>
-            {successMessage ? <Alert tone="success">{successMessage}</Alert> : null}
             {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
           </div>
         </Panel>
@@ -129,7 +129,7 @@ export function Messages() {
   return (
     <div className="space-y-6">
       <B2CPageHeader title="Contact & Feedback" />
-      <div className="max-w-3xl space-y-6">
+      <div className="space-y-6">
         <B2CSegmentedTabs
           items={tabItems}
           value={tab}

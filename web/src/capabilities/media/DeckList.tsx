@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   HiOutlineMagnifyingGlass,
   HiOutlinePresentationChartBar,
@@ -14,6 +14,7 @@ import {
   specialtiesOf,
   type MediaItem,
 } from "@/capabilities/media/api";
+import { useStudySearch } from "@/capabilities/media/useStudySearch";
 import { clockTime } from "@/capabilities/media/support/text";
 import { B2CGroupedRowLink } from "@/foundation/ui/B2CGroupedList";
 import { b2cGroupedShell } from "@/foundation/ui/productTokens";
@@ -31,8 +32,6 @@ export function DeckList({
   items,
   currentSlug,
   deckHref,
-  query,
-  onQueryChange,
   specialty,
   onSpecialtyChange,
   specialtyOptions,
@@ -47,17 +46,16 @@ export function DeckList({
   footer?: ReactNode;
   currentSlug: string;
   deckHref: (slug: string) => string;
-  /** The search applied to the list; empty is none. */
-  query: string;
-  onQueryChange: (query: string) => void;
   specialty: string;
   onSpecialtyChange: (specialty: string) => void;
   specialtyOptions: string[];
   hasUncategorized: boolean;
 }) {
+  const search = useStudySearch("slide_deck");
+  const query = search.urlQuery;
   return (
     <div className="flex max-h-[100dvh] min-h-0 flex-col gap-3 lg:h-[100dvh]">
-      <DeckSearch key={query} query={query} onQueryChange={onQueryChange} />
+      <DeckSearch term={search.term} onTermChange={search.setTerm} onClear={search.clear} />
 
       <section className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between gap-3 px-1 pb-2">
@@ -70,7 +68,10 @@ export function DeckList({
               selectSize="sm"
               className="w-auto max-w-52"
               value={specialty}
-              onChange={(event) => onSpecialtyChange(event.target.value)}
+              onChange={(event) => {
+                onSpecialtyChange(event.target.value);
+                search.clear();
+              }}
             >
               <option value="all">All specialties</option>
               {specialtyOptions.map((option) => (
@@ -107,43 +108,41 @@ export function DeckList({
   );
 }
 
-/** Searches on Enter rather than each keystroke, so typing does not refetch the list. */
+/** Searches as you type (the URL follows after a pause); × clears it and keeps the specialty. */
 function DeckSearch({
-  query,
-  onQueryChange,
+  term,
+  onTermChange,
+  onClear,
 }: {
-  query: string;
-  onQueryChange: (query: string) => void;
+  term: string;
+  onTermChange: (term: string) => void;
+  onClear: () => void;
 }) {
-  const [term, setTerm] = useState(query);
+  const input = useRef<HTMLInputElement>(null);
+  // The list can swap for the "no matches" view while someone types; carry the focus across.
+  useEffect(() => {
+    if (term !== "") input.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
-    <form
-      role="search"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onQueryChange(term.trim());
-      }}
-      className="relative w-full"
-    >
+    <form role="search" onSubmit={(event) => event.preventDefault()} className="relative w-full">
       <HiOutlineMagnifyingGlass
         className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-osce-ink-400"
         aria-hidden
       />
       <input
+        ref={input}
         type="search"
         placeholder="Search presentations"
         value={term}
-        onChange={(event) => setTerm(event.target.value)}
+        onChange={(event) => onTermChange(event.target.value)}
         aria-label="Search presentations"
         className={cn(iconSearchInputClassName, "pr-10 text-left")}
       />
       {term !== "" ? (
         <button
           type="button"
-          onClick={() => {
-            setTerm("");
-            onQueryChange("");
-          }}
+          onClick={onClear}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-osce-ink-400 transition-colors hover:bg-osce-border-light hover:text-osce-ink-600"
           aria-label="Clear search"
         >

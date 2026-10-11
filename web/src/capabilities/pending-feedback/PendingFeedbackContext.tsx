@@ -120,7 +120,7 @@ export function PendingFeedbackProvider({ children }: { children: ReactNode }) {
         tone: input.tone,
         title: input.title,
         message: input.message,
-        persistent: input.tone !== "info",
+        persistent: input.tone === "error" || input.tone === "warning",
         action: input.href
           ? { label: input.hrefLabel ?? "Open", href: input.href }
           : undefined,
@@ -138,7 +138,8 @@ export function PendingFeedbackProvider({ children }: { children: ReactNode }) {
         tone: "success",
         title: "Your feedback is ready",
         message: `${job.stationLabel} has been marked and is waiting for you.`,
-        persistent: true,
+        // Long enough to reach the "Review feedback" link; a success never sits on screen longer.
+        durationMs: 20_000,
         action: { label: "Review feedback", href: job.reviewHref },
         onDismiss: () => {
           noticeIdsRef.current.delete(job.key);

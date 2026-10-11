@@ -19,7 +19,7 @@ export function DebriefDetail({ id }: { id: string }) {
   const state = useAsync((signal) => readDebrief(id, signal), [id]);
 
   return (
-    <div className="mx-auto max-w-osce-page space-y-6">
+    <div className="space-y-6">
       <div className="space-y-3">
         <Back />
         <h1 className={b2cPageTitle}>Debrief details</h1>

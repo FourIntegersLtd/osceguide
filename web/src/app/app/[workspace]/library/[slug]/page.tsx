@@ -17,5 +17,5 @@ export default async function Page({
   params: Promise<{ workspace: string; slug: string }>;
 }) {
   const { slug } = await params;
-  return <Capability id="media"><MediaItemView slug={slug} /></Capability>;
+  return <Capability id="media"><MediaItemView slug={slug} toKindRoute /></Capability>;
 }

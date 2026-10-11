@@ -9,7 +9,7 @@ import {
 } from "react-icons/hi2";
 import { AsyncBoundary, Button, Input, Modal, Panel } from "@/foundation/ui";
 import Alert from "@/foundation/forms/Alert";
-import { useAsync } from "@/foundation/hooks";
+import { useAsync, useToast } from "@/foundation/hooks";
 import { useCurrentExam, useSession } from "@/foundation/session";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { OnboardingFlow, rememberOnboardingSeen } from "@/capabilities/onboarding";
@@ -62,7 +62,7 @@ function PreferencesForm({ me }: { me: Me }) {
     formatTimer(me.custom_simulation_seconds ?? DEFAULT_SIMULATION_SECONDS),
   );
   const [saving, setSaving] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
+  const toast = useToast();
   const [error, setError] = useState("");
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [timersOpen, setTimersOpen] = useState(false);
@@ -93,7 +93,6 @@ function PreferencesForm({ me }: { me: Me }) {
   const save = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
-    setSuccessMessage("");
     if (readingSeconds === null || simulationSeconds === null) {
       setError("Enter each timer as minutes and seconds, such as 04:00, up to an hour.");
       return;
@@ -107,7 +106,7 @@ function PreferencesForm({ me }: { me: Me }) {
         custom_reading_seconds: readingSeconds,
         custom_simulation_seconds: simulationSeconds,
       });
-      setSuccessMessage("Preferences saved");
+      toast.success("Preferences saved");
     } catch {
       setError("Failed to save preferences");
     } finally {
@@ -123,7 +122,6 @@ function PreferencesForm({ me }: { me: Me }) {
   return (
     <>
       <form onSubmit={(event) => void save(event)} className="space-y-6" noValidate>
-        {successMessage ? <Alert message={successMessage} type="success" /> : null}
         {error ? <Alert message={error} type="error" /> : null}
 
         <Panel title="Preferences" description="Accessibility, AI consent and notifications.">

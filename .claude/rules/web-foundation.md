@@ -62,4 +62,9 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
 - A gate in a lazy placeholder and in the component it loads must agree: the Help button showed, then
   vanished when the dock loaded. A route gate on a shared control needs a journey at the width where
   nothing else offers it (`e2e/train/help-everywhere.spec.ts` runs at phone width).
+- Page width is the shell's one container: a page under `app/app` and the screens it mounts set no `max-w-*`
+  (`surfaces/pageWidth.test.ts` guards it). Toasts are top-centre and a persistent one still dies at 60 s
+  (`toastDuration.ts`); success feedback is a `useToast` toast, not an inline Alert. `Panel` folds only with
+  `collapsible`. A confirm step is `foundation/ui/ConfirmModal`. Study search types into the URL
+  (`useStudySearch`); A to Z and Podcasts load the whole catalogue once and page client-side (`catalogue.ts`).
 - Open items: `docs/BACKLOG.md`; delete a row when you land it.

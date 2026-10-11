@@ -8,7 +8,7 @@ import { SummaryView } from "@/capabilities/media/SummaryView";
 import { ArticleView } from "@/capabilities/media/ArticleView";
 import { LockedMediaGate } from "@/capabilities/media/LockedMediaGate";
 import { StudyTabRedirect } from "@/capabilities/media/StudyTabRedirect";
-import { podcastEpisodePath, slidesDeckPath } from "@/capabilities/media/studyPaths";
+import { podcastEpisodePath, slidesDeckPath, studyTabPathForSlug } from "@/capabilities/media/studyPaths";
 import { useRecordView } from "@/capabilities/account/useRecordView";
 
 /**
@@ -20,7 +20,14 @@ import { useRecordView } from "@/capabilities/account/useRecordView";
  * clinical brief in tabs, an article is an article, an episode is a player
  * with the rest of the series under it.
  */
-export function MediaItemView({ slug }: { slug: string }) {
+export function MediaItemView({
+  slug,
+  toKindRoute = false,
+}: {
+  slug: string;
+  /** The legacy `/library/<slug>` URL: send summaries and articles to their own route. */
+  toKindRoute?: boolean;
+}) {
   const { hrefFor } = useSurface();
   const state = useAsync((signal) => readMedia(slug, signal), [slug]);
   // Decks and episodes redirect to their own tab, which records them there.
@@ -33,12 +40,20 @@ export function MediaItemView({ slug }: { slug: string }) {
 
   return (
     <div className="w-full text-left">
-      <AsyncBoundary state={state}>{(item) => <Reader item={item} hrefFor={hrefFor} />}</AsyncBoundary>
+      <AsyncBoundary state={state}>{(item) => <Reader item={item} hrefFor={hrefFor} toKindRoute={toKindRoute} />}</AsyncBoundary>
     </div>
   );
 }
 
-function Reader({ item, hrefFor }: { item: MediaItem; hrefFor: (path: string) => string }) {
+function Reader({
+  item,
+  hrefFor,
+  toKindRoute,
+}: {
+  item: MediaItem;
+  hrefFor: (path: string) => string;
+  toKindRoute: boolean;
+}) {
   if (item.locked) {
     return (
       <div className="w-full text-left">
@@ -49,9 +64,19 @@ function Reader({ item, hrefFor }: { item: MediaItem; hrefFor: (path: string) =>
   if (item.kind === "slide_deck") {
     return <StudyTabRedirect hrefFor={hrefFor} path={slidesDeckPath(item.slug)} />;
   }
-  if (item.kind === "summary") return <SummaryView item={item} hrefFor={hrefFor} />;
+  if (item.kind === "summary") {
+    return toKindRoute ? (
+      <StudyTabRedirect hrefFor={hrefFor} path={studyTabPathForSlug("summary", item.slug)} />
+    ) : (
+      <SummaryView item={item} hrefFor={hrefFor} />
+    );
+  }
   if (item.kind === "podcast") {
     return <StudyTabRedirect hrefFor={hrefFor} path={podcastEpisodePath(item.slug)} />;
   }
-  return <ArticleView item={item} hrefFor={hrefFor} />;
+  return toKindRoute ? (
+    <StudyTabRedirect hrefFor={hrefFor} path={studyTabPathForSlug("blog", item.slug)} />
+  ) : (
+    <ArticleView item={item} hrefFor={hrefFor} />
+  );
 }

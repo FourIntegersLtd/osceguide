@@ -60,7 +60,7 @@ export function MockUpdate({ setId }: { setId: string }) {
   );
 
   return (
-    <div className="mx-auto max-w-osce-page space-y-6">
+    <div className="space-y-6">
       <B2CPageHeader
         back={{ href: hrefFor(`/mocks/${setId}`), label: "Session" }}
         title="Update session"
