@@ -7,12 +7,10 @@ podcast episode). Voicing is refused until the script has been checked.
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, status
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, error_responses
 from app.core.schemas import StationReview
 from app.core.tenancy import PlatformAdmin
@@ -20,7 +18,6 @@ from app.features.media_production import errors, schemas, service, service_prod
 
 router = APIRouter(tags=["media-production"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 # The refusals any AV production route can return, alongside the shared Forbidden.
 _PRODUCTION_ERRORS = (

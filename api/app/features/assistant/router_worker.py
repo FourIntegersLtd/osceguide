@@ -9,20 +9,16 @@ in the worker eventually; until then, moving them here breaks it.
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import require_worker_secret
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.features.assistant import errors, schemas, service_worker
 
 router = APIRouter(tags=["worker"], dependencies=[Depends(require_worker_secret)])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # Hand the assistant worker everything it needs to run one assistant session.

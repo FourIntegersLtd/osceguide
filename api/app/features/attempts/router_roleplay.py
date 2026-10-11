@@ -1,13 +1,11 @@
 """Post-consultation practice from either side of the encounter."""
 
 import uuid
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
@@ -15,7 +13,6 @@ from app.features.attempts import errors, schemas, service_debrief, service_mate
 from app.features.attempts.schemas import PatientRoleplayRead
 
 router = APIRouter()
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # Read the patient's script for an attempt, so the learner can play the patient.

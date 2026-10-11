@@ -5,12 +5,11 @@ correcting a trainee, and renaming or removing groups and cohorts.
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import StaleRevision, get_session
+from app.core.db import SessionDep as Session
+from app.core.db import StaleRevision
 from app.core.errors import Forbidden, error_responses
 from app.core.ports import ClockDep
 from app.core.rate_limit import OUTBOUND_RESEND, TooManyRequests, per_user
@@ -18,8 +17,6 @@ from app.core.tenancy import OrgAdmin
 from app.features.roster import errors, schemas, service_bulk, service_edit, service_groups
 
 router = APIRouter(tags=["roster"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.patch(

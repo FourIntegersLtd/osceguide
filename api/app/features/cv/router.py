@@ -5,18 +5,15 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, File, Request, UploadFile, status
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.rate_limit import CV_UPLOAD, TooManyRequests, caller_key, check
 from app.features.cv import errors, schemas, service
 
 router = APIRouter(tags=["cv"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.post(

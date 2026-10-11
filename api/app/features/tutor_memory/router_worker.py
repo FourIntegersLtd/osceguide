@@ -10,13 +10,11 @@ from __future__ import annotations
 
 import uuid
 from time import perf_counter
-from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import require_worker_secret
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.logging import get_logger
 from app.core.ports import ClockDep
@@ -25,8 +23,6 @@ from app.features.tutor_memory import errors, schemas, service
 router = APIRouter(tags=["worker"], dependencies=[Depends(require_worker_secret)])
 
 log = get_logger(__name__)
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.post(

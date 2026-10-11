@@ -12,9 +12,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, error_responses
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgAdmin
@@ -32,7 +31,6 @@ class ScimResponse(JSONResponse):
 router = APIRouter(tags=["scim"])
 scim = APIRouter(prefix="/orgs/{org_slug}/scim/v2", tags=["scim"], default_response_class=ScimResponse)
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 ScimOrg = Annotated[uuid.UUID, Depends(service_scim.require_scim_org)]
 Filter = Annotated[str | None, Query(alias="filter", max_length=500)]
 StartIndex = Annotated[int | None, Query(alias="startIndex", ge=1)]

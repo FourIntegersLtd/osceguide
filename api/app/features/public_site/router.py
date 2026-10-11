@@ -6,10 +6,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import MaybePrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
@@ -19,7 +18,6 @@ from app.features.public_site import errors, schemas, service
 
 router = APIRouter(tags=["public-site"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 # A form anybody on the internet can post to. Sized for a person who sends one
 # message, changes their mind and sends a better one — not for a script.

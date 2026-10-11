@@ -7,10 +7,9 @@ from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal, Principal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, InvalidInput, Unauthenticated, error_responses
 from app.core.openapi import grant
 from app.core.pagination import CursorParams, Page
@@ -28,8 +27,6 @@ from app.features.growth import (
 )
 
 router = APIRouter(tags=["growth"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @grant("partner_reporter")

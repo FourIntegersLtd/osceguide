@@ -7,20 +7,15 @@ org role.
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.features.dashboard import schemas, service_achievements
 
 router = APIRouter(tags=["dashboard"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

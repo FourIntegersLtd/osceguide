@@ -1,13 +1,11 @@
 """HTTP route for the live coverage panel shown while a station is still running."""
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.errors import Unauthenticated, error_responses
 from app.features.attempts import errors, service_coverage
 from app.features.attempts.schemas import CoverageRead
@@ -24,6 +22,6 @@ router = APIRouter()
 async def read_coverage(
     attempt_id: uuid.UUID,
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
 ) -> CoverageRead:
     return await service_coverage.read_coverage(session, attempt_id, requester_id=principal.user_id)

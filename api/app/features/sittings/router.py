@@ -12,17 +12,15 @@ from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import StaleRevision, get_session
+from app.core.db import SessionDep as Session
+from app.core.db import StaleRevision
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.tenancy import OrgAdmin, OrgStaff
 from app.features.sittings import errors, schemas, service, service_edit, service_structure
 
 router = APIRouter(tags=["sittings"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # A page of this organisation's sittings, newest first.

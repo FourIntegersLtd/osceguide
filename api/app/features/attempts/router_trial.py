@@ -14,9 +14,8 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated
 from app.core.openapi import sse_responses
 from app.core.ports import Evaluator
@@ -27,7 +26,6 @@ from app.features.attempts import schemas, service_trial
 
 router = APIRouter(tags=["rubrics"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 TrialEvaluator = Annotated[Evaluator, Depends(service_trial.trial_evaluator)]
 
 

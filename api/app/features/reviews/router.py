@@ -4,21 +4,17 @@ review, and a circuit's finalised review."""
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Response, status
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgInstitutionAdmin, OrgStaff
 from app.features.reviews import errors, schemas, service, service_summary
 
 router = APIRouter(tags=["reviews"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

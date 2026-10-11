@@ -7,10 +7,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import SessionOpenerDep, get_session
+from app.core.db import SessionDep as Session
+from app.core.db import SessionOpenerDep
 from app.core.errors import Unauthenticated, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
@@ -31,8 +31,6 @@ from app.features.attempts import (
 )
 
 router = APIRouter(tags=["attempts"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # Start a new attempt at a station, checking entitlement and that the station is published.

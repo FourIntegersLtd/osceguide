@@ -3,10 +3,9 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.errors import NotFound, Unauthenticated, error_responses
 from app.core.ports import ClockDep, GuidelineIndex, MaterialIndex
 from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
@@ -68,7 +67,7 @@ async def article(
 async def knowledge_chat(
     body: schemas.KnowledgeChat,
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     clock: ClockDep,
     settings: SettingsDep,
     index: Annotated[MaterialIndex | None, Depends(service_knowledge.get_material_index)],

@@ -6,10 +6,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep, VoiceTokens
 from app.core.rate_limit import AI_SPEND, TooManyRequests, per_user
@@ -17,8 +16,6 @@ from app.core.settings import SettingsDep
 from app.features.assistant import errors, schemas, service, service_content
 
 router = APIRouter(tags=["assistant"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # Start an assistant session of the given type, rendered for the caller.

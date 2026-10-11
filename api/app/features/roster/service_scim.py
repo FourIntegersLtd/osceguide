@@ -19,12 +19,12 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import Depends, Header
+from fastapi import Header
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import Principal
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgSuspended
 from app.features.roster import (
@@ -128,7 +128,7 @@ async def revoke_token(
 
 async def require_scim_org(
     org_slug: str,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     clock: ClockDep,
     authorization: Annotated[str | None, Header()] = None,
 ) -> uuid.UUID:

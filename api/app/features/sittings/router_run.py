@@ -12,10 +12,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep, RoomAgents, VoiceTokens
 from app.core.settings import SettingsDep
@@ -26,7 +25,6 @@ from app.features.sittings import service_overrides as overrides
 
 router = APIRouter(tags=["sittings"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 Agents = Annotated[RoomAgents, Depends(service_run.get_room_agents)]
 Tokens = Annotated[VoiceTokens, Depends(service_join.get_voice_tokens)]
 

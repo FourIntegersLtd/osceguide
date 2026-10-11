@@ -6,10 +6,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
@@ -17,8 +16,6 @@ from app.core.rate_limit import AI_SPEND, USER_WRITE, TooManyRequests, per_user
 from app.features.station_sets import errors, schemas, service
 
 router = APIRouter(tags=["station-sets"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

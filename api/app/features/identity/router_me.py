@@ -6,10 +6,10 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Query, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.events import get_event_bus, user_topic
 from app.core.memberships import MembershipsFor
@@ -34,8 +34,6 @@ from app.features.identity.errors import (
 
 router = APIRouter(tags=["identity"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
-
 
 @router.patch(
     "/me",
@@ -45,7 +43,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def update_me(
     body: schemas.UpdateMe,
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     memberships_for: MembershipsFor,
 ) -> schemas.UserRead:
     """Change a person's own profile: their name, their exam date, their
@@ -69,7 +67,7 @@ async def update_me(
 )
 async def read_me(
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     memberships_for: MembershipsFor,
 ) -> schemas.UserRead:
     return await service.read_me(session, principal=principal, memberships_for=memberships_for)
@@ -83,7 +81,7 @@ async def read_me(
 )
 async def upload_my_avatar(
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     memberships_for: MembershipsFor,
     settings: SettingsDep,
     file: Annotated[UploadFile, File(description="A JPEG, PNG or WebP image")],
@@ -109,7 +107,7 @@ async def upload_my_avatar(
 async def close_me(
     body: schemas.CloseAccount,
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     clock: ClockDep,
 ) -> None:
     """Close this account. Sign-in stops; the consultations stay."""
@@ -135,7 +133,7 @@ async def close_me(
 )
 async def export_me(
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     response: Response,
     export_format: Annotated[Literal["json", "pdf"], Query(alias="format")] = "json",
 ) -> schemas.MyDataExport | Response:

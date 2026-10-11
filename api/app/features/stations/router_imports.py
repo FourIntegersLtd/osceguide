@@ -11,10 +11,9 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, File, Form, UploadFile, status
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.rate_limit import STATION_IMPORT, TooManyRequests, check
 from app.core.tenancy import OrgAdmin, PlatformAdmin
@@ -22,7 +21,6 @@ from app.features.stations import errors, schemas, service_imports
 
 router = APIRouter(tags=["stations"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 ImportFile = Annotated[UploadFile, File(description="The station document, as a PDF or a Word .docx file")]
 ExamCode = Annotated[str, Form(min_length=1, max_length=32, description="The exam the station belongs to")]
 TemplateVersionId = Annotated[

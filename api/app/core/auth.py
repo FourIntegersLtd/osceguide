@@ -24,10 +24,9 @@ import jwt
 from fastapi import Depends, Request
 from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.account_status import refuse_if_deactivated
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.errors import Forbidden, Unauthenticated
 from app.core.settings import Settings, get_settings
 
@@ -168,7 +167,7 @@ async def get_principal(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     settings: Annotated[Settings, Depends(get_settings)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
 ) -> Principal:
     """The FastAPI dependency behind `CurrentPrincipal`: decode the bearer token and refuse a dead account."""
     if credentials is None or not credentials.credentials:
@@ -204,7 +203,7 @@ async def get_principal_if_present(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     settings: Annotated[Settings, Depends(get_settings)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
 ) -> Principal | None:
     """Whoever is calling, or nobody.
 

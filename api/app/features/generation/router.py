@@ -4,12 +4,9 @@ deck or podcast script for the content team to review before publishing.
 
 from __future__ import annotations
 
-from typing import Annotated
+from fastapi import APIRouter
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, error_responses
 from app.core.settings import SettingsDep
 from app.core.tenancy import PlatformAdmin
@@ -17,8 +14,6 @@ from app.features.generation import schemas, service
 from app.features.generation.errors import GenerationEmpty, GenerationUnavailable
 
 router = APIRouter(tags=["generation"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # Drafts a new station from a free-text prompt, with the prompt the exam's settings (or subtype) name.

@@ -11,10 +11,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, error_responses
 from app.core.ports import ClockDep, RoomAgents
 from app.core.settings import SettingsDep
@@ -26,7 +25,6 @@ from app.features.sittings import service_rescue as rescue
 
 router = APIRouter(tags=["sittings"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 _LIVE = (Forbidden, *errors.LIVE_CIRCUIT_REFUSALS)
 Agents = Annotated[RoomAgents, Depends(service_run.get_room_agents)]
 

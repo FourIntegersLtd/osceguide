@@ -4,22 +4,18 @@ plus the candidate's own routes for reading and acknowledging it."""
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import Response
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.core.tenancy import OrgInstitutionAdmin
 from app.features.results import errors, schemas, service, service_candidate, service_result_pdf
 
 router = APIRouter(tags=["results"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # Read the result decision for one candidate in a sitting.

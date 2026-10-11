@@ -7,9 +7,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Query, Request, Response, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
 from app.core.openapi import SAML_METADATA_MEDIA_TYPE
@@ -21,7 +20,6 @@ from app.features.sso import errors, schemas, service, service_login, service_sa
 
 router = APIRouter(tags=["sso"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 Brokers = Annotated[service_login.SsoBrokers, Depends(service_login.get_sso_broker)]
 
 

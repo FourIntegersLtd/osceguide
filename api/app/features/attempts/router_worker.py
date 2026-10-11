@@ -10,13 +10,11 @@ prior transcript and feedback.
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import require_worker_secret
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Unauthenticated, error_responses
 from app.core.ports import ClockDep
 from app.features.attempts import errors, schemas
@@ -26,8 +24,6 @@ router = APIRouter(
     tags=["worker"],
     dependencies=[Depends(require_worker_secret)],
 )
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # Hand the voice worker everything it needs to run one attempt.

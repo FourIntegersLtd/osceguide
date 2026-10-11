@@ -10,9 +10,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import SessionOpenerDep, get_session
+from app.core.db import SessionDep as Session
+from app.core.db import SessionOpenerDep
 from app.core.errors import Forbidden, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
@@ -24,8 +24,6 @@ from app.core.tenancy import OrgStaff, may_run_circuit_policy, resolve_workspace
 from app.features.dashboard import schemas_live, service_live, service_streams
 
 router = APIRouter(tags=["dashboard"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

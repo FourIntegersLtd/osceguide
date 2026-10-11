@@ -11,9 +11,8 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import CheckoutSessions, ClockDep
@@ -27,8 +26,6 @@ from app.features.billing import (
 )
 
 router = APIRouter(tags=["billing"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

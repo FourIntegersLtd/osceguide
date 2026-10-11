@@ -9,10 +9,9 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, File, Query, UploadFile
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.settings import SettingsDep
 from app.core.tenancy import OrgAdmin, PlatformAdmin
@@ -20,7 +19,6 @@ from app.features.stations import errors, schemas, service_photos
 
 router = APIRouter(tags=["stations"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 # The template's media block the images are added to.
 MediaBlock = Annotated[
     str, Query(alias="block", min_length=1, max_length=200, description="A media block id")

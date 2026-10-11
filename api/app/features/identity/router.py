@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, Request, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep
+from app.core.db import SessionDep as Session
 from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.memberships import MembershipsFor
 from app.core.ports import ClockDep
@@ -37,8 +35,6 @@ from app.features.identity import (
 
 router = APIRouter(tags=["identity"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
-
 
 # Create the account and sign them in immediately: registering is also the
 # first login, so there is no separate first-session step.
@@ -51,7 +47,7 @@ Session = Annotated[AsyncSession, Depends(get_session)]
 async def register(
     request: Request,
     body: schemas.RegisterRequest,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.SignInResult:
@@ -81,7 +77,7 @@ async def register(
 async def login(
     request: Request,
     body: schemas.LoginRequest,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     memberships_for: MembershipsFor,
     settings: SettingsDep,
     clock: ClockDep,
@@ -107,7 +103,7 @@ async def login(
 )
 async def refresh(
     body: schemas.RefreshRequest,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     memberships_for: MembershipsFor,
     settings: SettingsDep,
     clock: ClockDep,
@@ -177,7 +173,7 @@ async def mint_stream_ticket(
 )
 async def logout(
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     clock: ClockDep,
     body: schemas.LogoutRequest | None = None,
 ) -> Response:
@@ -204,7 +200,7 @@ async def logout(
 async def begin_password_reset(
     request: Request,
     body: schemas.PasswordResetRequest,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     clock: ClockDep,
 ) -> schemas.Accepted:
     # Tighter than sign-in: the cost of this request is an email to an inbox
@@ -224,7 +220,7 @@ async def begin_password_reset(
 async def confirm_password_reset(
     request: Request,
     body: schemas.PasswordResetConfirm,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     clock: ClockDep,
 ) -> schemas.PasswordResetDone:
     # SEC-004: the token is high-entropy, but this caps a brute-force attempt at
@@ -254,7 +250,7 @@ async def confirm_password_reset(
 async def change_password(
     body: schemas.ChangePasswordRequest,
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     memberships_for: MembershipsFor,
     settings: SettingsDep,
     clock: ClockDep,
@@ -289,7 +285,7 @@ async def change_password(
 async def begin_email_change(
     body: schemas.EmailChangeRequest,
     principal: CurrentPrincipal,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.Accepted:
@@ -314,7 +310,7 @@ async def begin_email_change(
 async def confirm_email_change(
     request: Request,
     body: schemas.EmailChangeConfirm,
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: SessionDep,
     settings: SettingsDep,
     clock: ClockDep,
 ) -> schemas.EmailChanged:

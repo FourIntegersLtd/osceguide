@@ -6,10 +6,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Query, Request, status
 from fastapi.responses import HTMLResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.openapi import DOCUMENT_MEDIA_TYPE
 from app.core.pagination import CursorParams, Page
@@ -18,8 +17,6 @@ from app.core.settings import SettingsDep
 from app.features.billing import errors, schemas, service, service_checkout, service_receipts
 
 router = APIRouter(tags=["billing"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

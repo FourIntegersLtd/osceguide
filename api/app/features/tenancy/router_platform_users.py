@@ -6,9 +6,8 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep, RoomAgents
@@ -16,8 +15,6 @@ from app.core.tenancy import PlatformAdmin
 from app.features.tenancy import errors, schemas, service_platform_users
 
 router = APIRouter(tags=["tenancy"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

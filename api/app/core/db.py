@@ -3,8 +3,11 @@
 - `Base` is the declarative base every slice's `models.py` extends. It carries
   a naming convention so constraints get stable names Alembic can drop later.
 - `get_session` is the FastAPI dependency: one session and one transaction per
-  request. The transaction commits when the handler returns and rolls back
-  when it raises, so services never call commit themselves.
+  request. Routes take the session as `SessionDep` (function scope), so the
+  transaction commits and `flush_pending` runs before the response is sent. A
+  default-scope `Depends(get_session)` would commit after the client already has
+  its answer. Rolls back when the handler raises, so services never call commit
+  themselves.
 """
 
 from __future__ import annotations
@@ -159,6 +162,10 @@ async def dispose_engine() -> None:
 async def get_session() -> AsyncIterator[AsyncSession]:
     """Request-scoped unit of work: commit on success, roll back on error.
 
+    Routes take this as `SessionDep` (function scope), so the commit and
+    `flush_pending` run before the response is sent. A default-scope
+    `Depends(get_session)` would commit after the client already has its answer.
+
     The exception is an `AppError` marked `persist_effects`, which commits and
     still fails the request — see `AppError.persist_effects`.
     """
@@ -244,6 +251,10 @@ def get_session_opener() -> SessionOpener:
 
 
 SessionOpenerDep = Annotated[SessionOpener, Depends(get_session_opener)]
+
+# Function scope: the commit (and flush_pending) runs before the response is sent.
+# The default scope commits after it.
+SessionDep = Annotated[AsyncSession, Depends(get_session, scope="function")]
 
 
 def import_all_models() -> None:

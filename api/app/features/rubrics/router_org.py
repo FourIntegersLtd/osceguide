@@ -11,9 +11,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import StaleRevision, get_session
+from app.core.db import SessionDep as Session
+from app.core.db import StaleRevision
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
@@ -22,7 +22,6 @@ from app.features.rubrics import errors, schemas, service, service_authoring
 
 router = APIRouter(tags=["rubrics"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 Pager = Annotated[CursorParams, Depends()]
 
 _NOT_FOUND = (errors.RubricNotFound, errors.RubricVersionNotFound)

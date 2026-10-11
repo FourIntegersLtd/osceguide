@@ -67,6 +67,12 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
 - **`$TMPDIR` is shared with other sessions on this machine.** A `make ci > "$TMPDIR/ci.txt"` was
   overwritten mid-run by another session's web lint (2026-10-11). Write proof output to the
   session scratchpad instead.
+- **The request session commits before the answer only with `scope="function"`.** FastAPI exits a
+  default-scope `yield` dependency after the response is sent, so a 201 from register reached the
+  e2e setup before the commit and the next seat 500'd on `uq_users_email` (2026-10-11). Every
+  `Depends(get_session, ...)` says `scope="function"`; `tests/guards/test_commit_before_response.py`
+  fails otherwise. The in-process `client` cannot show the ordering (it waits for the whole app and
+  shares one transaction): that guard drives the real `get_session` and records commit vs last byte.
 - **A password change or reset revokes every chain, the current one too.**
   Change-password answers a fresh pair that the web adopts (A-13); a reset
   answers none, so `/reset-password` signs the browser out before showing

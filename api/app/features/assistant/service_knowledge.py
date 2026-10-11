@@ -3,12 +3,11 @@
 import asyncio
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Annotated, cast
+from typing import TYPE_CHECKING, cast
 
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.errors import AppError, InvalidInput
 from app.core.logging import get_logger
 from app.core.ports import GuidelineIndex, GuidelinePassage, MaterialIndex, Passage
@@ -42,7 +41,9 @@ class KnowledgeUnavailable(AppError):
     default_message = "Athena is temporarily unavailable. Please try again."
 
 
-def get_material_index(session: Annotated[AsyncSession, Depends(get_session)]) -> MaterialIndex | None:
+def get_material_index(
+    session: SessionDep,
+) -> MaterialIndex | None:
     """The dependency the router wires. Overridden in tests with a fake."""
     return tutor_search.material_index(session)
 

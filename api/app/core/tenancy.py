@@ -20,7 +20,7 @@ from fastapi import Depends, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal, Principal
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.errors import Forbidden, NotFound
 from app.core.ports import ClockDep
 from app.core.role_policy import Policy, RolePredicate, policy
@@ -160,7 +160,7 @@ class OrgGate:
         self,
         org_slug: OrgSlug,
         principal: CurrentPrincipal,
-        session: Annotated[AsyncSession, Depends(get_session)],
+        session: SessionDep,
         clock: ClockDep,
     ) -> Workspace:
         """Resolve the path's org slug against this predicate for the current request."""

@@ -8,10 +8,9 @@ import uuid
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal, MaybePrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, Unauthenticated, error_responses
 from app.core.pagination import CursorParams
 from app.core.ports import ClockDep, VectorIndex
@@ -20,7 +19,6 @@ from app.features.media import errors, schemas, service, service_search
 
 router = APIRouter(tags=["media"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 Index = Annotated[VectorIndex, Depends(service_search.get_vector_index)]
 
 

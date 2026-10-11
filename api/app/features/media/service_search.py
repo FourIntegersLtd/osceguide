@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Annotated, Any
+from typing import Any
 
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionDep
 from app.core.errors import AppError, InvalidInput, raise_mapped
 from app.core.pagination import encode_cursor
 from app.core.ports import VectorIndex
@@ -153,7 +152,7 @@ async def unlocked_exam_ids(
     return frozenset(unlocked)
 
 
-def get_vector_index(session: Annotated[AsyncSession, Depends(get_session)]) -> VectorIndex:
+def get_vector_index(session: SessionDep) -> VectorIndex:
     """The dependency the router wires. Overridden in tests with a fake.
 
     The pgvector store the tutor reads (ADR 0019), owned by `tutor_memory`.

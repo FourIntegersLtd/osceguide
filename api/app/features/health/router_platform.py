@@ -12,9 +12,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import SessionOpenerDep, get_session
+from app.core.db import SessionDep as Session
+from app.core.db import SessionOpenerDep
 from app.core.errors import Forbidden, error_responses
 from app.core.events import get_event_bus
 from app.core.openapi import sse_responses
@@ -29,7 +29,6 @@ from app.features.health.errors import JobNotCancellable, JobNotFound, JobNotRet
 
 router = APIRouter(tags=["health"])
 
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 STATUS_PATTERN = "^(todo|doing|succeeded|failed|cancelled|aborting|aborted)$"
 

@@ -8,9 +8,8 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
@@ -22,8 +21,6 @@ router = APIRouter(tags=["roster"])
 # Routes that change an existing entry live in `router_admin.py`; mounted here so
 # `main.py` only needs to import this one router.
 router.include_router(router_admin.router)
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

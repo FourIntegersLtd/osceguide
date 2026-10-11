@@ -8,19 +8,15 @@ station", carried across with the same meaning. Both are audited.
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import Forbidden, error_responses
 from app.core.tenancy import PlatformAdmin
 from app.features.station_sets import errors, schemas, service_platform
 
 router = APIRouter(tags=["station-sets"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 @router.get(

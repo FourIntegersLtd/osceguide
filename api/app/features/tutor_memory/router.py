@@ -6,10 +6,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import CurrentPrincipal
-from app.core.db import get_session
+from app.core.db import SessionDep as Session
 from app.core.errors import InvalidInput, Unauthenticated, error_responses
 from app.core.pagination import CursorParams, Page
 from app.core.ports import ClockDep
@@ -18,8 +17,6 @@ from app.core.tenancy import PlatformAdmin
 from app.features.tutor_memory import errors, schemas, service, service_material
 
 router = APIRouter(tags=["tutor-memory"])
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 # This person's past debrief summaries, newest first, paged.
