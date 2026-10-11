@@ -89,7 +89,9 @@ export function ConsultationPanel({
         </div>
       ) : (
         <>
+          {/* Bottom-aligned above the button, like the live stage, so it does not jump on start or end. */}
           <LivekitIdleState
+            className="mt-auto"
             avatar={{ kind: "monogram", initials: patient.initials }}
             durationMinutes={Math.round(durationSeconds / 60)}
             showReadiness={!disabledReason && session.phase !== "ended"}

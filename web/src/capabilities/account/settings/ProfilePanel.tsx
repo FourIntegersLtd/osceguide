@@ -63,8 +63,7 @@ export default function ProfilePanel({
 }) {
   const me = useAsync((signal) => readMe(signal), []);
   const { session } = useSession();
-  const { codes, name: examName } = useCurrentExam();
-  const holdsOrtho = codes.includes("ortho");
+  const { code, codes, name: examName } = useCurrentExam();
   const shows = (wanted: ProfilePart) => part === undefined || part === wanted;
 
   return (
@@ -104,10 +103,10 @@ export default function ProfilePanel({
         The CV, for the one arm that is scored off a portfolio. The orthopaedic
         interview reads a portfolio rather than a consultation, so this is the
         material the practice questions are generated from — and `POST /cv` had
-        been served for weeks with no screen calling it. Gated on holding the
-        exam rather than shown to everybody, which is how the old profile had it.
+        been served for weeks with no screen calling it. Shown only while Ortho is
+        the current exam, not whenever it is one of the exams held.
       */}
-      {holdsOrtho && part === undefined ? <CvPanel /> : null}
+      {code === "ortho" && part === undefined ? <CvPanel /> : null}
       {shows("data") ? (
         <>
           <DownloadMyData />

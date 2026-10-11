@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LuPodcast, LuStethoscope } from "react-icons/lu";
 import { B2CEmptyState, B2CSegmentedTabs, Modal, cn } from "@/foundation/ui";
 import { specialtiesOf, type MediaItem } from "@/capabilities/media/api";
 import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
 import { B2CGroupedRowLink, B2CGroupedSection } from "@/foundation/ui/B2CGroupedList";
 import { SummaryPodcast } from "@/capabilities/media/SummaryView";
+import { useJumpIndex } from "@/capabilities/media/useJumpIndex";
 import { jumpLinks, type SummaryGroups, type SummaryView } from "@/capabilities/media/summaryGroups";
 
 /**
@@ -29,15 +30,7 @@ export function SummaryIndexNav({
   onShowAll?: () => void;
 }) {
   const links = jumpLinks(groups);
-  const [target, setTarget] = useState<string | null>(null);
-  // Runs after each render until the group is on the page, which a show-all makes happen.
-  useEffect(() => {
-    if (target === null) return;
-    const section = document.getElementById(`summary-${target}`);
-    if (!section) return;
-    section.scrollIntoView();
-    setTarget(null);
-  });
+  const { navRef, active, jump } = useJumpIndex(groups, onShowAll);
   return (
     <div className="space-y-3">
       <B2CSegmentedTabs
@@ -51,6 +44,7 @@ export function SummaryIndexNav({
       />
       {links.length > 0 ? (
         <nav
+          ref={navRef}
           aria-label={view === "az" ? "Jump to letter" : "Jump to specialty"}
           className="flex flex-wrap gap-0.5"
         >
@@ -60,10 +54,15 @@ export function SummaryIndexNav({
               href={href}
               onClick={(event) => {
                 event.preventDefault();
-                if (!document.getElementById(`summary-${key}`)) onShowAll?.();
-                setTarget(key);
+                jump(key);
               }}
-              className="flex h-8 min-w-8 items-center justify-center rounded-osce-md px-2 text-osce-meta font-medium text-b2c-text-muted transition-colors hover:bg-b2c-surface-muted hover:text-osce-ink-900"
+              aria-current={active === key ? "location" : undefined}
+              className={cn(
+                "flex h-8 min-w-8 items-center justify-center rounded-osce-md px-2 text-osce-meta font-medium transition-colors",
+                active === key
+                  ? "bg-b2c-surface-muted font-semibold text-osce-ink-900"
+                  : "text-b2c-text-muted hover:bg-b2c-surface-muted hover:text-osce-ink-900",
+              )}
             >
               {key}
             </a>
@@ -98,7 +97,7 @@ export function SummaryIndex({
       ) : null}
 
       {keys.map((key) => (
-        <B2CGroupedSection key={key} id={`summary-${key}`} eyebrow={key} className="scroll-mt-48">
+        <B2CGroupedSection key={key} id={`summary-${key}`} eyebrow={key}>
           {(groups[key] ?? []).map((item) => {
             const specialty = specialtiesOf(item)[0];
             return (

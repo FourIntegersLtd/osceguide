@@ -131,12 +131,14 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
         )}
         {phase === "preparation" && <PreparationPanel session={session} />}
         {(phase === "consultation" || phase === "debrief") && (
-          <div className="flex h-full min-h-0 flex-col gap-2 p-2 sm:gap-3 sm:p-3 lg:flex-row">
-            <div data-skin="room" className="h-1/2 min-h-0 w-full flex-shrink-0 overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface lg:h-full lg:w-2/3">
-              <VideoArea state={state} role={role} onEnd={() => setConfirmingEnd(true)} />
-            </div>
-            <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-osce-lg border border-osce-border bg-osce-surface lg:h-full lg:w-1/3">
-              <div className="flex h-full min-h-0 flex-1 flex-col">
+          // One square-cornered card split by a divider, as the AI consultation's
+          // (`ConsultationScreen`): above on a narrow screen, to the left on a wide one.
+          <div className="flex h-full min-h-0 flex-col p-2 sm:p-3">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-osce-border bg-osce-surface lg:flex-row">
+              <div data-skin="room" className="h-1/2 min-h-0 w-full flex-shrink-0 overflow-hidden bg-osce-surface lg:h-full lg:w-2/3">
+                <VideoArea state={state} role={role} onEnd={() => setConfirmingEnd(true)} />
+              </div>
+              <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t border-osce-border lg:h-full lg:w-1/3 lg:border-l lg:border-t-0">
                 <ConsultationPanel session={session} debrief={phase === "debrief"} />
               </div>
             </div>
