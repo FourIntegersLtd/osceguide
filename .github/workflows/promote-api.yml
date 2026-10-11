@@ -143,16 +143,29 @@ jobs:
             exit 1
           fi
 
-      # Gate 2: CI api's platform-api job ran on this exact commit and passed.
+      # Gate 2: CI api's platform-api job passed on the api being promoted. CI api runs only
+      # when its paths change (the list in ci-api.yml), so a commit that touched web/ alone
+      # has no run of its own: the job is looked up on the newest ancestor that changed those
+      # paths, whose api is the one the target runs. That is the target itself whenever it
+      # changed them.
       - name: "Gate 2: CI passed"
         env:
           TARGET_SHA: ${{ steps.target.outputs.sha }}
         run: |
           set -euo pipefail
-          ci_conclusion=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${TARGET_SHA}/check-runs?check_name=platform-api" \
+          ci_sha=$(git log -1 --format=%H "${TARGET_SHA}" -- \
+            "api" "assessment/packages/osce_assessment" "assessment/tests/fixtures" \
+            "web/src/capabilities/authoring/rubrics/rubricVocabulary.ts" \
+            "web/src/capabilities/feedback/rubricView.ts" ".github/workflows/ci-api.yml")
+          if [ -z "${ci_sha}" ]; then
+            echo "::error::No commit up to ${TARGET_SHA} changed the api; nothing to promote."
+            exit 1
+          fi
+          echo "The api last changed in ${ci_sha}; checking CI api there."
+          ci_conclusion=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${ci_sha}/check-runs?check_name=platform-api" \
             --jq '[.check_runs[] | select(.status == "completed")][0].conclusion // "missing"')
           if [ "${ci_conclusion}" != "success" ]; then
-            echo "::error::CI api's platform-api job on ${TARGET_SHA} is '${ci_conclusion}', not 'success'."
+            echo "::error::CI api's platform-api job on ${ci_sha} is '${ci_conclusion}', not 'success'."
             exit 1
           fi
 
