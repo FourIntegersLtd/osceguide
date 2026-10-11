@@ -801,3 +801,29 @@ async def test_a_listed_summary_says_whether_it_has_a_podcast(
     assert rows[locked["id"]]["locked"] is True
     assert rows[locked["id"]]["content"] is None
     assert rows[locked["id"]]["has_podcast"] is True
+
+
+async def test_publishing_a_timed_deck_stores_its_captions_and_an_untimed_one_gets_none(
+    client: AsyncClient,
+    make_actor,
+    index: FakeVectorIndex,  # type: ignore[no-untyped-def]
+) -> None:
+    admin = await make_actor("m-captions@osceguide.com", platform_admin=True)
+    timed = {
+        "final_video_url": "https://v.test/deck.mp4",
+        "slides": [
+            {
+                "start_time": 0.0,
+                "intro_duration": 3.0,
+                "narration": {"intro": "Five words."},
+                "bullet_audio_segments": [],
+            }
+        ],
+    }
+    deck = await publish_item(client, admin, title="Timed Deck", kind="slide_deck", content=timed)
+    bare = await publish_item(client, admin, title="Untimed Deck", kind="slide_deck", content={"slides": []})
+
+    got = (await client.get(f"/api/v1/media/{deck['slug']}", headers=bearer(admin))).json()
+    assert got["content"]["captions_vtt"].startswith("WEBVTT\n\n00:00:00.500 --> 00:00:03.200\nFive words.")
+    other = (await client.get(f"/api/v1/media/{bare['slug']}", headers=bearer(admin))).json()
+    assert "captions_vtt" not in other["content"]

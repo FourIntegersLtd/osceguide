@@ -15,7 +15,6 @@ import {
 } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
 import { useAsync } from "@/foundation/hooks";
-import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 import { EpisodePanel } from "@/capabilities/media/EpisodePanel";
 import { Prose } from "@/capabilities/media/Prose";
 import { podcastEpisodePath } from "@/capabilities/media/studyPaths";
@@ -135,7 +134,6 @@ function PodcastLibraryBody({
         </B2CGroupedSection>
       ))}
 
-      <DiscussWithAthena topic={{ title: current.title, kind: "podcast", slug: current.slug }} />
       {notes ? (
         <Prose content={notes} />
       ) : null}

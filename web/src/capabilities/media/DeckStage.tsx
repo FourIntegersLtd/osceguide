@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlinePhoto, HiOutlinePlay } from "react-icons/hi2";
 import { Button, cn, productTokens as t } from "@/foundation/ui";
-import { deckSlides, deckVideoUrl, type MediaItem } from "@/capabilities/media/api";
+import { deckCaptionsSrc, deckSlides, deckVideoUrl, type MediaItem } from "@/capabilities/media/api";
 import { Prose } from "@/capabilities/media/Prose";
 
 /**
@@ -12,14 +12,13 @@ import { Prose } from "@/capabilities/media/Prose";
  * `controls` back until the first play keeps the poster frame clean; from then on
  * the native controls behave normally, including while paused mid-video.
  */
-function SlideVideoPlayer({ src }: { src: string }) {
+function SlideVideoPlayer({ src, captions }: { src: string; captions: string | null }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasStarted, setHasStarted] = useState(false);
 
   return (
     <div className="relative h-full w-full">
-      {/* Slide videos have no caption track yet; the accessibility statement
-          lists this as a known gap. */}
+      {/* The track is there when the deck was timed at render; older decks have none yet. */}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <video
         ref={videoRef}
@@ -30,7 +29,9 @@ function SlideVideoPlayer({ src }: { src: string }) {
         onPlay={() => setHasStarted(true)}
         className="h-full w-full object-contain"
         playsInline
-      />
+      >
+        {captions ? <track kind="captions" srcLang="en" label="English" src={captions} /> : null}
+      </video>
       {!hasStarted && (
         <button
           type="button"
@@ -59,7 +60,7 @@ export function DeckStage({ item }: { item: MediaItem }) {
   const slides = deckSlides(item);
   const [index, setIndex] = useState(0);
 
-  if (video) return <SlideVideoPlayer key={video} src={video} />;
+  if (video) return <SlideVideoPlayer key={video} src={video} captions={deckCaptionsSrc(item)} />;
 
   if (slides.length === 0) {
     return (

@@ -45,3 +45,6 @@ export function useStudySearch(kind: MediaKind) {
 
   return { term, setTerm, urlQuery, clear };
 }
+
+/** What `useStudySearch` returns, handed down so one box and the list under it share one search. */
+export type StudySearch = ReturnType<typeof useStudySearch>;

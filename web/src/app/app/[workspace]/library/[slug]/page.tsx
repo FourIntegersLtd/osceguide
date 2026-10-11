@@ -9,7 +9,7 @@
  */
 
 import { Capability } from "@/app/app/[workspace]/capability";
-import { MediaItemView } from "@/capabilities/media";
+import { LegacyLibraryRedirect } from "@/capabilities/media";
 
 export default async function Page({
   params,
@@ -17,5 +17,5 @@ export default async function Page({
   params: Promise<{ workspace: string; slug: string }>;
 }) {
   const { slug } = await params;
-  return <Capability id="media"><MediaItemView slug={slug} toKindRoute /></Capability>;
+  return <Capability id="media"><LegacyLibraryRedirect slug={slug} /></Capability>;
 }

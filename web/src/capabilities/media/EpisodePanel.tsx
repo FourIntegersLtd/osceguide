@@ -2,9 +2,10 @@
 
 import { PODCAST_LENGTH_LABEL } from "@/capabilities/media/limits";
 import { useEffect, useRef, useState } from "react";
-import { HiOutlineChevronLeft, HiOutlinePause, HiOutlinePlay } from "react-icons/hi2";
+import { HiOutlineChevronLeft, HiOutlineChevronRight, HiOutlinePause, HiOutlinePlay } from "react-icons/hi2";
 import { Button } from "@/foundation/ui";
 import { B2CHero } from "@/foundation/ui/B2CHero";
+import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 import { recordActivity } from "@/capabilities/account/api";
 import type { MediaItem } from "@/capabilities/media/api";
 import type { Episode } from "@/capabilities/media/PodcastPlayer";
@@ -99,7 +100,7 @@ export function EpisodePanel({
         eyebrow="Now playing"
         title={current.title}
         action={
-          <>
+          <div className="flex w-full flex-wrap items-center gap-3">
             <Button onClick={toggle} disabled={!url} aria-busy={loading} className="gap-2">
               {loading ? (
                 <span
@@ -113,50 +114,57 @@ export function EpisodePanel({
               )}
               {loading ? "Loading…" : isPlaying ? "Pause" : "Play"}
             </Button>
-            <Button variant="secondary" onClick={() => go(index - 1)} disabled={!canGoPrevious} className="gap-1.5">
-              <HiOutlineChevronLeft className="h-4 w-4" aria-hidden />
-              Previous
-            </Button>
-            <Button variant="secondary" onClick={() => go(index + 1)} disabled={!canGoNext}>
-              Next
-            </Button>
-          </>
+            <div className="min-w-40 flex-1 sm:max-w-[320px]">
+              <input
+                type="range"
+                min={0}
+                max={duration || 1}
+                step={1}
+                value={Math.min(position, duration || 1)}
+                disabled={!url || duration === 0}
+                onChange={(event) => {
+                  const element = audioRef.current;
+                  if (!element) return;
+                  element.currentTime = Number(event.target.value);
+                  read(element);
+                }}
+                aria-label="Position in the episode"
+                aria-valuetext={`${clockTime(position)} of ${clockTime(duration)}`}
+                className="block h-1.5 w-full cursor-pointer appearance-none rounded-osce-md bg-osce-border disabled:cursor-default [&::-moz-range-thumb]:h-0 [&::-moz-range-thumb]:w-0 [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:h-0 [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:appearance-none"
+                style={{
+                  // The played part, painted on the track itself.
+                  backgroundImage:
+                    "linear-gradient(var(--osce-tone-education-text), var(--osce-tone-education-text))",
+                  backgroundRepeat: "no-repeat",
+                  backgroundSize: `${duration > 0 ? (position / duration) * 100 : 0}% 100%`,
+                }}
+              />
+              <p className="mt-2 font-mono text-osce-meta tabular-nums text-b2c-text-muted">
+                {clockTime(position)} / {clockTime(duration)}
+              </p>
+            </div>
+            <DiscussWithAthena topic={{ title: current.title, kind: "podcast", slug: current.slug }} />
+          </div>
         }
         aside={
-          <div className="w-full self-center sm:w-[300px]">
-            <input
-              type="range"
-              min={0}
-              max={duration || 1}
-              step={1}
-              value={Math.min(position, duration || 1)}
-              disabled={!url || duration === 0}
-              onChange={(event) => {
-                const element = audioRef.current;
-                if (!element) return;
-                element.currentTime = Number(event.target.value);
-                read(element);
-              }}
-              aria-label="Position in the episode"
-              aria-valuetext={`${clockTime(position)} of ${clockTime(duration)}`}
-              className="block h-1.5 w-full cursor-pointer appearance-none rounded-osce-md bg-osce-border disabled:cursor-default [&::-moz-range-thumb]:h-0 [&::-moz-range-thumb]:w-0 [&::-moz-range-thumb]:border-0 [&::-webkit-slider-thumb]:h-0 [&::-webkit-slider-thumb]:w-0 [&::-webkit-slider-thumb]:appearance-none"
-              style={{
-                // The played part, painted on the track itself.
-                backgroundImage:
-                  "linear-gradient(var(--osce-tone-education-text), var(--osce-tone-education-text))",
-                backgroundRepeat: "no-repeat",
-                backgroundSize: `${duration > 0 ? (position / duration) * 100 : 0}% 100%`,
-              }}
-            />
-            <p className="mt-2 font-mono text-osce-meta tabular-nums text-b2c-text-muted">
-              {clockTime(position)} / {clockTime(duration)}
+          <div className="flex w-full flex-col gap-3 self-center sm:w-[260px]">
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => go(index - 1)} disabled={!canGoPrevious} className="gap-1.5">
+                <HiOutlineChevronLeft className="h-4 w-4" aria-hidden />
+                Previous
+              </Button>
+              <Button variant="secondary" onClick={() => go(index + 1)} disabled={!canGoNext} className="gap-1.5">
+                Next
+                <HiOutlineChevronRight className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+            <p className="text-osce-meta text-b2c-text-muted">
+              AI-generated: some medical terms may be mispronounced.
             </p>
           </div>
         }
       >
-        {url
-          ? `${PODCAST_LENGTH_LABEL} · with Ben & Michelle. AI-generated: some medical terms may be mispronounced.`
-          : "This episode has no audio attached yet."}
+        {url ? `${PODCAST_LENGTH_LABEL} with Ben & Michelle` : "This episode has no audio attached yet."}
       </B2CHero>
 
       {url ? (

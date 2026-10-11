@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LuPodcast, LuStethoscope } from "react-icons/lu";
 import { B2CEmptyState, B2CSegmentedTabs, Modal, cn } from "@/foundation/ui";
 import { specialtiesOf, type MediaItem } from "@/capabilities/media/api";
@@ -13,17 +13,31 @@ import { jumpLinks, summaryGroups, type SummaryView } from "@/capabilities/media
  * The A to Z / Specialty tabs and the row of jump links. They sit in the page's sticky
  * header beside the search, so they stay in reach while the list scrolls. The links are
  * in-page anchors rather than URL state, so browsing the index does not fill the back stack.
+ *
+ * `items` is the whole catalogue, not the rows shown so far, so every letter has a link; a link
+ * to a group not yet on the page asks `onShowAll` for the rest, then scrolls to it.
  */
 export function SummaryIndexNav({
   items,
   view,
   onViewChange,
+  onShowAll,
 }: {
   items: readonly MediaItem[];
   view: SummaryView;
   onViewChange: (view: SummaryView) => void;
+  onShowAll?: () => void;
 }) {
   const links = jumpLinks(summaryGroups(items, view));
+  const [target, setTarget] = useState<string | null>(null);
+  // Runs after each render until the group is on the page, which a show-all makes happen.
+  useEffect(() => {
+    if (target === null) return;
+    const section = document.getElementById(`summary-${target}`);
+    if (!section) return;
+    section.scrollIntoView();
+    setTarget(null);
+  });
   return (
     <div className="space-y-3">
       <B2CSegmentedTabs
@@ -44,6 +58,11 @@ export function SummaryIndexNav({
             <a
               key={key}
               href={href}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!document.getElementById(`summary-${key}`)) onShowAll?.();
+                setTarget(key);
+              }}
               className="flex h-8 min-w-8 items-center justify-center rounded-osce-md px-2 text-osce-meta font-medium text-b2c-text-muted transition-colors hover:bg-b2c-surface-muted hover:text-osce-ink-900"
             >
               {key}

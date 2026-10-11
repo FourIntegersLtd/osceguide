@@ -3,13 +3,14 @@
 import { Suspense, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { HiOutlinePhoto } from "react-icons/hi2";
-import { B2CEmptyState } from "@/foundation/ui";
+import { AsyncBoundary, B2CEmptyState } from "@/foundation/ui";
+import type { AsyncState } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import type { MediaItem } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
-import { DeckList } from "@/capabilities/media/DeckList";
 import { SlidesWorkspace } from "@/capabilities/media/SlidesWorkspace";
 import { slidesDeckPath } from "@/capabilities/media/studyPaths";
+import type { StudySearch } from "@/capabilities/media/useStudySearch";
 
 function resolveSelected(decks: MediaItem[], deckParam: string | null): MediaItem | null {
   if (decks.length === 0) return null;
@@ -24,6 +25,8 @@ function resolveSelected(decks: MediaItem[], deckParam: string | null): MediaIte
  * Slides tab — B2C two-pane layout with selection in `?deck=`.
  */
 type SpecialtyFilterProps = {
+  /** The page's one study search. */
+  search: StudySearch;
   specialty: string;
   onSpecialtyChange: (specialty: string) => void;
   specialtyOptions: string[];
@@ -33,47 +36,44 @@ type SpecialtyFilterProps = {
 };
 
 export function SlidesLibrary({
-  items,
-  allItemsCount,
+  state,
   ...specialtyFilter
 }: {
-  items: MediaItem[];
-  allItemsCount: number;
+  /** The decks read so far. The list stays on screen while it reloads, so a search box keeps focus. */
+  state: AsyncState<MediaItem[]>;
 } & SpecialtyFilterProps) {
   return (
     <Suspense fallback={null}>
-      <SlidesLibraryInner items={items} allItemsCount={allItemsCount} {...specialtyFilter} />
+      <SlidesLibraryInner state={state} {...specialtyFilter} />
     </Suspense>
   );
 }
 
 function SlidesLibraryInner({
-  items,
-  allItemsCount,
+  state,
   ...specialtyFilter
 }: {
-  items: MediaItem[];
-  allItemsCount: number;
+  state: AsyncState<MediaItem[]>;
 } & SpecialtyFilterProps) {
   const { hrefFor } = useSurface();
   const { code: examCode } = useCurrentExam();
   const searchParams = useSearchParams();
   const deckParam = searchParams.get("deck");
 
+  const items = state.data ?? [];
   const selected = resolveSelected(items, deckParam);
   const deckHref = (slug: string) => hrefFor(slidesDeckPath(slug));
 
-  if (items.length === 0 && (searchParams.get("q")?.trim() ?? "") !== "") {
-    return <DeckList items={[]} currentSlug="" deckHref={deckHref} {...specialtyFilter} />;
-  }
+  if (state.error) return <AsyncBoundary state={state}>{() => null}</AsyncBoundary>;
 
-  if (items.length === 0) {
+  const searching = specialtyFilter.search.urlQuery !== "" || specialtyFilter.specialty !== "all";
+  if (items.length === 0 && !state.loading && !searching) {
     return (
       <B2CEmptyState
         icon={HiOutlinePhoto}
         title="No slides available"
         description={
-          allItemsCount > 0 && examCode
+          examCode
             ? `Nothing published for ${examCode.toUpperCase()} yet. Switch exam in the menu or upgrade for full access.`
             : "Check back later for new content."
         }
@@ -81,12 +81,11 @@ function SlidesLibraryInner({
     );
   }
 
-  if (!selected) return null;
-
   return (
     <SlidesWorkspace
       selected={selected}
       decks={items}
+      loading={state.loading}
       deckHref={deckHref}
       hrefFor={hrefFor}
       {...specialtyFilter}

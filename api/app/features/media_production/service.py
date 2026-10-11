@@ -24,6 +24,7 @@ from app.features.catalog import service as catalog
 from app.features.media import service as media_service
 from app.features.media.service import production_item, replace_content
 from app.features.media_production import domain, script_check, service_facts
+from app.features.media_production.captions import deck_captions_vtt
 from app.features.media_production.errors import (
     AvAlreadyRunning,
     NotRunning,
@@ -437,3 +438,8 @@ async def run_podcast_audio_job(
         failed["status"] = domain.FAILED
         await replace_content(session, media_id, failed)
     publish_after_commit(session, user_topic(requested_by), MEDIA_UPDATED, {"media_id": str(media_id)})
+
+
+def deck_captions(content: dict[str, Any]) -> str | None:
+    """Give a published deck's video its caption track, or nothing when the deck was never timed."""
+    return deck_captions_vtt(content)

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { audioUrl, podcastSeries, specialtiesOf, type MediaItem } from "@/capabilities/media/api";
+import { audioUrl, deckCaptionsSrc, deckHeading, podcastSeries, specialtiesOf, type MediaItem } from "@/capabilities/media/api";
 
 function episode(
   id: string,
@@ -80,5 +80,32 @@ describe("specialtiesOf", () => {
 
   it("files nothing when neither carries one", () => {
     assert.deepEqual(specialtiesOf(item({ content: {}, specialty: null })), []);
+  });
+});
+
+describe("deckHeading", () => {
+  const deck = (title: string, content: Record<string, unknown>) => episode("d", title, { content });
+
+  it("names a deck by its topic with the title beneath", () => {
+    assert.deepEqual(deckHeading(deck("Case 12 telephone review", { topic: "Myeloma" })), {
+      title: "Myeloma",
+      subtitle: "Case 12 telephone review",
+    });
+  });
+
+  it("has no subtitle when the topic is the title or is missing", () => {
+    assert.deepEqual(deckHeading(deck("Myeloma", { topic: "Myeloma" })), { title: "Myeloma", subtitle: null });
+    assert.deepEqual(deckHeading(deck("Myeloma", { topic: "  " })), { title: "Myeloma", subtitle: null });
+  });
+});
+
+describe("deckCaptionsSrc", () => {
+  it("wraps the stored track in a data URL and gives none for a deck without one", () => {
+    const src = deckCaptionsSrc(episode("d", "Deck", { content: { captions_vtt: "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHi\n" } }));
+    assert.equal(
+      src,
+      "data:text/vtt;charset=utf-8,WEBVTT%0A%0A00%3A00%3A01.000%20--%3E%2000%3A00%3A02.000%0AHi%0A",
+    );
+    assert.equal(deckCaptionsSrc(episode("d", "Deck", { content: {} })), null);
   });
 });

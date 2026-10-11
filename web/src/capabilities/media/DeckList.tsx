@@ -1,20 +1,18 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
-import {
-  HiOutlineMagnifyingGlass,
-  HiOutlinePresentationChartBar,
-  HiOutlineXMark,
-} from "react-icons/hi2";
-import { Select, cn, iconSearchInputClassName, productTokens as t } from "@/foundation/ui";
+import type { ReactNode } from "react";
+import { HiOutlinePresentationChartBar } from "react-icons/hi2";
+import { Select, Spinner, cn, productTokens as t } from "@/foundation/ui";
 import {
   deckDurationSeconds,
+  deckHeading,
   deckSlidesCount,
   deckVideoUrl,
   specialtiesOf,
   type MediaItem,
 } from "@/capabilities/media/api";
-import { useStudySearch } from "@/capabilities/media/useStudySearch";
+import { StudySearchBox } from "@/capabilities/media/StudySearchBox";
+import type { StudySearch } from "@/capabilities/media/useStudySearch";
 import { clockTime } from "@/capabilities/media/support/text";
 import { B2CGroupedRowLink } from "@/foundation/ui/B2CGroupedList";
 import { b2cGroupedShell } from "@/foundation/ui/productTokens";
@@ -30,6 +28,8 @@ import { b2cGroupedShell } from "@/foundation/ui/productTokens";
  */
 export function DeckList({
   items,
+  search,
+  loading,
   currentSlug,
   deckHref,
   specialty,
@@ -40,6 +40,10 @@ export function DeckList({
   footer,
 }: {
   items: MediaItem[];
+  /** The page's one study search; the box below types into it. */
+  search: StudySearch;
+  /** The list is being read again (a new search or filter); the box stays put meanwhile. */
+  loading: boolean;
   /** How many presentations match, across every page. */
   total: number | null;
   /** "Load more", drawn inside the card under the last row. */
@@ -51,16 +55,21 @@ export function DeckList({
   specialtyOptions: string[];
   hasUncategorized: boolean;
 }) {
-  const search = useStudySearch("slide_deck");
   const query = search.urlQuery;
   return (
     <div className="flex max-h-[100dvh] min-h-0 flex-col gap-3 lg:h-[100dvh]">
-      <DeckSearch term={search.term} onTermChange={search.setTerm} onClear={search.clear} />
+      <StudySearchBox
+        term={search.term}
+        onTermChange={search.setTerm}
+        onClear={search.clear}
+        label="Search presentations"
+        placeholder="Search presentations"
+      />
 
       <section className="flex min-h-0 flex-1 flex-col">
         <div className="flex items-center justify-between gap-3 px-1 pb-2">
           <h2 className={cn(t.b2cMonoEyebrow, "min-w-0 truncate")}>
-            {(total ?? items.length).toLocaleString()} presentations
+            {loading ? "Loading presentations" : `${(total ?? items.length).toLocaleString()} presentations`}
           </h2>
           {specialtyOptions.length > 0 || hasUncategorized ? (
             <Select
@@ -84,12 +93,19 @@ export function DeckList({
           ) : null}
         </div>
         <div className={cn(b2cGroupedShell, "min-h-0 flex-1 overflow-y-auto")}>
-          {items.length === 0 && query !== "" ? (
+          {loading ? (
+            <div className="flex justify-center p-6">
+              <Spinner />
+            </div>
+          ) : null}
+          {!loading && items.length === 0 && query !== "" ? (
             <p className="p-4 text-osce-body text-b2c-text-muted">
               No presentations match &ldquo;{query}&rdquo;.
             </p>
           ) : null}
-          {items.map((deck) => (
+          {items.map((deck) => {
+            const { title, subtitle } = deckHeading(deck);
+            return (
             <B2CGroupedRowLink
               key={deck.id}
               href={deckHref(deck.slug)}
@@ -97,59 +113,15 @@ export function DeckList({
               active={deck.slug === currentSlug}
               className={deck.slug === currentSlug ? "bg-b2c-secondary" : undefined}
               icon={HiOutlinePresentationChartBar}
-              title={deck.title}
-              meta={[specialtiesOf(deck)[0], deckMeta(deck)].filter(Boolean).join(" · ")}
+              title={title}
+              meta={[subtitle, specialtiesOf(deck)[0], deckMeta(deck)].filter(Boolean).join(" · ")}
             />
-          ))}
+            );
+          })}
           {footer}
         </div>
       </section>
     </div>
-  );
-}
-
-/** Searches as you type (the URL follows after a pause); × clears it and keeps the specialty. */
-function DeckSearch({
-  term,
-  onTermChange,
-  onClear,
-}: {
-  term: string;
-  onTermChange: (term: string) => void;
-  onClear: () => void;
-}) {
-  const input = useRef<HTMLInputElement>(null);
-  // The list can swap for the "no matches" view while someone types; carry the focus across.
-  useEffect(() => {
-    if (term !== "") input.current?.focus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return (
-    <form role="search" onSubmit={(event) => event.preventDefault()} className="relative w-full">
-      <HiOutlineMagnifyingGlass
-        className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-osce-ink-400"
-        aria-hidden
-      />
-      <input
-        ref={input}
-        type="search"
-        placeholder="Search presentations"
-        value={term}
-        onChange={(event) => onTermChange(event.target.value)}
-        aria-label="Search presentations"
-        className={cn(iconSearchInputClassName, "pr-10 text-left")}
-      />
-      {term !== "" ? (
-        <button
-          type="button"
-          onClick={onClear}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-osce-ink-400 transition-colors hover:bg-osce-border-light hover:text-osce-ink-600"
-          aria-label="Clear search"
-        >
-          <HiOutlineXMark className="h-3.5 w-3.5" aria-hidden />
-        </button>
-      ) : null}
-    </form>
   );
 }
 

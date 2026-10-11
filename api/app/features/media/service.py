@@ -155,7 +155,14 @@ async def publish(
     if production.is_running(dict(item.content or {})):
         raise errors.BeingProduced()
 
-    await repository.update_item(session, item_id, status=status, published_at=now)
+    values: dict[str, Any] = {"status": status, "published_at": now}
+    if item.kind == "slide_deck":
+        # Captions are cut from the timings the render stored, so they are set once, here, when
+        # the video becomes the learner's. A deck with no timings simply has no track.
+        captions = production.deck_captions(dict(item.content or {}))
+        if captions:
+            values["content"] = {**(item.content or {}), "captions_vtt": captions}
+    await repository.update_item(session, item_id, **values)
     await _reindex(session, item, title=item.title, summary=item.summary, index=index)
     return await service_reads.read_one(
         session, await _require(session, item_id), unlocked_exam_ids=None, with_review=True

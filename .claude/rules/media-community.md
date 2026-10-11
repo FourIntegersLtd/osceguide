@@ -15,6 +15,14 @@ Owner: `content-owner` (staff queues `staff-console-owner`). Proof: `verify-cont
   are traversal-checked; uploads are content-sniffed (`tests/security`).
 - Slide decks for teaching are made by the `slide-deck-author` agent through platform-api's staff
   media routes only; do not add side routes.
+- A published deck carries `content.captions_vtt`, cut at publish from the per-slide timings the
+  render stored (`media_production/captions.py`); a deck without timings gets none, and decks made
+  before timings were stored stay uncaptioned until re-rendered. `scripts/sync_deck_topics_and_captions.py`
+  backfills `topic` and captions (dry run by default). Decks are headed by `content.topic`, with the
+  title beneath (`deckHeading`).
+- A to Z and Podcasts read the whole catalogue (`useClientPagedCatalogue`); jump links are built from
+  all of it, not the shown rows. One `useStudySearch` per page, passed down; a list that reloads
+  stays mounted so the search box keeps focus.
 - Marketplace: a claim is race-safe (`test_marketplace_claim_race`) and reminders are scheduled
   jobs. Peer practice: queue pairing is race-safe, the accept handshake and recording have state
   over time, transcripts are diarised (`peer_practice/diariser.py`).

@@ -347,6 +347,22 @@ export function deckVideoUrl(item: MediaItem): string | null {
   return stringField(item, "video_url", "final_video_url");
 }
 
+/**
+ * What a deck is called on screen: its topic, with the title beneath when the two differ.
+ * A deck without a topic is called by its title and has no subtitle.
+ */
+export function deckHeading(item: MediaItem): { title: string; subtitle: string | null } {
+  const topic = stringField(item, "topic")?.trim();
+  if (!topic) return { title: item.title, subtitle: null };
+  return { title: topic, subtitle: topic === item.title.trim() ? null : item.title };
+}
+
+/** The deck's caption track as a `data:` URL a `<track>` can load, or null when it has none. */
+export function deckCaptionsSrc(item: MediaItem): string | null {
+  const vtt = stringField(item, "captions_vtt");
+  return vtt ? `data:text/vtt;charset=utf-8,${encodeURIComponent(vtt)}` : null;
+}
+
 /** The "About" tab, which falls back to the list summary rather than sitting empty. */
 export function aboutText(item: MediaItem): string | null {
   return (

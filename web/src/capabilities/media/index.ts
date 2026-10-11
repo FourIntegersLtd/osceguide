@@ -5,3 +5,4 @@ export { mediaCapability } from "@/capabilities/media/capability";
 export { STUDY_NAV_CAPABILITIES } from "@/capabilities/media/studyCapabilities";
 export * from "@/capabilities/media/studyPaths";
 export * from "@/capabilities/media/api";
+export { LegacyLibraryRedirect } from "@/capabilities/media/LegacyLibraryRedirect";

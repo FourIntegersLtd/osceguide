@@ -272,7 +272,7 @@ def _storyboard(
     return takes
 
 
-def _caption_chunks(text: str, start: float, voiced: float) -> list[tuple[float, float, str]]:
+def caption_chunks(text: str, start: float, voiced: float) -> list[tuple[float, float, str]]:
     """Ben's line as short captions, each on screen for its share of the time the line takes.
 
     The split is by clause and the timing by length, which follows speech closely without
@@ -332,7 +332,7 @@ def _schedule(
             if row is not None:
                 take.events.append((local - ROW_LEAD, row + 1, row))
             take.line_starts.append(local)
-            take.captions += _caption_chunks(text, local, seconds - TAIL_PAUSE_MS / 1000)
+            take.captions += caption_chunks(text, local, seconds - TAIL_PAUSE_MS / 1000)
             soundtrack.append((clock + local, recording))
             local += seconds
         if take.countdown:
