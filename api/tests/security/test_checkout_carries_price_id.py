@@ -41,6 +41,10 @@ async def test_the_checkout_form_sends_the_price_id_as_metadata(monkeypatch: pyt
 
     assert sent["metadata[price_id]"] == ["price_123"]
     assert sent["line_items[0][price]"] == ["price_123"]
+    # A one-off payment, never a Stripe subscription: nothing renews, so closing an account
+    # has nothing in Stripe to cancel (A-34). A change to `subscription` must teach
+    # `identity.service_close_account.close_account` to cancel it first.
+    assert sent["mode"] == ["payment"]
     # A full-price checkout credits nobody, so it carries no code.
     assert "metadata[referral_code]" not in sent
 

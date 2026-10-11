@@ -8,15 +8,14 @@ outside Latin-1 have to render on a host that has no system fonts.
 
 from __future__ import annotations
 
-import logging
 import re
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
 
 from fpdf import FPDF
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import pdf
 from app.core.auth import Principal
 from app.features.identity import service as identity
 from app.features.results import errors, repository, service_candidate
@@ -27,7 +26,6 @@ from app.features.sittings import service_reads as sittings
 from app.features.tenancy import service as tenancy
 from app.features.tenancy import service_audit as audit
 
-_FONT_FILE = Path(__file__).resolve().parent / "fonts" / "DejaVuSans.ttf"
 # The assessment outcomes `SaveDecision` accepts, shown as words.
 _OUTCOME_LABELS = {
     "pass": "Pass",
@@ -49,7 +47,7 @@ class _ResultDocument(FPDF):
     def footer(self) -> None:
         """The line at the foot of the page: when this file was generated."""
         self.set_y(-16)
-        self.set_font("DejaVuSans", size=8)
+        self.set_font(pdf.FACE, size=8)
         self.set_text_color(*_FOOTER_INK)
         self.cell(0, 5, self._generated)
 
@@ -71,7 +69,7 @@ def render_result_pdf(
     document = _ResultDocument(_generated_line(generated_at))
     document.set_margins(18, 18, 18)
     document.set_auto_page_break(auto=True, margin=22)
-    document.add_font("DejaVuSans", "", str(_FONT_FILE))
+    pdf.add_face(document)
     document.add_page()
     _write_result(
         document,
@@ -81,16 +79,7 @@ def render_result_pdf(
         candidate_name=candidate_name,
         result=result,
     )
-    # Subsetting the bundled face logs one line per table. A download is not
-    # an operational event, so those lines stay off the request log.
-    subset_log = logging.getLogger("fontTools")
-    previous_level = subset_log.level
-    subset_log.setLevel(logging.WARNING)
-    try:
-        produced = document.output()
-    finally:
-        subset_log.setLevel(previous_level)
-    return bytes(produced)
+    return pdf.output_bytes(document)
 
 
 async def render_my_result_pdf(
@@ -212,9 +201,9 @@ def _write_result(
 ) -> None:
     """Title, the sitting it belongs to, then the candidate-facing fields."""
     document.set_text_color(*_INK)
-    document.set_font("DejaVuSans", size=18)
+    document.set_font(pdf.FACE, size=18)
     document.cell(0, 10, "Assessment result", new_x="LMARGIN", new_y="NEXT")
-    document.set_font("DejaVuSans", size=12)
+    document.set_font(pdf.FACE, size=12)
     document.cell(0, 7, organisation_name, new_x="LMARGIN", new_y="NEXT")
     document.cell(0, 7, sitting_name, new_x="LMARGIN", new_y="NEXT")
     document.ln(6)
@@ -227,7 +216,7 @@ def _write_result(
     ]
     if result.acknowledged_at is not None:
         rows.append(("Acknowledged", _human_datetime(result.acknowledged_at)))
-    document.set_font("DejaVuSans", size=11)
+    document.set_font(pdf.FACE, size=11)
     for label, value in rows:
         document.cell(46, 8, label)
         document.cell(0, 8, value, new_x="LMARGIN", new_y="NEXT")

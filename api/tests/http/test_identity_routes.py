@@ -7,11 +7,13 @@ so the replacement never needs to.
 
 from __future__ import annotations
 
+import io
 import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from pypdf import PdfReader
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.features.identity import repository as identity_repo
@@ -519,6 +521,35 @@ async def test_the_export_route_returns_only_the_callers_own_data(
     assert body["attempts"][0]["id"] == str(sat.attempt_id)
     assert body["attempts"][0]["transcript"]["messages"][0]["message"] == "What brought you in today?"
     assert body["payments"] == []
+
+
+async def test_the_export_comes_as_a_pdf_with_the_same_data_when_asked(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """A-31: the same export, as a file a person can read and print."""
+    await ensure_exam(db_session, "sca")
+    token = (await register(client)).json()["access_token"]
+    sat = await _entitled_attempt(db_session, "new@example.com")
+    await finish_consultation(db_session, sat.attempt_id)
+    await db_session.commit()
+
+    response = await client.get("/api/v1/me/export", params={"format": "pdf"}, headers=bearer(token))
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["content-disposition"] == 'attachment; filename="my-data.pdf"'
+    assert response.content.startswith(b"%PDF-")
+    text = "".join(page.extract_text() for page in PdfReader(io.BytesIO(response.content)).pages)
+    assert "new@example.com" in text
+    assert "What brought you in today?" in text
+
+
+async def test_the_export_refuses_a_format_it_does_not_make(client: AsyncClient) -> None:
+    token = (await register(client)).json()["access_token"]
+
+    response = await client.get("/api/v1/me/export", params={"format": "docx"}, headers=bearer(token))
+
+    assert response.status_code == 422
 
 
 async def test_changing_the_password_keeps_this_device_signed_in_and_ends_the_others(

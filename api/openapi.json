@@ -31972,8 +31972,24 @@
     },
     "/api/v1/me/export": {
       "get": {
-        "description": "Download everything this account owns: profile, attempts with their\ntranscripts and marks, and payments. Offered as an attachment, so the\nbrowser saves it rather than rendering it.",
+        "description": "Download everything this account owns: profile, attempts with their\ntranscripts and marks, and payments. Offered as an attachment, so the\nbrowser saves it rather than rendering it. `format=pdf` is the same data\nas a file a person can read and print.",
         "operationId": "identity_export_me",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "json",
+              "enum": [
+                "json",
+                "pdf"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -31981,9 +31997,15 @@
                 "schema": {
                   "$ref": "#/components/schemas/MyDataExport"
                 }
+              },
+              "application/pdf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
               }
             },
-            "description": "Successful Response"
+            "description": "The export: JSON by default, the same data as a PDF with `format=pdf`."
           },
           "401": {
             "content": {
@@ -31999,6 +32021,16 @@
               "account_suspended",
               "account_not_found"
             ]
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

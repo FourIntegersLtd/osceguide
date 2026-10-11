@@ -18,6 +18,9 @@ Proof: `verify-access`. Anything that moves money also gets the `reviewer` agent
 - Billing: plans, the Stripe webhook ledger, invoices and receipts. The webhook is a ledger
   that records failures (migration `billing_event_failure`); checkout carries the price id
   (`tests/security/test_checkout_carries_price_id.py`). No test sends a live webhook: say so.
+- **No Stripe subscriptions.** Checkout is `mode=payment` (pinned in `test_checkout_carries_price_id.py`):
+  nothing renews, so closing an account has nothing in Stripe to cancel (A-34). Switching to
+  `subscription` means `close_account` must cancel first.
 - Receipts have an oracle (`tests/unit/test_receipt_oracle.py`); never edit it to pass.
 - Growth: referrals, partner attribution, spend and payouts. Activation and clawback rules
   live in `growth/domain.py`.

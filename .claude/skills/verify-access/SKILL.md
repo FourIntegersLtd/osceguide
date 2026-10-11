@@ -64,6 +64,9 @@ queued. No `RESEND_API_KEY` locally means nothing is sent, which is correct.
 
 ## Traps
 
+- **`$TMPDIR` is shared with other sessions on this machine.** A `make ci > "$TMPDIR/ci.txt"` was
+  overwritten mid-run by another session's web lint (2026-10-11). Write proof output to the
+  session scratchpad instead.
 - **A password change or reset revokes every chain, the current one too.**
   Change-password answers a fresh pair that the web adopts (A-13); a reset
   answers none, so `/reset-password` signs the browser out before showing
