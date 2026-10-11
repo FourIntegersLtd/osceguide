@@ -9,8 +9,7 @@ import {
   SurfaceProvider,
   capabilitiesFor,
   NAV_SECTIONS,
-  NAV_SECTION_LABELS,
-  NAV_DEEP_PAGES,
+  NAV_LABELS,
 } from "@/capabilities";
 import { InboxUnreadProvider, useInboxUnread } from "@/capabilities/inbox";
 import ChooseExam from "@/capabilities/account/ChooseExam";
@@ -85,7 +84,7 @@ export function WorkspaceShell({
     const ungrouped = items.filter((item) => !item.section);
     const sections = NAV_SECTIONS.map((section) => ({
       section,
-      label: NAV_SECTION_LABELS[section],
+      label: NAV_LABELS[section] ?? section,
       items: items.filter((item) => item.section === section),
     })).filter((group) => group.items.length > 0);
     return { ungrouped, sections };
@@ -143,8 +142,7 @@ export function WorkspaceShell({
           <WorkspaceToolbar
             items={items}
             rootLabel={isTrain ? "Practice" : staff ? "Platform console" : workspace.name}
-            sectionLabels={NAV_SECTION_LABELS}
-            deepPages={NAV_DEEP_PAGES}
+            labels={NAV_LABELS}
             basePath={basePath}
             examCode={examCode ?? null}
             consumer={isTrain}

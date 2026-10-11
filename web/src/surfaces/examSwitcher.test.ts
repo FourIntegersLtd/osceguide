@@ -25,13 +25,13 @@ describe("examDetail", () => {
   });
 
   it("puts the weeks left under the workspace name", () => {
-    assert.equal(examDetail("sca", "2026-11-22", now), "SCA · 6 weeks to exam");
-    assert.equal(examDetail("sca", "2026-10-18", now), "SCA · 1 week to exam");
-    assert.equal(examDetail("sca", "2026-10-14", now), "SCA · 3 days to exam");
+    assert.equal(examDetail("sca", "2026-11-22", now), "SCA · 6 weeks to go");
+    assert.equal(examDetail("sca", "2026-10-18", now), "SCA · 1 week to go");
+    assert.equal(examDetail("sca", "2026-10-14", now), "SCA · 3 days to go");
   });
 
-  it("says when the exam is today or past", () => {
-    assert.equal(examDetail("sca", "2026-10-11", now), "SCA · exam today");
-    assert.equal(examDetail("sca", "2026-10-01", now), "SCA · exam passed");
+  it("shares the dashboard's wording for today and past", () => {
+    assert.equal(examDetail("sca", "2026-10-11", now), "SCA · Exam day");
+    assert.equal(examDetail("sca", "2026-10-01", now), "SCA · Exam date has passed");
   });
 });

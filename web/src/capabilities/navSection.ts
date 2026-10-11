@@ -23,8 +23,18 @@ export const NAV_SECTIONS = [
 
 export type NavSection = (typeof NAV_SECTIONS)[number];
 
-/** Pages reached from inside a section rather than from the nav, by first path segment: the breadcrumb names them. */
-export const NAV_DEEP_PAGES: Record<string, string> = {
+/**
+ * The breadcrumb's one label map: a nav section's name (by section id) and a page reached from
+ * inside a section rather than from the nav (by first path segment). The two key sets do not overlap.
+ */
+export const NAV_LABELS: Record<string, string> = {
+  customers: "Customers",
+  revenue: "Revenue",
+  catalogue: "Catalogue",
+  operations: "Operations",
+  practice: "Practice",
+  connect: "Connect",
+  general: "General",
   debriefs: "Debriefs",
   transcripts: "Transcripts",
   library: "Library",
@@ -36,14 +46,4 @@ export const NAV_DEEP_PAGES: Record<string, string> = {
   slots: "Review",
   trainee: "My training",
   mocks: "Practice sessions",
-};
-
-export const NAV_SECTION_LABELS: Record<NavSection, string> = {
-  customers: "Customers",
-  revenue: "Revenue",
-  catalogue: "Catalogue",
-  operations: "Operations",
-  practice: "Practice",
-  connect: "Connect",
-  general: "General",
 };

@@ -5,6 +5,15 @@ export function dayFromIso(value: string | null | undefined): Date | undefined {
   return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Whole calendar days from the local day of `from` to the local day of `to` (negative when `to` is earlier). */
+export function daysBetween(from: Date, to: Date): number {
+  const start = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.round((end.getTime() - start.getTime()) / MS_PER_DAY);
+}
+
 export function isoFromDay(day: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;

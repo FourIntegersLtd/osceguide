@@ -58,15 +58,15 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
   on every route, never behind a route gate. The toolbar carries the Notifications bell (the inbox, path `/notifications`, `/inbox`
   redirects) with the unread count; the sidebar item has no badge. The exam countdown is one line under
   the workspace name (`examDetail`), never in the footer. Voice Athena is off Contact, Notifications,
-  Settings and Community (`athenaVoice.ts`): the dock there is text `Help` only. Search (⌘K, `WorkspaceJumpTo` + `jumpToSearch.ts`) is pages, then stations and Help
-  articles (existing GETs, 250ms debounce, 2+ chars, stations on Train only) and an "Ask Athena" row ("Help with ..." where voice is off, `askHelpRow`); it
+  Settings and Community (`helpPersona.ts`): the dock there is text `Help` only. Search (⌘K, `WorkspaceJumpTo` + `jumpToSearch.ts`) is pages, then stations and Help
+  articles (existing GETs, 250ms debounce, 2+ chars, stations on Train only) and an "Ask Athena" row ("Help with ..." where voice is off, `helpPersona`); it
   never calls knowledge-chat per keystroke. Icons are `react-icons/lu` only, one literal icon per item.
 - A gate in a lazy placeholder and in the component it loads must agree: the Help button showed, then
   vanished when the dock loaded. A route gate on a shared control needs a journey at the width where
   nothing else offers it (`e2e/train/help-everywhere.spec.ts` runs at phone width).
 - Page width is the shell's one container: a page under `app/app` and the screens it mounts set no `max-w-*`
   (`surfaces/pageWidth.test.ts` guards it). Toasts are top-centre and one with `durationMs` is capped at 60 s
-  (`toastDuration.ts`); success feedback is a `useToast` toast, not an inline Alert. `Panel` is static; a part that folds is `FoldSection`. The Help button and FAB use a neutral `LuCircleHelp`, never Athena's face. `resolveCrumb` takes an options object; deep-page names are `NAV_DEEP_PAGES`. A confirm step is `foundation/ui/ConfirmModal`. Study search types into the URL
+  (`toastDuration.ts`); success feedback is a `useToast` toast, not an inline Alert. `Panel` is static; a part that folds is `FoldSection`. The Help button and FAB use a neutral `LuCircleHelp`, never Athena's face. `resolveCrumb` takes an options object; section and deep-page names are the one `NAV_LABELS` map. A confirm step is `foundation/ui/ConfirmModal`. Study search types into the URL
   (`useStudySearch`); A to Z and Podcasts load the whole catalogue once and page client-side (`catalogue.ts`).
 - The page column (`b2cPageColumn`) is the scroller (its `overflow-x-hidden` makes it one) and a sticky child is offset by the scroller's own padding: keep top padding on an inner div (`WorkspaceShell`), never on `main` or the column, so `sticky top-0` sits flush under the 52px toolbar. Contact subject and the testimonial question are pure models (`contactSubject.ts`, `productFeedbackModel.ts`).
 - Open items: `docs/BACKLOG.md`; delete a row when you land it.

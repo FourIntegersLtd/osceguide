@@ -44,6 +44,7 @@ import { dashboardView, nextStationCopy, recentAttemptStatus, type DashboardView
 import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
 import { BadgeStrip } from "@/domains/train/dashboard/BadgeStrip";
 import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
+import { daysBetween } from "@/foundation/ui/dateDay";
 import { isExamWeek } from "@/domains/train/dashboard/examDate";
 import type { AboutKey } from "@/domains/train/dashboard/aboutTypes";
 import { B2CHero } from "@/foundation/ui/B2CHero";
@@ -267,11 +268,7 @@ function RecentStations({
 function relativeDay(value: string): string {
   const at = new Date(value);
   if (Number.isNaN(at.getTime())) return value;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const day = new Date(at);
-  day.setHours(0, 0, 0, 0);
-  const days = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+  const days = daysBetween(at, new Date());
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
   if (days < 7) return at.toLocaleDateString("en-GB", { weekday: "long" });

@@ -3,6 +3,7 @@
 import { AsyncBoundary } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { readAchievements } from "@/capabilities/account/api";
+import { achievementsFromApi } from "@/capabilities/account/achievementsView";
 import Achievements from "@/capabilities/account/Achievements";
 
 /**
@@ -18,20 +19,7 @@ export function AchievementsLive() {
   return (
     <AsyncBoundary state={state}>
       {(data) => (
-        <Achievements
-          stationCount={data.station_count}
-          currentStreak={data.current_streak}
-          streakBadgeCount={data.streak_badge_count}
-          longestStreak={
-            data.longest_streak
-              ? {
-                  length: data.longest_streak.length,
-                  startDate: data.longest_streak.start_date,
-                  endDate: data.longest_streak.end_date,
-                }
-              : null
-          }
-        />
+      <Achievements {...achievementsFromApi(data)} />
       )}
     </AsyncBoundary>
   );

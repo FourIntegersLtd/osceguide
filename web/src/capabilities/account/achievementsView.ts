@@ -1,3 +1,4 @@
+import type { Achievements } from "@/capabilities/account/api";
 import { STATIONS_PER_BADGE, badgeProgress } from "@/capabilities/account/badgeProgress";
 
 /** What `GET /me/achievements` sends, in the camelCase the screen reads. */
@@ -34,11 +35,23 @@ export interface AchievementsView {
   latest: string | null;
 }
 
+/** `GET /me/achievements` in the camelCase the screen reads. */
+export function achievementsFromApi(data: Achievements): AchievementsInput {
+  return {
+    stationCount: data.station_count,
+    currentStreak: data.current_streak,
+    streakBadgeCount: data.streak_badge_count,
+    longestStreak: data.longest_streak
+      ? { length: data.longest_streak.length, startDate: data.longest_streak.start_date, endDate: data.longest_streak.end_date }
+      : null,
+  };
+}
+
 export function achievementsView(input: AchievementsInput): AchievementsView {
   const { earned, toNext, milestones } = badgeProgress(input.stationCount);
   const longest = input.longestStreak && input.longestStreak.length > 0 ? input.longestStreak : null;
   const first = earned === 0 ? "first" : "next";
-  const more = toNext === 1 ? "One more station earns" : `${capitalise(numberWord(toNext))} more stations earn`;
+  const more = moreStations(toNext);
   const keep = input.currentStreak > 0 ? " Practise tomorrow to keep the streak." : " Practise three days in a row to start a streak.";
   return {
     stations: {
@@ -58,10 +71,8 @@ export function achievementsView(input: AchievementsInput): AchievementsView {
   };
 }
 
-function numberWord(value: number): string {
-  return ["zero", "one", "two", "three", "four", "five"][value] ?? String(value);
-}
-
-function capitalise(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
+function moreStations(toNext: number): string {
+  if (toNext === 1) return "One more station earns";
+  const word = ["zero", "one", "two", "three", "four", "five"][toNext] ?? String(toNext);
+  return `${word.charAt(0).toUpperCase()}${word.slice(1)} more stations earn`;
 }

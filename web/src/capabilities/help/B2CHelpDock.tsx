@@ -29,7 +29,7 @@ import { helpType } from "@/foundation/ui/helpType";
 import { KnowledgeBaseChat } from "./KnowledgeBaseChat";
 import HelpArticleBrowse from "@/capabilities/help/HelpArticleBrowse";
 import { AthenaFab } from "@/capabilities/help/AthenaFab";
-import { athenaVoiceAllowed, helpPersonaName } from "@/capabilities/help/athenaVoice";
+import { athenaVoiceAllowed, helpPersona } from "@/capabilities/help/helpPersona";
 import {
   assistantVoiceToken,
   buildClientContext,
@@ -94,7 +94,7 @@ function HelpChoiceScreen({
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
           </div>
-          <span className={helpType.barTitle}>{helpPersonaName(voice)}</span>
+          <span className={helpType.barTitle}>{helpPersona(voice).name}</span>
         </div>
         <div className="flex items-center gap-0.5">
           <HelpWideToggle isWide={isWide} onToggle={onToggleWide} />
@@ -245,7 +245,7 @@ function NavigateHelpPanel({
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
           </div>
-          <span className={helpType.barTitle}>{helpPersonaName(voice)}</span>
+          <span className={helpType.barTitle}>{helpPersona(voice).name}</span>
         </div>
         <div className="flex items-center gap-0.5">
           <HelpWideToggle isWide={isWide} onToggle={onToggleWide} />

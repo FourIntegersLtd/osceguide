@@ -5,7 +5,7 @@ import { HiOutlineCalendarDays, HiOutlinePencil } from "react-icons/hi2";
 import { Button, productTokens } from "@/foundation/ui";
 import { useCurrentExam, useSession } from "@/foundation/session";
 import { AddExamDate } from "@/capabilities/account/AddExamDate";
-import { examCountdown } from "@/domains/train/dashboard/examDate";
+import { examCountdown } from "@/foundation/ui/examCountdown";
 import { dayFromIso } from "@/foundation/ui/dateDay";
 
 const SAVED_FLASH_MS = 700;

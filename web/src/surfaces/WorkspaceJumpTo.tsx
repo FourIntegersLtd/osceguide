@@ -6,7 +6,7 @@ import { LuCircleHelp, LuSearch, LuSparkles, LuStethoscope } from "react-icons/l
 import Modal from "@/foundation/ui/Modal";
 import { cn } from "@/foundation/ui";
 import { openAthena } from "@/capabilities/help/api";
-import { askHelpRow, athenaVoiceAllowed } from "@/capabilities/help/athenaVoice";
+import { athenaVoiceAllowed, helpPersona } from "@/capabilities/help/helpPersona";
 import { stationHref } from "@/capabilities/stations/routes";
 import type { NavItem } from "@/surfaces/contract";
 import { matchingSections, moveActive } from "@/surfaces/jumpTo";
@@ -106,11 +106,13 @@ export function WorkspaceJumpTo({
       icon: LuCircleHelp,
       run: askAthena(article.title),
     }));
+    const persona = helpPersona(voice);
     const ask: Row[] = searchable
       ? [
           {
             key: "ask",
-            ...askHelpRow(voice, text),
+            group: persona.group,
+            label: persona.askLabel(text),
             icon: LuSparkles,
             run: askAthena(text),
           },

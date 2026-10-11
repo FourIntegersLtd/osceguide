@@ -5,7 +5,7 @@ import { AsyncBoundary, TextLink } from "@/foundation/ui";
 import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities";
 import { readAchievements } from "@/capabilities/account/api";
-import { achievementsView } from "@/capabilities/account/achievementsView";
+import { achievementsFromApi, achievementsView } from "@/capabilities/account/achievementsView";
 
 /**
  * One line on the dashboard from `GET /me/achievements`: the latest badge, the two counts and a
@@ -17,12 +17,7 @@ export function BadgeStrip() {
   return (
     <AsyncBoundary state={state}>
       {(data) => {
-        const view = achievementsView({
-          stationCount: data.station_count,
-          currentStreak: data.current_streak,
-          streakBadgeCount: data.streak_badge_count,
-          longestStreak: null,
-        });
+        const view = achievementsView(achievementsFromApi(data));
         return (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-osce-lg border border-b2c-border bg-osce-surface px-4 py-3 text-osce-body">
             <span className="flex h-7 w-7 items-center justify-center rounded-osce-md bg-osce-accent-muted text-osce-accent">

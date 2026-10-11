@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { examCountdown, isExamWeek } from "@/domains/train/dashboard/examDate";
+import { examCountdown } from "@/foundation/ui/examCountdown";
+import { isExamWeek } from "@/domains/train/dashboard/examDate";
 
 // Local times, because the calendar shows the learner's own day.
 const LATE_EVENING = new Date(2026, 8, 21, 23, 30).getTime();

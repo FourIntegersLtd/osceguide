@@ -4,7 +4,6 @@ export { type CapabilityModule, type MountedCapability } from "@/capabilities/co
 export { CAPABILITIES, capabilitiesFor, capabilityById, type MountOptions } from "@/capabilities/registry";
 export {
   NAV_SECTIONS,
-  NAV_SECTION_LABELS,
-  NAV_DEEP_PAGES,
+  NAV_LABELS,
   type NavSection,
 } from "@/capabilities/navSection";

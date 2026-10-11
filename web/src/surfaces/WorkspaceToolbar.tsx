@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { LuBell, LuChevronRight, LuCircleHelp, LuSearch } from "react-icons/lu";
+import { LuChevronRight, LuCircleHelp, LuSearch } from "react-icons/lu";
 import { resolveCrumb } from "@/foundation/navigation/resolveCrumb";
 import { getButtonClassName } from "@/foundation/ui";
 import { openAthena } from "@/capabilities/help/api";
-import { unreadLabel, useInboxUnreadContext } from "@/capabilities/inbox";
+import { NotificationsBell } from "@/capabilities/inbox";
 import type { NavItem } from "@/surfaces/contract";
 import { WorkspaceJumpTo } from "@/surfaces/WorkspaceJumpTo";
 
@@ -15,8 +14,7 @@ export interface WorkspaceToolbarProps {
   items: NavItem[];
   /** The crumb before the page when its nav item has no section. */
   rootLabel: string;
-  sectionLabels: Record<string, string>;
-  deepPages: Record<string, string>;
+  labels: Record<string, string>;
   basePath: string;
   /** The learner's exam, for the library and Help searches. */
   examCode: string | null;
@@ -32,8 +30,7 @@ export interface WorkspaceToolbarProps {
 export function WorkspaceToolbar({
   items,
   rootLabel,
-  sectionLabels,
-  deepPages,
+  labels,
   basePath,
   examCode,
   consumer,
@@ -41,8 +38,6 @@ export function WorkspaceToolbar({
   const pathname = usePathname() ?? "";
   const [jumpOpen, setJumpOpen] = useState(false);
   const closeJump = useCallback(() => setJumpOpen(false), []);
-  const unread = useInboxUnreadContext();
-  const notificationsHref = items.find((item) => item.key === "inbox")?.href ?? null;
   const scope = useMemo(() => ({ examCode, stations: consumer }), [examCode, consumer]);
 
   useEffect(() => {
@@ -57,8 +52,8 @@ export function WorkspaceToolbar({
   }, []);
 
   const crumb = useMemo(
-    () => resolveCrumb({ pathname, items, basePath, sectionLabels, rootLabel, deepPages }),
-    [items, pathname, basePath, sectionLabels, rootLabel, deepPages],
+    () => resolveCrumb({ pathname, items, basePath, labels, rootLabel }),
+    [items, pathname, basePath, labels, rootLabel],
   );
 
   return (
@@ -88,20 +83,7 @@ export function WorkspaceToolbar({
       >
         <LuSearch className="h-4 w-4" aria-hidden />
       </button>
-      {notificationsHref ? (
-        <Link
-          href={notificationsHref}
-          aria-label={unread.count > 0 ? `Notifications, ${unread.count} unread` : "Notifications"}
-          className="relative inline-flex h-[30px] w-[30px] items-center justify-center rounded-osce-md text-b2c-text-secondary hover:bg-b2c-secondary"
-        >
-          <LuBell className="h-4 w-4" aria-hidden />
-          {unread.count > 0 ? (
-            <span className="absolute -right-1 -top-1 min-w-[1.1rem] rounded-full bg-osce-accent px-1 text-center text-osce-caption font-semibold leading-[1.1rem] text-white">
-              {unreadLabel(unread.count)}
-            </span>
-          ) : null}
-        </Link>
-      ) : null}
+      <NotificationsBell />
       <button
         type="button"
         onClick={() => openAthena()}
