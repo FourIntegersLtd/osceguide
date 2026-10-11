@@ -80,18 +80,18 @@ async def render_dashboard_session(
 
     return {
         "instructions": instructions,
-        "greeting": greeting_for(brief, seed=f"{user_id}:{now.isoformat()}"),
+        "greeting": greeting_for(brief),
         "tools": [dict(tool) for tool in CATALOG],
         "extras": {},
     }
 
 
-def greeting_for(brief: Mapping[str, Any], *, seed: str) -> str:
+def greeting_for(brief: Mapping[str, Any], *, rng: random.Random | None = None) -> str:
     """The opening line: on their topic, returning or first-time, with their first name when known.
 
-    ``seed`` names the session, so one session's line is stable and the next one's varies.
+    Each call draws afresh, so each session can open differently; a test passes a seeded ``rng``.
     """
-    rng = random.Random(seed)  # noqa: S311 - picks a greeting, nothing secret
+    rng = rng or random.SystemRandom()
     full_name = str((brief.get("learner") or {}).get("name") or "").split()
     name_slot = f", {full_name[0]}" if full_name else ""
     topic_title = str((brief.get("topic") or {}).get("title") or "").rstrip(" .?!")

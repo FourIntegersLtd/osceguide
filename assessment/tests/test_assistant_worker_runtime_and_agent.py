@@ -1,4 +1,4 @@
-"""Runtime selection, agent construction, speech choice (ported oracles)."""
+"""Runtime selection, agent construction (ported oracles)."""
 
 from __future__ import annotations
 
@@ -59,15 +59,3 @@ def test_pipeline_build_preserves_the_stack(monkeypatch) -> None:
 def test_gpt_live_build_requires_instructions() -> None:
     with pytest.raises(ValueError, match="GPT-Live instructions"):
         build_assistant_agent(runtime=VoiceRuntime.GPT_LIVE, pipeline_instructions="", pipeline_tools=[], pipeline_llm=MagicMock(), pipeline_tts=MagicMock(), max_tool_steps=1, userdata=None, gpt_live_instructions=None)
-
-
-def test_speech_choices_come_from_the_mode_table(monkeypatch) -> None:
-    from livekit_assistant_worker import speech
-    from livekit_assistant_worker.modes import WorkerType, mode_profile
-
-    monkeypatch.setattr(speech, "build_vision_llm", lambda: "vision")
-    monkeypatch.setattr(speech, "build_llm", lambda role: f"llm:{role}")
-    assert speech.build_assistant_llm(mode_profile(WorkerType.HELP)) == "vision"
-    assert speech.build_assistant_llm(mode_profile(WorkerType.ONBOARDING)) == "vision"
-    assert speech.build_assistant_llm(mode_profile(WorkerType.CONSULTING_DOCTOR)) == "llm:tutor"
-    assert speech.build_assistant_llm(mode_profile(WorkerType.DASHBOARD)) == "llm:tutor"

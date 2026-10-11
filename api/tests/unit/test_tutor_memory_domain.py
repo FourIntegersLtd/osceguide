@@ -325,10 +325,13 @@ class TestMarkingAnActionItemDone:
         assert domain.open_action_items([updated]) == []
 
 
-def _opening(seed: str, **brief: Any) -> str:
+def _opening(seed: int, **brief: Any) -> str:
+    import random
+
     from app.features.tutor_memory import service_session
 
-    return service_session.greeting_for({"learner": {"name": "Ada Lovelace"}, **brief}, seed=seed)
+    brief = {"learner": {"name": "Ada Lovelace"}, **brief}
+    return service_session.greeting_for(brief, rng=random.Random(seed))  # noqa: S311 - test draw
 
 
 def test_a_topic_session_opens_with_one_of_the_topic_greetings_and_they_vary() -> None:
@@ -337,7 +340,7 @@ def test_a_topic_session_opens_with_one_of_the_topic_greetings_and_they_vary() -
 
     topic = {"title": "Asthma in adults?"}
     expected = {t.format(name=", Ada", topic="Asthma in adults") for t in service_session.GREETINGS_TOPIC}
-    draws = [_opening(f"session-{i}", topic=topic) for i in range(20)]
+    draws = [_opening(i, topic=topic) for i in range(20)]
     assert 6 <= len(service_session.GREETINGS_TOPIC) <= 8
     assert set(draws) <= expected
     assert len(set(draws)) > 1
@@ -347,13 +350,7 @@ def test_a_returning_session_opens_with_one_of_the_return_greetings_and_they_var
     from app.features.tutor_memory import service_session
 
     expected = {t.format(name=", Ada") for t in service_session.GREETINGS_RETURNING}
-    draws = [_opening(f"session-{i}", last_conversation={"summary": "x"}) for i in range(20)]
+    draws = [_opening(i, last_conversation={"summary": "x"}) for i in range(20)]
     assert 4 <= len(service_session.GREETINGS_RETURNING) <= 5
     assert set(draws) <= expected
     assert len(set(draws)) > 1
-
-
-def test_one_session_always_gets_the_same_greeting() -> None:
-    """Seeded per session: a re-render of the same session does not change its opening."""
-    topic = {"title": "Asthma"}
-    assert _opening("one-session", topic=topic) == _opening("one-session", topic=topic)

@@ -68,7 +68,7 @@ async def test_a_topic_they_opened_on_is_in_the_brief_and_the_greeting(db_sessio
 
     assert ordinary["topic"] == {}
     assert on_topic["topic"] == {"title": "Asthma in adults?", "kind": "summary"}
-    greeting = service_session.greeting_for(on_topic, seed="session-1")
+    greeting = service_session.greeting_for(on_topic)
     assert greeting in {t.format(name="", topic="Asthma in adults") for t in service_session.GREETINGS_TOPIC}
 
 
