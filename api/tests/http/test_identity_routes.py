@@ -544,6 +544,21 @@ async def test_the_export_comes_as_a_pdf_with_the_same_data_when_asked(
     assert "What brought you in today?" in text
 
 
+async def test_the_pdf_export_keeps_cjk_and_emoji_in_a_name(client: AsyncClient) -> None:
+    """A-31: a glyph the Latin face lacks falls back to a bundled CJK or emoji
+    face instead of dropping out of the file."""
+    name = "王小明 田中 😀"
+    token = (await register(client, name=name)).json()["access_token"]
+
+    response = await client.get("/api/v1/me/export", params={"format": "pdf"}, headers=bearer(token))
+
+    assert response.status_code == 200
+    text = "".join(page.extract_text() for page in PdfReader(io.BytesIO(response.content)).pages)
+    assert "王小明" in text
+    assert "田中" in text
+    assert "😀" in text
+
+
 async def test_the_export_refuses_a_format_it_does_not_make(client: AsyncClient) -> None:
     token = (await register(client)).json()["access_token"]
 
