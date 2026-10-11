@@ -26246,7 +26246,7 @@
     },
     "/api/v1/community/questions": {
       "get": {
-        "description": "Everything this caller may see, or one room of it.\n\nWithout a filter the answer spans the public pool and every institution and\ngroup the caller belongs to, which is what a single feed should be. `tag`\nnarrows that answer and can never widen it.",
+        "description": "Everything this caller may see, or one room of it.\n\nWithout a filter the answer spans the public pool and every institution and\ngroup the caller belongs to, which is what a single feed should be. `tag` and\n`exam_code` narrow that answer and can never widen it.",
         "operationId": "community_list_questions",
         "parameters": [
           {
@@ -26277,6 +26277,24 @@
               ],
               "description": "Only questions carrying this tag.",
               "title": "Tag"
+            }
+          },
+          {
+            "description": "Only questions asked about this exam.",
+            "in": "query",
+            "name": "exam_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only questions asked about this exam.",
+              "title": "Exam Code"
             }
           },
           {

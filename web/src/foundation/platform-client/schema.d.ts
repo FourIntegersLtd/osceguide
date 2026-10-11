@@ -822,8 +822,8 @@ export interface paths {
          * @description Everything this caller may see, or one room of it.
          *
          *     Without a filter the answer spans the public pool and every institution and
-         *     group the caller belongs to, which is what a single feed should be. `tag`
-         *     narrows that answer and can never widen it.
+         *     group the caller belongs to, which is what a single feed should be. `tag` and
+         *     `exam_code` narrow that answer and can never widen it.
          */
         get: operations["community_list_questions"];
         put?: never;
@@ -19509,6 +19509,8 @@ export interface operations {
                 mine?: boolean;
                 /** @description Only questions carrying this tag. */
                 tag?: string | null;
+                /** @description Only questions asked about this exam. */
+                exam_code?: string | null;
                 /** @description Opaque cursor from a previous page */
                 cursor?: string | null;
                 limit?: number;

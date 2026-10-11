@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HiOutlineChevronRight } from "react-icons/hi2";
 import { AsyncBoundary, Button, cn, productTokens } from "@/foundation/ui";
 import { errorMessage, useAsync } from "@/foundation/hooks";
@@ -32,16 +32,29 @@ export const PAGE_SIZE = 100;
  * composer posts into the same room, so a cohort's question is never published
  * to the world by accident.
  */
-export function QuestionList({ room, roomName }: { room: Room; roomName: string | null }) {
+export function QuestionList({
+  room,
+  roomName,
+  examCode = null,
+  compose = false,
+}: {
+  room: Room;
+  roomName: string | null;
+  /** Narrows the list to one exam and drops the composer: the Exam tab only browses. */
+  examCode?: string | null;
+  /** Focus the composer on arrival (`?compose=1`). */
+  compose?: boolean;
+}) {
   const [tag, setTag] = useState<string | null>(null);
   const { surface } = useSurface();
   const state = useAsync(
-    (signal) => listQuestions({ room, limit: PAGE_SIZE, tag }, signal),
-    [room.visibility, room.orgId, tag],
+    (signal) => listQuestions({ room, limit: PAGE_SIZE, tag, examCode }, signal),
+    [room.visibility, room.orgId, tag, examCode],
   );
 
   return (
     <div className="space-y-6">
+      {examCode ? null : (
       <B2CHero
         // The train arm's composer sits on the page itself, with no grey panel behind it.
         className={surface === "train" ? "!bg-transparent !p-0" : undefined}
@@ -53,10 +66,11 @@ export function QuestionList({ room, roomName }: { room: Room; roomName: string 
         }
         action={
           <div className="w-full">
-            <Composer room={room} onPosted={state.reload} />
+            <Composer room={room} onPosted={state.reload} focusOnArrival={compose} />
           </div>
         }
       />
+      )}
 
       <section className="space-y-3">
         <div>
@@ -139,7 +153,11 @@ function FilterChip({
   );
 }
 
-function Composer({ room, onPosted }: { room: Room; onPosted: () => void }) {
+function Composer({ room, onPosted, focusOnArrival }: { room: Room; onPosted: () => void; focusOnArrival: boolean }) {
+  const field = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (focusOnArrival) field.current?.focus();
+  }, [focusOnArrival]);
   const [content, setContent] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -186,6 +204,7 @@ function Composer({ room, onPosted }: { room: Room; onPosted: () => void }) {
         <label htmlFor="community-new-question" className={b2cFieldLabel}>New question</label>
         <textarea
           id="community-new-question"
+          ref={field}
           value={content}
           onChange={(event) => setContent(event.target.value)}
           placeholder="Type your question here..."

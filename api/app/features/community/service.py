@@ -183,15 +183,18 @@ async def list_questions(
     audience: Audience | None = None,
     mine: bool = False,
     tag: str | None = None,
+    exam_code: str | None = None,
 ) -> tuple[list[PostRead], str | None]:
-    """Questions this viewer may see, newest first, narrowed by room, author or tag."""
+    """Questions this viewer may see, newest first, narrowed by room, author, tag or exam."""
     viewer = await audiences_for(session, viewer_id)
+    exam_id = (await resolve_exam(session, exam_code)).id if exam_code else None
     questions, next_cursor = await repository.list_questions(
         session,
         viewer=viewer,
         limit=limit,
         cursor=cursor,
         audience=audience,
+        exam_id=exam_id,
         author_id=viewer_id if mine else None,
         # Normalized the way tags are stored, so "Cardiology" finds
         # "cardiology". A blank filter is no filter.

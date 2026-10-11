@@ -91,3 +91,17 @@ describe("listing questions", () => {
     assert.equal((calls[0]?.url ?? "").includes("tag="), false);
   });
 });
+
+describe("listQuestions exam filter", () => {
+  it("sends the exam code as exam_code", async () => {
+    const calls = record({ items: [], next_cursor: null });
+    await listQuestions({ examCode: "sca" });
+    assert.match(calls[0]?.url ?? "", /exam_code=sca/);
+  });
+
+  it("sends nothing when there is no exam", async () => {
+    const calls = record({ items: [], next_cursor: null });
+    await listQuestions({});
+    assert.doesNotMatch(calls[0]?.url ?? "", /exam_code/);
+  });
+});

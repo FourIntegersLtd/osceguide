@@ -1,26 +1,23 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { B2CPageHeader, B2CSegmentedTabs, Spinner, type B2CSegmentedTabItem } from "@/foundation/ui";
+import { Suspense } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { B2CPageHeader, B2CSegmentedTabs, Spinner } from "@/foundation/ui";
+import { useCurrentExam } from "@/foundation/session";
 import { QuestionList } from "@/capabilities/community/QuestionList";
 import { QuestionDetail } from "@/capabilities/community/QuestionDetail";
 import { MyAnswers } from "@/capabilities/community/MyAnswers";
 import { MyQuestions } from "@/capabilities/community/MyQuestions";
 import { useRoom, useRoomName } from "@/capabilities/community/useRoom";
+import { COMMUNITY_TABS, parseTab, tabHref, type CommunityTab } from "@/capabilities/community/discussionModel";
 
-type CommunityTab = "allQuestions" | "myQuestions" | "myAnswers";
-
-const COMMUNITY_TABS: B2CSegmentedTabItem<CommunityTab>[] = [
-  { id: "allQuestions", label: "All questions" },
-  { id: "myQuestions", label: "My questions" },
-  { id: "myAnswers", label: "My answers" },
-];
+const COMMUNITY_COPY =
+  "Ask anything about OSCE Guide, your exam or skills training. Other members and the OSCE Guide assistant answer.";
 
 /**
  * Discussion, scoped by whoever is looking.
  *
- * The same three tabs an exam candidate has always had, and the same screens
+ * The same four tabs (in the URL as `?tab=`) an exam candidate has always had, and the same screens
  * an institution gets: the backend addresses every post to everybody, to one
  * organisation or to one group, so a cohort's private conversation is this
  * component with a different audience rather than a second implementation.
@@ -50,10 +47,15 @@ export function Discussion({ orgId = null }: { orgId?: string | null }) {
  * somebody sends a colleague still opens the thread.
  */
 function CommunityCore({ orgId }: { orgId: string | null }) {
-  const [activeTab, setActiveTab] = useState<CommunityTab>("allQuestions");
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const room = useRoom(orgId);
   const roomName = useRoomName();
-  const questionId = useSearchParams().get("question");
+  const { code: examCode } = useCurrentExam();
+  const questionId = params.get("question");
+  const activeTab = parseTab(params.get("tab"));
+  const setActiveTab = (tab: CommunityTab) => router.replace(`${pathname}${tabHref(tab)}`);
 
   if (questionId) return <QuestionDetail questionId={questionId} />;
 
@@ -61,7 +63,7 @@ function CommunityCore({ orgId }: { orgId: string | null }) {
     <div className="w-full">
       <B2CPageHeader
         title="Community"
-        subtitle={roomName ? `Questions asked inside ${roomName}.` : undefined}
+        subtitle={roomName ? `Questions asked inside ${roomName}.` : COMMUNITY_COPY}
       />
 
       <B2CSegmentedTabs
@@ -72,9 +74,12 @@ function CommunityCore({ orgId }: { orgId: string | null }) {
       />
 
       <div id={`tab-panel-${activeTab}`} role="tabpanel">
-        {activeTab === "myQuestions" ? <MyQuestions room={room} /> : null}
-        {activeTab === "myAnswers" ? <MyAnswers /> : null}
-        {activeTab === "allQuestions" ? <QuestionList room={room} roomName={roomName} /> : null}
+        {activeTab === "questions" ? <MyQuestions room={room} /> : null}
+        {activeTab === "answers" ? <MyAnswers /> : null}
+        {activeTab === "all" ? (
+          <QuestionList room={room} roomName={roomName} compose={params.get("compose") === "1"} />
+        ) : null}
+        {activeTab === "exam" ? <QuestionList room={room} roomName={roomName} examCode={examCode} /> : null}
       </div>
     </div>
   );

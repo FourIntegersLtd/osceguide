@@ -451,3 +451,31 @@ async def test_the_moderation_queue_pages_past_one_page_and_names_the_author(
     assert rest["next_cursor"] is None
     titles = {post["title"] for post in first["items"] + rest["items"]}
     assert titles == {"Question 0", "Question 1", "Question 2"}
+
+
+async def test_questions_filter_by_exam_code(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    await ensure_exam(db_session, "sca")
+    token = await make_actor("examfilter@example.com")
+    for title, code in (("SCA one", "sca"), ("General one", None)):
+        posted = await client.post(
+            "/api/v1/community/questions",
+            json={"title": title, "body": "Body text.", "exam_code": code},
+            headers=bearer(token),
+        )
+        assert posted.status_code == 201, posted.text
+    everything = await client.get("/api/v1/community/questions", headers=bearer(token))
+    assert {q["title"] for q in everything.json()["items"]} == {"SCA one", "General one"}
+    narrowed = await client.get(
+        "/api/v1/community/questions", params={"exam_code": "sca"}, headers=bearer(token)
+    )
+    assert [q["title"] for q in narrowed.json()["items"]] == ["SCA one"]
+
+
+async def test_an_unknown_exam_code_is_refused_on_the_list(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]
+    token = await make_actor("examfilter2@example.com")
+    response = await client.get(
+        "/api/v1/community/questions", params={"exam_code": "nope"}, headers=bearer(token)
+    )
+    assert response.status_code == 404

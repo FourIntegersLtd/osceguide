@@ -6,6 +6,7 @@ import { Back, B2CErrorState, ConfirmModal, Spinner, cn, productTokens } from "@
 import { errorMessage, useAsync, useToast } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { listReplies, readQuestion, removePost, type Post } from "@/capabilities/community/api";
+import { sortReplies, type ReplyOrder } from "@/capabilities/community/discussionModel";
 import { AnswerQuestion } from "@/capabilities/community/AnswerQuestion";
 import {
   DeleteButton,
@@ -101,9 +102,9 @@ export function QuestionDetail({ questionId }: { questionId: string }) {
         <QuestionTags tags={shown.tags} />
       </section>
 
-      <Answers replies={thread.data?.replies ?? []} onChanged={thread.reload} />
-
       <AnswerQuestion questionId={questionId} onAnswerSubmitted={thread.reload} />
+
+      <Answers replies={thread.data?.replies ?? []} onChanged={thread.reload} />
 
       <DeleteQuestionModal
         isOpen={confirmingQuestion}
@@ -180,6 +181,7 @@ function Answers({ replies, onChanged }: { replies: Post[]; onChanged: () => voi
   const toast = useToast();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [liked, setLiked] = useState<Record<string, Post>>({});
+  const [order, setOrder] = useState<ReplyOrder>("newest");
 
   const confirmDelete = useCallback(async () => {
     if (!pendingDelete) return;
@@ -196,7 +198,20 @@ function Answers({ replies, onChanged }: { replies: Post[]; onChanged: () => voi
 
   return (
     <section className="space-y-2">
-      <p className={productTokens.b2cMonoEyebrow}>Replies from the community · {replies.length}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className={productTokens.b2cMonoEyebrow}>Replies from the community · {replies.length}</p>
+        {replies.length > 1 ? (
+          <select
+            aria-label="Sort replies"
+            value={order}
+            onChange={(event) => setOrder(event.target.value as ReplyOrder)}
+            className="rounded-osce-md border border-osce-border bg-transparent px-2 py-1 text-osce-meta text-osce-ink-800"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        ) : null}
+      </div>
 
       {replies.length === 0 ? (
         <p className="rounded-osce-lg border border-dashed border-osce-border px-5 py-6 text-center text-osce-body text-b2c-text-muted">
@@ -204,7 +219,7 @@ function Answers({ replies, onChanged }: { replies: Post[]; onChanged: () => voi
         </p>
       ) : (
         <ul className={b2cPanelDivided}>
-          {replies.map((original) => {
+          {sortReplies(replies, order).map((original) => {
             const replyPost = liked[original.id] ?? original;
             return (
               <li key={replyPost.id} id={`reply-${replyPost.id}`} className="px-5 py-4">

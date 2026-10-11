@@ -17,6 +17,7 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { listQuestions, type Post, type Room } from "@/capabilities/community/api";
 import { PAGE_SIZE } from "@/capabilities/community/QuestionList";
+import { tabHref } from "@/capabilities/community/discussionModel";
 import { formatPostedDate } from "@/capabilities/community/posts";
 
 const { b2cButtonPrimarySm } = productTokens;
@@ -73,7 +74,7 @@ export function MyQuestions({ room }: { room: Room }) {
 function AskFirstQuestion() {
   const { hrefFor } = useSurface();
   return (
-    <Link href={hrefFor("/discussion")}>
+    <Link href={hrefFor(`/discussion${tabHref("all", { compose: true })}`)}>
       <ModalPrimaryButton type="button">Ask Your First Question</ModalPrimaryButton>
     </Link>
   );

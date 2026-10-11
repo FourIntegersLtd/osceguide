@@ -32,3 +32,4 @@ Owner: `content-owner` (staff queues `staff-console-owner`). Proof: `verify-cont
 - Trial access to media is limited (`test_media_trial_access`); do not widen a read to fix a screen.
 - Web: staff screens that act on this content live in `staff-media` and `staff-moderation`.
   Handles: `web/.claude/skills/verify/features/marketplace.md`.
+- Community list narrowing (`mine`, `tag`, `exam_code`) is done in SQL and can only narrow the viewer's audience, never widen it. The discussion tab (`?tab=all|exam|questions|answers`, `compose=1`) and reply sort are pure functions in `web/.../community/discussionModel.ts`.

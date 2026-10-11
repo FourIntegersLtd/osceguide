@@ -35,6 +35,7 @@ export function listQuestions(
     limit?: number;
     mine?: boolean;
     tag?: string | null;
+    examCode?: string | null;
   },
   signal?: AbortSignal,
 ): Promise<PostPage> {
@@ -52,6 +53,8 @@ export function listQuestions(
       mine: params.mine ? true : undefined,
       // One specialty. The route refuses to widen the room; it only narrows it.
       tag: tag ? tag : undefined,
+      // The exam tab: the route resolves the code and narrows the same way.
+      exam_code: params.examCode ? params.examCode : undefined,
     },
     signal,
   });
