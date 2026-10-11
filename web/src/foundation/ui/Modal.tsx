@@ -47,7 +47,7 @@ export const b2cModalOverlayBackdrop = "osce-modal-scrim absolute inset-0";
 
 /** Bottom sheet on mobile; centered card on md+. */
 export const b2cModalPanel =
-  "osce-modal-panel-enter relative z-[100] mx-2 flex w-full max-h-[90dvh] flex-col overflow-hidden rounded-t-osce-2xl border border-b2c-border bg-osce-surface shadow-[0_24px_64px_rgba(16,24,40,0.18)] md:mx-auto md:max-h-[min(90dvh,calc(100dvh-2rem))] md:rounded-osce-2xl focus:outline-none";
+  "relative z-[100] mx-2 flex w-full max-h-[90dvh] flex-col overflow-hidden rounded-t-osce-2xl border border-b2c-border bg-osce-surface shadow-[0_24px_64px_rgba(16,24,40,0.18)] md:mx-auto md:max-h-[min(90dvh,calc(100dvh-2rem))] md:rounded-osce-2xl focus:outline-none";
 
 export const b2cModalPanelBody =
   "min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] [-webkit-overflow-scrolling:touch] sm:p-6";

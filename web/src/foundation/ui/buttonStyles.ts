@@ -53,19 +53,21 @@ const baseButtonStyles =
 const commitStyles =
   "bg-osce-commit !text-white hover:bg-osce-commit-hover focus:ring-osce-accent/40 border border-transparent";
 
+/** Quiet bordered button: hairline border, ink text, a neutral fill on hover. */
+const b2cBorderedStyles =
+  "border border-b2c-border bg-osce-surface text-osce-ink-900 hover:bg-b2c-secondary focus:ring-osce-accent/20";
+
 const b2cVariants: Record<ButtonVariant, string> = {
   primary:
     "bg-osce-accent !text-white hover:bg-osce-accent-hover focus:ring-osce-accent/30 border border-transparent",
   commit: commitStyles,
-  secondary:
-    "border border-osce-accent bg-osce-surface text-osce-accent hover:bg-osce-accent hover:!text-white focus:ring-osce-accent/20",
+  secondary: b2cBorderedStyles,
   danger:
     // !bg / !text beat LiveKit `.lk-disconnect-button` Theme vars (otherwise invisible on white)
     "!bg-osce-danger !text-white hover:!bg-osce-danger-hover focus:ring-osce-danger border border-transparent",
   dangerSolid:
     "!bg-osce-danger !text-white hover:!bg-osce-danger-hover focus:ring-osce-danger-border border border-transparent",
-  outline:
-    "border border-osce-accent bg-osce-surface text-osce-accent hover:bg-osce-accent hover:!text-white focus:ring-osce-accent/20",
+  outline: b2cBorderedStyles,
   ghost:
     "text-b2c-text-muted hover:bg-b2c-secondary hover:text-osce-ink-900 focus:ring-osce-accent/20 bg-transparent border border-transparent",
 };

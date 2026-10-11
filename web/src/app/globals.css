@@ -1435,33 +1435,13 @@ h6 {
    for Safari), so the modal scrim and toast countdown are hand-rolled.
 --------------------------------------------------------------------------- */
 
-@keyframes osce-overlay-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes osce-modal-panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(1.25rem) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Scrim behind modals. Dim + blur + slight desaturation so the page reads as
-   clearly out of reach rather than as a faintly greyed backdrop. */
+/* Scrim behind modals: a strong dim and a light blur, with no entrance
+   animation. Fading a full-screen blur in re-blurs the whole page every
+   frame, which made every modal crawl into view. */
 .osce-modal-scrim {
   background-color: color-mix(in srgb, var(--osce-ink-900) 58%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(0.85) brightness(0.92);
-  backdrop-filter: blur(14px) saturate(0.85) brightness(0.92);
-  animation: osce-overlay-in 180ms ease-out both;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 /* Browsers without backdrop-filter get a heavier dim instead. */
@@ -1469,10 +1449,6 @@ h6 {
   .osce-modal-scrim {
     background-color: color-mix(in srgb, var(--osce-ink-900) 76%, transparent);
   }
-}
-
-.osce-modal-panel-enter {
-  animation: osce-modal-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes osce-toast-progress {
@@ -1489,12 +1465,6 @@ h6 {
   animation: osce-toast-progress var(--toast-duration, 4500ms) linear forwards;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .osce-modal-scrim,
-  .osce-modal-panel-enter {
-    animation: none;
-  }
-}
 /* Template builder: a section or drawer coming into view. */
 @keyframes osce-builder-in {
   from {
