@@ -56,12 +56,9 @@ export function ExamDateControl() {
   const countdown = examCountdown(examDate);
 
   return (
-    <div ref={root} className="relative flex flex-col items-start gap-0.5 sm:items-end">
+    <div ref={root} className="relative flex flex-col items-start gap-0.5 text-right sm:items-end">
       {dateText ? (
         <div className="flex items-center gap-1">
-          <span className="text-osce-body font-medium text-osce-ink-900">
-            {settings.date_label.replace(/ date$/i, "")}: {dateText}
-          </span>
           <button
             type="button"
             className={productTokens.b2cIconButton}
@@ -71,6 +68,9 @@ export function ExamDateControl() {
           >
             <HiOutlinePencil className="h-4 w-4" aria-hidden />
           </button>
+          <span className="text-osce-body font-medium text-osce-ink-900">
+            {settings.date_label.replace(/ date$/i, "")}: {dateText}
+          </span>
         </div>
       ) : (
         <Button type="button" variant="secondary" size="md" aria-expanded={open} onClick={() => setOpen((value) => !value)}>

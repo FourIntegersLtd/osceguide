@@ -42,6 +42,7 @@ import { TrendCard } from "@/domains/train/dashboard/TrendCard";
 import { WeeklyTrendCard } from "@/domains/train/dashboard/WeeklyTrendCard";
 import { dashboardView, nextStationCopy, recentAttemptStatus, type DashboardView } from "@/domains/train/dashboard/dashboardView";
 import { useDashboardExam } from "@/domains/train/dashboard/useDashboardExam";
+import { BadgeStrip } from "@/domains/train/dashboard/BadgeStrip";
 import { ExamDateControl } from "@/domains/train/dashboard/ExamDateControl";
 import { isExamWeek } from "@/domains/train/dashboard/examDate";
 import type { AboutKey } from "@/domains/train/dashboard/aboutTypes";
@@ -132,18 +133,16 @@ function DashboardBody({ data }: { data: DashboardData }) {
 
   return (
     <>
-      <B2CPageHeader
-        eyebrow={eyebrow}
-        title={view.title}
-        subtitle={greeting}
-        action={<ExamDateControl />}
-      />
+      <p className="mb-2 text-osce-body text-b2c-text-muted">{greeting}</p>
+      <B2CPageHeader eyebrow={eyebrow} title={view.title} action={<ExamDateControl />} />
 
       <NextStation
         practiseHref={hrefFor("/mocks")}
         firstStation={attempts === 0}
         weakest={view.counted ? (view.insights[0]?.text ?? null) : null}
       />
+
+      <BadgeStrip />
 
       {attempts === 0 ? (
         <>
@@ -215,7 +214,7 @@ function NextStation({
   return (
     <B2CHero
       lead
-      eyebrow={firstStation ? "Start here" : "Your next station"}
+      eyebrow={firstStation ? undefined : "Your next station"}
       title={title}
       action={
         <>

@@ -15,7 +15,6 @@ import {
   b2cScrollY,
 } from "@/foundation/ui/productTokens";
 import type { NavSection } from "@/capabilities";
-import { unreadLabel } from "@/capabilities/inbox";
 import type { NavItem } from "@/surfaces/contract";
 
 export type NavRailGroups = {
@@ -62,32 +61,21 @@ export function NavRailList({
   const renderItem = (item: NavItem) => {
     const active = isNavActive(pathname ?? "", item.href, { shellBase: basePath });
     const Icon = item.icon;
-    const count = item.count ?? 0;
     const link = (
       <Link
         href={item.href}
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
-        aria-label={collapsed ? (count > 0 ? `${item.label}, ${count} unread` : item.label) : undefined}
+        aria-label={collapsed ? item.label : undefined}
         className={cn(
           active ? b2cNavLinkActive : b2cNavLinkInactive,
           collapsed && "h-11 w-full justify-center !px-0 !py-0",
         )}
       >
-        <span className="relative inline-flex shrink-0">
-          {Icon ? <Icon className="h-4 w-4 shrink-0" aria-hidden /> : null}
-          {collapsed && count > 0 ? (
-            <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-osce-accent" aria-hidden />
-          ) : null}
-        </span>
+        {Icon ? <Icon className="h-4 w-4 shrink-0" aria-hidden /> : null}
         {collapsed ? null : (
           <span className="min-w-0 flex-1 truncate">{item.label}</span>
         )}
-        {!collapsed && count > 0 ? (
-          <span className="min-w-[1.25rem] rounded-full bg-osce-accent px-1.5 text-center text-osce-caption font-semibold text-white">
-            {unreadLabel(count)}
-          </span>
-        ) : null}
       </Link>
     );
 

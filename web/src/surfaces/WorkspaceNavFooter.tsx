@@ -18,7 +18,7 @@ import { examSwitcherView } from "@/surfaces/examSwitcher";
  * The foot of the workspace sidebar (canvas `train-dashboard`): who you are
  * with sign-out beside your name. A consumer also gets the upgrade button
  * until they hold paid access to their current exam (the rule the payments
- * tab uses), and the exam countdown.
+ * tab uses). The exam countdown is under the workspace name, not here.
  */
 export function WorkspaceNavFooter({
   consumer,
@@ -43,9 +43,6 @@ export function WorkspaceNavFooter({
   const examView = examSwitcherView({ consumer, codes, error: examError });
   const name = session?.user.name || session?.user.email || "Account";
   const email = session?.user.name ? session.user.email : null;
-  // Only a countdown earns a line; the bare exam code is noise in the foot.
-  const examDate = session?.user.exam_date ?? null;
-  const meta = consumer && examDate ? examMeta(code, examDate) : null;
   // `codes` is the exam the account was opened for plus any grants, so it is
   // not evidence of payment; only a paid entitlement is.
   const showUpgrade =
@@ -107,7 +104,7 @@ export function WorkspaceNavFooter({
           >
             {codes.map((item) => (
               <option key={item} value={item}>
-                {examMeta(item, item === code ? session?.user.exam_date ?? null : null)}
+                {item.toUpperCase()}
               </option>
             ))}
           </select>
@@ -119,8 +116,6 @@ export function WorkspaceNavFooter({
             Try again
           </button>
         </p>
-      ) : meta ? (
-        <p className="px-3 py-2 text-osce-meta font-medium text-osce-ink-900">{meta}</p>
       ) : null}
 
       {staff ? (
@@ -166,23 +161,4 @@ function initials(name: string): string {
   const last = words.length > 1 ? words[words.length - 1] : undefined;
   const letters = last ? first.charAt(0) + last.charAt(0) : first.slice(0, 2);
   return letters.toUpperCase();
-}
-
-function examMeta(code: string | null, examDate: string | null): string | null {
-  if (!code) return null;
-  const label = code.toUpperCase();
-  if (!examDate) return label;
-
-  const exam = new Date(`${examDate}T00:00:00`);
-  if (Number.isNaN(exam.getTime())) return label;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Math.round((exam.getTime() - today.getTime()) / 86_400_000);
-
-  if (days < 0) return `${label} · exam passed`;
-  if (days === 0) return `${label} · exam today`;
-  if (days < 7) return `${label} · ${days} ${days === 1 ? "day" : "days"} to exam`;
-  const weeks = Math.round(days / 7);
-  return `${label} · ${weeks} ${weeks === 1 ? "week" : "weeks"} to exam`;
 }

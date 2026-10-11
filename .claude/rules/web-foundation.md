@@ -53,10 +53,12 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
 - Verifying from a git worktree: `npm ci`, copy `web/.env.local` in, run `npm run dev -- -p 3101` and
   pass `VERIFY_WEB_URL`; `npx playwright test` starts its own :3101, so stop yours first, and
   its global setup registers accounts (api rate-limits: wait a minute between runs).
-- The shell (`surfaces/Workspace*`): Help is a button with Athena's face in the toolbar (md up) and the
+- The shell (`surfaces/Workspace*`): Help is an outline-variant button with Athena's face in the toolbar (md up) and the
   floating `AthenaFab` on phones (`md:hidden`); both fire `osce:open-athena`, and the dock shows the FAB
-  on every route, never behind a route gate. The toolbar has no Inbox icon: the unread count is on the
-  sidebar item. Search (⌘K, `WorkspaceJumpTo` + `jumpToSearch.ts`) is pages, then stations and Help
+  on every route, never behind a route gate. The toolbar carries the Notifications bell (the inbox, path `/notifications`, `/inbox`
+  redirects) with the unread count; the sidebar item has no badge. The exam countdown is one line under
+  the workspace name (`examDetail`), never in the footer. Voice Athena is off Contact, Notifications,
+  Settings and Community (`athenaVoice.ts`): the dock there is text `Help` only. Search (⌘K, `WorkspaceJumpTo` + `jumpToSearch.ts`) is pages, then stations and Help
   articles (existing GETs, 250ms debounce, 2+ chars, stations on Train only) and an "Ask Athena" row; it
   never calls knowledge-chat per keystroke. Icons are `react-icons/lu` only, one literal icon per item.
 - A gate in a lazy placeholder and in the component it loads must agree: the Help button showed, then

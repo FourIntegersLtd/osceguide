@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { LuChevronRight, LuSearch } from "react-icons/lu";
+import Link from "next/link";
+import { LuBell, LuChevronRight, LuSearch } from "react-icons/lu";
 import { resolveCrumb } from "@/foundation/navigation/resolveCrumb";
-import { ATHENA_IMAGE_SRC } from "@/foundation/ui";
+import { ATHENA_IMAGE_SRC, getButtonClassName } from "@/foundation/ui";
 import { openAthena } from "@/capabilities/help/api";
+import { unreadLabel, useInboxUnreadContext } from "@/capabilities/inbox";
 import type { NavItem } from "@/surfaces/contract";
 import { WorkspaceJumpTo } from "@/surfaces/WorkspaceJumpTo";
 
@@ -24,7 +26,7 @@ export interface WorkspaceToolbarProps {
 
 /**
  * The 52px bar over every workspace page (canvas `train-dashboard`): where you
- * are, a ⌘K search over pages, stations and Help, and the Help button. Phones
+ * are, a ⌘K search over pages, stations and Help, and the Help button (outlined, so it does not read as part of the search field). Phones
  * have no toolbar; their Help button is the floating one (`AthenaFab`).
  */
 export function WorkspaceToolbar({
@@ -38,6 +40,8 @@ export function WorkspaceToolbar({
   const pathname = usePathname() ?? "";
   const [jumpOpen, setJumpOpen] = useState(false);
   const closeJump = useCallback(() => setJumpOpen(false), []);
+  const unread = useInboxUnreadContext();
+  const notificationsHref = items.find((item) => item.key === "inbox")?.href ?? null;
   const scope = useMemo(() => ({ examCode, stations: consumer }), [examCode, consumer]);
 
   useEffect(() => {
@@ -83,10 +87,24 @@ export function WorkspaceToolbar({
       >
         <LuSearch className="h-4 w-4" aria-hidden />
       </button>
+      {notificationsHref ? (
+        <Link
+          href={notificationsHref}
+          aria-label={unread.count > 0 ? `Notifications, ${unread.count} unread` : "Notifications"}
+          className="relative inline-flex h-[30px] w-[30px] items-center justify-center rounded-osce-md text-b2c-text-secondary hover:bg-b2c-secondary"
+        >
+          <LuBell className="h-4 w-4" aria-hidden />
+          {unread.count > 0 ? (
+            <span className="absolute -right-1 -top-1 min-w-[1.1rem] rounded-full bg-osce-accent px-1 text-center text-osce-caption font-semibold leading-[1.1rem] text-white">
+              {unreadLabel(unread.count)}
+            </span>
+          ) : null}
+        </Link>
+      ) : null}
       <button
         type="button"
         onClick={() => openAthena()}
-        className="inline-flex h-[30px] items-center gap-2 rounded-osce-md bg-b2c-surface-muted pl-1 pr-3 text-[13px] font-medium text-osce-ink-900 hover:bg-b2c-secondary-hover"
+        className={getButtonClassName({ variant: "outline", size: "sm", className: "gap-2 pl-1 pr-3" })}
       >
         <Image src={ATHENA_IMAGE_SRC} alt="" width={22} height={22} className="h-[22px] w-[22px] rounded-full object-cover object-top" />
         Help

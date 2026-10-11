@@ -262,7 +262,7 @@ describe("surface registry", () => {
     // Contact & Feedback leads Connect: the retiring sidebar carried it too,
     // ahead of the community, and a capability mounts it on this arm only.
     assert.deepEqual(bySection("connect"), [
-      "Inbox",
+      "Notifications",
       "Contact & Feedback",
       "Community",
       "Marketplace",

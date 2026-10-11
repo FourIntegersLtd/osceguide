@@ -68,8 +68,6 @@ export interface NavItem {
   icon?: ComponentType<{ className?: string }>;
   /** Which group this sits in. Ungrouped items render above the groups. */
   section?: NavSection;
-  /** Unread things behind this item, shown as a pill. Zero or absent shows nothing. */
-  count?: number;
 }
 
 export interface NavContext {

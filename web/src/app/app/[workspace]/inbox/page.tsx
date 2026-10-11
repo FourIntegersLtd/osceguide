@@ -1,16 +1,11 @@
-import type { Metadata } from "next";
-import { Capability } from "@/app/app/[workspace]/capability";
-import { Inbox } from "@/capabilities/inbox";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Inbox",
-  description: "Messages and announcements from the OSCE Guide team.",
-};
-
-export default function Page() {
-  return (
-    <Capability id="inbox">
-      <Inbox />
-    </Capability>
-  );
+/** The inbox is Notifications now; old links and bookmarks land there. */
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ workspace: string }>;
+}) {
+  const { workspace } = await params;
+  redirect(`/app/${workspace}/notifications`);
 }

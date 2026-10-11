@@ -76,11 +76,11 @@ export function Inbox() {
 
   return (
     <div className="flex flex-col gap-6">
-      <B2CPageHeader title="Inbox" subtitle="Messages and announcements from the OSCE Guide team." />
+      <B2CPageHeader title="Notifications" subtitle="Replies and news from the OSCE Guide team." />
       <AsyncBoundary
         state={pages.state}
         isEmpty={(items) => items.length === 0}
-        empty={{ title: "No messages yet", description: "Answers to your reports and news from us will appear here." }}
+        empty={{ title: "No notifications yet", description: "Replies to your messages and news from the OSCE Guide team will appear here." }}
       >
         {(items) => (
           <>

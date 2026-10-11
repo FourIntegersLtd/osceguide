@@ -18,6 +18,7 @@ import { PeerPracticeProvider } from "@/capabilities/peer-practice/PeerPracticeP
 import { PendingFeedbackProvider } from "@/capabilities/pending-feedback";
 import type { HelpNavItem } from "@/capabilities/help/api";
 import type { NavItem, SurfaceManifest } from "@/surfaces/contract";
+import { examDetail } from "@/surfaces/examSwitcher";
 import { WorkspaceSidebar } from "@/surfaces/WorkspaceSidebar";
 import { WorkspaceToolbar } from "@/surfaces/WorkspaceToolbar";
 import { PERSONAL_WORKSPACE, type Workspace } from "@/foundation/routing";
@@ -78,20 +79,16 @@ export function WorkspaceShell({
   // institution shells never make the request.
   const inboxItem = items.find((item) => item.key === "inbox");
   const unread = useInboxUnread(Boolean(inboxItem));
-  const countedItems = useMemo<NavItem[]>(
-    () => items.map((item) => (item.key === "inbox" ? { ...item, count: unread.count } : item)),
-    [items, unread.count],
-  );
 
   const groups = useMemo(() => {
-    const ungrouped = countedItems.filter((item) => !item.section);
+    const ungrouped = items.filter((item) => !item.section);
     const sections = NAV_SECTIONS.map((section) => ({
       section,
       label: NAV_SECTION_LABELS[section],
-      items: countedItems.filter((item) => item.section === section),
+      items: items.filter((item) => item.section === section),
     })).filter((group) => group.items.length > 0);
     return { ungrouped, sections };
-  }, [countedItems]);
+  }, [items]);
 
   const helpNav = useMemo<HelpNavItem[]>(
     () => items.map((item) => ({ key: item.key, label: item.label, path: item.href })),
@@ -128,7 +125,7 @@ export function WorkspaceShell({
           <WorkspaceSidebar
             workspace={workspace}
             label={manifest.label}
-            detail={isTrain ? (examCode ? examCode.toUpperCase() : null) : manifest.label}
+            detail={isTrain ? examDetail(examCode ?? null, session?.user.exam_date ?? null) : manifest.label}
             consumer={isTrain}
             staff={staff}
             basePath={basePath}

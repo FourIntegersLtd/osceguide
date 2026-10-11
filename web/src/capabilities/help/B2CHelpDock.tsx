@@ -29,6 +29,7 @@ import { helpType } from "@/foundation/ui/helpType";
 import { KnowledgeBaseChat } from "./KnowledgeBaseChat";
 import HelpArticleBrowse from "@/capabilities/help/HelpArticleBrowse";
 import { AthenaFab } from "@/capabilities/help/AthenaFab";
+import { athenaVoiceAllowed, helpPersonaName } from "@/capabilities/help/athenaVoice";
 import {
   assistantVoiceToken,
   buildClientContext,
@@ -77,12 +78,14 @@ function HelpChoiceScreen({
   onClose,
   isWide,
   onToggleWide,
+  voice,
 }: {
   onChooseNavigate: () => void;
   onChooseKnowledge: () => void;
   onClose: () => void;
   isWide: boolean;
   onToggleWide: () => void;
+  voice: boolean;
 }) {
   return (
     <div className="flex h-full min-h-0 w-full max-h-full flex-col overflow-hidden border-l border-osce-border bg-osce-surface text-osce-body lg:max-h-none">
@@ -91,7 +94,7 @@ function HelpChoiceScreen({
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
           </div>
-          <span className={helpType.barTitle}>Athena</span>
+          <span className={helpType.barTitle}>{helpPersonaName(voice)}</span>
         </div>
         <div className="flex items-center gap-0.5">
           <HelpWideToggle isWide={isWide} onToggle={onToggleWide} />
@@ -102,7 +105,7 @@ function HelpChoiceScreen({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-        <AthenaIdentity className="mb-4" />
+        {voice ? <AthenaIdentity className="mb-4" /> : null}
         <h3 className={helpType.title}>
           How can we help?
         </h3>
@@ -122,10 +125,10 @@ function HelpChoiceScreen({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className={`block ${helpType.rowTitle}`}>
-                    Talk to Athena
+                    {voice ? "Talk to Athena" : "Browse the guides"}
                   </span>
                   <span className={`mt-0.5 block ${helpType.support}`}>
-                    Ask about your practice, a condition or the app, or browse the guides
+                    {voice ? "Ask about your practice, a condition or the app, or browse the guides" : "Search the help articles for the app and your account"}
                   </span>
                 </span>
                 <HiOutlineChevronRight className="mt-1 h-3.5 w-3.5 shrink-0 text-osce-ink-400" />
@@ -167,6 +170,7 @@ function NavigateHelpPanel({
   onToggleWide,
   launch,
   onLaunched,
+  voice,
 }: {
   examCode?: string;
   navItems: HelpNavItem[];
@@ -176,6 +180,7 @@ function NavigateHelpPanel({
   onToggleWide: () => void;
   launch: AthenaLaunch | null;
   onLaunched: () => void;
+  voice: boolean;
 }) {
   const { surface } = useSurface();
   const pathname = usePathname();
@@ -218,9 +223,10 @@ function NavigateHelpPanel({
   useEffect(() => {
     if (!launch) return;
     onLaunched();
+    if (!voice) return;
     const onboarding = launch.kind === "onboarding";
     void startVoice(onboarding ? "guide" : "faq", onboarding ? "onboarding" : "dashboard", onboarding ? null : launch.topic);
-  }, [launch, onLaunched, startVoice]);
+  }, [launch, onLaunched, startVoice, voice]);
 
   const endVoice = useCallback(() => {
     setGrant(null);
@@ -239,7 +245,7 @@ function NavigateHelpPanel({
           <div className="rounded-full bg-white/20 p-1.5">
             <BsInfoCircleFill className="h-4 w-4 text-white" />
           </div>
-          <span className={helpType.barTitle}>Athena</span>
+          <span className={helpType.barTitle}>{helpPersonaName(voice)}</span>
         </div>
         <div className="flex items-center gap-0.5">
           <HelpWideToggle isWide={isWide} onToggle={onToggleWide} />
@@ -265,7 +271,7 @@ function NavigateHelpPanel({
           <HelpArticleBrowse key={helpArticle ?? "browse"} examCode={examCode} initialArticle={helpArticle ?? undefined} />
         ) : null}
 
-        {!inCall && <div className="mb-3 hidden shrink-0 flex-col items-center justify-center lg:mt-6 lg:flex"><AthenaIdentity description="Or ask Athena by voice below" /></div>}
+        {!inCall && voice && <div className="mb-3 hidden shrink-0 flex-col items-center justify-center lg:mt-6 lg:flex"><AthenaIdentity description="Or ask Athena by voice below" /></div>}
 
         {inCall ? (
           <VoiceRoom grant={grant} onDisconnected={() => endVoice()} onError={setError}>
@@ -275,12 +281,12 @@ function NavigateHelpPanel({
       </div>
 
       <div className={`${helpPanelFooter} mt-auto`}>
-        {!inCall ? (
+        {!inCall && voice ? (
           <div className="mb-3 lg:hidden">
             <AthenaIdentity description="Or ask Athena by voice below" />
           </div>
         ) : null}
-        {!inCall ? (
+        {!inCall && voice ? (
           <Button
             type="button"
             variant="primary"
@@ -302,7 +308,7 @@ function NavigateHelpPanel({
               </>
             )}
           </Button>
-        ) : (
+        ) : inCall ? (
           <button
             type="button"
             className={`${b2cLivekitEndButton} mx-auto w-full gap-1.5 sm:gap-2`}
@@ -311,8 +317,8 @@ function NavigateHelpPanel({
             <HiPhoneXMark className="h-4 w-4" />
             <span>End conversation</span>
           </button>
-        )}
-        {!inCall && screenGuidanceAvailable && <Button type="button" variant="secondary" size="md" fullWidth disabled={starting} className="mt-2 gap-1.5" onClick={() => startVoice("guide", "help")}><LuMousePointer2 className="h-4 w-4" /><span>Guide me on screen</span></Button>}
+        ) : null}
+        {!inCall && voice && screenGuidanceAvailable && <Button type="button" variant="secondary" size="md" fullWidth disabled={starting} className="mt-2 gap-1.5" onClick={() => startVoice("guide", "help")}><LuMousePointer2 className="h-4 w-4" /><span>Guide me on screen</span></Button>}
         <div className="mt-2 px-1 text-center sm:px-2">
           <p className={helpType.support}>
             {inCall
@@ -351,6 +357,7 @@ export function B2CHelpDock({
   initialLaunch = null,
 }: B2CHelpDockProps) {
   const { session } = useSession();
+  const voice = athenaVoiceAllowed(usePathname());
   const { code, settings } = useCurrentExam();
   const examCode = (examCodeOverride ?? code)?.toLowerCase();
   // Whether there is a choice to offer at all (`settings.help_modes`,
@@ -394,6 +401,7 @@ export function B2CHelpDock({
         onChooseKnowledge={() => setHelpMode("knowledge")}
         isWide={isWide}
         onToggleWide={toggleWide}
+        voice={voice}
       />
     );
   } else if (helpMode === "knowledge" || (helpMode === null && opensDirectlyOnKnowledge)) {
@@ -435,6 +443,7 @@ export function B2CHelpDock({
         onToggleWide={toggleWide}
         launch={athenaLaunch}
         onLaunched={() => setAthenaLaunch(null)}
+        voice={voice}
       />
     );
   }

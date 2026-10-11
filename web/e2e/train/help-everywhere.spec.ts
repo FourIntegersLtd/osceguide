@@ -18,17 +18,17 @@ test("TRAIN-7 the Help button stays on every learner screen after the dock loads
   await page.getByRole("button", { name: /Close/ }).first().click();
   await expect(help).toBeVisible();
 
-  for (const route of ["mocks", "inbox", "discussion", "marketplace"]) {
+  for (const route of ["mocks", "notifications", "discussion", "marketplace"]) {
     await page.goto(`/app/me/${route}`, { waitUntil: "domcontentloaded" });
     await dismissOverlays(page);
     await expect(help, `/${route}`).toBeVisible({ timeout: 60_000 });
   }
 });
 
-test("TRAIN-7 the toolbar carries Help on a wide screen, and no Inbox icon", async ({ page, context }) => {
+test("TRAIN-7 the toolbar carries Help on a wide screen, and a Notifications bell", async ({ page, context }) => {
   await page.setViewportSize({ width: 1400, height: 900 });
   await signedInAs(context, "consumer");
   await openPage(page, "/app/me/dashboard");
   await expect(page.getByRole("button", { name: "Help", exact: true })).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole("link", { name: /^Inbox$/ })).toHaveCount(1); // the sidebar's, not a second one in the toolbar
+  await expect(page.getByRole("link", { name: /^Notifications/ })).toHaveCount(2); // the sidebar item and the toolbar bell
 });
