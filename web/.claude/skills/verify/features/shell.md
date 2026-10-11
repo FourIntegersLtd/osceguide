@@ -4,7 +4,7 @@
 - Toolbar (md and up): breadcrumb, Search pill (⌘K), and a "Help" button with Athena's face. A Notifications bell link sits beside Search with the unread badge (none on the sidebar item); `/app/me/inbox` redirects to `/app/me/notifications`. On Contact, Notifications, Settings and Community the dock titled "Help" has no "Talk to Athena" button; on /mocks it does.
 - Phones have no toolbar; the floating "Help" button (also Athena's face) is the only one. It stays on every route, before and after the dock loads.
 - Help opens the dock through the `osce:open-athena` event.
-- Search: type 2+ characters; after 250ms it lists Stations (Train only) and Help articles, then "Ask Athena about “<q>”". Pages (nav items) match instantly. A failed group says "Some results could not load".
+- Search: type 2+ characters; after 250ms it lists Stations (Train only) and Help articles, then "Ask Athena about “<q>”" ("Help with “<q>”" on Contact, Notifications, Settings, Community). Pages (nav items) match instantly. A failed group says "Some results could not load".
 - Nav icons are all Lucide (`react-icons/lu`): Dashboard LayoutDashboard, AI Practice Mic, Notifications Bell, Marketplace Store, Community Users, collapse PanelLeftClose/Open.
 
 ## Driving it with playwright-core

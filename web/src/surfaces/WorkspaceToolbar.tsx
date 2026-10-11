@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
-import { LuBell, LuChevronRight, LuSearch } from "react-icons/lu";
+import { LuBell, LuChevronRight, LuCircleHelp, LuSearch } from "react-icons/lu";
 import { resolveCrumb } from "@/foundation/navigation/resolveCrumb";
-import { ATHENA_IMAGE_SRC, getButtonClassName } from "@/foundation/ui";
+import { getButtonClassName } from "@/foundation/ui";
 import { openAthena } from "@/capabilities/help/api";
 import { unreadLabel, useInboxUnreadContext } from "@/capabilities/inbox";
 import type { NavItem } from "@/surfaces/contract";
@@ -17,6 +16,7 @@ export interface WorkspaceToolbarProps {
   /** The crumb before the page when its nav item has no section. */
   rootLabel: string;
   sectionLabels: Record<string, string>;
+  deepPages: Record<string, string>;
   basePath: string;
   /** The learner's exam, for the library and Help searches. */
   examCode: string | null;
@@ -33,6 +33,7 @@ export function WorkspaceToolbar({
   items,
   rootLabel,
   sectionLabels,
+  deepPages,
   basePath,
   examCode,
   consumer,
@@ -56,8 +57,8 @@ export function WorkspaceToolbar({
   }, []);
 
   const crumb = useMemo(
-    () => resolveCrumb(pathname, items, basePath, sectionLabels, rootLabel),
-    [items, pathname, basePath, sectionLabels, rootLabel],
+    () => resolveCrumb({ pathname, items, basePath, sectionLabels, rootLabel, deepPages }),
+    [items, pathname, basePath, sectionLabels, rootLabel, deepPages],
   );
 
   return (
@@ -104,9 +105,9 @@ export function WorkspaceToolbar({
       <button
         type="button"
         onClick={() => openAthena()}
-        className={getButtonClassName({ variant: "outline", size: "sm", className: "gap-2 pl-1 pr-3" })}
+        className={getButtonClassName({ variant: "outline", size: "sm", className: "gap-2" })}
       >
-        <Image src={ATHENA_IMAGE_SRC} alt="" width={22} height={22} className="h-[22px] w-[22px] rounded-full object-cover object-top" />
+        <LuCircleHelp className="h-4 w-4" aria-hidden />
         Help
       </button>
       {jumpOpen ? <WorkspaceJumpTo items={items} scope={scope} basePath={basePath} onClose={closeJump} /> : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Panel } from "@/foundation/ui";
+import { Badge, FoldSection } from "@/foundation/ui";
 import { SlotReview } from "@/domains/assess/SlotReview";
 import type { CircuitConsole } from "@/domains/assess/sessions/api";
 import { orderedSlots, stationLabel } from "@/domains/assess/sessions/support";
@@ -34,7 +34,7 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
   const active = finished.find((slot) => slot.id === activeId) ?? first;
 
   return (
-    <Panel title="Mark a finished station" collapsible>
+    <FoldSection title="Mark a finished station">
       <div className="mb-3 flex flex-wrap gap-2" role="tablist" aria-label="Finished stations">
         {finished.map((slot) => (
           <button
@@ -63,6 +63,6 @@ export function LiveMarkingSidebar({ data, orgSlug }: { data: CircuitConsole; or
         ))}
       </div>
       <SlotReview orgSlug={orgSlug} slotId={active.id} attemptId={active.attempt_id ?? null} />
-    </Panel>
+    </FoldSection>
   );
 }

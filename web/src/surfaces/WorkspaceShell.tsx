@@ -10,6 +10,7 @@ import {
   capabilitiesFor,
   NAV_SECTIONS,
   NAV_SECTION_LABELS,
+  NAV_DEEP_PAGES,
 } from "@/capabilities";
 import { InboxUnreadProvider, useInboxUnread } from "@/capabilities/inbox";
 import ChooseExam from "@/capabilities/account/ChooseExam";
@@ -143,6 +144,7 @@ export function WorkspaceShell({
             items={items}
             rootLabel={isTrain ? "Practice" : staff ? "Platform console" : workspace.name}
             sectionLabels={NAV_SECTION_LABELS}
+            deepPages={NAV_DEEP_PAGES}
             basePath={basePath}
             examCode={examCode ?? null}
             consumer={isTrain}

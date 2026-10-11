@@ -11,6 +11,13 @@ export function athenaVoiceAllowed(pathname: string | null): boolean {
   return !(segment && TEXT_HELP_ONLY.has(segment));
 }
 
+/** The jump-to row that opens Help with what was typed. */
+export function askHelpRow(voice: boolean, text: string): { group: string; label: string } {
+  return voice
+    ? { group: "Athena", label: `Ask Athena about \u201c${text}\u201d` }
+    : { group: "Help", label: `Help with \u201c${text}\u201d` };
+}
+
 /** What the dock calls itself: Athena where she speaks, Help where it is text only. */
 export function helpPersonaName(voice: boolean): string {
   return voice ? "Athena" : "Help";

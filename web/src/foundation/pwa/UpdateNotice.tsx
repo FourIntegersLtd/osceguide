@@ -65,7 +65,7 @@ export function UpdateNotice() {
         tone: "info",
         title: "A new version is available",
         message: "Reload to get the latest OSCE Guide.",
-        persistent: true,
+        durationMs: 60_000,
         action: { label: "Reload", onClick: () => window.location.reload() },
       });
     };

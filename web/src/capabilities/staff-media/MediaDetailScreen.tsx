@@ -15,6 +15,7 @@ import {
   Badge,
   Button,
   ConfirmModal,
+  FoldSection,
   Input,
   Panel,
   StepGuide,
@@ -404,7 +405,7 @@ export function MediaDetailScreen({
   };
 
   const details = (open: boolean) => (
-    <Panel title="Details" collapsible defaultOpen={open}>
+    <FoldSection title="Details" defaultOpen={open}>
       <div className="flex flex-col gap-4">
         <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
         <Input
@@ -415,7 +416,7 @@ export function MediaDetailScreen({
         />
         <AuthoringExamField value={examCode} onChange={setExamCode} />
       </div>
-    </Panel>
+    </FoldSection>
   );
   const produceForm = (
     <ProduceForm
@@ -651,14 +652,14 @@ export function MediaDetailScreen({
                   {produceForm}
                 </Panel>
               )}
-              <Panel title="Content" collapsible defaultOpen={drafted}>
+              <FoldSection title="Content" defaultOpen={drafted}>
                 {contentForm()}
-              </Panel>
+              </FoldSection>
               {details(false)}
               {drafted ? (
-                <Panel title="Produce again from a brief" padding="sm" collapsible defaultOpen={false}>
+                <FoldSection title="Produce again from a brief" defaultOpen={false}>
                   {produceForm}
-                </Panel>
+                </FoldSection>
               ) : null}
             </div>
           ) : null}

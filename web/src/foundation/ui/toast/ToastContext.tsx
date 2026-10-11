@@ -26,8 +26,7 @@ export interface ToastInput {
   tone?: ToastTone;
   title: string;
   message?: string;
-  /** Stays longer (60 s at most), for a toast carrying an action. Not for plain success. */
-  persistent?: boolean;
+  /** Overrides the tone default (4.5 s, 8 s for an error); never more than 60 s. For a toast carrying an action. */
   durationMs?: number;
   action?: ToastAction;
   /** Called when the toast is dismissed by the user or by its action. */

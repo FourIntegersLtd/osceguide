@@ -23,6 +23,21 @@ export const NAV_SECTIONS = [
 
 export type NavSection = (typeof NAV_SECTIONS)[number];
 
+/** Pages reached from inside a section rather than from the nav, by first path segment: the breadcrumb names them. */
+export const NAV_DEEP_PAGES: Record<string, string> = {
+  debriefs: "Debriefs",
+  transcripts: "Transcripts",
+  library: "Library",
+  stations: "Station",
+  attempts: "Attempt",
+  sessions: "Sessions",
+  sittings: "Sittings",
+  circuits: "Circuit",
+  slots: "Review",
+  trainee: "My training",
+  mocks: "Practice sessions",
+};
+
 export const NAV_SECTION_LABELS: Record<NavSection, string> = {
   customers: "Customers",
   revenue: "Revenue",

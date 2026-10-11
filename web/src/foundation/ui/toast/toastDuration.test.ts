@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { PERSISTENT_CAP_MS, toastDurationMs } from "./toastDuration";
+import { MAX_DURATION_MS, toastDurationMs } from "./toastDuration";
 
 describe("toastDurationMs", () => {
-  it("dismisses a persistent success toast within 60 seconds", () => {
-    const ms = toastDurationMs({ persistent: true }, "success");
+  it("caps an explicit duration at 60 seconds", () => {
+    const ms = toastDurationMs({ durationMs: 10 * 60_000 }, "success");
     assert.equal(ms, 60_000);
-    assert.ok(ms <= PERSISTENT_CAP_MS);
+    assert.ok(ms <= MAX_DURATION_MS);
   });
 
   it("keeps 4.5 s by default and 8 s for errors", () => {
@@ -14,7 +14,7 @@ describe("toastDurationMs", () => {
     assert.equal(toastDurationMs({}, "error"), 8000);
   });
 
-  it("honours an explicit duration when not persistent", () => {
+  it("honours an explicit duration over the tone default", () => {
     assert.equal(toastDurationMs({ durationMs: 20_000 }, "success"), 20_000);
   });
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { athenaVoiceAllowed, helpPersonaName } from "@/capabilities/help/athenaVoice";
+import { askHelpRow, athenaVoiceAllowed, helpPersonaName } from "@/capabilities/help/athenaVoice";
 
 describe("athenaVoiceAllowed", () => {
   it("keeps the voice off Contact, Notifications, Settings and Community, in any workspace", () => {
@@ -34,5 +34,10 @@ describe("athenaVoiceAllowed", () => {
   it("names the dock Help where it is text only", () => {
     assert.equal(helpPersonaName(false), "Help");
     assert.equal(helpPersonaName(true), "Athena");
+  });
+
+  it("labels the jump-to row Help where it is text only", () => {
+    assert.deepEqual(askHelpRow(false, "fees"), { group: "Help", label: "Help with \u201cfees\u201d" });
+    assert.deepEqual(askHelpRow(true, "fees"), { group: "Athena", label: "Ask Athena about \u201cfees\u201d" });
   });
 });

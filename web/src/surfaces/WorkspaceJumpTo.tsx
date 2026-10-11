@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LuCircleHelp, LuSearch, LuSparkles, LuStethoscope } from "react-icons/lu";
 import Modal from "@/foundation/ui/Modal";
 import { cn } from "@/foundation/ui";
 import { openAthena } from "@/capabilities/help/api";
+import { askHelpRow, athenaVoiceAllowed } from "@/capabilities/help/athenaVoice";
 import { stationHref } from "@/capabilities/stations/routes";
 import type { NavItem } from "@/surfaces/contract";
 import { matchingSections, moveActive } from "@/surfaces/jumpTo";
@@ -74,6 +75,7 @@ export function WorkspaceJumpTo({
     };
   }, [text, searchable, scope]);
 
+  const voice = athenaVoiceAllowed(usePathname());
   const rows = useMemo<Row[]>(() => {
     const go = (href: string) => () => {
       onClose();
@@ -108,15 +110,14 @@ export function WorkspaceJumpTo({
       ? [
           {
             key: "ask",
-            group: "Athena",
-            label: `Ask Athena about \u201c${text}\u201d`,
+            ...askHelpRow(voice, text),
             icon: LuSparkles,
             run: askAthena(text),
           },
         ]
       : [];
     return [...nav, ...stations, ...articles, ...ask];
-  }, [items, query, remote, searchable, text, basePath, onClose, router]);
+  }, [items, query, remote, searchable, text, basePath, onClose, router, voice]);
 
   return (
     <Modal

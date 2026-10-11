@@ -9,7 +9,7 @@ const items = [
   { href: "/app/me/articles", label: "Articles", section: "practice" },
 ];
 const labels = { practice: "Practice" };
-const crumb = (path: string) => resolveCrumb(path, items, "/app/me", labels, "Practice");
+const crumb = (path: string) => resolveCrumb({ pathname: path, items, basePath: "/app/me", sectionLabels: labels, rootLabel: "Practice", deepPages: { stations: "Station" } });
 
 describe("resolveCrumb for study detail pages", () => {
   it("puts a summary under A to Z", () => {

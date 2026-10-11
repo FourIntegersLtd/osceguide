@@ -120,7 +120,7 @@ export function PendingFeedbackProvider({ children }: { children: ReactNode }) {
         tone: input.tone,
         title: input.title,
         message: input.message,
-        persistent: input.tone === "error" || input.tone === "warning",
+        durationMs: input.tone === "error" || input.tone === "warning" ? 60_000 : undefined,
         action: input.href
           ? { label: input.hrefLabel ?? "Open", href: input.href }
           : undefined,
@@ -238,7 +238,7 @@ export function PendingFeedbackProvider({ children }: { children: ReactNode }) {
         tone: "error",
         title: "Marking did not finish",
         message: `${job.stationLabel} could not be marked. You can check again.`,
-        persistent: true,
+        durationMs: 60_000,
         action: {
           label: "Try again",
           onClick: () => {
@@ -261,7 +261,7 @@ export function PendingFeedbackProvider({ children }: { children: ReactNode }) {
         tone: "warning",
         title: "Marking is taking longer than usual",
         message: `${job.stationLabel} is not marked yet. Open it to see where it stands.`,
-        persistent: true,
+        durationMs: 60_000,
         action: { label: "Open", href: job.reviewHref },
       });
     },

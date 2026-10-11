@@ -5,5 +5,6 @@ export { CAPABILITIES, capabilitiesFor, capabilityById, type MountOptions } from
 export {
   NAV_SECTIONS,
   NAV_SECTION_LABELS,
+  NAV_DEEP_PAGES,
   type NavSection,
 } from "@/capabilities/navSection";

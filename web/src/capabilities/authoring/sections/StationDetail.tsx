@@ -14,6 +14,7 @@ import {
   AsyncBoundary,
   Button,
   ConfirmModal,
+  FoldSection,
   Input,
   LeaveConfirmModal,
   Panel,
@@ -477,7 +478,7 @@ export function StationDetail({
             </Panel>
           ) : null}
           {structure ? (
-            <Panel title="Station content" collapsible defaultOpen={drafted || !factCheck}>
+            <FoldSection title="Station content" defaultOpen={drafted || !factCheck}>
               <p className="mb-4 text-osce-caption text-ink-muted">
                 Version {version}.
                 {editable
@@ -492,7 +493,7 @@ export function StationDetail({
                 readOnly={!editable}
                 media={media}
               />
-            </Panel>
+            </FoldSection>
           ) : null}
           {supportsBrief(scope) && canAuthor ? (
             <BriefEditor
@@ -504,9 +505,9 @@ export function StationDetail({
             />
           ) : null}
           {factCheck && editable && drafted ? (
-            <Panel title="Produce again from a brief" padding="sm" collapsible defaultOpen={false}>
+            <FoldSection title="Produce again from a brief" defaultOpen={false}>
               {produceForm}
-            </Panel>
+            </FoldSection>
           ) : null}
         </div>
       ) : null}
