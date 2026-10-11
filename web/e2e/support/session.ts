@@ -34,7 +34,8 @@ export async function signedInAs(context: BrowserContext, role: Role): Promise<v
  */
 export async function dismissOverlays(page: Page): Promise<void> {
   // The walkthrough sits above the cookie dialog: close the top one, then look again.
-  const close = page.getByRole("button", { name: "Close dialog" });
+  // The onboarding tour has no close button (C-50); its way out is "Skip tour".
+  const close = page.getByRole("button", { name: "Close dialog" }).or(page.getByRole("button", { name: "Skip tour" }));
   const decline = page.getByRole("button", { name: "Continue without analytics" });
   for (let round = 0; round < 6; round += 1) {
     // The dialogs mount after hydration, which is slow on a cold dev server: give them time.
