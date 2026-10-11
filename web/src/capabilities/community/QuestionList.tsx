@@ -185,6 +185,7 @@ function Composer({ room, onPosted, focusOnArrival }: { room: Room; onPosted: ()
       await askQuestion({
         title: titleFromBody(content),
         body: content,
+        examCode: code,
         tags: selectedTags,
         room,
       });
@@ -196,7 +197,7 @@ function Composer({ room, onPosted, focusOnArrival }: { room: Room; onPosted: ()
     } finally {
       setIsSubmitting(false);
     }
-  }, [content, selectedTags, room, onPosted]);
+  }, [content, selectedTags, room, code, onPosted]);
 
   return (
     <div className={cn(b2cCard, "space-y-4 p-5")}>

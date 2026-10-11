@@ -105,3 +105,17 @@ describe("listQuestions exam filter", () => {
     assert.doesNotMatch(calls[0]?.url ?? "", /exam_code/);
   });
 });
+
+describe("askQuestion exam tag", () => {
+  it("carries the exam code on create", async () => {
+    const calls = record(created);
+    await askQuestion({ title: "T", body: "B", examCode: "sca" });
+    assert.equal(calls[0]?.body?.exam_code, "sca");
+  });
+
+  it("stays untagged without a code", async () => {
+    const calls = record(created);
+    await askQuestion({ title: "T", body: "B", examCode: null });
+    assert.equal(calls[0]?.body?.exam_code, null);
+  });
+});
