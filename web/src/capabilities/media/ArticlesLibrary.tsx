@@ -1,12 +1,13 @@
 "use client";
 
-import { studyItemHref } from "@/capabilities/media/studyPaths";
+import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
+import { articleBlurb } from "@/capabilities/media/blogs";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { HiOutlineArrowRight, HiOutlineNewspaper } from "react-icons/hi2";
 import { B2CEmptyState, ButtonLink, cn, productTokens as t } from "@/foundation/ui";
 import { bodyMarkdown, type MediaItem } from "@/capabilities/media/api";
-import { excerpt, formatPublished, readMinutes } from "@/capabilities/media/support/text";
+import { formatPublished, readMinutes } from "@/capabilities/media/support/text";
 import { b2cCard } from "@/foundation/ui/productTokens";
 
 /** An article has no picture, so its card leads with a block in one of the reading tones, in turn. */
@@ -29,13 +30,7 @@ function ToneCover({ tone, className, children }: { tone: number; className?: st
   );
 }
 
-export function ArticlesLibrary({
-  items,
-  hrefFor,
-}: {
-  items: MediaItem[];
-  hrefFor: (path: string) => string;
-}) {
+export function ArticlesLibrary({ items }: { items: MediaItem[] }) {
   // The server hands these back newest-published-first (`sort=published`), so
   // the first item is the featured one and the rest are the timeline as-is.
   const sorted = items;
@@ -54,10 +49,7 @@ export function ArticlesLibrary({
   if (!featured) return null;
   const rest = sorted.slice(1);
 
-  const featuredBody = bodyMarkdown(featured);
-  const featuredBlurb =
-    featured.summary?.trim() ||
-    (featuredBody ? excerpt(featuredBody, 200) : "Read the latest from the study team.");
+  const featuredBlurb = articleBlurb(featured, 200) || "Read the latest from the study team.";
 
   return (
     <div className="space-y-6 pb-4">
@@ -67,7 +59,7 @@ export function ArticlesLibrary({
           <h2 className="text-balance text-osce-title font-semibold text-osce-ink-900">{featured.title}</h2>
           <p className="line-clamp-3 max-w-[640px] text-osce-body text-b2c-text-muted">{featuredBlurb}</p>
           <div className="mt-3">
-            <ButtonLink href={studyItemHref(hrefFor, "blog", featured.slug)} variant="primary" size="md">
+            <ButtonLink href={studyTabPathForSlug("blog", featured.slug)} variant="primary" size="md">
               Read article
             </ButtonLink>
           </div>
@@ -82,7 +74,7 @@ export function ArticlesLibrary({
             {rest.map((article, position) => (
               <li key={article.id}>
                 <Link
-                  href={studyItemHref(hrefFor, "blog", article.slug)}
+                  href={studyTabPathForSlug("blog", article.slug)}
                   className={cn(
                     b2cCard,
                     "group flex h-full flex-col overflow-hidden transition-all hover:-translate-y-0.5 hover:border-osce-ink-400 hover:shadow-md",
@@ -105,7 +97,7 @@ export function ArticlesLibrary({
                     <h3 className="mt-4 line-clamp-2 text-osce-subheading font-semibold text-osce-ink-900">
                       {article.title}
                     </h3>
-                    <p className="mt-1.5 line-clamp-3 text-osce-body text-b2c-text-muted">{blurbFor(article)}</p>
+                    <p className="mt-1.5 line-clamp-3 text-osce-body text-b2c-text-muted">{articleBlurb(article, 140)}</p>
                     <span className="mt-auto flex items-center justify-between border-t border-b2c-border-light pt-3 text-osce-meta">
                       <span className="text-b2c-text-muted">{publishedLabel(article)}</span>
                       <span className="flex items-center gap-1 font-medium text-osce-ink-900">
@@ -122,11 +114,6 @@ export function ArticlesLibrary({
       ) : null}
     </div>
   );
-}
-
-function blurbFor(article: MediaItem): string {
-  const body = bodyMarkdown(article);
-  return article.summary?.trim() || (body ? excerpt(body, 140) : "");
 }
 
 function readLabel(article: MediaItem): string {

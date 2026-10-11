@@ -15,7 +15,7 @@ MAX_SLUG = 80
 MAX_QUERY = 300
 MAX_EXCERPT = 160
 
-PODCAST_KEYS = ("podcast_url", "audio_url")
+_PODCAST_KEYS = ("podcast_url", "audio_url")
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
 
 
@@ -183,7 +183,7 @@ def has_podcast(content: dict[str, Any] | None) -> bool:
     it has a podcast without sending it. The web gates its Listen control on this.
     """
     body = content or {}
-    return any(isinstance(url := body.get(key), str) and url.strip() != "" for key in PODCAST_KEYS)
+    return any(isinstance(url := body.get(key), str) and url.strip() != "" for key in _PODCAST_KEYS)
 
 
 def content_updated_at(content: dict[str, Any]) -> datetime | None:

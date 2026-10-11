@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
-import { ExamBlogRail } from "@/capabilities/media/ExamBlogRail";
 import {
   BaseLandingPage,
   CascLandingPage,
@@ -56,10 +55,5 @@ export default async function Page({ params }: { params: Promise<{ exam: string 
   const { exam } = await params;
   const render = EXAM_PAGES[exam];
   if (!render) notFound();
-  return (
-    <>
-      {render()}
-      <ExamBlogRail examCode={exam} />
-    </>
-  );
+  return render();
 }

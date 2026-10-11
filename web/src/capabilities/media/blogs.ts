@@ -1,10 +1,11 @@
-import type { MediaItem } from "@/capabilities/media/api";
+import { PILOT_EXAMS } from "@/foundation/attribution/partnerConstants";
+import { bodyMarkdown, type MediaItem } from "@/capabilities/media/api";
+import { excerpt } from "@/capabilities/media/support/text";
 
 export interface BlogTab {
   /** `null` is every article. */
   code: string | null;
   label: string;
-  href: string;
 }
 
 /** The public blogs page, optionally narrowed to one exam. */
@@ -12,16 +13,14 @@ export function blogsHref(examCode: string | null): string {
   return examCode ? `/blogs?exam=${encodeURIComponent(examCode)}` : "/blogs";
 }
 
-/** "All", then one tab per exam that has an article, in code order. */
-export function blogExamTabs(items: readonly Pick<MediaItem, "exam_code">[]): BlogTab[] {
-  const codes = [...new Set(items.flatMap((item) => (item.exam_code ? [item.exam_code] : [])))].sort();
-  return [
-    { code: null, label: "All", href: blogsHref(null) },
-    ...codes.map((code) => ({ code, label: code.toUpperCase(), href: blogsHref(code) })),
-  ];
-}
+/** "All", then one tab per exam the platform runs. The exam list itself is behind sign-in, and this page is not. */
+export const BLOG_EXAM_TABS: readonly BlogTab[] = [
+  { code: null, label: "All" },
+  ...PILOT_EXAMS.map((code) => ({ code, label: code.toUpperCase() })),
+];
 
-/** One exam's own articles, newest first as handed over: the list also carries unexamined ones. */
-export function examBlogs(items: readonly MediaItem[], examCode: string, limit: number): MediaItem[] {
-  return items.filter((item) => item.exam_code === examCode).slice(0, limit);
+/** The card text under an article's title: its summary, else the start of its body. */
+export function articleBlurb(item: MediaItem, max: number): string {
+  const body = bodyMarkdown(item);
+  return item.summary?.trim() || (body ? excerpt(body, max) : "");
 }

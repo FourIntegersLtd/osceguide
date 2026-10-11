@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ exam?: string }> }) {
   const { exam } = await searchParams;
-  return <BlogIndex examCode={exam?.trim().toLowerCase() || null} />;
+  return <BlogIndex examQuery={exam} />;
 }

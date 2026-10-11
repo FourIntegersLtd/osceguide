@@ -63,7 +63,7 @@ function MediaKindLibraryBody({ kind }: { kind: PortalKind }) {
   return kind === "summary" || kind === "podcast" ? (
     <ClientPagedLibrary kind={kind} search={search} />
   ) : (
-    <CursorLibrary kind={kind} search={search} />
+    <SlidesCursorLibrary search={search} />
   );
 }
 
@@ -194,7 +194,8 @@ function ClientPagedLibrary({ kind, search }: { kind: "summary" | "podcast"; sea
 }
 
 /** Slides: a server page at a time, scoped by exam in SQL. */
-function CursorLibrary({ kind, search }: { kind: "slide_deck"; search: StudySearch }) {
+function SlidesCursorLibrary({ search }: { search: StudySearch }) {
+  const kind = "slide_deck";
   const { code: examCode } = useCurrentExam();
 
   // A specialty filter, applied in SQL rather than over an already-loaded page, and

@@ -1,19 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { MediaItem } from "@/capabilities/media/api";
-import { blogExamTabs, blogsHref, examBlogs } from "@/capabilities/media/blogs";
+import { BLOG_EXAM_TABS, articleBlurb, blogsHref } from "@/capabilities/media/blogs";
 
-const blog = (title: string, exam_code: string | null) => ({ title, exam_code }) as MediaItem;
+const item = (summary: string | null, body_md?: string) => ({ summary, content: body_md ? { body_md } : null }) as MediaItem;
 
 describe("blogs", () => {
-  it("offers All, then one tab per exam that has an article", () => {
-    const tabs = blogExamTabs([blog("a", "sca"), blog("b", null), blog("c", "plab"), blog("d", "sca")]);
+  it("offers All, then one tab per exam the platform runs", () => {
     assert.deepEqual(
-      tabs.map((tab) => [tab.label, tab.href]),
+      BLOG_EXAM_TABS.map((tab) => [tab.code, tab.label]),
       [
-        ["All", "/blogs"],
-        ["PLAB", "/blogs?exam=plab"],
-        ["SCA", "/blogs?exam=sca"],
+        [null, "All"],
+        ["sca", "SCA"],
+        ["plab", "PLAB"],
+        ["casc", "CASC"],
+        ["ortho", "ORTHO"],
       ],
     );
   });
@@ -23,11 +24,9 @@ describe("blogs", () => {
     assert.equal(blogsHref(null), "/blogs");
   });
 
-  it("keeps only the exam's own articles, at most the limit", () => {
-    const items = [blog("general", null), blog("s1", "sca"), blog("p1", "plab"), blog("s2", "sca"), blog("s3", "sca")];
-    assert.deepEqual(
-      examBlogs(items, "sca", 2).map((item) => item.title),
-      ["s1", "s2"],
-    );
+  it("blurbs an article with its summary, else the start of its body, else nothing", () => {
+    assert.equal(articleBlurb(item(" A summary ", "Body text."), 50), "A summary");
+    assert.equal(articleBlurb(item(null, "## Head\n\nBody text."), 50), "Head Body text.");
+    assert.equal(articleBlurb(item(null), 50), "");
   });
 });

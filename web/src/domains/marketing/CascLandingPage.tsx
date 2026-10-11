@@ -7,6 +7,7 @@ import {
   HiOutlineShieldCheck,
 } from "react-icons/hi2";
 import { FAQSection } from "./FAQ";
+import { ExamBlogRail } from "@/capabilities/media";
 import { LandingFooter } from "./LandingFooter";
 import { PracticeWithColleaguesSection } from "./PracticeWithColleagues";
 import { NeurodiversitySupportSection } from "./NeurodiversitySupportSection";
@@ -206,6 +207,7 @@ function CascLandingContent() {
       <NeurodiversitySupportSection />
       <LandingPricingSection appType="casc" />
       <FAQSection />
+      <ExamBlogRail examCode="casc" />
       <LandingFooter sectionLinkPrefix="/" />
     </>
   );

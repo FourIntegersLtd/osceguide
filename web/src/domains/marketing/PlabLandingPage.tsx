@@ -2,6 +2,7 @@
 
 import { HiOutlineClipboardDocumentCheck, HiOutlineClipboardDocumentList, HiOutlineHeart, HiOutlineNumberedList } from "react-icons/hi2";
 import { FAQSection } from "./FAQ";
+import { ExamBlogRail } from "@/capabilities/media";
 import { LandingFooter } from "./LandingFooter";
 import { PracticeWithColleaguesSection } from "./PracticeWithColleagues";
 import { NeurodiversitySupportSection } from "./NeurodiversitySupportSection";
@@ -177,6 +178,7 @@ function PlabLandingContent() {
       <NeurodiversitySupportSection />
       <LandingPricingSection appType="plab" />
       <FAQSection />
+      <ExamBlogRail examCode="plab" />
       <LandingFooter sectionLinkPrefix="/" />
     </>
   );

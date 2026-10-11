@@ -5,6 +5,7 @@ import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import { useMemo } from "react";
 import { MdOutlineQuestionAnswer } from "react-icons/md";
 import { FAQSection } from "./FAQ";
+import { ExamBlogRail } from "@/capabilities/media";
 import { LandingFooter } from "./LandingFooter";
 import { LandingPricingSection } from "./Pricing";
 import { ExamLandingShell } from "./ExamLandingShell";
@@ -191,6 +192,7 @@ function OrthoLandingContent() {
 
       <FAQSection />
       <LandingPricingSection appType="ortho" />
+      <ExamBlogRail examCode="ortho" />
       <LandingFooter sectionLinkPrefix="/" />
     </>
   );
