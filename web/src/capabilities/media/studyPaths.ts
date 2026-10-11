@@ -5,14 +5,15 @@ export const STUDY_KIND_PATH: Record<MediaKind, string> = {
   summary: "/summary",
   slide_deck: "/slides",
   podcast: "/podcast",
-  blog: "/articles",
+  // Public, outside any workspace: articles are the /blogs pages.
+  blog: "/blogs",
 };
 
 export const STUDY_KIND_LABEL: Record<MediaKind, string> = {
   summary: "A to Z",
   slide_deck: "Slides",
   podcast: "Podcast",
-  blog: "Articles",
+  blog: "Blogs",
 };
 
 export function studyListPath(kind: MediaKind): string {
@@ -37,4 +38,13 @@ export function studyTabPathForSlug(kind: MediaKind, slug: string): string {
   if (kind === "slide_deck") return slidesDeckPath(slug);
   if (kind === "podcast") return podcastEpisodePath(slug);
   return `${STUDY_KIND_PATH[kind]}/${slug}`;
+}
+
+/**
+ * The address a link to one item opens. Articles are public `/blogs` pages and
+ * live outside the workspace, so they skip `hrefFor`; every other kind opens in
+ * the workspace.
+ */
+export function studyItemHref(hrefFor: (path: string) => string, kind: MediaKind, slug: string): string {
+  return kind === "blog" ? studyTabPathForSlug(kind, slug) : hrefFor(studyTabPathForSlug(kind, slug));
 }

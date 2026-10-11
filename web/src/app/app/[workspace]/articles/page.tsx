@@ -1,13 +1,6 @@
-import type { Metadata } from "next";
-import { Capability } from "@/app/app/[workspace]/capability";
-import { MediaKindLibrary } from "@/capabilities/media/MediaKindLibrary";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Articles" };
-
+/** Articles are the public /blogs pages now. */
 export default function Page() {
-  return (
-    <Capability id="study-articles">
-      <MediaKindLibrary kind="blog" />
-    </Capability>
-  );
+  redirect("/blogs");
 }

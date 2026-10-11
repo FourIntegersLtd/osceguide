@@ -1,7 +1,7 @@
 import type { CardLink, CardRef } from "@/foundation/livekit/guidance";
 import type { MediaKind } from "@/capabilities/media/api";
 import { libraryHref, stationHref } from "@/capabilities/stations/routes";
-import { STUDY_KIND_LABEL, studyTabPathForSlug } from "@/capabilities/media/studyPaths";
+import { STUDY_KIND_LABEL, studyItemHref } from "@/capabilities/media/studyPaths";
 
 /**
  * Where something Athena put on screen opens.
@@ -47,7 +47,7 @@ export function cardLinkFor(
     return {
       eyebrow: MEDIA_EYEBROW[ref.kind],
       label: `Open in ${STUDY_KIND_LABEL[ref.kind]}`,
-      href: hrefFor(studyTabPathForSlug(ref.kind, slug)),
+      href: studyItemHref(hrefFor, ref.kind, slug),
     };
   }
 

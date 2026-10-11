@@ -51,7 +51,6 @@ export function SummaryView({
   const sections = summarySections(item);
   const aspects = psychosocialAspects(item);
   const structured = isStructuredSummary(item);
-  const audio = podcastUrl(item);
   const body = bodyMarkdown(item);
   const showTabs = structured;
 
@@ -63,7 +62,7 @@ export function SummaryView({
         back={{ href: hrefFor(studyListPath("summary")), label: STUDY_KIND_LABEL.summary }}
         action={
           <div className="flex flex-wrap items-center gap-2">
-            {audio ? (
+            {item.has_podcast ? (
               <Button type="button" variant="secondary" onClick={() => setPlaying(true)} className="gap-2">
                 <LuPodcast className="h-4 w-4" aria-hidden />
                 <span>Listen</span>

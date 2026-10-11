@@ -1,11 +1,7 @@
-import { Capability } from "@/app/app/[workspace]/capability";
-import { MediaItemView } from "@/capabilities/media";
+import { redirect } from "next/navigation";
 
+/** Articles are the public /blogs pages now. */
 export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  return (
-    <Capability id="study-articles">
-      <MediaItemView slug={slug} />
-    </Capability>
-  );
+  redirect(`/blogs/${encodeURIComponent(slug)}`);
 }

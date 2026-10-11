@@ -7,23 +7,12 @@ import { bodyMarkdown, contentUpdatedAt, type MediaItem } from "@/capabilities/m
 import { Prose } from "@/capabilities/media/Prose";
 import { formatPublished, leadsWithHeading, readMinutes } from "@/capabilities/media/support/text";
 import { STUDY_KIND_LABEL, studyListPath } from "@/capabilities/media/studyPaths";
-import { DiscussWithAthena } from "@/capabilities/help/DiscussWithAthena";
 
 /**
- * An article.
- *
- * The retiring client rendered these in the marketing skin, because the blog
- * was a marketing page that happened to be reachable from the app. Inside the
- * library it is the app's own reading surface: a back link, a mono meta line
- * and the body, painted in the vocabulary of the shell it is mounted in.
+ * An article, as the public `/blogs/<slug>` page shows it: a back link to the
+ * blogs, a mono meta line, a title, an optional subtitle and the body.
  */
-export function ArticleView({
-  item,
-  hrefFor,
-}: {
-  item: MediaItem;
-  hrefFor: (path: string) => string;
-}) {
+export function ArticleView({ item }: { item: MediaItem }) {
   const body = bodyMarkdown(item);
   const published = formatPublished(item.published_at);
   const updatedRaw = contentUpdatedAt(item);
@@ -31,7 +20,7 @@ export function ArticleView({
 
   return (
     <div className="mx-auto w-full max-w-[1000px] text-left">
-      <Link href={hrefFor(studyListPath("blog"))} className="inline-flex items-center gap-1 text-osce-body font-medium text-b2c-text-muted hover:text-osce-ink-900">
+      <Link href={studyListPath("blog")} className="inline-flex items-center gap-1 text-osce-body font-medium text-b2c-text-muted hover:text-osce-ink-900">
         <HiOutlineChevronLeft className="h-3.5 w-3.5" aria-hidden />
         {STUDY_KIND_LABEL.blog}
       </Link>
@@ -50,17 +39,19 @@ export function ArticleView({
           </p>
 
           {!body || !leadsWithHeading(body) ? (
-            <h1 className="mt-2 font-title text-osce-heading font-semibold text-osce-ink-900">{item.title}</h1>
+            <h1 className="mt-2 font-title text-osce-display-sm font-semibold text-osce-ink-900">{item.title}</h1>
+          ) : null}
+
+          {item.summary?.trim() ? (
+            <p className="mt-3 text-osce-body text-b2c-text-muted">{item.summary}</p>
           ) : null}
 
           {updated && updated !== published ? (
             <p className="mt-2 text-osce-meta text-b2c-text-muted">Updated {updated}</p>
           ) : null}
-
-          <DiscussWithAthena className="mt-4" topic={{ title: item.title, kind: "blog", slug: item.slug }} />
         </header>
 
-        <div className="mt-6 text-[17px] leading-7 [&_p]:text-[17px] [&_p]:leading-7">
+        <div className="mt-6 text-[17px] leading-7 [&_h2]:mt-10 [&_h3]:mt-8 [&_p]:mb-5 [&_p]:text-[17px] [&_p]:leading-7">
           {body ? (
             <Prose content={body} />
           ) : (

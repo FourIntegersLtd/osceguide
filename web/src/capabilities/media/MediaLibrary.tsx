@@ -1,6 +1,6 @@
 "use client";
 
-import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
+import { studyItemHref } from "@/capabilities/media/studyPaths";
 import { useState } from "react";
 import { HiOutlineMagnifyingGlass, HiOutlineXMark } from "react-icons/hi2";
 import {
@@ -26,7 +26,7 @@ import {
 import { useCurrentExam } from "@/foundation/session";
 import { MEDIA_KIND_ICON, MediaCard, MediaCardGrid, mediaKindOf } from "@/capabilities/media/MediaCard";
 import { SummaryIndex, SummaryIndexNav } from "@/capabilities/media/SummaryIndex";
-import type { SummaryView } from "@/capabilities/media/summaryGroups";
+import { summaryGroups, type SummaryView } from "@/capabilities/media/summaryGroups";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
 
 type Filter = MediaKind | "all";
@@ -175,10 +175,7 @@ export function MediaLibrary({ initialKind = null }: { initialKind?: MediaKind |
                   }
                 />
               ) : filter === "summary" ? (
-                <div className="space-y-6">
-                  <SummaryIndexNav items={items} view={summaryView} onViewChange={setSummaryView} />
-                  <SummaryIndex items={items} view={summaryView} hrefFor={hrefFor} />
-                </div>
+                <SummaryLibrary items={items} view={summaryView} onViewChange={setSummaryView} hrefFor={hrefFor} />
               ) : (
                 <MediaGrid items={items} hrefFor={hrefFor} />
               );
@@ -218,9 +215,30 @@ function MediaGrid({ items, hrefFor }: { items: MediaItem[]; hrefFor: (path: str
     <div className="space-y-8">
       <MediaCardGrid>
         {items.map((item) => (
-          <MediaCard key={item.id} item={item} href={hrefFor(studyTabPathForSlug(mediaKindOf(item) ?? "summary", item.slug))} />
+          <MediaCard key={item.id} item={item} href={studyItemHref(hrefFor, mediaKindOf(item) ?? "summary", item.slug)} />
         ))}
       </MediaCardGrid>
+    </div>
+  );
+}
+
+/** The A-to-Z: its jump links and its list, from one grouping of the items. */
+function SummaryLibrary({
+  items,
+  view,
+  onViewChange,
+  hrefFor,
+}: {
+  items: MediaItem[];
+  view: SummaryView;
+  onViewChange: (view: SummaryView) => void;
+  hrefFor: (path: string) => string;
+}) {
+  const groups = summaryGroups(items, view);
+  return (
+    <div className="space-y-6">
+      <SummaryIndexNav groups={groups} view={view} onViewChange={onViewChange} />
+      <SummaryIndex groups={groups} view={view} hrefFor={hrefFor} />
     </div>
   );
 }

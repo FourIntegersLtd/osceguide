@@ -1,6 +1,6 @@
 import { PERSONAL_SLUG } from "@/foundation/routing";
 import { isMediaKind, type MediaKind } from "@/capabilities/media/api";
-import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
+import { studyItemHref } from "@/capabilities/media/studyPaths";
 import type { MediaItem } from "@/capabilities/staff-media/api";
 
 export function staffMediaDetailPath(itemId: string): string {
@@ -19,5 +19,5 @@ export function staffMediaNewPath(kind: MediaKind): string {
 /** Where a learner opens the item, in their own workspace (the staff shell has none). */
 export function learnerMediaPreviewPath(item: Pick<MediaItem, "kind" | "slug">): string {
   const kind = isMediaKind(item.kind) ? item.kind : "summary";
-  return `/app/${PERSONAL_SLUG}${studyTabPathForSlug(kind, item.slug)}`;
+  return studyItemHref((path) => `/app/${PERSONAL_SLUG}${path}`, kind, item.slug);
 }

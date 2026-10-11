@@ -1,5 +1,8 @@
 export { MediaLibrary } from "@/capabilities/media/MediaLibrary";
 export { MediaKindLibrary } from "@/capabilities/media/MediaKindLibrary";
+export { BlogIndex } from "@/capabilities/media/BlogIndex";
+export { BlogArticle } from "@/capabilities/media/BlogArticle";
+export { ExamBlogRail } from "@/capabilities/media/ExamBlogRail";
 export { MediaItemView } from "@/capabilities/media/MediaItemView";
 export { mediaCapability } from "@/capabilities/media/capability";
 export { STUDY_NAV_CAPABILITIES } from "@/capabilities/media/studyCapabilities";

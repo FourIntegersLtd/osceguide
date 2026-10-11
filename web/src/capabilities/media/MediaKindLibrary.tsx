@@ -7,19 +7,21 @@ import { useSurface } from "@/capabilities/SurfaceContext";
 import { listMedia, listAllMedia, specialtiesOf, type MediaKind } from "@/capabilities/media/api";
 import { useCurrentExam } from "@/foundation/session";
 import { MEDIA_KIND_ICON } from "@/capabilities/media/MediaCard";
-import { ArticlesLibrary } from "@/capabilities/media/ArticlesLibrary";
 import { PodcastLibrary } from "@/capabilities/media/PodcastLibrary";
 import { SlidesLibrary } from "@/capabilities/media/SlidesLibrary";
 import { SummaryIndex, SummaryIndexNav } from "@/capabilities/media/SummaryIndex";
 import { MediaSearchResults } from "@/capabilities/media/MediaSearchResults";
-import type { SummaryView } from "@/capabilities/media/summaryGroups";
+import { summaryGroups, type SummaryView } from "@/capabilities/media/summaryGroups";
 import { B2CHero } from "@/foundation/ui/B2CHero";
 import { StudySearchBox } from "@/capabilities/media/StudySearchBox";
 import { useClientPagedCatalogue } from "@/capabilities/media/useClientPagedCatalogue";
 import { useStudySearch, type StudySearch } from "@/capabilities/media/useStudySearch";
 
+/** The kinds that live in the portal: articles are the public /blogs pages. */
+type PortalKind = Exclude<MediaKind, "blog">;
+
 const PAGE_COPY: Record<
-  MediaKind,
+  PortalKind,
   { title: string; subtitle?: string; emptyTitle: string; emptyDescription: string }
 > = {
   summary: {
@@ -39,18 +41,12 @@ const PAGE_COPY: Record<
     emptyTitle: "No episodes yet",
     emptyDescription: "Episodes appear here as they are published.",
   },
-  blog: {
-    title: "Articles",
-    subtitle: "Articles and updates from the study team.",
-    emptyTitle: "No articles found",
-    emptyDescription: "New articles are published regularly, so check back soon.",
-  },
 };
 
 /**
  * One study-material kind per route — the B2C layout without a combined filter.
  */
-export function MediaKindLibrary({ kind }: { kind: MediaKind }) {
+export function MediaKindLibrary({ kind }: { kind: PortalKind }) {
   return (
     <Suspense fallback={null}>
       <MediaKindLibraryBody kind={kind} />
@@ -62,7 +58,7 @@ export function MediaKindLibrary({ kind }: { kind: MediaKind }) {
 const MEDIA_KIND_PAGE_LIMIT = 24;
 
 /** The page's one study search, read once here and handed down to whatever lists the results. */
-function MediaKindLibraryBody({ kind }: { kind: MediaKind }) {
+function MediaKindLibraryBody({ kind }: { kind: PortalKind }) {
   const search = useStudySearch(kind);
   return kind === "summary" || kind === "podcast" ? (
     <ClientPagedLibrary kind={kind} search={search} />
@@ -80,7 +76,7 @@ function LibraryFrame({
   controls,
   children,
 }: {
-  kind: MediaKind;
+  kind: PortalKind;
   search: StudySearch;
   /** Slides search inside their own list, so the page draws no box of its own. */
   showSearchBox?: boolean;
@@ -139,7 +135,7 @@ function LibraryFrame({
   );
 }
 
-function EmptyKind({ kind }: { kind: MediaKind }) {
+function EmptyKind({ kind }: { kind: PortalKind }) {
   const copy = PAGE_COPY[kind];
   const { code: examCode } = useCurrentExam();
   return (
@@ -171,7 +167,7 @@ function ClientPagedLibrary({ kind, search }: { kind: "summary" | "podcast"; sea
         kind === "summary" ? (
           // The links come from the whole catalogue, so a letter past the shown rows still has one.
           <SummaryIndexNav
-            items={everything}
+            groups={summaryGroups(everything, summaryView)}
             view={summaryView}
             onViewChange={setSummaryView}
             onShowAll={rows.showAll}
@@ -185,7 +181,7 @@ function ClientPagedLibrary({ kind, search }: { kind: "summary" | "podcast"; sea
             {items.length === 0 ? (
               <EmptyKind kind={kind} />
             ) : kind === "summary" ? (
-              <SummaryIndex items={items} view={summaryView} hrefFor={hrefFor} />
+              <SummaryIndex groups={summaryGroups(items, summaryView)} view={summaryView} hrefFor={hrefFor} />
             ) : (
               <PodcastLibrary items={items} catalogue={everything} allItemsCount={everything.length} />
             )}
@@ -197,15 +193,14 @@ function ClientPagedLibrary({ kind, search }: { kind: "summary" | "podcast"; sea
   );
 }
 
-/** Slides and Articles: a server page at a time, scoped by exam in SQL. */
-function CursorLibrary({ kind, search }: { kind: "slide_deck" | "blog"; search: StudySearch }) {
-  const { hrefFor } = useSurface();
+/** Slides: a server page at a time, scoped by exam in SQL. */
+function CursorLibrary({ kind, search }: { kind: "slide_deck"; search: StudySearch }) {
   const { code: examCode } = useCurrentExam();
 
-  // Slide decks alone offer a specialty filter, applied in SQL rather than over an
-  // already-loaded page, and search inside their own list, matched on title and summary in SQL.
+  // A specialty filter, applied in SQL rather than over an already-loaded page, and
+  // search inside the list, matched on title and summary in SQL.
   const [specialty, setSpecialty] = useState("all");
-  const deckQuery = kind === "slide_deck" ? search.urlQuery : "";
+  const deckQuery = search.urlQuery;
   const specialtyFilter =
     specialty === "all" ? {} : specialty === "other" ? { hasSpecialty: false } : { specialty };
 
@@ -217,10 +212,6 @@ function CursorLibrary({ kind, search }: { kind: "slide_deck" | "blog"; search: 
           cursor,
           limit: MEDIA_KIND_PAGE_LIMIT,
           examCode,
-          // Articles read newest-published-first; the server default is
-          // creation order, which drifted from publish order once drafts
-          // could sit unpublished for a while before going live.
-          sort: kind === "blog" ? "published" : undefined,
           q: deckQuery || undefined,
           ...specialtyFilter,
         },
@@ -232,7 +223,7 @@ function CursorLibrary({ kind, search }: { kind: "slide_deck" | "blog"; search: 
   // The specialty picker's own option list, from a wider unfiltered fetch —
   // an already-filtered page can't tell you what else was on offer.
   const specialtyOptions = useAsync(
-    (signal) => (kind === "slide_deck" ? listAllMedia(kind, signal, examCode) : Promise.resolve([])),
+    (signal) => listAllMedia(kind, signal, examCode),
     [kind, examCode],
   );
   const deckSpecialties = [...new Set((specialtyOptions.data ?? []).flatMap(specialtiesOf))].sort();
@@ -240,47 +231,26 @@ function CursorLibrary({ kind, search }: { kind: "slide_deck" | "blog"; search: 
     (deck) => specialtiesOf(deck).length === 0,
   );
 
-  if (kind === "slide_deck") {
-    return (
-      <LibraryFrame kind={kind} search={search} showSearchBox={false}>
-        <SlidesLibrary
-          state={pages.state}
-          search={search}
-          specialty={specialty}
-          onSpecialtyChange={setSpecialty}
-          specialtyOptions={deckSpecialties}
-          hasUncategorized={deckHasUncategorized}
-          total={pages.total}
-          footer={
-            <LoadMore
-              hasMore={pages.hasMore}
-              loading={pages.loadingMore}
-              error={pages.moreError}
-              onLoadMore={pages.loadMore}
-              className="flex justify-center p-3"
-            />
-          }
-        />
-      </LibraryFrame>
-    );
-  }
-
   return (
-    <LibraryFrame kind={kind} search={search}>
-      <AsyncBoundary state={pages.state}>
-        {(items) => (
-          <>
-            {items.length === 0 ? <EmptyKind kind={kind} /> : <ArticlesLibrary items={items} hrefFor={hrefFor} />}
-            <LoadMore
-              hasMore={pages.hasMore}
-              loading={pages.loadingMore}
-              error={pages.moreError}
-              onLoadMore={pages.loadMore}
-              className="mt-6 flex justify-center"
-            />
-          </>
-        )}
-      </AsyncBoundary>
+    <LibraryFrame kind={kind} search={search} showSearchBox={false}>
+      <SlidesLibrary
+        state={pages.state}
+        search={search}
+        specialty={specialty}
+        onSpecialtyChange={setSpecialty}
+        specialtyOptions={deckSpecialties}
+        hasUncategorized={deckHasUncategorized}
+        total={pages.total}
+        footer={
+          <LoadMore
+            hasMore={pages.hasMore}
+            loading={pages.loadingMore}
+            error={pages.moreError}
+            onLoadMore={pages.loadMore}
+            className="flex justify-center p-3"
+          />
+        }
+      />
     </LibraryFrame>
   );
 }

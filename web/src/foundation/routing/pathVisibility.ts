@@ -41,6 +41,7 @@ export const PUBLIC_MARKETING_PATHS: readonly string[] = [
   "",
   "/institutions",
   "/pricing",
+  "/blogs",
   "/exams/avodeck",
   "/exams/classic",
   "/exams/ortho",

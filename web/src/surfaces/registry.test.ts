@@ -257,7 +257,6 @@ describe("surface registry", () => {
       "A to Z",
       "Slides",
       "Podcast",
-      "Articles",
     ]);
     // Contact & Feedback leads Connect: the retiring sidebar carried it too,
     // ahead of the community, and a capability mounts it on this arm only.
@@ -333,12 +332,13 @@ describe("surface registry", () => {
       capabilitiesFor("assess", { can, basePath: "/app/kings" }).map((capability) => capability.title);
     const staffTitles = titles({ run_circuits: true });
     const traineeTitles = titles({});
-    for (const title of ["Community", "Stations", "Slides", "A to Z", "Podcast", "Articles", "Authoring"]) {
+    for (const title of ["Community", "Stations", "Slides", "A to Z", "Podcast", "Authoring"]) {
       assert.ok(!staffTitles.includes(title), `staff nav has no ${title}`);
     }
     assert.ok(staffTitles.includes("Settings"));
-    for (const title of ["Community", "Stations", "Slides", "A to Z", "Podcast", "Articles", "Settings"]) {
+    for (const title of ["Community", "Stations", "Slides", "A to Z", "Podcast", "Settings"]) {
       assert.ok(traineeTitles.includes(title), `trainee nav has ${title}`);
     }
+    assert.ok(!traineeTitles.includes("Articles"), "articles are the public /blogs pages, not a nav item");
   });
 });

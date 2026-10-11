@@ -1,4 +1,4 @@
-import { LuBookA, LuNewspaper, LuPodcast, LuPresentation } from "react-icons/lu";
+import { LuBookA, LuPodcast, LuPresentation } from "react-icons/lu";
 import type { CapabilityModule } from "@/capabilities/contract";
 
 const SURFACES = ["train", "assess"] as const;
@@ -43,21 +43,8 @@ export const studyPodcastCapability: CapabilityModule = {
   icon: LuPodcast,
 };
 
-export const studyArticlesCapability: CapabilityModule = {
-  id: "study-articles",
-  title: "Articles",
-  description: "Articles and blog posts from the study library.",
-  surfaces: SURFACES,
-  permission: null,
-  staffRefusedOn: ["assess"],
-  section: "practice",
-  path: "/articles",
-  icon: LuNewspaper,
-};
-
 export const STUDY_NAV_CAPABILITIES: readonly CapabilityModule[] = [
   studyAToZCapability,
   studySlidesCapability,
   studyPodcastCapability,
-  studyArticlesCapability,
 ];

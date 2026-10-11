@@ -7,7 +7,7 @@ import { specialtiesOf, type MediaItem } from "@/capabilities/media/api";
 import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
 import { B2CGroupedRowLink, B2CGroupedSection } from "@/foundation/ui/B2CGroupedList";
 import { SummaryPodcast } from "@/capabilities/media/SummaryView";
-import { jumpLinks, summaryGroups, type SummaryView } from "@/capabilities/media/summaryGroups";
+import { jumpLinks, type SummaryGroups, type SummaryView } from "@/capabilities/media/summaryGroups";
 
 /**
  * The A to Z / Specialty tabs and the row of jump links. They sit in the page's sticky
@@ -18,17 +18,17 @@ import { jumpLinks, summaryGroups, type SummaryView } from "@/capabilities/media
  * to a group not yet on the page asks `onShowAll` for the rest, then scrolls to it.
  */
 export function SummaryIndexNav({
-  items,
+  groups,
   view,
   onViewChange,
   onShowAll,
 }: {
-  items: readonly MediaItem[];
+  groups: SummaryGroups;
   view: SummaryView;
   onViewChange: (view: SummaryView) => void;
   onShowAll?: () => void;
 }) {
-  const links = jumpLinks(summaryGroups(items, view));
+  const links = jumpLinks(groups);
   const [target, setTarget] = useState<string | null>(null);
   // Runs after each render until the group is on the page, which a show-all makes happen.
   useEffect(() => {
@@ -76,16 +76,15 @@ export function SummaryIndexNav({
 
 /** The list itself: every group in order, each row a link to its summary and a Listen button. */
 export function SummaryIndex({
-  items,
+  groups,
   view,
   hrefFor,
 }: {
-  items: MediaItem[];
+  groups: SummaryGroups;
   view: SummaryView;
   hrefFor: (path: string) => string;
 }) {
   const [listening, setListening] = useState<MediaItem | null>(null);
-  const groups = summaryGroups(items, view);
   const keys = Object.keys(groups).sort();
 
   return (

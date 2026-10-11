@@ -827,3 +827,33 @@ async def test_publishing_a_timed_deck_stores_its_captions_and_an_untimed_one_ge
     assert got["content"]["captions_vtt"].startswith("WEBVTT\n\n00:00:00.500 --> 00:00:03.200\nFive words.")
     other = (await client.get(f"/api/v1/media/{bare['slug']}", headers=bearer(admin))).json()
     assert "captions_vtt" not in other["content"]
+
+
+async def test_a_signed_out_visitor_reads_an_exam_blog_but_not_an_exam_summary(
+    client: AsyncClient,
+    make_actor,
+    index: FakeVectorIndex,  # type: ignore[no-untyped-def]
+) -> None:
+    """Blogs are the public /blogs pages: their body is open. Every other kind stays gated."""
+    from tests.support.catalog import create_exam
+
+    admin = await make_actor("m-public-blog@osceguide.com", platform_admin=True)
+    await create_exam(client, admin, code="sca")
+    blog = await publish_item(
+        client, admin, title="A Day In SCA", kind="blog", exam_code="sca", content={"body_md": "Read this."}
+    )
+    summary = await publish_item(
+        client, admin, title="SCA Asthma", kind="summary", exam_code="sca", content={"body_md": "Paid."}
+    )
+
+    one = (await client.get(f"/api/v1/media/lookup?slug={blog['slug']}")).json()
+    by_slug = (await client.get(f"/api/v1/media/{blog['slug']}")).json()
+    listed = (await client.get("/api/v1/media?kind=blog&exam_code=sca")).json()["items"]
+    gated = (await client.get(f"/api/v1/media/{summary['slug']}")).json()
+
+    assert (one["locked"], one["content"]) == (False, {"body_md": "Read this."})
+    assert (by_slug["locked"], by_slug["content"]) == (False, {"body_md": "Read this."})
+    assert [(row["title"], row["locked"], row["content"]) for row in listed] == [
+        ("A Day In SCA", False, {"body_md": "Read this."})
+    ]
+    assert (gated["locked"], gated["content"]) == (True, None)

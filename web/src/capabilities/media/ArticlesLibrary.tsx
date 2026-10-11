@@ -1,6 +1,6 @@
 "use client";
 
-import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
+import { studyItemHref } from "@/capabilities/media/studyPaths";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { HiOutlineArrowRight, HiOutlineNewspaper } from "react-icons/hi2";
@@ -67,7 +67,7 @@ export function ArticlesLibrary({
           <h2 className="text-balance text-osce-title font-semibold text-osce-ink-900">{featured.title}</h2>
           <p className="line-clamp-3 max-w-[640px] text-osce-body text-b2c-text-muted">{featuredBlurb}</p>
           <div className="mt-3">
-            <ButtonLink href={hrefFor(studyTabPathForSlug("blog", featured.slug))} variant="primary" size="md">
+            <ButtonLink href={studyItemHref(hrefFor, "blog", featured.slug)} variant="primary" size="md">
               Read article
             </ButtonLink>
           </div>
@@ -82,7 +82,7 @@ export function ArticlesLibrary({
             {rest.map((article, position) => (
               <li key={article.id}>
                 <Link
-                  href={hrefFor(studyTabPathForSlug("blog", article.slug))}
+                  href={studyItemHref(hrefFor, "blog", article.slug)}
                   className={cn(
                     b2cCard,
                     "group flex h-full flex-col overflow-hidden transition-all hover:-translate-y-0.5 hover:border-osce-ink-400 hover:shadow-md",

@@ -15,6 +15,7 @@ MAX_SLUG = 80
 MAX_QUERY = 300
 MAX_EXCERPT = 160
 
+PODCAST_KEYS = ("podcast_url", "audio_url")
 _NON_SLUG = re.compile(r"[^a-z0-9]+")
 
 
@@ -178,14 +179,11 @@ def specialty_of(content: dict[str, Any]) -> str | None:
 def has_podcast(content: dict[str, Any] | None) -> bool:
     """Whether the document names audio: a non-blank `podcast_url` or `audio_url`.
 
-    The same test the web's `podcastUrl` applies, asked of the stored body so a locked
-    item (whose body is withheld) can still say it has a podcast without sending it.
+    Asked of the stored body so a locked item (whose body is withheld) can still say
+    it has a podcast without sending it. The web gates its Listen control on this.
     """
-    return any(
-        isinstance(content.get(key), str) and content[key].strip() != ""
-        for key in ("podcast_url", "audio_url")
-        if content
-    )
+    body = content or {}
+    return any(isinstance(url := body.get(key), str) and url.strip() != "" for key in PODCAST_KEYS)
 
 
 def content_updated_at(content: dict[str, Any]) -> datetime | None:

@@ -5,10 +5,9 @@ import { useAsync } from "@/foundation/hooks";
 import { useSurface } from "@/capabilities/SurfaceContext";
 import { readMedia, type MediaItem } from "@/capabilities/media/api";
 import { SummaryView } from "@/capabilities/media/SummaryView";
-import { ArticleView } from "@/capabilities/media/ArticleView";
 import { LockedMediaGate } from "@/capabilities/media/LockedMediaGate";
 import { StudyTabRedirect } from "@/capabilities/media/StudyTabRedirect";
-import { podcastEpisodePath, slidesDeckPath } from "@/capabilities/media/studyPaths";
+import { podcastEpisodePath, slidesDeckPath, studyItemHref } from "@/capabilities/media/studyPaths";
 import { useRecordView } from "@/capabilities/account/useRecordView";
 
 /**
@@ -17,7 +16,7 @@ import { useRecordView } from "@/capabilities/account/useRecordView";
  * The dispatch is the whole of "four folders became one capability": the list,
  * the URL, the loading and the failure are shared, and what differs is the
  * reader — a deck is a presentation beside its siblings, a summary is a
- * clinical brief in tabs, an article is an article, an episode is a player
+ * clinical brief in tabs, an article is sent to its public page, an episode is a player
  * with the rest of the series under it.
  */
 export function MediaItemView({ slug }: { slug: string }) {
@@ -26,7 +25,7 @@ export function MediaItemView({ slug }: { slug: string }) {
   // Decks and episodes redirect to their own tab, which records them there.
   const read = state.data;
   useRecordView(
-    read && !read.locked && (read.kind === "summary" || read.kind === "blog")
+    read && !read.locked && read.kind === "summary"
       ? { kind: "viewed", ref_kind: read.kind, ref_id: read.slug, title: read.title, exam_code: read.exam_code }
       : null,
   );
@@ -55,5 +54,6 @@ function Reader({ item, hrefFor }: { item: MediaItem; hrefFor: (path: string) =>
   if (item.kind === "podcast") {
     return <StudyTabRedirect hrefFor={hrefFor} path={podcastEpisodePath(item.slug)} />;
   }
-  return <ArticleView item={item} hrefFor={hrefFor} />;
+  // An article is a public /blogs page, not a workspace screen.
+  return <StudyTabRedirect hrefFor={(path) => path} path={studyItemHref(hrefFor, "blog", item.slug)} />;
 }

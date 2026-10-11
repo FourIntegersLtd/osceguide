@@ -95,7 +95,10 @@ def updated_at(item: MediaItem, content: dict[str, Any]) -> datetime:
 
 
 def _locked(item: MediaItem, unlocked_exam_ids: frozenset[uuid.UUID] | None) -> bool:
-    """Whether the body is withheld: material for an exam the reader does not hold."""
-    if unlocked_exam_ids is None or item.exam_id is None:
+    """Whether the body is withheld: material for an exam the reader does not hold.
+
+    Blogs are never withheld: they are the public `/blogs` pages, readable signed out.
+    """
+    if unlocked_exam_ids is None or item.exam_id is None or item.kind == domain.MediaKind.BLOG:
         return False
     return item.exam_id not in unlocked_exam_ids

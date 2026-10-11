@@ -20,7 +20,7 @@ describe("where a card Athena showed opens", () => {
   it("opens each kind of reading on its own tab", () => {
     const href = (kind: string, slug: string) => cardLinkFor({ kind, id: "x", slug }, { hrefFor })?.href;
     assert.equal(href("summary", "asthma"), "/app/me/summary/asthma");
-    assert.equal(href("blog", "a-day-in-sca"), "/app/me/articles/a-day-in-sca");
+    assert.equal(href("blog", "a-day-in-sca"), "/blogs/a-day-in-sca");
     assert.equal(href("slide_deck", "copd"), "/app/me/slides?deck=copd");
     assert.equal(href("podcast", "ep-1"), "/app/me/podcast?episode=ep-1");
   });

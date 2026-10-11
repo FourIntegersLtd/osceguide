@@ -17,7 +17,7 @@ import {
   searchMediaWithFallback,
   type MediaKind,
 } from "@/capabilities/media/api";
-import { studyTabPathForSlug } from "@/capabilities/media/studyPaths";
+import { studyItemHref } from "@/capabilities/media/studyPaths";
 import { MEDIA_KIND_ICON, mediaKindOf } from "@/capabilities/media/MediaCard";
 
 /**
@@ -78,7 +78,7 @@ export function MediaSearchResults({
                   const hitKind = mediaKindOf(hit);
                   const Icon = hitKind ? MEDIA_KIND_ICON[hitKind] : HiOutlineMagnifyingGlass;
                   const href = hitKind
-                    ? hrefFor(studyTabPathForSlug(hitKind, hit.slug))
+                    ? studyItemHref(hrefFor, hitKind, hit.slug)
                     : hrefFor(`/library/${hit.slug}`);
                   return (
                     <li key={hit.id}>

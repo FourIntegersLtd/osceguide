@@ -77,7 +77,7 @@ const LEGACY_SAMPLE: readonly [string, string][] = [
   ["/mocks/customise", "/app/me/mocks"],
   ["/mocks/m1/update", "/app/me/mocks/m1"],
   ["/summary/s1", "/app/me/summary"],
-  ["/blogs/b1", "/app/me/articles"],
+  ["/articles", "/blogs"],
   ["/debriefs/d1", "/app/me/debriefs/d1"],
   ["/transcripts/t1", "/app/me/transcripts/t1"],
   ["/community", "/app/me/discussion"],
@@ -169,6 +169,12 @@ describe("legacy redirects", () => {
     assert.equal(destination("/library"), "/app/me/summary");
     assert.equal(destination("/slides"), "/app/me/slides");
     assert.equal(destination("/summary"), "/app/me/summary");
+  });
+
+  it("leaves the public blogs pages alone and sends the old articles list to them", () => {
+    assert.equal(destination("/blogs"), null);
+    assert.equal(destination("/blogs/a-day-in-sca"), null);
+    assert.equal(destination("/articles"), "/blogs");
   });
 
   it("keeps both spellings of the dashboard alive", () => {
