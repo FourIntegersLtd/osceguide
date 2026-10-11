@@ -19,7 +19,7 @@ test("TRAIN-5 picking an exam day saves it and closes the calendar", async ({ pa
   await calendar.getByRole("button", { name: /\b28th\b/ }).first().click();
   await expect(calendar).toBeHidden();
   await expect(page.getByText(/^Exam: 28 /)).toBeVisible();
-  await expect(page.getByText(/to go$/)).toBeVisible();
+  await expect(page.getByText(/^\d+ (week|day)s? to go$/)).toBeVisible();
 
   await page.getByRole("button", { name: /^Edit .*date/i }).click();
   await page.getByRole("button", { name: "Clear date" }).click();
