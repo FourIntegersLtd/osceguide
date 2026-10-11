@@ -117,6 +117,10 @@ After a backend schema change: `make openapi` in platform-api, then
 generated from a document that can be stale. `smoke.mjs` can. Run it whenever
 you touch an `api.ts`, and regenerate with `npm run platform:types`.
 
+CI web (and Vercel's staging build) run only when `web/` or `api/openapi.json` changes, yet the
+journeys run the api from the same checkout. An api-only fix for a red journey is not re-proved
+there: the next `web/` commit is, and promote-web needs that commit's CI web green.
+
 ## Owners
 
 Who owns which path: `.claude/OWNERS.md`. Area notes: `.claude/rules/` (traps a browser run
