@@ -147,3 +147,19 @@ def test_the_community_prompt_is_athena_writing_like_a_person_without_lists() ->
     assert "You are Athena, the OSCE Guide assistant" in prompt
     assert "Do not use bullet points, numbered lists, headings or bold" in prompt
     assert "Never say you are an AI" in prompt
+
+
+def test_the_community_prompt_says_to_output_no_reply_when_the_entries_do_not_answer() -> None:
+    from app.features.assistant.service_community import system_prompt
+
+    prompt = system_prompt()
+
+    assert "output exactly NO_REPLY" in prompt
+    assert "not sure" not in prompt
+
+
+def test_a_no_reply_answer_is_none_however_it_is_wrapped() -> None:
+    from app.features.assistant.service_community import parse_reply
+
+    assert [parse_reply(t) for t in ("NO_REPLY", "  no_reply.\n", "`NO_REPLY`")] == [None, None, None]
+    assert parse_reply("Open Settings. NO_REPLY is not needed.") == "Open Settings. NO_REPLY is not needed."

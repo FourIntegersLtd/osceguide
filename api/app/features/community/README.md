@@ -87,7 +87,8 @@ Calls `catalog` to tag a question with an exam, and `stations` to check that a
 station a comment names exists.
 
 - **A question has a category** (`general`, `platform`, `skills`, `exam`); tags are its subtags.
-- **The assistant never answers exam or skills questions.** `ask` queues
-  `reply_as_assistant` in its own transaction for a public general or platform question; the job
-  answers that one question, if still unanswered, as Athena with an `is_assistant` post that has no
-  author account, and tells the asker on `/me/events` (`community_reply`).
+- **The assistant decides for itself.** `ask` queues `reply_as_assistant` in its own transaction
+  for every public question, whatever its category; the job asks the model, which answers only
+  from the help entries and otherwise outputs `NO_REPLY` (the drafter returns `None`: nothing is
+  posted and the job succeeds). An answer is an `is_assistant` post from Athena with no author
+  account, and the asker is told on `/me/events` (`community_reply`).

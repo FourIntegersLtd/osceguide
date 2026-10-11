@@ -21,6 +21,7 @@ from app.core.audience import (
 from app.core.errors import AppError, raise_mapped
 from app.core.events import publish_after_commit, user_topic
 from app.core.jobs import defer_in_transaction
+from app.core.logging import get_logger
 from app.core.pagination import CursorParams, Page
 from app.features.catalog.service import resolve_exam
 from app.features.community import domain, errors, repository
@@ -39,7 +40,9 @@ _REFUSALS: dict[type[Exception], type[AppError]] = {
     domain.ExamRequired: errors.ExamRequiredError,
 }
 
-Drafter = Callable[[str, str], Awaitable[str]]
+log = get_logger(__name__)
+
+Drafter = Callable[[str, str], Awaitable[str | None]]
 
 
 async def ask(
@@ -80,7 +83,7 @@ async def ask(
         tags=cleaned_tags,
         category=category,
     )
-    if category in domain.ASSISTANT_CATEGORIES and audience == PUBLIC:
+    if audience == PUBLIC:
         # The assistant answers from the same transaction that stored the question, so a question
         # that is kept is a question that gets its answer.
         await defer_in_transaction(
@@ -246,19 +249,22 @@ async def list_questions(
 
 
 async def reply_as_assistant(session: AsyncSession, post_id: uuid.UUID, *, draft: Drafter) -> bool:
-    """Answer one general or platform question as the OSCE Guide assistant, if it still wants one.
+    """Answer one public question as the OSCE Guide assistant, if it still wants one.
 
-    Never an exam or skills question (`domain.ASSISTANT_CATEGORIES`), never one inside an
-    institution's room, one removed since, or one a person answered first. The reply has no author
-    account: `is_assistant` says who wrote it. The asker is told on `/me/events` once it commits. A
-    draft that raises ends the run, so the queue row fails where staff can see it and retry.
+    Any category, never one inside an institution's room, one removed since, or one a person
+    answered first. The drafter decides whether the help entries answer it: `None` means it stays
+    quiet, nothing is posted and the run succeeds. The reply has no author account: `is_assistant`
+    says who wrote it. The asker is told on `/me/events` once it commits. A draft that raises ends
+    the run, so the queue row fails where staff can see it and retry.
     """
-    question = await repository.unanswered_public_question(
-        session, post_id, categories=domain.ASSISTANT_CATEGORIES
-    )
+    question = await repository.unanswered_public_question(session, post_id)
     if question is None:
         return False
-    text = domain.clean(await draft(question.title or "", question.body))
+    drafted = await draft(question.title or "", question.body)
+    if drafted is None:
+        log.info("assistant stayed quiet", post_id=str(post_id))
+        return False
+    text = domain.clean(drafted)
     domain.ensure_postable(text)
     answer = await _reply_to(session, question, None, text, audience_of(question), is_assistant=True)
     if question.author_id is not None:

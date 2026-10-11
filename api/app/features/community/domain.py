@@ -16,11 +16,10 @@ MAX_TAGS = 5
 MAX_TAG_LENGTH = 32
 
 
-# What a question is filed under; its free-text tags are subtags of it.
+# The categories the API accepts and filters on (a contract kept for clients); the web composer no
+# longer files under one, so a new question takes DEFAULT_CATEGORY. Free-text tags are its subtags.
 CATEGORIES = ("general", "platform", "skills", "exam")
 DEFAULT_CATEGORY = "general"
-# The categories the assistant may answer: never the exam or skills ones, which need an expert.
-ASSISTANT_CATEGORIES = ("general", "platform")
 # The queue row `ask` writes for a question the assistant answers; `jobs.register` names the task.
 ASSISTANT_QUEUE = "community"
 ASSISTANT_TASK = "reply_as_assistant"

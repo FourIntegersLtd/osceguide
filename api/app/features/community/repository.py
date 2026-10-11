@@ -104,10 +104,8 @@ async def list_questions(
     )
 
 
-async def unanswered_public_question(
-    session: AsyncSession, post_id: uuid.UUID, *, categories: tuple[str, ...]
-) -> Post | None:
-    """This question, if it is public, in these categories, still up and with no live reply.
+async def unanswered_public_question(session: AsyncSession, post_id: uuid.UUID) -> Post | None:
+    """This question, if it is public, still up and with no live reply.
 
     Public only: a question in an institution's room is not the assistant's to answer.
     """
@@ -118,7 +116,6 @@ async def unanswered_public_question(
         Post.kind == "question",
         Post.removed_at.is_(None),
         Post.visibility == "public",
-        Post.category.in_(categories),
         ~has_reply,
     )
     return (await session.execute(stmt)).scalar_one_or_none()

@@ -19,7 +19,7 @@ def register() -> None:
 
     @app.task(name=domain.ASSISTANT_TASK, queue=domain.ASSISTANT_QUEUE)
     async def reply_as_assistant(post_id: str) -> None:
-        """Answer one general or platform question as the OSCE Guide assistant, queued by `ask`.
+        """Answer one public question as the OSCE Guide assistant if the help entries cover it.
 
         A draft that fails (no `OPENAI_API_KEY` included) ends the run: the queue row fails in
         `/platform/jobs` for staff to retry, and the question stays unanswered.

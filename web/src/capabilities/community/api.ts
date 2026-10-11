@@ -1,5 +1,4 @@
 import { platformRequest, type components } from "@/foundation/platform-client";
-import type { CommunityCategory } from "@/capabilities/community/discussionModel";
 
 export type Post = components["schemas"]["app__features__community__schemas__PostRead"];
 export type Visibility = components["schemas"]["Visibility"];
@@ -37,7 +36,6 @@ export function listQuestions(
     mine?: boolean;
     tag?: string | null;
     examCode?: string | null;
-    category?: CommunityCategory | null;
   },
   signal?: AbortSignal,
 ): Promise<PostPage> {
@@ -57,7 +55,6 @@ export function listQuestions(
       tag: tag ? tag : undefined,
       // The exam tab: the route resolves the code and narrows the same way.
       exam_code: params.examCode ? params.examCode : undefined,
-      category: params.category ? params.category : undefined,
     },
     signal,
   });
@@ -93,7 +90,6 @@ export function askQuestion(input: {
   title: string;
   body: string;
   examCode?: string | null;
-  category?: CommunityCategory;
   tags?: readonly string[];
   room?: Room;
 }): Promise<Post> {
@@ -104,7 +100,6 @@ export function askQuestion(input: {
       title: input.title,
       body: input.body,
       exam_code: input.examCode ?? null,
-      category: input.category ?? "general",
       // The backend normalises (trim, lowercase, de-dupe) and caps the count,
       // so the keys go up as chosen and an over-long or over-many selection
       // comes back as a refusal the composer surfaces.

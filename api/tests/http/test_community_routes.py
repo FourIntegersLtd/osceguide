@@ -6,9 +6,11 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.support.catalog import ensure_exam
+from tests.support.community import queued_for
 from tests.support.tokens import bearer
 
 pytestmark = pytest.mark.db
@@ -383,7 +385,6 @@ async def test_a_row_from_before_the_tags_column_reads_back_with_an_empty_list( 
     inserted without naming `tags` — what every existing row was — gets the
     column default and reads as `[]`, not NULL where the schema expects a
     list."""
-    from sqlalchemy import text
 
     token = await make_actor("premigration@example.com")
     mine = await ask(client, token)
@@ -511,6 +512,37 @@ async def test_questions_list_by_category(client: AsyncClient, make_actor, db_se
         "/api/v1/community/questions", params={"category": "exam", "exam_code": "sca"}, headers=bearer(token)
     )
     assert [q["title"] for q in exam.json()["items"]] == ["Exam one"]
+
+
+async def test_the_assistant_job_is_queued_for_every_public_question_and_never_for_an_org_room(  # type: ignore[no-untyped-def]
+    client: AsyncClient, make_actor, db_session: AsyncSession
+) -> None:
+    from tests.http.test_audiences import a_member, an_org, org_audience
+
+    await ensure_exam(db_session, "sca")
+    token = await make_actor("queue1@example.com")
+    ids = {}
+    for category, code in (("general", None), ("platform", None), ("skills", None), ("exam", "sca")):
+        posted = await client.post(
+            "/api/v1/community/questions",
+            json={"title": category, "body": "Body text.", "category": category, "exam_code": code},
+            headers=bearer(token),
+        )
+        assert posted.status_code == 201, posted.text
+        ids[category] = posted.json()["id"]
+    org_id, _ = await an_org(client, make_actor, "queue-room")
+    member = await a_member(make_actor, org_id, "queue-room", "queue-member@example.com")
+    room = await client.post(
+        "/api/v1/community/questions",
+        json={"title": "Room", "body": "Internal.", "audience": org_audience(org_id)},
+        headers=bearer(member),
+    )
+    assert room.status_code == 201, room.text
+
+    assert {c: await queued_for(db_session, i) for c, i in ids.items()} == {
+        c: ["reply_as_assistant"] for c in ("general", "platform", "skills", "exam")
+    }
+    assert await queued_for(db_session, room.json()["id"]) == []
 
 
 async def test_an_unknown_category_is_refused(client: AsyncClient, make_actor) -> None:  # type: ignore[no-untyped-def]

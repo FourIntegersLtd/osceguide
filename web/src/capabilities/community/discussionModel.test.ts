@@ -2,11 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   ASSISTANT_LABEL,
-  COMMUNITY_CATEGORIES,
   COMMUNITY_TABS,
   authorLabel,
-  composerExamCode,
-  defaultExamChoice,
   listFilterFor,
   parseTab,
   sortReplies,
@@ -56,35 +53,14 @@ describe("sortReplies", () => {
   });
 });
 
-describe("community categories", () => {
-  it("offers General, Platform, Skills, Exam in that order", () => {
-    assert.deepEqual(
-      COMMUNITY_CATEGORIES.map((category) => [category.id, category.label]),
-      [
-        ["general", "General"],
-        ["platform", "Platform"],
-        ["skills", "Skills"],
-        ["exam", "Exam"],
-      ],
-    );
-  });
-
-  it("sends an exam only when the category is exam", () => {
-    assert.equal(composerExamCode("exam", "sca"), "sca");
-    assert.equal(composerExamCode("general", "sca"), null);
-    assert.equal(composerExamCode("skills", "sca"), null);
-  });
-
-  it("prefills the exam from the current one, else the only one held, else none", () => {
-    assert.equal(defaultExamChoice(["sca", "plab"], "plab"), "plab");
-    assert.equal(defaultExamChoice(["sca"], null), "sca");
-    assert.equal(defaultExamChoice(["sca", "plab"], null), null);
-    assert.equal(defaultExamChoice([], null), null);
-  });
-
-  it("filters the Exam tab to the exam category for the current exam, and no other tab", () => {
-    assert.deepEqual(listFilterFor("exam", "sca"), { category: "exam", examCode: "sca" });
+describe("listFilterFor", () => {
+  it("filters the Exam tab by the current exam only, whatever the category, and no other tab", () => {
+    assert.deepEqual(listFilterFor("exam", "sca"), { examCode: "sca" });
     assert.deepEqual(listFilterFor("all", "sca"), {});
+  });
+
+  it("has no filter for the Exam tab when there is no current exam, so it never widens to every question", () => {
+    assert.equal(listFilterFor("exam", null), null);
   });
 });
 

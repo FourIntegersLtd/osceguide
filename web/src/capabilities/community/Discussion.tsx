@@ -55,6 +55,7 @@ function CommunityCore({ orgId }: { orgId: string | null }) {
   const { code: examCode } = useCurrentExam();
   const questionId = params.get("question");
   const activeTab = parseTab(params.get("tab"));
+  const examFilter = listFilterFor("exam", examCode);
   const setActiveTab = (tab: CommunityTab) => router.replace(`${pathname}${tabHref(tab)}`);
 
   if (questionId) return <QuestionDetail questionId={questionId} />;
@@ -79,7 +80,15 @@ function CommunityCore({ orgId }: { orgId: string | null }) {
         {activeTab === "all" ? (
           <QuestionList room={room} roomName={roomName} compose={params.get("compose") === "1"} />
         ) : null}
-        {activeTab === "exam" ? <QuestionList room={room} roomName={roomName} filter={listFilterFor("exam", examCode)} /> : null}
+        {activeTab === "exam" ? (
+          examFilter ? (
+            <QuestionList room={room} roomName={roomName} filter={examFilter} browseOnly />
+          ) : (
+            <p className="py-10 text-center text-osce-body text-b2c-text-muted">
+              Choose an exam to see its questions.
+            </p>
+          )
+        ) : null}
       </div>
     </div>
   );
