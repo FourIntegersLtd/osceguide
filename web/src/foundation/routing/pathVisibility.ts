@@ -33,9 +33,10 @@ export const PRIVATE_PATH_PREFIXES: readonly string[] = [
  * tell a landing page from a console. The cost is that a new marketing page has
  * to be added here as well as built.
  *
- * No CASC landing exists — `app/(public)/exams/[exam]` answers these five and
- * `notFound()` for anything else — so an entry for one would be a 404 that
- * spends crawl budget and then reports a failure.
+ * `app/(public)/exams/[exam]` answers every `/exams/*` entry and
+ * `notFound()` for anything else, so an entry for another exam would be a 404
+ * that spends crawl budget and then reports a failure. `/exams/classic` is the
+ * homepage again and canonicalises to `/`.
  */
 export const PUBLIC_MARKETING_PATHS: readonly string[] = [
   "",
@@ -43,6 +44,7 @@ export const PUBLIC_MARKETING_PATHS: readonly string[] = [
   "/pricing",
   "/blogs",
   "/exams/avodeck",
+  "/exams/casc",
   "/exams/classic",
   "/exams/ortho",
   "/exams/plab",

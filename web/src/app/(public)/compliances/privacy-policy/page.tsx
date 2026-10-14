@@ -1,16 +1,14 @@
 import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import { ACCOUNT_REOPEN_DAYS } from "@/foundation/config/copyNumbers";
 import type { Metadata } from "next";
-import { SITE_URL } from "@/foundation/config/siteUrl";
+import { publicPageMetadata } from "@/app/metadata";
 
-export const metadata: Metadata = {
-  title: "OSCE Guide - Privacy Policy",
+export const metadata: Metadata = publicPageMetadata({
+  path: "/compliances/privacy-policy",
+  title: "Privacy Policy",
   description:
     "Understand how OSCE Guide collects, uses, and protects your personal data. Learn about your data rights and our commitment to privacy.",
-  alternates: {
-    canonical: `${SITE_URL}/compliances/privacy-policy`,
-  },
-};
+});
 
 export default function PrivacyPolicy() {
   return (

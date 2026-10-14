@@ -11,11 +11,15 @@ import { MarkdownRenderer, cn } from "@/foundation/ui";
  * over it with `prose prose-lg` from the typography plugin, which this app
  * does not load. Restoring the two markers is cheaper than the plugin, and
  * keeps every reader in this capability rendering the same.
+ *
+ * `html` is the same markdown already rendered and sanitised on the server
+ * (`renderMarkdownToSafeHtml`), so the first paint has the text a crawler needs.
  */
-export function Prose({ content, className = "" }: { content: string; className?: string }) {
+export function Prose({ content, html, className = "" }: { content: string; html?: string; className?: string }) {
   return (
     <MarkdownRenderer
       content={content}
+      html={html}
       className={cn("[&_ol]:list-decimal [&_ul]:list-disc", className)}
     />
   );

@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { publicPageMetadata } from "@/app/metadata";
 import { CheckoutCancelled } from "@/capabilities/account";
-import { LandingPricingSection } from "@/domains/marketing/sections/LandingPricingSection";
+import { PricingSectionContent } from "@/domains/marketing/Pricing";
 
-export const metadata: Metadata = { title: "Pricing" };
+export const metadata: Metadata = publicPageMetadata({
+  path: "/pricing",
+  title: "Pricing",
+  description:
+    "Start with a free trial, then choose a 1, 3 or 6 month plan for SCA, PLAB 2, CASC or ortho interview practice with AI patients and structured feedback.",
+});
 
 /**
  * The pricing page, and where Stripe sends somebody who changed their mind.
@@ -23,7 +29,7 @@ export default async function Page({
   if (cancelled !== undefined) return <CheckoutCancelled />;
   return (
     <main>
-      <LandingPricingSection />
+      <PricingSectionContent asPageTitle />
     </main>
   );
 }

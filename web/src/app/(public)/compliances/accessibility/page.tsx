@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
-import { SITE_URL } from "@/foundation/config/siteUrl";
+import { publicPageMetadata } from "@/app/metadata";
 import { SUPPORT_EMAIL } from "@/foundation/support";
 
-export const metadata: Metadata = {
-  title: "OSCE Guide - Accessibility Statement",
+export const metadata: Metadata = publicPageMetadata({
+  path: "/compliances/accessibility",
+  title: "Accessibility Statement",
   description:
     "How accessible OSCE Guide is, what we know does not yet meet WCAG 2.2 AA, and how to tell us about a barrier.",
-  alternates: {
-    canonical: `${SITE_URL}/compliances/accessibility`,
-  },
-};
+});
 
 /**
  * The accessibility statement (E-15).

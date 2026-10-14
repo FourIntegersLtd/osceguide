@@ -2,10 +2,26 @@ import { PILOT_EXAMS } from "@/foundation/attribution/partnerConstants";
 import { bodyMarkdown, type MediaItem } from "@/capabilities/media/api";
 import { excerpt } from "@/capabilities/media/support/text";
 
+/** How many articles one page of the blogs index holds, on the server and on "load more". */
+export const BLOG_PAGE_SIZE = 24;
+
+/** The api's page cap, used to walk every post for the sitemap. */
+export const SITEMAP_PAGE_SIZE = 100;
+
 export interface BlogTab {
   /** `null` is every article. */
   code: string | null;
   label: string;
+}
+
+/** `?exam=` as the api takes it: trimmed, lower case, null for none. The server seed and the client load must agree. */
+export function normaliseExamQuery(exam: string | undefined): string | null {
+  return exam?.trim().toLowerCase() || null;
+}
+
+/** One article's public address. */
+export function blogPath(slug: string): string {
+  return `/blogs/${slug}`;
 }
 
 /** The public blogs page, optionally narrowed to one exam. */

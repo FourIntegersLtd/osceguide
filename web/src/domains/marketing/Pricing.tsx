@@ -89,12 +89,14 @@ function PricingComparisonLayout({
   );
 }
 
-export function PricingSectionContent() {
+/** `asPageTitle`: the section is the whole page (`/pricing`), so its heading is the h1. */
+export function PricingSectionContent({ asPageTitle = false }: { asPageTitle?: boolean }) {
   const router = useRouter();
   const partner = usePartnerContext();
   const { type } = useLandingVariant();
   const [selectedExam, setSelectedExam] = useState<ExamName>("SCA");
   const live = useLivePlans();
+  const Title = asPageTitle ? "h1" : "h2";
 
   const handleNavigation = (examName: ExamName) => {
     router.push(partner.href(REGISTER_PATH, examName.toLowerCase()));
@@ -136,10 +138,10 @@ export function PricingSectionContent() {
     >
       <div className={type.sectionShell}>
         <div className="pb-8 lg:pb-10">
-          <h2 className={type.sectionTitle}>
+          <Title className={type.sectionTitle}>
             Simple, Transparent{" "}
             <span className="text-osce-accent">Pricing</span>
-          </h2>
+          </Title>
           <p className={type.sectionSubtitle}>Choose your exam</p>
         </div>
 

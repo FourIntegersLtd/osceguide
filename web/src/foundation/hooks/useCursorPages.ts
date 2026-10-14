@@ -33,9 +33,16 @@ export interface CursorPages<T> {
 export function useCursorPages<T>(
   load: (cursor: string | null, signal: AbortSignal) => Promise<CursorPage<T>>,
   deps: readonly unknown[],
+  /**
+   * A first page already read (on the server, so the HTML has the list), used
+   * instead of the first load. The caller keys the component by what `deps`
+   * hold, so a changed scope remounts rather than reusing it.
+   */
+  initial?: CursorPage<T>,
 ): CursorPages<T> {
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [total, setTotal] = useState<number | null>(null);
+  const [seed, setSeed] = useState<CursorPage<T> | null>(initial ?? null);
+  const [cursor, setCursor] = useState<string | null>(initial?.next_cursor ?? null);
+  const [total, setTotal] = useState<number | null>(initial?.total_count ?? null);
   const [extra, setExtra] = useState<T[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState<Error | null>(null);
@@ -51,7 +58,8 @@ export function useCursorPages<T>(
       setExtra([]);
       setMoreError(null);
       setLoadingMore(false);
-      const page = await loadRef.current(null, signal);
+      setSeed(null);
+      const page = seed ?? (await loadRef.current(null, signal));
       setCursor(page.next_cursor ?? null);
       setTotal(page.total_count ?? null);
       return page.items;
@@ -81,11 +89,12 @@ export function useCursorPages<T>(
       });
   }, [cursor, loadingMore]);
 
-  const items = first.data === null ? null : [...first.data, ...extra];
+  const firstItems = first.data ?? seed?.items ?? null;
+  const items = firstItems === null ? null : [...firstItems, ...extra];
   return {
-    state: { ...first, data: items },
+    state: { ...first, data: items, loading: items === null && first.loading },
     total,
-    hasMore: first.data !== null && cursor !== null,
+    hasMore: firstItems !== null && cursor !== null,
     loadingMore,
     moreError,
     loadMore,

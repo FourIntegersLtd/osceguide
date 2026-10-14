@@ -10,9 +10,10 @@ import { STUDY_KIND_LABEL, studyListPath } from "@/capabilities/media/studyPaths
 
 /**
  * An article, as the public `/blogs/<slug>` page shows it: a back link to the
- * blogs, a mono meta line, a title, an optional subtitle and the body.
+ * blogs, a mono meta line, a title, an optional subtitle and the body. `bodyHtml`
+ * is the body rendered on the server, so the article is in the first HTML.
  */
-export function ArticleView({ item }: { item: MediaItem }) {
+export function ArticleView({ item, bodyHtml }: { item: MediaItem; bodyHtml?: string }) {
   const body = bodyMarkdown(item);
   const published = formatPublished(item.published_at);
   const updatedRaw = contentUpdatedAt(item);
@@ -53,7 +54,7 @@ export function ArticleView({ item }: { item: MediaItem }) {
 
         <div className="mt-6 text-[17px] leading-7 [&_h2]:mt-10 [&_h3]:mt-8 [&_p]:mb-5 [&_p]:text-[17px] [&_p]:leading-7">
           {body ? (
-            <Prose content={body} />
+            <Prose content={body} html={bodyHtml} />
           ) : (
             <p className="text-osce-body text-b2c-text-muted">This article has no content yet.</p>
           )}

@@ -7,6 +7,8 @@ import styles from "@/foundation/ui/markdown.module.css";
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  /** The same content already rendered and sanitised on the server: shown at once, and not rendered again. */
+  html?: string;
 }
 
 /**
@@ -20,10 +22,11 @@ interface MarkdownRendererProps {
  * <MarkdownRenderer content={markdownString} />
  * <MarkdownRenderer content={markdownString} className="custom-class" />
  */
-function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
-  const [htmlContent, setHtmlContent] = useState("");
+function MarkdownRenderer({ content, className = "", html }: MarkdownRendererProps) {
+  const [htmlContent, setHtmlContent] = useState(html ?? "");
 
   useEffect(() => {
+    if (html !== undefined) return;
     let cancelled = false;
     renderMarkdownToSafeHtml(content).then((html) => {
       if (!cancelled) setHtmlContent(html);
@@ -31,7 +34,7 @@ function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
     return () => {
       cancelled = true;
     };
-  }, [content]);
+  }, [content, html]);
 
   return (
     <div

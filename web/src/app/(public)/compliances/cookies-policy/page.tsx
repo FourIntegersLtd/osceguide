@@ -1,15 +1,13 @@
 import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
-import { SITE_URL } from "@/foundation/config/siteUrl";
+import { publicPageMetadata } from "@/app/metadata";
 
-export const metadata: Metadata = {
-  title: "OSCE Guide - Cookie Policy",
+export const metadata: Metadata = publicPageMetadata({
+  path: "/compliances/cookies-policy",
+  title: "Cookie Policy",
   description:
     "Learn about how OSCE Guide uses cookies to enhance user experience and ensure platform functionality. Manage your cookie preferences.",
-  alternates: {
-    canonical: `${SITE_URL}/compliances/cookies-policy`,
-  },
-};
+});
 
 export default function CookiesPolicy() {
   return (

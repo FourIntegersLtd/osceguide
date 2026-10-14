@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactElement } from "react";
+import { publicPageMetadata } from "@/app/metadata";
 import {
   BaseLandingPage,
   CascLandingPage,
@@ -27,28 +28,50 @@ const EXAM_PAGES: Record<string, () => ReactElement> = {
   sca: () => <ScaLandingPage />,
 };
 
+/** Head of each exam page. The root template adds " | OSCE Guide" to every title. */
+const EXAM_HEADS: Record<string, { title: string; description: string }> = {
+  sca: {
+    title: "SCA Exam Practice with AI Patients",
+    description:
+      "Voice-first AI practice for the RCGP SCA: time management, data gathering and examiner-grade feedback on the SCA grading domains before exam day.",
+  },
+  plab: {
+    title: "PLAB 2 Exam Practice with AI Patients",
+    description:
+      "Voice-first AI practice for the GMC PLAB 2: data gathering, interpersonal skills and management under timed pressure, with structured feedback.",
+  },
+  casc: {
+    title: "MRCPsych CASC Exam Practice",
+    description:
+      "Voice-first AI practice for the RCPsych CASC: risk assessment, mental state examination, capacity and communication stations with structured feedback.",
+  },
+  ortho: {
+    title: "Orthopaedic ST3 Interview Practice",
+    description:
+      "Rehearse orthopaedic ST3 interview stations with AI voice simulations: clinical reasoning, prioritisation, portfolio and communication before interview day.",
+  },
+  avodeck: {
+    title: "AvoDeck. Find RCGP CSA Practice Partners",
+    description:
+      "Match with GP trainees for structured CSA practice sessions. Session transcripts, AI cases, NHS-verified users.",
+  },
+  classic: {
+    title: "AI patient simulator for OSCE, SCA, PLAB 2 and CASC practice",
+    description:
+      "OSCE Guide's AI platform simulates real patient interactions, helping doctors sharpen their clinical skills and enhance communication.",
+  },
+};
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ exam: string }>;
 }): Promise<Metadata> {
   const { exam } = await params;
-  if (exam === "avodeck") {
-    return {
-      title: "AvoDeck. Find RCGP CSA Practice Partners | OSCE Guide",
-      description:
-        "Match with GP trainees for structured CSA practice sessions. Session transcripts, AI cases, NHS-verified users.",
-    };
-  }
-  if (exam === "casc") {
-    return {
-      title: "MRCPsych CASC Exam | OSCE Guide",
-      description:
-        "Voice-first AI practice for the Royal College of Psychiatrists CASC: risk assessment, mental state examination, capacity and communication stations with structured feedback.",
-    };
-  }
-  const name = exam.charAt(0).toUpperCase() + exam.slice(1).toUpperCase();
-  return { title: `${name} ${exam === "ortho" ? "Interviews" : "Exam"} | OSCE Guide` };
+  const head = EXAM_HEADS[exam];
+  if (!head) return {};
+  // `/exams/classic` is the homepage's own page, so it points search engines at `/`.
+  return publicPageMetadata({ path: exam === "classic" ? "/" : `/exams/${exam}`, ...head });
 }
 
 export default async function Page({ params }: { params: Promise<{ exam: string }> }) {

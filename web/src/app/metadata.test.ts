@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { metadataRobotsFor } from "@/app/metadata";
+import { metadata, metadataRobotsFor, publicPageMetadata } from "@/app/metadata";
 
 describe("metadataRobotsFor", () => {
   it("indexes fully on production", () => {
@@ -25,5 +25,28 @@ describe("metadataRobotsFor", () => {
       follow: false,
       googleBot: { index: false, follow: false },
     });
+  });
+});
+
+describe("publicPageMetadata", () => {
+  it("gives a page its own canonical, title and description, in the head and in the share card", () => {
+    assert.deepEqual(
+      publicPageMetadata({ path: "/pricing", title: "Pricing", description: "Plans for every exam." }),
+      {
+        title: "Pricing",
+        description: "Plans for every exam.",
+        alternates: { canonical: "/pricing" },
+        openGraph: { url: "/pricing", title: "Pricing", description: "Plans for every exam." },
+      },
+    );
+  });
+
+  it("canonicalises the homepage to the site root", () => {
+    assert.equal(publicPageMetadata({ path: "/", title: "T", description: "D" }).alternates?.canonical, "/");
+  });
+
+  it("sets no canonical of its own on the root metadata, so a page without one is not the homepage", () => {
+    assert.equal(metadata.alternates?.canonical, undefined);
+    assert.equal(metadata.openGraph?.url, undefined);
   });
 });

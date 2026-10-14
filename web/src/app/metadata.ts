@@ -90,14 +90,13 @@ export const metadata: Metadata = {
   // Staging and Vercel previews must never advertise themselves to a crawler
   // or an AI bot as if they were the indexable site — only production may.
   robots: metadataRobotsFor(SITE_URL),
-  alternates: {
-    canonical: SITE_URL,
-    languages: { "en-GB": SITE_URL },
-  },
+  // No canonical or og:url here: a root value is inherited by every page that does
+  // not set its own, which made the whole site canonicalise to the homepage.
+  // Each public page sets them through `publicPageMetadata`.
+  alternates: { languages: { "en-GB": SITE_URL } },
   openGraph: {
     type: "website",
     locale: "en_GB",
-    url: SITE_URL,
     siteName: "OSCE Guide",
     title: "OSCE Guide - Master your Clinical Simulation Exams with confidence",
     description:
@@ -131,3 +130,26 @@ export const metadata: Metadata = {
   // iOS otherwise turns any run of digits (a dose, a score) into a phone link.
   formatDetection: { telephone: false },
 };
+
+/**
+ * The head of one public page: its own title, description, canonical and share
+ * card. `path` is relative ("/pricing", "/" for the homepage); `metadataBase`
+ * resolves it. The root `title.template` adds " | OSCE Guide", so `title`
+ * must not.
+ */
+export function publicPageMetadata({
+  path,
+  title,
+  description,
+}: {
+  path: string;
+  title: string;
+  description: string;
+}): Metadata {
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: { url: path, title, description },
+  };
+}

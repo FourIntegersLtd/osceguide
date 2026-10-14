@@ -3,21 +3,20 @@
 import Link from "next/link";
 import { AsyncBoundary, LoadMore, cn } from "@/foundation/ui";
 import { useCursorPages } from "@/foundation/hooks";
-import { listMedia } from "@/capabilities/media/api";
+import { listMedia, type MediaPage } from "@/capabilities/media/api";
 import { ArticlesLibrary } from "@/capabilities/media/ArticlesLibrary";
-import { BLOG_EXAM_TABS, blogsHref } from "@/capabilities/media/blogs";
-
-const PAGE = 24;
+import { BLOG_EXAM_TABS, BLOG_PAGE_SIZE, blogsHref, normaliseExamQuery } from "@/capabilities/media/blogs";
 
 /**
  * The public blogs page: every published article, newest first, with a tab per
  * exam. Readable signed out, so it asks the same `GET /media` the landing rail does.
  */
-export function BlogIndex({ examQuery }: { examQuery: string | undefined }) {
-  const examCode = examQuery?.trim().toLowerCase() || null;
+export function BlogIndex({ examQuery, initialPage }: { examQuery: string | undefined; initialPage?: MediaPage }) {
+  const examCode = normaliseExamQuery(examQuery);
   const pages = useCursorPages(
-    (cursor, signal) => listMedia({ kind: "blog", cursor, limit: PAGE, examCode, sort: "published" }, signal),
+    (cursor, signal) => listMedia({ kind: "blog", cursor, limit: BLOG_PAGE_SIZE, examCode, sort: "published" }, signal),
     [examCode],
+    initialPage,
   );
 
   return (

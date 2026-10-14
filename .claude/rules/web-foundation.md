@@ -76,4 +76,5 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
   capability gate bounces `/stations` to `/mocks`) holds the page. Skip it by its sessionStorage key. A journey that
   starts a station uses its own world account (`runner`): a session with an attempt cannot be deleted,
   and TRAIN-3 expects the consumer's one session.
+- Public page head: set it with `publicPageMetadata` (`app/metadata.ts`); the root sets no canonical (it was inherited by every page and made the site canonicalise to `/`). `title.template` does not apply to `app/page.tsx` (same segment as the layout): write that title in full. `e2e/public/seo.spec.ts` fetches each `PUBLIC_MARKETING_PATHS` page with no JS (canonical, description, unique title, one h1, word floor); a new public page goes in that list. `/` is server HTML; the signed-in redirect to `/app` is in `middleware.ts` on the `osce_rt` cookie.
 - Open items: `docs/BACKLOG.md`; delete a row when you land it.

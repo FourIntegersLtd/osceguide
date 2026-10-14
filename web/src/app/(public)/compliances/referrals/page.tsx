@@ -1,15 +1,13 @@
 import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
-import { SITE_URL } from "@/foundation/config/siteUrl";
+import { publicPageMetadata } from "@/app/metadata";
 
-export const metadata: Metadata = {
-  title: "OSCE Guide - Referral Program Terms & Conditions",
+export const metadata: Metadata = publicPageMetadata({
+  path: "/compliances/referrals",
+  title: "Referral Program Terms & Conditions",
   description:
     "Review the terms and conditions for the OSCE Guide Referral Program, including eligibility, the 10% discount for friends, and the rewards referrers earn.",
-  alternates: {
-    canonical: `${SITE_URL}/compliances/referrals`,
-  },
-};
+});
 
 export default function ReferralsPolicy() {
   return (

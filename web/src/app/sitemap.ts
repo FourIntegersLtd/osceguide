@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/app/metadata";
+import { blogPath } from "@/capabilities/media/blogs";
+import { listAllBlogs } from "@/capabilities/media/blogsServer";
 import { PUBLIC_MARKETING_PATHS } from "@/foundation/routing/pathVisibility";
 
 /**
@@ -17,12 +19,23 @@ function priorityFor(path: string): number {
   return 0.8;
 }
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const today = new Date();
-  return PUBLIC_MARKETING_PATHS.map((path) => ({
-    url: `${SITE_URL}${path}`,
-    lastModified: today,
-    changeFrequency: "weekly" as const,
-    priority: priorityFor(path),
+// Hourly, so a new post reaches the sitemap without a deploy.
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const pages = PUBLIC_MARKETING_PATHS
+    // `/exams/classic` is the homepage again, and canonicalises to it.
+    .filter((path) => path !== "/exams/classic")
+    .map((path) => ({
+      url: `${SITE_URL}${path}`,
+      changeFrequency: "weekly" as const,
+      priority: priorityFor(path),
+    }));
+  const posts = (await listAllBlogs()).map((post) => ({
+    url: `${SITE_URL}${blogPath(post.slug)}`,
+    lastModified: post.updated_at,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
   }));
+  return [...pages, ...posts];
 }

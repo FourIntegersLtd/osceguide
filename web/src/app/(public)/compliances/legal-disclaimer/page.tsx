@@ -1,15 +1,13 @@
 import { COMPLIANCE_DATES, SUPPORT_EMAIL } from "@/foundation/support";
 import type { Metadata } from "next";
-import { SITE_URL } from "@/foundation/config/siteUrl";
+import { publicPageMetadata } from "@/app/metadata";
 
-export const metadata: Metadata = {
-  title: "OSCE Guide - Legal Disclaimer",
+export const metadata: Metadata = publicPageMetadata({
+  path: "/compliances/legal-disclaimer",
+  title: "Legal Disclaimer",
   description:
     "Read the legal disclaimer for OSCE Guide, covering ownership of content, no guarantee of success, educational use, and limitations of liability.",
-  alternates: {
-    canonical: `${SITE_URL}/compliances/legal-disclaimer`,
-  },
-};
+});
 
 export default function LegalDisclaimer() {
   return (

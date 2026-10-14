@@ -127,6 +127,14 @@ function route(request: NextRequest, requestHeaders: Headers): NextResponse {
     return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
   }
 
+  // The front door: somebody with a session goes straight to the app, which picks the
+  // workspace. Done here, not in the page, so `/` is plain server-rendered HTML for a
+  // crawler (no cookie) with no spinner. Presence only, as for `/app/*`: the API decides
+  // whether the token is still good. After the exam-host rewrite, whose root is not `/`.
+  if (request.nextUrl.pathname === "/" && request.cookies.has(SESSION_COOKIES.refresh)) {
+    return NextResponse.redirect(new URL("/app", request.nextUrl.origin), 307);
+  }
+
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 

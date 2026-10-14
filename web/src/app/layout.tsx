@@ -8,6 +8,7 @@ import InstallPrompt from "@/domains/marketing/InstallPrompt";
 import { PullToRefresh } from "@/foundation/pwa/PullToRefresh";
 import { UpdateNotice } from "@/foundation/pwa/UpdateNotice";
 import { ServiceWorkerRegistration } from "@/foundation/pwa/ServiceWorkerRegistration";
+import { SiteJsonLd } from "@/app/SiteJsonLd";
 import "@/app/globals.css";
 
 /*
@@ -111,6 +112,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en-GB" className={fontVariables}>
       <body className={bodyClassName}>
+        <SiteJsonLd />
         <SessionProvider>
           {/*
             One toast stack for the whole app. At the root rather than per
