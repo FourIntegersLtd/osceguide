@@ -271,8 +271,22 @@ export const b2cScrollY = "overflow-y-auto overflow-x-hidden";
  * included. On phones it starts under the fixed 56px top bar instead of at the
  * column's top: iOS gives the scrolling main its own stacking context, so the
  * room's z-index cannot lift it over that bar and the bar hid the clock.
+ *
+ * The room is its own page scroller. Only from `lg`, where its panes sit side
+ * by side, is it a flex column whose panes share its height and scroll inside
+ * themselves; below that it is a block, so stacked panes keep their natural
+ * height and the room scrolls. A fixed-height flex column on a phone squeezed
+ * the panes into the screen and clipped them, with nothing left to scroll.
+ * The bottom padding clears the floating Help button, as `b2cShellMain`'s does.
  */
-export const b2cRoomOverlay = "absolute inset-x-0 bottom-0 top-14 z-30 md:top-0";
+export const b2cRoomOverlay = [
+  "absolute inset-x-0 bottom-0 top-14 z-30 md:top-0",
+  "overflow-y-auto overflow-x-hidden overscroll-y-contain bg-osce-canvas [-webkit-overflow-scrolling:touch]",
+  "pb-[calc(0.5rem+2.75rem+env(safe-area-inset-bottom,0px))] md:pb-0 lg:flex lg:flex-col",
+].join(" ");
+
+/** A link in a live room's fill chain: from `lg` it takes the room's leftover height; below, its natural height. */
+export const b2cRoomFill = "lg:flex lg:min-h-0 lg:flex-1 lg:flex-col";
 
 export const b2cShellMain = [
   "w-full min-h-0 min-w-0 flex-1 bg-osce-surface",

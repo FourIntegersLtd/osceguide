@@ -20,7 +20,7 @@ import {
   Timer,
   cn,
 } from "@/foundation/ui";
-import { b2cRoomOverlay } from "@/foundation/ui/productTokens";
+import { b2cRoomFill, b2cRoomOverlay } from "@/foundation/ui/productTokens";
 import { useSurface } from "@/capabilities";
 import { StartFailureAlert } from "@/capabilities/station-runner/StartFailureAlert";
 import { phaseElapsedSeconds } from "@/capabilities/station-runner/stationClock";
@@ -366,9 +366,8 @@ export function StationScreen(props: StationScreenProps) {
   return (
     <div
       className={cn(
-        "flex flex-col",
         // The live room fills the content column, toolbar included.
-        inRoom && cn(b2cRoomOverlay, "overflow-y-auto bg-osce-canvas p-3 sm:p-4"),
+        inRoom ? cn(b2cRoomOverlay, "px-3 pt-3 sm:px-4 sm:pt-4 md:pb-4") : "flex flex-col",
       )}
     >
       <StationHeader
@@ -435,7 +434,7 @@ export function StationScreen(props: StationScreenProps) {
         </p>
       )}
 
-      <div className={cn("mt-5", inRoom && "flex min-h-0 flex-1 flex-col")}>
+      <div className={cn("mt-5", inRoom && b2cRoomFill)}>
         {activeStep === "patient" &&
           (attempt.brief ? (
             <StationBrief brief={attempt.brief} />
@@ -444,7 +443,7 @@ export function StationScreen(props: StationScreenProps) {
           ))}
 
         {(activeStep === "simulation" || live) && (
-          <div hidden={activeStep !== "simulation"} className={cn(inRoom && "flex min-h-0 flex-1 flex-col")}>
+          <div hidden={activeStep !== "simulation"} className={cn(inRoom && b2cRoomFill)}>
           <ConsultationScreen
             fill={inRoom}
             coverage={effectiveAction === "attempt" ? <LiveCoveragePanel attemptId={attempt.attemptId} isLive={session.phase === "live"} patientJoined={session.patientJoined} /> : undefined}

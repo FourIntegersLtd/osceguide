@@ -10,12 +10,22 @@ function writeWorld(built: World): void {
   writeFileSync(WORLD_FILE, JSON.stringify(built, null, 2));
 }
 
-/** A brief the trainee can read: the SCA template's required patient blocks, and the candidate's biodata. */
+/**
+ * A brief the trainee can read: the SCA template's required patient blocks, and the candidate's biodata.
+ * The history is as long as a real station's, so a phone has to scroll to the end of it (TRAIN-8).
+ */
 const LIBRARY_CONTENT = {
   patient_biodata: "Sam Reid, 54",
   gender: "male",
   opening_sentence: "I've had this cough for three weeks.",
-  expanded_history: "Dry cough, worse at night, no weight loss.",
+  expanded_history: [
+    "Dry cough for three weeks, worse at night and when lying flat; it wakes you two or three times a night.",
+    "No phlegm, no blood, no weight loss, no night sweats. Mildly short of breath walking up the hill to the shops.",
+    "You had a cold beforehand that settled. You stopped smoking ten years ago after twenty years of ten a day.",
+    "You take ramipril 5 mg for blood pressure, started about two months ago. No allergies. You live with your wife.",
+    "You are worried because your brother was diagnosed with lung cancer last year, and you want a chest X-ray today.",
+    "If asked, the cough began a week or two after the ramipril, and you have not mentioned it to anyone yet.",
+  ].join(" "),
   doctor_patient_biodata: "Sam Reid, 54, retired teacher",
 };
 

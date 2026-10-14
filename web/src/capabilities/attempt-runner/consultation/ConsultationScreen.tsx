@@ -4,6 +4,7 @@ import { useSyncExternalStore, type ReactNode } from "react";
 import type { IconType } from "react-icons";
 import { HiOutlineInformationCircle } from "react-icons/hi2";
 import { cn } from "@/foundation/ui";
+import { b2cRoomFill } from "@/foundation/ui/productTokens";
 import {
   getLiveCoverageHidden,
   getLiveCoverageHiddenOnServer,
@@ -60,7 +61,7 @@ export function ConsultationScreen({
   sticky?: boolean;
   showTerms?: boolean;
   coverage?: ReactNode;
-  /** The live room: take all the height the page gives it instead of 60vh, and put the consultation card on the dark stage skin. */
+  /** The live room: from `lg`, take all the height the page gives it instead of 60vh (below that the room scrolls); and put the consultation card on the dark stage skin. */
   fill?: boolean;
 }) {
   const coverageHidden = useSyncExternalStore(
@@ -70,14 +71,14 @@ export function ConsultationScreen({
   );
   const collapsed = Boolean(coverage) && coverageHidden;
   return (
-    <div className={cn(fill ? "flex min-h-0 flex-1 flex-col" : "mb-8")}>
+    <div className={cn(fill ? b2cRoomFill : "mb-8")}>
       {/* Hidden, live marking shrinks to a button above the cards, so the two
           cards take the full width; reopened, it takes its column back. */}
       {collapsed && <div className="mb-3 flex justify-end">{coverage}</div>}
       <div
         className={cn(
           "grid grid-cols-1 overflow-hidden border border-osce-border bg-osce-surface lg:min-h-[420px]",
-          fill ? "min-h-0 flex-1" : "lg:h-[60vh]",
+          fill ? "lg:min-h-0 lg:flex-1" : "lg:h-[60vh]",
           coverage && !collapsed
             ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.6fr)]"
             : "lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]",

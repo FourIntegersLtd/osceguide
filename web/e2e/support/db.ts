@@ -87,3 +87,23 @@ INSERT INTO plans (id, code, stripe_price_id, exam_code, amount_pence, currency,
   WHERE NOT EXISTS (SELECT 1 FROM plans WHERE exam_code = 'sca' AND active)
   ON CONFLICT (code) DO UPDATE SET active = true;`);
 }
+
+/**
+ * A matched peer session already in `phase`, with `doctor` and `patient` both
+ * joined. Matching needs two browsers and the api's worker; the room's layout
+ * needs neither. Returns the session id; `endPeerSession` removes it.
+ */
+export function seedPeerSession(doctor: string, patient: string, stationVersionId: string, phase: "preparation" | "consultation"): string {
+  const id = randomUUID();
+  const user = (email: string) => `(select id from users where email = '${email.replace(/'/g, "''")}')`;
+  psql(`
+INSERT INTO practice_sessions (id, exam_id, doctor_user_id, patient_user_id, station_version_id, status, current_phase,
+    phase_ends_at, started_at, doctor_joined_at, patient_joined_at, preparation_started_at, doctor_accepted_at, patient_accepted_at)
+  VALUES ('${id}', (select id from exams where code = 'sca'), ${user(doctor)}, ${user(patient)}, '${stationVersionId}', 'active', '${phase}',
+    now() + interval '20 minutes', now(), now(), now(), now(), now(), now());`);
+  return id;
+}
+
+export function endPeerSession(id: string): void {
+  psql(`DELETE FROM practice_sessions WHERE id = '${id}';`);
+}

@@ -69,4 +69,7 @@ slice's `api.ts`; a route: `app/**`, composing and holding no logic. A new capab
   (`toastDuration.ts`); success feedback is a `useToast` toast, not an inline Alert. `Panel` is static; a part that folds is `FoldSection`. The Help button and FAB use a neutral `LuCircleHelp`, never Athena's face. `resolveCrumb` takes an options object; section and deep-page names are the one `NAV_LABELS` map. A confirm step is `foundation/ui/ConfirmModal`. Study search types into the URL
   (`useStudySearch`); A to Z and Podcasts load the whole catalogue once and page client-side (`catalogue.ts`).
 - The page column (`b2cPageColumn`) is the scroller (its `overflow-x-hidden` makes it one) and a sticky child is offset by the scroller's own padding: keep top padding on an inner div (`WorkspaceShell`), never on `main` or the column, so `sticky top-0` sits flush under the 52px toolbar. Contact subject and the testimonial question are pure models (`contactSubject.ts`, `productFeedbackModel.ts`).
+- A live room (`b2cRoomOverlay`: station, peer) is its own scroller. Its fill chain (`b2cRoomFill`, min-h-0 flex-1)
+  is `lg:` only: below lg the panes stack at natural height. A fixed-height flex column on a phone clipped the
+  doctor information and nothing scrolled. `e2e/train/phone-layout.spec.ts` (TRAIN-8) guards every route at 390px.
 - Open items: `docs/BACKLOG.md`; delete a row when you land it.

@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { HiOutlineUsers } from "react-icons/hi2";
-import { Button, ConfirmModal, Spinner, cn } from "@/foundation/ui";
+import { Button, ConfirmModal, Spinner } from "@/foundation/ui";
 import { b2cRoomOverlay } from "@/foundation/ui/productTokens";
 import { errorMessage, useToast } from "@/foundation/hooks";
 import { VoiceRoom } from "@/foundation/livekit";
@@ -84,9 +84,9 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
   };
 
   return (
-    // Fills the content column, toolbar included, as the station room does. Only
+    // Laid over the content column, toolbar included (see b2cRoomOverlay). Only
     // the call takes the room skin; the script beside it stays light to read.
-    <div className={cn(b2cRoomOverlay, "flex flex-col overflow-hidden bg-osce-canvas")}>
+    <div className={b2cRoomOverlay}>
       <SessionHeader
         sessionId={sessionId}
         role={role}
@@ -120,9 +120,7 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
 
       <PhaseModals phase={phase} remaining={state.remaining} preparationStarted={session.preparation_started_at} />
 
-      <div
-        className="min-h-0 flex-1 overflow-hidden"
-      >
+      <div className="lg:min-h-0 lg:flex-1 lg:overflow-hidden">
         {phase === "waiting_partner" && (
           <WaitingForPartner
             sessionId={sessionId}
@@ -133,12 +131,13 @@ export function PeerSessionScreen({ sessionId }: { sessionId: string }) {
         {(phase === "consultation" || phase === "debrief") && (
           // One square-cornered card split by a divider, as the AI consultation's
           // (`ConsultationScreen`): above on a narrow screen, to the left on a wide one.
-          <div className="flex h-full min-h-0 flex-col p-2 sm:p-3">
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden border border-osce-border bg-osce-surface lg:flex-row">
-              <div data-skin="room" className="h-1/2 min-h-0 w-full flex-shrink-0 overflow-hidden bg-osce-surface lg:h-full lg:w-2/3">
+          // Below `lg` the call has a fixed height and the script runs on under it.
+          <div className="p-2 sm:p-3 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
+            <div className="flex flex-col overflow-hidden border border-osce-border bg-osce-surface lg:min-h-0 lg:flex-1 lg:flex-row">
+              <div data-skin="room" className="h-[min(420px,50dvh)] w-full shrink-0 overflow-hidden bg-osce-surface lg:h-full lg:w-2/3">
                 <VideoArea state={state} role={role} onEnd={() => setConfirmingEnd(true)} />
               </div>
-              <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t border-osce-border lg:h-full lg:w-1/3 lg:border-l lg:border-t-0">
+              <div className="flex w-full flex-col border-t border-osce-border lg:h-full lg:min-h-0 lg:w-1/3 lg:flex-1 lg:overflow-hidden lg:border-l lg:border-t-0">
                 <ConsultationPanel session={session} debrief={phase === "debrief"} />
               </div>
             </div>
