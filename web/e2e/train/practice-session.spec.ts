@@ -14,12 +14,13 @@ test("TRAIN-3 create a practice session and reach the pre-start screen", async (
 
   await openPage(page, "/app/me/mocks");
   await expect(page.getByRole("heading", { name: "You have completed 0 of 3 free stations" })).toBeVisible();
-  // The session name is generated ("Session 1"), not typed.
-  await expect(page.getByRole("textbox", { name: "Session name" })).toHaveValue(/^Session \d+$/);
+  // The session name is generated ("Session 1") and shown as text, not a field.
+  await expect(page.getByText(/^Session \d+$/)).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Session name" })).toHaveCount(0);
   await page.getByRole("button", { name: "Create session" }).click();
 
   await expect(page.getByRole("heading", { level: 1, name: /^Session \d+$/ })).toBeVisible();
-  await expect(page.getByText("14 minutes, 1 station")).toBeVisible();
+  await expect(page.getByText("14 min", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Rules" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Microphone check" })).toBeVisible();
 

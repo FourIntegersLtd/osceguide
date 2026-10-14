@@ -106,8 +106,13 @@ What is still missing is in `docs/BACKLOG.md`; delete a row when you land it.
 
 ```bash
 npm run ci
+npm run e2e              # the browser journeys; needs platform-api on :8002
 node scripts/smoke.mjs   # needs a live platform-api
 ```
+
+`npm run ci` does not run the journeys; CI web does. Any change to a screen, its copy or an
+e2e spec runs `npm run e2e` before a push: TRAIN-3 and TRAIN-8 both went red on `main` because
+only `npm run ci` ran locally.
 
 After a backend schema change: `make openapi` in platform-api, then
 `npm run platform:types`, then `npm run types`. One session at a time:
