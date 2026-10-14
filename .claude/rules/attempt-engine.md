@@ -46,8 +46,8 @@ mark, hand it back. If the transcript is wrong, the mark is not the bug.
   direct plugins and provider keys, unchanged.
 - The tutor voice is one female persona on every provider (Deepgram athena first, then OpenAI `coral`
   and Cartesia Lucy, fixed); a fallback must not change who speaks (C-36). A new default voice goes in `VOICE_GENDERS` (`tests/test_voice_infra_speech.py`). OpenAI voices also need
-  GPT-Live support (`gpt_live.py` shares `TUTOR_VOICE`): `nova` is TTS-only.
-- Patient voices: a pool per gender and provider (`VOICE_{CARTESIA,DEEPGRAM}_{FEMALE,MALE}_VOICES`, comma
+  GPT-Live support (`gpt_live.py` shares `TUTOR_VOICE`): `nova` is TTS-only (fine in the OpenAI patient pool, never the tutor).
+- Patient voices: a pool per gender and provider (`VOICE_{CARTESIA,DEEPGRAM,OPENAI}_{FEMALE,MALE}_VOICES`, comma
   list; one id pins it), picked by sha256 of the room name (`voice_key`, required; never salted `hash()`),
   so one consultation keeps one voice. Gender comes from the station (`domain_definition.patient_gender`
   -> `scenario.patient_gender`/`profile.voice` -> `adapter.voice_gender`); a missing one is Female, logged.

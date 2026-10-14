@@ -28,6 +28,7 @@ across arms.
 | Persona | Arms | Result | Chosen |
 |---|---|---|---|
 | Simulated patient | `gpt-4o-mini`, `gpt-5.4-nano` | Tied on role adherence and quality. Nano cost $0.0118 against $0.0064 per consultation (+84%), was slower (TTFT 0.85s against 0.63s) and wrote about twice the output tokens | `gpt-4o-mini` stays |
+| Simulated patient (2026-10-14) | `gpt-4o-mini`, `gpt-6-luna` (effort none) | Luna 0.0 breaches against 1.3, persona 5.0 against 4.0, quality 4.0 against 3.0, $0.0019 against $0.0058 per consultation (-68%). Slower: TTFT 0.69s→1.05s, p95 0.98s→1.79s; 925 against 767 output tokens. n=3 | `gpt-6-luna` (gpt-4o-mini retires 2027-01-14); check latency live |
 | Debrief tutor | `gpt-4o`, `gpt-5.4-mini`, `gpt-5.4-nano` | 5.4-mini: fewer breaches, persona consistency 4.7 against 4.0, equal quality, slightly faster, $0.0220 against $0.0935 (-76%). Nano was cheaper still but quality fell to 3.3 | `gpt-5.4-mini` |
 
 Nano's list price is lower, but it writes about twice the output tokens at about

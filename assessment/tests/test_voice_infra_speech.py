@@ -32,6 +32,8 @@ VOICE_GENDERS = {
     **dict.fromkeys(DG_FEMALE_POOL, "Female"),
     **dict.fromkeys(DG_MALE_POOL, "Male"),
     "coral": "Female",
+    **dict.fromkeys(speech.OPENAI_FEMALE_VOICES, "Female"),
+    **dict.fromkeys(speech.OPENAI_MALE_VOICES, "Male"),
     LUCY: "Female",
     **dict.fromkeys(FEMALE_POOL, "Female"),
     **dict.fromkeys(MALE_POOL, "Male"),
@@ -82,7 +84,7 @@ def test_llm_primary_by_role_with_shared_fallback(monkeypatch) -> None:
     monkeypatch.setattr(speech.openai, "LLM", openai_llm)
     monkeypatch.setattr(speech.anthropic, "LLM", anthropic_llm)
     monkeypatch.setattr(speech.llm, "FallbackAdapter", fallback)
-    assert speech.build_llm("patient") == ["openai:gpt-4o-mini", "anthropic:claude-haiku-4-5"]
+    assert speech.build_llm("patient") == ["openai:gpt-6-luna", "anthropic:claude-haiku-4-5"]
     assert speech.build_llm("tutor") == ["openai:gpt-5.4-mini", "anthropic:claude-haiku-4-5"]
     assert anthropic_llm.call_args.kwargs["temperature"] == 0.8
 
@@ -168,7 +170,7 @@ def _capture_openai_llm(monkeypatch):
     return calls
 
 
-@pytest.mark.parametrize("model", ["gpt-5.4-nano", "gpt-5.4-mini", "gpt-5.6-luna"])
+@pytest.mark.parametrize("model", ["gpt-5.4-nano", "gpt-5.4-mini", "gpt-5.6-luna", "gpt-6-luna"])
 def test_reasoning_models_are_told_not_to_reason(monkeypatch, model) -> None:
     """A reasoning model left on the provider default thinks for seconds before speaking.
 
@@ -183,14 +185,14 @@ def test_reasoning_models_are_told_not_to_reason(monkeypatch, model) -> None:
 
 def test_models_that_take_no_reasoning_effort_are_not_sent_one(monkeypatch) -> None:
     calls = _capture_openai_llm(monkeypatch)
-    speech.build_llm("patient")
+    speech.build_llm("patient", speech.SpeechSettings(patient_llm="gpt-4o-mini"))
     assert calls[0] == {"model": "gpt-4o-mini"}
 
 
 def test_the_tutor_default_is_told_not_to_reason() -> None:
     """gpt-5.4-mini is a reasoning model; left on the provider default it thinks before speaking."""
     settings = speech.SpeechSettings()
-    assert settings.tutor_llm.startswith(speech.REASONING_MODEL_PREFIX)
+    assert settings.tutor_llm.startswith(speech.REASONING_MODEL_PREFIXES)
     assert settings.tutor_reasoning_effort == "none"
 
 
@@ -251,24 +253,24 @@ def test_cloud_llm_is_inference_openai_with_gemini_fallback(cloud, monkeypatch) 
     patient = speech.build_llm("patient")
     tutor = speech.build_llm("tutor")
     assert all(isinstance(m, speech.inference.LLM) for m in patient + tutor)
-    assert [m.model for m in patient] == ["openai/gpt-4o-mini", "google/gemini-3.1-flash-lite"]
+    assert [m.model for m in patient] == ["openai/gpt-6-luna", "google/gemini-3.1-flash-lite"]
     assert [m.model for m in tutor] == ["openai/gpt-5.4-mini", "google/gemini-3.1-flash-lite"]
     assert tutor[0]._opts.extra_kwargs == {"reasoning_effort": "none"}
-    assert patient[0]._opts.extra_kwargs == {}
+    assert patient[0]._opts.extra_kwargs == {"reasoning_effort": "none"}
     assert patient[1]._opts.extra_kwargs == {"temperature": 0.8}
 
 
 def test_cloud_vision_llm_is_inference_gemini(cloud, monkeypatch) -> None:
     monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
     built = speech.build_vision_llm()
-    assert [m.model for m in built] == ["google/gemini-3.1-flash-lite", "openai/gpt-4o-mini"]
+    assert [m.model for m in built] == ["google/gemini-3.1-flash-lite", "openai/gpt-6-luna"]
 
 
 def test_non_cloud_llm_and_vision_stay_on_the_plugins(monkeypatch, not_cloud) -> None:
     monkeypatch.setattr(speech.openai, "LLM", lambda **kw: f"openai:{kw['model']}")
     monkeypatch.setattr(speech.anthropic, "LLM", lambda **kw: f"anthropic:{kw['model']}")
     monkeypatch.setattr(speech.llm, "FallbackAdapter", lambda models: models)
-    assert speech.build_llm("patient") == ["openai:gpt-4o-mini", "anthropic:claude-haiku-4-5"]
+    assert speech.build_llm("patient") == ["openai:gpt-6-luna", "anthropic:claude-haiku-4-5"]
     assert speech.build_vision_llm() == ["anthropic:claude-haiku-4-5", "anthropic:claude-haiku-4-5"]
 
 
@@ -369,3 +371,28 @@ def test_each_provider_indexes_its_own_pool_by_the_same_key(monkeypatch, not_clo
         "aura-2-draco-en",
         "bbee10a8-4f08-4c5c-8282-e69299115055",
     )
+
+
+def _openai_patient_voice(monkeypatch, gender, key) -> str:
+    openai_tts, _, _, _ = _patch_tts(monkeypatch)
+    speech.build_tts("patient", gender, voice_key=key)
+    return openai_tts.call_args.kwargs["voice"]
+
+
+@pytest.mark.parametrize("gender", ["Female", "Male"])
+def test_patient_openai_fallback_voice_matches_gender_on_self_hosted(monkeypatch, gender) -> None:
+    voice = _openai_patient_voice(monkeypatch, gender, "room-1")
+    assert VOICE_GENDERS[voice] == gender and voice != "coral"
+    assert voice == _openai_patient_voice(monkeypatch, gender, "room-1")  # one consultation, one voice
+
+
+@pytest.mark.parametrize("gender", ["Female", "Male"])
+def test_patient_openai_fallback_voice_matches_gender_on_cloud(cloud, monkeypatch, gender) -> None:
+    voice = _openai_patient_voice(monkeypatch, gender, "room-1")
+    assert VOICE_GENDERS[voice] == gender and voice != "coral"
+    assert voice == _openai_patient_voice(monkeypatch, gender, "room-1")
+
+
+def test_patient_openai_voice_pools_are_deployment_settings(monkeypatch) -> None:
+    monkeypatch.setenv("VOICE_OPENAI_MALE_VOICES", "onyx")
+    assert _openai_patient_voice(monkeypatch, "Male", "room-1") == "onyx"

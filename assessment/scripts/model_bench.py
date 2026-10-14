@@ -71,13 +71,14 @@ PRICES: dict[str, tuple[float, float, float]] = {
     "gpt-5.4-mini": (0.75, 0.075, 4.50),
     "gpt-5.4": (2.50, 0.25, 15.00),
     "gpt-5.6-luna": (0.20, 0.02, 1.20),
+    "gpt-6-luna": (0.10, 0.01, 0.50),  # developers.openai.com/api/docs/pricing, short context
     "gpt-5.6-terra": (2.00, 0.20, 12.00),
 }
 
 # Mirrors voice_infra.speech._openai_llm. Kept as a local rule rather than an
 # import because importing the worker's speech module pulls in all of LiveKit,
 # and a benchmark that needs a media stack to run is a benchmark nobody runs.
-REASONING_MODEL_PREFIX = "gpt-5"
+REASONING_MODEL_PREFIXES = ("gpt-5", "gpt-6")
 
 JUDGE_MODEL = "claude-opus-5"
 
@@ -284,7 +285,7 @@ def generate(client: Any, *, arm: str, messages: list[dict[str, str]], effort: s
         "model": arm, "messages": messages, "stream": True,
         "stream_options": {"include_usage": True},
     }
-    if arm.startswith(REASONING_MODEL_PREFIX) and effort.strip():
+    if arm.startswith(REASONING_MODEL_PREFIXES) and effort.strip():
         kwargs["reasoning_effort"] = effort.strip()
 
     started = time.perf_counter()

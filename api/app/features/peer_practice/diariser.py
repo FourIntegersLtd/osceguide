@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
+from typing import Any, Literal
 
 from app.core.ports import TranscriptionFailed
 from app.core.settings import get_settings
@@ -21,9 +21,10 @@ from app.features.peer_practice.transcript_prompt import (
 )
 
 _TIMEOUT_SECONDS = 180
-# Cheap and small on purpose: this is not judgement, it is cutting a block of
-# text where a speaker changes.
-DIARISATION_MODEL = "gpt-4o-mini"
+# Reasoning off on purpose: this is not judgement, it is cutting a block of
+# text where a speaker changes (gpt-4o-mini retires on 2027-01-14).
+DIARISATION_MODEL = "gpt-6-luna"
+DIARISATION_REASONING_EFFORT: Literal["none"] = "none"
 
 
 async def to_turns(raw_transcript: str) -> list[dict[str, str]]:
@@ -49,6 +50,7 @@ async def to_turns(raw_transcript: str) -> list[dict[str, str]]:
                 "type": "json_schema",
                 "json_schema": {"name": "turns", "schema": TURNS_SCHEMA, "strict": False},
             },
+            reasoning_effort=DIARISATION_REASONING_EFFORT,
             timeout=_TIMEOUT_SECONDS,
         )
         return str(response.choices[0].message.content or "")

@@ -101,8 +101,8 @@ with `VOICE_<FIELD>` (for example `VOICE_TUTOR_LLM`, `VOICE_VISION_LLM`,
 `VOICE_TTS_STYLE` to name a persona). The defaults name no product.
 
 That is also what makes a model comparison runnable without a deploy, and a
-rollback a variable rather than a release: `VOICE_PATIENT_LLM=gpt-4o-mini`
-puts the previous model back.
+switch a variable rather than a release: `VOICE_PATIENT_LLM` names the
+patient model (currently `gpt-6-luna`).
 
 Two settings exist because live voice cannot afford a model that thinks before
 it speaks. `VOICE_PATIENT_REASONING_EFFORT` and `VOICE_TUTOR_REASONING_EFFORT`
@@ -151,15 +151,16 @@ then run the top two live with `make dev-assessment` and read the
 `[LATENCY:...]` lines the worker already logs.
 
 The current defaults came out of that harness rather than a spec sheet. The
-patient stayed on `gpt-4o-mini`: `gpt-5.4-nano` tied on role adherence and
-quality while costing 84% more and answering more slowly. The tutor tier moved
+patient moved to `gpt-6-luna` when `gpt-4o-mini` was retired (2027-01-14):
+it held the role better (0 breaches against 1.3) for 68% less, but its first
+token is about 0.35s slower, so listen to a live room before relying on it. The tutor tier moved
 from `gpt-4o` to `gpt-5.4-mini`, which held the role better for 76% less.
 
 One caveat on that second change. The tutor tier serves both the debrief and
 the consulting-doctor persona, and only the debrief was benchmarked, so the
 consulting doctor inherits the new model untested. It is worth a listen before
-you rely on it, and `VOICE_TUTOR_LLM=gpt-4o` puts the old model back without a
-deploy.
+you rely on it. `VOICE_TUTOR_LLM` swaps the model without a deploy, but not back
+to `gpt-4o`, which retires on 2027-01-14.
 
 `scripts/debrief_bench.py` does the same for the debrief tutor's prompt, with a
 Claude model playing the trainee. Every run that chose a model or a prompt, and

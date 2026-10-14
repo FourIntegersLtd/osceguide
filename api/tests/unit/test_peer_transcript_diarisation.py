@@ -65,3 +65,25 @@ def test_a_shape_that_cannot_be_marked_is_refused(parsed: object) -> None:
 async def test_an_empty_recording_never_reaches_the_model() -> None:
     with pytest.raises(TranscriptionFailed):
         await diariser.to_turns("   ")
+
+
+async def test_the_split_asks_gpt_6_luna_with_reasoning_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """gpt-4o-mini retires on 2027-01-14; a reasoning model must be told to skip reasoning."""
+    sent: dict[str, object] = {}
+
+    class _Completions:
+        def create(self, **kwargs: object) -> object:
+            sent.update(kwargs)
+            content = '{"messages": [{"role": "doctor", "message": "Hello."}]}'
+            message = type("Message", (), {"content": content})()
+            return type("Response", (), {"choices": [type("Choice", (), {"message": message})()]})()
+
+    client = type("Client", (), {"chat": type("Chat", (), {"completions": _Completions()})()})()
+    monkeypatch.setattr(diariser, "_client", lambda: client)
+
+    turns = await diariser.to_turns("Hello.")
+
+    assert turns == [{"role": "doctor", "message": "Hello."}]
+    assert sent["model"] == diariser.DIARISATION_MODEL
+    assert sent["reasoning_effort"] == "none"
+    assert "temperature" not in sent and "max_tokens" not in sent

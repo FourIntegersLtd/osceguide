@@ -55,7 +55,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages"))
 
-from model_bench import JUDGE_MODEL, PRICES, REASONING_MODEL_PREFIX, Turn, _debrief_prompt, marking_for  # noqa: E402
+from model_bench import JUDGE_MODEL, PRICES, REASONING_MODEL_PREFIXES, Turn, _debrief_prompt, marking_for  # noqa: E402
 from osce_assessment.prompts.debrief_pacing import DEBRIEF_SECONDS, debrief_pacing_payload  # noqa: E402
 from osce_assessment.prompts import ManagementPlanFormatter, TranscriptFormatter  # noqa: E402
 from osce_assessment.prompts.greetings import DEBRIEF_GREETING  # noqa: E402
@@ -436,7 +436,7 @@ def timed_reply(client: Any, *, instructions: str, history: list[dict[str, Any]]
             "model": TUTOR_MODEL, "messages": [{"role": "system", "content": instructions}, *history],
             "tools": [CHECK_TIME_TOOL], "tool_choice": "none" if check == MAX_CLOCK_CHECKS else "auto",
         }
-        if TUTOR_MODEL.startswith(REASONING_MODEL_PREFIX) and TUTOR_EFFORT.strip():
+        if TUTOR_MODEL.startswith(REASONING_MODEL_PREFIXES) and TUTOR_EFFORT.strip():
             kwargs["reasoning_effort"] = TUTOR_EFFORT.strip()
         response = client.chat.completions.create(**kwargs)
         usage = response.usage

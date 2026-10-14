@@ -9,15 +9,18 @@ rather than a guess.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from app.core.logging import get_logger
 from app.core.settings import Settings
 from app.features.cv.schemas import StructuredCv
 
 log = get_logger(__name__)
 
-# A CV is a short, well-structured document; the small model reads it as well
-# as a large one and costs less.
-CV_MODEL = "gpt-4o-mini"
+# A CV is a short, well-structured document: extraction, not judgement, so the
+# reasoning model runs with reasoning off (gpt-4o-mini retires on 2027-01-14).
+CV_MODEL = "gpt-6-luna"
+CV_REASONING_EFFORT: Literal["none"] = "none"
 PARSE_TIMEOUT_SEC = 240
 
 SYSTEM_PROMPT = (
@@ -51,6 +54,7 @@ async def extract_structured(text: str, *, settings: Settings) -> tuple[Structur
                 {"role": "user", "content": f"Analyse this CV:\n\n{text}"},
             ],
             response_format=StructuredCv,
+            reasoning_effort=CV_REASONING_EFFORT,
             timeout=PARSE_TIMEOUT_SEC,
         )
     except Exception as exc:  # noqa: BLE001 - any model failure becomes the row's error

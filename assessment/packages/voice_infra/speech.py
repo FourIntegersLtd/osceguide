@@ -35,8 +35,8 @@ Gender = Literal["Female", "Male"]
 
 SETTINGS_ENV_PREFIX = "VOICE_"
 
-# Any model whose id starts with this takes a reasoning effort; see ``_openai_llm``.
-REASONING_MODEL_PREFIX = "gpt-5"
+# Any model whose id starts with one of these takes a reasoning effort; see ``_openai_llm``.
+REASONING_MODEL_PREFIXES = ("gpt-5", "gpt-6")
 
 # Kept as module constants because other packages and the GPT-Live model
 # construction share them; they are the defaults ``SpeechSettings`` starts from.
@@ -58,6 +58,9 @@ CARTESIA_MALE_VOICES = (
     "d3e3d5d5-07b0-484f-9967-dbc8f15b60d5",
     "bbee10a8-4f08-4c5c-8282-e69299115055",
 )
+# gpt-4o-mini-tts voices (livekit-plugins-openai TTSVoices); ``coral`` stays the tutor's alone.
+OPENAI_FEMALE_VOICES = ("shimmer", "sage", "nova")
+OPENAI_MALE_VOICES = ("ash", "echo", "onyx")
 CARTESIA_TUTOR_VOICE_ID = "2f251ac3-89a9-4a77-a452-704b474ccd01"  # Lucy; its own literal so editing the pool never changes the tutor
 
 
@@ -66,11 +69,12 @@ class SpeechSettings:
     """The model, voice and style choices for speech, each overridable from the environment."""
 
     stt_model: str = "nova-3-medical"
-    # Both chosen by measurement, not recency: see scripts/model_bench.py. The
-    # patient stayed on gpt-4o-mini because gpt-5.4-nano tied on role adherence
-    # while costing 84% more and answering more slowly. The tutor moved off
-    # gpt-4o because gpt-5.4-mini held the role better for 76% less.
-    patient_llm: str = "gpt-4o-mini"
+    # The tutor was chosen by measurement (scripts/model_bench.py): it moved off
+    # gpt-4o because gpt-5.4-mini held the role better for 76% less. The patient
+    # moved to gpt-6-luna when gpt-4o-mini was retired (2027-01-14): at effort none
+    # it had 0 breaches against 1.3, persona 5.0 against 4.0, and cost 68% less, but
+    # its first token is slower (1.05s against 0.69s, p95 1.79s against 0.98s).
+    patient_llm: str = "gpt-6-luna"
     tutor_llm: str = "gpt-5.4-mini"
     # Live voice has no room for a model that thinks before it speaks. Effort is
     # a setting rather than a constant so a comparison can turn it back on.
@@ -94,6 +98,8 @@ class SpeechSettings:
     cartesia_female_voices: str = ",".join(CARTESIA_FEMALE_VOICES)
     cartesia_male_voices: str = ",".join(CARTESIA_MALE_VOICES)
     cartesia_tutor_voice: str = CARTESIA_TUTOR_VOICE_ID
+    openai_female_voices: str = ",".join(OPENAI_FEMALE_VOICES)
+    openai_male_voices: str = ",".join(OPENAI_MALE_VOICES)
     # LiveKit Cloud only (Inference "provider/model" ids), EU-served for Frankfurt.
     # The fallback is also the vision model: Gemini reads images.
     cloud_fallback_llm: str = "google/gemini-3.1-flash-lite"
@@ -141,7 +147,7 @@ def _openai_llm(model: str, effort: str) -> llm.LLM:
     default costs seconds before the first word. Sending the effort here covers
     the whole line; older models take no such argument, so they are left alone.
     """
-    kwargs = {"reasoning_effort": effort.strip()} if model.startswith(REASONING_MODEL_PREFIX) and effort.strip() else {}
+    kwargs = {"reasoning_effort": effort.strip()} if model.startswith(REASONING_MODEL_PREFIXES) and effort.strip() else {}
     if is_livekit_cloud():
         return inference.LLM(model=f"openai/{model}", extra_kwargs=kwargs or None)
     return openai.LLM(model=model, **kwargs)
@@ -179,8 +185,8 @@ def _pick_voice(pool: str, key: str) -> str:
     return voices[int(hashlib.sha256(key.encode()).hexdigest(), 16) % len(voices)]
 
 
-def _openai_tts(settings: SpeechSettings, style: str) -> tts.TTS:
-    return openai.TTS(model=settings.tutor_tts_model, voice=settings.tutor_voice, instructions=style)
+def _openai_tts(settings: SpeechSettings, style: str, voice: str) -> tts.TTS:
+    return openai.TTS(model=settings.tutor_tts_model, voice=voice, instructions=style)
 
 
 def build_tts(
@@ -194,24 +200,27 @@ def build_tts(
 
     Self-hosted: Deepgram, OpenAI, then Cartesia. LiveKit Cloud: the patient is Cartesia
     then Deepgram (Inference), the tutor Deepgram Athena then Cartesia Lucy; OpenAI last.
-    ``voice_key`` (the room name, required for a patient) picks the Deepgram and Cartesia voices
+    ``voice_key`` (the room name, required for a patient) picks the Deepgram, OpenAI and Cartesia voices
     from the gender's pools, so a fallback, reconnect or worker restart in one consultation keeps the same voice.
     """
     settings = settings or SpeechSettings.from_env()
     style = settings.tts_style if role == "tutor" else settings.patient_tts_style
     if role == "tutor":
-        deepgram_voice, cartesia_voice = settings.deepgram_tutor_voice, settings.cartesia_tutor_voice
+        deepgram_voice, cartesia_voice, openai_voice = settings.deepgram_tutor_voice, settings.cartesia_tutor_voice, settings.tutor_voice
     else:
         if not voice_key:
             raise ValueError("a patient voice needs the consultation's voice_key, or every patient gets one voice")
         female = gender == "Female"
-        deepgram_pool = settings.deepgram_female_voices if female else settings.deepgram_male_voices
-        cartesia_pool = settings.cartesia_female_voices if female else settings.cartesia_male_voices
-        deepgram_voice, cartesia_voice = _pick_voice(deepgram_pool, voice_key), _pick_voice(cartesia_pool, voice_key)
-    openai_voice = _openai_tts(settings, style)
+        pools = (
+            (settings.deepgram_female_voices, settings.deepgram_male_voices),
+            (settings.cartesia_female_voices, settings.cartesia_male_voices),
+            (settings.openai_female_voices, settings.openai_male_voices),
+        )
+        deepgram_voice, cartesia_voice, openai_voice = (_pick_voice(female_pool if female else male_pool, voice_key) for female_pool, male_pool in pools)
+    openai_tts = _openai_tts(settings, style, openai_voice)
     if is_livekit_cloud():
         cartesia_voice_tts = inference.TTS(model=settings.cloud_tts_model, voice=cartesia_voice)
         deepgram_voice_tts = inference.TTS(model="deepgram/aura-2", voice=deepgram_voice)
         order = [deepgram_voice_tts, cartesia_voice_tts] if role == "tutor" else [cartesia_voice_tts, deepgram_voice_tts]
-        return tts.FallbackAdapter([*order, openai_voice])
-    return tts.FallbackAdapter([deepgram_tts.TTS(model=deepgram_voice), openai_voice, cartesia.TTS(voice=cartesia_voice)])
+        return tts.FallbackAdapter([*order, openai_tts])
+    return tts.FallbackAdapter([deepgram_tts.TTS(model=deepgram_voice), openai_tts, cartesia.TTS(voice=cartesia_voice)])
